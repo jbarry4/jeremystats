@@ -1,17 +1,6 @@
 * Encoding: UTF-8.
-GET FILE='/users/j/b/jbarry4/jeremystats/CoherenceAmpCorr_Epoch_SW2'. 
-DATASET NAME DataSet1 WINDOW=FRONT. 
-USE ALL.
-COMPUTE filter_$=(Frequency  >= 30 & Frequency  <= 50 & RATID  ~=  'L1R3' & RATID  ~=  'L2R3' &
-    RATID  ~=  'L2R4').
-VARIABLE LABELS filter_$ "Frequency  >= 30 & Frequency  <= 50 & RATID  ~=  'L1R3' & RATID  ~=  "+
-    "'L2R3' & RATID  ~=  'L2R4' (FILTER)".
-VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
-FORMATS filter_$ (f1.0).
-FILTER BY filter_$.
-EXECUTE.
-DATASET ACTIVATE DataSet1.
-* Generalized Estimating Equations.
+GET FILE='/users/j/b/jbarry4/jeremystats/CoherenceAmpCorr_Epoch_SW2.sav'.
+DATASET NAME DataSet1 WINDOW=FRONT.
 GENLIN Coherence BY Group Sex Epoch (ORDER=ASCENDING)
   /MODEL Group*Sex*Epoch INTERCEPT=YES
  DISTRIBUTION=GAMMA LINK=LOG
