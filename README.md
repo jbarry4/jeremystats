@@ -1,2 +1,0 @@
-# jeremystats
-For SPSS statistics
