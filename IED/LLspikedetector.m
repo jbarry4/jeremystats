@@ -93,9 +93,9 @@ ets(indx,:)=[];  ech(indx,:)=[]; % remove merged instances
 minL=.025; %default at least 25ms (adjust per preference)
 tooshort=diff(ets,1,2)<(sfx*minL);
 ets(tooshort,:)=[];  ech(tooshort,:)=[]; clear tooshort
-save d;
-save L;
-save Lvec;
-save eON;
-save eOFF;
+%save d;
+%save L;
+%save Lvec;
+%save eON;
+%save eOFF;
 % Tada
