@@ -1,0 +1,109 @@
+function RunLLspikedetector()
+% Run LLspikedetector on a disk-backed CSC conversion and save outputs (.mat + .csv).
+% Works with files produced by CSCconverter_LLready_mex_disk (even-only or all channels).
+
+%% -------------------- USER SETTINGS --------------------
+% Path to the converted .mat created by CSCconverter_LLready_mex_disk:
+inMat = 'C:\Users\info\Desktop\Barry\Data\TestIEDData\M13s2aug1\2023-08-01_12-11-26\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat';
+
+% LLspikedetector params:
+llw_sec = 0.040;     % line-length window in seconds (e.g., 40 ms)
+prc_thr = 99.9;      % percentile threshold (e.g., 99.9)
+% --------------------------------------------------------
+
+tAll = tic;
+
+% Open disk-backed file (fast metadata peek)
+mf = matfile(inMat);
+
+% Pull metadata
+try
+    sfx            = mf.sfx;
+    badch_full     = mf.badch;            % 1 x nTotalCh logical (original indexing)
+    chan_labels_all= mf.chan_labels;      % 1 x nTotalCh cell
+catch
+    error('Input file missing required metadata (sfx/badch/chan_labels). Did you use CSCconverter_LLready_mex_disk?');
+end
+
+% Which channels (rows of d) are present?
+if isprop(mf,'kept_channels')
+    kept_channels = mf.kept_channels;     % original channel numbers stored in rows of d
+else
+    % fallback: assume 1:nRows if converter didn’t store kept_channels
+    kept_channels = 1:size(mf,'d',1);
+end
+nRows = size(mf, 'd', 1);
+nCol  = size(mf, 'd', 2);
+
+fprintf('Loaded metadata from:\n  %s\n', inMat);
+fprintf('d size on disk: %d rows x %d samples\n', nRows, nCol);
+fprintf('Sampling frequency (sfx): %.6g Hz\n', sfx);
+fprintf('Rows correspond to original channel(s): %s\n', mat2str(kept_channels));
+
+% Build badch aligned to the rows we will load into memory
+badch_rows = false(1, nRows);
+if ~isempty(badch_full) && numel(badch_full) >= max(kept_channels)
+    for i = 1:nRows
+        badch_rows(i) = logical(badch_full( kept_channels(i) ));
+    end
+end
+
+% Load data rows into RAM as double (for stable math inside LLspikedetector)
+% (This reads the rows currently in d; with only channels 2 and 4 it’s small enough.)
+fprintf('\nLoading data rows into memory (double)...\n');
+d = double(mf.d(:,:));   %#ok<NASGU>  % keep variable in workspace for LLspikedetector's internal 'save'
+
+% Run the detector (this function writes temporary .mat files; we clean them below)
+fprintf('Running LLspikedetector (llw=%.3f s, prc=%.3f)...\n', llw_sec, prc_thr);
+[ets, ech] = LLspikedetector(d, sfx, llw_sec, prc_thr, badch_rows);
+
+% Convert event sample indices to seconds (relative to start)
+t_on  = ets(:,1) ./ sfx;
+t_off = ets(:,2) ./ sfx;
+dur_s = t_off - t_on;
+
+% Make a human-readable channels-per-event column (original channel numbers)
+chan_list = cell(size(ech,1),1);
+for k = 1:size(ech,1)
+    active_rows = find(ech(k,:));
+    chan_list{k} = sprintf('%s', strjoin(arrayfun(@(r) sprintf('CSC%d', kept_channels(r)), active_rows, 'UniformOutput', false), ','));
+end
+
+% Assemble a summary table
+T = table(ets(:,1), ets(:,2), t_on, t_off, dur_s, chan_list, ...
+          'VariableNames', {'on_samp','off_samp','on_sec','off_sec','duration_sec','channels'});
+
+% Save outputs next to the input file
+[outDir, baseName, ~] = fileparts(inMat);
+stamp = datestr(now, 'yyyymmdd_HHMMSS');
+outMat = fullfile(outDir, sprintf('%s_LLspikes_%s.mat', baseName, stamp));
+outCsv = fullfile(outDir, sprintf('%s_LLspikes_%s.csv', baseName, stamp));
+
+params.llw_sec = llw_sec;
+params.prc_thr = prc_thr;
+params.sfx     = sfx;
+params.kept_channels = kept_channels;
+params.badch_rows    = badch_rows;
+
+save(outMat, 'ets', 'ech', 'T', 'params', '-v7.3');
+writetable(T, outCsv);
+
+fprintf('\nDetected %d spike event(s).\n', size(ets,1));
+fprintf('Saved results:\n  MAT: %s\n  CSV: %s\n', outMat, outCsv);
+
+% Clean up the big temp files that LLspikedetector saves from inside the function
+cleanup_LLtemps(outDir);
+
+fprintf('\nDone in %s.\n', duration(0,0,toc(tAll),"Format","mm:ss"));
+end
+
+% ---------------- helpers ----------------
+function cleanup_LLtemps(dirPath)
+% LLspikedetector saves several large variables to the CWD (d.mat, L.mat, ...).
+% Delete them so your disk doesn’t fill up.
+cand = {'d.mat','L.mat','Lvec.mat','eON.mat','eOFF.mat'};
+for i = 1:numel(cand)
+    f = fullfile(dirPath, cand{i});
+    if exist(f, 'file'), try, delete(f); end, end
+end
+end
