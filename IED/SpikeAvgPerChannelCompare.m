@@ -22,7 +22,7 @@ p = inputParser;
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
 p.addRequired('spikesMatPath', @(s)ischar(s)||isstring(s));
 p.addParameter('halfWidthMs', 30e-3, @(x)isfinite(x)&&x>0);     % 30 ms default
-p.addParameter('yLimMV', [-2 2], @(v)isnumeric(v)&&numel(v)==2&&v(1)<v(2));
+p.addParameter('yLimMV', [0 3000], @(v)isnumeric(v)&&numel(v)==2&&v(1)<v(2));
 p.addParameter('peakPolarity','abs', @(s) any(strcmpi(s,{'abs','pos','neg'})));
 p.addParameter('scaleToMV', 1, @(x)isfinite(x)&&x>0);           % AD->mV multiplier
 p.addParameter('saveDir','', @(s)ischar(s)||isstring(s));
