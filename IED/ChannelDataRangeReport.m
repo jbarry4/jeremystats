@@ -7,7 +7,7 @@ function stats = ChannelDataRangeReport(dataMatPath, varargin)
 %
 % Example:
 %   stats = QuickDataRangeReport('LL_input_data.mat', ...
-%       'SaveDir','C:\tmp\quicklook', 'FirstDurationSec',600);  % 10 min
+%       'SaveDir','C:\tmp\quicklook', 'FirstDurationSec',30);  
 %
 %   % If your file lacks sfx, use sample cap instead (e.g., 30k Hz * 600 s):
 %   % 'FirstSamples', 18e6
@@ -25,7 +25,7 @@ p.addParameter('UnitLabel','', @(s)ischar(s)||isstring(s));
 p.addParameter('RandomSeed', 0, @(x)isnumeric(x)&&isscalar(x));
 
 % NEW parameters
-p.addParameter('FirstDurationSec', 600, @(x) (isfinite(x) && x>0) || isinf(x));
+p.addParameter('FirstDurationSec', 30, @(x) (isfinite(x) && x>0) || isinf(x));
 p.addParameter('FirstSamples', [], @(x) isempty(x) || (isfinite(x) && x>=1));
 
 p.parse(dataMatPath, varargin{:});
