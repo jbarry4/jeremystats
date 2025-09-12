@@ -1,32 +1,4 @@
 function TheVisionOverlayByPolarity(dataMatPath, spikesMatPath, varargin)
-% OverlayEventAcrossChannelsByPolarity
-% For each event appearing on 5–8 channels (inclusive), make ONE figure with TWO overlays:
-%   (Top)  channels whose within-window peak is positive
-%   (Bottom) channels whose within-window peak is negative
-%
-% - A single global anchor is computed as the median of per-channel peak times over
-%   ech==true channels within the event window. All channels are then windowed around
-%   this anchor (nuanced alignment requested).
-% - Fixed symmetric y-limits shared across both panels.
-% - Active channels = bold black; inactive = thin gray.
-% - Row selection via stride/offset to get exactly 64 / 32 / 16 overlays, etc.
-%
-% Inputs:
-%   dataMatPath: MAT with d [nRows x nSamp], sfx (Hz), kept_channels (optional)
-%   spikesMatPath: MAT with ets [N x 2], ech [N x nRows] (optional)
-%
-% Name-Value options:
-%   'halfWidthMs'    (double) default 30e-3
-%   'scaleToMicroV'  (double) default 1         (raw units -> µV)
-%   'saveDir'        (string/char) default alongside dataMatPath
-%   'minCh'          (int) default 5
-%   'maxCh'          (int) default 8
-%   'channelStride'  (int) default 1            (1=all, 2=every 2nd, 4=every 4th, ...)
-%   'channelOffset'  (int) default 0            (0..stride-1; which row index bucket)
-%
-% Output:
-%   One PNG per qualifying event: OverlayPolarity_EvtNNN_...png
-
 % ---------- Parse ----------
 p = inputParser;
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
@@ -72,7 +44,7 @@ else
     ech = true(Nevents, nRows);
 end
 
-% ---------- Select events with channel count in [minCh, maxCh] ----------
+% ---------- Select events ----------
 chCounts = sum(ech,2);
 sel = (chCounts >= minCh) & (chCounts <= maxCh);
 evtIdx = find(sel);
@@ -82,7 +54,7 @@ if isempty(evtIdx)
 end
 
 % ---------- Setup ----------
-HW = max(1, round(halfWidthMs * sfx));   % half-width in samples
+HW = max(1, round(halfWidthMs * sfx));
 tRelSamples = -HW:HW; %#ok<NASGU>
 tRelMs = (tRelSamples / sfx) * 1e3;
 
@@ -102,14 +74,19 @@ rowKeepMask = arrayfun(@(r) mod(r-1, channelStride) == offset, 1:nRows);
 rowsToPlot  = find(rowKeepMask);
 nPlot       = numel(rowsToPlot);
 
-% ---------- Iterate events ----------
+% Predefine inactive colors
+colInactiveBelow = [0.55 0.75 0.95];  % light blue
+colInactiveBetween = [0.70 0.70 0.70];% gray
+colInactiveAbove = [0.95 0.60 0.60];  % light red
+colActive = [0 0 0];
+
 for ii = 1:numel(evtIdx)
     e = evtIdx(ii);
     maskActive = ech(e,:);                 % logical 1 x nRows
     s0_ev = max(1, ets(e,1));
     s1_ev = min(nSamp, ets(e,2));
 
-    % 1) Global anchor from ACTIVE channels (median of their peak times within [s0_ev:s1_ev])
+    % Global anchor from ACTIVE channels
     activeRows = find(maskActive);
     if isempty(activeRows)
         fprintf('Evt %d: no active rows; skipping.\n', e);
@@ -120,7 +97,7 @@ for ii = 1:numel(evtIdx)
         ch = activeRows(k);
         yseg = double(mf.d(ch, s0_ev:s1_ev));
         if any(~isfinite(yseg)), continue; end
-        [~,kpk] = max(abs(yseg));                 % find strongest deflection
+        [~,kpk] = max(abs(yseg));
         peakIdx(k) = s0_ev + kpk - 1;
     end
     peakIdx = peakIdx(isfinite(peakIdx));
@@ -135,69 +112,66 @@ for ii = 1:numel(evtIdx)
         continue;
     end
 
-    % 2) Extract windows for selected rows; classify polarity by sign at abs-peak within window
+    % Extract windows for selected rows; classify polarity by sign of abs-peak
     Y = nan(nPlot, 2*HW+1);
-    pkSign = nan(nPlot,1);  % +1 for positive-peak, -1 for negative-peak
-    pkAmp  = nan(nPlot,1);
+    pkSign = nan(nPlot,1);  % +1/-1
     for k = 1:nPlot
         ch = rowsToPlot(k);
         y = double(mf.d(ch, s0:s1)) * scaleToMicroV; % µV
         if any(~isfinite(y)), continue; end
         Y(k,:) = y;
         [~,kpk] = max(abs(y));
-        pkAmp(k)  = y(kpk);
-        pkSign(k) = sign(y(kpk));
-        if pkSign(k)==0
-            % If flat at peak (rare), treat as positive to avoid losing it
-            pkSign(k) = 1;
-        end
+        sgn = sign(y(kpk)); if sgn==0, sgn=1; end
+        pkSign(k) = sgn;
     end
-
     if all(~isfinite(Y(:)))
-        fprintf('Evt %d: no valid windows for selected rows; skipping.\n', e);
+        fprintf('Evt %d: no valid windows; skipping.\n', e);
         continue;
     end
 
     posIdx = find(pkSign > 0);
     negIdx = find(pkSign < 0);
 
-    % 3) Fixed symmetric y-limits shared by both panels
-    maxAbs = max(abs(Y(:)), [], 'omitnan');
-    if ~isfinite(maxAbs) || maxAbs<=0, maxAbs = 1; end
-    pad  = 0.05;
-    span = (1+pad) * maxAbs;
-    yL   = [-span, span];
+    % Active range (by row index) for color-coding inactive traces
+    actMin = min(activeRows);  % smallest active channel index
+    actMax = max(activeRows);  % largest  active channel index
 
-    % 4) Figure with two stacked panels
+    % Shared y-limits
+    maxAbs = max(abs(Y(:)), [], 'omitnan'); if ~isfinite(maxAbs) || maxAbs<=0, maxAbs = 1; end
+    span = 1.05 * maxAbs; yL = [-span, span];
+
+    % Figure with two stacked panels
     f = figure('Color','w','Position',[80 80 1050 900],'Visible','off');
     tl = tiledlayout(f, 2, 1, 'Padding','compact', 'TileSpacing','compact');
 
-    % ---- Top: positive peaks ----
+    % Top: positive peaks
     ax1 = nexttile(tl,1); hold(ax1,'on'); box(ax1,'on'); grid(ax1,'on');
-    plotGroup(ax1, tRelMs, Y, rowsToPlot, maskActive, posIdx, yL);
+    plotGroupPolarity(ax1, tRelMs, Y, rowsToPlot, maskActive, posIdx, yL, ...
+        actMin, actMax, colActive, colInactiveBelow, colInactiveBetween, colInactiveAbove);
     title(ax1, sprintf('Event %03d — Positive-peak channels: %d  |  Anchor @ %d  |  Win \\pm%.1f ms', ...
         e, numel(posIdx), anchor, 1e3*HW/sfx), 'FontWeight','bold');
     ylabel(ax1,'\muV');
 
-    % ---- Bottom: negative peaks ----
+    % Bottom: negative peaks
     ax2 = nexttile(tl,2); hold(ax2,'on'); box(ax2,'on'); grid(ax2,'on');
-    plotGroup(ax2, tRelMs, Y, rowsToPlot, maskActive, negIdx, yL);
+    plotGroupPolarity(ax2, tRelMs, Y, rowsToPlot, maskActive, negIdx, yL, ...
+        actMin, actMax, colActive, colInactiveBelow, colInactiveBetween, colInactiveAbove);
     title(ax2, sprintf('Event %03d — Negative-peak channels: %d', e, numel(negIdx)), 'FontWeight','bold');
     ylabel(ax2,'\muV'); xlabel(ax2,'ms');
 
-    % Add tiny legend-like note
-    txt = sprintf('\\fontsize{8}Active=bold black   Inactive=thin gray   Units=\\muV   yLim=\\pm%.1f   Plotted rows=%d (stride=%d, offset=%d)', ...
-                  span, nPlot, channelStride, offset);
-    text(ax1, 0.01, 0.98, txt, 'Units','normalized', 'VerticalAlignment','top', ...
-         'BackgroundColor','w', 'Margin',3, 'EdgeColor',[0.85 0.85 0.85], 'Interpreter','tex');
+    % Tiny note
+    text(ax1, 0.01, 0.98, sprintf('\\fontsize{8}Active=bold black   Inactive: below=light blue, between=gray, above=light red   yLim=\\pm%.1f   Plotted rows=%d (stride=%d, offset=%d)', ...
+         span, nPlot, channelStride, offset), ...
+         'Units','normalized','VerticalAlignment','top','BackgroundColor','w','Margin',3, ...
+         'EdgeColor',[0.85 0.85 0.85],'Interpreter','tex');
 
-    % 5) Save
+    % Save
     msWin = round(1e3*HW/sfx);
-    outPng = fullfile(outDir, sprintf('OverlayPolarity_Evt%03d_%drows_stride%d_off%d_HW%ds_%dms_uV.png', ...
+    outPng = fullfile(outDir, sprintf('OverlayPolarityColor_Evt%03d_%drows_stride%d_off%d_HW%ds_%dms_uV.png', ...
                                       e, nPlot, channelStride, offset, HW, msWin));
     exportgraphics(f, outPng, 'Resolution', 220);
     close(f);
-    fprintf('Saved polarity overlay: %s (pos=%d, neg=%d)\n', outPng, numel(posIdx), numel(negIdx));
+    fprintf('Saved polarity+range-colored overlay: %s (pos=%d, neg=%d)\n', outPng, numel(posIdx), numel(negIdx));
 end
 
 fprintf('Done. Output dir: %s\n', outDir);
@@ -205,7 +179,8 @@ end
 
 % ======== Helpers ========
 
-function plotGroup(ax, tMs, Y, rowsToPlot, maskActive, keepIdx, yL)
+function plotGroupPolarity(ax, tMs, Y, rowsToPlot, maskActive, keepIdx, yL, ...
+                           actMin, actMax, colActive, colBelow, colBetween, colAbove)
     xline(ax,0,'--k','LineWidth',0.9); yline(ax,0,':','Color',[0.7 0.7 0.7]);
     ylim(ax, yL);
     if isempty(keepIdx), return; end
@@ -214,11 +189,21 @@ function plotGroup(ax, tMs, Y, rowsToPlot, maskActive, keepIdx, yL)
         ch = rowsToPlot(k);
         y  = Y(k,:);
         if all(~isfinite(y)), continue; end
+
         if maskActive(ch)
-            lw = 1.6; col = [0 0 0];       % active: bold, black
+            lw = 1.6; col = colActive;      % active: bold black
         else
-            lw = 0.8; col = [0.6 0.6 0.6]; % inactive: thin, gray
+            % Inactive color by channel index relative to active range:
+            if ch < actMin
+                col = colBelow;              % below smallest active -> light blue
+            elseif ch > actMax
+                col = colAbove;              % above largest active -> light red
+            else
+                col = colBetween;            % between -> gray
+            end
+            lw = 0.9;
         end
+
         plot(ax, tMs, y, 'LineWidth', lw, 'Color', col);
     end
 end
