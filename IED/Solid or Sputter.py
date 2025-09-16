@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # solid_or_sputter.py
+#Hi Hunter
 
 import os
 import sys
