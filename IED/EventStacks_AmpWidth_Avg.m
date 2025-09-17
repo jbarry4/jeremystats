@@ -10,19 +10,10 @@ p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=
 p.addParameter('scaleToMicroV', 1, @(x)isfinite(x)&&x>0);
 
 % Alignment & windows
-<<<<<<< Updated upstream
 % Anchor = argmax |signal| on first channel within ±2 ms around event midpoint
 p.addParameter('halfWidthMs',         10e-3, @(x)isfinite(x)&&x>0); % display/averaging half-width (±10 ms)
 p.addParameter('metricHalfWidthMs',    2e-3, @(x)isfinite(x)&&x>0); % metrics half-width (±2 ms)
 p.addParameter('anchorHalfWidthMs',    2e-3, @(x)isfinite(x)&&x>0); % ***anchor search half-width (±2 ms)***
-=======
-% 'firstpospeak' = use positive peak of FIRST channel (±anchorSearchHalfWidthMs around midpoint) as anchor for ALL channels
-p.addParameter('align','firstpospeak', @(s) any(strcmpi(s,{'midpoint','peak','firstpospeak'})));
-p.addParameter('peakPolarity','pos', @(s) any(strcmpi(s,{'abs','pos','neg'}))); % used only when align='peak'
-p.addParameter('halfWidthMs', 30e-3, @(x)isfinite(x)&&x>0);             % plotting/averaging half-width; forced to 10 ms if peak/firstpospeak
-p.addParameter('metricHalfWidthMs', 2e-3, @(x)isfinite(x)&&x>0);        % ***NEW default: ±2 ms for amp/HW metrics***
-p.addParameter('anchorSearchHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);  % search for first-channel positive peak (default ±5 ms)
->>>>>>> Stashed changes
 
 % Spreadsheet + mapping
 p.addParameter('excelPath',"", @(s)ischar(s)||isstring(s));
