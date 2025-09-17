@@ -38,3 +38,15 @@ function CSC2microVoltPatchCode(filePath)
 
     fprintf('Saved microvolt-scaled data to:\n%s\n', outFile);
 end
+
+
+%%main
+Error using save
+Argument must be a text scalar.
+
+Error in CSC2microVoltPatchCode (line 37)
+    save(outFile,'-struct','S','-v7.3');
+
+Error in main (line 12)
+CSC2microVoltPatchCode("C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
+ 
