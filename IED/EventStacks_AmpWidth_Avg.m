@@ -10,8 +10,8 @@ p.addParameter('scaleToMicroV', 1, @(x)isfinite(x)&&x>0);
 
 % Alignment & windows
 p.addParameter('align','peak', @(s) any(strcmpi(s,{'midpoint','peak'})));
-p.addParameter('peakPolarity','abs', @(s) any(strcmpi(s,{'abs','pos','neg'})));
-p.addParameter('halfWidthMs', 30e-3, @(x)isfinite(x)&&x>0);      % default plotting window (overridden to 10 ms if align='peak')
+p.addParameter('peakPolarity','abs', @(s) any(strcmpi(s,{'abs','pos','neg'}))); % ignored in new peak mode
+p.addParameter('halfWidthMs', 30e-3, @(x)isfinite(x)&&x>0);      % default; forced to 10 ms if align='peak'
 p.addParameter('metricHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0); % ± window for amp/HW metrics
 
 % Spreadsheet + mapping
@@ -34,7 +34,7 @@ channelIndices  = p.Results.channelIndices;
 scaleToMicroV   = p.Results.scaleToMicroV;
 
 alignMode       = lower(string(p.Results.align));
-peakPolarity    = lower(string(p.Results.peakPolarity));
+peakPolarity    = lower(string(p.Results.peakPolarity)); %#ok<NASGU> % (not used in gradient mode)
 halfWidthMs     = p.Results.halfWidthMs;
 metricHWms      = p.Results.metricHalfWidthMs;
 
@@ -82,13 +82,12 @@ if saveDir == "", outDir = inputFolder; else, outDir = char(saveDir); end
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
 % --- Windows ---
-% If aligning by peak, force display ±10 ms as requested.
 if alignMode == "peak"
-    halfWidthMs = 10e-3;      % force ±10 ms display/averaging
+    halfWidthMs = 10e-3;   % force ±10 ms display/averaging in peak mode
 end
 HWdisp   = max(1, round(halfWidthMs * sfx));   % averaging/plot window half-width (samples)
-HWmet    = max(1, round(metricHWms  * sfx));   % metric window half-width (samples) (±5 ms default)
-HWsearch = max(1, round(10e-3 * sfx));         % ±10 ms search for local peak around midpoint
+HWmet    = max(1, round(metricHWms  * sfx));   % metric window ± (samples)
+HWsearch = max(1, round(10e-3 * sfx));         % ±10 ms search around midpoint
 tRelSamp = -HWdisp:HWdisp;
 tRelMs   = (tRelSamp / sfx) * 1e3;
 winN     = numel(tRelSamp);
@@ -176,6 +175,37 @@ function evts = parseEvtNumsFromPngs(dirpath)
     evts = sort(unique(evts));
 end
 
+function kpk = pickPeakByGradient(yseg)
+% Return 1-based index in yseg for the "true" spike/dip using gradient order.
+    L = numel(yseg);
+    kpk = [];
+    if L < 4 || any(~isfinite(yseg)), return; end
+
+    g = diff(yseg); % discrete gradient (sample-to-sample slope)
+    [~, idx_pos] = max(g); % most positive slope
+    [~, idx_neg] = min(g); % most negative slope
+
+    if idx_neg < idx_pos
+        % Dip first: search for minimum AFTER neg slope up to pos slope
+        if idx_pos - idx_neg >= 1
+            [~, krel] = min(yseg((idx_neg+1):idx_pos));
+            kpk = idx_neg + krel;
+        end
+    elseif idx_pos < idx_neg
+        % Spike first: search for maximum AFTER pos slope up to neg slope
+        if idx_neg - idx_pos >= 1
+            [~, krel] = max(yseg((idx_pos+1):idx_neg));
+            kpk = idx_pos + krel;
+        end
+    end
+
+    % Fallback if degenerate/noisy
+    if isempty(kpk) || kpk < 1 || kpk > L
+        [mx, iMax] = max(yseg); [mn, iMin] = min(yseg);
+        if abs(mn) > abs(mx), kpk = iMin; else, kpk = iMax; end
+    end
+end
+
 function [G, robAll] = avgForGroup(evtList, tag)
 % Per-channel aggregates:
 %   MU (1×winN), SE (1×winN), nUsed, ampMean/SD, hwMean/SD (from per-event metrics)
@@ -221,20 +251,13 @@ function [G, robAll] = avgForGroup(evtList, tag)
             if alignMode == "midpoint"
                 anchor = ancMid;
             else
-                % Search for local peak ONLY within ±10 ms around midpoint
+                % Search local true peak/dip via gradient order within ±10 ms around midpoint
                 s0srch = max(1, ancMid - HWsearch);
                 s1srch = min(nSamp, ancMid + HWsearch);
                 yseg = double(mf.d(ch, s0srch:s1srch));
                 if any(~isfinite(yseg)), continue; end
-                switch peakPolarity
-                    case "pos", [~, kp] = max(yseg);
-                    case "neg", [~, kp] = min(yseg);
-                    otherwise
-                        [mx, iMax] = max(yseg);
-                        [mn, iMin] = min(yseg);
-                        if abs(mn) > abs(mx), kp = iMin; else, kp = iMax; end
-                end
-                anchor = s0srch + kp - 1;
+                k_rel = pickPeakByGradient(yseg);
+                anchor = s0srch + k_rel - 1;
             end
 
             % ---- Averaging/plot window (±10 ms when align='peak') ----
@@ -313,7 +336,7 @@ function [G, robAll] = avgForGroup(evtList, tag)
     end
 
     % Save stats
-    alignLabel = tern(alignMode=="midpoint","midpoint",sprintf('peak(local ±10ms, %s)',peakPolarity));
+    alignLabel = tern(alignMode=="midpoint","midpoint","peak(gradient±10ms)");
     statsPath = fullfile(outDir, sprintf('AvgStack_%s_stats.mat', tag));
     chList_local = chList; scale_local = scaleToMicroV; %#ok<NASGU>
     save(statsPath, 'tRelMs','chList_local','kept_channels','scale_local','halfWidthMs','metricHWms','sfx', ...
@@ -418,7 +441,7 @@ function plotStackWithIndicators(G, tag, yL)
         ylabel('\muV');
     end
 
-    alignLabel = tern(alignMode=="midpoint","midpoint",sprintf('peak(local ±10ms, %s)',peakPolarity));
+    alignLabel = tern(alignMode=="midpoint","midpoint","peak(gradient±10ms)");
     sg = sprintf('%s  |  align: %s  |  display: \\pm%.1f ms  |  metrics: \\pm%.1f ms  |  channels=%d  |  %s', ...
                  tag, alignLabel, 1e3*HWdisp/sfx, 1e3*HWmet/sfx, nCh, tagStr);
     sgtitle(tl, sg, 'FontSize',12,'FontWeight','bold');
