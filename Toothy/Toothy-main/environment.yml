@@ -1,0 +1,22 @@
+name: toothy_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.5
+  - numpy=1.26.0
+  - pandas=2.1.1
+  - matplotlib=3.8.0
+  - scipy=1.13.1
+  - scikit-learn=1.2.2
+  - pyqt=5.15.10
+  - h5py=3.9.0
+  - hdf5=1.14.2
+  - pytables=3.9.2
+  - pip
+  - pip:
+    - neo==0.14.1
+    - seaborn==0.13.0
+    - ipython==8.12.3
+    - open-ephys-python-tools==0.1.10
+    - probeinterface==0.2.23
+    - spikeinterface==0.102.3

@@ -1,0 +1,6 @@
+.DS_Store
+/__pycache__
+default_folders.txt
+default_params.txt
+/probe_configs
+/icons
