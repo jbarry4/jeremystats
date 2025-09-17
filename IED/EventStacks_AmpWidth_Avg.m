@@ -10,12 +10,10 @@ p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=
 p.addParameter('scaleToMicroV', 1, @(x)isfinite(x)&&x>0);
 
 % Alignment & windows
-% 'firstpospeak' = use positive peak of FIRST channel (±anchorSearchHalfWidthMs around midpoint) as anchor for ALL channels
-p.addParameter('align','firstpospeak', @(s) any(strcmpi(s,{'midpoint','peak','firstpospeak'})));
-p.addParameter('peakPolarity','abs', @(s) any(strcmpi(s,{'abs','pos','neg'}))); % used only when align='peak'
-p.addParameter('halfWidthMs', 30e-3, @(x)isfinite(x)&&x>0);             % plotting/averaging half-width; forced to 10 ms if peak/firstpospeak
-p.addParameter('metricHalfWidthMs', 2e-3, @(x)isfinite(x)&&x>0);        % ***NEW default: ±2 ms for amp/HW metrics***
-p.addParameter('anchorSearchHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);  % search for first-channel positive peak (default ±5 ms)
+% Anchor = argmax |signal| on first channel within ±2 ms around event midpoint
+p.addParameter('halfWidthMs',         10e-3, @(x)isfinite(x)&&x>0); % display/averaging half-width (±10 ms)
+p.addParameter('metricHalfWidthMs',    2e-3, @(x)isfinite(x)&&x>0); % metrics half-width (±2 ms)
+p.addParameter('anchorHalfWidthMs',    2e-3, @(x)isfinite(x)&&x>0); % ***anchor search half-width (±2 ms)***
 
 % Spreadsheet + mapping
 p.addParameter('excelPath',"", @(s)ischar(s)||isstring(s));
@@ -36,11 +34,9 @@ dataMatPath     = string(p.Results.dataMatPath);
 channelIndices  = p.Results.channelIndices;
 scaleToMicroV   = p.Results.scaleToMicroV;
 
-alignMode       = lower(string(p.Results.align));
-peakPolarity    = lower(string(p.Results.peakPolarity));
 halfWidthMs     = p.Results.halfWidthMs;
 metricHWms      = p.Results.metricHalfWidthMs;
-anchorHWms      = p.Results.anchorSearchHalfWidthMs;
+anchorHWms      = p.Results.anchorHalfWidthMs;
 
 excelPath       = string(p.Results.excelPath);
 indexBase       = lower(string(p.Results.indexBase));
@@ -86,20 +82,17 @@ if saveDir == "", outDir = inputFolder; else, outDir = char(saveDir); end
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
 % ---------------- Windows ----------------
-% Force display/averaging to ±10 ms for 'peak' and 'firstpospeak'
-if alignMode == "peak" || alignMode == "firstpospeak"
-    halfWidthMs = 10e-3;
-end
-HWdisp    = max(1, round(halfWidthMs * sfx));         % averaging/plot window half-width (samples)
-HWmet     = max(1, round(metricHWms  * sfx));         % ***metrics window half-width (±2 ms default)***
-HWsearch  = max(1, round(anchorHWms  * sfx));         % anchor search (±5 ms default)
+HWdisp    = max(1, round(halfWidthMs * sfx));      % ± display/averaging
+HWmet     = max(1, round(metricHWms  * sfx));      % ± metrics
+HWanchor  = max(1, round(anchorHWms  * sfx));      % ± anchor search (first channel)
 tRelSamp  = -HWdisp:HWdisp;
 tRelMs    = (tRelSamp / sfx) * 1e3;
 winN      = numel(tRelSamp);
 centerIdx = HWdisp + 1;
 
-fprintf('Avg SOLID/SPUTTER: sfx=%.1f Hz | display ±%.1f ms | metrics ±%.1f ms | anchorSearch ±%.1f ms | align=%s\n', ...
-        sfx, 1e3*HWdisp/sfx, 1e3*HWmet/sfx, 1e3*HWsearch/sfx, alignMode);
+fprintf(['EventStacks_AmpWidth (simple anchor): sfx=%.1f Hz | display ±%.1f ms | ' ...
+         'metrics ±%.1f ms | anchorSearch ±%.1f ms | channels=%d\n'], ...
+         sfx, 1e3*HWdisp/sfx, 1e3*HWmet/sfx, 1e3*HWanchor/sfx, nCh);
 
 % ---------------- Spreadsheet -> samples ----------------
 T = readtable(excelPath, 'ReadVariableNames', true);
@@ -184,16 +177,6 @@ function evts = parseEvtNumsFromPngs(dirpath)
     evts = sort(unique(evts));
 end
 
-function kpk = firstChannelPositivePeak(yseg)
-% Positive peak index in yseg. If none > 0, fall back to strongest extremum.
-    [mx, iMax] = max(yseg);
-    if isfinite(mx) && mx > 0
-        kpk = iMax; return;
-    end
-    [mn, iMin] = min(yseg);
-    if abs(mn) > abs(mx), kpk = iMin; else, kpk = iMax; end
-end
-
 function yMax = computeYMaxForGroup(G)
 % Use max of |mean±SE| and a 3*SD safety from per-event amps to avoid clipping
     if isempty(G) || all(all(isnan(G.MU)))
@@ -227,7 +210,9 @@ function [G, robAll] = avgForGroup(evtList, tag)
     hws    = cell(nCh,1);   % per-event half-widths (ms)
     for i=1:nCh, stacks{i} = []; amps{i} = []; hws{i} = []; end
 
+    refCh = chList(1);  % FIRST channel drives the anchor
     nBad = 0;
+
     for ii = 1:numel(evtList)
         e = evtList(ii);
         rowXL = e + evtOffset;
@@ -235,35 +220,34 @@ function [G, robAll] = avgForGroup(evtList, tag)
             alt = e;
             if alt >= 1 && alt <= NrowsXL, rowXL = alt; else, nBad=nBad+1; continue; end
         end
+
         s0_ev = max(1, round(onSamp(rowXL)));
         s1_ev = min(nSamp, round(offSamp(rowXL)));
-        if ~isfinite(s0_ev) || ~isfinite(s1_ev) || s1_ev <= s0_ev, nBad=nBad+1; continue; end
+        if ~isfinite(s0_ev) || ~isfinite(s1_ev) || s1_ev <= s0_ev
+            nBad=nBad+1; continue;
+        end
 
         ancMid = round((s0_ev + s1_ev)/2);  % event midpoint
 
-        % -------- Common anchor per event --------
-        if alignMode == "midpoint"
-            commonAnchor = ancMid;
-        elseif alignMode == "peak"
-            % Legacy per-channel alignment not used for common anchor; emulate via first channel in full window
-            yseg0 = double(mf.d(chList(1), s0_ev:s1_ev));
-            if any(isnan(yseg0)), nBad=nBad+1; continue; end
-            switch peakPolarity
-                case "pos", [~, k0] = max(yseg0);
-                case "neg", [~, k0] = min(yseg0);
-                otherwise
-                    [mx0, iMax0] = max(yseg0); [mn0, iMin0] = min(yseg0);
-                    if abs(mn0) > abs(mx0), k0=iMin0; else, k0=iMax0; end
-            end
-            commonAnchor = s0_ev + k0 - 1;
-        else % 'firstpospeak' (default)
-            s0srch = max(1, ancMid - HWsearch);
-            s1srch = min(nSamp, ancMid + HWsearch);
-            yseg0  = double(mf.d(chList(1), s0srch:s1srch));
-            if any(~isfinite(yseg0)), nBad=nBad+1; continue; end
-            k_rel = firstChannelPositivePeak(yseg0);
-            commonAnchor = s0srch + k_rel - 1;
+        % -------- COMMON ANCHOR from FIRST channel, STRICT (no fallback) --------
+        s0srch = max(1, ancMid - HWanchor);
+        s1srch = min(nSamp, ancMid + HWanchor);
+        yseg0  = double(mf.d(refCh, s0srch:s1srch)) * scaleToMicroV;
+
+        if isempty(yseg0) || all(~isfinite(yseg0))
+            error('EventStacks:AnchorNotFound', ...
+                ['Failed to find anchor for event %d using FIRST channel row %d within ±%d samples (±%.2f ms) ' ...
+                 'around midpoint %d. Window=[%d,%d]. No finite data in the search window.'], ...
+                 e, refCh, HWanchor, 1e3*HWanchor/sfx, ancMid, s0srch, s1srch);
         end
+
+        [~, k_rel] = max(abs(yseg0));               % argmax |signal|
+        if isempty(k_rel) || ~isfinite(k_rel)
+            error('EventStacks:AnchorNotFound', ...
+                ['Failed to compute argmax(|signal|) for event %d on FIRST channel row %d within ±%d samples (±%.2f ms).'], ...
+                 e, refCh, HWanchor, 1e3*HWanchor/sfx);
+        end
+        commonAnchor = s0srch + k_rel - 1;
 
         okAnyCh = false;
         for k = 1:nCh
@@ -282,7 +266,7 @@ function [G, robAll] = avgForGroup(evtList, tag)
             p = prctile(abs(y), yRobustPct);
             if isfinite(p) && p > robAll, robAll = p; end
 
-            % ---- Metrics (STRICTLY inside ±metric window around COMMON anchor) ----
+            % ---- Metrics (±2 ms) around COMMON anchor ----
             s0m = max(1, commonAnchor - HWmet);
             s1m = min(nSamp, commonAnchor + HWmet);
             ym  = double(mf.d(ch, s0m:s1m)) * sc;
@@ -297,8 +281,7 @@ function [G, robAll] = avgForGroup(evtList, tag)
                 h = 0.5*amp; sig = sgn*ym;
 
                 % Left crossing (linear interpolation)
-                kL = pkRel;
-                while kL > 1 && sig(kL) >= h, kL = kL - 1; end
+                kL = pkRel; while kL > 1 && sig(kL) >= h, kL = kL - 1; end
                 if kL >= 1 && (kL+1) <= numel(sig)
                     left_ip = kL + (h - sig(kL)) / (sig(kL+1) - sig(kL));
                 else
@@ -313,7 +296,6 @@ function [G, robAll] = avgForGroup(evtList, tag)
                     right_ip = NaN;
                 end
 
-                % HW only if BOTH crossings exist (and must be <= 4 ms by construction)
                 if isfinite(left_ip) && isfinite(right_ip) && right_ip > left_ip
                     hw_ms = (right_ip - left_ip) / sfx * 1e3;
                 else
@@ -352,13 +334,7 @@ function [G, robAll] = avgForGroup(evtList, tag)
     end
 
     % Save stats
-    if alignMode=="firstpospeak"
-        alignLabel = sprintf('firstpospeak(±%.1f ms)', 1e3*HWsearch/sfx);
-    elseif alignMode=="midpoint"
-        alignLabel = 'midpoint';
-    else
-        alignLabel = sprintf('peak(%s)',peakPolarity);
-    end
+    alignLabel = sprintf('first-channel argmax|signal| (±%.1f ms)', 1e3*HWanchor/sfx);
     statsPath = fullfile(outDir, sprintf('AvgStack_%s_stats.mat', tag));
     chList_local = chList; scale_local = scaleToMicroV; %#ok<NASGU>
     save(statsPath, 'tRelMs','chList_local','kept_channels','scale_local','halfWidthMs','metricHWms','sfx', ...
@@ -424,14 +400,13 @@ function plotStackWithIndicators(G, tag, yL)
                     tL_ms  = ((metStart + left_ip - 1) - centerIdx) / sfx * 1e3;
                     tR_ms  = ((metStart + right_ip- 1) - centerIdx) / sfx * 1e3;
 
-                    % Only draw if entirely inside display window
+                    % Draw only if inside display window
                     if tL_ms >= tRelMs(1) && tR_ms <= tRelMs(end)
                         xline(tL_ms, '-', 'Color',[0.85 0.10 0.10], 'LineWidth',2.2, 'HandleVisibility','off');
                         xline(tR_ms, '-', 'Color',[0.85 0.10 0.10], 'LineWidth',2.2, 'HandleVisibility','off');
                         plot([tL_ms tR_ms],[0 0], '-', 'Color',[0.85 0.10 0.10], 'LineWidth',1.4, 'HandleVisibility','off');
                     end
 
-                    % peak dot on mean curve (safe if inside display)
                     if tPk_ms >= tRelMs(1) && tPk_ms <= tRelMs(end)
                         plot(tPk_ms, sgn*amp, 'o', 'MarkerSize', 4.5, ...
                              'MarkerFaceColor',[0 0 0], 'MarkerEdgeColor','none', 'HandleVisibility','off');
@@ -462,20 +437,12 @@ function plotStackWithIndicators(G, tag, yL)
         ylabel('\muV');
     end
 
-    if strcmp(alignMode,"firstpospeak")
-        alignLabel = sprintf('firstpospeak(±%.1f ms)', 1e3*HWsearch/sfx);
-    elseif strcmp(alignMode,"midpoint")
-        alignLabel = 'midpoint';
-    else
-        alignLabel = sprintf('peak(%s)',peakPolarity);
-    end
-
-    sg = sprintf('%s  |  align: %s  |  display: \\pm%.1f ms  |  metrics: \\pm%.1f ms  |  channels=%d  |  %s', ...
-                 tag, alignLabel, 1e3*HWdisp/sfx, 1e3*HWmet/sfx, nCh, tagStr);
+    sg = sprintf('%s  |  anchor: first-channel argmax|signal| (±%.1f ms)  |  display: \\pm%.1f ms  |  metrics: \\pm%.1f ms  |  channels=%d  |  %s', ...
+                 tag, 1e3*HWanchor/sfx, 1e3*HWdisp/sfx, 1e3*HWmet/sfx, nCh, tagStr);
     sgtitle(tl, sg, 'FontSize',12,'FontWeight','bold');
 
-    outPng = fullfile(outDir, sprintf('AvgStack_%s_align-%s_disp%ds_met%ds_globalY_2col.png', ...
-        tag, regexprep(alignLabel,'[^a-zA-Z0-9]+','_'), HWdisp, HWmet));
+    outPng = fullfile(outDir, sprintf('AvgStack_%s_anchor-argmax_abs_disp%ds_met%ds_globalY_2col.png', ...
+        tag, HWdisp, HWmet));
     exportgraphics(f, outPng, 'Resolution', 220);
     close(f);
     fprintf('Saved: %s\n', outPng);
