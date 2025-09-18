@@ -56,21 +56,21 @@ p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0))
 
 p.parse(inputFolder, dataMatPath, varargin{:});
 
-inputFolder  = string(p.Results.inputFolder);
-dataMatPath  = string(p.Results.dataMatPath);
-excelPath    = string(p.Results.excelPath);
-channelIdx   = p.Results.channelIndices;
-scaleToMicroV= p.Results.scaleToMicroV;
+inputFolder   = string(p.Results.inputFolder);
+dataMatPath   = string(p.Results.dataMatPath);
+excelPath     = string(p.Results.excelPath);
+channelIdx    = p.Results.channelIndices;
+scaleToMicroV = p.Results.scaleToMicroV;
 
-anchorMode   = lower(string(p.Results.anchorMode));
-anchorHWms   = p.Results.anchorHalfWidthMs;
+anchorMode    = lower(string(p.Results.anchorMode));
+anchorHWms    = p.Results.anchorHalfWidthMs;
 
-winHalfMs    = p.Results.winHalfWidthMs;
-climMicroV   = p.Results.climMicroV;
-yRobustPct   = p.Results.yRobustPct;
-climPadFrac  = p.Results.climPadFrac;
+winHalfMs     = p.Results.winHalfWidthMs;
+climMicroV    = p.Results.climMicroV;
+yRobustPct    = p.Results.yRobustPct;
+climPadFrac   = p.Results.climPadFrac;
 
-maxEventsPer = p.Results.maxEventsPerGroup;
+maxEventsPer  = p.Results.maxEventsPerGroup;
 
 % ---------------- Layout & IO ----------------
 solidDir   = fullfile(inputFolder, "Solid");
@@ -172,12 +172,12 @@ fprintf('Done. Output in: %s\n', outRoot);
 
 function renderGroup(evtList, outDir, tag)
     if isempty(evtList)
-        warning('%s: no events to render.', tag); 
-        return; 
+        warning('%s: no events to render.', tag);
+        return;
     end
     for ii = 1:numel(evtList)
         e = evtList(ii);
-        % Excel row (events are 1-indexed unless your sheet is offset differently)
+        % Excel row (events are 1-indexed)
         rowXL = e;
         if rowXL < 1 || rowXL > NrowsXL
             fprintf('%s evt %d: out of Excel bounds. Skipping.\n', tag, e);
@@ -210,7 +210,7 @@ function renderGroup(evtList, outDir, tag)
         end
 
         % ---- Raster window ----
-        s0 = anchor - HWwin; 
+        s0 = anchor - HWwin;
         s1 = anchor + HWwin;
         if s0 < 1 || s1 > nSamp
             fprintf('%s evt %d: raster window out of bounds. Skipping.\n', tag, e);
@@ -233,31 +233,38 @@ function renderGroup(evtList, outDir, tag)
 
         % ---- Color limits (symmetric) ----
         if isempty(climMicroV)
-    p = prctile(abs(Y(:)), yRobustPct, 'all', 'omitnan');
-    if ~isfinite(p) || p<=0, p = 1; end
-    clim = (1 + climPadFrac) * p;
-else
-    clim = climMicroV;
-end
-
+            v = abs(Y(:));
+            v = v(isfinite(v));                 % omit NaNs/Infs manually
+            if isempty(v)
+                pval = 1;
+            else
+                pval = prctile(v, yRobustPct);  % legacy-compatible syntax
+                if ~isfinite(pval) || pval <= 0
+                    pval = 1;
+                end
+            end
+            clim = (1 + climPadFrac) * pval;
+        else
+            clim = climMicroV;
+        end
 
         % ---- Plot raster ----
         perRowPx = 10; basePx = 200; maxPx = 2400;
         figH = min(maxPx, basePx + perRowPx * nCh);
         f = figure('Color','w','Position',[80 80 1000 figH],'Visible','off');
 
-        imagesc(tRelMs, 1:nCh, Y); %#ok<CPROP>
+        imagesc(tRelMs, 1:nCh, Y);
         set(gca, 'YDir', 'normal'); % channels from bottom to top
         caxis([-clim, +clim]);
         colormap(jet); colorbar;
 
         xlabel('Time (ms)');
-if isempty(kept_channels)
-    L = arrayfun(@(k) sprintf('row %d', chList(k)), 1:nCh, 'UniformOutput',false);
-else
-    L = arrayfun(@(k) sprintf('row %d (CSC%d)', chList(k), kept_channels(chList(k))), 1:nCh, 'UniformOutput',false);
-end
-set(gca, 'YTick', 1:nCh, 'YTickLabel', L, 'FontSize', 9);
+        if isempty(kept_channels)
+            L = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+        else
+            L = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+        end
+        set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
 
         ttl = sprintf('%s  |  Evt %d  |  anchor=%s  |  window=\\pm%.1f ms  |  channels=%d', ...
             tag, e, char(anchorMode), 1e3*HWwin/sfx, nCh);
