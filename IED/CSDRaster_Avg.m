@@ -1,4 +1,4 @@
-function CSDRaster_AvgGroups(inputFolder, dataMatPath, varargin)
+function CSDRaster_Avg(inputFolder, dataMatPath, varargin)
 % CSDRaster_AvgGroups
 % Build ONE CSD raster per group (SOLID, SPUTTER) by averaging aligned
 % waveforms across all events in each group, then computing CSD on the mean.
@@ -11,29 +11,8 @@ function CSDRaster_AvgGroups(inputFolder, dataMatPath, varargin)
 % - Output: 2 PNGs with a single GLOBAL color scale (CLim) across both groups.
 %
 % OUTPUT FILES:
-%   <inputFolder>/CSD Raster Output/Raster_Avg_SOLID.png
-%   <inputFolder>/CSD Raster Output/Raster_Avg_SPUTTER.png
-%
-% REQUIRED DATA MAT FIELDS:
-%   d   [nRows x nSamp]  (raw samples; assumed µV unless scaled)
-%   sfx (scalar, Hz)
-%   kept_channels (optional; for labels)
-%
-% ARGUMENTS
-%   inputFolder   : folder containing "Solid" and "Sputter" subfolders and the Excel file
-%   dataMatPath   : MAT file path (with fields above)
-%
-% NAME-VALUE OPTIONS (mirrors VoltageRaster_AvgGroups)
-%   'excelPath'         : explicit Excel path (auto-detected *.xlsx in inputFolder if omitted)
-%   'channelIndices'    : which rows to include; default=all
-%   'scaleToMicroV'     : scalar or per-row vector (default 1)
-%   'winHalfWidthMs'    : display half-width (default 20e-3 → 40 ms total)
-%   'metricHalfWidthMs' : metrics half-width for peak/HW on MEAN CSD waveform (default 5e-3)
-%   'anchorHalfWidthMs' : anchor search half-width (default 5e-3)
-%   'climCSD'           : fixed symmetric CLim for CSD (±value); if empty, auto global robust
-%   'yRobustPct'        : percentile for robust CLim (default 99.5)
-%   'climPadFrac'       : headroom above percentile (default 0.12)
-%   'maxEventsPerGroup' : cap # events per group (optional)
+%   <inputFolder>/CSD Raster Output/CSD_Raster_Avg_SOLID.png
+%   <inputFolder>/CSD Raster Output/CSD_Raster_Avg_SPUTTER.png
 
 % ---------------- Args ----------------
 p = inputParser;
@@ -87,8 +66,8 @@ assert(isfile(excelPath), 'Excel not found: %s', excelPath);
 
 outRoot = fullfile(inputFolder, "CSD Raster Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
-outSOLpng = fullfile(outRoot, "Raster_Avg_SOLID.png");
-outSPUpng = fullfile(outRoot, "Raster_Avg_SPUTTER.png");
+outSOLpng = fullfile(outRoot, "CSD_Raster_Avg_SOLID.png");
+outSPUpng = fullfile(outRoot, "CSD_Raster_Avg_SPUTTER.png");
 
 % ---------------- Data ----------------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
@@ -202,7 +181,7 @@ fprintf('Saved:\n  %s\n  %s\n', outSOLpng, outSPUpng);
 % ======================================================================
 
 function [CSDMU, stats] = buildAvgCSD(evtList, tag)
-    CSDMU = []; 
+    CSDMU = [];
     stats = struct('nEvents',0,'pkMean',NaN,'pkSD',NaN,'hwMean',NaN,'hwSD',NaN);
     if isempty(evtList)
         fprintf('%s: no events.\n', tag); return;
@@ -255,8 +234,8 @@ function [CSDMU, stats] = buildAvgCSD(evtList, tag)
         fprintf('%s: no usable events.\n', tag); return;
     end
 
-    MU = sumY / nUsed;            % mean VOLTAGE per channel
-    CSDMU = computeCSD(MU);       % CSD of the mean (channels x time)
+    MU    = sumY / nUsed;     % mean VOLTAGE per channel
+    CSDMU = computeCSD(MU);   % CSD of the mean (channels x time)
     stats.nEvents = nUsed;
 
     % ---- Metrics on the MEAN CSD (per-channel peak & HW) ----
@@ -277,7 +256,7 @@ function [CSDMU, stats] = buildAvgCSD(evtList, tag)
             h  = 0.5 * amp; sig = sgn * csMet;
 
             % Left crossing
-            kL = pkRel; 
+            kL = pkRel;
             while kL > 1 && sig(kL) >= h, kL = kL - 1; end
             if kL >= 1 && (kL+1) <= Lmet
                 left_ip = kL + (h - sig(kL)) / (sig(kL+1) - sig(kL));
@@ -307,7 +286,8 @@ function [CSDMU, stats] = buildAvgCSD(evtList, tag)
 end
 
 function renderAvgRaster(CSDMU, tag, outPath, clim, stats)
-    perRowPx = 12; basePx = 260; maxPx = 2600;
+    % Slightly larger figure to avoid title cropping; smaller title font.
+    perRowPx = 14; basePx = 290; maxPx = 2800;
     figH = min(maxPx, basePx + perRowPx * nCh);
     f = figure('Color','w','Position',[90 90 1100 figH],'Visible','off');
 
@@ -328,7 +308,7 @@ function renderAvgRaster(CSDMU, tag, outPath, clim, stats)
                    'channels=%d  |  CLim=\\pm%.2f  |  CSD peak=%.2f\\pm%.2f  |  HW=%.2f\\pm%.2f ms'], ...
                    tag, stats.nEvents, 1e3*HWwin/sfx, 1e3*HWanchor/sfx, nCh, ...
                    clim, stats.pkMean, stats.pkSD, stats.hwMean, stats.hwSD);
-    title(ttl, 'FontSize', 12, 'FontWeight', 'bold');
+    title(ttl, 'FontSize', 10, 'FontWeight', 'bold');  % smaller font to avoid cropping
 
     exportgraphics(f, outPath, 'Resolution', 220);
     close(f);
@@ -349,20 +329,28 @@ function evts = parseEvtNumsFromPngs(dirpath)
 end
 
 function C = computeCSD(Ych_t)
-% computeCSD: simple 2nd spatial derivative across channels.
+% computeCSD: second spatial derivative across channels.
 % Input:  Ych_t is (channels x time) in µV
-% Output: CSD (channels x time), interior channels only, padded back to nCh with NaNs at edges
+% Output: CSD (channels x time)
+% Interior channels use standard 3-point stencil; EDGE CHANNELS are
+% **replicated from the nearest interior** so the first/last rows are not blank.
     [nChLoc, nT] = size(Ych_t);
-    if nChLoc < 3
+    if nChLoc < 2
         C = nan(nChLoc, nT);
         return;
+    elseif nChLoc == 2
+        % With 2 channels, define both as equal (degenerate); at least not blank.
+        C = zeros(nChLoc, nT);
+        return;
     end
-    % second difference along channel dimension (interior)
+    % interior second difference (negative sign for conventional CSD)
     Cint = -( Ych_t(3:end,:) - 2*Ych_t(2:end-1,:) + Ych_t(1:end-2,:) );
-    % pad to original number of channels (edges undefined -> NaN)
-    C = nan(nChLoc, nT);
+    C = zeros(nChLoc, nT);
     C(2:end-1,:) = Cint;
-    % (If you have known inter-electrode spacing 'h', divide by h^2 here.)
+    % Edge handling: replicate nearest interior values so edges are visible
+    C(1,:)      = C(2,:);
+    C(end,:)    = C(end-1,:);
+    % If you know electrode spacing h, divide by h^2 here.
 end
 
 end
