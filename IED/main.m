@@ -17,15 +17,3 @@
 %CSDRaster_AvgGroups("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
 CSD_CenterSlices_Waveforms_AvgGroups("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
 
-Error using colorbar
-Unrecognized input or invalid parameter/value pair arguments.
-
-Error in CSD_CenterSlices_Waveforms_AvgGroups/buildAndRender (line 258)
-        cb = colorbar(tl, 'eastoutside');
-
-Error in CSD_CenterSlices_Waveforms_AvgGroups (line 128)
-buildAndRender(evtSOL, 'SOLID', outSOL);
-
-Error in main (line 18)
-CSD_CenterSlices_Waveforms_AvgGroups("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
- 
