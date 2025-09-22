@@ -1,49 +1,77 @@
-function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
-% CSD_CenterSlices_Waveform_AvgGroups_Pipeline
-% Left: per-event CSD slices at 0 ms, stacked as vertical tiles (channels x events)
-% Right: vertical waveform @ 0 ms (all events in gray, average in black)
-% Single tiledlayout to keep rows aligned; shared Y and one layout-level colorbar.
-% Channel 1 at TOP. Saves one PNG per group and a small CSV with summary stats.
+function out = CSDRaster_Avg_Pipeline(inputFolder, dataMatPath, varargin)
+% CSDRaster_Avg_Pipeline
+% Wrapper that builds ONE averaged CSD raster per group (SOLID/SPUTTER),
+% saves PNGs + a stats CSV, and returns file paths for Pipeline_Main.
 %
-% OUTPUT struct:
-%   out.pngSolid, out.pngSputter, out.statsCSV
+% Returns struct:
+%   out.pngSolid   -> "<inputFolder>/CSD Raster Output/CSD_Raster_Avg_SOLID.png"
+%   out.pngSputter -> "<inputFolder>/CSD Raster Output/CSD_Raster_Avg_SPUTTER.png"
+%   out.statsCSV   -> "<inputFolder>/CSD Raster Output/CSDRaster_Avg_stats.csv"
 
-% ---------- Args ----------
+[paths, statsTable] = CSDRaster_Avg_core(inputFolder, dataMatPath, varargin{:});
+
+% Write stats CSV (always alongside the PNGs)
+outDir  = fileparts(paths.solidPng);
+statsCSV = fullfile(outDir, 'CSDRaster_Avg_stats.csv');
+try
+    writetable(statsTable, statsCSV);
+catch ME
+    warning('CSDRaster_Avg_Pipeline: failed to write stats CSV: %s', ME.message);
+    statsCSV = '';
+end
+
+out = struct( ...
+    'pngSolid',   paths.solidPng, ...
+    'pngSputter', paths.sputterPng, ...
+    'statsCSV',   statsCSV);
+end
+
+% ======================================================================
+%                             CORE (adapted)
+% ======================================================================
+function [paths, statsT] = CSDRaster_Avg_core(inputFolder, dataMatPath, varargin)
+% Adapted from your CSDRaster_Avg (same behavior), but returns:
+%   - paths struct with PNG paths
+%   - stats table for pipeline CSV merge
+
+% ---------------- Args ----------------
 p = inputParser;
 p.addRequired('inputFolder', @(s)ischar(s)||isstring(s));
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
 
-p.addParameter('excelPath', "", @(s)ischar(s)||isstring(s));
+p.addParameter('excelPath',"", @(s)ischar(s)||isstring(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x>0));
 
-p.addParameter('winHalfWidthMs',    20e-3, @(x)isfinite(x)&&x>0);   % ±20 ms around anchor
-p.addParameter('anchorHalfWidthMs',  5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms anchor search
+p.addParameter('winHalfWidthMs',   20e-3, @(x)isfinite(x)&&x>0);   % ±20 ms display
+p.addParameter('metricHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms metrics on MEAN CSD
+p.addParameter('anchorHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms anchor search
 
-p.addParameter('sliceThickness', 6, @(x)isfinite(x) && x>=1 && mod(x,1)==0); % columns per event tile
-p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
-p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
+p.addParameter('climCSD',     [],            @(x) isempty(x) || (isscalar(x) && x>0));
+p.addParameter('yRobustPct',  99.5,          @(x) isfinite(x) && x>0 && x<100);
+p.addParameter('climPadFrac', 0.12,          @(x) isfinite(x) && x>=0 && x<=0.5);
 
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
 
 p.parse(inputFolder, dataMatPath, varargin{:});
 
-inputFolder   = string(p.Results.inputFolder);
-dataMatPath   = string(p.Results.dataMatPath);
-excelPath     = string(p.Results.excelPath);
-channelIdx    = p.Results.channelIndices;
-scaleToMicroV = p.Results.scaleToMicroV;
+inputFolder    = string(p.Results.inputFolder);
+dataMatPath    = string(p.Results.dataMatPath);
+excelPath      = string(p.Results.excelPath);
+channelIdx     = p.Results.channelIndices;
+scaleToMicroV  = p.Results.scaleToMicroV;
 
-winHWms       = p.Results.winHalfWidthMs;
-anchorHWms    = p.Results.anchorHalfWidthMs;
+winHWms        = p.Results.winHalfWidthMs;
+metHWms        = p.Results.metricHalfWidthMs;
+anchorHWms     = p.Results.anchorHalfWidthMs;
 
-sliceThick    = p.Results.sliceThickness;
-robPct        = p.Results.robustPct;
-padFrac       = p.Results.padFrac;
+climCSDOpt     = p.Results.climCSD;
+yRobustPct     = p.Results.yRobustPct;
+climPadFrac    = p.Results.climPadFrac;
 
-maxEventsPer  = p.Results.maxEventsPerGroup;
+maxEventsPer   = p.Results.maxEventsPerGroup;
 
-% ---------- Layout ----------
+% ---------------- Layout & IO ----------------
 solidDir   = fullfile(inputFolder, "Solid");
 sputterDir = fullfile(inputFolder, "Sputter");
 assert(isfolder(solidDir),   'Missing folder: %s', solidDir);
@@ -56,13 +84,12 @@ if excelPath == ""
 end
 assert(isfile(excelPath), 'Excel not found: %s', excelPath);
 
-outRoot = fullfile(inputFolder, "CSD Center Slices Output");
+outRoot = fullfile(inputFolder, "CSD Raster Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
-outSOL = fullfile(outRoot, "CSD_CenterSlices_SOLID.png");
-outSPU = fullfile(outRoot, "CSD_CenterSlices_SPUTTER.png");
-outCSV = fullfile(outRoot, "CSD_CenterSlices_stats.csv");
+outSOLpng = fullfile(outRoot, "CSD_Raster_Avg_SOLID.png");
+outSPUpng = fullfile(outRoot, "CSD_Raster_Avg_SPUTTER.png");
 
-% ---------- Data ----------
+% ---------------- Data ----------------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
 mf = matfile(dataMatPath);
 try sfx = mf.sfx; catch, error('Missing "sfx" in data MAT.'); end
@@ -70,7 +97,7 @@ nRowsAll = size(mf,'d',1);
 nSamp    = size(mf,'d',2);
 try kept_channels = mf.kept_channels; catch, kept_channels = []; end %#ok<NASGU>
 
-% Channels
+% Channel selection
 if isempty(channelIdx)
     chList = 1:nRowsAll;
 else
@@ -79,7 +106,7 @@ else
 end
 nCh = numel(chList);
 
-% Scaling
+% scaling vector
 if numel(scaleToMicroV)==1
     scaleVec = repmat(scaleToMicroV, nRowsAll, 1);
 else
@@ -87,16 +114,22 @@ else
     scaleVec = scaleToMicroV(:);
 end
 
-% ---------- Windows ----------
-HWwin    = max(1, round(winHWms    * sfx));  % ±display half-width
-HWanchor = max(1, round(anchorHWms * sfx));  % ±anchor search
-tRelMs   = (-HWwin:HWwin) / sfx * 1e3; %#ok<NASGU>
-centerIdx= HWwin + 1;
+% ---------------- Windows ----------------
+HWwin    = max(1, round(winHWms   * sfx));  % ±display half-width
+HWmet    = max(1, round(metHWms   * sfx));  % ±metrics half-width
+HWanchor = max(1, round(anchorHWms* sfx));  % ±anchor search
+tRelMs   = (-HWwin:HWwin) / sfx * 1e3;
+winN     = numel(tRelMs);
 
-fprintf('CSD Center Slices PIPELINE: sfx=%.1f Hz | window ±%.1f ms | anchor: firstCh max (±%.1f ms)\n', ...
+% Metrics-on-mean window indices
+metStart = HWwin - HWmet + 1;
+metEnd   = HWwin + HWmet + 1;
+Lmet     = metEnd - metStart + 1;
+
+fprintf('CSD AvgGroups: sfx=%.1f Hz | window ±%.1f ms | anchor: firstCh max (±%.1f ms)\n', ...
     sfx, 1e3*HWwin/sfx, 1e3*HWanchor/sfx);
 
-% ---------- Excel -> sample indices ----------
+% ---------------- Read Excel -> samples per row ----------------
 T = readtable(excelPath, 'ReadVariableNames', true);
 canon = lower(regexprep(T.Properties.VariableNames, '[^a-zA-Z0-9]', ''));
 i_onSamp  = find(strcmp(canon,'onsamp')  | strcmp(canon,'startsample') | strcmp(canon,'startsamp') | strcmp(canon,'on'), 1);
@@ -115,54 +148,71 @@ else
     onSamp  = double(T{:,1});
     offSamp = double(T{:,2});
 end
+
+% Bounds
 onSamp  = max(1, min(onSamp,  nSamp));
 offSamp = max(1, min(offSamp, nSamp));
 NrowsXL = numel(onSamp);
 
-% ---------- Events from PNG names ----------
+% ---------------- Event IDs by PNG names ----------------
 evtSOL = parseEvtNumsFromPngs(solidDir);
 evtSPU = parseEvtNumsFromPngs(sputterDir);
 fprintf('Found %d SOLID, %d SPUTTER events (by filenames).\n', numel(evtSOL), numel(evtSPU));
+
 if ~isempty(maxEventsPer)
     evtSOL = evtSOL(1:min(end, maxEventsPer));
     evtSPU = evtSPU(1:min(end, maxEventsPer));
 end
 
-% ---------- Build & render ----------
-S1 = buildAndRender(evtSOL, 'SOLID',   outSOL);
-S2 = buildAndRender(evtSPU, 'SPUTTER', outSPU);
+% ---------------- Build averaged CSD per group ----------------
+[S_csd, S_stats] = buildAvgCSD(evtSOL, 'SOLID');
+[P_csd, P_stats] = buildAvgCSD(evtSPU, 'SPUTTER');
 
-% ---------- Stats CSV ----------
-try
-    G = {};
-    if ~isempty(S1), G{end+1} = S1; end %#ok<AGROW>
-    if ~isempty(S2), G{end+1} = S2; end %#ok<AGROW>
-    if ~isempty(G)
-        Tcsv = vertcat(G{:});
-        writetable(Tcsv, outCSV);
-    else
-        % create a stub so main can find something
-        writetable(cell2table(cell(0,7), 'VariableNames', ...
-            {'group','nEvents','clim','sliceThickness','anchorHW_ms','winHW_ms','note'}), outCSV);
-    end
-catch ME
-    warning(ME.identifier, 'CSD_CenterSlices_Waveform_AvgGroups_Pipeline: failed to write stats CSV: %s', ME.message);
+% ---------------- Global CLim across BOTH CSD averages ----------------
+if isempty(S_csd) && isempty(P_csd)
+    warning('CSDRaster_Avg_core: no average CSD rasters created.');
+    statsT = table();
+    paths = struct('solidPng','', 'sputterPng','');
+    return;
 end
 
-% ---------- Return ----------
-out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
+if isempty(climCSDOpt)
+    vals = [];
+    if ~isempty(S_csd), vals = [vals; abs(S_csd(:))]; end %#ok<AGROW>
+    if ~isempty(P_csd), vals = [vals; abs(P_csd(:))]; end %#ok<AGROW>
+    vals = vals(isfinite(vals));
+    if isempty(vals), pval = 1; else, pval = prctile(vals, yRobustPct); end
+    climGlobal = (1 + climPadFrac) * max(1, pval);
+else
+    climGlobal = climCSDOpt;
+end
+fprintf('Global CSD CLim (averages): ±%.2f (CSD units).\n', climGlobal);
+
+% ---------------- Render both with same CLim, 1 at TOP ----------------
+pngSOL = ''; pngSPU = '';
+if ~isempty(S_csd), pngSOL = renderAvgRaster(S_csd, 'SOLID', outSOLpng, climGlobal, S_stats); end
+if ~isempty(P_csd), pngSPU = renderAvgRaster(P_csd, 'SPUTTER', outSPUpng, climGlobal, P_stats); end
+
+% ---------------- Stats table for pipeline ----------------
+statsT = table();
+if ~isempty(S_csd)
+    statsT = [statsT; summarizeGroup('SOLID', S_stats, climGlobal, nCh, sfx, winHWms, anchorHWms)]; %#ok<AGROW>
+end
+if ~isempty(P_csd)
+    statsT = [statsT; summarizeGroup('SPUTTER', P_stats, climGlobal, nCh, sfx, winHWms, anchorHWms)]; %#ok<AGROW>
+end
+
+paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
 
 % ============================= HELPERS =============================
+    function [CSDMU, stats] = buildAvgCSD(evtList, tag)
+        CSDMU = [];
+        stats = struct('nEvents',0,'pkMean',NaN,'pkSD',NaN,'hwMean',NaN,'hwSD',NaN);
+        if isempty(evtList), return; end
 
-    function Tgroup = buildAndRender(evtList, tag, outPath)
-        Tgroup = table(); % default empty
-        if isempty(evtList)
-            warning('CSDCenterSlices:%s', '%s: no events to plot.', tag);
-            return;
-        end
-
-        S = nan(nCh, numel(evtList));  % per-event 0 ms CSD slice (channels x events)
-        used = false(numel(evtList),1);
+        % Accumulate mean VOLTAGE first; then CSD(mean)
+        sumY  = zeros(nCh, winN);
+        nUsed = 0;
 
         for ii = 1:numel(evtList)
             e = evtList(ii);
@@ -183,150 +233,140 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
             [~, k_rel] = max(y0);
             anchor = s0a + k_rel - 1;
 
-            % Window around anchor
+            % Window
             s0 = anchor - HWwin; s1 = anchor + HWwin;
             if s0 < 1 || s1 > nSamp, continue; end
 
-            % Extract block (channels x time) and CSD
-            Y = nan(nCh, 2*HWwin+1);
+            okAny = false;
             for k = 1:nCh
                 ch = chList(k);
                 sc = scaleVec(ch);
-                y = double(mf.d(ch, s0:s1)) * sc;
-                if any(isfinite(y)), Y(k,:) = y; end
+                y  = double(mf.d(ch, s0:s1)) * sc;
+                if any(isfinite(y))
+                    sumY(k,:) = sumY(k,:) + y;
+                    okAny = true;
+                end
             end
-            if all(~isfinite(Y(:))), continue; end
-
-            C = computeCSD(Y); % channels x time
-
-            % Slice at t = 0 ms
-            S(:,ii) = C(:,centerIdx);
-            used(ii) = true;
+            if okAny, nUsed = nUsed + 1; end
         end
 
-        if ~any(used)
-            warning('CSDCenterSlices:%s', '%s: no usable events after alignment and windowing.', tag);
-            return;
+        if nUsed == 0, return; end
+        MU    = sumY / nUsed;   % mean VOLTAGE per channel
+        CSDMU = computeCSD(MU); % CSD(mean)
+        stats.nEvents = nUsed;
+
+        % Metrics on the MEAN CSD (per-channel signed-peak & HW in ±metric window)
+        perCh_pk = nan(nCh,1);
+        perCh_hw = nan(nCh,1);
+
+        for k = 1:nCh
+            cs = CSDMU(k,:);
+            csMet = cs(metStart:metEnd);
+            if numel(csMet) >= 3 && all(isfinite(csMet))
+                [mx, kMax] = max(csMet);
+                [mn, kMin] = min(csMet);
+                if abs(mn) > abs(mx)
+                    sgn = -1; amp = abs(mn); pkRel = kMin;
+                else
+                    sgn = +1; amp = abs(mx); pkRel = kMax;
+                end
+                h  = 0.5 * amp; sig = sgn * csMet;
+
+                % Left crossing
+                kL = pkRel;
+                while kL > 1 && sig(kL) >= h, kL = kL - 1; end
+                if kL >= 1 && (kL+1) <= Lmet
+                    left_ip = kL + (h - sig(kL)) / (sig(kL+1) - sig(kL));
+                else, left_ip = NaN; end
+
+                % Right crossing
+                kR = pkRel;
+                while kR < Lmet && sig(kR) >= h, kR = kR + 1; end
+                if (kR-1) >= 1 && kR <= Lmet
+                    right_ip = (kR-1) + (h - sig(kR-1)) / (sig(kR) - sig(kR-1));
+                else, right_ip = NaN; end
+
+                if isfinite(left_ip) && isfinite(right_ip) && right_ip > left_ip
+                    hw_ms = (right_ip - left_ip) / sfx * 1e3;
+                else
+                    hw_ms = NaN;
+                end
+                perCh_pk(k) = amp;
+                perCh_hw(k) = hw_ms;
+            end
         end
 
-        S = S(:,used);              % keep only used events
-        nEvt = size(S,2);
-        MU  = mean(S,2, 'omitnan'); % mean vertical waveform (channels)
+        stats.pkMean = mean(perCh_pk, 'omitnan');
+        stats.pkSD   = std( perCh_pk, 0, 'omitnan');
+        stats.hwMean = mean(perCh_hw,  'omitnan');
+        stats.hwSD   = std( perCh_hw,  0, 'omitnan');
+    end
 
-        % Robust symmetric scale (shared by both panels in THIS group)
-        vals = abs(S(:));
-        vals = vals(isfinite(vals));
-        if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
-        clim = (1 + padFrac) * max(1, pval);
+    function outPath = renderAvgRaster(CSDMU, tag, outPath, clim, stats)
+        % Slightly larger figure to avoid title cropping; smaller title font.
+        perRowPx = 14; basePx = 290; maxPx = 2800;
+        figH = min(maxPx, basePx + perRowPx * nCh);
+        f = figure('Color','w','Position',[90 90 1100 figH],'Visible','off');
 
-        % -------- Figure (tight alignment) --------
-        figH = min(320 + 14*nCh, 3400);
-        f = figure('Color','w','Position',[60 60 1200 figH],'Visible','off');
+        imagesc(tRelMs, 1:nCh, CSDMU);
+        set(gca, 'YDir', 'reverse');          % 1 at top
+        caxis([-clim, +clim]);
+        colormap(jet); colorbar;
 
-        % Single tiledlayout to lock vertical alignment
-        tl = tiledlayout(f, 1, 2, 'Padding','compact', 'TileSpacing','compact');
-
-        % Channel labels once (left only) to fix text width asymmetry
+        xlabel('Time (ms)');
         if isempty(kept_channels)
-            chanLabels = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+            L = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
         else
-            chanLabels = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+            L = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
+        set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
 
-        % LEFT: per-event slices image (repeat columns = thickness)
-        ax1 = nexttile(tl); 
-        hold(ax1, 'on');
-        if sliceThick==1
-            Img = S;
-        else
-            Img = repelem(S, 1, sliceThick);
-        end
-        imagesc(ax1, 1:size(Img,2), 1:nCh, Img);
-        set(ax1,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-            'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, ...
-            'Box','on', 'Layer','top', 'TickLength',[0 0]);
-        caxis(ax1, [-clim, +clim]);
-        colormap(ax1, jet);
-        % Event centers on x
-        if sliceThick >= 2
-            centers = ( (0:nEvt-1)*sliceThick ) + ceil(sliceThick/2);
-        else
-            centers = 1:nEvt;
-        end
-        xticks(ax1, centers); xticklabels(ax1, string(1:nEvt));
-        xlabel(ax1, 'Event #'); ylabel(ax1, 'Channel (1 at top)');
-
-        % RIGHT: vertical waveform — all (gray) + average (black)
-        ax2 = nexttile(tl); 
-        hold(ax2, 'on'); grid(ax2,'on'); box(ax2,'on');
-        set(ax2,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-            'FontSize',9, 'YTick',1:nCh, 'YTickLabel',[], ...
-            'Layer','top', 'TickLength',[0 0]);
-        % contributors
-        y = 1:nCh;
-        for i = 1:nEvt
-            plot(ax2, S(:,i), y, '-', 'Color', [0.6 0.6 0.6 0.8], 'LineWidth', 0.9);
-        end
-        % average
-        plot(ax2, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
-        xline(ax2, 0, '--k', 'LineWidth', 0.8);
-        xlim(ax2, [-clim, +clim]);
-        xlabel(ax2, 'CSD (− sink   |   + source)');
-
-        % Match inner boxes & link Y
-        set([ax1 ax2], 'LooseInset', max(get(ax1,'TightInset'), get(ax2,'TightInset')));
-        linkaxes([ax1 ax2], 'y');
-
-        % Shared colorbar (no parent arg, for broader compatibility)
-        cb = colorbar('eastoutside');
-        cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
-
-        % Titles (small font to avoid crop) + group-level sgtitle
-        title(ax1, sprintf('%s — CSD slices at 0 ms (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
-        title(ax2, sprintf('%s — Vertical waveform @ 0 ms (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
-        sg = sprintf('%s  |  align: first-channel max (\\pm%.1f ms)  |  window: \\pm%.1f ms  |  channels=%d', ...
-            tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, nCh);
-        sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
+        ttl = sprintf(['CSD Avg %s  |  events=%d  |  window=\\pm%.1f ms  |  anchor=firstCh max (\\pm%.1f ms)  |  ' ...
+                       'channels=%d  |  CLim=\\pm%.2f  |  CSD peak=%.2f\\pm%.2f  |  HW=%.2f\\pm%.2f ms'], ...
+                       tag, stats.nEvents, 1e3*HWwin/sfx, 1e3*HWanchor/sfx, nCh, ...
+                       clim, stats.pkMean, stats.pkSD, stats.hwMean, stats.hwSD);
+        title(ttl, 'FontSize', 10, 'FontWeight', 'bold');  % smaller font to avoid cropping
 
         exportgraphics(f, outPath, 'Resolution', 220);
         close(f);
-        fprintf('Saved %s: %s\n', tag, outPath);
-
-        % small stats table for CSV
-        Tgroup = table(string(tag), size(S,2), clim, sliceThick, ...
-                       1e3*HWanchor/sfx, 1e3*HWwin/sfx, string('OK'), ...
-            'VariableNames', {'group','nEvents','clim','sliceThickness','anchorHW_ms','winHW_ms','note'});
+        fprintf('Saved %s average CSD raster: %s\n', tag, outPath);
     end
 
-end
-
-% --------- utilities ---------
-
-function evts = parseEvtNumsFromPngs(dirpath)
-    L = dir(fullfile(dirpath, '*.png'));
-    evts = [];
-    for k = 1:numel(L)
-        m = regexp(L(k).name, 'Evt(\d+)', 'tokens', 'once');
-        if ~isempty(m)
-            ev = str2double(m{1});
-            if isfinite(ev), evts(end+1) = ev; end %#ok<AGROW>
+    function evts = parseEvtNumsFromPngs(dirpath)
+        L = dir(fullfile(dirpath, '*.png'));
+        evts = [];
+        for k = 1:numel(L)
+            m = regexp(L(k).name, 'Evt(\d+)', 'tokens', 'once');
+            if ~isempty(m)
+                ev = str2double(m{1});
+                if isfinite(ev), evts(end+1) = ev; end %#ok<AGROW>
+            end
         end
+        evts = sort(unique(evts));
     end
-    evts = sort(unique(evts));
-end
 
-function C = computeCSD(Ych_t)
-% (channels x time) voltage (µV) → CSD (channels x time)
-% Interior: standard 3-point stencil; edges replicated from nearest interior.
-    [nCh, ~] = size(Ych_t);
-    if nCh < 2
-        C = nan(size(Ych_t)); return;
-    elseif nCh == 2
-        C = zeros(size(Ych_t)); return;
+    function C = computeCSD(Ych_t)
+    % computeCSD: second spatial derivative across channels with edge replication.
+        [nChLoc, nT] = size(Ych_t);
+        if nChLoc < 2
+            C = nan(nChLoc, nT); return;
+        elseif nChLoc == 2
+            C = zeros(nChLoc, nT); return;
+        end
+        Cint = -( Ych_t(3:end,:) - 2*Ych_t(2:end-1,:) + Ych_t(1:end-2,:) );
+        C = zeros(nChLoc, nT);
+        C(2:end-1,:) = Cint;
+        C(1,:)   = C(2,:);
+        C(end,:) = C(end-1,:);
     end
-    Cint = -( Ych_t(3:end,:) - 2*Ych_t(2:end-1,:) + Ych_t(1:end-2,:) );
-    C = zeros(size(Ych_t));
-    C(2:end-1,:) = Cint;
-    C(1,:)   = C(2,:);
-    C(end,:) = C(end-1,:);
+
+    function Trow = summarizeGroup(tag, stats, climG, nCh_, sfx_, winHWms_, anchorHWms_)
+        Trow = table( ...
+            string(tag), stats.nEvents, nCh_, sfx_, ...
+            1e3*winHWms_, 1e3*anchorHWms_, ...
+            climG, stats.pkMean, stats.pkSD, stats.hwMean, stats.hwSD, ...
+            'VariableNames', {'Group','Events','Channels','SampRateHz', ...
+                              'DisplayHalfWidth_ms','AnchorHalfWidth_ms', ...
+                              'CLim_CSD','MeanCSDPeak','SD_CSDPeak','MeanHW_ms','SD_HW_ms'});
+    end
 end
