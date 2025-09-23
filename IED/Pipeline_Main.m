@@ -1,7 +1,6 @@
 function Pipeline_Main(inputFolder, dataMatPath, varargin)
 % Pipeline_Main — orchestrates sub-pipelines and builds TWO compact masters
-% (SOLID, SPUTTER) + merged stats CSV. Lots of verbose logging so it's clear
-% what's happening if something is missing.
+% (SOLID, SPUTTER) + merged stats CSV. Lots of verbose logging.
 %
 % Column layout per group:
 %   LEFT  : VoltageRaster_EventsAvg + CSD_CenterSlices_Waveform_AvgGroups
@@ -216,55 +215,49 @@ function makeThreeColPanelHiRes(leftPngs, midPngs, rightPngs, outPath)
 
 fprintf('Composing 3-column panel → %s\n', outPath);
 
-% Column configs
+% Spacing / styles
 colSep    = 12;   % px between columns
 tileSep   = 8;    % px between tiles inside a column
 borderPx  = 2;    % tile border width (px)
 borderRGB = [0 0 0]; % black borders
 padRGB    = 255;  % white padding
 
-% Build columns (can be empty)
+% Build raw columns (possibly empty)
 colL = makeColumn(leftPngs, tileSep, borderPx, borderRGB, padRGB);
 colM = makeColumn(midPngs,  tileSep, borderPx, borderRGB, padRGB);
 colR = makeColumn(rightPngs,tileSep, borderPx, borderRGB, padRGB);
 
-if isempty(colL) && isempty(colM) && isempty(colR)
-    error('No images provided to compose.');
-end
-
-% Standardize class/planes using the first non-empty column
+% If a column is empty, substitute a 1×1 spacer *now*
 [cls, ch] = pickClassAndCh({colL,colM,colR});
+if isempty(colL), colL = makeSpacer(1,1,cls,ch,padRGB); end
+if isempty(colM), colM = makeSpacer(1,1,cls,ch,padRGB); end
+if isempty(colR), colR = makeSpacer(1,1,cls,ch,padRGB); end
+
+% Harmonize class/ch across all columns
 colL = castToSimple(colL, cls, ch, padRGB);
 colM = castToSimple(colM, cls, ch, padRGB);
 colR = castToSimple(colR, cls, ch, padRGB);
 
-% Compute target height from actual column arrays
-H = max([sizeSafe(colL,1), sizeSafe(colM,1), sizeSafe(colR,1)]);
+% Target height from actual (post-substitution) columns
+H = max([size(colL,1), size(colM,1), size(colR,1)]);
 
-% Pad columns to same height (if non-empty)
+% Pad each column to exactly H
 colL = padToHeight(colL, H, cls, ch, padRGB);
 colM = padToHeight(colM, H, cls, ch, padRGB);
 colR = padToHeight(colR, H, cls, ch, padRGB);
 
-% If a column is empty, replace with 1-px spacer NOW, then recompute widths
-if isempty(colL), colL = makeSpacer(H, 1, cls, ch, padRGB); end
-if isempty(colM), colM = makeSpacer(H, 1, cls, ch, padRGB); end
-if isempty(colR), colR = makeSpacer(H, 1, cls, ch, padRGB); end
-
-% >>> FIX: recompute widths AFTER spacer substitution <<<
-Wl = size(colL,2);
-Wm = size(colM,2);
-Wr = size(colR,2);
+% Final widths
+Wl = size(colL,2); Wm = size(colM,2); Wr = size(colR,2);
 
 % Final canvas
 W = Wl + Wm + Wr + colSep*2;
 out = makeSpacer(H, W, cls, ch, padRGB);
 
-% Blit columns with fresh widths
+% Blit columns using their actual widths
 x = 1;
-out(:, x:x+Wl-1, :) = colL; x = x + Wl + colSep;
-out(:, x:x+Wm-1, :) = colM; x = x + Wm + colSep;
-out(:, x:x+Wr-1, :) = colR;
+out(:, x:(x+Wl-1), :) = colL; x = x + Wl + colSep;
+out(:, x:(x+Wm-1), :) = colM; x = x + Wm + colSep;
+out(:, x:(x+Wr-1), :) = colR;
 
 imwrite(out, outPath);
 end
@@ -296,7 +289,6 @@ if isempty(imgs), return; end
 W = max(w);
 H = sum(h) + sep*(numel(imgs)-1);
 
-% canvas class/ch based on first tile
 cls = class(imgs{1});
 ch  = size(imgs{1},3);
 C = makeSpacer(H, W, cls, ch, padRGB);
@@ -304,12 +296,10 @@ C = makeSpacer(H, W, cls, ch, padRGB);
 y = 1;
 for i = 1:numel(imgs)
     I = imgs{i};
-    [hi,wi,ch] = size(I);
-    C(y:y+hi-1, 1:wi, 1:ch) = I;
+    [hi,wi,ci] = size(I);
+    C(y:y+hi-1, 1:wi, 1:ci) = I;
     y = y + hi;
-    if i < numel(imgs)
-        y = y + sep;
-    end
+    if i < numel(imgs), y = y + sep; end
 end
 end
 
@@ -395,14 +385,8 @@ if size(A,3) ~= ch
 end
 end
 
-function h = sizeSafe(A, dim)
-if isempty(A), h = 0; else, h = size(A,dim); end
-end
-
 function B = padToHeight(A, H, cls, ch, padRGB)
-if isempty(A)
-    B = A; return;
-end
+if isempty(A), B = A; return; end
 [h,w,~] = size(A);
 if h==H, B = A; return; end
 pad = makeSpacer(H-h, w, cls, ch, padRGB);
