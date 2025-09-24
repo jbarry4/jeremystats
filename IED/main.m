@@ -20,13 +20,3 @@
 
 %Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
 
-SpectrogramRaster_Events("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
-main
-Error: File: SpectrogramRaster_Events.m Line: 322 Column: 1
-The function "parseEvtNumsFromPngs" was closed with an 'end', but at least one other function
-definition was not. To avoid confusion when using nested functions, it is illegal to use both
-conventions in the same file.
-
-Error in main (line 22)
-SpectrogramRaster_Events("C:\Users\Z390\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Z390\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk_uV.mat")
- 
