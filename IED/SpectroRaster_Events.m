@@ -1,8 +1,8 @@
 function SpectroRaster_Events(inputFolder, dataMatPath, varargin)
 % SpectroRaster_Events
 % For each EVENT, produce a figure with one ROW PER CHANNEL:
-%   - Top: waveform (µV) in a ±display window around the anchor
-%   - Bottom: spectrogram (dB) with time (x), frequency (y), color=power
+%   - Left tile: waveform (µV) in a ±10 ms display window around the anchor
+%   - Right tile: spectrogram (dB): x=time (ms), y=frequency (Hz), color=power
 %
 % Output PNGs:
 %   <inputFolder> / "Spectral Raster Output" / Solid   / Spectro_Evt%03d.png
@@ -11,29 +11,28 @@ function SpectroRaster_Events(inputFolder, dataMatPath, varargin)
 % Event membership (Solid/Sputter) is inferred by scanning PNGs already
 % present in <inputFolder>/Solid and /Sputter with pattern 'Evt(\d+)'.
 %
-% Spectrogram params are kept the SAME as the JeremyEEG4 code:
-%     window = round(SF), overlap = round(SF/2), freqs = 0.1:0.2:200 Hz
-% To satisfy that 1 s window, we compute the spectrogram in a larger
-% CONTEXT window around the event (default ±1.0 s) but only DISPLAY the
-% requested ±display window (default ±20 ms) on the time axis.
+% Spectrogram params are the SAME as in JeremyEEG4:
+%   window = round(SF), overlap = round(SF/2), freqs = 0.1:0.2:200 Hz
+% We compute the spectrogram on a larger CONTEXT (±1 s by default) so the
+% 1 s window is valid, then DISPLAY only ±10 ms on the time axis.
 %
 % INPUTS
-%   inputFolder, dataMatPath : same as VoltageRaster_Events
+%   inputFolder, dataMatPath : like VoltageRaster_Events
 %
-% NAME-VALUE OPTIONS (parallel to VoltageRaster_Events + spectro controls)
-%   'excelPath'              : auto-detected if omitted
-%   'channelIndices'         : default all rows
-%   'scaleToMicroV'          : scalar or per-row vector (default 1)
+% NAME-VALUE OPTIONS
+%   'excelPath'              : path to Excel (auto-detected if omitted)
+%   'channelIndices'         : rows (channels) to include; default = all
+%   'scaleToMicroV'          : scalar or per-row vector to scale raw -> µV (default 1)
 %   'anchorMode'             : 'firstChMax' (default) or 'midpoint'
 %   'anchorHalfWidthMs'      : ±5 ms (for anchor search when firstChMax)
-%   'winHalfWidthMs'         : ±20 ms DISPLAY window (waveform & spectro x-axis)
+%   'winHalfWidthMs'         : DISPLAY half window (default 10e-3 → ±10 ms)
 %   'specContextHalfWidthSec': ±1.0 s CONTEXT (for spectrogram computation)
 %   'fmaxHz'                 : show up to this Hz in the spectrogram (default 100)
-%   'climDb'                 : fixed dB color range [lo hi] (default = auto robust)
+%   'climDb'                 : fixed dB color range [lo hi]; else auto robust
 %   'dbLowPct'               : low percentile for auto CLim (default 5)
 %   'dbHighPct'              : high percentile for auto CLim (default 99.5)
-%   'climPadFrac'            : headroom on both ends (default 0.12)
-%   'maxEventsPerGroup'      : optional cap on # of events per group
+%   'climPadFrac'            : fractional headroom (default 0.12)
+%   'maxEventsPerGroup'      : cap #events per group for output (optional)
 %
 % OUTPUT
 %   One PNG per event per group with consistent global dB CLim.
@@ -50,10 +49,10 @@ p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x
 p.addParameter('anchorMode','firstChMax', @(s) any(strcmpi(s,{'firstChMax','midpoint'})));
 p.addParameter('anchorHalfWidthMs', 5e-3,  @(x)isfinite(x)&&x>0);
 
-p.addParameter('winHalfWidthMs', 20e-3,     @(x)isfinite(x)&&x>0);  % DISPLAY ±20 ms, like your raster
-p.addParameter('specContextHalfWidthSec', 1.0, @(x)isfinite(x)&&x>0);% CONTEXT ±1 s for 1 s spectro window
+p.addParameter('winHalfWidthMs', 10e-3,     @(x)isfinite(x)&&x>0);   % DISPLAY ±10 ms
+p.addParameter('specContextHalfWidthSec', 1.0, @(x)isfinite(x)&&x>0);% CONTEXT ±1 s
 
-p.addParameter('fmaxHz', 100, @(x)isfinite(x)&&x>0);                 % show up to 100 Hz by default
+p.addParameter('fmaxHz', 100, @(x)isfinite(x)&&x>0);                 % show to 100 Hz
 
 p.addParameter('climDb', [], @(v) isempty(v) || (isnumeric(v) && numel(v)==2 && v(1)<v(2)));
 p.addParameter('dbLowPct', 5, @(x)isfinite(x) && x>=0 && x<100);
@@ -129,10 +128,10 @@ else
 end
 
 % ---------------- Windows ----------------
-HWdisp    = max(1, round(winHalfMs   * sfx));    % ± display window (±20 ms)
+HWdisp    = max(1, round(winHalfMs   * sfx));    % ± display window (±10 ms)
 HWanchor  = max(1, round(anchorHWms  * sfx));    % ± anchor search (5 ms)
 HWctx     = max(1, round(ctxHalfSec  * sfx));    % ± spectro context (±1 s)
-tRelMs    = (-HWdisp:HWdisp) / sfx * 1e3;
+tRelMs    = (-HWdisp:HWdisp) / sfx * 1e3;        % display x-axis (ms)
 winN      = numel(tRelMs);
 
 fprintf('SpectroRaster_Events: sfx=%.1f Hz | display ±%.1f ms | spectro context ±%.1f s | anchor=%s (±%.1f ms)\n', ...
@@ -205,7 +204,8 @@ fprintf('Done. Output in: %s\n', outRoot);
 % ======================================================================
 
 function [pLowVec, pHighVec] = scanDbPercentiles(evtList)
-    % Return vectors of low/high percentiles across events (each entry is one event)
+    % For each event, build dB values across channels (within f<=fmaxHz) over ±1 s context,
+    % then take percentiles; return vectors of low/high percentiles (one per event).
     pLowVec  = nan(numel(evtList),1);
     pHighVec = nan(numel(evtList),1);
     for ii = 1:numel(evtList)
@@ -235,19 +235,17 @@ function [pLowVec, pHighVec] = scanDbPercentiles(evtList)
         % ---- Spectrogram context window (±1 s by default) ----
         s0_ctx = max(1, anchor - HWctx);
         s1_ctx = min(nSamp, anchor + HWctx);
-        if s1_ctx - s0_ctx + 1 < round(sfx)  % need >= 1 s window for spectrogram
+        if s1_ctx - s0_ctx + 1 < round(sfx)  % need >= 1 s window
             continue;
         end
 
-        % Accumulate dB values across channels for this event (but only up to fmax)
+        % Accumulate dB values across channels for this event (up to fmaxHz)
         dBall = [];
         for k = 1:nCh
             ch = chList(k);
             sc = scaleVec(ch);
             y  = double(mf.d(ch, s0_ctx:s1_ctx)) * sc;
             if isempty(y) || all(~isfinite(y)), continue; end
-            y  = double(y);
-            % JeremyEEG4 parameters:
             win = round(sfx);
             ov  = round(sfx/2);
             fvec = 0.1:0.2:200;
@@ -319,10 +317,10 @@ function renderGroup(evtList, outDir, tag, climDb_)
         end
 
         % ---- Figure ----
-        % Two tiles per channel (waveform + spectrogram)
-        perPairPx = 140; basePx = 220; maxPx = 5200;
+        % Two tiles per channel (waveform + spectrogram), generously tall
+        perPairPx = 220; basePx = 260; maxPx = 9000;
         figH = min(maxPx, basePx + perPairPx * nCh);
-        f = figure('Color','w','Position',[80 60 1020 figH],'Visible','off');
+        f = figure('Color','w','Position',[60 60 1200 figH],'Visible','off');
         tl = tiledlayout(f, nCh, 2, 'Padding','compact','TileSpacing','compact');
 
         for k = 1:nCh
@@ -334,28 +332,32 @@ function renderGroup(evtList, outDir, tag, climDb_)
 
             % Spectrogram on context (Jeremy params)
             yctx  = double(mf.d(ch, s0_ctx:s1_ctx)) * sc;
-            win = round(sfx);
-            ov  = round(sfx/2);
+            win  = round(sfx);
+            ov   = round(sfx/2);
             fvec = 0.1:0.2:200;
-            [S, fHz, tCtx] = spectrogram(yctx, win, ov, fvec, sfx);
-            dB = 10*log10(abs(S).^2);
+            [S, fHz, tSecCtx] = spectrogram(yctx, win, ov, fvec, sfx);  % tSecCtx in seconds from start of yctx
+            dBfull = 10*log10(abs(S).^2);
 
-            % Map spectrogram time axis to ms relative to anchor
-            % tCtx is in seconds from start of yctx; its absolute time (ms) rel anchor:
-            tCtx_ms = (( (s0_ctx-1) + round(tCtx*sfx) ) - anchor) / sfx * 1e3;
+            % Convert spectrogram times to ms relative to the anchor (no rounding to samples)
+            % Absolute time (sec) of each spectrogram column in original recording:
+            tAbs_sec = (s0_ctx - 1)/sfx + tSecCtx;
+            % Relative to anchor (sec):
+            tRel_sec = tAbs_sec - (anchor - 1)/sfx;
+            tCtx_ms  = 1e3 * tRel_sec;  % ms rel anchor
 
-            % Restrict to DISPLAY time window and fmax
-            maskT = tCtx_ms >= tRelMs(1) & tCtx_ms <= tRelMs(end);
+            % Restrict to DISPLAY time window ±10 ms and fmax
+            maskT = (tCtx_ms >= -10) & (tCtx_ms <= +10);
             maskF = fHz <= fmaxHz;
-            dBcut = dB(maskF, maskT);
+            dBcut = dBfull(maskF, maskT);
             tcut  = tCtx_ms(maskT);
             fcut  = fHz(maskF);
 
             % --- Waveform tile ---
             ax1 = nexttile(tl, (k-1)*2 + 1); hold(ax1,'on'); box(ax1,'on'); grid(ax1,'on');
-            if ~isempty(yplot), plot(ax1, tRelMs, yplot, 'LineWidth', 1.4); end
+            if ~isempty(yplot), plot(ax1, tRelMs, yplot, 'LineWidth', 1.6); end
             xline(ax1, 0,'--k','LineWidth',0.9); yline(ax1, 0,':','Color',[0.7 0.7 0.7]);
-            ax1.FontSize = 9;
+            xlim(ax1, [-10 10]); xticks(ax1, -10:5:10);
+            ax1.FontSize = 10;
             if k < nCh, ax1.XTickLabel = []; else, xlabel(ax1,'Time (ms)'); end
             ylabel(ax1,'\muV');
 
@@ -365,25 +367,25 @@ function renderGroup(evtList, outDir, tag, climDb_)
             else
                 chName = sprintf('row %d', ch);
             end
-            title(ax1, sprintf('%s  |  Waveform', chName), 'FontSize',9, 'FontWeight','normal');
+            title(ax1, sprintf('%s  |  Waveform', chName), 'FontSize',10, 'FontWeight','normal');
 
             % --- Spectrogram tile ---
             ax2 = nexttile(tl, (k-1)*2 + 2);
             if isempty(dBcut) || isempty(tcut) || isempty(fcut)
-                imagesc(ax2, [tRelMs(1) tRelMs(end)], [0 fmaxHz], nan(2)); %#ok<CPROPLC>
+                imagesc(ax2, [-10 10], [0 fmaxHz], nan(2));
             else
-                imagesc(ax2, tcut, fcut, dBcut); %#ok<CPROPLC>
+                imagesc(ax2, tcut, fcut, dBcut);
             end
             set(ax2,'YDir','normal'); colormap(ax2, jet); colorbar(ax2);
-            caxis(ax2, climDb_);
+            caxis(ax2, climDb_); xlim(ax2, [-10 10]); xticks(ax2, -10:5:10);
             xlabel(ax2,'Time (ms)'); ylabel(ax2,'Frequency (Hz)');
-            title(ax2, 'Spectrogram (dB)', 'FontSize',9, 'FontWeight','normal');
-            ax2.FontSize = 9;
-            xline(ax2, 0,'--k','LineWidth',0.8,'Color',[0 0 0 0.6]);
+            title(ax2, 'Spectrogram (dB)', 'FontSize',10, 'FontWeight','normal');
+            ax2.FontSize = 10;
+            xline(ax2, 0,'--k','LineWidth',0.9,'Color',[0 0 0 0.65]);
         end
 
-        sg = sprintf('%s  |  Evt %d  |  anchor=%s  |  display=\\pm%.1f ms  |  spectro ctx=\\pm%.1f s  |  channels=%d  |  dB CLim=[%.1f, %.1f]  |  f_{max}=%d Hz', ...
-            tag, e, char(anchorMode), 1e3*HWdisp/sfx, HWctx/sfx, nCh, climDb_(1), climDb_(2), fmaxHz);
+        sg = sprintf('%s  |  Evt %d  |  anchor=%s  |  display=\\pm10 ms  |  spectro ctx=\\pm%.1f s  |  channels=%d  |  dB CLim=[%.1f, %.1f]  |  f_{max}=%d Hz', ...
+            tag, e, char(anchorMode), HWctx/sfx, nCh, climDb_(1), climDb_(2), fmaxHz);
         sgtitle(tl, sg, 'FontSize',12,'FontWeight','bold');
 
         % ---- Save ----
