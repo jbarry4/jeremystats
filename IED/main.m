@@ -29,3 +29,74 @@ SpectrogramRaster_RepSample("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M
 
 
 
+RepSample: found 13 SOLID, 4 SPUTTER (by filenames).
+Spectrogram params: win=8 samp (0.267 ms) | overlap=4 samp (50%) | nfft=32 | fMax=2000 Hz | anchor search ±5.0 ms
+Warning: SOLID Evt 10: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 15: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 16: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 20: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 26: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 27: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 35: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 40: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 51: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 65: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 76: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 158: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SOLID Evt 417: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 181)
+In main (line 28) 
+Warning: SPUTTER Evt 13: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 182)
+In main (line 28) 
+Warning: SPUTTER Evt 49: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 182)
+In main (line 28) 
+Warning: SPUTTER Evt 98: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 182)
+In main (line 28) 
+Warning: SPUTTER Evt 193: Unrecognized input or invalid parameter/value pair arguments. 
+> In SpectrogramRaster_RepSample>renderGroup (line 198)
+In SpectrogramRaster_RepSample (line 182)
+In main (line 28) 
+Done.
