@@ -1,4 +1,4 @@
-function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
+  function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
 % CSD_CenterSlices_Waveform_AvgGroups_Pipeline
 % Left: per-event CSD slices at 0 ms, stacked as vertical tiles (channels x events)
 % Right: vertical waveform @ 0 ms (all events in gray, average in black)
