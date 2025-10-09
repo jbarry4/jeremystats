@@ -28,17 +28,3 @@ vacc_global_threshold_v5("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
 %SpectrogramRaster_RepSample("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
 %Spectrogram_Waveform_Stacked_FirstEvent("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
 %Pipeline_Main("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
- [Iter 1] Narrowing range [2.614e+04, 4.593e+05]
-Error using accumarray
-Fourth input must be a function handle.
-
-Error in vacc_global_threshold_v5>exact_percentile_from_disk (line 130)
-            cnt = cnt + accumarray(bi(~isnan(bi)), 1, [nb 1], 'uint64').';
-
-Error in vacc_global_threshold_v5 (line 91)
-    threshold = exact_percentile_from_disk(tmp, nLL, prc, vmin, vmax);
-
-Error in main (line 22)
-vacc_global_threshold_v5("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
- 
-

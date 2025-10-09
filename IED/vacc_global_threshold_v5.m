@@ -117,41 +117,38 @@ while true
     end
 
     fprintf('  [Iter %d] Narrowing range [%.4g, %.4g]\n', iter, lo, hi);
-    nb = min(maxBin, max(256, ceil(sqrt(double(N)))));
-    edges = linspace(lo, hi, nb+1);
-    cnt = zeros(1, nb, 'uint64');
 
+    nb    = min(maxBin, max(256, ceil(sqrt(double(N)))));
+    edges = linspace(lo, hi, nb+1);
+    cnt   = zeros(1, nb);   % double is fine for counting
+
+    % ---- count pass (use histcounts) ----
     fid = fopen(binPath,'r'); assert(fid>0);
     while true
         buf = fread(fid, chunk, 'single=>double');
         if isempty(buf), break; end
-        bi = discretize(buf, edges);
-        if any(~isnan(bi))
-            cnt = cnt + accumarray(bi(~isnan(bi)), 1, [nb 1], 'uint64').';
-        end
+        % histcounts ignores NaNs by default
+        cnt = cnt + histcounts(buf, edges);
     end
     fclose(fid);
 
-    csum = cumsum(double(cnt));
-    b = find(csum>=k,1);
-    if isempty(b)
-        v = hi; return;
-    end
+    csum = cumsum(cnt);
+    b = find(csum>=k, 1, 'first');
+    if isempty(b), v = hi; return; end
     left = (b>1)*csum(b-1); need = k - left;
     binLo = edges(b); binHi = edges(b+1);
 
-    fprintf('    Bin %d contains target (count=%d)\n', b, cnt(b));
+    fprintf('    Bin %d contains target (count=%g)\n', b, cnt(b));
     fprintf('    Refining to [%.4g, %.4g]\n', binLo, binHi);
 
-    % Load only values in target bin
+    % ---- collect only values in target bin ----
     pool = [];
     fid = fopen(binPath,'r'); assert(fid>0);
     while true
         buf = fread(fid, chunk, 'single=>double');
         if isempty(buf), break; end
         mask = (buf>=binLo & buf<binHi) | (binHi==hi & buf==hi);
-        if any(mask)
-            pool = [pool, buf(mask)]; %#ok<AGROW>
+        if any(mask), pool = [pool, buf(mask)]; %#ok<AGROW>
         end
     end
     fclose(fid);
@@ -165,8 +162,7 @@ while true
         return;
     else
         fprintf('    Still too many (%d), narrowing again...\n', numel(pool));
-        lo = binLo; hi = binHi;
-        iter = iter + 1;
+        lo = binLo; hi = binHi; iter = iter + 1;
     end
 end
 end
