@@ -112,7 +112,7 @@ maxBin = 65536; chunk = 5e6;
 
 iter = 1;
 while true
-    if ~isfinite(lo) || ~isfinite(hi) || lo==hi
+    if ~isfinite(lo) || !isfinite(hi) || lo==hi
         v = lo; return;
     end
 
@@ -120,14 +120,13 @@ while true
 
     nb    = min(maxBin, max(256, ceil(sqrt(double(N)))));
     edges = linspace(lo, hi, nb+1);
-    cnt   = zeros(1, nb);   % double is fine for counting
+    cnt   = zeros(1, nb);   % double is fine
 
-    % ---- count pass (use histcounts) ----
+    % ---- count pass ----
     fid = fopen(binPath,'r'); assert(fid>0);
     while true
         buf = fread(fid, chunk, 'single=>double');
         if isempty(buf), break; end
-        % histcounts ignores NaNs by default
         cnt = cnt + histcounts(buf, edges);
     end
     fclose(fid);
@@ -141,14 +140,22 @@ while true
     fprintf('    Bin %d contains target (count=%g)\n', b, cnt(b));
     fprintf('    Refining to [%.4g, %.4g]\n', binLo, binHi);
 
+    % ---- if bin collapsed to a point, we're done ----
+    if binHi == binLo
+        v = binLo; 
+        fprintf('    Bin is a single value; percentile = %.6g\n', v);
+        return;
+    end
+
     % ---- collect only values in target bin ----
-    pool = [];
+    pool = zeros(0,1);  % column vector to avoid horzcat mismatch
     fid = fopen(binPath,'r'); assert(fid>0);
     while true
-        buf = fread(fid, chunk, 'single=>double');
+        buf = fread(fid, chunk, 'single=>double'); 
         if isempty(buf), break; end
         mask = (buf>=binLo & buf<binHi) | (binHi==hi & buf==hi);
-        if any(mask), pool = [pool, buf(mask)]; %#ok<AGROW>
+        if any(mask)
+            pool = [pool; buf(mask)]; %#ok<AGROW>  % vertical concat
         end
     end
     fclose(fid);
@@ -162,7 +169,8 @@ while true
         return;
     else
         fprintf('    Still too many (%d), narrowing again...\n', numel(pool));
-        lo = binLo; hi = binHi; iter = iter + 1;
+        lo = binLo; hi = binHi; 
+        iter = iter + 1;
     end
 end
 end

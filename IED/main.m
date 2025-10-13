@@ -30,19 +30,4 @@ vacc_global_threshold_v5("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
 %Pipeline_Main("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
 
 
---- PASS 2: Computing exact percentile (99.50) ---
-  [Iter 1] Narrowing range [2.614e+04, 4.593e+05]
-    Bin 15700 contains target (count=7117)
-    Refining to [1.866e+05, 1.866e+05]
-Error using horzcat
-Dimensions of arrays being concatenated are not consistent.
-
-Error in vacc_global_threshold_v5>exact_percentile_from_disk (line 151)
-        if any(mask), pool = [pool, buf(mask)]; %#ok<AGROW>
-
-Error in vacc_global_threshold_v5 (line 91)
-    threshold = exact_percentile_from_disk(tmp, nLL, prc, vmin, vmax);
-
-Error in main (line 22)
-vacc_global_threshold_v5("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
- 
+    
