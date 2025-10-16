@@ -45,12 +45,14 @@ fprintf('Using %d %s-numbered channels\n', nCh, tern(evenOnly,'even','all'));
 
 %% -------- Read header ONCE (units & fs) --------
 % Header only: FieldSelection=[0 0 0 0 0], ExtractHeader=1, ExtractAll=1
-[~,~,~,~,~,hdr] = Nlx2MatCSC(fullfile(files(1).folder, files(1).name), [0 0 0 0 0], 1, 1, []);
-ADBitVolts = parse_adbitvolts(hdr);              % volts per A/D count
+% Header only: request exactly ONE output
+hdr = Nlx2MatCSC(fullfile(files(1).folder, files(1).name), [0 0 0 0 0], 1, 1, []);
+ADBitVolts = parse_adbitvolts(hdr);              % volts / bit
 fsHdr      = parse_samplingfreq(hdr);            % Hz (if present)
 if isnan(ADBitVolts), error('ADBitVolts not found in header.'); end
-fs = fsHdr; if isnan(fs), fs = 30000; end        % fallback to 30 kHz
+fs = fsHdr; if isnan(fs), fs = 30000; end        % fallback
 fprintf('Header: ADBitVolts=%.12g V/bit | fs=%.0f Hz\n', ADBitVolts, fs);
+
 
 %% -------- Load raw samples per channel --------
 fprintf('Loading raw samples...\n');
