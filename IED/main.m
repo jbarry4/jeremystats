@@ -34,3 +34,14 @@ VACC_TheVision("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
 %Spectrogram_Waveform_Stacked_FirstEvent("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
 %Pipeline_Main("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")
 %vacc_ied_detect_chunked_thr(186565)
+Loaded 423 events × 32 channels from ets/ech
+Using 32 even-numbered channels
+	An error has occurred. Based on the field selection vector, 1 output arguments are expected, but 6 arguments were provided.
+One or more output arguments not assigned during call to "Nlx2MatCSC".
+
+Error in VACC_TheVision (line 48)
+[~,~,~,~,~,hdr] = Nlx2MatCSC(fullfile(files(1).folder, files(1).name), [0 0 0 0 0], 1, 1, []);
+
+Error in main (line 2)
+VACC_TheVision("D:\PTEN\PTEN\M13_pten\HF4s2aug1\2023-08-01_12-11-26")
+ 
