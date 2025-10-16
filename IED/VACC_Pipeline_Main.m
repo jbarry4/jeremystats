@@ -1,12 +1,12 @@
 function VACC_Pipeline_Main(dataDir, varargin)
-% VACC_Pipeline_Main — VACC version of your master pipeline.
-% - INPUT: dataDir containing CSC*.ncs, ets.mat, ech.mat
-% - Loads header ONCE (ADBitVolts, fs), loads raw samples per channel
-%   (even-only by default), flips polarity, converts to µV (single).
-% - Passes the converted data (struct V) into each VACC_* sub-pipeline.
+% VACC_Pipeline_Main — minimal runner that works with ONLY EventStacks set up.
+% INPUT: dataDir containing CSC*.ncs, ets.mat, ech.mat, and VACC_TheVision_out/{Solid,Sputter}
 %
-% Example:
-%   VACC_Pipeline_Main("D:\PTEN\PTEN\MouseX\IED DATA");
+% It:
+%   - converts Neuralynx once (even-only by default, flips polarity, µV)
+%   - runs VACC_EventStacks_ampWidth_Avg(dataDir, V)
+%   - builds a minimal SPUTTER "triptych" by copying the center PNG
+%   - writes Master_Stats.csv from EventStacks stats only (if available)
 
 % ---------- Options ----------
 p = inputParser;
@@ -18,127 +18,93 @@ dataDir        = string(p.Results.dataDir);
 evenOnly       = p.Results.evenOnly;
 invertPolarity = p.Results.invertPolarity;
 
-fprintf('\n=== VACC_Pipeline_Main ===\n');
+fprintf('\n=== VACC_Pipeline_Main (minimal) ===\n');
 
 % ---------- Output hub ----------
-masterOutDir     = fullfile(dataDir, 'Pipeline Output');
+masterOutDir    = fullfile(dataDir, 'Pipeline Output');
 if ~exist(masterOutDir, 'dir'), mkdir(masterOutDir); end
-triptychSOLID    = fullfile(masterOutDir, 'Master_Compact_SOLID.png');
-triptychSPUTTER  = fullfile(masterOutDir, 'Master_Compact_SPUTTER.png');
-masterCSV        = fullfile(masterOutDir, 'Master_Stats.csv');
+triptychSPUTTER = fullfile(masterOutDir, 'Master_Compact_SPUTTER.png');
+masterCSV       = fullfile(masterOutDir, 'Master_Stats.csv');
 
 % ---------- Load converted data once ----------
 V = VACC_loadNeuralynxData(dataDir, 'evenOnly', evenOnly, 'invertPolarity', invertPolarity);
-% V fields: V.D [nCh x nSamp] (µV, single), V.fs (Hz), V.nums (CSC numbers), V.ADBitVolts
+% V.D (µV, single) | V.fs (Hz) | V.nums (CSC labels)
 
-% ---------- 1) EventStacks (CENTER) ----------
-evtStacksRes = [];
+% ---------- EventStacks (CENTER) ----------
+evtStacksRes = struct('pngSolid',"",'pngSputter',"",'statsCSV',"");
 try
     evtStacksRes = VACC_EventStacks_ampWidth_Avg(dataDir, V);
 catch ME
-    warning(ME.identifier, 'EventStacks failed: %s', ME.message);
+    wid = ME.identifier; if isempty(wid), wid = 'VACC:EventStacksFailed'; end
+    warning(wid, 'EventStacks failed: %s', ME.message);
 end
 
-% % ---------- 2) Voltage Raster (LEFT) ----------
-% voltRasterRes = [];
-% try
-%     voltRasterRes = VACC_VoltageRaster_EventsAvg(dataDir, V);
-% catch ME
-%     warning(ME.identifier, 'VoltageRaster failed: %s', ME.message);
-% end
-% 
-% % ---------- 3) CSD Raster (RIGHT) ----------
-% csdRasterRes = [];
-% try
-%     csdRasterRes = VACC_CSDRaster_Avg(dataDir, V);
-% catch ME
-%     warning(ME.identifier, 'CSDRaster failed: %s', ME.message);
-% end
-% 
-% % ---------- 4) CSD Center Slices + Vertical Waveforms (LEFT) ----------
-% csdSlicesRes = [];
-% try
-%     csdSlicesRes = VACC_CSD_CenterSlices_Waveform_AvgGroups(dataDir, V);
-% catch ME
-%     warning(ME.identifier, 'CSD CenterSlices failed: %s', ME.message);
-% end
-% 
-% % ---------- 5) CSD Time-Avg Slices + Vertical Waveforms (RIGHT) ----------
-% csdTimeAvgRes = [];
-% try
-%     csdTimeAvgRes = VACC_CSD_TimeAvgSlices_Waveforms_AvgGroups(dataDir, V);
-% catch ME
-%     warning(ME.identifier, 'CSD TimeAvgSlices failed: %s', ME.message);
-% end
-% 
-% % ---------- 6) Spectrogram + Waveform (LEFT, bottom) ----------
-% spec3rdRes = [];
-% try
-%     spec3rdRes = VACC_Spectrogram_Waveform_ThirdEvent(dataDir, V);
-% catch ME
-%     warning(ME.identifier, 'Spectrogram ThirdEvent failed: %s', ME.message);
-% end
-% 
-% % ---------- Build SOLID triptych ----------
-% try
-%     colLeft_SOL  = stackVerticalHiRes({ ...
-%         getFileIfExists(getFieldSafe(voltRasterRes,'pngSolid')), ...
-%         getFileIfExists(getFieldSafe(csdSlicesRes,'pngSolid')), ...
-%         getFileIfExists(getFieldSafe(spec3rdRes,'pngSolid'))}, 6);
-%     colCtr_SOL   = getFileIfExists(getFieldSafe(evtStacksRes,'pngSolid'));
-%     colRight_SOL = stackVerticalHiRes({ ...
-%         getFileIfExists(getFieldSafe(csdRasterRes,'pngSolid')), ...
-%         getFileIfExists(getFieldSafe(csdTimeAvgRes,'pngSolid'))}, 6);
-% 
-%     cols_SOL = filterNonEmpty({colLeft_SOL, colCtr_SOL, colRight_SOL});
-%     if ~isempty(cols_SOL)
-%         composeColumnsHiRes(cols_SOL, triptychSOLID, 10);
-%         fprintf('Master SOLID compact montage saved: %s\n', triptychSOLID);
-%     else
-%         warning('No SOLID images found; SOLID compact montage not created.');
-%     end
-% catch ME
-%     warning(ME.identifier, 'Failed to build SOLID montage: %s', ME.message);
-% end
-
-% ---------- Build SPUTTER triptych ----------
+% ---------- Minimal SPUTTER "triptych" ----------
+% If center PNG exists, just copy it to Master_Compact_SPUTTER.png
 try
-    colLeft_SPU  = stackVerticalHiRes({ ...
-        getFileIfExists(getFieldSafe(voltRasterRes,'pngSputter')), ...
-        getFileIfExists(getFieldSafe(csdSlicesRes,'pngSputter')), ...
-        getFileIfExists(getFieldSafe(spec3rdRes,'pngSputter'))}, 6);
-    colCtr_SPU   = getFileIfExists(getFieldSafe(evtStacksRes,'pngSputter'));
-    colRight_SPU = stackVerticalHiRes({ ...
-        getFileIfExists(getFieldSafe(csdRasterRes,'pngSputter')), ...
-        getFileIfExists(getFieldSafe(csdTimeAvgRes,'pngSputter'))}, 6);
-
-    cols_SPU = filterNonEmpty({colLeft_SPU, colCtr_SPU, colRight_SPU});
-    if ~isempty(cols_SPU)
-        composeColumnsHiRes(cols_SPU, triptychSPUTTER, 10);
-        fprintf('Master SPUTTER compact montage saved: %s\n', triptychSPUTTER);
+    centerPng = getFileIfExists(getFieldSafe(evtStacksRes,'pngSputter'));
+    if ~isempty(centerPng)
+        safeCopy(centerPng, triptychSPUTTER);
+        fprintf('Master SPUTTER compact montage saved (center-only): %s\n', triptychSPUTTER);
     else
-        warning('No SPUTTER images found; SPUTTER compact montage not created.');
+        warning('VACC:NoSputterCenter', 'No SPUTTER center PNG found; montage not created.');
     end
 catch ME
-    warning(ME.identifier, 'Failed to build SPUTTER montage: %s', ME.message);
+    wid = ME.identifier; if isempty(wid), wid = 'VACC:SputterMontageFailed'; end
+    warning(wid, 'Failed to build SPUTTER montage: %s', ME.message);
 end
 
-% ---------- Merge available stats into a single CSV ----------
-T = table();
-T = tryAddCSV(T, evtStacksRes,  'EventStacks');
-T = tryAddCSV(T, voltRasterRes, 'VoltageRaster');
-T = tryAddCSV(T, csdRasterRes,  'CSDRaster');
-T = tryAddCSV(T, csdSlicesRes,  'CSDCenterSlices');
-T = tryAddCSV(T, csdTimeAvgRes, 'CSDTimeAvg');
-% (Spectrogram block has no CSV)
-
+% ---------- Master stats CSV (EventStacks only) ----------
 try
+    T = table();
+    evtCSV = getFieldSafe(evtStacksRes, 'statsCSV');
+    if strlength(evtCSV) > 0 && isfile(evtCSV)
+        C = readtable(evtCSV);
+        if ~ismember('source', C.Properties.VariableNames)
+            C.source = repmat("EventStacks", height(C), 1);
+        else
+            C.source = string(C.source);
+        end
+        T = C;
+    end
+
     if isempty(T)
         T = table(string(datetime('now')), "EMPTY", 'VariableNames', {'GeneratedAt','Note'});
     end
     writetable(T, masterCSV);
     fprintf('Master stats CSV: %s\n', masterCSV);
 catch ME
-    warning(ME.identifier, 'Failed writing master stats CSV: %s', ME.message);
+    wid = ME.identifier; if isempty(wid), wid = 'VACC:MasterCSVWriteFailed'; end
+    warning(wid, 'Failed writing master stats CSV to %s: %s', masterCSV, ME.message);
 end
+end
+
+% =================== tiny local helpers ===================
+
+function v = getFieldSafe(S, fieldName)
+    if ~(isstruct(S) && isfield(S, fieldName))
+        v = "";
+    else
+        v = string(S.(fieldName));
+    end
+end
+
+function p = getFileIfExists(s)
+    p = "";
+    if strlength(s) > 0
+        c = char(s);
+        if isfile(c), p = c; end
+    end
+end
+
+function safeCopy(src, dst)
+    % copyfile preserves the image exactly; if it fails, fallback to read/write
+    ok = false;
+    try
+        [ok, msg] = copyfile(src, dst, 'f');
+        if ~ok, error('copyfile failed: %s', msg); end
+    catch
+        I = imread(src);
+        imwrite(I, dst);
+    end
 end
