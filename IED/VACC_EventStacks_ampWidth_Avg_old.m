@@ -1,4 +1,4 @@
-function res = VACC_EventStacks_ampWidth_Avg(dataDir, V, varargin)
+function res = VACC_EventStacks_ampWidth_Avg_old(dataDir, V, varargin)
 % VACC_EventStacks_ampWidth_Avg
 % Build SOLID/SPUTTER average stacks (mean ± SEM) around each event window
 % defined by ets.mat. This VACC version:
