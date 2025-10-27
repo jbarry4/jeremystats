@@ -111,7 +111,7 @@ i1 = max(1, min(i1, numel(tRelMs)));
 if i1 < i0, [i0,i1] = deal(i1,i0); end
 
 fprintf(['CSD Time-Average Slices: sfx=%.1f Hz | capture ±%.1f ms | avg window [%+.1f,%+.1f] ms ' ...
-         '| anchor: firstCh max (±%.1f ms)\n'], ...
+         '| anchor: lastCh max (±%.1f ms)\n'], ...
     sfx, 1e3*HWwin/sfx, 1e3*avgStartMs, 1e3*avgEndMs, 1e3*HWanchor/sfx);
 
 % ---------- Excel -> sample indices ----------
@@ -196,11 +196,11 @@ function [Tstats, ok] = buildAndRender(evtList, tag, outPath)
         s1_ev = round(offSamp(rowXL));
         if ~(isfinite(s0_ev) && isfinite(s1_ev) && s1_ev > s0_ev), continue; end
 
-        % Anchor by first-channel positive peak (±anchor window)
+        % Anchor by last-channel positive peak (±anchor window)
         ancMid = round((s0_ev + s1_ev)/2);
         s0a = max(1, ancMid - HWanchor);
         s1a = min(evalin('caller','nSamp'), ancMid + HWanchor);
-        refCh = chList(1);
+        refCh = chList(end);
         y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
         if isempty(y0) || all(~isfinite(y0)), continue; end
         [~, k_rel] = max(y0);
@@ -304,7 +304,7 @@ function [Tstats, ok] = buildAndRender(evtList, tag, outPath)
     % Titles
     title(ax1, sprintf('%s — TIME-AVG CSD (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
     title(ax2, sprintf('%s — Vertical waveform (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
-    sg = sprintf('%s  |  align: first-channel max (\\pm%.1f ms)  |  capture: \\pm%.1f ms  |  avg window [%+.1f,%+.1f] ms  |  channels=%d', ...
+    sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  capture: \\pm%.1f ms  |  avg window [%+.1f,%+.1f] ms  |  channels=%d', ...
         tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, 1e3*evalin('caller','avgStartMs'), 1e3*evalin('caller','avgEndMs'), nCh);
     sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
 

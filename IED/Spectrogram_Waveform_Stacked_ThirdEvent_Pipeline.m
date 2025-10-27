@@ -2,7 +2,7 @@ function out = Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline(inputFolder, dat
 % Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline
 % - Uses the 3rd event from SOLID and SPUTTER (if present)
 % - Picks 4 evenly spaced channels (prefers even rows), or from 'channelIndices' if provided
-% - Aligns on first-selected channel positive peak within ±anchorHalfWidthMs of midpoint
+% - Aligns on last-selected channel positive peak within ±anchorHalfWidthMs of midpoint
 % - Window: ±100 ms around anchor
 % - For each selected channel: waveform (global µV y-limit) ABOVE its spectrogram (0..1000 Hz)
 % - Spectrogram x-axis is exactly [-100, +100] ms with ticks at [-100 0 100]
@@ -185,7 +185,7 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
         HW = max(1, round(0.100 * sfx));
         tRelMs = (-HW:HW) / sfx * 1e3;
 
-        % --- Anchor by first selected channel positive peak within ±anchor window ---
+        % --- Anchor by last selected channel positive peak within ±anchor window ---
         if e < 1 || e > NrowsXL, warning('%s Evt %d: out of range.', tag, e); return; end
         s0_ev = round(onSamp(e)); s1_ev = round(offSamp(e));
         if ~(isfinite(s0_ev) && isfinite(s1_ev) && s1_ev > s0_ev)
@@ -195,7 +195,8 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
         ancMid = round((s0_ev + s1_ev)/2);
         s0a = max(1, ancMid - HWanchor);
         s1a = min(nSamp, ancMid + HWanchor);
-        refCh = chSel(1);
+        refCh = chSel(end);
+        fprintf('%s Evt %d: anchoring on LAST channel (row %d)\n', tag, e, refCh);
         y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
         if isempty(y0) || all(~isfinite(y0))
             warning('%s Evt %d: no finite data for anchor.', tag, e); return;
@@ -319,7 +320,7 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
         cb = colorbar('eastoutside');
         cb.Label.String = sprintf('Power (dB) | CLim [%.1f, %.1f]', pLo, pHi);
 
-        sg = sprintf('%s | %s | anchor: first-selected max (\\pm%.1f ms) | Window: \\pm100 ms | STFT win=%.1f ms ov=%.0f%% nfft=%d | chans=%s', ...
+        sg = sprintf('%s | %s | anchor: last-selected max (\\pm%.1f ms) | Window: \\pm100 ms | STFT win=%.1f ms ov=%.0f%% nfft=%d | chans=%s', ...
                      tag, baseName, 1e3*HWanchor/sfx, 1e3*specWinSamp/sfx, 100*specOverlapSamp/specWinSamp, nfft, mat2str(chSel));
         sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
 

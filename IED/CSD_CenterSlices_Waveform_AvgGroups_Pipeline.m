@@ -93,7 +93,7 @@ HWanchor = max(1, round(anchorHWms * sfx));  % ±anchor search
 tRelMs   = (-HWwin:HWwin) / sfx * 1e3; %#ok<NASGU>
 centerIdx= HWwin + 1;
 
-fprintf('CSD Center Slices PIPELINE: sfx=%.1f Hz | window ±%.1f ms | anchor: firstCh max (±%.1f ms)\n', ...
+fprintf('CSD Center Slices PIPELINE: sfx=%.1f Hz | window ±%.1f ms | anchor: lastCh max (±%.1f ms)\n', ...
     sfx, 1e3*HWwin/sfx, 1e3*HWanchor/sfx);
 
 % ---------- Excel -> sample indices ----------
@@ -177,7 +177,7 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
             ancMid = round((s0_ev + s1_ev)/2);
             s0a = max(1, ancMid - HWanchor);
             s1a = min(nSamp, ancMid + HWanchor);
-            refCh = chList(1);
+            refCh = chList(end);
             y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
             if isempty(y0) || all(~isfinite(y0)), continue; end
             [~, k_rel] = max(y0);
@@ -284,7 +284,7 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
         % Titles (small font to avoid crop) + group-level sgtitle
         title(ax1, sprintf('%s — CSD slices at 0 ms (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
         title(ax2, sprintf('%s — Vertical waveform @ 0 ms (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
-        sg = sprintf('%s  |  align: first-channel max (\\pm%.1f ms)  |  window: \\pm%.1f ms  |  channels=%d', ...
+        sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  window: \\pm%.1f ms  |  channels=%d', ...
             tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, nCh);
         sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
 
