@@ -129,7 +129,7 @@ metStart = HWwin - HWmet + 1;
 metEnd   = HWwin + HWmet + 1;
 Lmet     = metEnd - metStart + 1;
 
-fprintf('VoltageRaster_AvgGroups: sfx=%.1f Hz | window ±%.1f ms | anchor: firstCh max (±%.1f ms)\n', ...
+fprintf('VoltageRaster_AvgGroups: sfx=%.1f Hz | window ±%.1f ms | anchor: lastCh max (±%.1f ms)\n', ...
     sfx, 1e3*HWwin/sfx, 1e3*HWanchor/sfx);
 
 % ---------------- Read Excel -> samples per row ----------------
@@ -231,7 +231,7 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
             ancMid = round((s0_ev + s1_ev)/2);
             s0a = max(1, ancMid - HWanchor);
             s1a = min(nSamp, ancMid + HWanchor);
-            refCh = chList(1);
+            refCh = chList(end);
             y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
             if isempty(y0) || all(~isfinite(y0)), continue; end
             [~, k_rel] = max(y0);
@@ -324,7 +324,7 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
         end
         set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
 
-        ttl = sprintf(['Avg %s  |  events=%d  |  window=\\pm%.1f ms  |  anchor=firstCh max (\\pm%.1f ms)  |  ' ...
+        ttl = sprintf(['Avg %s  |  events=%d  |  window=\\pm%.1f ms  |  anchor=lastCh max (\\pm%.1f ms)  |  ' ...
                        'channels=%d  |  CLim=\\pm%.1f \\muV  |  mean peak=%.1f\\pm%.1f \\muV  |  HW=%.2f\\pm%.2f ms'], ...
                        tag, stats.nEvents, 1e3*HWwin/sfx, 1e3*HWanchor/sfx, nCh, ...
                        clim, stats.ampMean, stats.ampSD, stats.hwMean, stats.hwSD);
