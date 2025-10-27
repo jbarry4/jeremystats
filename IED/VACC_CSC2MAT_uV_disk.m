@@ -1,11 +1,12 @@
-function VACC_CSC2MAT_uV_disk(basePath, varargin)
-% CSC2MAT_uV_disk(basePath, Name,Value,...)
+function VACC_CSC2MAT_uV_disk(basePath, eightBad, varargin)
+% VACC_CSC2MAT_uV_disk(basePath, eightBad, Name,Value,...)
 % Convert a folder of Neuralynx CSC#.ncs → disk-backed .mat in MICROVOLTS.
-% No spike detection here — conversion only — with options to invert polarity
-% and/or reverse time (flip the trace left↔right).
+% No spike detection — conversion only — with options to invert polarity and/or reverse time.
+% NEW: required logical "eightBad" — if true, channel 8 will be replaced with data from channel 7.
 %
 % REQUIRED:
-%   basePath   : folder that contains CSC#.ncs files (e.g., CSC1.ncs..CSC64.ncs)
+%   basePath   : folder containing CSC#.ncs files (e.g., CSC1.ncs..CSC64.ncs)
+%   eightBad   : logical true/false; if true -> replace channel 8 with channel 7
 %
 % OPTIONS (Name,Value):
 %   'nTotalCh'       (default 64)       : total channels expected (1..nTotalCh)
@@ -24,19 +25,20 @@ function VACC_CSC2MAT_uV_disk(basePath, varargin)
 %   badch          : logical(1,nTotalCh), marks missing/bad (original indexing)
 %   chan_labels    : {'CSC1'..'CSCn'}
 %   kept_channels  : channels written
-%   headersCell    : header lines for each kept channel
+%   headersCell    : header lines for each kept channel (note: for ch8, header from ch7 if replaced)
 %   units          : 'microvolts'
-%   meta           : provenance (fileListKept, ADBitVolts per kept ch, options used, etc.)
+%   meta           : provenance (fileListKept, ADBitVolts, options used, and replacement info)
 %
 % Example:
-%   CSC2MAT_uV_disk('D:\data\AnimalX\2023-08-01_12-11-26', ...
+%   VACC_CSC2MAT_uV_disk('/gpfs2/scratch/sakhava1/Rec', true, ...
 %       'nTotalCh',64, 'evenOnly',true, 'invertPolarity',true, 'reverseTime',false);
 
 %% ---------- Parse inputs ----------
-fprintf('\n[INFO] Starting CSC2MAT_uV_disk\n');
+fprintf('\n[INFO] Starting VACC_CSC2MAT_uV_disk\n');
 
 inputParserObject = inputParser;
 inputParserObject.addRequired('basePath', @(s)ischar(s)||isstring(s));
+inputParserObject.addRequired('eightBad', @(x)islogical(x)||ismember(x,[0,1]));
 inputParserObject.addParameter('nTotalCh', 64, @(x)isnumeric(x)&&isscalar(x)&&x>=1);
 inputParserObject.addParameter('evenOnly', true, @(x)islogical(x)||ismember(x,[0,1]));
 inputParserObject.addParameter('keep', [], @(v)isnumeric(v)&&isvector(v)&&all(v>=1));
@@ -46,9 +48,10 @@ inputParserObject.addParameter('fallbackADBV', 0.00000006103515625, @(x)isfinite
 inputParserObject.addParameter('reqsPath', fullfile(fileparts(mfilename('fullpath')), 'reqsPath'), @(s)ischar(s)||isstring(s));
 inputParserObject.addParameter('invertPolarity', true, @(x)islogical(x)||ismember(x,[0,1]));
 inputParserObject.addParameter('reverseTime', false, @(x)islogical(x)||ismember(x,[0,1]));
-inputParserObject.parse(basePath, varargin{:});
+inputParserObject.parse(basePath, eightBad, varargin{:});
 
 basePath            = char(inputParserObject.Results.basePath);
+eightBad            = logical(inputParserObject.Results.eightBad);
 nTotalCh            = inputParserObject.Results.nTotalCh;
 evenOnly            = logical(inputParserObject.Results.evenOnly);
 keep                = inputParserObject.Results.keep;
@@ -60,6 +63,7 @@ invertPolarity      = logical(inputParserObject.Results.invertPolarity);
 reverseTime         = logical(inputParserObject.Results.reverseTime);
 
 fprintf('[INFO] Base path: %s\n', basePath);
+fprintf('[INFO] eightBad flag: %d (1 means replace channel 8 with channel 7)\n', eightBad);
 if ~isfolder(basePath)
     error('[ERROR] Base folder not found: %s', basePath);
 end
@@ -92,6 +96,11 @@ if numberOfKeptChannels==0, error('[ERROR] No channels selected to keep.'); end
 fprintf('[INFO] Channels to include: %d of %d\n', numberOfKeptChannels, nTotalCh);
 fprintf('[INFO] First few kept channels: %s\n', mat2str(kept_channels(1:min(10,numberOfKeptChannels))));
 
+% Helpful booleans for replacement logic
+isChannel8Kept = ismember(8, kept_channels);
+sourceChannelFor8 = 7; % fixed by requirement
+fprintf('[INFO] isChannel8Kept: %d | sourceChannelFor8: %d\n', isChannel8Kept, sourceChannelFor8);
+
 %% ---------- Auto output name if empty ----------
 if isempty(strtrim(outName))
     [~, tailFolderName] = fileparts(basePath);
@@ -101,28 +110,46 @@ outputFullPath = fullfile(basePath, outName);
 fprintf('[INFO] Output MAT will be: %s\n', outputFullPath);
 
 %% ---------- First pass: sizes, sampling rates, ADBitVolts ----------
-% Using Neuralynx call flags:
+% Neuralynx flags:
 %   FieldSelection = [Timestamps, ChannelNumbers, SampleFrequencies, NumberValidSamples, Samples] -> [1 1 1 1 1]
 %   ExtractHeader = 1 to get header, ExtractMode = 1 (extract all)
 fieldSelectionAll  = [1 1 1 1 1];
 extractHeader      = 1;
 extractModeAll     = 1;
 
-fileListKept       = strings(1, numberOfKeptChannels);
-headersCell        = cell(1, numberOfKeptChannels);
+fileListKept       = strings(1, numberOfKeptChannels);  % nominal filenames for rows
+headersCell        = cell(1, numberOfKeptChannels);     % header per kept index (for ch8, we may store ch7 header)
 samplingRateArray  = nan(1, numberOfKeptChannels);
 effectiveLengthArr = nan(1, numberOfKeptChannels);
 badChannelMaskFull = false(1, nTotalCh);
 ADBitVoltsPerKeep  = nan(1, numberOfKeptChannels);
 
+% Track replacement provenance (so users can see exactly what we did)
+replacementInfo.usedReplacementFor8 = false;
+replacementInfo.sourceChannel       = NaN;
+replacementInfo.sourceFile          = "";
+replacementInfo.note                = "";
+
 fprintf('\n[INFO] First pass: scan files, sizes, sampling rates, ADBitVolts\n');
 for keptIndex = 1:numberOfKeptChannels
-    channelNumber   = kept_channels(keptIndex);
-    cscFilePath     = fullfile(basePath, sprintf('CSC%d.ncs', channelNumber));
-    fileListKept(keptIndex) = string(cscFilePath);
+    channelNumber = kept_channels(keptIndex);
 
-    if ~isfile(cscFilePath)
-        warning('[WARN] Missing file: %s (channel %d). Marking bad.', cscFilePath, channelNumber);
+    % Decide which physical file to read:
+    % If eightBad==true and this row corresponds to channel 8, we will read channel 7 instead.
+    sourceChannelThisRow = channelNumber;
+    if eightBad && (channelNumber == 8)
+        sourceChannelThisRow = sourceChannelFor8;  % 7
+        fprintf('[INFO] Replacement engaged for channel 8 in FIRST PASS: reading CSC%d.ncs instead of CSC8.ncs\n', sourceChannelThisRow);
+        replacementInfo.usedReplacementFor8 = true;
+        replacementInfo.sourceChannel       = sourceChannelThisRow;
+    end
+
+    cscFilePathToRead = fullfile(basePath, sprintf('CSC%d.ncs', sourceChannelThisRow));
+    fileListKept(keptIndex) = string(fullfile(basePath, sprintf('CSC%d.ncs', channelNumber))); % nominal/row label stays as CSC8 if row=8
+
+    if ~isfile(cscFilePathToRead)
+        warning('[WARN] Missing file: %s (row channel %d; source channel %d). Marking bad.', ...
+            cscFilePathToRead, channelNumber, sourceChannelThisRow);
         badChannelMaskFull(channelNumber) = true;
         effectiveLengthArr(keptIndex) = 0;
         headersCell{keptIndex} = {};
@@ -131,7 +158,7 @@ for keptIndex = 1:numberOfKeptChannels
 
     try
         [timestamps_us, ~, sampleFrequencies, numberValidSamples, samplesAD, headerLines] = ...
-            Nlx2MatCSC(cscFilePath, fieldSelectionAll, extractHeader, extractModeAll, []);
+            Nlx2MatCSC(cscFilePathToRead, fieldSelectionAll, extractHeader, extractModeAll, []);
 
         % Compute effective flattened length honoring NumberValidSamples per record
         recordBlockLength = size(samplesAD,1);      % usually 512
@@ -158,26 +185,34 @@ for keptIndex = 1:numberOfKeptChannels
         end
         if ~(isfinite(adbv) && adbv>0)
             adbv = fallbackADBV;
-            warning('[WARN] ADBitVolts missing for CSC%d; using fallback %.12g V/AD', channelNumber, adbv);
+            warning('[WARN] ADBitVolts missing for CSC%d; using fallback %.12g V/AD', sourceChannelThisRow, adbv);
         end
         ADBitVoltsPerKeep(keptIndex) = adbv;
 
+        % Store header for this row (note: if row=8 and eightBad==true, this will be header from channel 7)
         headersCell{keptIndex} = headerLines;
 
-        fprintf('  CSC%-2d: %10d samples eff @ %g Hz | ADBitVolts=%.12g V/AD\n', ...
-            channelNumber, effectiveLengthArr(keptIndex), samplingRateArray(keptIndex), adbv);
+        fprintf('  Row CSC%-2d (from CSC%-2d): %10d samples eff @ %g Hz | ADBitVolts=%.12g V/AD\n', ...
+            channelNumber, sourceChannelThisRow, effectiveLengthArr(keptIndex), samplingRateArray(keptIndex), adbv);
 
-        % Optional continuity check to flag large timestamp gaps (not interpolating here)
+        % Optional continuity check
         if ~isempty(timestamps_us) && isfinite(samplingRateThis) && samplingRateThis>0
             expectedStep_us = 512 * (1e6 / samplingRateThis);
             deltaT = diff(double(timestamps_us));
             if any(abs(deltaT - expectedStep_us) > 0.5 * expectedStep_us)
-                warning('[WARN] Timing irregularity in %s (ch %d). Gaps not interpolated.', cscFilePath, channelNumber);
+                warning('[WARN] Timing irregularity in %s (source ch %d). Gaps not interpolated.', cscFilePathToRead, sourceChannelThisRow);
             end
         end
 
+        % Remember exact file used for replacement provenance
+        if eightBad && (channelNumber == 8)
+            replacementInfo.sourceFile = string(cscFilePathToRead);
+            replacementInfo.note = "Row 8 populated from channel 7 for both passes.";
+        end
+
     catch ME
-        warning('[WARN] Read failure %s (ch %d): %s. Marking bad.', cscFilePath, channelNumber, ME.message);
+        warning('[WARN] Read failure %s (row ch %d; source ch %d): %s. Marking bad.', ...
+            cscFilePathToRead, channelNumber, sourceChannelThisRow, ME.message);
         badChannelMaskFull(channelNumber) = true;
         effectiveLengthArr(keptIndex)     = 0; 
         headersCell{keptIndex}            = {}; 
@@ -229,11 +264,13 @@ meta.nKept           = numberOfKeptChannels;
 meta.reader          = ['Nlx2MatCSC (', mexext, ')'];
 meta.storeClass      = storeClass;
 meta.note            = 'Disk-backed; NaN-padded; per-channel AD→µV scaling during write.';
-meta.fileListKept    = fileListKept;
-meta.ADBitVolts      = ADBitVoltsPerKeep;              % V/AD used per kept channel
-meta.scaleFactor_uV  = ADBitVoltsPerKeep * 1e6;        % µV/AD per kept channel
-meta.invertPolarity  = invertPolarity;                 % our new option
-meta.reverseTime     = reverseTime;                    % our new option
+meta.fileListKept    = fileListKept;                   % nominal row filenames (row 8 shows CSC8.ncs)
+meta.ADBitVolts      = ADBitVoltsPerKeep;              % V/AD used per row
+meta.scaleFactor_uV  = ADBitVoltsPerKeep * 1e6;        % µV/AD per row
+meta.invertPolarity  = invertPolarity;                 
+meta.reverseTime     = reverseTime;                    
+meta.eightBad        = eightBad;                       % NEW: record the flag
+meta.replacementInfo = replacementInfo;                % NEW: detailed provenance for ch8 replacement
 matFileObject.meta   = meta;
 
 %% ---------- Second pass: read → flatten (NValid) → scale to µV → invert/flip → write ----------
@@ -244,14 +281,26 @@ for keptIndex = 1:numberOfKeptChannels
     channelNumber = kept_channels(keptIndex);
 
     if badChannelMaskFull(channelNumber) || effectiveLengthArr(keptIndex)==0
-        fprintf('  CSC%-2d: skipped (bad/missing)\n', channelNumber);
+        fprintf('  Row CSC%-2d: skipped (bad/missing)\n', channelNumber);
         continue;
     end
 
-    cscFilePath = fullfile(basePath, sprintf('CSC%d.ncs', channelNumber));
+    % Again, if eightBad and the row is channel 8, we will read from channel 7
+    sourceChannelThisRow = channelNumber;
+    if eightBad && (channelNumber == 8)
+        sourceChannelThisRow = sourceChannelFor8;  % 7
+        fprintf('[INFO] Replacement engaged for channel 8 in SECOND PASS: reading CSC%d.ncs instead of CSC8.ncs\n', sourceChannelThisRow);
+    end
 
-    % Read without header (faster): FieldSelection same, ExtractHeader=0, ExtractMode=1
-    [~, ~, ~, numberValidSamples, samplesAD] = Nlx2MatCSC(cscFilePath, [1 1 1 1 1], 0, 1, []); %#ok<ASGLU>
+    cscFilePathToRead = fullfile(basePath, sprintf('CSC%d.ncs', sourceChannelThisRow));
+    if ~isfile(cscFilePathToRead)
+        warning('[WARN] Source file missing for row CSC%d (wanted CSC%d): %s. Skipping row.', ...
+            channelNumber, sourceChannelThisRow, cscFilePathToRead);
+        continue;
+    end
+
+    % Read without header (faster): same FieldSelection; ExtractHeader=0; ExtractMode=1
+    [~, ~, ~, numberValidSamples, samplesAD] = Nlx2MatCSC(cscFilePathToRead, [1 1 1 1 1], 0, 1, []); %#ok<ASGLU>
 
     recordBlockLength = size(samplesAD,1);
     numberOfRecords   = size(samplesAD,2);
@@ -268,20 +317,20 @@ for keptIndex = 1:numberOfKeptChannels
         end
     end
 
-    % Convert to MICROVOLTS for this channel
+    % Convert to MICROVOLTS for this row
     scaleFactor_uV_per_AD = ADBitVoltsPerKeep(keptIndex) * 1e6; % µV/AD
     if ~(isfinite(scaleFactor_uV_per_AD) && scaleFactor_uV_per_AD>0)
         scaleFactor_uV_per_AD = fallbackADBV * 1e6;
-        warning('[WARN] Using fallback scale for CSC%d: %.12g µV/AD', channelNumber, scaleFactor_uV_per_AD);
+        warning('[WARN] Using fallback scale for row CSC%d: %.12g µV/AD', channelNumber, scaleFactor_uV_per_AD);
     end
     flatSignal_uV = flatSignalAD * scaleFactor_uV_per_AD;
 
-    % === NEW: invert polarity if requested (vertical flip) ===
+    % Polarity invert (vertical flip) if requested
     if invertPolarity
         flatSignal_uV = -flatSignal_uV;
     end
 
-    % === NEW: reverse time if requested (left↔right flip) ===
+    % Time reverse (left↔right flip) if requested
     if reverseTime
         flatSignal_uV = fliplr(flatSignal_uV);
     end
@@ -296,15 +345,16 @@ for keptIndex = 1:numberOfKeptChannels
     % Progress prints
     if mod(keptIndex,2)==0 || keptIndex==numberOfKeptChannels
         elapsedSeconds = toc(ticOverall);
-        fprintf('  [%3d/%3d] CSC%-2d written | %.1f%% | elapsed %s | invert=%d | reverse=%d\n', ...
-            keptIndex, numberOfKeptChannels, channelNumber, 100*keptIndex/numberOfKeptChannels, ...
-            duration(0,0,elapsedSeconds,"Format","mm:ss"), invertPolarity, reverseTime);
+        fprintf('  [%3d/%3d] Row CSC%-2d (from CSC%-2d) written | %.1f%% | elapsed %s | invert=%d | reverse=%d\n', ...
+            keptIndex, numberOfKeptChannels, channelNumber, sourceChannelThisRow, ...
+            100*keptIndex/numberOfKeptChannels, duration(0,0,elapsedSeconds,"Format","mm:ss"), ...
+            invertPolarity, reverseTime);
     end
 end
 
 %% ---------- Done ----------
 fprintf('\n[INFO] Done.\n[INFO] Saved MICROVOLT conversion file:\n  %s\n', outputFullPath);
 fprintf('[INFO] Quick check (in MATLAB):\n');
-fprintf('  m = matfile(''%s''); size(m,''d''), m.units, m.sfx, m.meta.invertPolarity, m.meta.reverseTime\n', outputFullPath);
+fprintf('  m = matfile(''%s''); size(m,''d''), m.units, m.sfx, m.meta.eightBad, m.meta.replacementInfo\n', outputFullPath);
 
 end
