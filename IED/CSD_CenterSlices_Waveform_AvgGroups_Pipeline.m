@@ -248,7 +248,17 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
             'Box','on', 'Layer','top', 'TickLength',[0 0]);
 
         caxis(ax1, [-clim, +clim]);
-        %colormap(ax1, jet);
+        colormap(ax1, jet);
+        % Colorbar attached to LEFT image axis (matches Time-Avg behavior)
+        axes(ax1);                         % make left image axis current
+        cb = colorbar;                     % create colorbar for ax1
+        try
+            cb.Layout.Tile = 'east';       % tiledlayout placement (R2020b+)
+        catch
+            set(cb,'Location','eastoutside'); % fallback for older MATLAB
+        end
+        cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
+
         % Event centers on x
         if sliceThick >= 2
             centers = ( (0:nEvt-1)*sliceThick ) + ceil(sliceThick/2);
@@ -280,9 +290,9 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
         linkaxes([ax1 ax2], 'y');
 
         % Shared colorbar (no parent arg, for broader compatibility)
-        % Colorbar that reflects the LEFT image's CLim
-        cb = colorbar(ax1, 'eastoutside');
-        cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
+        % % Colorbar that reflects the LEFT image's CLim
+        % cb = colorbar(ax1, 'eastoutside');
+        % cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
 
         % Titles (small font to avoid crop) + group-level sgtitle
         title(ax1, sprintf('%s — CSD slices at 0 ms (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
