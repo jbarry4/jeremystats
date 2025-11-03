@@ -1,103 +1,101 @@
-function ThetaRaster_Pipeline(inputFolder)
-% JB code — ThetaRaster_Pipeline
+function res = ThetaRaster_Pipeline(inputFolder, varargin) %#ok<INUSD>
+% JB — ThetaRaster_Pipeline
 % -------------------------------------------------------------------------
-% 1) Find and open theta.fig (INVISIBLE)
-% 2) Pull out x1, y1, c1 from the figure's image object (like your snippet)
-% 3) Compute MeanPositive / MeanNegative exactly like snippet
-% 4) Save x1, y1, c1, MeanPositive, MeanNegative into "Theta_Plots"
-% 5) Generate clean EPS heatmap (no GUI popups) and CLOSE all figures
+% - Finds and opens theta.fig (invisible), extracts x1,y1,c1 (JB style)
+% - Computes MeanPositive / MeanNegative (exact math from your snippet)
+% - Saves x1,y1,c1 + means into "<inputFolder>/Theta_Plots"
+% - Renders a clean heatmap PNG + EPS (fixed caxis [-0.2 0.2])
+% - Returns a struct compatible with Pipeline_Main (pngSolid/pngSputter)
+%   so it can slot right into the LEFT column (bottom tile).
 % -------------------------------------------------------------------------
 
     fprintf('\n===== JB: ThetaRaster_Pipeline =====\n');
     fprintf('Input folder: %s\n', inputFolder);
 
-    % ---------------- Make output folder ----------------
-    outputFolder = fullfile(inputFolder, 'Theta_Plots');
-    if ~exist(outputFolder, 'dir')
-        fprintf('Creating output folder: %s\n', outputFolder);
-        mkdir(outputFolder);
+    % ---------- Output directory ----------
+    outputDir = fullfile(inputFolder, 'Theta_Plots');
+    if ~exist(outputDir, 'dir')
+        fprintf('Creating output folder: %s\n', outputDir);
+        mkdir(outputDir);
     end
 
-    % ---------------- Locate theta.fig ----------------
-    candidatePath = fullfile(inputFolder, 'theta.fig');
-    if exist(candidatePath, 'file') ~= 2
+    % ---------- Locate theta.fig ----------
+    thetaFigPath = fullfile(inputFolder, 'theta.fig');
+    if exist(thetaFigPath, 'file') ~= 2
         fprintf('theta.fig not found in input folder. Searching subfolders...\n');
-        searchHits = dir(fullfile(inputFolder, '**', 'theta.fig'));
-        if isempty(searchHits)
-            error('JB: No theta.fig found under: %s', inputFolder);
-        end
-        candidatePath = fullfile(searchHits(1).folder, searchHits(1).name);
+        hits = dir(fullfile(inputFolder, '**', 'theta.fig'));
+        assert(~isempty(hits), 'JB: No theta.fig found under: %s', inputFolder);
+        thetaFigPath = fullfile(hits(1).folder, hits(1).name);
     end
-    fprintf('Opening theta.fig (invisible): %s\n', candidatePath);
+    fprintf('Opening theta.fig (invisible): %s\n', thetaFigPath);
 
-    % ---------------- Open fig INVISIBLE and grab data ----------------
-    figHandle = openfig(candidatePath, 'invisible');  % no popup
-    % Make it current just like your snippet pattern (still invisible)
-    figure(figHandle);  % gcf points to this, but it's not shown
+    % ---------- Open invisible + extract data (JB snippet style) ----------
+    srcFig = openfig(thetaFigPath, 'invisible');
+    figure(srcFig); % make current (still invisible)
 
-    dataObjects = findobj(figHandle, '-property', 'XData');
-    x1 = dataObjects(1).XData;
-    dataObjects = findobj(figHandle, '-property', 'YData');
-    y1 = dataObjects(1).YData;
-    dataObjects = findobj(figHandle, '-property', 'CData');
-    c1 = dataObjects(1).CData;
+    obj = findobj(srcFig, '-property', 'CData');
+    c1  = obj(1).CData;
 
-    x1 = x1(:).';
+    obj = findobj(srcFig, '-property', 'XData');
+    x1  = obj(1).XData;
+
+    obj = findobj(srcFig, '-property', 'YData');
+    y1  = obj(1).YData;
+
+    x1 = x1(:).';  % row vectors
     y1 = y1(:).';
 
-    fprintf('JB: Extracted sizes -> x1:%d | y1:%d | c1:%dx%d\n', ...
-        numel(x1), numel(y1), size(c1,1), size(c1,2));
+    fprintf('JB: Extracted -> x1:%d | y1:%d | c1:%dx%d\n', numel(x1), numel(y1), size(c1,1), size(c1,2));
 
-    % Immediately CLOSE the source figure to avoid stray windows
-    close(figHandle);
-    fprintf('Closed source theta.fig handle.\n');
+    close(srcFig);  % IMPORTANT: no stray windows
+    fprintf('Closed source theta.fig.\n');
 
-    % ---------------- JB positive/negative masks (unchanged math) ----------------
-    c2 = c1;
-    Positive = c2 > 0;
-    c2(~Positive) = 0;
+    % ---------- JB positive / negative means (unchanged math) ----------
+    c2 = c1;          Positive = c2 > 0;  c2(~Positive) = 0;
     MeanPositive = sum(c2, 2) ./ sum(Positive, 2);
 
-    c3 = c1;
-    Negative = c3 < 0;
-    c3(~Negative) = 0;
+    c3 = c1;          Negative = c3 < 0;  c3(~Negative) = 0;
     MeanNegative = sum(c3, 2) ./ sum(Negative, 2);
 
-    % ---------------- Save outputs ----------------
-    fprintf('Saving x1/y1/c1 and MeanPositive/MeanNegative to: %s\n', outputFolder);
-    save(fullfile(outputFolder, 'x1.mat'), 'x1');
-    save(fullfile(outputFolder, 'y1.mat'), 'y1');
-    save(fullfile(outputFolder, 'c1.mat'), 'c1');
-    save(fullfile(outputFolder, 'MeanPositive.mat'), 'MeanPositive');
-    save(fullfile(outputFolder, 'MeanNegative.mat'), 'MeanNegative');
+    % ---------- Save mats ----------
+    fprintf('Saving mats to: %s\n', outputDir);
+    save(fullfile(outputDir, 'x1.mat'), 'x1');
+    save(fullfile(outputDir, 'y1.mat'), 'y1');
+    save(fullfile(outputDir, 'c1.mat'), 'c1');
+    save(fullfile(outputDir, 'MeanPositive.mat'), 'MeanPositive');
+    save(fullfile(outputDir, 'MeanNegative.mat'), 'MeanNegative');
 
-    % ---------------- Make the pretty EPS heatmap (no GUI) ----------------
-    ThetaRaster(outputFolder, x1, y1, c1);
+    % ---------- Render tidy heatmap (PNG + EPS) ----------
+    pngPath = fullfile(outputDir, 'Theta_Raster.png');
+    epsPath = fullfile(outputDir, 'Theta_Raster.eps');
+    renderThetaRaster(outputDir, x1, y1, c1, pngPath, epsPath);
 
-    fprintf('===== JB: Done =====\n\n');
+    % ---------- Return (Pipeline_Main expects pngSolid/pngSputter) ----------
+    res = struct();
+    res.outputDir   = outputDir;
+    res.pngSolid    = pngPath;   % same image for both columns; treated as “global”
+    res.pngSputter  = pngPath;
+    res.epsPath     = epsPath;
+
+    fprintf('ThetaRaster pipeline outputs:\n  %s\n  %s\n', pngPath, epsPath);
+    fprintf('===== JB: ThetaRaster_Pipeline done =====\n\n');
 end
 
 
-function ThetaRaster(outputFolder, xValues, yValues, cMatrix)
-% JB code — ThetaRaster (plot & save EPS without leaving any figures open)
-% -------------------------------------------------------------------------
-% - Fixed color scale [-0.2, 0.2]
-% - Every channel tick (1–64) visible
-% - Only channels 1 and 64 are blank (NaN rows added after smoothing)
-% - No empty margins: X axis fits data exactly
-% - Figure is created INVISIBLE, saved, then CLOSED
-% -------------------------------------------------------------------------
+function renderThetaRaster(outputDir, xValues, yValues, cMatrix, pngPath, epsPath)
+% JB — renderThetaRaster (invisible figure → PNG + EPS, then close)
+% Clean + lean; fixed caxis; only ch 1 & 64 blank; tight X limits.
 
-    fprintf('\n--- JB: ThetaRaster (plot & save EPS) ---\n');
+    fprintf('JB: Rendering Theta heatmap...\n');
 
-    % -------- Simple settings --------
+    % ---- simple knobs (feel free to tweak) ----
     gaussianSigma  = 0.75;
     upsampleFactor = 3;
     colormapName   = 'jet';
     colorScale     = [-0.2, 0.2];
     titleText      = 'Theta–Ripple Heatmap — Channel 64 at Bottom';
 
-    % -------- Ensure orientation --------
+    % ---- orientation check ----
     expectedRows = numel(yValues);
     expectedCols = numel(xValues);
     if ~isequal(size(cMatrix), [expectedRows, expectedCols])
@@ -106,56 +104,50 @@ function ThetaRaster(outputFolder, xValues, yValues, cMatrix)
             cMatrix = cMatrix.';
         else
             error('JB: cMatrix must be [%d x %d]. Got %dx%d.', ...
-                expectedRows, expectedCols, size(cMatrix,1), size(cMatrix,2));
+                  expectedRows, expectedCols, size(cMatrix,1), size(cMatrix,2));
         end
     end
 
-    % -------- Smooth + upsample INTERIOR --------
-    fprintf('JB: Smoothing (sigma=%.3f) and upsampling (x%.1f)...\n', gaussianSigma, upsampleFactor);
-    interiorMatrix = imgaussfilt(cMatrix, gaussianSigma);
+    % ---- smoothing + upsample on interior ----
+    interior = imgaussfilt(cMatrix, gaussianSigma);
     if upsampleFactor > 1
-        interiorMatrix = imresize(interiorMatrix, upsampleFactor, 'bicubic');
+        interior = imresize(interior, upsampleFactor, 'bicubic');
     end
 
-    % -------- Add exactly one NaN row on top/bottom for ch 1 and ch 64 --------
-    numberOfColumns = size(interiorMatrix, 2);
-    nanRow = nan(1, numberOfColumns);
-    fullMatrix = [nanRow; interiorMatrix; nanRow];  % ONLY 1 and 64 blanked
+    % ---- add NaN rows for channels 1 & 64 only ----
+    nCols = size(interior, 2);
+    nanRow = nan(1, nCols);
+    fullMatrix = [nanRow; interior; nanRow];
 
-    % -------- Axes + extents --------
-    channelNumbers = 1:64;
-    xExtent = [xValues(1), xValues(end)];
-    yExtent = [channelNumbers(1), channelNumbers(end)];
+    % ---- extents + ticks ----
+    channels = 1:64;
+    xExtent  = [xValues(1), xValues(end)];
+    yExtent  = [channels(1), channels(end)];
 
-    % -------- Create figure INVISIBLE, plot, save, CLOSE --------
-    figureHandle = figure('Color','w','Position',[100 100 900 700], 'Visible', 'off');
-
+    % ---- plot INVISIBLE, save, close ----
+    f = figure('Color','w','Position',[100 100 900 700], 'Visible','off');
     imagesc('XData', xExtent, 'YData', yExtent, 'CData', fullMatrix);
-    set(gca, 'YDir', 'reverse');
+    set(gca,'YDir','reverse');
     colormap(colormapName);
     caxis(colorScale);
     colorbar;
 
-    xlabel('X');
-    ylabel('Channel #');
-    title(titleText, 'FontWeight', 'bold');
+    xlabel('X'); ylabel('Channel #');
+    title(titleText,'FontWeight','bold');
 
-    yticks(channelNumbers);
-    yticklabels(string(channelNumbers));
-    set(gca, 'FontSize', 8, 'TickDir', 'out', 'LineWidth', 1);
+    yticks(channels);
+    yticklabels(string(channels));
+    set(gca,'FontSize',8,'TickDir','out','LineWidth',1);
     grid on; box on;
-
-    xlim(xExtent);
-    ylim([1 64]);
+    xlim(xExtent); ylim([1 64]);
     drawnow;
 
-    epsFilePath = fullfile(outputFolder, 'Theta_Raster.eps');
-    fprintf('JB: Saving EPS -> %s\n', epsFilePath);
-    exportgraphics(figureHandle, epsFilePath, 'ContentType', 'vector', 'BackgroundColor', 'white');
+    fprintf('JB: Saving PNG -> %s\n', pngPath);
+    exportgraphics(f, pngPath, 'Resolution', 220);
 
-    % IMPORTANT: close the plotting figure so nothing lingers
-    close(figureHandle);
-    fprintf('JB: Closed plotting figure.\n');
+    fprintf('JB: Saving EPS -> %s\n', epsPath);
+    exportgraphics(f, epsPath, 'ContentType','vector', 'BackgroundColor','white');
 
-    fprintf('--- JB: ThetaRaster done ---\n\n');
+    close(f);
+    fprintf('JB: Closed rendering figure.\n');
 end

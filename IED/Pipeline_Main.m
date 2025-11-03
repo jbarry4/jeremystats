@@ -16,6 +16,14 @@ triptychSOLID   = fullfile(masterOutDir, 'Master_Compact_SOLID.png');
 triptychSPUTTER = fullfile(masterOutDir, 'Master_Compact_SPUTTER.png');
 masterCSV       = fullfile(masterOutDir, 'Master_Stats.csv');
 
+% ---------- 0) ThetaRaster (LEFT, bottom) ----------
+thetaRes = [];
+try
+    thetaRes = ThetaRaster_Pipeline(inputFolder, varargin{:});
+catch ME
+    warning(ME.identifier, 'ThetaRaster_Pipeline failed: %s', ME.message);
+end
+
 % ---------- 1) EventStacks (CENTER) ----------
 evtStacksRes = [];
 try
@@ -64,13 +72,6 @@ catch ME
     warning(ME.identifier, 'Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline failed: %s', ME.message);
 end
 
-% ---------- 7) ThetaRaster (LEFT, bottom) ----------
-thetaRes = [];
-try
-    thetaRes = ThetaRaster_Pipeline(inputFolder, dataMatPath, varargin{:});
-catch ME
-    warning(ME.identifier, 'ThetaRaster_Pipeline failed: %s', ME.message);
-end
 
 % ---------- Build SOLID triptych ----------
 try
