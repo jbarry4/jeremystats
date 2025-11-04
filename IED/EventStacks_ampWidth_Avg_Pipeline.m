@@ -2,11 +2,12 @@ function res = EventStacks_ampWidth_Avg_Pipeline(inputFolder, dataMatPath, varar
 % EventStacks_ampWidth_Avg_Pipeline
 % Pipeline wrapper that:
 %   - runs the average stack plotting (SOLID / SPUTTER)
-%   - saves PNGs + group stats (.mat) + per-channel CSV
+%   - saves PNGs + vector PDFs + group stats (.mat) + per-channel CSV
 %   - returns paths for Pipeline_Main to pick up
 %
 % OUTPUT:
-%   res.pngSolid, res.pngSputter, res.statsMatSolid, res.statsMatSputter, res.statsCSV
+%   res.pngSolid, res.pngSputter, res.pdfSolid, res.pdfSputter,
+%   res.statsMatSolid, res.statsMatSputter, res.statsCSV
 
 % ---------------- Args ----------------
 p = inputParser;
@@ -93,9 +94,11 @@ else
 end
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
-% file paths for PNGs and stats
+% file paths for PNGs, PDFs, and stats
 pngSOL = fullfile(outDir, sprintf('AvgStack_SOLID_anchor-max_disp%ds_met%ds.png', round(halfWidthMs*sfx), round(metricHWms*sfx)));
 pngSPU = fullfile(outDir, sprintf('AvgStack_SPUTTER_anchor-max_disp%ds_met%ds.png', round(halfWidthMs*sfx), round(metricHWms*sfx)));
+pdfSOL = fullfile(outDir, sprintf('AvgStack_SOLID_anchor-max_disp%ds_met%ds.pdf', round(halfWidthMs*sfx), round(metricHWms*sfx)));
+pdfSPU = fullfile(outDir, sprintf('AvgStack_SPUTTER_anchor-max_disp%ds_met%ds.pdf', round(halfWidthMs*sfx), round(metricHWms*sfx)));
 matSOL = fullfile(outDir, 'AvgStack_SOLID_stats.mat');
 matSPU = fullfile(outDir, 'AvgStack_SPUTTER_stats.mat');
 csvAll = fullfile(outDir, 'EventStacks_perChannel_Stats.csv');
@@ -174,8 +177,8 @@ yL_global = [-yMax, +yMax];
 fprintf('Global y-limit (both figs): ±%.1f µV (%s)\n', yMax, tern(isempty(yLimMicroV),'auto','fixed'));
 
 % ---------------- Plot & save (2 columns, with indicators) ----------------
-plotStackWithIndicators(SOL, 'SOLID', yL_global, pngSOL);
-plotStackWithIndicators(SPU, 'SPUTTER', yL_global, pngSPU);
+plotStackWithIndicators(SOL, 'SOLID', yL_global, pngSOL, pdfSOL);
+plotStackWithIndicators(SPU, 'SPUTTER', yL_global, pngSPU, pdfSPU);
 
 % ---------------- Save lightweight stats & CSV ----------------
 % .mat files already saved inside avgForGroup(); but copy/rename for pipeline convenience
@@ -193,10 +196,11 @@ end
 % ---------------- Return paths ----------------
 res = struct('outputDir', outDir, ...
              'pngSolid', pngSOL, 'pngSputter', pngSPU, ...
+             'pdfSolid', pdfSOL, 'pdfSputter', pdfSPU, ...
              'statsMatSolid', matSOL, 'statsMatSputter', matSPU, ...
              'statsCSV', csvAll);
 
-fprintf('EventStacks pipeline outputs:\n  %s\n  %s\n  %s\n', pngSOL, pngSPU, csvAll);
+fprintf('EventStacks pipeline outputs:\n  %s\n  %s\n  %s\n  %s\n  %s\n', pngSOL, pngSPU, csvAll, pdfSOL, pdfSPU);
 
 % ======================================================================
 %                                HELPERS
@@ -379,7 +383,7 @@ function [G, robAll] = avgForGroup(evtList, tag)
     G.outStatsPath = statsPath;
 end
 
-function plotStackWithIndicators(G, tag, yL, outPng)
+function plotStackWithIndicators(G, tag, yL, outPng, outPdf)
     if isempty(G) || all(all(isnan(G.MU)))
         warning('%s: no data to plot.', tag); 
         return; 
@@ -392,6 +396,22 @@ function plotStackWithIndicators(G, tag, yL, outPng)
     perRowPx = 120; basePx = 220; maxPx = 5200;
     figH = min(maxPx, basePx + perRowPx * nRowsGrid);
     f = figure('Color','w','Position',[60 60 1100 figH],'Visible','off');
+    
+    % --- START: Full Manual PDF Layout Control ---
+    % Set the figure's units to inches
+    set(f, 'Units', 'inches');
+    
+    % Get the figure's position [left, bottom, width, height] in inches
+    figPos_inches = get(f, 'Position');
+    
+    % Set the PDF 'page' (PaperSize) to be the *exact* size of the figure
+    set(f, 'PaperUnits', 'inches');
+    set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
+    
+    % Set the figure's position on the 'page' to fill it completely
+    set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
+    % --- END: Full Manual PDF Layout Control ---
+
     tl = tiledlayout(f, nRowsGrid, nCols, 'Padding','compact','TileSpacing','compact');
 
     % metric subrange indices within mean vector
@@ -447,7 +467,7 @@ function plotStackWithIndicators(G, tag, yL, outPng)
             %         tL_ms  = ((metStart + left_ip - 1) - centerIdx) / sfx * 1e3;
             %         tR_ms  = ((metStart + right_ip- 1) - centerIdx) / sfx * 1e3;
             % 
-            %         % Draw only if inside display window
+            %         % Draw
             %         if tL_ms >= tRelMs(1) && tR_ms <= tRelMs(end)
             %             xline(ax, tL_ms, '-', 'Color',[0.85 0.10 0.10], 'LineWidth',2.2, 'HandleVisibility','off');
             %             xline(ax, tR_ms, '-', 'Color',[0.85 0.10 0.10], 'LineWidth',2.2, 'HandleVisibility','off');
@@ -482,8 +502,17 @@ function plotStackWithIndicators(G, tag, yL, outPng)
     sgtitle(tl, sprintf('%s', tag), 'FontSize', 11, 'FontWeight', 'bold');
 
     exportgraphics(f, outPng, 'Resolution', 220);
-    close(f);
     fprintf('Saved: %s\n', outPng);
+    
+    try
+        % 'print' will NOW obey the manual PaperSize and PaperPosition
+        print(f, outPdf, '-dpdf', '-painters');
+        fprintf('Saved: %s\n', outPdf);
+    catch ME
+        warning('Failed to save PDF file %s: %s', outPdf, ME.message);
+    end
+
+    close(f);
 end
 
 function s = tern(cond, a, b)

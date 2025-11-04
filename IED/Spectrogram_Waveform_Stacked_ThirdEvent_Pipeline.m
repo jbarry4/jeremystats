@@ -8,93 +8,78 @@ function out = Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline(inputFolder, dat
 % - Spectrogram x-axis is exactly [-100, +100] ms with ticks at [-100 0 100]
 % - Every spectrogram shows "Hz" on the y-axis
 %
-% OUTPUT: PNG(s) under "<inputFolder>/Spectrogram Waveform Stacked Output/{Solid,Sputter}"
+% OUTPUT: PNG(s)/PDF(s) under "<inputFolder>/Spectrogram Waveform Stacked Output/{Solid,Sputter}"
 %
 % Returns struct OUT with fields:
-%   pngSolid, pngSputter, statsCSV (unused -> "")
+%   pngSolid, pngSputter, pdfSolid, pdfSputter, statsCSV (unused -> "")
 
 % ---------- Args ----------
 p = inputParser;
 p.addRequired('inputFolder', @(s)ischar(s)||isstring(s));
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
-
 p.addParameter('excelPath', "", @(s)ischar(s)||isstring(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('preferEvenRows', true, @(x)islogical(x)||ismember(x,[0 1]));
-
 % Scaling
 p.addParameter('scaleToMicroV', 1, @(x) isnumeric(x) && all(isfinite(x)) && all(x>0));
-
 % Alignment
 p.addParameter('anchorHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);
-
 % Spectrogram params (UPDATED defaults)
 p.addParameter('specWinMs',   10e-3, @(x)isfinite(x)&&x>0);   % 10 ms
 p.addParameter('specOverlap', 0.50,  @(x)isfinite(x)&&x>=0&&x<1);
 p.addParameter('nfft',        [],    @(x) isempty(x) || (isscalar(x)&&x>0));
 p.addParameter('fMaxHz',      1000,  @(x)isfinite(x)&&x>0);   % 0..1000 Hz shown
-
 % Global waveform y-scale
 p.addParameter('yLimMicroV', [],   @(x) isempty(x) || (isscalar(x) && x>0));
 p.addParameter('yRobustPct', 99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('yPadFrac',   0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
-
 % Spectrogram color scaling (dB)
 p.addParameter('powerUpperPct', 99.5, @(x)isfinite(x)&&x>0&&x<100);
 p.addParameter('powerDynRange', 40,   @(x)isfinite(x)&&x>0);
-
 % Export controls
 p.addParameter('maxFigHeightPx', 16000, @(x)isfinite(x)&&x>1000);
 p.addParameter('dpi',            220,   @(x)isfinite(x)&&x>=72);
-
 p.parse(inputFolder, dataMatPath, varargin{:});
 inputFolder     = string(p.Results.inputFolder);
 dataMatPath     = string(p.Results.dataMatPath);
-
 excelPath       = string(p.Results.excelPath);
 chUser          = p.Results.channelIndices;
 preferEven      = p.Results.preferEvenRows;
 scaleToMicroV   = p.Results.scaleToMicroV;
-
 anchorHWms      = p.Results.anchorHalfWidthMs;
-
 specWinMs       = p.Results.specWinMs;
 specOverlap     = p.Results.specOverlap;
 nfftOpt         = p.Results.nfft;
 fMaxHz          = p.Results.fMaxHz;
-
 yLimMicroV      = p.Results.yLimMicroV;
 yRobustPct      = p.Results.yRobustPct;
 yPadFrac        = p.Results.yPadFrac;
-
 powerUpperPct   = p.Results.powerUpperPct;
 powerDynRange   = p.Results.powerDynRange;
-
 maxFigH         = p.Results.maxFigHeightPx;
 dpi             = p.Results.dpi;
 
-out = struct('pngSolid',"", 'pngSputter',"", 'statsCSV',"");
+% --- MODIFIED: Added PDF fields ---
+out = struct('pngSolid',"", 'pngSputter',"", 'pdfSolid',"", 'pdfSputter',"", 'statsCSV',"");
+% --- END MODIFIED ---
 
 % ---------- Layout ----------
 solidDir   = fullfile(inputFolder, "Solid");
 sputterDir = fullfile(inputFolder, "Sputter");
 assert(isfolder(solidDir),   'Missing folder: %s', solidDir);
 assert(isfolder(sputterDir), 'Missing folder: %s', sputterDir);
-
 if excelPath == ""
     xl = dir(fullfile(inputFolder, "*.xlsx"));
     assert(~isempty(xl), 'No Excel file (*.xlsx) found in %s', inputFolder);
     excelPath = fullfile(xl(1).folder, xl(1).name);
 end
 assert(isfile(excelPath), 'Excel not found: %s', excelPath);
-
 outRoot = fullfile(inputFolder, "Spectrogram Waveform Stacked Output");
 outSOL  = fullfile(outRoot, "Solid");
 outSPU  = fullfile(outRoot, "Sputter");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
 if ~exist(outSOL,'dir'),  mkdir(outSOL);  end
 if ~exist(outSPU,'dir'),  mkdir(outSPU);  end
-
 % ---------- Data ----------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
 mf = matfile(dataMatPath);
@@ -102,7 +87,6 @@ try sfx = mf.sfx; catch, error('Missing "sfx" in data MAT.'); end
 nRowsAll = size(mf,'d',1);
 nSamp    = size(mf,'d',2);
 try kept_channels = mf.kept_channels; catch, kept_channels = []; end %#ok<NASGU>
-
 % Scaling vector
 if numel(scaleToMicroV)==1
     scaleVec = repmat(scaleToMicroV, nRowsAll, 1);
@@ -110,7 +94,6 @@ else
     assert(numel(scaleToMicroV) >= nRowsAll, 'scaleToMicroV must be scalar or length >= nRowsAll.');
     scaleVec = scaleToMicroV(:);
 end
-
 % ---------- Excel on/off ----------
 T = readtable(excelPath, 'ReadVariableNames', true);
 canon = lower(regexprep(T.Properties.VariableNames, '[^a-zA-Z0-9]', ''));
@@ -118,7 +101,6 @@ i_onSamp  = find(strcmp(canon,'onsamp')  | strcmp(canon,'startsample') | strcmp(
 i_offSamp = find(strcmp(canon,'offsamp') | strcmp(canon,'endsample')   | strcmp(canon,'endsamp')   | strcmp(canon,'off'), 1);
 i_onSec   = find(strcmp(canon,'onsec')   | strcmp(canon,'startsec')    | strcmp(canon,'onsecs'), 1);
 i_offSec  = find(strcmp(canon,'offsec')  | strcmp(canon,'endsec')      | strcmp(canon,'offsecs'), 1);
-
 if ~isempty(i_onSamp) && ~isempty(i_offSamp)
     onSamp  = double(T{:, i_onSamp});
     offSamp = double(T{:, i_offSamp});
@@ -133,12 +115,10 @@ end
 onSamp  = max(1, min(onSamp,  nSamp));
 offSamp = max(1, min(offSamp, nSamp));
 NrowsXL = numel(onSamp);
-
 % ---------- Events from PNG names ----------
 evtSOL = parseEvtNumsFromPngs(solidDir);
 evtSPU = parseEvtNumsFromPngs(sputterDir);
 fprintf('Found %d SOLID, %d SPUTTER (by filenames). Using the 3rd of each if present.\n', numel(evtSOL), numel(evtSPU));
-
 % ---------- Channel selection (flexible & even-aware) ----------
 if ~isempty(chUser)
     chBase = chUser(:).';
@@ -162,29 +142,31 @@ end
 nCh = numel(chSel);
 
 % ---------- Render 3rd event of each group ----------
+% --- MODIFIED: Capture both PNG and PDF outputs ---
 if numel(evtSOL) >= 3
-    out.pngSolid = renderOne(evtSOL(3), 'SOLID', outSOL, chSel);
+    [out.pngSolid, out.pdfSolid] = renderOne(evtSOL(3), 'SOLID', outSOL, chSel);
 else
     warning('SOLID: fewer than 3 events — skipping.');
 end
-
 if numel(evtSPU) >= 3
-    out.pngSputter = renderOne(evtSPU(3), 'SPUTTER', outSPU, chSel);
+    [out.pngSputter, out.pdfSputter] = renderOne(evtSPU(3), 'SPUTTER', outSPU, chSel);
 else
     warning('SPUTTER: fewer than 3 events — skipping.');
 end
+% --- END MODIFIED ---
 
 fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
 
 % ======================================================================
 %                              NESTED: RENDER
 % ======================================================================
-    function outPng = renderOne(e, tag, outDir, chSel)
+    % --- MODIFIED: Function signature ---
+    function [outPng, outPdf] = renderOne(e, tag, outDir, chSel)
         outPng = "";
+        outPdf = "";
         % --- Window: ±100 ms ---
         HW = max(1, round(0.100 * sfx));
         tRelMs = (-HW:HW) / sfx * 1e3;
-
         % --- Anchor by last selected channel positive peak within ±anchor window ---
         if e < 1 || e > NrowsXL, warning('%s Evt %d: out of range.', tag, e); return; end
         s0_ev = round(onSamp(e)); s1_ev = round(offSamp(e));
@@ -203,12 +185,10 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
         end
         [~, k_rel] = max(y0);
         anchor = s0a + k_rel - 1;
-
         s0 = anchor - HW; s1 = anchor + HW;
         if s0 < 1 || s1 > nSamp
             warning('%s Evt %d: window out of bounds.', tag, e); return;
         end
-
         % --- Collect waveforms for GLOBAL y-limits ---
         rob = 0;
         for ci = 1:nCh
@@ -226,7 +206,6 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
             yMax = yLimMicroV;
         end
         yL_global = [-yMax, +yMax];
-
         % --- Spectrogram params ---
         specWinSamp     = max(8, round(specWinMs * sfx));
         specOverlapSamp = max(0, min(specWinSamp-1, round(specOverlap * specWinSamp)));
@@ -236,7 +215,6 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
             nfft = nfftOpt;
         end
         fMax = min(fMaxHz, sfx/2);
-
         % --- Precompute CLim across selected channels ---
         allP = [];
         Pane = cell(nCh,1);
@@ -257,37 +235,38 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
         allP = allP(isfinite(allP));
         if isempty(allP), pHi = 0; else, pHi = prctile(allP, powerUpperPct); end
         pLo = pHi - powerDynRange;
-
         % ---------- Figure ----------
         rowsPerChan = 2;                 % waveform + spectrogram
         rowsTotal   = rowsPerChan * nCh;
-
         perRowPx   = 130;
         figW       = 1000;
         topBotPad  = 320;
         figH_full  = topBotPad + perRowPx*rowsTotal;
         figH       = min(figH_full, maxFigH);
-
         if ~exist(outDir,'dir'), mkdir(outDir); end
         baseName = sprintf('Evt%03d_SpecWave_Stacked', e);
-
         % Labels for channels
         if ~isempty(kept_channels)
             chanLabelAll = arrayfun(@(kk) sprintf('row %d (CSC%d)', chSel(kk), kept_channels(chSel(kk))), 1:nCh, 'UniformOutput', false);
         else
             chanLabelAll = arrayfun(@(kk) sprintf('row %d', chSel(kk)), 1:nCh, 'UniformOutput', false);
         end
-
         % Single figure expected (4 channels → no chunking)
         f = figure('Color','w','Visible','off','Units','pixels', ...
                    'Position',[60 60 figW figH], 'Renderer','opengl', ...
                    'InvertHardcopy','off');
-
+        
+        % --- START: Full Manual PDF Layout Control (Lesson 4) ---
+        set(f, 'Units', 'inches');
+        figPos_inches = get(f, 'Position');
+        set(f, 'PaperUnits', 'inches');
+        set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
+        set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
+        % --- END: Full Manual PDF Layout Control ---
+        
         tl = tiledlayout(f, rowsTotal, 1, 'Padding','loose','TileSpacing','compact');
-
         for ci = 1:nCh
             D  = Pane{ci};
-
             % Waveform
             ax1 = nexttile(tl);
             hold(ax1,'on'); box(ax1,'on'); grid(ax1,'on');
@@ -300,7 +279,6 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
             ax1.XTickLabel = [];               % hide to let spectrogram carry the ms labels
             ylabel(ax1, '\muV');
             title(ax1, sprintf('%s — waveform', chanLabelAll{ci}), 'FontSize',9, 'FontWeight','normal');
-
             % Spectrogram
             ax2 = nexttile(tl);
             imagesc(ax2, D.Tms, D.F, D.P);
@@ -315,24 +293,37 @@ fprintf('Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.\n');
             if ci == nCh, xlabel(ax2,'Time (ms)'); else, ax2.XTickLabel = []; end
             title(ax2, sprintf('%s — spectrogram (0..%.0f Hz)', chanLabelAll{ci}, fMax), 'FontSize',9, 'FontWeight','normal');
         end
-
         % One colorbar is enough (right side)
         cb = colorbar('eastoutside');
         cb.Label.String = sprintf('Power (dB) | CLim [%.1f, %.1f]', pLo, pHi);
-
         sg = sprintf('%s | %s | anchor: last-selected max (\\pm%.1f ms) | Window: \\pm100 ms | STFT win=%.1f ms ov=%.0f%% nfft=%d | chans=%s', ...
                      tag, baseName, 1e3*HWanchor/sfx, 1e3*specWinSamp/sfx, 100*specOverlapSamp/specWinSamp, nfft, mat2str(chSel));
         sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
-
-        drawnow; set(f,'PaperPositionMode','auto');
+        
+        % --- MODIFIED: Export PNG and PDF ---
+        drawnow;
+        
+        % Define paths
         outPng = fullfile(outDir, baseName + ".png");
+        outPdf = fullfile(outDir, baseName + ".pdf");
+        
+        % Save PNG
         exportgraphics(f, outPng, 'Resolution', dpi, 'BackgroundColor','white', 'ContentType','image');
+        fprintf('Saved %s (PNG): %s\n', tag, outPng);
+        
+        % Save PDF (Lessons 1, 2, 3)
+        try
+            print(f, outPdf, '-dpdf', '-painters');
+            fprintf('Saved %s (PDF): %s\n', tag, outPdf);
+        catch ME
+            warning('Failed to save PDF file %s: %s', outPdf, ME.message);
+            outPdf = ''; % Return empty string if failed
+        end
+        
         close(f);
-        fprintf('Saved %s: %s\n', tag, outPng);
+        % --- END MODIFIED ---
     end
-
 end
-
 % ======================================================================
 %                              HELPERS
 % ======================================================================

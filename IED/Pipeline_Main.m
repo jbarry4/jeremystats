@@ -137,6 +137,17 @@ try
 catch ME
     warning(ME.identifier, 'Failed writing master stats CSV: %s', ME.message);
 end
+
+% ---------- Round up PDFs (non-Sputter) ----------
+try
+    fprintf('\n');
+    collectPdfs(masterOutDir, ...
+        thetaRes, evtStacksRes, voltRasterRes, csdRasterRes, ...
+        csdSlicesRes, csdTimeAvgRes, spec3rdRes);
+catch ME
+    warning(ME.identifier, 'Failed to round up PDF files: %s', ME.message);
+end
+
 end
 
 % ================= helpers (I/O-safe, native-res composition) ================
@@ -300,4 +311,72 @@ end
 
 function x = missingDefault()
 x = missing;
+end
+
+% --- NEW ROBUST PDF COLLECTION FUNCTION ---
+function collectPdfs(masterOutDir, varargin)
+% Gathers all "SOLID" and global PDFs from the results structs
+% and copies them into a single "PDF_OUT" folder.
+
+pdfOutDir = fullfile(masterOutDir, 'PDF_OUT');
+if ~exist(pdfOutDir, 'dir'), mkdir(pdfOutDir); end
+
+fprintf('Rounding up non-Sputter PDFs into: %s\n', pdfOutDir);
+collectedPaths = {};
+
+% Loop through all result structs passed in
+for i = 1:numel(varargin)
+    res = varargin{i};
+    if ~isstruct(res), continue; end
+    
+    fnames = fieldnames(res);
+    
+    % Find fields that contain 'pdf'
+    pdfFields = fnames(contains(fnames, 'pdf', 'IgnoreCase', true));
+    
+    for k = 1:numel(pdfFields)
+        fname = pdfFields{k};
+        pdfPathStr = getFieldSafe(res, fname);
+        
+        if strlength(pdfPathStr) == 0
+            continue; % Skip empty paths
+        end
+        
+        % --- THIS IS THE FIX ---
+        % Exclude if EITHER the field name OR the path itself contains "Sputter"
+        isSputterField = contains(fname, 'Sputter', 'IgnoreCase', true);
+        isSputterPath  = contains(pdfPathStr, 'Sputter', 'IgnoreCase', true);
+        
+        if ~isSputterField && ~isSputterPath
+            % This is a "Solid" or "Global" field and path
+            collectedPaths{end+1} = char(pdfPathStr); %#ok<AGROW>
+        end
+        % --- END FIX ---
+    end
+end
+
+% Use existing helpers to get a clean list of files that exist
+finalPdfList = filterNonEmpty(collectedPaths);
+finalPdfList = cellfun(@getFileIfExists, finalPdfList, 'UniformOutput', false);
+finalPdfList = filterNonEmpty(finalPdfList);
+finalPdfList = unique(finalPdfList, 'stable'); % Avoid duplicates (e.g., from thetaRes)
+
+if isempty(finalPdfList)
+    fprintf('  No non-Sputter PDFs found to collect.\n');
+    return;
+end
+
+% Copy them over
+nCopied = 0;
+for i = 1:numel(finalPdfList)
+    try
+        [~, fname, fext] = fileparts(finalPdfList{i});
+        dest = fullfile(pdfOutDir, [fname, fext]);
+        copyfile(finalPdfList{i}, dest);
+        nCopied = nCopied + 1;
+    catch ME
+        warning('collectPdfs:copyFailed', 'Failed to copy %s: %s', finalPdfList{i}, ME.message);
+    end
+end
+fprintf('  Successfully copied %d PDF files.\n', nCopied);
 end

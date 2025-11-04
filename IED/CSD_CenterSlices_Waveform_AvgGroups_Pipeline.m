@@ -1,46 +1,37 @@
-  function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
+function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
 % CSD_CenterSlices_Waveform_AvgGroups_Pipeline
 % Left: per-event CSD slices at 0 ms, stacked as vertical tiles (channels x events)
 % Right: vertical waveform @ 0 ms (all events in gray, average in black)
 % Single tiledlayout to keep rows aligned; shared Y and one layout-level colorbar.
-% Channel 1 at TOP. Saves one PNG per group and a small CSV with summary stats.
+% Channel 1 at TOP. Saves PNGs + PDFs per group and a small stats CSV.
 %
 % OUTPUT struct:
-%   out.pngSolid, out.pngSputter, out.statsCSV
+%   out.pngSolid, out.pngSputter, out.pdfSolid, out.pdfSputter, out.statsCSV
 
 % ---------- Args ----------
 p = inputParser;
 p.addRequired('inputFolder', @(s)ischar(s)||isstring(s));
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
-
 p.addParameter('excelPath', "", @(s)ischar(s)||isstring(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x>0));
-
 p.addParameter('winHalfWidthMs',    20e-3, @(x)isfinite(x)&&x>0);   % ±20 ms around anchor
 p.addParameter('anchorHalfWidthMs',  5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms anchor search
-
 p.addParameter('sliceThickness', 6, @(x)isfinite(x) && x>=1 && mod(x,1)==0); % columns per event tile
 p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
-
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
-
 p.parse(inputFolder, dataMatPath, varargin{:});
-
 inputFolder   = string(p.Results.inputFolder);
 dataMatPath   = string(p.Results.dataMatPath);
 excelPath     = string(p.Results.excelPath);
 channelIdx    = p.Results.channelIndices;
 scaleToMicroV = p.Results.scaleToMicroV;
-
 winHWms       = p.Results.winHalfWidthMs;
 anchorHWms    = p.Results.anchorHalfWidthMs;
-
 sliceThick    = p.Results.sliceThickness;
 robPct        = p.Results.robustPct;
 padFrac       = p.Results.padFrac;
-
 maxEventsPer  = p.Results.maxEventsPerGroup;
 
 % ---------- Layout ----------
@@ -58,9 +49,14 @@ assert(isfile(excelPath), 'Excel not found: %s', excelPath);
 
 outRoot = fullfile(inputFolder, "CSD Center Slices Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
-outSOL = fullfile(outRoot, "CSD_CenterSlices_SOLID.png");
-outSPU = fullfile(outRoot, "CSD_CenterSlices_SPUTTER.png");
-outCSV = fullfile(outRoot, "CSD_CenterSlices_stats.csv");
+
+% --- MODIFIED: Added PDF paths ---
+outSOLpng = fullfile(outRoot, "CSD_CenterSlices_SOLID.png");
+outSPUpng = fullfile(outRoot, "CSD_CenterSlices_SPUTTER.png");
+outSOLpdf = fullfile(outRoot, "CSD_CenterSlices_SOLID.pdf");
+outSPUpdf = fullfile(outRoot, "CSD_CenterSlices_SPUTTER.pdf");
+outCSV    = fullfile(outRoot, "CSD_CenterSlices_stats.csv");
+% --- END MODIFIED ---
 
 % ---------- Data ----------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
@@ -92,13 +88,12 @@ HWwin    = max(1, round(winHWms    * sfx));  % ±display half-width
 HWanchor = max(1, round(anchorHWms * sfx));  % ±anchor search
 tRelMs   = (-HWwin:HWwin) / sfx * 1e3; %#ok<NASGU>
 centerIdx= HWwin + 1;
+
 % Indices to average the "center slice" over [-1, 0] ms
 i0_slice = centerIdx + round(-1e-3 * sfx);  % -1 ms
 i1_slice = centerIdx;                       %  0 ms
 i0_slice = max(1, min(2*HWwin+1, i0_slice));
 i1_slice = max(1, min(2*HWwin+1, i1_slice));
-
-
 fprintf('CSD Center Slices PIPELINE: sfx=%.1f Hz | window ±%.1f ms | anchor: lastCh max (±%.1f ms)\n', ...
     sfx, 1e3*HWwin/sfx, 1e3*HWanchor/sfx);
 
@@ -129,14 +124,17 @@ NrowsXL = numel(onSamp);
 evtSOL = parseEvtNumsFromPngs(solidDir);
 evtSPU = parseEvtNumsFromPngs(sputterDir);
 fprintf('Found %d SOLID, %d SPUTTER events (by filenames).\n', numel(evtSOL), numel(evtSPU));
+
 if ~isempty(maxEventsPer)
     evtSOL = evtSOL(1:min(end, maxEventsPer));
     evtSPU = evtSPU(1:min(end, maxEventsPer));
 end
 
 % ---------- Build & render ----------
-S1 = buildAndRender(evtSOL, 'SOLID',   outSOL);
-S2 = buildAndRender(evtSPU, 'SPUTTER', outSPU);
+% --- MODIFIED: Pass PDF paths to render function ---
+S1 = buildAndRender(evtSOL, 'SOLID',   outSOLpng, outSOLpdf);
+S2 = buildAndRender(evtSPU, 'SPUTTER', outSPUpng, outSPUpdf);
+% --- END MODIFIED ---
 
 % ---------- Stats CSV ----------
 try
@@ -156,43 +154,49 @@ catch ME
 end
 
 % ---------- Return ----------
-out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
+% --- MODIFIED: Add PDF paths to output struct ---
+out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
+             'pdfSolid', outSOLpdf, 'pdfSputter', outSPUpdf, ...
+             'statsCSV', outCSV);
+% --- END MODIFIED ---
 
 % ============================= HELPERS =============================
-
-    function Tgroup = buildAndRender(evtList, tag, outPath)
+    % --- MODIFIED: Function signature ---
+    function Tgroup = buildAndRender(evtList, tag, outPngPath, outPdfPath)
         Tgroup = table(); % default empty
         if isempty(evtList)
             warning('CSDCenterSlices:%s', '%s: no events to plot.', tag);
             return;
         end
-
+        
         S = nan(nCh, numel(evtList));  % per-event 0 ms CSD slice (channels x events)
         used = false(numel(evtList),1);
-
+        
         for ii = 1:numel(evtList)
             e = evtList(ii);
             rowXL = e;
             if rowXL < 1 || rowXL > NrowsXL, continue; end
-
+            
             s0_ev = round(onSamp(rowXL));
             s1_ev = round(offSamp(rowXL));
             if ~(isfinite(s0_ev) && isfinite(s1_ev) && s1_ev > s0_ev), continue; end
-
+            
             % Anchor by first-channel positive peak (±anchor window)
             ancMid = round((s0_ev + s1_ev)/2);
             s0a = max(1, ancMid - HWanchor);
             s1a = min(nSamp, ancMid + HWanchor);
             refCh = chList(end);
+            
             y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
             if isempty(y0) || all(~isfinite(y0)), continue; end
+            
             [~, k_rel] = max(y0);
             anchor = s0a + k_rel - 1;
-
+            
             % Window around anchor
             s0 = anchor - HWwin; s1 = anchor + HWwin;
             if s0 < 1 || s1 > nSamp, continue; end
-
+            
             % Extract block (channels x time) and CSD
             Y = nan(nCh, 2*HWwin+1);
             for k = 1:nCh
@@ -202,44 +206,52 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
                 if any(isfinite(y)), Y(k,:) = y; end
             end
             if all(~isfinite(Y(:))), continue; end
-
+            
             C = computeCSD(Y); % channels x time
-
             % Slice at t = 0 ms
             S(:,ii) = mean(C(:, i0_slice:i1_slice), 2, 'omitnan');
             used(ii) = true;
         end
-
+        
         if ~any(used)
             warning('CSDCenterSlices:%s', '%s: no usable events after alignment and windowing.', tag);
             return;
         end
-
+        
         S = S(:,used);              % keep only used events
         nEvt = size(S,2);
         MU  = mean(S,2, 'omitnan'); % mean vertical waveform (channels)
-
+        
         % Robust symmetric scale (shared by both panels in THIS group)
         vals = abs(S(:));
         vals = vals(isfinite(vals));
         if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
         clim = (1 + padFrac) * max(1, pval);
-
+        
         % -------- Figure (tight alignment) --------
         figH = min(320 + 14*nCh, 3400);
         f = figure('Color','w','Position',[60 60 1200 figH],'Visible','off');
+        
+        % --- START: Full Manual PDF Layout Control (Lesson 4) ---
+        set(f, 'Units', 'inches');
+        figPos_inches = get(f, 'Position');
+        set(f, 'PaperUnits', 'inches');
+        set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
+        set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
+        % --- END: Full Manual PDF Layout Control ---
+        
         colormap(f, jet);
-
+        
         % Single tiledlayout to lock vertical alignment
         tl = tiledlayout(f, 1, 2, 'Padding','compact', 'TileSpacing','compact');
-
+        
         % Channel labels once (left only) to fix text width asymmetry
         if isempty(kept_channels)
             chanLabels = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
         else
             chanLabels = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
-
+        
         % LEFT: per-event slices image (repeat columns = thickness)
         ax1 = nexttile(tl); 
         hold(ax1, 'on');
@@ -252,9 +264,9 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
         set(ax1,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
             'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, ...
             'Box','on', 'Layer','top', 'TickLength',[0 0]);
-
         caxis(ax1, [-clim, +clim]);
         colormap(ax1, jet);
+        
         % Colorbar attached to LEFT image axis (matches Time-Avg behavior)
         axes(ax1);                         % make left image axis current
         cb = colorbar;                     % create colorbar for ax1
@@ -264,7 +276,7 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
             set(cb,'Location','eastoutside'); % fallback for older MATLAB
         end
         cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
-
+        
         % Event centers on x
         if sliceThick >= 2
             centers = ( (0:nEvt-1)*sliceThick ) + ceil(sliceThick/2);
@@ -273,13 +285,14 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
         end
         xticks(ax1, centers); xticklabels(ax1, string(1:nEvt));
         xlabel(ax1, 'Event #'); ylabel(ax1, 'Channel (1 at top)');
-
+        
         % RIGHT: vertical waveform — all (gray) + average (black)
         ax2 = nexttile(tl); 
         hold(ax2, 'on'); grid(ax2,'on'); box(ax2,'on');
         set(ax2,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
             'FontSize',9, 'YTick',1:nCh, 'YTickLabel',[], ...
             'Layer','top', 'TickLength',[0 0]);
+        
         % contributors
         y = 1:nCh;
         for i = 1:nEvt
@@ -290,37 +303,41 @@ out = struct('pngSolid', outSOL, 'pngSputter', outSPU, 'statsCSV', outCSV);
         xline(ax2, 0, '--k', 'LineWidth', 0.8);
         xlim(ax2, [-clim, +clim]);
         xlabel(ax2, 'CSD (− sink   |   + source)');
-
+        
         % Match inner boxes & link Y
         set([ax1 ax2], 'LooseInset', max(get(ax1,'TightInset'), get(ax2,'TightInset')));
         linkaxes([ax1 ax2], 'y');
-
-        % Shared colorbar (no parent arg, for broader compatibility)
-        % % Colorbar that reflects the LEFT image's CLim
-        % cb = colorbar(ax1, 'eastoutside');
-        % cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
-
+        
         % Titles (small font to avoid crop) + group-level sgtitle
         title(ax1, sprintf('%s — CSD slices avg [-1, 0] ms (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
         title(ax2, sprintf('%s — Vertical waveform (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
         sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  window: \\pm%.1f ms  |  channels=%d', ...
             tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, nCh);
         sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
-
-        exportgraphics(f, outPath, 'Resolution', 220);
+        
+        % --- MODIFIED: Export PNG and PDF ---
+        % Save PNG
+        exportgraphics(f, outPngPath, 'Resolution', 220);
+        fprintf('Saved %s (PNG): %s\n', tag, outPngPath);
+        
+        % Save PDF (Lessons 1, 2, 3)
+        try
+            print(f, outPdfPath, '-dpdf', '-painters');
+            fprintf('Saved %s (PDF): %s\n', tag, outPdfPath);
+        catch ME
+            warning('Failed to save PDF file %s: %s', outPdfPath, ME.message);
+        end
+        
         close(f);
-        fprintf('Saved %s: %s\n', tag, outPath);
-
+        % --- END MODIFIED ---
+        
         % small stats table for CSV
         Tgroup = table(string(tag), size(S,2), clim, sliceThick, ...
                        1e3*HWanchor/sfx, 1e3*HWwin/sfx, string('OK'), ...
             'VariableNames', {'group','nEvents','clim','sliceThickness','anchorHW_ms','winHW_ms','note'});
     end
-
 end
-
 % --------- utilities ---------
-
 function evts = parseEvtNumsFromPngs(dirpath)
     L = dir(fullfile(dirpath, '*.png'));
     evts = [];
@@ -333,7 +350,6 @@ function evts = parseEvtNumsFromPngs(dirpath)
     end
     evts = sort(unique(evts));
 end
-
 function C = computeCSD(Ych_t)
 % (channels x time) voltage (µV) → CSD (channels x time)
 % Interior: standard 3-point stencil; edges replicated from nearest interior.

@@ -1,13 +1,12 @@
 function out = VoltageRaster_EventsAvg_Pipeline(inputFolder, dataMatPath, varargin)
 % VoltageRaster_EventsAvg_Pipeline
 % Wrapper that builds ONE averaged voltage raster per group (SOLID/SPUTTER),
-% saves PNGs + a stats CSV, and returns file paths so Pipeline_Main can
-% ingest them later.
+% saves PNGs + vector PDFs + a stats CSV, and returns file paths.
 %
 % Returns struct:
-%   out.pngSolid   -> "<inputFolder>/Voltage Raster Output/Raster_Avg_SOLID.png"
-%   out.pngSputter -> "<inputFolder>/Voltage Raster Output/Raster_Avg_SPUTTER.png"
-%   out.statsCSV   -> "<inputFolder>/Voltage Raster Output/VoltageRaster_Avg_stats.csv"
+%   out.pngSolid, out.pngSputter
+%   out.pdfSolid, out.pdfSputter
+%   out.statsCSV
 
 % ---------- Run the “core” and collect outputs ----------
 [paths, statsTable] = VoltageRaster_AvgGroups_core(inputFolder, dataMatPath, varargin{:});
@@ -26,9 +25,10 @@ end
 out = struct( ...
     'pngSolid',   paths.solidPng, ...
     'pngSputter', paths.sputterPng, ...
+    'pdfSolid',   paths.solidPdf, ...
+    'pdfSputter', paths.sputterPdf, ...
     'statsCSV',   statsCSV);
 end
-
 
 % ======================================================================
 %                             CORE IMPLEMENTATION
@@ -36,42 +36,32 @@ end
 function [paths, statsT] = VoltageRaster_AvgGroups_core(inputFolder, dataMatPath, varargin)
 % This is adapted from your VoltageRaster_AvgGroups (no functional changes),
 % but also returns a stats table for the pipeline.
-
 % ---------------- Args ----------------
 p = inputParser;
 p.addRequired('inputFolder', @(s)ischar(s)||isstring(s));
 p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
-
 p.addParameter('excelPath',"", @(s)ischar(s)||isstring(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x>0));
-
 p.addParameter('winHalfWidthMs',   20e-3, @(x)isfinite(x)&&x>0);   % ±20 ms display
 p.addParameter('metricHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms metrics on MEAN waveform
 p.addParameter('anchorHalfWidthMs', 5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms anchor search
-
 p.addParameter('climMicroV', [],            @(x) isempty(x) || (isscalar(x) && x>0));
 p.addParameter('yRobustPct', 99.5,          @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('climPadFrac', 0.12,         @(x) isfinite(x) && x>=0 && x<=0.5);
-
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
-
 p.parse(inputFolder, dataMatPath, varargin{:});
-
 inputFolder    = string(p.Results.inputFolder);
 dataMatPath    = string(p.Results.dataMatPath);
 excelPath      = string(p.Results.excelPath);
 channelIdx     = p.Results.channelIndices;
 scaleToMicroV  = p.Results.scaleToMicroV;
-
 winHWms        = p.Results.winHalfWidthMs;
 metHWms        = p.Results.metricHalfWidthMs;
 anchorHWms     = p.Results.anchorHalfWidthMs;
-
 climMicroVOpt  = p.Results.climMicroV;
 yRobustPct     = p.Results.yRobustPct;
 climPadFrac    = p.Results.climPadFrac;
-
 maxEventsPer   = p.Results.maxEventsPerGroup;
 
 % ---------------- Layout & IO ----------------
@@ -91,6 +81,8 @@ outRoot = fullfile(inputFolder, "Voltage Raster Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
 outSOLpng = fullfile(outRoot, "Raster_Avg_SOLID.png");
 outSPUpng = fullfile(outRoot, "Raster_Avg_SPUTTER.png");
+outSOLpdf = fullfile(outRoot, "Raster_Avg_SOLID.pdf");
+outSPUpdf = fullfile(outRoot, "Raster_Avg_SPUTTER.pdf");
 
 % ---------------- Data ----------------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
@@ -128,7 +120,6 @@ winN     = numel(tRelMs);
 metStart = HWwin - HWmet + 1;
 metEnd   = HWwin + HWmet + 1;
 Lmet     = metEnd - metStart + 1;
-
 fprintf('VoltageRaster_AvgGroups: sfx=%.1f Hz | window ±%.1f ms | anchor: lastCh max (±%.1f ms)\n', ...
     sfx, 1e3*HWwin/sfx, 1e3*HWanchor/sfx);
 
@@ -151,7 +142,6 @@ else
     onSamp  = double(T{:,1});
     offSamp = double(T{:,2});
 end
-
 % Bounds
 onSamp  = max(1, min(onSamp,  nSamp));
 offSamp = max(1, min(offSamp, nSamp));
@@ -175,7 +165,7 @@ end
 if isempty(S_mu) && isempty(P_mu)
     warning('VoltageRaster_AvgGroups: no average rasters created.');
     statsT = table(); % nothing to report
-    paths = struct('solidPng','', 'sputterPng','');
+    paths = struct('solidPng','', 'sputterPng','', 'solidPdf','', 'sputterPdf','');
     return;
 end
 
@@ -192,9 +182,14 @@ end
 fprintf('Global CLim (averages): ±%.2f µV.\n', climGlobal);
 
 % ---------------- Render both with same CLim, 1 at TOP ----------------
-pngSOL = ''; pngSPU = '';
-if ~isempty(S_mu), pngSOL = renderAvgRaster(S_mu, 'SOLID', outSOLpng, climGlobal, S_stats); end
-if ~isempty(P_mu), pngSPU = renderAvgRaster(P_mu, 'SPUTTER', outSPUpng, climGlobal, P_stats); end
+pngSOL = ''; pngSPU = ''; pdfSOL = ''; pdfSPU = '';
+
+if ~isempty(S_mu)
+    [pngSOL, pdfSOL] = renderAvgRaster(S_mu, 'SOLID', outSOLpng, outSOLpdf, climGlobal, S_stats); 
+end
+if ~isempty(P_mu)
+    [pngSPU, pdfSPU] = renderAvgRaster(P_mu, 'SPUTTER', outSPUpng, outSPUpdf, climGlobal, P_stats); 
+end
 
 % ---------------- Build stats table for pipeline ----------------
 statsT = table();
@@ -205,42 +200,43 @@ if ~isempty(P_mu)
     statsT = [statsT; summarizeGroup('SPUTTER', P_stats, climGlobal, nCh, sfx, winHWms, anchorHWms)]; %#ok<AGROW>
 end
 
-paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
+paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sputterPdf', pdfSPU);
 
 % ============================= HELPERS =============================
     function [MU, stats] = buildAvg(evtList, tag)
         MU = []; stats = struct('nEvents',0,'ampMean',NaN,'ampSD',NaN,'hwMean',NaN,'hwSD',NaN);
         if isempty(evtList), return; end
-
+        
         sumY  = zeros(nCh, winN);
         nUsed = 0;
-
         perCh_amp = nan(nCh,1);
         perCh_hw  = nan(nCh,1);
-
+        
         for ii = 1:numel(evtList)
             e = evtList(ii);
             rowXL = e;
             if rowXL < 1 || rowXL > NrowsXL, continue; end
-
+            
             s0_ev = round(onSamp(rowXL));
             s1_ev = round(offSamp(rowXL));
             if ~(isfinite(s0_ev) && isfinite(s1_ev) && s1_ev > s0_ev), continue; end
-
+            
             % Anchor by first-channel positive peak (±anchor window)
             ancMid = round((s0_ev + s1_ev)/2);
             s0a = max(1, ancMid - HWanchor);
             s1a = min(nSamp, ancMid + HWanchor);
             refCh = chList(end);
+            
             y0 = double(mf.d(refCh, s0a:s1a)) * scaleVec(refCh);
             if isempty(y0) || all(~isfinite(y0)), continue; end
+            
             [~, k_rel] = max(y0);
             anchor = s0a + k_rel - 1;
-
+            
             % Window
             s0 = anchor - HWwin; s1 = anchor + HWwin;
             if s0 < 1 || s1 > nSamp, continue; end
-
+            
             okAny = false;
             for k = 1:nCh
                 ch = chList(k);
@@ -253,43 +249,47 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
             end
             if okAny, nUsed = nUsed + 1; end
         end
-
+        
         if nUsed == 0, return; end
         MU = sumY / nUsed;
         stats.nEvents = nUsed;
-
+        
         % Per-channel metrics on MEAN waveform (±metric window)
         metStartL = HWwin - HWmet + 1;
         metEndL   = HWwin + HWmet + 1;
         LmetL     = metEndL - metStartL + 1;
-
+        
         for k = 1:nCh
             mu = MU(k,:);
             muMet = mu(metStartL:metEndL);
             if numel(muMet) >= 3 && all(isfinite(muMet))
                 [mx, kMax] = max(muMet);
                 [mn, kMin] = min(muMet);
+                
                 if abs(mn) > abs(mx)
                     sgn = -1; amp = abs(mn); pkRel = kMin;
                 else
                     sgn = +1; amp = abs(mx); pkRel = kMax;
                 end
+                
                 h  = 0.5 * amp; sig = sgn * muMet;
-
+                
                 % Left crossing
                 kL = pkRel; 
                 while kL > 1 && sig(kL) >= h, kL = kL - 1; end
-                if kL >= 1 && (kL+1) <= LmetL
+                
+                % ***** THIS IS THE CORRECTED LINE *****
+                if kL >= 1 && (kL+1) <= LmetL && sig(kL) < h && sig(kL+1) >= h
                     left_ip = kL + (h - sig(kL)) / (sig(kL+1) - sig(kL));
                 else, left_ip = NaN; end
-
+                
                 % Right crossing
                 kR = pkRel;
                 while kR < LmetL && sig(kR) >= h, kR = kR + 1; end
-                if (kR-1) >= 1 && kR <= LmetL
+                if (kR-1) >= 1 && kR <= LmetL && sig(kR-1) >= h && sig(kR) < h
                     right_ip = (kR-1) + (h - sig(kR-1)) / (sig(kR) - sig(kR-1));
                 else, right_ip = NaN; end
-
+                
                 if isfinite(left_ip) && isfinite(right_ip) && right_ip > left_ip
                     hw_ms = (right_ip - left_ip) / sfx * 1e3;
                 else
@@ -299,37 +299,62 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU);
                 perCh_hw(k)  = hw_ms;
             end
         end
-
         stats.ampMean = mean(perCh_amp, 'omitnan');
         stats.ampSD   = std( perCh_amp, 0, 'omitnan');
         stats.hwMean  = mean(perCh_hw,  'omitnan');
         stats.hwSD    = std( perCh_hw,  0, 'omitnan');
     end
 
-    function outPath = renderAvgRaster(MU, tag, outPath, clim, stats)
+    function [outPngPath, outPdfPath] = renderAvgRaster(MU, tag, outPngPath, outPdfPath, clim, stats)
         perRowPx = 12; basePx = 260; maxPx = 2600;
         figH = min(maxPx, basePx + perRowPx * nCh);
         f = figure('Color','w','Position',[90 90 1100 figH],'Visible','off');
+        
+        % --- START: Full Manual PDF Layout Control ---
+        % Set the figure's units to inches
+        set(f, 'Units', 'inches');
+        
+        % Get the figure's position [left, bottom, width, height] in inches
+        figPos_inches = get(f, 'Position');
+        
+        % Set the PDF 'page' (PaperSize) to be the *exact* size of the figure
+        set(f, 'PaperUnits', 'inches');
+        set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
+        
+        % Set the figure's position on the 'page' to fill it completely
+        set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
+        % --- END: Full Manual PDF Layout Control ---
 
         imagesc(tRelMs, 1:nCh, MU);
         set(gca, 'YDir', 'reverse');          % 1 at top
         caxis([-clim, +clim]);
         colormap(jet); colorbar;
-
         xlabel('Time (ms)');
+        
         if isempty(kept_channels)
             L = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
         else
             L = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
+        
         set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
-
         title(sprintf('Avg %s', tag), 'FontSize', 12, 'FontWeight', 'bold');
-
-
-        exportgraphics(f, outPath, 'Resolution', 220);
+        
+        % Save PNG
+        exportgraphics(f, outPngPath, 'Resolution', 220);
+        fprintf('Saved %s average raster (PNG): %s\n', tag, outPngPath);
+        
+        % Save PDF
+        try
+            % 'print' will NOW obey the manual PaperSize and PaperPosition
+            print(f, outPdfPath, '-dpdf', '-painters');
+            fprintf('Saved %s average raster (PDF): %s\n', tag, outPdfPath);
+        catch ME
+            warning('Failed to save PDF file %s: %s', outPdfPath, ME.message);
+            outPdfPath = ''; % Return empty if failed
+        end
+        
         close(f);
-        fprintf('Saved %s average raster: %s\n', tag, outPath);
     end
 
     function evts = parseEvtNumsFromPngs(dirpath)
