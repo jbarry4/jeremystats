@@ -32,6 +32,7 @@ p.addParameter('sliceThickness', 6, @(x)isfinite(x) && x>=1 && mod(x,1)==0);
 p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
+p.addParameter('absoluteClim', 1000, @(x) isempty(x) || (isscalar(x) && x>0));
 p.parse(inputFolder, dataMatPath, varargin{:});
 inputFolder   = string(p.Results.inputFolder);
 dataMatPath   = string(p.Results.dataMatPath);
@@ -46,6 +47,7 @@ sliceThick    = p.Results.sliceThickness;
 robPct        = p.Results.robustPct;
 padFrac       = p.Results.padFrac;
 maxEventsPer  = p.Results.maxEventsPerGroup;
+absoluteClim  = p.Results.absoluteClim;
 
 % ---------- Layout ----------
 solidDir   = fullfile(inputFolder, "Solid");
@@ -104,9 +106,9 @@ i1 = centerIdx + round(avgEndMs   * sfx);
 i0 = max(1, min(i0, numel(tRelMs)));
 i1 = max(1, min(i1, numel(tRelMs)));
 if i1 < i0, [i0,i1] = deal(i1,i0); end
-fprintf(['CSD Time-Average Slices: sfx=%.1f Hz | capture ±%.1f ms | avg window [%+.1f,%+.1f] ms ' ...
+fprintf(['CSD Time-Average Slices: sfx=%.1f Hz | avg window [%+.1f,%+.1f] ms ' ...
          '| anchor: lastCh max (±%.1f ms)\n'], ...
-    sfx, 1e3*HWwin/sfx, 1e3*avgStartMs, 1e3*avgEndMs, 1e3*HWanchor/sfx);
+    sfx, 1e3*avgStartMs, 1e3*avgEndMs, 1e3*HWanchor/sfx);
 
 % ---------- Excel -> sample indices ----------
 T = readtable(excelPath, 'ReadVariableNames', true);
@@ -188,6 +190,7 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     HWanchor = evalin('caller','HWanchor'); HWwin = evalin('caller','HWwin');
     i0 = evalin('caller','i0'); i1 = evalin('caller','i1');
     sliceThick = evalin('caller','sliceThick'); robPct = evalin('caller','robPct'); padFrac = evalin('caller','padFrac');
+    absoluteClim = evalin('caller','absoluteClim'); 
 
     S = nan(nCh, numel(evtList));  % per-event TIME-AVERAGED CSD (channels x events)
     used = false(numel(evtList),1);
@@ -244,9 +247,14 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     MU  = mean(S,2, 'omitnan'); % mean vertical waveform (channels)
     
     % Robust symmetric scale
-    vals = abs(S(:)); vals = vals(isfinite(vals));
-    if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
-    clim = (1 + padFrac) * max(1, pval);
+    if ~isempty(absoluteClim)
+        clim = absoluteClim; % Use the user-provided absolute value
+    else
+        % Original autoscaling logic
+        vals = abs(S(:)); vals = vals(isfinite(vals));
+        if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
+        clim = (1 + padFrac) * max(1, pval);
+    end
     
     % -------- Figure (tight alignment) --------
     figH = min(320 + 14*nCh, 3400);
@@ -319,8 +327,8 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     % Titles
     title(ax1, sprintf('%s — TIME-AVG CSD (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
     title(ax2, sprintf('%s — Vertical waveform (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
-    sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  capture: \\pm%.1f ms  |  avg window [%+.1f,%+.1f] ms  |  channels=%d', ...
-        tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, 1e3*evalin('caller','avgStartMs'), 1e3*evalin('caller','avgEndMs'), nCh);
+    sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  avg window [%+.1f,%+.1f] ms  |  channels=%d', ...
+        tag, 1e3*HWanchor/sfx, 1e3*evalin('caller','avgStartMs'), 1e3*evalin('caller','avgEndMs'), nCh);
     sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
     
     % --- MODIFIED: Export PNG and PDF ---

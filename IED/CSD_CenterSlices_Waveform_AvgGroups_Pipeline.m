@@ -21,6 +21,7 @@ p.addParameter('sliceThickness', 6, @(x)isfinite(x) && x>=1 && mod(x,1)==0); % c
 p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
+p.addParameter('absoluteClim', 1000, @(x) isempty(x) || (isscalar(x) && x>0)); 
 p.parse(inputFolder, dataMatPath, varargin{:});
 inputFolder   = string(p.Results.inputFolder);
 dataMatPath   = string(p.Results.dataMatPath);
@@ -33,6 +34,7 @@ sliceThick    = p.Results.sliceThickness;
 robPct        = p.Results.robustPct;
 padFrac       = p.Results.padFrac;
 maxEventsPer  = p.Results.maxEventsPerGroup;
+absoluteClim  = p.Results.absoluteClim; 
 
 % ---------- Layout ----------
 solidDir   = fullfile(inputFolder, "Solid");
@@ -223,10 +225,15 @@ out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
         MU  = mean(S,2, 'omitnan'); % mean vertical waveform (channels)
         
         % Robust symmetric scale (shared by both panels in THIS group)
-        vals = abs(S(:));
-        vals = vals(isfinite(vals));
-        if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
-        clim = (1 + padFrac) * max(1, pval);
+        if ~isempty(absoluteClim)
+            clim = absoluteClim; % Use the user-provided absolute value
+        else
+            % Original autoscaling logic
+            vals = abs(S(:));
+            vals = vals(isfinite(vals));
+            if isempty(vals), pval = 1; else, pval = prctile(vals, robPct); end
+            clim = (1 + padFrac) * max(1, pval);
+        end
         
         % -------- Figure (tight alignment) --------
         figH = min(320 + 14*nCh, 3400);
@@ -308,11 +315,12 @@ out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
         set([ax1 ax2], 'LooseInset', max(get(ax1,'TightInset'), get(ax2,'TightInset')));
         linkaxes([ax1 ax2], 'y');
         
+   
         % Titles (small font to avoid crop) + group-level sgtitle
         title(ax1, sprintf('%s — CSD slices avg [-1, 0] ms (n=%d)', tag, nEvt), 'FontSize',10, 'FontWeight','bold');
         title(ax2, sprintf('%s — Vertical waveform (mean in black)', tag), 'FontSize',10, 'FontWeight','bold');
-        sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  window: \\pm%.1f ms  |  channels=%d', ...
-            tag, 1e3*HWanchor/sfx, 1e3*HWwin/sfx, nCh);
+        sg = sprintf('%s  |  align: last-channel max (\\pm%.1f ms)  |  channels=%d', ...
+            tag, 1e3*HWanchor/sfx, nCh);
         sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
         
         % --- MODIFIED: Export PNG and PDF ---
