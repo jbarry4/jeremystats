@@ -1,6 +1,7 @@
 function out = Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline(inputFolder, dataMatPath, varargin)
 % Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline
 % - Uses the 3rd event from SOLID and SPUTTER (if present)
+% --- MODIFIED: If 3rd event not present, defaults to 1st event ---
 % - Picks 4 evenly spaced channels (prefers even rows), or from 'channelIndices' if provided
 % - Aligns on last-selected channel positive peak within ±anchorHalfWidthMs of midpoint
 % - Window: ±100 ms around anchor
@@ -141,17 +142,32 @@ else
 end
 nCh = numel(chSel);
 
-% ---------- Render 3rd event of each group ----------
-% --- MODIFIED: Capture both PNG and PDF outputs ---
+% ---------- Render 3rd event (or 1st) of each group ----------
+% --- MODIFIED: Default to 1st event if 3rd is not available ---
 if numel(evtSOL) >= 3
+    % Has 3 or more, use the 3rd
+    fprintf('SOLID: Found %d events, using 3rd event (Evt %d).\n', numel(evtSOL), evtSOL(3));
     [out.pngSolid, out.pdfSolid] = renderOne(evtSOL(3), 'SOLID', outSOL, chSel);
+elseif numel(evtSOL) >= 1
+    % Has 1 or 2, use the 1st
+    warning('SOLID: Found only %d events (fewer than 3). Defaulting to 1st event (Evt %d).', numel(evtSOL), evtSOL(1));
+    [out.pngSolid, out.pdfSolid] = renderOne(evtSOL(1), 'SOLID', outSOL, chSel);
 else
-    warning('SOLID: fewer than 3 events — skipping.');
+    % Has 0
+    warning('SOLID: No events found — skipping spectrogram.');
 end
+
 if numel(evtSPU) >= 3
+    % Has 3 or more, use the 3rd
+    fprintf('SPUTTER: Found %d events, using 3rd event (Evt %d).\n', numel(evtSPU), evtSPU(3));
     [out.pngSputter, out.pdfSputter] = renderOne(evtSPU(3), 'SPUTTER', outSPU, chSel);
+elseif numel(evtSPU) >= 1
+    % Has 1 or 2, use the 1st
+    warning('SPUTTER: Found only %d events (fewer than 3). Defaulting to 1st event (Evt %d).', numel(evtSPU), evtSPU(1));
+    [out.pngSputter, out.pdfSputter] = renderOne(evtSPU(1), 'SPUTTER', outSPU, chSel);
 else
-    warning('SPUTTER: fewer than 3 events — skipping.');
+    % Has 0
+    warning('SPUTTER: No events found — skipping spectrogram.');
 end
 % --- END MODIFIED ---
 
