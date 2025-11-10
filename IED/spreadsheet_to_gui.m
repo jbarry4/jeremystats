@@ -1,8 +1,10 @@
 function spreadsheet_to_gui(excelPath, dataMatPath, varargin)
-% spreadsheet_to_gui (v3)
+% spreadsheet_to_gui (v4)
 % Creates a robust, lightweight GUI to manually click and save anchor points
 % for events defined in a spreadsheet.
 %
+% - v4: Optimized for visualization. Removed labels/ticks, increased
+%       line width, and set tile spacing to 'none' for a clean look.
 % - Uses matfile for fast, on-demand data loading.
 % - Robustly handles events near the start/end of the file (NaN padding).
 % - Includes GUI controls to change X-Window (ms) and Y-Limit (µV).
@@ -31,7 +33,7 @@ winHWms      = p.Results.winHalfWidthMs;
 yLimInitial  = p.Results.yLimMicroV;
 yRobustPct   = p.Results.yRobustPct;
 
-fprintf('===== spreadsheet_to_gui (v3) =====\n');
+fprintf('===== spreadsheet_to_gui (v4) =====\n');
 
 % ---------- 2. Setup IO & Data ----------
 assert(isfile(excelPath), 'Excel file not found: %s', excelPath);
@@ -229,8 +231,8 @@ function updatePlot(fig)
         % --- First time: Create all axes and plot objects ---
         cla(ud.plotPanel); % Clear the 'loading' text
         
-        % *** BUG FIX: Create layout in the PANEL ***
-        tl = tiledlayout(ud.plotPanel, ud.nCh, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+        % *** v4: Set TileSpacing to 'none' for max vertical space ***
+        tl = tiledlayout(ud.plotPanel, ud.nCh, 1, 'Padding', 'compact', 'TileSpacing', 'none');
         ud.tiledLayout = tl; % Store handle
         
         ud.AxesTiles = cell(ud.nCh, 1);
@@ -244,7 +246,7 @@ function updatePlot(fig)
         end
         
         for k = 1:ud.nCh
-            ax_k = nexttile(tl); % *** BUG FIX: `tl` is the parent ***
+            ax_k = nexttile(tl);
             ch = ud.chList(k);
             sc = ud.scaleVec(ch);
             
@@ -259,14 +261,14 @@ function updatePlot(fig)
             if idx_start_in_y_full >= 1 && idx_end_in_y_full <= numel(y_full)
                 y_full(idx_start_in_y_full:idx_end_in_y_full) = y_data;
             else
-                % This should not happen, but as a fallback, plot what we can
                 if ~isempty(y_data)
                     y_full(1:numel(y_data)) = y_data(1:numel(y_full));
                 end
             end
             % --- END ROBUST EXTRACTION ---
 
-            h = plot(ax_k, ud.tRelMs, y_full, 'Color', [0.1 0.1 0.8]);
+            % *** v4: Increased LineWidth ***
+            h = plot(ax_k, ud.tRelMs, y_full, 'Color', [0.1 0.1 0.8], 'LineWidth', 1.5);
             
             if yLimAutoSet
                 yy = y_data(isfinite(y_data));
@@ -280,11 +282,15 @@ function updatePlot(fig)
             grid(ax_k, 'on');
             box(ax_k, 'on');
             xlim(ax_k, [ud.tRelMs(1), ud.tRelMs(end)]);
-            ylabel(ax_k, '\muV');
-            title(ax_k, ud.chanLabels{k}, 'FontSize', 9, 'FontWeight', 'normal');
+            
+            % *** v4: Remove labels for space ***
+            % ylabel(ax_k, '\muV');
+            % title(ax_k, ud.chanLabels{k}, 'FontSize', 9, 'FontWeight', 'normal');
             set(ax_k, 'FontSize', 8);
+            set(ax_k, 'YTick', []); % Remove Y-ticks
+            
             if k < ud.nCh
-                set(ax_k, 'XTickLabel', []); % Remove x-labels
+                set(ax_k, 'XTickLabel', []); % Remove x-labels for all but last
             end
             
             % Set the click callback for this specific tile
@@ -293,22 +299,25 @@ function updatePlot(fig)
             ud.PlotHandles{k} = h;
             ud.AxesTiles{k} = ax_k;
         end
-        xlabel(ax_k, 'Time relative to Midpoint (ms)');
+        xlabel(ax_k, 'Time relative to Midpoint (ms)'); % Keep on last plot
         
         % Set initial Y-Lim
         if yLimAutoSet
-            yLimMax = max(10, yLimMax * 1.1); % Add 10% padding, min of ±10
+            yLimMax = max(10, yLimMax); % v4: Use robust max, no extra padding
             ud.yLimCurrent = [-yLimMax, yLimMax];
-            ud.yLimEdit.Value = yLimMax;
+            ud.yLimEdit.Value = round(yLimMax); % v4: Set box to actual value
         end
         for k = 1:ud.nCh
             set(ud.AxesTiles{k}, 'YLim', ud.yLimCurrent);
         end
         
-        % Create persistent visual guide lines
-        ud.MidpointLine = xline(ud.AxesTiles{1}, tRelMs_Mid, '--k', 'Midpoint', 'LineWidth', 1.5, 'HandleVisibility', 'off');
-        ud.AnchorLine   = xline(ud.AxesTiles{1}, NaN, '-r', 'Anchor', 'LineWidth', 2.0, 'HandleVisibility', 'off');
-        % Link all axes to share the lines
+        % *** v4: Bug Fix - Create line array ***
+        ud.MidpointLine = gobjects(ud.nCh, 1);
+        ud.AnchorLine   = gobjects(ud.nCh, 1);
+        for k = 1:ud.nCh
+            ud.MidpointLine(k) = xline(ud.AxesTiles{k}, tRelMs_Mid, '--k', 'Midpoint', 'LineWidth', 1.5, 'HandleVisibility', 'off');
+            ud.AnchorLine(k)   = xline(ud.AxesTiles{k}, NaN, '-r', 'Anchor', 'LineWidth', 2.0, 'HandleVisibility', 'off');
+        end
         linkaxes([ud.AxesTiles{:}], 'x');
         
     else
@@ -336,8 +345,8 @@ function updatePlot(fig)
         xlim(ud.AxesTiles{1}, [ud.tRelMs(1), ud.tRelMs(end)]);
     end
     
-    % --- Update Visual Guides ---
-    set(ud.MidpointLine, 'Value', tRelMs_Mid); % This is always 0
+    % --- Update Visual Guides (v4: works on array) ---
+    set(ud.MidpointLine, 'Value', tRelMs_Mid);
     
     selected_anchor_samp = ud.Results.manual_anchor_samp(idx);
     if isfinite(selected_anchor_samp)
@@ -372,9 +381,7 @@ function recordClick(fig, evt)
     mid = round((onsamp + offsamp) / 2);
     
     % --- 3. Calculate absolute anchor sample ---
-    % Convert relative time (ms) to relative samples
     clicked_samp_rel = round(clicked_time_ms / 1000 * ud.sfx);
-    % Add relative samples to midpoint sample
     manual_anchor_samp = mid + clicked_samp_rel;
     
     % --- 4. Store the result ---
@@ -511,7 +518,8 @@ function changeXWindow(fig, src)
 end
 
 function changeYLim(fig, src)
-    ud = fig.Example;
+    % *** v4: Bug Fix - use UserData ***
+    ud = fig.UserData;
     newYLim = src.Value;
     
     if newYLim <= 0
@@ -524,7 +532,7 @@ function changeYLim(fig, src)
     
     % Apply to all existing axes
     for k = 1:ud.nCh
-        if ~isempty(ud.AxesTiles) && isgraphics(ud.AxesTiles{k})
+        if ~isempty(ud.AxesTiles) && numel(ud.AxesTiles) >= k && isgraphics(ud.AxesTiles{k})
             set(ud.AxesTiles{k}, 'YLim', ud.yLimCurrent);
         end
     end
