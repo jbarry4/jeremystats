@@ -1,11 +1,16 @@
 function spreadsheet_to_gui(excelPath, dataMatPath, varargin)
-% spreadsheet_to_gui
-% Creates a lightweight GUI to manually click and save anchor points for
-% events defined in a spreadsheet.
+% spreadsheet_to_gui (v2)
+% Creates a robust, lightweight GUI to manually click and save anchor points
+% for events defined in a spreadsheet.
+%
+% - Uses matfile for fast, on-demand data loading.
+- Robustly handles events near the start/end of the file (NaN padding).
+% - Includes GUI controls to change X-Window (ms) and Y-Limit (µV).
 %
 % USAGE:
 %   spreadsheet_to_gui("events.xlsx", "data.mat")
-%   spreadsheet_to_gui("events.xlsx", "data.mat", 'channelIndices', 1:32, 'winHalfWidthMs', 1000)
+%   spreadsheet_to_gui("events.xlsx", "data.mat", 'yLimMicroV', 500) % Start with fixed Y
+%   spreadsheet_to_gui("events.xlsx", "data.mat", 'channelIndices', 1:32)
 
 % ---------- 1. Input Parsing ----------
 p = inputParser;
@@ -13,7 +18,9 @@ p.addRequired('excelPath', @(s) isstring(s) || ischar(s));
 p.addRequired('dataMatPath', @(s) isstring(s) || ischar(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x>0));
-p.addParameter('winHalfWidthMs', 1000, @(x)isfinite(x)&&x>0); % Default: ±1 second window
+p.addParameter('winHalfWidthMs', 20, @(x)isfinite(x)&&x>0);   % Default: ±20 ms
+p.addParameter('yLimMicroV', [], @(x) isempty(x) || (isscalar(x) && x>0)); % Default: auto
+p.addParameter('yRobustPct', 99.5, @(x) isfinite(x) && x>0 && x<100);
 
 p.parse(excelPath, dataMatPath, varargin{:});
 excelPath    = string(p.Results.excelPath);
@@ -21,8 +28,10 @@ dataMatPath  = string(p.Results.dataMatPath);
 channelIdx   = p.Results.channelIndices;
 scaleToMicroV= p.Results.scaleToMicroV;
 winHWms      = p.Results.winHalfWidthMs;
+yLimInitial  = p.Results.yLimMicroV;
+yRobustPct   = p.Results.yRobustPct;
 
-fprintf('===== spreadsheet_to_gui =====\n');
+fprintf('===== spreadsheet_to_gui (v2) =====\n');
 
 % ---------- 2. Setup IO & Data ----------
 assert(isfile(excelPath), 'Excel file not found: %s', excelPath);
@@ -64,9 +73,8 @@ else
 end
 
 % ---------- 4. Windowing Setup ----------
-HWwin    = max(1, round(winHWms    * sfx));  % ±plot half-width
+HWwin    = max(1, round(winHWms / 1000 * sfx));  % ±plot half-width (in samples)
 tRelMs   = (-HWwin:HWwin) / sfx * 1e3;
-winN     = numel(tRelMs); %#ok<NASGU>
 
 % ---------- 5. Read Excel File ----------
 fprintf('Reading event stamps... ');
@@ -90,13 +98,9 @@ fig = uifigure('Name', 'Spreadsheet-to-GUI Anchor Tool', ...
                'CloseRequestFcn', @(src,evt) closeGUI(src));
 
 % Main grid layout
-gl = uigridlayout(fig, [10, 4]);
-gl.RowHeight = {'1x', 'fit', 'fit'};
+gl = uigridlayout(fig, [11, 4]);
+gl.RowHeight = {'1x', '1x', '1x', '1x', '1x', '1x', '1x', '2x', 'fit', 'fit', 30};
 gl.ColumnWidth = {'1x', '1x', '1x', '1x'};
-gl.RowHeight(1:7) = {'1x'};
-gl.RowHeight(8) = {'2x'}; % Make plot area large
-gl.RowHeight(9) = {'fit'};
-gl.RowHeight(10) = {30};
 
 % Plotting area
 ax = uiaxes(gl);
@@ -108,34 +112,49 @@ ax.XTick = [];
 ax.XTickLabel = [];
 box(ax, 'on');
 
-% Status label
+% --- GUI Controls Row ---
+xWinLabel = uilabel(gl, 'Text', 'Window (ms):', 'HorizontalAlignment', 'right');
+xWinLabel.Layout.Row = 9; xWinLabel.Layout.Column = 1;
+
+xWinEdit = uieditfield(gl, 'numeric', 'Value', winHWms, ...
+                       'ValueChangedFcn', @(src,evt) changeXWindow(fig, src));
+xWinEdit.Layout.Row = 9; xWinEdit.Layout.Column = 2;
+
+yLimLabel = uilabel(gl, 'Text', 'Y-Lim (µV):', 'HorizontalAlignment', 'right');
+yLimLabel.Layout.Row = 9; yLimLabel.Layout.Column = 3;
+
+yLimEdit = uieditfield(gl, 'numeric', 'Value', 0, ...
+                       'ValueChangedFcn', @(src,evt) changeYLim(fig, src));
+yLimEdit.Layout.Row = 9; yLimEdit.Layout.Column = 4;
+
+% --- Status Label Row ---
 statusLabel = uilabel(gl, 'Text', 'Loading...', ...
                       'FontSize', 14, 'FontWeight', 'bold', ...
                       'HorizontalAlignment', 'center');
-statusLabel.Layout.Row = 9;
+statusLabel.Layout.Row = 10;
 statusLabel.Layout.Column = [1 4];
 
-% Buttons
+% --- Button Row ---
 prevButton = uibutton(gl, 'Text', '<< Prev Event', ...
                     'ButtonPushedFcn', @(src,evt) prevClicked(fig));
-prevButton.Layout.Row = 10;
+prevButton.Layout.Row = 11;
 prevButton.Layout.Column = 1;
 
 skipButton = uibutton(gl, 'Text', 'Skip Event >>', ...
                     'ButtonPushedFcn', @(src,evt) skipClicked(fig), ...
                     'FontColor', [0.8 0 0]);
-skipButton.Layout.Row = 10;
+skipButton.Layout.Row = 11;
 skipButton.Layout.Column = 2;
 
 nextButton = uibutton(gl, 'Text', 'Next Event >>', ...
                     'ButtonPushedFcn', @(src,evt) nextClicked(fig));
-nextButton.Layout.Row = 10;
+nextButton.Layout.Row = 11;
 nextButton.Layout.Column = 3;
 
 saveButton = uibutton(gl, 'Text', 'Finish & Save CSV', ...
                     'ButtonPushedFcn', @(src,evt) saveClicked(fig), ...
                     'BackgroundColor', [0.1 0.7 0.1], 'FontColor', 'w');
-saveButton.Layout.Row = 10;
+saveButton.Layout.Row = 11;
 saveButton.Layout.Column = 4;
 
 % ---------- 8. Store State in UserData ----------
@@ -150,14 +169,18 @@ ud.chList = chList;
 ud.nCh = nCh;
 ud.chanLabels = chanLabels;
 ud.scaleVec = scaleVec;
-ud.HWwin = HWwin;
+ud.winHalfWidthMs = winHWms; % Store in ms
+ud.HWwin = HWwin;             % Store in samples
 ud.tRelMs = tRelMs;
+ud.yRobustPct = yRobustPct;
 ud.ax = ax;
 ud.statusLabel = statusLabel;
+ud.yLimEdit = yLimEdit;
 ud.PlotHandles = {};      % Cell array for line handles
 ud.MidpointLine = [];   % Handle for the midpoint xline
 ud.AnchorLine = [];     % Handle for the selected anchor xline
 ud.AxesTiles = {};        % Handles to the individual axes tiles
+ud.yLimCurrent = yLimInitial; % Will be set on first plot if empty
 
 fig.UserData = ud;
 
@@ -180,16 +203,21 @@ function updatePlot(fig)
     offsamp = ud.T_events.offsamp(idx);
     mid = round((onsamp + offsamp) / 2);
     
-    % --- Define plot window ---
-    s0 = mid - ud.HWwin;
-    s1 = mid + ud.HWwin;
+    % --- Define plot window (IDEAL) ---
+    s0_ideal = mid - ud.HWwin;
+    s1_ideal = mid + ud.HWwin;
     
-    % --- Check for out-of-bounds ---
-    if s0 < 1 || s1 > ud.nSamp
+    % --- *** ROBUSTNESS FIX *** ---
+    % --- Clamp window to valid data range ---
+    s0_plot = max(1, s0_ideal);
+    s1_plot = min(ud.nSamp, s1_ideal);
+    
+    % --- Check for completely invalid window ---
+    if s1_plot <= s0_plot
         cla(ud.ax); % Clear the main axes
-        text(ud.ax, 0.5, 0.5, sprintf('Event %d: Plot window is out of bounds.\nData may be corrupt or window is too large.', idx), ...
+        text(ud.ax, 0.5, 0.5, sprintf('Event %d: Plot window is invalid.\n(s0=%d, s1=%d)', idx, s0_plot, s1_plot), ...
             'HorizontalAlignment', 'center', 'Color', 'r', 'FontSize', 14);
-        ud.statusLabel.Text = sprintf('Event %d of %d (OUT OF BOUNDS)', idx, height(ud.T_events));
+        ud.statusLabel.Text = sprintf('Event %d of %d (INVALID WINDOW)', idx, height(ud.T_events));
         return;
     end
     
@@ -203,13 +231,45 @@ function updatePlot(fig)
         ud.AxesTiles = cell(ud.nCh, 1);
         ud.PlotHandles = cell(ud.nCh, 1);
         
+        yLimAutoSet = false;
+        if isempty(ud.yLimCurrent)
+            % Auto-detect Y-Lim from first event's data
+            yLimAutoSet = true;
+            yLimMax = 0;
+        end
+        
         for k = 1:ud.nCh
             ax_k = nexttile(tl);
             ch = ud.chList(k);
             sc = ud.scaleVec(ch);
-            y = double(ud.mf.d(ch, s0:s1)) * sc;
             
-            h = plot(ax_k, ud.tRelMs, y, 'Color', [0.1 0.1 0.8]);
+            % --- ROBUST DATA EXTRACTION ---
+            y_data = double(ud.mf.d(ch, s0_plot:s1_plot)) * sc;
+            y_full = nan(1, numel(ud.tRelMs));
+            
+            % Calculate where this data fits in the full NaN vector
+            idx_start_in_y_full = s0_plot - s0_ideal + 1;
+            idx_end_in_y_full   = idx_start_in_y_full + (s1_plot - s0_plot);
+            
+            if idx_start_in_y_full >= 1 && idx_end_in_y_full <= numel(y_full)
+                y_full(idx_start_in_y_full:idx_end_in_y_full) = y_data;
+            else
+                % This should not happen, but as a fallback, plot what we can
+                if ~isempty(y_data)
+                    y_full(1:numel(y_data)) = y_data(1:numel(y_full));
+                end
+            end
+            % --- END ROBUST EXTRACTION ---
+
+            h = plot(ax_k, ud.tRelMs, y_full, 'Color', [0.1 0.1 0.8]);
+            
+            if yLimAutoSet
+                yy = y_data(isfinite(y_data));
+                if ~isempty(yy)
+                    p = prctile(abs(yy), ud.yRobustPct);
+                    if isfinite(p) && p > yLimMax, yLimMax = p; end
+                end
+            end
             
             hold(ax_k, 'on');
             grid(ax_k, 'on');
@@ -230,6 +290,16 @@ function updatePlot(fig)
         end
         xlabel(ax_k, 'Time relative to Midpoint (ms)');
         
+        % Set initial Y-Lim
+        if yLimAutoSet
+            yLimMax = max(10, yLimMax * 1.1); % Add 10% padding, min of ±10
+            ud.yLimCurrent = [-yLimMax, yLimMax];
+            ud.yLimEdit.Value = yLimMax;
+        end
+        for k = 1:ud.nCh
+            set(ud.AxesTiles{k}, 'YLim', ud.yLimCurrent);
+        end
+        
         % Create persistent visual guide lines
         ud.MidpointLine = xline(ud.AxesTiles{1}, tRelMs_Mid, '--k', 'Midpoint', 'LineWidth', 1.5, 'HandleVisibility', 'off');
         ud.AnchorLine   = xline(ud.AxesTiles{1}, NaN, '-r', 'Anchor', 'LineWidth', 2.0, 'HandleVisibility', 'off');
@@ -237,15 +307,27 @@ function updatePlot(fig)
         linkaxes([ud.AxesTiles{:}], 'x');
         
     else
-        % --- Subsequent times: Just update YData (FAST) ---
+        % --- Subsequent times: Just update XData and YData (FAST) ---
         for k = 1:ud.nCh
             ch = ud.chList(k);
             sc = ud.scaleVec(ch);
-            y = double(ud.mf.d(ch, s0:s1)) * sc;
-            set(ud.PlotHandles{k}, 'YData', y);
+
+            % --- ROBUST DATA EXTRACTION ---
+            y_data = double(ud.mf.d(ch, s0_plot:s1_plot)) * sc;
+            y_full = nan(1, numel(ud.tRelMs));
+            
+            idx_start_in_y_full = s0_plot - s0_ideal + 1;
+            idx_end_in_y_full   = idx_start_in_y_full + (s1_plot - s0_plot);
+            
+            if idx_start_in_y_full >= 1 && idx_end_in_y_full <= numel(y_full)
+                y_full(idx_start_in_y_full:idx_end_in_y_full) = y_data;
+            end
+            % --- END ROBUST EXTRACTION ---
+
+            set(ud.PlotHandles{k}, 'XData', ud.tRelMs, 'YData', y_full);
         end
         
-        % Reset x-axis limits (in case of zoom/pan)
+        % Reset x-axis limits (in case of zoom/pan or window change)
         xlim(ud.AxesTiles{1}, [ud.tRelMs(1), ud.tRelMs(end)]);
     end
     
@@ -292,7 +374,7 @@ function recordClick(fig, evt)
     
     % --- 4. Store the result ---
     ud.Results.manual_anchor_samp(idx) = manual_anchor_samp;
-    fprintf('Event %d: Anchor set to sample %d\n', idx, manual_anchor_samp);
+    fprintf('Event %d: Anchor set to sample %d (%.2f ms rel. to mid)\n', idx, manual_anchor_samp, clicked_time_ms);
     
     % --- 5. Save state and advance ---
     fig.UserData = ud;
@@ -391,6 +473,52 @@ function closeGUI(fig)
         delete(fig);
     end
 end
+
+function changeXWindow(fig, src)
+    ud = fig.UserData;
+    newWinMs = src.Value;
+    
+    if newWinMs <= 0
+        fprintf('Invalid X window. Must be > 0.\n');
+        return;
+    end
+    
+    % Update state
+    ud.winHalfWidthMs = newWinMs;
+    ud.HWwin = max(1, round(newWinMs / 1000 * ud.sfx));
+    ud.tRelMs = (-ud.HWwin:ud.HWwin) / ud.sfx * 1e3;
+    fig.UserData = ud;
+    
+    fprintf('X-Window changed to ±%.2f ms\n', newWinMs);
+    
+    % Force a full replot
+    % We must clear the plot handles to force recreation with new XData length
+    ud.PlotHandles = {}; 
+    fig.UserData = ud;
+    updatePlot(fig);
+end
+
+function changeYLim(fig, src)
+    ud = fig.UserData;
+    newYLim = src.Value;
+    
+    if newYLim <= 0
+        fprintf('Invalid Y-Lim. Must be > 0.\n');
+        return;
+    end
+    
+    ud.yLimCurrent = [-newYLim, newYLim];
+    fig.UserData = ud;
+    
+    % Apply to all existing axes
+    for k = 1:ud.nCh
+        if isgraphics(ud.AxesTiles{k})
+            set(ud.AxesTiles{k}, 'YLim', ud.yLimCurrent);
+        end
+    end
+    fprintf('Y-Lim changed to ±%.2f µV\n', newYLim);
+end
+
 
 % ======================================================================
 %                  COPIED FROM YOUR OTHER SCRIPTS
