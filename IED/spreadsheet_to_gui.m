@@ -1,24 +1,10 @@
 function spreadsheet_to_gui(excelPath, dataMatPath, varargin)
-Building GUI... Error using tiledlayout
-TiledChartLayout cannot be a child of UIAxes.
-
-Error in spreadsheet_to_gui>updatePlot (line 230)
-        tl = tiledlayout(ud.ax, ud.nCh, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
-
-Error in spreadsheet_to_gui (line 188)
-updatePlot(fig);
-
-Error in main (line 32)
-spreadsheet_to_gui("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M3_pten_m3s2sept20 (All Garbage)\ets_converted_events.xlsx","C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M3_pten_m3s2sept20 (All Garbage)\LL_input_2023-09-20_12-55-14_mex_disk_uV.mat")
- 
-
-
-% spreadsheet_to_gui (v2)
+% spreadsheet_to_gui (v3)
 % Creates a robust, lightweight GUI to manually click and save anchor points
 % for events defined in a spreadsheet.
 %
 % - Uses matfile for fast, on-demand data loading.
-%- Robustly handles events near the start/end of the file (NaN padding).
+% - Robustly handles events near the start/end of the file (NaN padding).
 % - Includes GUI controls to change X-Window (ms) and Y-Limit (µV).
 %
 % USAGE:
@@ -45,7 +31,7 @@ winHWms      = p.Results.winHalfWidthMs;
 yLimInitial  = p.Results.yLimMicroV;
 yRobustPct   = p.Results.yRobustPct;
 
-fprintf('===== spreadsheet_to_gui (v2) =====\n');
+fprintf('===== spreadsheet_to_gui (v3) =====\n');
 
 % ---------- 2. Setup IO & Data ----------
 assert(isfile(excelPath), 'Excel file not found: %s', excelPath);
@@ -116,15 +102,12 @@ gl = uigridlayout(fig, [11, 4]);
 gl.RowHeight = {'1x', '1x', '1x', '1x', '1x', '1x', '1x', '2x', 'fit', 'fit', 30};
 gl.ColumnWidth = {'1x', '1x', '1x', '1x'};
 
-% Plotting area
-ax = uiaxes(gl);
-ax.Layout.Row = [1 8];
-ax.Layout.Column = [1 4];
-ax.YTick = [];
-ax.YTickLabel = [];
-ax.XTick = [];
-ax.XTickLabel = [];
-box(ax, 'on');
+% *** BUG FIX: Create a UIPANEL as the container, not UIAXES ***
+plotPanel = uipanel(gl);
+plotPanel.Layout.Row = [1 8];
+plotPanel.Layout.Column = [1 4];
+plotPanel.BorderType = 'none'; % Make it invisible
+% *** END BUG FIX ***
 
 % --- GUI Controls Row ---
 xWinLabel = uilabel(gl, 'Text', 'Window (ms):', 'HorizontalAlignment', 'right');
@@ -187,7 +170,8 @@ ud.winHalfWidthMs = winHWms; % Store in ms
 ud.HWwin = HWwin;             % Store in samples
 ud.tRelMs = tRelMs;
 ud.yRobustPct = yRobustPct;
-ud.ax = ax;
+ud.plotPanel = plotPanel; % *** BUG FIX: Store panel handle ***
+ud.tiledLayout = [];      % Handle to the tiled layout
 ud.statusLabel = statusLabel;
 ud.yLimEdit = yLimEdit;
 ud.PlotHandles = {};      % Cell array for line handles
@@ -228,8 +212,11 @@ function updatePlot(fig)
     
     % --- Check for completely invalid window ---
     if s1_plot <= s0_plot
-        cla(ud.ax); % Clear the main axes
-        text(ud.ax, 0.5, 0.5, sprintf('Event %d: Plot window is invalid.\n(s0=%d, s1=%d)', idx, s0_plot, s1_plot), ...
+        cla(ud.plotPanel); % Clear the panel
+        % Create a temporary axes in the panel to show the error
+        ax_err = uiaxes(ud.plotPanel);
+        ax_err.Visible = 'off';
+        text(ax_err, 0.5, 0.5, sprintf('Event %d: Plot window is invalid.\n(s0=%d, s1=%d)', idx, s0_plot, s1_plot), ...
             'HorizontalAlignment', 'center', 'Color', 'r', 'FontSize', 14);
         ud.statusLabel.Text = sprintf('Event %d of %d (INVALID WINDOW)', idx, height(ud.T_events));
         return;
@@ -240,8 +227,12 @@ function updatePlot(fig)
     % --- Plotting ---
     if isempty(ud.PlotHandles)
         % --- First time: Create all axes and plot objects ---
-        cla(ud.ax); % Clear the 'loading' text
-        tl = tiledlayout(ud.ax, ud.nCh, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+        cla(ud.plotPanel); % Clear the 'loading' text
+        
+        % *** BUG FIX: Create layout in the PANEL ***
+        tl = tiledlayout(ud.plotPanel, ud.nCh, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+        ud.tiledLayout = tl; % Store handle
+        
         ud.AxesTiles = cell(ud.nCh, 1);
         ud.PlotHandles = cell(ud.nCh, 1);
         
@@ -253,7 +244,7 @@ function updatePlot(fig)
         end
         
         for k = 1:ud.nCh
-            ax_k = nexttile(tl);
+            ax_k = nexttile(tl); % *** BUG FIX: `tl` is the parent ***
             ch = ud.chList(k);
             sc = ud.scaleVec(ch);
             
@@ -501,19 +492,26 @@ function changeXWindow(fig, src)
     ud.winHalfWidthMs = newWinMs;
     ud.HWwin = max(1, round(newWinMs / 1000 * ud.sfx));
     ud.tRelMs = (-ud.HWwin:ud.HWwin) / ud.sfx * 1e3;
-    fig.UserData = ud;
     
     fprintf('X-Window changed to ±%.2f ms\n', newWinMs);
     
-    % Force a full replot
-    % We must clear the plot handles to force recreation with new XData length
-    ud.PlotHandles = {}; 
+    % --- Force a full replot ---
+    % We must delete the old layout and all its children
+    if ~isempty(ud.tiledLayout) && isvalid(ud.tiledLayout)
+        delete(ud.tiledLayout);
+    end
+    ud.tiledLayout = [];
+    ud.PlotHandles = {};
+    ud.AxesTiles = {};
+    ud.MidpointLine = [];
+    ud.AnchorLine = [];
     fig.UserData = ud;
-    updatePlot(fig);
+    
+    updatePlot(fig); % This will now run the "first time" logic
 end
 
 function changeYLim(fig, src)
-    ud = fig.UserData;
+    ud = fig.Example;
     newYLim = src.Value;
     
     if newYLim <= 0
@@ -526,7 +524,7 @@ function changeYLim(fig, src)
     
     % Apply to all existing axes
     for k = 1:ud.nCh
-        if isgraphics(ud.AxesTiles{k})
+        if ~isempty(ud.AxesTiles) && isgraphics(ud.AxesTiles{k})
             set(ud.AxesTiles{k}, 'YLim', ud.yLimCurrent);
         end
     end
