@@ -515,33 +515,20 @@ function plotStackWithIndicators(G, tag, yL, outPng, outPdf)
 
        % Title: channel label only (no stats)
         if ~isempty(kept_channels)
-            chName = sprintf('row %d (CSC%d)', chList(k), kept_channels(chList(k)));
+            chName = sprintf('Channel %d', kept_channels(chList(k)));
         else
-            chName = sprintf('row %d', chList(k));
+            chName = sprintf('Channel %d', chList(k));
         end
         title(ax, chName, 'FontSize', 9, 'FontWeight', 'normal');
 
 
         ax.FontSize = 8;
-        if k <= nCh - nCols, ax.XTickLabel = []; else, xlabel(ax, 'ms'); end
-        ylabel(ax, '\muV');
+        if k <= nCh - nCols, ax.XTickLabel = []; else, xlabel(ax, 'Time (ms)'); end
+        ylabel(ax, 'Amplitude (\muV)');
     end
 
-    % --- MODIFIED: Use G.alignLabel if it exists, otherwise just tag ---
-    if isfield(G, 'outStatsPath') && ~isempty(G.outStatsPath)
-        try
-            S = load(G.outStatsPath, 'alignLabel');
-            if isfield(S, 'alignLabel')
-                sgtitle(tl, sprintf('%s  |  Align: %s', tag, S.alignLabel), 'FontSize', 11, 'FontWeight', 'bold');
-            else
-                sgtitle(tl, sprintf('%s', tag), 'FontSize', 11, 'FontWeight', 'bold');
-            end
-        catch
-             sgtitle(tl, sprintf('%s', tag), 'FontSize', 11, 'FontWeight', 'bold');
-        end
-    else
-         sgtitle(tl, sprintf('%s', tag), 'FontSize', 11, 'FontWeight', 'bold');
-    end
+    % --- MODIFIED: Replaced sgtitle logic to show ONLY "EEG Waveform" ---
+    sgtitle(tl, 'EEG Waveform', 'FontSize', 11, 'FontWeight', 'bold');
 
     exportgraphics(f, outPng, 'Resolution', 220);
     fprintf('Saved: %s\n', outPng);

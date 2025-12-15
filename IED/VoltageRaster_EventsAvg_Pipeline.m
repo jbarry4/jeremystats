@@ -393,17 +393,27 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sp
         imagesc(tRelMs, 1:nCh, MU);
         set(gca, 'YDir', 'reverse');          % 1 at top
         caxis([-clim, +clim]);
-        colormap(jet); colorbar;
+        colormap(jet); 
+        
+        % 3. Colorbar Units Vertical
+        cb = colorbar;
+        cb.Label.String = 'Voltage (\muV)';
+        cb.Label.Rotation = 90;
+        
         xlabel('Time (ms)');
         
+        % 2. Y-Axis Labels: Just the number, Label = Channel #
+        ylabel('Channel #');
         if isempty(kept_channels)
-            L = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+            L = string(chList);
         else
-            L = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+            L = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
         
         set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
-        title(sprintf('Avg %s', tag), 'FontSize', 12, 'FontWeight', 'bold');
+        
+        % 1. Title: Just "Average Voltage Raster" (removed group and align info)
+        title('Average Voltage Raster', 'FontSize', 12, 'FontWeight', 'bold');
         
         % Save PNG
         exportgraphics(f, outPngPath, 'Resolution', 220);

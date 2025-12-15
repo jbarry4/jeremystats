@@ -1,33 +1,32 @@
-function VoltageRaster_GrandAverage(rootFolder, varargin)
-% VoltageRaster_GrandAverage
-% Recursively finds 'VoltageRaster_Avg_Values_SOLID.csv' and '...SPUTTER.csv'
+function CSDRaster_GrandAverage(rootFolder, varargin)
+% CSDRaster_GrandAverage
+% Recursively finds 'CSD_Raster_Avg_Values_SOLID.csv' (and ...SPUTTER.csv if needed)
 % in the given rootFolder, calculates the Grand Average (mean across animals),
-% and saves the results (CSV, PNG, PDF) in a 'Voltage_GrandAverage_Output' folder.
+% and saves the results (CSV, PNG, PDF) in a 'CSD_GrandAverage_Output' folder.
 %
 % Usage:
-%   VoltageRaster_GrandAverage(rootFolder)
-%   VoltageRaster_GrandAverage(..., 'climMicroV', 150)
+%   CSDRaster_GrandAverage(rootFolder)
+%   CSDRaster_GrandAverage(..., 'climCSD', 500)
 %
 % Parameters:
 %   rootFolder : String/char path to the top-level directory containing animal subfolders.
-%   'climMicroV': (Optional) Manual color limit (±µV). If empty, calculated automatically
-%                 across BOTH groups (Base & CNO) so they share the same scale.
+%   'climCSD'  : (Optional) Manual color limit (±CSD units). If empty, calculated automatically
+%                across BOTH groups (Base & CNO) so they share the same scale.
 
     p = inputParser;
     p.addRequired('rootFolder', @(s) ischar(s) || isstring(s));
-    p.addParameter('climMicroV', [], @(x) isempty(x) || (isscalar(x) && x > 0));
-    p.addParameter('baseOnly', false, @(x) islogical(x) || isnumeric(x)); 
+    p.addParameter('climCSD', [], @(x) isempty(x) || (isscalar(x) && x > 0));
     p.parse(rootFolder, varargin{:});
     
     rootFolder = char(p.Results.rootFolder);
-    climOpt    = p.Results.climMicroV;
+    climOpt    = p.Results.climCSD;
     
     % Output Directory
-    outDir = fullfile(rootFolder, 'Voltage_GrandAverage_Output');
+    outDir = fullfile(rootFolder, 'CSD_GrandAverage_Output');
     if ~exist(outDir, 'dir'), mkdir(outDir); end
     
     fprintf('======================================================\n');
-    fprintf('   STARTING GRAND AVERAGE PROCESSING\n');
+    fprintf('   STARTING CSD GRAND AVERAGE PROCESSING\n');
     fprintf('======================================================\n');
     fprintf('Root Folder: %s\n', rootFolder);
     fprintf('Output Dir:  %s\n', outDir);
@@ -90,24 +89,24 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
     fprintf('-----------------------------------------\n');
     
     % --- File Discovery & Classification ---
-    % Only look for SOLID files as requested
-    fileName = 'VoltageRaster_Avg_Values_SOLID.csv';
+    % LOOKING FOR CSD FILES NOW
+    fileName = 'CSD_Raster_Avg_Values_SOLID.csv';
     fprintf('\nSearching file system for "%s"...\n', fileName);
     
     filePattern = fullfile(rootFolder, '**', fileName);
     allFiles = dir(filePattern);
     
-    % Filter out files in output folder
+    % Filter out files in output folder to avoid self-inclusion
     keepMask = true(size(allFiles));
     for i = 1:numel(allFiles)
-        if contains(allFiles(i).folder, 'Voltage_GrandAverage_Output')
+        if contains(allFiles(i).folder, 'CSD_GrandAverage_Output')
             keepMask(i) = false;
         end
     end
     allFiles = allFiles(keepMask);
     
     if isempty(allFiles)
-        fprintf('No SOLID CSV files found.\n');
+        fprintf('No CSD SOLID CSV files found.\n');
         return;
     end
     
@@ -125,7 +124,7 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
         
         % Check Base
         for s = 1:numel(validBase)
-            searchStr = string(validBase(s)); % Convert to string for safety
+            searchStr = string(validBase(s)); 
             if contains(folderPath, searchStr, 'IgnoreCase', true)
                 isBase = true;
                 matchedSession = searchStr;
@@ -136,7 +135,7 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
         % Check CNO (only if not already Base)
         if ~isBase
             for s = 1:numel(validCNO)
-                searchStr = string(validCNO(s)); % Convert to string
+                searchStr = string(validCNO(s));
                 if contains(folderPath, searchStr, 'IgnoreCase', true)
                     isCNO = true;
                     matchedSession = searchStr;
@@ -152,10 +151,10 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
         end
         
         if isBase
-            fprintf('  [BASE] %s (Matches: "%s")\n', shortPath, matchedSession);
+            fprintf('  [BASE] %s (Matches: "%s")\n', char(shortPath), char(matchedSession));
             baseFiles = [baseFiles; allFiles(i)]; %#ok<AGROW>
         elseif isCNO
-            fprintf('  [CNO ] %s (Matches: "%s")\n', shortPath, matchedSession);
+            fprintf('  [CNO ] %s (Matches: "%s")\n', char(shortPath), char(matchedSession));
             cnoFiles = [cnoFiles; allFiles(i)]; %#ok<AGROW>
         else
             % DIAGNOSTIC: Why did it fail?
@@ -177,7 +176,7 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
                 end
             end
             
-            fprintf('  [----] %s -> IGNORED. Reason: %s\n', shortPath, reason);
+            fprintf('  [----] %s -> IGNORED. Reason: %s\n', char(shortPath), reason);
         end
     end
     fprintf('-----------------------------------------\n');
@@ -189,9 +188,9 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
     % --- 2. DETERMINE GLOBAL COLOR SCALE ---
     if ~isempty(climOpt)
         globalClim = climOpt;
-        fprintf('\nUsing Manual CLim: ±%.2f uV\n', globalClim);
+        fprintf('\nUsing Manual CSD CLim: ±%.2f\n', globalClim);
     else
-        % Collect all values to find robust percentile
+        % Collect all values to find robust percentile across both groups
         vals = [];
         if ~isempty(avgBase), vals = [vals; abs(avgBase(:))]; end
         if ~isempty(avgCNO),  vals = [vals; abs(avgCNO(:))]; end
@@ -202,7 +201,7 @@ function VoltageRaster_GrandAverage(rootFolder, varargin)
         else
             globalClim = prctile(vals, 99.5) * 1.12; 
         end
-        fprintf('\nAuto-calculated Global CLim (shared): ±%.2f uV\n', globalClim);
+        fprintf('\nAuto-calculated Global CSD CLim (shared): ±%.2f\n', globalClim);
     end
 
     % --- 3. SAVE & RENDER ---
@@ -288,10 +287,10 @@ end
 function saveAndRender(grandAvg, tRelMs, chLabels, tag, outDir, clim, count)
     fprintf('\nSaving & Rendering: %s\n', tag);
 
-    % Save Results
-    outCSV = fullfile(outDir, sprintf('GrandAvg_%s.csv', tag));
-    outPng = fullfile(outDir, sprintf('GrandAvg_%s.png', tag));
-    outPdf = fullfile(outDir, sprintf('GrandAvg_%s.pdf', tag));
+    % Save Results (Filenames prefixed with CSD_)
+    outCSV = fullfile(outDir, sprintf('CSD_GrandAvg_%s.csv', tag));
+    outPng = fullfile(outDir, sprintf('CSD_GrandAvg_%s.png', tag));
+    outPdf = fullfile(outDir, sprintf('CSD_GrandAvg_%s.pdf', tag));
     
     % Write CSV
     try
@@ -340,6 +339,8 @@ function renderGrandAvg(MU, tRelMs, chLabels, tag, outPng, outPdf, clim, nCount)
     figH = min(maxPx, basePx + perRowPx * nCh);
     
     f = figure('Color','w','Position',[100 100 1100 figH], 'Visible', 'off');
+    
+    % PDF Layout Control
     set(f, 'Units', 'inches');
     figPos = get(f, 'Position');
     set(f, 'PaperUnits', 'inches', 'PaperSize', [figPos(3) figPos(4)], 'PaperPosition', [0 0 figPos(3) figPos(4)]);
@@ -349,11 +350,11 @@ function renderGrandAvg(MU, tRelMs, chLabels, tag, outPng, outPdf, clim, nCount)
     caxis([-clim, +clim]);
     colormap(jet); 
     cb = colorbar;
-    cb.Label.String = 'Voltage (µV)';
+    cb.Label.String = 'CSD (a.u.)'; % Label changed for CSD
     
     xlabel('Time (ms)');
     set(gca, 'YTick', 1:nCh, 'YTickLabel', chLabels, 'FontSize', 9, 'TickLabelInterpreter', 'none');
-    title(sprintf('Grand Avg %s (N=%d)', tag, nCount), 'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'none');
+    title(sprintf('CSD Grand Avg %s (N=%d)', tag, nCount), 'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'none');
     
     exportgraphics(f, outPng, 'Resolution', 220);
     try

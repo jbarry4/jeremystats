@@ -1,9 +1,8 @@
 function res = CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
 % CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline
 % Build per-group figures with:
-%   LEFT  : per-event **time-averaged** CSD columns (channels × events, thickened)
-%   RIGHT : vertical waveforms (each event in gray; group mean in black)
-% Time-average window defaults to [0, +15] ms around the alignment anchor.
+%   LEFT  : vertical waveforms (each event in gray; group mean in black)
+%   RIGHT : per-event **time-averaged** CSD columns (channels × events, thickened)
 %
 % RETURNS:
 %   res.pngSolid, res.pngSputter  : output figure PNGs (or "" if not created)
@@ -200,6 +199,8 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     i0 = evalin('caller','i0'); i1 = evalin('caller','i1');
     sliceThick = evalin('caller','sliceThick'); robPct = evalin('caller','robPct'); padFrac = evalin('caller','padFrac');
     absoluteClim = evalin('caller','absoluteClim'); 
+    avgStartMs = evalin('caller','avgStartMs');
+    avgEndMs = evalin('caller','avgEndMs');
     
     anchorMidpoint = evalin('caller', 'anchorMidpoint');
     anchorChannel  = evalin('caller', 'anchorChannel');
@@ -279,9 +280,9 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     MU  = mean(S,2, 'omitnan'); 
     % Generate Channel Labels
     if isempty(kept_channels)
-        chanLabels = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+        chanLabels = arrayfun(@(kk) sprintf('%d', chList(kk)), 1:nCh, 'UniformOutput',false);
     else
-        chanLabels = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+        chanLabels = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
     end
     % ================= EXPORT RAW VALUES =================
     try
@@ -317,10 +318,39 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     set(f, 'Units', 'inches'); figPos = get(f, 'Position');
     set(f, 'PaperUnits', 'inches', 'PaperSize', figPos(3:4), 'PaperPosition', [0 0 figPos(3:4)]);
     
-    tl = tiledlayout(f, 1, 2, 'Padding','compact', 'TileSpacing','compact');
+    colormap(f, jet);
     
-    ax1 = nexttile(tl); 
-    hold(ax1, 'on');
+    % 1. Use 50 columns to create a tiny "1-column gap" at column 25
+    tl = tiledlayout(f, 1, 50, 'Padding','compact', 'TileSpacing','none');
+    
+    % Determine Crop Range: Rows 1 and nCh are blank/NaN, so we crop them.
+    if nCh >= 3
+        yL_crop = [1.5, nCh-0.5];
+    else
+        yL_crop = [0.5, nCh+0.5];
+    end
+    
+    % --- LEFT PANEL: Vertical Waveform (Spans 1-24) ---
+    ax1 = nexttile(tl, 1, [1 24]); 
+    hold(ax1, 'on'); grid(ax1,'on'); box(ax1,'on');
+    
+    y = 1:nCh;
+    for i = 1:nEvt
+        plot(ax1, S(:,i), y, '-', 'Color', [0.6 0.6 0.6 0.8], 'LineWidth', 0.9);
+    end
+    plot(ax1, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
+    xline(ax1, 0, '--k'); xlim(ax1, [-clim, +clim]);
+    
+    % FIX: Apply Crop to Y-Limits
+    set(ax1,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
+        'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, 'Layer','top');
+    
+    ylabel(ax1, 'Channel #');
+    xlabel(ax1, 'CSD (a.u.)');
+    
+    % --- RIGHT PANEL: Event Heatmap (Spans 26-50) ---
+    ax2 = nexttile(tl, 26, [1 25]); 
+    hold(ax2, 'on');
     
     % --- HANDLE SLICE THICKNESS ---
     if sliceThick==1
@@ -328,44 +358,40 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     else
         Img = repelem(S, 1, sliceThick); 
     end
-    imagesc(ax1, 1:size(Img,2), 1:nCh, Img);
+    imagesc(ax2, 1:size(Img,2), 1:nCh, Img);
     
-    set(ax1,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-        'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, ...
+    % FIX: Apply Crop to Y-Limits here too
+    set(ax2,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
+        'FontSize',9, 'YTick', [], 'YTickLabel', [], ...
         'Box','on', 'Layer','top', 'TickLength',[0 0]);
-    caxis(ax1, [-clim, +clim]); colormap(ax1, jet);
+        
+    % FIX: Explicitly set X-Limits to remove side whitespace
+    xlim(ax2, [0.5, size(Img,2)+0.5]);
     
-    axes(ax1); cb = colorbar; 
+    caxis(ax2, [-clim, +clim]); 
+    
+    % Colorbar
+    axes(ax2); cb = colorbar; 
     try, cb.Layout.Tile = 'east'; catch, set(cb,'Location','eastoutside'); end
-    cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
+    cb.Label.String = 'CSD (a.u.)';
     
     % --- FIX: CORRECT X-AXIS TICKS & ROTATION ---
     if sliceThick >= 2
-        centers = ( (0:nEvt-1)*sliceThick ) + ceil(sliceThick/2);
+        % FIX: Use floating point math to center ticks exactly
+        centers = ( (0:nEvt-1)*sliceThick ) + (sliceThick/2) + 0.5;
     else
         centers = 1:nEvt;
     end
-    xticks(ax1, centers); 
-    xticklabels(ax1, string(1:nEvt));
-    ax1.XTickLabelRotation = 0; % FORCE HORIZONTAL
+    xticks(ax2, centers); 
+    xticklabels(ax2, string(1:nEvt));
+    ax2.XTickLabelRotation = 0; % FORCE HORIZONTAL
     % --------------------------------------------
     
-    xlabel(ax1, 'Event #'); ylabel(ax1, 'Channel');
-    
-    ax2 = nexttile(tl); 
-    hold(ax2, 'on'); grid(ax2,'on'); box(ax2,'on');
-    set(ax2,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-        'FontSize',9, 'YTick',1:nCh, 'YTickLabel',[], 'Layer','top');
-    y = 1:nCh;
-    for i = 1:nEvt
-        plot(ax2, S(:,i), y, '-', 'Color', [0.6 0.6 0.6 0.8], 'LineWidth', 0.9);
-    end
-    plot(ax2, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
-    xline(ax2, 0, '--k'); xlim(ax2, [-clim, +clim]);
+    xlabel(ax2, 'Event #'); 
     
     linkaxes([ax1 ax2], 'y');
 
-    sg = sprintf('%s  |  align: %s', tag, anchorDesc);
+    sg = sprintf('After-spike: CSD [%g, %g]ms', avgStartMs*1000, avgEndMs*1000);
     sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
     
     exportgraphics(f, outPngPath, 'Resolution', 220);

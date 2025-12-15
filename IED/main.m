@@ -46,11 +46,16 @@
 
 %spreadsheet_to_gui("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_M5s7nov17 (Handsorted)\ets_converted_events.xlsx","C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_M5s7nov17 (Handsorted)\LL_input_2023-11-17_14-23-24_mex_disk_uV.mat")
 
+%Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_m5s2nov16")
 %% Burn and churn
-%Pipeline_main_loop("C:\Users\Z390\Desktop\IED DATA\Take 3")
-%Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s17aug4",'anchorChannel',24, 'anchorHalfWidthMs', 10e-3)
-%Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s2aug1")
-VoltageRaster_GrandAverage("C:\Users\Z390\Desktop\IED DATA\Take 3")
+%% Pipeline_main_loop("C:\Users\Z390\Desktop\IED DATA\Take 3")
+%% Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s17aug4",'anchorChannel',24, 'anchorHalfWidthMs', 10e-3)
+%% Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_m5s7nov17", 'anchorHalfWidthMs', 20e-3)
+
+%Visualize_Single_Session("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_m5s7nov17\Voltage Raster Output\VoltageRaster_Avg_Values_SOLID.csv")
+%VoltageRaster_GrandAverage("C:\Users\Z390\Desktop\IED DATA\Take 3")
+VoltageRaster_GrandAverage_Spatial_Norm("C:\Users\Z390\Desktop\IED DATA\Take 3")
+%CSDRaster_GrandAverage("C:\Users\Z390\Desktop\IED DATA\Take 3")
 
 %% Other workspace
 %SpectrogramRaster_Events_Stitched("C:\Users\Barry Lab\Desktop\IED DATA\Preped Data - M13s2aug1","C:\Users\Barry Lab\Desktop\IED DATA\LL_input_M13s2aug1_2023-08-01_12-11-26_mex_disk.mat")

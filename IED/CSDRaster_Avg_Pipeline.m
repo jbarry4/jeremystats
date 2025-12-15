@@ -36,7 +36,6 @@ out = struct( ...
     'pdfSputter', paths.sputterPdf, ...
     'statsCSV',   statsCSV);
 % --- END MODIFIED ---
-
 end
 
 % ======================================================================
@@ -103,7 +102,6 @@ assert(isfile(excelPath), 'Excel not found: %s', excelPath);
 
 outRoot = fullfile(inputFolder, "CSD Raster Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
-
 % --- MODIFIED: Added PDF paths ---
 outSOLpng = fullfile(outRoot, "CSD_Raster_Avg_SOLID.png");
 outSPUpng = fullfile(outRoot, "CSD_Raster_Avg_SPUTTER.png");
@@ -155,7 +153,7 @@ fprintf('CSD AvgGroups: sfx=%.1f Hz | window ±%.1f ms\n', ...
 
 % ---------------- Read Excel -> samples per row ----------------
 T = readtable(excelPath, 'ReadVariableNames', true);
-canon = lower(regexprep(T.Properties.VariableNames, '[^a-zA-Z09]', ''));
+canon = lower(regexprep(T.Properties.VariableNames, '[^a-zA-Z0-9]', ''));
 i_onSamp  = find(strcmp(canon,'onsamp')  | strcmp(canon,'startsample') | strcmp(canon,'startsamp') | strcmp(canon,'on'), 1);
 i_offSamp = find(strcmp(canon,'offsamp') | strcmp(canon,'endsample')   | strcmp(canon,'endsamp')   | strcmp(canon,'off'), 1);
 i_onSec   = find(strcmp(canon,'onsec')   | strcmp(canon,'startsec')    | strcmp(canon,'onsecs'), 1);
@@ -190,6 +188,11 @@ end
 % ---------------- Build averaged CSD per group ----------------
 [S_csd, S_stats] = buildAvgCSD(evtSOL, 'SOLID');
 [P_csd, P_stats] = buildAvgCSD(evtSPU, 'SPUTTER');
+
+% --- NEW: Export Raw CSD Values to CSV (Matches VoltageRaster style) ---
+if ~isempty(S_csd), exportCSDValues(S_csd, 'SOLID'); end
+if ~isempty(P_csd), exportCSDValues(P_csd, 'SPUTTER'); end
+% --- END NEW ---
 
 % ---------------- Global CLim across BOTH CSD averages ----------------
 if isempty(S_csd) && isempty(P_csd)
@@ -401,20 +404,49 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sp
         set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
         % --- END: Full Manual PDF Layout Control ---
         
-        imagesc(tRelMs, 1:nCh, CSDMU);
+        % --- FIX: AUTO-CROPPING PADDING ---
+        % Identify rows that are NOT fully NaN (i.e., contain data)
+        hasData = ~all(isnan(CSDMU), 2);
+        validRows = find(hasData);
+        
+        % Fallback: if somehow empty, show everything
+        if isempty(validRows), validRows = 1:nCh; end
+        
+        % Slice the data and labels to show ONLY valid rows
+        CSDMU_cropped = CSDMU(validRows, :);
+        
+        % Plot using validRows as the Y-coordinates (so Y-axis numbers remain correct)
+        imagesc(tRelMs, validRows, CSDMU_cropped);
         set(gca, 'YDir', 'reverse');          % 1 at top
+        
+        % Crop axes tightly to the valid rows (e.g., 1.5 to 63.5)
+        ylim([min(validRows)-0.5, max(validRows)+0.5]);
+        
         caxis([-clim, +clim]);
-        colormap(jet); colorbar;
+        colormap(jet); 
+        
+        % Colorbar setup
+        cb = colorbar;
+        cb.Label.String = 'CSD (a.u.)';
+        cb.Label.Rotation = 90;
+        
         xlabel('Time (ms)');
         
+        % Label generation
+        ylabel('Channel #');
         if isempty(kept_channels)
-            L = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+            % Default labels (integers)
+            L_full = string(chList);
         else
-            L = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+            % CSC mapped labels
+            L_full = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
         
-        set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
-        title(sprintf('CSD Avg %s', tag), 'FontSize', 10, 'FontWeight', 'bold');
+        % Use only the labels for the valid rows
+        L_cropped = L_full(validRows);
+        
+        set(gca,'YTick',validRows, 'YTickLabel',L_cropped, 'FontSize',9);
+        title('Average CSD Raster', 'FontSize', 12, 'FontWeight', 'bold');
         
         % Save PNG
         exportgraphics(f, outPngPath, 'Resolution', 220);
@@ -447,19 +479,24 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sp
     end
 
     function C = computeCSD(Ych_t)
-    % computeCSD: second spatial derivative across channels with edge replication.
+    % computeCSD: second spatial derivative across channels.
+    % --- FIX: PADDING REMOVED ---
+    % First and last rows are now returned as NaN (blank/lost).
         [nChLoc, nT] = size(Ych_t);
         if nChLoc < 2
             C = nan(nChLoc, nT); return;
         elseif nChLoc == 2
-            C = zeros(nChLoc, nT); return;
+            C = nan(nChLoc, nT); return;
         end
         
+        % Compute interior second derivative
         Cint = -( Ych_t(3:end,:) - 2*Ych_t(2:end-1,:) + Ych_t(1:end-2,:) );
-        C = zeros(nChLoc, nT);
+        
+        % Initialize with NaNs
+        C = nan(nChLoc, nT);
+        
+        % Fill interior only. Rows 1 and nChLoc remain NaN.
         C(2:end-1,:) = Cint;
-        C(1,:)   = C(2,:);
-        C(end,:) = C(end-1,:);
     end
 
     % --- MODIFIED: Added new anchor parameters to stats table ---
@@ -475,4 +512,34 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sp
                               'AnchorMidpoint','AnchorChannelRow','AnchorPolarity'});
     end
 
+    % --- NEW: Export CSD Values Helper ---
+    function exportCSDValues(MU, tag)
+        if isempty(MU), return; end
+        try
+            % 1. Create Column Headers (Time points)
+            % e.g. "T_minus20p0ms", "T_0p0ms"
+            tHeaders = arrayfun(@(t) sprintf('T_%.2fms', t), tRelMs, 'UniformOutput', false);
+            % Sanitize for table variables (replace . with p, - with minus/m)
+            tHeaders = strrep(tHeaders, '.', 'p');
+            tHeaders = strrep(tHeaders, '-', 'm');
+            
+            % 2. Create Channel Label Column
+            if isempty(kept_channels)
+                cLab = arrayfun(@(k) sprintf('row %d', chList(k)), 1:nCh, 'UniformOutput',false);
+            else
+                cLab = arrayfun(@(k) sprintf('row %d (CSC%d)', chList(k), kept_channels(chList(k))), 1:nCh, 'UniformOutput',false);
+            end
+
+            % 3. Assemble and Write Table
+            T_rows = table(cLab(:), 'VariableNames', {'Channel'});
+            T_vals = array2table(MU, 'VariableNames', tHeaders);
+            T_out  = [T_rows, T_vals];
+            
+            outName = fullfile(outRoot, sprintf('CSD_Raster_Avg_Values_%s.csv', tag));
+            writetable(T_out, outName);
+            fprintf('Saved Raw CSD Values CSV: %s\n', outName);
+        catch ME
+            warning('Failed to save raw CSD values CSV for %s: %s', tag, ME.message);
+        end
+    end
 end

@@ -1,9 +1,7 @@
 function out = CSD_CenterSlices_Waveform_AvgGroups_Pipeline(inputFolder, dataMatPath, varargin)
 % CSD_CenterSlices_Waveform_AvgGroups_Pipeline
-% Left: per-event CSD slices at 0 ms, stacked as vertical tiles (channels x events)
-% Right: vertical waveform @ 0 ms (all events in gray, average in black)
-% Single tiledlayout to keep rows aligned; shared Y and one layout-level colorbar.
-% Channel 1 at TOP. Saves PNGs + PDFs per group and a small stats CSV.
+% Left: Vertical Waveform @ 0 ms (Mean in black, individual events in gray).
+% Right: Per-event CSD slices at 0 ms (Heatmap).
 %
 % OUTPUT struct:
 %   out.pngSolid, out.pngSputter, out.pdfSolid, out.pdfSputter, out.statsCSV
@@ -29,13 +27,11 @@ p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
 p.addParameter('absoluteClim', 1000, @(x) isempty(x) || (isscalar(x) && x>0)); 
-
 % --- NEW ANCHOR PARAMETERS ---
 p.addParameter('anchorMidpoint', false, @(x)islogical(x)||ismember(x,[0 1]));
 p.addParameter('anchorChannel', 0, @(x)isscalar(x)&&isnumeric(x)&&x>=0);
 p.addParameter('anchorPolarity', 'pos', @(s) any(validatestring(s, {'pos','neg','abs'})));
 % --- END NEW PARAMETERS ---
-
 p.parse(inputFolder, dataMatPath, varargin{:});
 inputFolder   = string(p.Results.inputFolder);
 dataMatPath   = string(p.Results.dataMatPath);
@@ -49,13 +45,11 @@ robPct        = p.Results.robustPct;
 padFrac       = p.Results.padFrac;
 maxEventsPer  = p.Results.maxEventsPerGroup;
 absoluteClim  = p.Results.absoluteClim; 
-
 % --- NEW ANCHOR PARAMETERS ---
 anchorMidpoint = p.Results.anchorMidpoint;
 anchorChannel  = p.Results.anchorChannel;
 anchorPolarity = p.Results.anchorPolarity;
 % --- END NEW PARAMETERS ---
-
 % ---------- Layout ----------
 solidDir   = fullfile(inputFolder, "Solid");
 sputterDir = fullfile(inputFolder, "Sputter");
@@ -92,7 +86,6 @@ else
 end
 nCh = numel(chList);
 assert(nCh > 0, 'No valid channels selected.');
-
 % Scaling
 if numel(scaleToMicroV)==1
     scaleVec = repmat(scaleToMicroV, nRowsAll, 1);
@@ -268,11 +261,11 @@ out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
         nEvt = size(S,2);
         MU  = mean(S,2, 'omitnan');
     
-        % Generate Channel Labels
+        % Generate Channel Labels (Simplified to number strings)
         if isempty(kept_channels)
-            chanLabels = arrayfun(@(kk) sprintf('row %d', chList(kk)), 1:nCh, 'UniformOutput',false);
+            chanLabels = arrayfun(@(kk) sprintf('%d', chList(kk)), 1:nCh, 'UniformOutput',false);
         else
-            chanLabels = arrayfun(@(kk) sprintf('row %d (CSC%d)', chList(kk), kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+            chanLabels = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
         end
     
         % ================= EXPORT RAW VALUES TO CSV =================
@@ -287,8 +280,7 @@ out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
         catch ME
             warning('Failed to save raw values CSV: %s', ME.message);
         end
-        % ============================================================
-    
+        
         % Scaling logic
         if ~isempty(absoluteClim)
             clim = absoluteClim;
@@ -306,57 +298,78 @@ out = struct('pngSolid', outSOLpng, 'pngSputter', outSPUpng, ...
         set(f, 'PaperUnits', 'inches', 'PaperSize', figPos(3:4), 'PaperPosition', [0 0 figPos(3:4)]);
         
         colormap(f, jet);
-        tl = tiledlayout(f, 1, 2, 'Padding','compact', 'TileSpacing','compact');
         
-        % LEFT PANEL
-        ax1 = nexttile(tl); 
-        hold(ax1, 'on');
+        % 1. Use 50 columns to create a tiny "1-column gap" at column 25
+        tl = tiledlayout(f, 1, 50, 'Padding','compact', 'TileSpacing','none');
+        
+        % Determine Crop Range: Rows 1 and nCh are blank/NaN, so we crop them.
+        if nCh >= 3
+            yL_crop = [1.5, nCh-0.5];
+        else
+            yL_crop = [0.5, nCh+0.5];
+        end
+        
+        % --- LEFT PANEL: Vertical Waveform (Spans 1-24) ---
+        ax1 = nexttile(tl, 1, [1 24]); 
+        hold(ax1, 'on'); grid(ax1,'on'); box(ax1,'on');
+        
+        y = 1:nCh;
+        for i = 1:nEvt
+            plot(ax1, S(:,i), y, '-', 'Color', [0.6 0.6 0.6 0.8], 'LineWidth', 0.9);
+        end
+        plot(ax1, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
+        xline(ax1, 0, '--k'); xlim(ax1, [-clim, +clim]);
+        
+        % FIX: Apply Crop to Y-Limits
+        set(ax1,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
+            'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, 'Layer','top');
+        
+        ylabel(ax1, 'Channel #');
+        xlabel(ax1, 'CSD (a.u.)');
+        
+        % --- RIGHT PANEL: Event Heatmap (Spans 26-50) ---
+        ax2 = nexttile(tl, 26, [1 25]); 
+        hold(ax2, 'on');
         
         if sliceThick==1
             Img = S;
         else
             Img = repelem(S, 1, sliceThick);
         end
-        imagesc(ax1, 1:size(Img,2), 1:nCh, Img);
+        imagesc(ax2, 1:size(Img,2), 1:nCh, Img);
         
-        set(ax1,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-            'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, ...
+        % FIX: Apply Crop to Y-Limits here too
+        set(ax2,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
+            'FontSize',9, 'YTick', [], 'YTickLabel', [], ...
             'Box','on', 'Layer','top', 'TickLength',[0 0]);
-        caxis(ax1, [-clim, +clim]);
+            
+        % FIX: Explicitly set X-Limits to remove side whitespace
+        xlim(ax2, [0.5, size(Img,2)+0.5]);
         
-        axes(ax1); cb = colorbar; 
+        caxis(ax2, [-clim, +clim]);
+        
+        % Colorbar
+        axes(ax2); cb = colorbar; 
         try cb.Layout.Tile = 'east'; catch, set(cb,'Location','eastoutside'); end
-        cb.Label.String = sprintf('CSD units (CLim = \\pm%.2f)', clim);
+        cb.Label.String = 'CSD (a.u.)'; % 5. Updated label
         
-        % --- FIX: CORRECT X-AXIS TICKS & ROTATION ---
+        % X-Axis Ticks
         if sliceThick >= 2
-            centers = ( (0:nEvt-1)*sliceThick ) + ceil(sliceThick/2);
+            % FIX: Use floating point math to center ticks exactly
+            centers = ( (0:nEvt-1)*sliceThick ) + (sliceThick/2) + 0.5;
         else
             centers = 1:nEvt;
         end
-        xticks(ax1, centers); 
-        xticklabels(ax1, string(1:nEvt));
-        ax1.XTickLabelRotation = 0; % FORCE HORIZONTAL (Right way up)
-        % --------------------------------------------
+        xticks(ax2, centers); 
+        xticklabels(ax2, string(1:nEvt));
+        ax2.XTickLabelRotation = 0;
         
-        xlabel(ax1, 'Event #'); ylabel(ax1, 'Channel');
-        
-        % RIGHT PANEL
-        ax2 = nexttile(tl); 
-        hold(ax2, 'on'); grid(ax2,'on'); box(ax2,'on');
-        set(ax2,'YDir','reverse', 'YLim',[0.5 nCh+0.5], 'TickDir','out', ...
-            'FontSize',9, 'YTick',1:nCh, 'YTickLabel',[], 'Layer','top');
-        
-        y = 1:nCh;
-        for i = 1:nEvt
-            plot(ax2, S(:,i), y, '-', 'Color', [0.6 0.6 0.6 0.8], 'LineWidth', 0.9);
-        end
-        plot(ax2, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
-        xline(ax2, 0, '--k'); xlim(ax2, [-clim, +clim]);
+        xlabel(ax2, 'Event #'); 
         
         linkaxes([ax1 ax2], 'y');
-        sg = sprintf('%s  |  align: %s', tag, anchorDesc);
-        sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
+        
+        % 2. Title: Simplified
+        sgtitle(tl, 'Ground-zero: CSD [-1, 0]ms', 'FontSize',10, 'FontWeight','bold');
         
         exportgraphics(f, outPngPath, 'Resolution', 220);
         try print(f, outPdfPath, '-dpdf', '-painters'); catch, end
@@ -384,16 +397,15 @@ function evts = parseEvtNumsFromPngs(dirpath)
 end
 function C = computeCSD(Ych_t)
 % (channels x time) voltage (µV) → CSD (channels x time)
-% Interior: standard 3-point stencil; edges replicated from nearest interior.
-    [nCh, ~] = size(Ych_t);
-    if nCh < 2
-        C = nan(size(Ych_t)); return;
-    elseif nCh == 2
-        C = zeros(size(Ych_t)); return;
+% Interior: standard 3-point stencil.
+% Edges: NaN (lost, no padding).
+    [nCh, nT] = size(Ych_t);
+    if nCh < 3
+        C = nan(nCh, nT); return;
     end
+    
     Cint = -( Ych_t(3:end,:) - 2*Ych_t(2:end-1,:) + Ych_t(1:end-2,:) );
-    C = zeros(size(Ych_t));
+    
+    C = nan(nCh, nT);
     C(2:end-1,:) = Cint;
-    C(1,:)   = C(2,:);
-    C(end,:) = C(end-1,:);
 end
