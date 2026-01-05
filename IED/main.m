@@ -64,8 +64,8 @@
 %VoltageRaster_GrandAverage("C:\Users\Z390\Desktop\IED DATA\Take 3")
 %CSDRaster_GrandAverage("C:\Users\Z390\Desktop\IED DATA\Take 3")
 
-VoltageRaster_GrandAverage_Spatial_Norm("C:\Users\Z390\Desktop\IED DATA\Take 3")
-%CSDRaster_GrandAverage_Spatial_Norm("C:\Users\Z390\Desktop\IED DATA\Take 3")
+%VoltageRaster_GrandAverage_Spatial_Norm("C:\Users\Z390\Desktop\IED DATA\Take 3")
+CSDRaster_GrandAverage_Spatial_Norm("C:\Users\Z390\Desktop\IED DATA\Take 3")
 %% Fun stuff
 %EventStacks_ampWidth_Avg_Pipeline_Farrell("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s1aug1 (Flagship)","C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s1aug1 (Flagship)\LL_input_2023-08-01_11-37-10_mex_disk_uV.mat")
 

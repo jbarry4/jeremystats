@@ -4,20 +4,23 @@ function VoltageRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
 %
 % UPDATE: 
 % - Grand Average outputs are CROPPED (Excludes "ABOVE" and "BELOW" regions).
-% - QC plots remain full depth.
+% - QC plots are now CROPPED by default (controlled by includeQCFigurePadding).
+% - QC plots now output PDF versions in addition to PNG.
 % - Dynamic Global Scaling calculated from full data.
 %
 % Usage:
 %   VoltageRaster_GrandAverage_Spatial_Norm(rootFolder)
-%   VoltageRaster_GrandAverage_Spatial_Norm(..., 'climMicroV', 150)
+%   VoltageRaster_GrandAverage_Spatial_Norm(..., 'climMicroV', 150, 'includeQCFigurePadding', true)
 
     p = inputParser;
     p.addRequired('rootFolder', @(s) ischar(s) || isstring(s));
     p.addParameter('climMicroV', [], @(x) isempty(x) || (isscalar(x) && x > 0));
+    p.addParameter('includeQCFigurePadding', false, @islogical); % Default is false (Crop QC plots)
     p.parse(rootFolder, varargin{:});
     
-    rootFolder = char(p.Results.rootFolder);
-    climOpt    = p.Results.climMicroV;
+    rootFolder     = char(p.Results.rootFolder);
+    climOpt        = p.Results.climMicroV;
+    includePadding = p.Results.includeQCFigurePadding;
     
     % Output Directories
     outDir = fullfile(rootFolder, 'Voltage_GrandAverage_Spatial_Norm_Output');
@@ -30,6 +33,7 @@ function VoltageRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     fprintf('   SPATIAL NORMALIZATION & GRAND AVERAGE (CROPPED)\n');
     fprintf('======================================================\n');
     fprintf('Output: %s\n', outDir);
+    fprintf('QC Padding Included: %s\n', string(includePadding));
     
     % --- 1. Load Metadata ---
     
@@ -157,13 +161,13 @@ function VoltageRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     end
     
     % --- 5. Render QC Plots (Pass 2) ---
-    % QC plots remain FULL PROBE DEPTH
-    fprintf('\n--- GENERATING QC PLOTS (Fixed Scale) ---\n');
-    renderQCSet(DataBase, T_gold, qcDir, globalClim, 'Base');
-    renderQCSet(DataCNO,  T_gold, qcDir, globalClim, 'CNO');
+    % Controlled by includePadding flag
+    fprintf('\n--- GENERATING QC PLOTS ---\n');
+    renderQCSet(DataBase, T_gold, qcDir, globalClim, 'Base', includePadding);
+    renderQCSet(DataCNO,  T_gold, qcDir, globalClim, 'CNO', includePadding);
     
     % --- 6. Render Grand Averages (Cropped) ---
-    % This now uses saveAndRenderGrandAvg to exclude buffer regions
+    % This always excludes buffer regions
     if ~isempty(avgBase)
         saveAndRenderGrandAvg(avgBase, tBase, T_gold, 'SOLID_Base', outDir, globalClim, numel(DataBase));
     end
@@ -173,7 +177,6 @@ function VoltageRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     
     fprintf('Done.\n');
 end
-
 % ======================================================================
 %                        CORE LOGIC
 % ======================================================================
@@ -183,7 +186,6 @@ function cleanID = sanitizeSessionID(rawID)
     match = regexp(str, 'm\d+s\d+', 'match', 'once');
     if ~isempty(match), cleanID = char(match); else, cleanID = char(strtrim(str)); end
 end
-
 function [grandAvg, tRelMs, DataStruct] = processGroupData(fileList, idList, T_gold, SessionMap)
     grandAvg = [];
     tRelMs = [];
@@ -252,7 +254,6 @@ function [grandAvg, tRelMs, DataStruct] = processGroupData(fileList, idList, T_g
         grandAvg = mean(accumMatrix, 3, 'omitnan');
     end
 end
-
 function warped = warpMouseToTemplate(rawMat, sessionID, SessionMap, T_gold, ScaleFactor)
     warped = [];
     
@@ -324,8 +325,37 @@ function warped = warpMouseToTemplate(rawMat, sessionID, SessionMap, T_gold, Sca
         warped = [warped; warpedChunk]; %#ok<AGROW>
     end
 end
-
-function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
+function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName, includePadding)
+    % Prepare cropping indices once if padding is not included
+    rowsToKeep = [];
+    subsetRegions = {};
+    subsetThickness = [];
+    
+    currentStart = 1;
+    for k = 1:height(T_gold)
+        th = T_gold.Target_Thickness(k);
+        rName = char(T_gold.Region{k});
+        
+        % Identify if this is a buffer region
+        isBuffer = contains(upper(rName), 'ABOVE') || contains(upper(rName), 'BELOW');
+        
+        % If we include padding OR it's not a buffer, we keep it
+        if includePadding || ~isBuffer
+            rowsToKeep = [rowsToKeep, currentStart:(currentStart+th-1)]; %#ok<AGROW>
+            subsetRegions{end+1} = rName; %#ok<AGROW>
+            subsetThickness(end+1) = th; %#ok<AGROW>
+        end
+        
+        currentStart = currentStart + th;
+    end
+    
+    % If something went wrong or list empty, default to full
+    if isempty(rowsToKeep)
+        rowsToKeep = 1:sum(T_gold.Target_Thickness);
+        subsetRegions = T_gold.Region;
+        subsetThickness = T_gold.Target_Thickness;
+    end
+    
     for i = 1:numel(DataStruct)
         sessionID = DataStruct(i).id;
         mat = DataStruct(i).mat;
@@ -333,9 +363,17 @@ function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
         
         if isempty(mat), continue; end
         
-        nCh = size(mat, 1);
+        % Crop the matrix based on the calculated indices
+        try
+            matCropped = mat(rowsToKeep, :);
+        catch
+            % Fallback if sizes mismatch
+            matCropped = mat;
+        end
+        
+        nCh = size(matCropped, 1);
         f = figure('Color','w','Visible','off','Position',[0 0 800 1200]);
-        imagesc(t, 1:nCh, mat);
+        imagesc(t, 1:nCh, matCropped);
         set(gca, 'YDir', 'reverse');
         caxis([-clim, +clim]);
         colormap(jet); colorbar;
@@ -343,21 +381,26 @@ function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
         title(sprintf('QC [%s]: %s (Dynamic Global CLim=%.0f)', groupName, sessionID, clim), 'Interpreter', 'none');
         
         hold on; yCursor = 0.5;
-        for k = 1:height(T_gold)
-            th = T_gold.Target_Thickness(k);
-            rName = char(T_gold.Region{k});
+        
+        % Draw lines and labels using the subset
+        for k = 1:length(subsetRegions)
+            th = subsetThickness(k);
+            rName = subsetRegions{k};
             yLine = yCursor + th;
             yline(yLine, 'k-', 'LineWidth', 0.5);
             text(min(t)+2, yCursor + th/2, rName, 'FontSize', 6, 'Interpreter','none', 'Color', 'k', 'BackgroundColor', 'w');
             yCursor = yCursor + th;
         end
         
-        outName = fullfile(qcDir, sprintf('QC_%s_%s.png', groupName, sessionID));
-        exportgraphics(f, outName, 'Resolution', 150);
+        outPng = fullfile(qcDir, sprintf('QC_%s_%s.png', groupName, sessionID));
+        outPdf = fullfile(qcDir, sprintf('QC_%s_%s.pdf', groupName, sessionID));
+        
+        exportgraphics(f, outPng, 'Resolution', 150);
+        exportgraphics(f, outPdf, 'ContentType', 'vector');
+        
         close(f);
     end
 end
-
 % ======================================================================
 %                        HELPER UTILITIES
 % ======================================================================
@@ -380,7 +423,6 @@ function SessionMap = indexSessionMaps(T_detailed)
         SessionMap(cleanID) = RegMap;
     end
 end
-
 function saveAndRenderGrandAvg(grandAvg, tRelMs, T_gold, tag, outDir, clim, count)
     % CROPPING: Exclude 'ABOVE CA1 SLM' and 'BELOW DG OML2'
     
@@ -469,7 +511,6 @@ function saveAndRenderGrandAvg(grandAvg, tRelMs, T_gold, tag, outDir, clim, coun
     close(f);
     fprintf('Saved Plot: %s\n', outPng);
 end
-
 function tVals = parseTimeHeaders(headers)
     tVals = zeros(1, numel(headers));
     for i = 1:numel(headers)

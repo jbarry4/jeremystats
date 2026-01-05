@@ -5,21 +5,25 @@ function CSDRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
 % PUBLICATION READY VERSION:
 %   - Grand Avg Probe Limit requires 100% consensus across subjects.
 %   - Grand Avg plots cropped to CA1 SLM -> DG OML2.
+%   - QC Plots default to cropped (controlled by includeQCFigurePadding).
+%   - QC Plots now output PDF versions in addition to PNG.
 %   - Status 1: "Probe Depth Limit" (Red).
 %   - Status 2: "CSD Padding" (Purple).
 %   - Outputs: CSV, PNG, and PDF.
 %
 % Usage:
 %   CSDRaster_GrandAverage_Spatial_Norm(rootFolder)
-%   CSDRaster_GrandAverage_Spatial_Norm(..., 'climCSD', 500)
+%   CSDRaster_GrandAverage_Spatial_Norm(..., 'climCSD', 500, 'includeQCFigurePadding', true)
 
     p = inputParser;
     p.addRequired('rootFolder', @(s) ischar(s) || isstring(s));
     p.addParameter('climCSD', [], @(x) isempty(x) || (isscalar(x) && x > 0));
+    p.addParameter('includeQCFigurePadding', false, @islogical); % Default false
     p.parse(rootFolder, varargin{:});
     
-    rootFolder = char(p.Results.rootFolder);
-    climOpt    = p.Results.climCSD;
+    rootFolder     = char(p.Results.rootFolder);
+    climOpt        = p.Results.climCSD;
+    includePadding = p.Results.includeQCFigurePadding;
     
     % Output Directories
     outDir = fullfile(rootFolder, 'CSD_GrandAverage_Spatial_Norm_Output');
@@ -32,6 +36,7 @@ function CSDRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     fprintf('   CSD SPATIAL NORMALIZATION & GRAND AVERAGE\n');
     fprintf('   (Publication Ready: 100%% Limit Rule, PDF Output)\n');
     fprintf('======================================================\n');
+    fprintf('QC Padding Included: %s\n', string(includePadding));
     
     % --- 1. Load Metadata ---
     groupFile = fullfile(rootFolder, 'Mice_group.csv');
@@ -125,9 +130,9 @@ function CSDRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     end
     fprintf('Global Scale: %.2f\n', globalClim);
     
-    % --- 5. Render QC (Keep Full Range) ---
-    renderQCSet(DataBase, T_gold, qcDir, globalClim, 'Base');
-    renderQCSet(DataCNO,  T_gold, qcDir, globalClim, 'CNO');
+    % --- 5. Render QC (Controlled by Padding Flag) ---
+    renderQCSet(DataBase, T_gold, qcDir, globalClim, 'Base', includePadding);
+    renderQCSet(DataCNO,  T_gold, qcDir, globalClim, 'CNO', includePadding);
     
     % --- 6. Render Grand Averages (Cropped) ---
     if ~isempty(avgBase)
@@ -138,11 +143,9 @@ function CSDRaster_GrandAverage_Spatial_Norm(rootFolder, varargin)
     end
     fprintf('Done.\n');
 end
-
 % ======================================================================
 %                        CORE LOGIC
 % ======================================================================
-
 function [grandAvg, tRelMs, DataStruct, grandStatus] = processGroupData(fileList, idList, T_gold, SessionMap)
     grandAvg = []; tRelMs = []; grandStatus = [];
     DataStruct = struct('id', {}, 'mat', {}, 't', {}, 'status', {});
@@ -161,7 +164,6 @@ function [grandAvg, tRelMs, DataStruct, grandStatus] = processGroupData(fileList
             dataCols = T_raw{:, 2:end}; 
             
             if size(dataCols, 1) ~= length(InputChannels), continue; end
-
             if isempty(tRelMs)
                 hdr = T_raw.Properties.VariableNames(2:end);
                 tRelMs = parseTimeHeaders(hdr);
@@ -222,7 +224,6 @@ function [grandAvg, tRelMs, DataStruct, grandStatus] = processGroupData(fileList
         grandAvg = fillCSDGaps(grandAvg, grandStatus);
     end
 end
-
 function filledMat = fillCSDGaps(mat, status)
     % Stretches data over regions marked as Status 2
     filledMat = mat;
@@ -232,7 +233,6 @@ function filledMat = fillCSDGaps(mat, status)
     if any(isnan(matFilled(:)))
          matFilled = fillmissing(matFilled, 'nearest', 1);
     end
-
     % 2. Fill where Status is 2 (CSD Padding)
     maskCSD = (status == 2);
     
@@ -242,7 +242,6 @@ function filledMat = fillCSDGaps(mat, status)
     filledMat(maskCSD) = matFilled(maskCSD);
     filledMat(maskLimit) = NaN; 
 end
-
 function [warped, statusMat] = warpMouseToTemplate(rawMat, sessionID, SessionMap, T_gold, InputChannels)
     warped = []; statusMat = [];
     totalH = sum(T_gold.Target_Thickness);
@@ -315,14 +314,12 @@ function [warped, statusMat] = warpMouseToTemplate(rawMat, sessionID, SessionMap
         statusMat = [statusMat; statusChunk]; %#ok<AGROW>
     end
 end
-
 function cleanID = sanitizeSessionID(rawID)
     if isempty(rawID), cleanID = ''; return; end
     str = lower(string(rawID));
     match = regexp(str, 'm\d+s\d+', 'match', 'once');
     if ~isempty(match), cleanID = char(match); else, cleanID = char(strtrim(str)); end
 end
-
 function SessionMap = indexSessionMaps(T_detailed)
     SessionMap = containers.Map;
     sessions = unique(T_detailed.Session_ID);
@@ -342,23 +339,57 @@ function SessionMap = indexSessionMaps(T_detailed)
         SessionMap(cleanID) = RegMap;
     end
 end
-
 % ======================================================================
 %                        RENDERING
 % ======================================================================
+function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName, includePadding)
+    % Prepare cropping indices
+    rowsToKeep = [];
+    subsetRegions = {};
+    subsetThickness = [];
+    
+    currentStart = 1;
+    for k = 1:height(T_gold)
+        th = T_gold.Target_Thickness(k);
+        rName = char(T_gold.Region{k});
+        
+        isBuffer = contains(upper(rName), 'ABOVE') || contains(upper(rName), 'BELOW');
+        
+        % If padding is included OR it's not a buffer, we keep it
+        if includePadding || ~isBuffer
+            rowsToKeep = [rowsToKeep, currentStart:(currentStart+th-1)]; %#ok<AGROW>
+            subsetRegions{end+1} = rName; %#ok<AGROW>
+            subsetThickness(end+1) = th; %#ok<AGROW>
+        end
+        currentStart = currentStart + th;
+    end
+    
+    if isempty(rowsToKeep)
+        rowsToKeep = 1:sum(T_gold.Target_Thickness);
+        subsetRegions = T_gold.Region;
+        subsetThickness = T_gold.Target_Thickness;
+    end
 
-function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
-    % Renders Full Probe for QC (PNG and PDF)
     for i = 1:numel(DataStruct)
         sessionID = DataStruct(i).id;
         mat = DataStruct(i).mat;
         t   = DataStruct(i).t;
         status = DataStruct(i).status;
+        
         if isempty(mat), continue; end
         
-        nCh = size(mat, 1);
+        % CROP DATA & STATUS
+        try
+            matCropped = mat(rowsToKeep, :);
+            statusCropped = status(rowsToKeep, :);
+        catch
+            matCropped = mat;
+            statusCropped = status;
+        end
+        
+        nCh = size(matCropped, 1);
         f = figure('Color','w','Visible','off','Position',[0 0 900 1200]);
-        imagesc(t, 1:nCh, mat);
+        imagesc(t, 1:nCh, matCropped);
         set(gca, 'YDir', 'reverse');
         caxis([-clim, +clim]);
         colormap(jet); 
@@ -374,16 +405,19 @@ function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
         
         hold on;
         yCursor = 0.5;
-        for k = 1:height(T_gold)
-            th = T_gold.Target_Thickness(k);
-            rName = char(T_gold.Region{k});
+        
+        % Draw lines using subset
+        for k = 1:length(subsetRegions)
+            th = subsetThickness(k);
+            rName = subsetRegions{k};
             yLine = yCursor + th;
             yline(yLine, 'k-', 'LineWidth', 0.5);
             text(min(t)+2, yCursor + th/2, rName, 'FontSize', 6, 'Interpreter','none', 'Color', 'k', 'BackgroundColor', 'w');
             yCursor = yCursor + th;
         end
         
-        drawRepeatingOverlay(mat, status, t);
+        % Overlay using cropped status
+        drawRepeatingOverlay(matCropped, statusCropped, t);
         
         % Export PNG and PDF
         outPng = fullfile(qcDir, sprintf('QC_CSD_%s_%s.png', groupName, sessionID));
@@ -395,7 +429,6 @@ function renderQCSet(DataStruct, T_gold, qcDir, clim, groupName)
         close(f);
     end
 end
-
 function saveAndRenderGrandAvg(grandAvg, tRelMs, T_gold, tag, outDir, clim, count, grandStatus)
     % CROPPING: Exclude 'ABOVE CA1 SLM' and 'BELOW DG OML2'
     
@@ -482,11 +515,9 @@ function saveAndRenderGrandAvg(grandAvg, tRelMs, T_gold, tag, outDir, clim, coun
     
     close(f);
 end
-
 function drawRepeatingOverlay(mat, statusMat, tVector)
 % overlays colored boxes and repeating text based on status
 % Status: 1 = PROBE LIMIT (RED), 2 = CSD PADDING (PURPLE)
-
     xMin = min(tVector);
     xMax = max(tVector);
     xWidth = xMax - xMin;
@@ -525,7 +556,6 @@ function drawRepeatingOverlay(mat, statusMat, tVector)
         end
     end
 end
-
 function renderBox(rStart, rEnd, typeCode, xMin, xMax, xWidth)
     if typeCode == 1
         % Probe Limit -> RED, Opaque-ish
@@ -565,7 +595,6 @@ function renderBox(rStart, rEnd, typeCode, xMin, xMax, xWidth)
         end
     end
 end
-
 function tVals = parseTimeHeaders(headers)
     tVals = zeros(1, numel(headers));
     for i = 1:numel(headers)
