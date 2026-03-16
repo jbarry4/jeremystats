@@ -1,3 +1,3 @@
 function HelloEli()
-     fprintf('HELLO Rachimi: SYSTEM CHECK INITIATED\n');
+     fprintf('HELLO Rachimi: Everything good to go\n');
 end
