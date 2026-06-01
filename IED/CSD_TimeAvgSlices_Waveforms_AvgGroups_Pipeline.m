@@ -23,6 +23,7 @@ function res = CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline(inputFolder, dataM
 %   <inputFolder>/CSD Center Slices Output/CSD_TimeAvg_SPUTTER.png
 %   <inputFolder>/CSD Center Slices Output/CSD_TimeAvg_SPUTTER.pdf
 %   <inputFolder>/CSD Center Slices Output/CSD_TimeAvg_stats.csv
+
 % ---------- Args ----------
 p = inputParser;
 p.addRequired('inputFolder', @(s)ischar(s)||isstring(s));
@@ -30,11 +31,13 @@ p.addRequired('dataMatPath', @(s)ischar(s)||isstring(s));
 p.addParameter('excelPath', "", @(s)ischar(s)||isstring(s));
 p.addParameter('channelIndices', [], @(v) isempty(v) || (isnumeric(v) && all(v>=1)));
 p.addParameter('scaleToMicroV', 1, @(x)isnumeric(x) && all(isfinite(x)) && all(x>0));
+
 p.addParameter('winHalfWidthMs',    20e-3, @(x)isfinite(x)&&x>0);   % ±20 ms around anchor
 p.addParameter('anchorHalfWidthMs',  5e-3, @(x)isfinite(x)&&x>0);   % ±5 ms anchor search
 p.addParameter('avgStartMs',         2e-3, @(x)isfinite(x));        % time-avg start (rel to anchor)
 p.addParameter('avgEndMs',          15e-3, @(x)isfinite(x));        % time-avg end   (rel to anchor)
 p.addParameter('sliceThickness', 6, @(x)isfinite(x) && x>=1 && mod(x,1)==0);
+
 p.addParameter('robustPct',    99.5, @(x) isfinite(x) && x>0 && x<100);
 p.addParameter('padFrac',       0.12, @(x) isfinite(x) && x>=0 && x<=0.5);
 p.addParameter('maxEventsPerGroup', [], @(x) isempty(x) || (isscalar(x) && x>0));
@@ -73,14 +76,17 @@ solidDir   = fullfile(inputFolder, "Solid");
 sputterDir = fullfile(inputFolder, "Sputter");
 assert(isfolder(solidDir),   'Missing folder: %s', solidDir);
 assert(isfolder(sputterDir), 'Missing folder: %s', sputterDir);
+
 if excelPath == ""
     xl = dir(fullfile(inputFolder, "*.xlsx"));
     assert(~isempty(xl), 'No Excel file (*.xlsx) found in %s', inputFolder);
     excelPath = fullfile(xl(1).folder, xl(1).name);
 end
 assert(isfile(excelPath), 'Excel not found: %s', excelPath);
+
 outRoot = fullfile(inputFolder, "CSD Center Slices Output");
 if ~exist(outRoot,'dir'), mkdir(outRoot); end
+
 % --- MODIFIED: Added PDF paths ---
 outSOLpng = fullfile(outRoot, "CSD_TimeAvg_SOLID.png");
 outSPUpng = fullfile(outRoot, "CSD_TimeAvg_SPUTTER.png");
@@ -88,6 +94,7 @@ outSOLpdf = fullfile(outRoot, "CSD_TimeAvg_SOLID.pdf");
 outSPUpdf = fullfile(outRoot, "CSD_TimeAvg_SPUTTER.pdf");
 statsCSV  = fullfile(outRoot, "CSD_TimeAvg_stats.csv");
 % --- END MODIFIED ---
+
 % ---------- Data ----------
 assert(isfile(dataMatPath), 'Data MAT not found: %s', dataMatPath);
 mf = matfile(dataMatPath);
@@ -95,6 +102,7 @@ try sfx = mf.sfx; catch, error('Missing "sfx" in data MAT.'); end
 nRowsAll = size(mf,'d',1);
 nSamp    = size(mf,'d',2);
 try kept_channels = mf.kept_channels; catch, kept_channels = []; end %#ok<NASGU>
+
 % Channels
 if isempty(channelIdx)
     chList = 1:nRowsAll;
@@ -112,19 +120,23 @@ else
     assert(numel(scaleToMicroV) >= nRowsAll, 'scaleToMicroV must be scalar or length >= nRowsAll.');
     scaleVec = scaleToMicroV(:);
 end
+
 % ---------- Windows ----------
 HWwin    = max(1, round(winHWms    * sfx));  % ±display half-width
 HWanchor = max(1, round(anchorHWms * sfx));  % ±anchor search
 tRelMs   = (-HWwin:HWwin) / sfx * 1e3;
 centerIdx= HWwin + 1;
+
 % Indices for time-average window relative to center
 i0 = centerIdx + round(avgStartMs * sfx);
 i1 = centerIdx + round(avgEndMs   * sfx);
 i0 = max(1, min(i0, numel(tRelMs)));
 i1 = max(1, min(i1, numel(tRelMs)));
 if i1 < i0, [i0,i1] = deal(i1,i0); end
+
 fprintf(['CSD Time-Average Slices: sfx=%.1f Hz | avg window [%+.1f,%+.1f] ms\n'], ...
     sfx, 1e3*avgStartMs, 1e3*avgEndMs);
+
 % ---------- Excel -> sample indices ----------
 T = readtable(excelPath, 'ReadVariableNames', true);
 canon = lower(regexprep(T.Properties.VariableNames, '[^a-zA-Z0-9]', ''));
@@ -132,6 +144,7 @@ i_onSamp  = find(strcmp(canon,'onsamp')  | strcmp(canon,'startsample') | strcmp(
 i_offSamp = find(strcmp(canon,'offsamp') | strcmp(canon,'endsample')   | strcmp(canon,'endsamp')   | strcmp(canon,'off'), 1);
 i_onSec   = find(strcmp(canon,'onsec')   | strcmp(canon,'startsec')    | strcmp(canon,'onsecs'), 1);
 i_offSec  = find(strcmp(canon,'offsec')  | strcmp(canon,'endsec')      | strcmp(canon,'offsecs'), 1);
+
 if ~isempty(i_onSamp) && ~isempty(i_offSamp)
     onSamp  = double(T{:, i_onSamp});
     offSamp = double(T{:, i_offSamp});
@@ -146,19 +159,23 @@ end
 onSamp  = max(1, min(onSamp,  nSamp));
 offSamp = max(1, min(offSamp, nSamp));
 NrowsXL = numel(onSamp);
+
 % ---------- Events from PNG names ----------
 evtSOL = parseEvtNumsFromPngs(solidDir);
 evtSPU = parseEvtNumsFromPngs(sputterDir);
 fprintf('Found %d SOLID, %d SPUTTER events (by filenames).\n', numel(evtSOL), numel(evtSPU));
+
 if ~isempty(maxEventsPer)
     evtSOL = evtSOL(1:min(end, maxEventsPer));
     evtSPU = evtSPU(1:min(end, maxEventsPer));
 end
+
 % ---------- Build & render ----------
 % --- MODIFIED: Pass PDF paths to render function ---
 [statsSOL, okSOL, pdfSOL] = buildAndRender(evtSOL, 'SOLID',   outSOLpng, outSOLpdf);
 [statsSPU, okSPU, pdfSPU] = buildAndRender(evtSPU, 'SPUTTER', outSPUpng, outSPUpdf);
 % --- END MODIFIED ---
+
 % ---------- Save stats CSV ----------
 % --- MODIFIED: Add PDF paths to output struct ---
 res = struct('pngSolid',"", 'pngSputter',"", ...
@@ -173,6 +190,7 @@ try
 catch ME
     warning(ME.identifier, 'Failed to write CSD_TimeAvg stats CSV: %s', ME.message);
 end
+
 if okSOL
     res.pngSolid = outSOLpng;
     res.pdfSolid = pdfSOL; 
@@ -182,8 +200,12 @@ if okSPU
     res.pdfSputter = pdfSPU;
 end
 % --- END MODIFIED ---
+
 end
+
+
 % ============================= HELPERS =============================
+
 % --- MODIFIED: Function signature ---
 function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, outPdfPath)
     Tstats = table(); ok = false;
@@ -278,12 +300,16 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     evtList = evtList(used); 
     nEvt = size(S,2);
     MU  = mean(S,2, 'omitnan'); 
+    
     % Generate Channel Labels
     if isempty(kept_channels)
+        actualChans = chList;
         chanLabels = arrayfun(@(kk) sprintf('%d', chList(kk)), 1:nCh, 'UniformOutput',false);
     else
+        actualChans = kept_channels(chList);
         chanLabels = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
     end
+    
     % ================= EXPORT RAW VALUES =================
     try
         % 1. Define Column Headers (Event IDs)
@@ -313,6 +339,10 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     end
     
     % ================= PLOTTING =================
+    % --- NEW Font Size Controls ---
+    titleSize    = 18; 
+    axisFontSize = 14; 
+    
     figH = min(320 + 14*nCh, 3400);
     f = figure('Color','w','Position',[60 60 1200 figH],'Visible','off');
     set(f, 'Units', 'inches'); figPos = get(f, 'Position');
@@ -330,9 +360,12 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
         yL_crop = [0.5, nCh+0.5];
     end
     
+    % Filter Y-Ticks for even channels to prevent overlap at larger font sizes
+    evenIdx = find(mod(actualChans, 2) == 0);
+    
     % --- LEFT PANEL: Vertical Waveform (Spans 1-24) ---
     ax1 = nexttile(tl, 1, [1 24]); 
-    hold(ax1, 'on'); grid(ax1,'on'); box(ax1,'on');
+    hold(ax1, 'on'); grid(ax1,'off'); box(ax1,'off'); % Kills default box to prevent overlap
     
     y = 1:nCh;
     for i = 1:nEvt
@@ -341,16 +374,23 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     plot(ax1, MU, y, '-', 'Color', [0 0 0], 'LineWidth', 2.0);
     xline(ax1, 0, '--k'); xlim(ax1, [-clim, +clim]);
     
-    % FIX: Apply Crop to Y-Limits
+    % Apply Crop & New Fonts to Y-Limits
     set(ax1,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
-        'FontSize',9, 'YTick',1:nCh, 'YTickLabel',chanLabels, 'Layer','top');
+        'FontSize', axisFontSize, 'Layer','top');
+        
+    yticks(ax1, evenIdx);
+    yticklabels(ax1, string(actualChans(evenIdx)));
     
-    ylabel(ax1, 'Channel #');
-    xlabel(ax1, 'CSD (a.u.)');
+    ylabel(ax1, 'Channel #', 'FontSize', axisFontSize, 'FontWeight', 'bold');
+    xlabel(ax1, 'CSD (a.u.)', 'FontSize', axisFontSize, 'FontWeight', 'bold');
+    
+    % Trace a clean black frame over the exact edges (no top/right ticks)
+    xl1 = xlim(ax1); yl1 = ylim(ax1);
+    plot(ax1, [xl1(1) xl1(2) xl1(2) xl1(1) xl1(1)], [yl1(1) yl1(1) yl1(2) yl1(2) yl1(1)], 'k-', 'LineWidth', 2, 'Clipping', 'off');
     
     % --- RIGHT PANEL: Event Heatmap (Spans 26-50) ---
     ax2 = nexttile(tl, 26, [1 25]); 
-    hold(ax2, 'on');
+    hold(ax2, 'on'); grid(ax2,'off'); box(ax2,'off'); % Kills default box
     
     % --- HANDLE SLICE THICKNESS ---
     if sliceThick==1
@@ -360,24 +400,23 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     end
     imagesc(ax2, 1:size(Img,2), 1:nCh, Img);
     
-    % FIX: Apply Crop to Y-Limits here too
+    % Apply Crop & Fonts to Heatmap
     set(ax2,'YDir','reverse', 'YLim', yL_crop, 'TickDir','out', ...
-        'FontSize',9, 'YTick', [], 'YTickLabel', [], ...
-        'Box','on', 'Layer','top', 'TickLength',[0 0]);
+        'FontSize', axisFontSize, 'YTick', [], 'YTickLabel', [], ...
+        'Layer','top', 'TickLength',[0 0]);
         
-    % FIX: Explicitly set X-Limits to remove side whitespace
     xlim(ax2, [0.5, size(Img,2)+0.5]);
-    
     caxis(ax2, [-clim, +clim]); 
     
     % Colorbar
     axes(ax2); cb = colorbar; 
     try, cb.Layout.Tile = 'east'; catch, set(cb,'Location','eastoutside'); end
     cb.Label.String = 'CSD (a.u.)';
+    cb.FontSize = axisFontSize;
+    cb.Label.FontSize = axisFontSize;
     
-    % --- FIX: CORRECT X-AXIS TICKS & ROTATION ---
+    % --- X-AXIS TICKS & ROTATION ---
     if sliceThick >= 2
-        % FIX: Use floating point math to center ticks exactly
         centers = ( (0:nEvt-1)*sliceThick ) + (sliceThick/2) + 0.5;
     else
         centers = 1:nEvt;
@@ -385,16 +424,20 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     xticks(ax2, centers); 
     xticklabels(ax2, string(1:nEvt));
     ax2.XTickLabelRotation = 0; % FORCE HORIZONTAL
-    % --------------------------------------------
     
-    xlabel(ax2, 'Event #'); 
+    xlabel(ax2, 'Event #', 'FontSize', axisFontSize, 'FontWeight', 'bold'); 
+    
+    % Trace a clean black frame over the exact edges of heatmap
+    xl2 = xlim(ax2); yl2 = ylim(ax2);
+    plot(ax2, [xl2(1) xl2(2) xl2(2) xl2(1) xl2(1)], [yl2(1) yl2(1) yl2(2) yl2(2) yl2(1)], 'k-', 'LineWidth', 2, 'Clipping', 'off');
     
     linkaxes([ax1 ax2], 'y');
-
-    sg = sprintf('After-spike: CSD [%g, %g]ms', avgStartMs*1000, avgEndMs*1000);
-    sgtitle(tl, sg, 'FontSize',10, 'FontWeight','bold');
     
-    exportgraphics(f, outPngPath, 'Resolution', 220);
+    % --- NEW: Hardcoded Target Title ---
+    sgtitle(tl, 'Spike Propagation CSD [2, 15]ms', 'FontSize', titleSize, 'FontWeight', 'bold');
+    
+    % --- BUMPED DPI TO 300 ---
+    exportgraphics(f, outPngPath, 'Resolution', 300);
     try print(f, outPdfPath, '-dpdf', '-painters'); catch, end
     close(f);
     
@@ -402,6 +445,7 @@ function [Tstats, ok, outPdfPath] = buildAndRender(evtList, tag, outPngPath, out
     Tstats = table(string(tag), nEvt, clim, anchorMidpoint, anchorChannel, string(anchorPolarity), ...
                    'VariableNames', {'group','n_events','clim_used','AnchorMidpoint','AnchorChannelRow','AnchorPolarity'});
 end
+
 function evts = parseEvtNumsFromPngs(dirpath)
     L = dir(fullfile(dirpath, '*.png')); evts = [];
     for k = 1:numel(L)
@@ -412,6 +456,7 @@ function evts = parseEvtNumsFromPngs(dirpath)
     end
     evts = sort(unique(evts));
 end
+
 function C = computeCSD(Ych_t)
 % standard 3-pt stencil; replicate edges so first/last row aren't blank
     [nCh, ~] = size(Ych_t);

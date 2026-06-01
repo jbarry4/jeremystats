@@ -77,8 +77,12 @@ end
 function renderThetaRaster(~, xValues, yValues, cMatrix, MeanNegative, pngPath, pdfPath)
 % JB — renderThetaRaster
 % UI Fixes: 
-% 1. "a.u." for units.
-% 2. Double-newline padding in title to prevent overlap.
+% 1. "a.u." for units, Double-newline padding in title.
+% 2. Reduced Y-ticks (1, 10, 20... 60) and increased font sizes.
+% 3. Layering/Gap fix: Uses `axis tight` to perfectly bound upsampled image.
+% 4. Top/Right ticks removed (box off + manual border trace).
+% 5. Removed -0.1 from line plot X-axis and flattened text.
+% 6. Locked Mean Sink X-axis exactly to [-0.2, 0].
     
     fprintf('JB: Rendering Theta heatmap...\n');
     
@@ -88,7 +92,10 @@ function renderThetaRaster(~, xValues, yValues, cMatrix, MeanNegative, pngPath, 
     colormapName   = 'jet';
     colorScale     = [-0.2, 0.2];
     titleText      = 'Theta CSD Raster';
-    titleSize      = 16; 
+    
+    % --- Font Size Controls ---
+    titleSize      = 18; 
+    axisFontSize   = 14; 
     
     % ---- Orientation Check ----
     expectedRows = numel(yValues);
@@ -120,11 +127,11 @@ function renderThetaRaster(~, xValues, yValues, cMatrix, MeanNegative, pngPath, 
     set(f, 'PaperUnits', 'inches');
     set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
     set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
-
-    % Use 'loose' padding
     tl = tiledlayout(f, 1, 5, 'TileSpacing', 'compact', 'Padding', 'loose');
     
+    % =====================================================================
     % --- TILE 1 (Heatmap): Spans 4 columns ---
+    % =====================================================================
     ax1 = nexttile(tl, 1, [1 4]);
     
     imagesc(ax1, 'XData', xExtent, 'YData', yExtent, 'CData', fullMatrix);
@@ -132,66 +139,80 @@ function renderThetaRaster(~, xValues, yValues, cMatrix, MeanNegative, pngPath, 
     colormap(ax1, colormapName);
     caxis(ax1, colorScale);
     
-    % Colorbar (Updated label)
+    % Colorbar
     cb = colorbar(ax1); 
-    cb.Label.String = 'CSD (a.u.)'; % Changed from CSD (units)
+    cb.Label.String = 'CSD (a.u.)'; 
+    cb.Label.FontSize = axisFontSize;
     
     % Labels & Title
-    xlabel(ax1, 'Time (s)');
-    ylabel(ax1, 'Channel #');
-    
-    % FIX: Double-newline padding to ensure no overlap
+    xlabel(ax1, 'Time (s)', 'FontSize', axisFontSize, 'FontWeight', 'bold');
+    ylabel(ax1, 'Channel #', 'FontSize', axisFontSize, 'FontWeight', 'bold');
     title(ax1, {titleText, ' '}, 'FontSize', titleSize, 'FontWeight', 'bold');
     
-    % Y-Ticks: Every channel
-    yticks(ax1, 1:63);
-    yticklabels(ax1, string(1:63));
+    % --- Y-Ticks (1, 10, 20, 30, 40, 50, 60) ---
+    tickVals = [1, 10:10:60];
+    yticks(ax1, tickVals);
+    yticklabels(ax1, string(tickVals));
     
-    % Black Background + Thick Line (Gap Filler)
-    set(ax1, 'FontSize', 8, 'TickDir', 'out', 'LineWidth', 2, 'Color', 'k');
+    % --- TIGHT BORDER & GAP FIX ---
+    set(ax1, 'FontSize', axisFontSize, 'TickDir', 'out', 'Layer', 'top');
+    box(ax1, 'off');   % Kills native box (removing top/right ticks)
+    grid(ax1, 'off');  
     
-    grid(ax1, 'on'); 
-    box(ax1, 'on');
+    axis(ax1, 'tight'); % Perfectly snaps boundaries to the image!
+    xl = xlim(ax1);
+    yl = ylim(ax1);
     
-    xlim(ax1, xExtent);
-    ylim(ax1, [0.5 63.5]); 
-    axis(ax1, 'normal'); 
+    % Trace a clean black frame over the exact edges
+    hold(ax1, 'on');
+    plot(ax1, [xl(1) xl(2) xl(2) xl(1) xl(1)], [yl(1) yl(1) yl(2) yl(2) yl(1)], 'k-', 'LineWidth', 2, 'Clipping', 'off');
     
+    % =====================================================================
     % --- TILE 2 (Line Plot): Spans 1 column ---
+    % =====================================================================
     ax2 = nexttile(tl, 5, [1 1]);
     
     if numel(MeanNegative) == 63
         yAxis = 1:63;
-        plot(ax2, MeanNegative, yAxis, 'b-', 'LineWidth', 1.5);
+        plot(ax2, MeanNegative, yAxis, 'b-', 'LineWidth', 2);
     else
         yAxis = 1:numel(MeanNegative);
-        plot(ax2, MeanNegative, yAxis, 'b-', 'LineWidth', 1.5);
+        plot(ax2, MeanNegative, yAxis, 'b-', 'LineWidth', 2);
     end
     
     set(ax2, 'YDir', 'reverse');
     set(ax2, 'YTick', [], 'YTickLabel', []); 
     
-    xlabel(ax2, 'CSD (a.u.)');
-    
-    % Padding for Title
+    xlabel(ax2, 'CSD (a.u.)', 'FontSize', axisFontSize, 'FontWeight', 'bold');
     title(ax2, {'Mean Sink', ' '}, 'FontSize', titleSize, 'FontWeight', 'bold');
     
-    % Match border style
-    set(ax2, 'FontSize', 8, 'TickDir', 'out', 'LineWidth', 2, 'Color', 'w');
-    
+    % --- LINE PLOT BORDER/TICK FIXES ---
+    set(ax2, 'FontSize', axisFontSize, 'TickDir', 'out', 'Color', 'w', 'Layer', 'top');
+    ax2.XTickLabelRotation = 0; % Forces text to stay flat
+    box(ax2, 'off'); 
     grid(ax2, 'on'); 
-    box(ax2, 'on');
     
-    ylim(ax2, [0.5 63.5]);
-    axis(ax2, 'normal');
+    % Sync Y-limits to match the exact mathematical bounds of ax1
+    ylim(ax2, yl);
     
-    linkaxes([ax1 ax2], 'y');
+    % --- LOCK X-AXIS TO [-0.2, 0] ---
+    xlim(ax2, [-0.2, 0]);
+    
+    drawnow; % Force MATLAB to calculate dynamic ticks
+    
+    % Dynamically remove -0.1 tick mark
+    tks2 = xticks(ax2);
+    tks2(abs(tks2 - (-0.1)) < 1e-4) = []; 
+    xticks(ax2, tks2);
+    
+    % Trace a clean black frame over the line plot
+    xl2 = xlim(ax2);
+    hold(ax2, 'on');
+    plot(ax2, [xl2(1) xl2(2) xl2(2) xl2(1) xl2(1)], [yl(1) yl(1) yl(2) yl(2) yl(1)], 'k-', 'LineWidth', 2, 'Clipping', 'off');
             
-    drawnow;
-    
     % ---- Export ----
     fprintf('JB: Saving PNG -> %s\n', pngPath);
-    exportgraphics(f, pngPath, 'Resolution', 220);
+    exportgraphics(f, pngPath, 'Resolution', 300); 
     
     fprintf('JB: Saving PDF -> %s\n', pdfPath);
     try

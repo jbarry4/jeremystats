@@ -382,41 +382,81 @@ paths = struct('solidPng', pngSOL, 'sputterPng', pngSPU, 'solidPdf', pdfSOL, 'sp
         figH = min(maxPx, basePx + perRowPx * nCh);
         f = figure('Color','w','Position',[90 90 1100 figH],'Visible','off');
         
-        % --- START: Full Manual PDF Layout Control ---
+        % --- Font Size Controls ---
+        titleSize    = 18; 
+        axisFontSize = 14;
+        
+        % --- Full Manual PDF Layout Control ---
         set(f, 'Units', 'inches');
         figPos_inches = get(f, 'Position');
         set(f, 'PaperUnits', 'inches');
         set(f, 'PaperSize', [figPos_inches(3) figPos_inches(4)]);
         set(f, 'PaperPosition', [0 0 figPos_inches(3) figPos_inches(4)]);
-        % --- END: Full Manual PDF Layout Control ---
-
-        imagesc(tRelMs, 1:nCh, MU);
-        set(gca, 'YDir', 'reverse');          % 1 at top
-        caxis([-clim, +clim]);
-        colormap(jet); 
         
-        % 3. Colorbar Units Vertical
-        cb = colorbar;
+        ax1 = axes('Parent', f);
+        imagesc(ax1, 'XData', [tRelMs(1) tRelMs(end)], 'YData', [1 nCh], 'CData', MU);
+        set(ax1, 'YDir', 'reverse');          % 1 at top
+        caxis(ax1, [-clim, +clim]);
+        colormap(ax1, jet); 
+        
+        % --- Colorbar ---
+        cb = colorbar(ax1);
         cb.Label.String = 'Voltage (\muV)';
         cb.Label.Rotation = 90;
+        cb.Label.FontSize = axisFontSize;
+        cb.FontSize = axisFontSize;
         
-        xlabel('Time (ms)');
+        % --- Labels & Title ---
+        xlabel(ax1, 'Time (ms)', 'FontSize', axisFontSize, 'FontWeight', 'bold');
+        ylabel(ax1, 'Channel #', 'FontSize', axisFontSize, 'FontWeight', 'bold');
+        title(ax1, {sprintf('%s Average Voltage Raster', tag), ' '}, 'FontSize', titleSize, 'FontWeight', 'bold');
         
-        % 2. Y-Axis Labels: Just the number, Label = Channel #
-        ylabel('Channel #');
+        % --- Map row indices to actual hardware channels ---
         if isempty(kept_channels)
-            L = string(chList);
+            actualChans = chList;
         else
-            L = arrayfun(@(kk) sprintf('%d', kept_channels(chList(kk))), 1:nCh, 'UniformOutput',false);
+            actualChans = kept_channels(chList);
         end
         
-        set(gca,'YTick',1:nCh,'YTickLabel',L,'FontSize',9);
+        % --- Y-Ticks (Even Channels Only) ---
+        evenIdx = find(mod(actualChans, 2) == 0);
+        yticks(ax1, evenIdx);
+        yticklabels(ax1, string(actualChans(evenIdx)));
         
-        % 1. Title: Just "Average Voltage Raster" (removed group and align info)
-        title('Average Voltage Raster', 'FontSize', 12, 'FontWeight', 'bold');
+        % --- TIGHT BORDER & GAP FIX (Same as Theta) ---
+        set(ax1, 'FontSize', axisFontSize, 'TickDir', 'out', 'Layer', 'top');
+        box(ax1, 'off');   % Kills native box
+        grid(ax1, 'off');  
+        
+        axis(ax1, 'tight');
+        xl = xlim(ax1);
+        yl = ylim(ax1);
+        
+        % Trace a clean black frame over the exact edges
+        hold(ax1, 'on');
+        plot(ax1, [xl(1) xl(2) xl(2) xl(1) xl(1)], [yl(1) yl(1) yl(2) yl(2) yl(1)], 'k-', 'LineWidth', 2, 'Clipping', 'off');
+        
+        % =================================================================
+        % --- ADD SPECTROGRAM INDICATOR ICONS ---
+        % =================================================================
+        specChans = [8, 16, 24, 32, 40, 48, 56, 64];
+        
+        % Find which rows correspond to our target spectrogram channels
+        [~, locs] = ismember(specChans, actualChans);
+        validLocs = locs(locs > 0); % Only plot markers for channels actually present
+        
+        if ~isempty(validLocs)
+            % Place marker slightly to the left of the Y-axis (-2% of width)
+            markerX = xl(1) - (xl(2) - xl(1)) * 0.025; 
+            plot(ax1, repmat(markerX, size(validLocs)), validLocs, 'r>', ...
+                'MarkerFaceColor', 'r', 'MarkerEdgeColor', 'k', 'MarkerSize', 10, 'Clipping', 'off');
+        end
+        % =================================================================
+        
+        drawnow;
         
         % Save PNG
-        exportgraphics(f, outPngPath, 'Resolution', 220);
+        exportgraphics(f, outPngPath, 'Resolution', 300); % Bumped to 300 DPI
         fprintf('Saved %s average raster (PNG): %s\n', tag, outPngPath);
         
         % Save PDF

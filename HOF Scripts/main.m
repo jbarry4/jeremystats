@@ -4,4 +4,5 @@
 
 %Extract_First_Combo()
 %Plot_Connectivity_Synthetic_Masterclass("D:\HOF DATA\ACTIVE DATA\PYTHON_UI_DATA\J2_PRECON2_SP_091325_FirstHTLT.mat")
-Plot_Coherence_Modulation_Masterclass()
+%Plot_Coherence_Modulation_Masterclass()
+Generate_Connectivity_Dashboard()

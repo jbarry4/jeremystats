@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem \"D:\\\\PTEN\\\\CTL\\\\M6_PtenMissCTL\\\\M6s4sept13\\\\2023-09-13_17-24-49\" -Filter \"*.ncs\")",
+      "Bash(Select-Object -First 10 Name, Length)",
+      "Bash(python reformat_vos.py)"
+    ]
+  }
+}
