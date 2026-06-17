@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH --array=1-1
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=300gb
+#SBATCH --time=0-6:00:00
+#SBATCH --job-name=vacc_array
+
+module load matlab
+cd /gpfs2/scratch/sakhava1/Batch_Process_All
+we 
+# 1) folders (order matters)
+dirs=(
+
+
+  "/gpfs2/scratch/sakhava1/Batch_Process_All/myDATA/CTL/M6_PtenMissCTL/M6s4_shared/2023-09-13_17-24-49"
+
+ 
+)
+
+# 2) eightBad flags aligned to the dirs above
+flags=(true true)
+
+
+DATA_DIR=${dirs[$SLURM_ARRAY_TASK_ID-1]}
+EIGHTBAD=${flags[$SLURM_ARRAY_TASK_ID-1]}
+
+echo "Running VACC_CSC2MAT_uV_disk on:"
+echo "  DIR      = $DATA_DIR"
+echo "  eightBad = $EIGHTBAD"
+
+# Pass the logical literal (true/false) into MATLAB (no quotes around it)
+matlab -nodisplay -nosplash -r "VACC_CSC2MAT_uV_disk('$DATA_DIR', $EIGHTBAD); exit"
