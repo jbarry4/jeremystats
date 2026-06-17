@@ -1,3 +1,11 @@
+"""Combine DS1 and DS2 timestamp datasets into a single Combined_DS_timestamps_sec dataset.
+
+This script scans each group in the input HDF5 file for the presence of both
+DS1_timestamps_sec and DS2_timestamps_sec. For each matching group, it copies the
+entire group structure into a new output HDF5 file and creates a new dataset
+called Combined_DS_timestamps_sec containing the concatenated timestamps.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -6,6 +14,7 @@ import numpy as np
 
 
 def collect_groups_with_timestamps(h5file):
+    """Return a list of group paths containing both DS1 and DS2 timestamp datasets."""
     groups = []
 
     def visit(name, obj):
@@ -18,6 +27,11 @@ def collect_groups_with_timestamps(h5file):
 
 
 def copy_group_structure(source_group, target_group):
+    """Deep-copy a group structure from source_group to target_group.
+
+    Copies nested groups and datasets recursively, preserving their data.
+    This does not preserve HDF5-specific metadata like chunking or compression.
+    """
     for name, obj in source_group.items():
         if isinstance(obj, h5py.Group):
             target_group.create_group(name)
@@ -26,6 +40,7 @@ def copy_group_structure(source_group, target_group):
 
 
 def combine_timestamps(group):
+    """Concatenate DS1_timestamps_sec and DS2_timestamps_sec into one 1D array."""
     ds1 = group["DS1_timestamps_sec"][()]
     ds2 = group["DS2_timestamps_sec"][()]
     if ds1.ndim != 1 or ds2.ndim != 1:

@@ -1,3 +1,11 @@
+"""Move Combined_DS_timestamps_sec datasets from manual subgroups to their parent groups.
+
+This script searches for any dataset whose name ends with
+"/Combined_DS_timestamps_sec" and whose containing group is named "manual".
+For each match, the dataset is copied to the parent group and then removed
+from the manual subgroup. The copy preserves dataset values and attributes.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -5,9 +13,11 @@ import h5py
 
 
 def move_combined_dataset_up(h5file):
+    """Find and move Combined_DS_timestamps_sec datasets from manual subgroups."""
     candidates = []
 
     def visit(name, obj):
+        # Record only datasets matching the target name under a group called "manual".
         if isinstance(obj, h5py.Dataset) and name.endswith("/Combined_DS_timestamps_sec"):
             group_path = name.rsplit("/", 1)[0]
             if group_path.endswith("/manual"):
@@ -23,6 +33,7 @@ def move_combined_dataset_up(h5file):
         source_group = h5file[group_path]
         parent_group = h5file[parent_path]
 
+        # Replace any existing dataset of the same name at the parent level.
         if "Combined_DS_timestamps_sec" in parent_group:
             del parent_group["Combined_DS_timestamps_sec"]
 

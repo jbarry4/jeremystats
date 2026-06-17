@@ -1,3 +1,10 @@
+"""Remove all 'manual' groups from an HDF5 file and export remaining contents to MATLAB.
+
+This script optionally performs a dry run to report which groups would be deleted.
+After deletion, it converts the remaining HDF5 hierarchy into a nested Python
+dictionary and writes it to a .mat file using scipy.io.savemat.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -6,6 +13,7 @@ from scipy.io import savemat
 
 
 def find_manual_groups(h5file):
+    """Return a list of all group paths named 'manual' in the HDF5 file."""
     manual_paths = []
 
     def visit(name, obj):
@@ -17,6 +25,11 @@ def find_manual_groups(h5file):
 
 
 def delete_groups(h5file, paths):
+    """Delete the specified manual groups from the HDF5 file.
+
+    The groups are deleted in reverse depth order to ensure nested manual groups
+    are removed safely.
+    """
     for path in sorted(paths, key=lambda p: p.count("/"), reverse=True):
         parent_path, group_name = path.rsplit("/", 1)
         parent = h5file[parent_path] if parent_path else h5file
@@ -25,6 +38,11 @@ def delete_groups(h5file, paths):
 
 
 def hdf5_group_to_dict(group):
+    """Convert an HDF5 group into a nested Python dictionary.
+
+    Datasets are converted to NumPy arrays, and child groups become nested
+    dictionaries. This structure is compatible with scipy.io.savemat.
+    """
     result = {}
     for name, obj in group.items():
         if isinstance(obj, h5py.Group):
@@ -83,6 +101,7 @@ def main():
         if manual_groups:
             delete_groups(h5file, manual_groups)
 
+        # Convert the remaining HDF5 tree to a nested dict for MAT saving.
         mat_data = hdf5_group_to_dict(h5file)
         output_mat = Path(args.output_mat)
         savemat(str(output_mat), mat_data, do_compression=True)
