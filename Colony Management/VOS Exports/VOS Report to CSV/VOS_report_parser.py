@@ -12,8 +12,8 @@ import csv
 import re
 
 # --- CONFIGURATION ---
-INPUT_PDF_FILENAME = 'VOS Report 052826.pdf'
-OUTPUT_CSV_FILENAME = 'VOS Report 052826.csv'
+INPUT_PDF_FILENAME = 'VOS Report 060826.pdf'
+OUTPUT_CSV_FILENAME = 'VOS Report 060826.csv'
 
 # Date stamp is pulled from the filename automatically (e.g. '052826')
 _stamp = re.search(r'\d{6}', INPUT_PDF_FILENAME)

@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --array=1-9
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=800gb
+#SBATCH --time=0-12:00:00
+#SBATCH --job-name=vacc_ied_array
+
+module load matlab
+cd /gpfs2/scratch/erachimi
+
+# 1) folders (order matters)
+dirs=(
+  "/gpfs2/scratch/erachimi/Kcnt1_M10s2"
+  "/gpfs2/scratch/erachimi/Kcnt1_M11s6"
+  "/gpfs2/scratch/erachimi/Kcnt1_M12s4"
+  "/gpfs2/scratch/erachimi/Kcnt1_M13s3"
+  "/gpfs2/scratch/erachimi/Kcnt1_M15s4"
+  "/gpfs2/scratch/erachimi/Kcnt1_M15s6"
+  "/gpfs2/scratch/erachimi/Kcnt1_M17s2"
+  "/gpfs2/scratch/erachimi/Kcnt1_M6s4"
+  "/gpfs2/scratch/erachimi/Kcnt1_M9s3"
+)
+
+# 2) fiftyNineBad flags aligned to the dirs above
+flags=(true true true true true true true true true)
+
+
+DATA_DIR=${dirs[$SLURM_ARRAY_TASK_ID-1]}
+EIGHTBAD=${flags[$SLURM_ARRAY_TASK_ID-1]}
+
+echo "Running vacc_ied_detect on:"
+echo "  DIR      = $DATA_DIR"
+echo "  eightBad = $EIGHTBAD"
+
+# Pass the logical literal (true/false) into MATLAB
+matlab -nodisplay -nosplash -r "vacc_ied_detect('$DATA_DIR', $EIGHTBAD); exit"

@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64gb
+#SBATCH --time=0-00:30:00
+#SBATCH --job-name=vacc_compile_ech_ets
+
+module load matlab
+cd /gpfs2/scratch/sakhava1/Batch_Process_All
+
+
+echo "Running vacc_compile_ech_ets on:"
+
+
+matlab -nodisplay -nosplash -r "compile_ech_ets(); exit"

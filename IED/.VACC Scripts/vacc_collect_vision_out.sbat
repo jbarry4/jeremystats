@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --array=1
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32gb
+#SBATCH --time=0-1:00:00
+#SBATCH --job-name=vacc_array
+
+module load matlab
+cd /gpfs2/scratch/sakhava1/Batch_Process_All
+
+# 1) folders (order matters)
+dirs=(
+
+
+  "/gpfs2/scratch/sakhava1/Batch_Process_All/myDATA/PTEN/M34_ptenblind/m34s8jun10/Clean Data (No gaps)"
+
+)
+
+DATA_DIR=${dirs[$SLURM_ARRAY_TASK_ID-1]}
+
+echo "Running vacc_collect_vision_out on:"
+echo "  DIR      = $DATA_DIR"
+
+
+# Pass the logical literal (true/false) into MATLAB (no quotes around it)
+matlab -nodisplay -nosplash -r "vacc_collect_vision_out('$DATA_DIR'); exit"
