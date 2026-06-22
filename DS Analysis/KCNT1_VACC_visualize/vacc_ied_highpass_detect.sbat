@@ -1,0 +1,40 @@
+#!/bin/bash
+#SBATCH --array=1-9
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=800gb
+#SBATCH --time=0-12:00:00
+#SBATCH --job-name=vacc_ied_hp_array
+#SBATCH --output=/users/s/a/sakhava1/scratch/logs/vacc_ied_hp_%A_%a.out
+#SBATCH --error=/users/s/a/sakhava1/scratch/logs/vacc_ied_hp_%A_%a.err
+
+module load matlab
+
+SCRIPT_DIR="/users/s/a/sakhava1/scratch/KCNT1 Urethane"
+
+# 1) folders (order matters — must match array size above)
+dirs=(
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M10s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M11s6"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M12s4"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M13s3"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M15s4"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M15s6"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M17s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M6s4"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M9s3"
+)
+
+# 2) fiftyNineBad flags aligned to the dirs above
+flags=(true true true true true true true true true)
+
+DATA_DIR="${dirs[$SLURM_ARRAY_TASK_ID-1]}"
+EIGHTBAD="${flags[$SLURM_ARRAY_TASK_ID-1]}"
+
+echo "Running vacc_ied_highpass_detect on:"
+echo "  DIR      = $DATA_DIR"
+echo "  eightBad = $EIGHTBAD"
+
+# addpath handles the space in the script directory path
+matlab -nodisplay -nosplash -r "addpath('$SCRIPT_DIR'); vacc_ied_highpass_detect('$DATA_DIR', $EIGHTBAD); exit"
