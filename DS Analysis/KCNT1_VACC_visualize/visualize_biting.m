@@ -89,6 +89,11 @@ ech(:,end) = true;
 load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
 global_min_T_us = detector_meta.global_min_T_us;
 sfx             = detector_meta.sfx;
+ets = [ets(:) - 0.05, ets(:) + 0.05];
+% There has to be an easier way to do this, but this will convert toothy
+% time stamps from seconds to the sample index
+ets = sfx * ets(:,1);
+ets = sfx * ets(:,2);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
