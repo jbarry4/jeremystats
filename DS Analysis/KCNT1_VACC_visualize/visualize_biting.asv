@@ -81,7 +81,9 @@ fprintf('[INFO] %d channels.\n', nCh);
 
 %% ---- Load detection results ----
 load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'ets');
-load(fullfile(dataDir,'ech_hp_1_lp_300_nf.mat'), 'ech');
+% ech adapted to fit Toothy script, which uses only one channel to dete
+ech = false(size(ets,1), nCh); 
+ech(:,end) = true;
 load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
 global_min_T_us = detector_meta.global_min_T_us;
 sfx             = detector_meta.sfx;
