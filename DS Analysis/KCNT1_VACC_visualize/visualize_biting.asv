@@ -81,10 +81,19 @@ fprintf('[INFO] %d channels.\n', nCh);
 
 %% ---- Load detection results ----
 load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'ets');
-load(fullfile(dataDir,'ech_hp_1_lp_300_nf.mat'), 'ech');
+% ech adapted to fit Toothy script, which uses only one channel to detect
+% every dentate spike. Rather than removing ech, it was deemed easier to
+% just make the final row be true
+ech = false(size(ets,1), nCh); 
+ech(:,end) = true;
 load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
 global_min_T_us = detector_meta.global_min_T_us;
 sfx             = detector_meta.sfx;
+ets = [ets(:) - 0.05, ets(:) + 0.05];
+% There has to be an easier way to do this, but this will convert toothy
+% time stamps from seconds to the sample index
+ets = sfx * ets(:,1);
+ets = sfx * ets(:,2);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
