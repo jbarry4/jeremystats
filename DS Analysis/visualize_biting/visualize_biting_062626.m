@@ -46,6 +46,7 @@ traceAmpPct    = 99;     % robust percentile used to scale overlaid traces
 traceHalfRows  = 0.45;   % a "traceAmpPct" deflection fills +/- this many rows
 
 %% ---- Output folder ----
+dataDir = 'D:/Visualize_biting_testing/M1ptens2oct2/2023-10-02_16-58-03/';
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = '/users/s/a/sakhava1/scratch/KCNT1 Urethane/Take 2';
@@ -79,21 +80,78 @@ files = files(keep); nums = nums(keep);
 nCh = numel(files);
 fprintf('[INFO] %d channels.\n', nCh);
 
+%% ---- Locate CSC files ----
+dirStruct   = dir(fullfile(dataDir,'CSC*.*'));
+allNcsNames = {dirStruct.name};
+
+foundChannels = [];
+foundPaths    = strings(0);
+for c = 1:64
+    fp = findCscFile(c, allNcsNames, dataDir);
+    if ~isempty(fp)
+        foundChannels(end+1) = c;
+        foundPaths(end+1)    = string(fp);
+    end
+end
+if isempty(foundChannels), error('[ERROR] No CSC files in: %s', dataDir); end
+
+keep = true(size(foundChannels));
+if fiftyNineBad
+    keep = keep & (foundChannels ~= 59);
+    fprintf('[INFO] CSC59 excluded.\n');
+end
+foundChannels = foundChannels(keep);
+foundPaths    = foundPaths(keep);
+nCh = numel(foundChannels);
+fprintf('[INFO] Using %d channels.\n', nCh);
+
+%% ---- Pass 1: metadata scan ----
+fprintf('[INFO] Pass 1: scanning %d files...\n', nCh);
+S_meta         = cell(1, nCh);
+all_first_T_us = nan(1, nCh);
+all_last_T_us  = nan(1, nCh);
+all_Fs         = nan(1, nCh);
+
+for k = 1:nCh
+    fn = char(foundPaths(k));
+    [~,nm,ex] = fileparts(fn);
+    fprintf('  %s%s\n', nm, ex);
+    [ts_us, ~, Fs_vec, nValid, samplesAD] = Nlx2MatCSC(fn,[1 1 1 1 1],0,1,[]);
+    S_meta{k}.ts_us     = ts_us;
+    S_meta{k}.nValid    = nValid;
+    S_meta{k}.samplesAD = samplesAD;
+    Fs = mode(double(Fs_vec(Fs_vec>0)));
+    if ~(isfinite(Fs)&&Fs>0), Fs=30000; fprintf('[WARN] Fs fallback for %s%s\n',nm,ex); end
+    all_Fs(k) = Fs;
+    if ~isempty(ts_us)
+        all_first_T_us(k) = ts_us(1);
+        all_last_T_us(k)  = double(ts_us(end)) + (double(nValid(end))-1)/(Fs/1e6);
+    end
+end
+fprintf('[INFO] Pass 1 done.\n');
+
+
 %% ---- Load detection results ----
-load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'ets');
+tmp = load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'Combined_DS_timestamps_sec');
+ets = tmp.Combined_DS_timestamps_sec;
+ets = [ets(:) - 0.05, ets(:) + 0.05];
 % ech adapted to fit Toothy script, which uses only one channel to detect
 % every dentate spike. Rather than removing ech, it was deemed easier to
 % just make the final row be true
-ech = false(size(ets,1), nCh); 
+ech = false(size(ets,1), nCh);
 ech(:,end) = true;
-load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
-global_min_T_us = detector_meta.global_min_T_us;
-sfx             = detector_meta.sfx;
-ets = [ets(:) - 0.05, ets(:) + 0.05];
-% There has to be an easier way to do this, but this will convert toothy
-% time stamps from seconds to the sample index
-ets = sfx * ets(:,1);
-ets = sfx * ets(:,2);
+% load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
+% Per-channel (inside Pass 1 loop):
+[ts_us, ~, Fs_vec, nValid, samplesAD] = Nlx2MatCSC(fn, [1 1 1 1 1], 0, 1, []);
+Fs = mode(double(Fs_vec(Fs_vec>0)));
+if ~(isfinite(Fs)&&Fs>0), Fs=30000; 
+    end   
+fallbackall_Fs(k) = Fs;
+% After the loop, consensus across all channels:sfx = mode(round(all_Fs(good)));
+
+%global_min_T_us = detector_meta.global_min_T_us;
+sfx             = Fs;
+ets = round(sfx * ets);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
