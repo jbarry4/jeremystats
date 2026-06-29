@@ -80,27 +80,33 @@ files = files(keep); nums = nums(keep);
 nCh = numel(files);
 fprintf('[INFO] %d channels.\n', nCh);
 
+%% ---- Read sfx and global_min_T_us from CSC headers ----
+hdr0 = Nlx2MatCSC(fullfile(files(1).folder, files(1).name), [0 0 0 0 0], 1, 1, []);
+sfx  = parseNcsField(hdr0, 'SamplingFrequency');
+if ~isfinite(sfx) || sfx <= 0
+    sfx = 30000;
+    fprintf('[WARN] SamplingFrequency not in header, defaulting to %g Hz\n', sfx);
+end
+fprintf('[INFO] Fs=%g Hz\n', sfx);
+
+all_first_T_us = nan(1, nCh);
+for k = 1:nCh
+    fn = fullfile(files(k).folder, files(k).name);
+    [ts_us] = Nlx2MatCSC(fn, [1 0 0 0 0], 0, 1, []);
+    if ~isempty(ts_us), all_first_T_us(k) = ts_us(1); end
+end
+global_min_T_us = min(all_first_T_us);
+fprintf('[INFO] global_min_T=%g us\n', global_min_T_us);
+
 %% ---- Load detection results ----
 tmp = load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'Combined_DS_timestamps_sec');
 ets = tmp.Combined_DS_timestamps_sec;
-ets = [ets(:) - 0.05, ets(:) + 0.05];
 % ech adapted to fit Toothy script, which uses only one channel to detect
 % every dentate spike. Rather than removing ech, it was deemed easier to
 % just make the final row be true
 ech = false(size(ets,1), nCh);
 ech(:,end) = true;
-% load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
-% Per-channel (inside Pass 1 loop):
-[ts_us, ~, Fs_vec, nValid, samplesAD] = Nlx2MatCSC(fn, [1 1 1 1 1], 0, 1, []);
-Fs = mode(double(Fs_vec(Fs_vec>0)));
-if ~(isfinite(Fs)&&Fs>0), Fs=30000; 
-    ... end   
-fallbackall_Fs(k) = Fs;
-% After the loop, consensus across all channels:sfx = mode(round(all_Fs(good)));
-
-%global_min_T_us = detector_meta.global_min_T_us;
-sfx             = Fs;
-ets = round(sfx * ets);
+ets = round(sfx * [ets(:) - 0.05, ets(:) + 0.05]);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
@@ -144,7 +150,7 @@ tA = tic;
 for k = 1:nEvt
     e = evtIdx(k);
     anchor_samp  = round(mean(ets(e,:)));
-    anchor_ts_us = global_min_T_us + (anchor_samp - 1) / (sfx/1e6);
+    anchor_ts_us = global_min_T_us + (anchor_samp - 1) %/ (sfx/1e6);
     t0_us = anchor_ts_us - HW_us;
     t1_us = anchor_ts_us + HW_us;
 
@@ -340,3 +346,15 @@ for k = 1:nEvt
 end
 
 fprintf('\n[STEP 2-CSD] Done in %.1f s. Output: %s\n', toc(tB), outDir);
+
+function val = parseNcsField(hdr, fieldName)
+    val = NaN;
+    pat = ['-', fieldName, '\s+([\d.eE+\-]+)'];
+    for i = 1:numel(hdr)
+        tok = regexp(char(hdr{i}), pat, 'tokens', 'once');
+        if ~isempty(tok)
+            val = str2double(tok{1});
+            return;
+        end
+    end
+end

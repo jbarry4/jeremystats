@@ -92,7 +92,7 @@ fprintf('[INFO] Fs=%g Hz\n', sfx);
 all_first_T_us = nan(1, nCh);
 for k = 1:nCh
     fn = fullfile(files(k).folder, files(k).name);
-    [ts_us] = Nlx2MatCSC(fn, [1 0 0 0 0], 0, 2, 1);
+    [ts_us] = Nlx2MatCSC(fn, [1 0 0 0 0], 0, 1, []);
     if ~isempty(ts_us), all_first_T_us(k) = ts_us(1); end
 end
 global_min_T_us = min(all_first_T_us);
@@ -104,9 +104,9 @@ ets = tmp.Combined_DS_timestamps_sec;
 % ech adapted to fit Toothy script, which uses only one channel to detect
 % every dentate spike. Rather than removing ech, it was deemed easier to
 % just make the final row be true
-ech = false(size(ets,1), nCh);
+ech = false(size(ets,2), nCh);
 ech(:,end) = true;
-ets = round(sfx * [ets(:) - 0.05, ets(:) + 0.05]);
+ets = round(sfx * [ets(:) - 0.2, ets(:) + 0.2]);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
