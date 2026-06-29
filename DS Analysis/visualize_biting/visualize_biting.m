@@ -28,7 +28,7 @@
 %   <Take2>/Output2/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout/<animalName>/
 
 if ~exist('fiftyNineBad','var') || isempty(fiftyNineBad)
-    fiftyNineBad = false;
+    fiftyNineBad = true;
 end
 
 %% ---- Parameters ----
