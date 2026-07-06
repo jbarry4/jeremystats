@@ -1,4 +1,3 @@
-function visualize_biting(dataDir, badChannels, varargin)
 %%2_1_visualize.m  Step 2 (v2): voltage raster + CSD raster + wide context
 %
 % Variant of 2_visualize.m. For each detected event it renders a 2x2 layout:
@@ -37,7 +36,7 @@ function visualize_biting(dataDir, badChannels, varargin)
 
 % badChannels = [8,41,59];
 
-if nargin < 2 || isempty(badChannels)
+if ~exist('badChannels','var') || isempty(badChannels)
     badChannels = 59;
 end
 
@@ -62,15 +61,10 @@ scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = '/gpfs2/scratch/syounger/DS_toothy';
 end
-dataDirStr = char(dataDir);
-if ~isempty(dataDirStr) && (dataDirStr(end)=='/' || dataDirStr(end)=='\')
-    dataDirStr = dataDirStr(1:end-1);
-end
-[parentDir, ~] = fileparts(dataDirStr);
-[~, animalName] = fileparts(parentDir);
+[~, animalName] = fileparts(char(dataDir));
 halfWidthMsChar = num2str(halfWidthMs);
 outDirFolder = append('Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_',halfWidthMsChar,'ms');
-outDir = fullfile(scriptDir, 'Output2', outDirFolder, '/', animalName);
+outDir = fullfile(scriptDir, 'Output2', outDirFolder, animalName);
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
 fprintf('\n[STEP 2-CSD] %s\n', dataDir);
@@ -382,8 +376,6 @@ for k = 1:nEvt
 end
 
 fprintf('\n[STEP 2-CSD] Done in %.1f s. Output: %s\n', toc(tB), outDir);
-
-end
 
 function val = parseNcsField(hdr, fieldName)
     val = NaN;

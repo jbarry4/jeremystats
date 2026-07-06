@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH --array=1-9
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64gb
+#SBATCH --time=0-12:00:00
+#SBATCH --job-name=ied_visualize_csd
+#SBATCH --output=/users/s/a/sakhava1/scratch/logs/ied_viz_csd_%A_%a.out
+#SBATCH --error=/users/s/a/sakhava1/scratch/logs/ied_viz_csd_%A_%a.err
+
+module load matlab
+
+TAKE2_DIR="/gpfs2/scratch/syounger/DS_toothy"
+REQS_DIR="/gpfs2/scratch/syounger/DS_toothy/reqsPath"
+
+dirs=(
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/M2_CTL/M2ctls3jan23"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/M2_CTL/M2s8jan26"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m21_ptenblind/m21s2jul29"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m21_ptenblind/m21s6jul29"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m22_ptenblind/m22s3jul15"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m22_ptenblind/m22s6jul15"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m24_ptenblind/m24s1jul16"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m24_ptenblind/m24s4jul16"
+  "/gpfs2/scratch/syounger/DS_toothy/PTEN/m26_ptenblind/m26s2jun28"
+ 
+)
+flags=([59] [59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59])
+
+DATA_DIR="${dirs[$SLURM_ARRAY_TASK_ID-1]}"
+BADCHANNELS="${flags[$SLURM_ARRAY_TASK_ID-1]}"
+
+echo "visualize_biting | DIR=$DATA_DIR | badChannels=$BADCHANNELS"
+
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; eval(fileread('${TAKE2_DIR}/visualize_biting.m')); exit"
