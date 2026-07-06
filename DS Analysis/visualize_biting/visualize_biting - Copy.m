@@ -19,20 +19,30 @@
 % Called via eval(fileread(...)) from 2_1_visualize.sbat.
 % Required workspace variables (set by sbat before eval):
 %   dataDir       - same animal folder used in Step 1 (contains ets/ech/detector_meta)
-%   fiftyNineBad  - logical true/false
+%   Old variable -> fiftyNineBad  - logical true/false
+%   New variable to determine bad channels is badChannels
+%   badChannels - array of channels to skip for analysis
 %
 % Reads the band-pass+notch detections from 1_1_ied_detect.m
 % (ets/ech_hp_1_lp_300_nf.mat).
 %
 % One PNG per event is saved to:
 %   <Take2>/Output2/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout/<animalName>/
+% 
+% Old code for fiftyNineBad
+% if ~exist('fiftyNineBad','var') || isempty(fiftyNineBad)
+%     fiftyNineBad = true;
+% end
 
-if ~exist('fiftyNineBad','var') || isempty(fiftyNineBad)
-    fiftyNineBad = false;
+badChannels = [8,23,34,45,55,56,59,63];
+
+if ~exist('badChannels','var') || isempty(badChannels)
+    badChannels = 59;
 end
 
+
 %% ---- Parameters ----
-halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2)
+halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
 wideHalfWidthS = 5;      % s  either side of event centre (panel 3, context)
 minCh          = 1;      % include events with >= this many active channels
 maxCh          = 64;     % include events with <= this many active channels
@@ -46,13 +56,15 @@ traceAmpPct    = 99;     % robust percentile used to scale overlaid traces
 traceHalfRows  = 0.45;   % a "traceAmpPct" deflection fills +/- this many rows
 
 %% ---- Output folder ----
-dataDir = 'D:/Visualize_biting_testing/M1ptens2oct2/2023-10-02_16-58-03/';
+dataDir = 'D:/Visualize_biting_testing/m34s5jun10/2024-06-10_14-45-34/';
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = '/users/s/a/sakhava1/scratch/KCNT1 Urethane/Take 2';
 end
 [~, animalName] = fileparts(char(dataDir));
-outDir = fullfile(scriptDir, 'Output2', 'Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout', animalName);
+halfWidthMsChar = num2str(halfWidthMs);
+outDirFolder = append('Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_',halfWidthMsChar,'ms');
+outDir = fullfile(scriptDir, 'Output2', outDirFolder, animalName);
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
 fprintf('\n[STEP 2-CSD] %s\n', dataDir);
@@ -68,8 +80,13 @@ for i = 1:numel(files)
     if ~isempty(tok), nums(i) = str2double(tok{1}); end
 end
 
+nums = sort(nums,2,"ascend");
 keep = ~isnan(nums) & (nums <= loadMaxCh);
-if fiftyNineBad, keep = keep & (nums ~= 59); end
+badChannelSize = 1:1:length(badChannels);
+for channelnum = badChannelSize
+    removeChannel = badChannels(1,channelnum);
+    keep = keep & (nums ~= removeChannel);
+end
 [~, ia] = unique(nums(keep));
 tmpIdx = find(keep);
 keep(:) = false;
@@ -104,9 +121,9 @@ ets = tmp.Combined_DS_timestamps_sec;
 % ech adapted to fit Toothy script, which uses only one channel to detect
 % every dentate spike. Rather than removing ech, it was deemed easier to
 % just make the final row be true
-ech = false(size(ets,1), nCh);
+ech = false(size(ets,2), nCh);
 ech(:,end) = true;
-ets = round(sfx * [ets(:) - 0.05, ets(:) + 0.05]);
+ets = round(sfx * [ets(:) - (halfWidthMs/1000), ets(:) + (halfWidthMs/1000)]);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
@@ -150,7 +167,7 @@ tA = tic;
 for k = 1:nEvt
     e = evtIdx(k);
     anchor_samp  = round(mean(ets(e,:)));
-    anchor_ts_us = global_min_T_us + (anchor_samp - 1) %/ (sfx/1e6);
+    anchor_ts_us = global_min_T_us + (anchor_samp - 1) / (sfx/1e6);
     t0_us = anchor_ts_us - HW_us;
     t1_us = anchor_ts_us + HW_us;
 
