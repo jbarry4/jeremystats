@@ -28,7 +28,7 @@
 %   <Take2>/Output2/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout/<animalName>/
 
 if ~exist('fiftyNineBad','var') || isempty(fiftyNineBad)
-    fiftyNineBad = false;
+    fiftyNineBad = true;
 end
 
 %% ---- Parameters ----
@@ -46,6 +46,7 @@ traceAmpPct    = 99;     % robust percentile used to scale overlaid traces
 traceHalfRows  = 0.45;   % a "traceAmpPct" deflection fills +/- this many rows
 
 %% ---- Output folder ----
+dataDir = 'D:/Visualize_biting_testing/M1ptens2oct2/2023-10-02_16-58-03/';
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = '/users/s/a/sakhava1/scratch/KCNT1 Urethane/Take 2';
@@ -79,21 +80,33 @@ files = files(keep); nums = nums(keep);
 nCh = numel(files);
 fprintf('[INFO] %d channels.\n', nCh);
 
+%% ---- Read sfx and global_min_T_us from CSC headers ----
+hdr0 = Nlx2MatCSC(fullfile(files(1).folder, files(1).name), [0 0 0 0 0], 1, 1, []);
+sfx  = parseNcsField(hdr0, 'SamplingFrequency');
+if ~isfinite(sfx) || sfx <= 0
+    sfx = 30000;
+    fprintf('[WARN] SamplingFrequency not in header, defaulting to %g Hz\n', sfx);
+end
+fprintf('[INFO] Fs=%g Hz\n', sfx);
+
+all_first_T_us = nan(1, nCh);
+for k = 1:nCh
+    fn = fullfile(files(k).folder, files(k).name);
+    [ts_us] = Nlx2MatCSC(fn, [1 0 0 0 0], 0, 1, []);
+    if ~isempty(ts_us), all_first_T_us(k) = ts_us(1); end
+end
+global_min_T_us = min(all_first_T_us);
+fprintf('[INFO] global_min_T=%g us\n', global_min_T_us);
+
 %% ---- Load detection results ----
-load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'ets');
+tmp = load(fullfile(dataDir,'ets_hp_1_lp_300_nf.mat'), 'Combined_DS_timestamps_sec');
+ets = tmp.Combined_DS_timestamps_sec;
 % ech adapted to fit Toothy script, which uses only one channel to detect
 % every dentate spike. Rather than removing ech, it was deemed easier to
 % just make the final row be true
-ech = false(size(ets,1), nCh); 
+ech = false(size(ets,2), nCh);
 ech(:,end) = true;
-load(fullfile(dataDir,'detector_meta.mat'), 'detector_meta');
-global_min_T_us = detector_meta.global_min_T_us;
-sfx             = detector_meta.sfx;
-ets = [ets(:) - 0.05, ets(:) + 0.05];
-% There has to be an easier way to do this, but this will convert toothy
-% time stamps from seconds to the sample index
-ets = sfx * ets(:,1);
-ets = sfx * ets(:,2);
+ets = round(sfx * [ets(:) - 0.2, ets(:) + 0.2]);
 fprintf('[INFO] %d events  Fs=%g Hz\n', size(ets,1), sfx);
 
 %% ---- Read header once for ADBitVolts ----
@@ -333,3 +346,15 @@ for k = 1:nEvt
 end
 
 fprintf('\n[STEP 2-CSD] Done in %.1f s. Output: %s\n', toc(tB), outDir);
+
+function val = parseNcsField(hdr, fieldName)
+    val = NaN;
+    pat = ['-', fieldName, '\s+([\d.eE+\-]+)'];
+    for i = 1:numel(hdr)
+        tok = regexp(char(hdr{i}), pat, 'tokens', 'once');
+        if ~isempty(tok)
+            val = str2double(tok{1});
+            return;
+        end
+    end
+end
