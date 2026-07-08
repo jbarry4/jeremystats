@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64gb
-#SBATCH --time=0-12:00:00
+#SBATCH --time=0-14:00:00
 #SBATCH --job-name=ied_visualize_csd
 #SBATCH --output=/users/s/y/syounger/scratch/DS_toothy/logs/ied_viz_biting_csd_%A_%a.out
 #SBATCH --error=/users/s/y/syounger/scratch/DS_toothy/logs/ied_viz_biting_csd_%A_%a.err
@@ -15,22 +15,24 @@ TAKE2_DIR="/users/s/y/syounger/scratch/DS_toothy"
 REQS_DIR="/users/s/y/syounger/scratch/DS_toothy/reqsPath"
 
 dirs=(
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2ctls3jan23"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2s8jan26"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m21_ptenblind/m21s2jul29"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m21_ptenblind/m21s6jul29"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m22_ptenblind/m22s3jul15"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m22_ptenblind/m22s6jul15"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m24_ptenblind/m24s1jul16"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m24_ptenblind/m24s4jul16"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/m26_ptenblind/m26s2jun28"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2ctls3jan23/2024-01-23_16-04-25"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2s8jan26/2024-01-26_17-48-00"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M51/m51s1apr8/2025-04-08_16-58-56"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M51/m51s1apr8/2025-04-08_16-58-56"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s4jul7/2025-07-07_12-52-42"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s4jul7/2025-07-07_12-52-42"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s10jul7/2025-07-07_16-42-40"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s10jul7/2025-07-07_16-42-40"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s11jul8/2025-07-09_12-19-54"
  
 )
-flags=([59] [59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59] [8 41 59])
+channels=([59] [59] [59] [59] [59] [59] [59] [59] [59])
+window=(200 200 50 200 50 200 50 200 50)
 
 DATA_DIR="${dirs[$SLURM_ARRAY_TASK_ID-1]}"
-BADCHANNELS="${flags[$SLURM_ARRAY_TASK_ID-1]}"
+BADCHANNELS="${channels[$SLURM_ARRAY_TASK_ID-1]}"
+HALFWIDTHMS="${window[$SLURM_ARRAY_TASK_ID-1]}"
 
 echo "visualize_biting | DIR=$DATA_DIR | badChannels=$BADCHANNELS"
 
-matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; visualize_biting(dataDir, badChannels); exit"
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; halfWidthMs=${HALFWIDTHMS}; visualize_biting(dataDir, badChannels, halfWidthMs); exit"

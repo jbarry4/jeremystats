@@ -1,4 +1,4 @@
-function visualize_biting(dataDir, badChannels, varargin)
+function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 %%2_1_visualize.m  Step 2 (v2): voltage raster + CSD raster + wide context
 %
 % Variant of 2_visualize.m. For each detected event it renders a 2x2 layout:
@@ -41,9 +41,12 @@ if nargin < 2 || isempty(badChannels)
     badChannels = 59;
 end
 
+if nargin < 3 || isempty(halfWidthMs)
+    halfWidthMs = 50;
+end
 
 %% ---- Parameters ----
-halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
+% halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
 wideHalfWidthS = 5;      % s  either side of event centre (panel 3, context)
 minCh          = 1;      % include events with >= this many active channels
 maxCh          = 64;     % include events with <= this many active channels
@@ -164,7 +167,7 @@ wideDec   = max(1, floor(nSampWide / wideTargetCols));
 fprintf('[INFO] Wide window: %d samples -> decimate x%d for display.\n', nSampWide, wideDec);
 
 % Channels used for CSD: first 4, then every other
-csdChIdx = [1:4, 5:2:nCh];
+csdChIdx = [1:1:nCh];
 nCsdCh   = numel(csdChIdx);
 
 %% ---- PASS A: load every +/-50 ms window once, cache, gather scale stats ----
@@ -308,7 +311,7 @@ for k = 1:nEvt
     % ----- Panel 1 (top-left): voltage raster +/-50 ms (with trace overlay) -----
     ax1 = nexttile(tl);
     imagesc(ax1, tRelMs, 1:nCh, Y);
-    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-climGlobal climGlobal]);
+    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-2000 2000]);
     hold(ax1,'on');
     xregion(ax1, onRelMs, offRelMs, 'FaceColor',[0 0 0], 'FaceAlpha',0.06);
     xline(ax1, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
@@ -341,7 +344,7 @@ for k = 1:nEvt
     % ----- Panel 3 (full-width, below): wide voltage raster +/- wideHalfWidthS s with traces -----
     ax3 = nexttile(tl, [1 2]);
     imagesc(ax3, tWideS, 1:nCh, Yw_disp);
-    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-climGlobal climGlobal]);
+    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-2000 2000]);
     hold(ax3,'on');
     xregion(ax3, onRelS, offRelS, 'FaceColor',[0 0 0], 'FaceAlpha',0.10);
     xline(ax3, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
