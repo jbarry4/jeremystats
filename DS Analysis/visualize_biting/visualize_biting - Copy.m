@@ -1,4 +1,3 @@
-function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 %%2_1_visualize.m  Step 2 (v2): voltage raster + CSD raster + wide context
 %
 % Variant of 2_visualize.m. For each detected event it renders a 2x2 layout:
@@ -35,18 +34,15 @@ function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 %     fiftyNineBad = true;
 % end
 
-% badChannels = [8,41,59];
+badChannels = [8,23,34,45,55,56,59,63];
 
-if nargin < 2 || isempty(badChannels)
+if ~exist('badChannels','var') || isempty(badChannels)
     badChannels = 59;
 end
 
-if nargin < 3 || isempty(halfWidthMs)
-    halfWidthMs = 50;
-end
 
 %% ---- Parameters ----
-% halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
+halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
 wideHalfWidthS = 5;      % s  either side of event centre (panel 3, context)
 minCh          = 1;      % include events with >= this many active channels
 maxCh          = 64;     % include events with <= this many active channels
@@ -60,20 +56,15 @@ traceAmpPct    = 99;     % robust percentile used to scale overlaid traces
 traceHalfRows  = 0.45;   % a "traceAmpPct" deflection fills +/- this many rows
 
 %% ---- Output folder ----
-% dataDir = 'D:/Visualize_biting_testing/m22s3jul15/2024-07-15_16-12-27/';
+dataDir = 'D:/Visualize_biting_testing/m34s5jun10/2024-06-10_14-45-34/';
 scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
-    scriptDir = '/gpfs2/scratch/syounger/DS_toothy';
+    scriptDir = '/users/s/a/sakhava1/scratch/KCNT1 Urethane/Take 2';
 end
-dataDirStr = char(dataDir);
-if ~isempty(dataDirStr) && (dataDirStr(end)=='/' || dataDirStr(end)=='\')
-    dataDirStr = dataDirStr(1:end-1);
-end
-[parentDir, ~] = fileparts(dataDirStr);
-[~, animalName] = fileparts(parentDir);
+[~, animalName] = fileparts(char(dataDir));
 halfWidthMsChar = num2str(halfWidthMs);
 outDirFolder = append('Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_',halfWidthMsChar,'ms');
-outDir = fullfile(scriptDir, 'Output2', outDirFolder, '/', animalName);
+outDir = fullfile(scriptDir, 'Output2', outDirFolder, animalName);
 if ~exist(outDir,'dir'), mkdir(outDir); end
 
 fprintf('\n[STEP 2-CSD] %s\n', dataDir);
@@ -83,34 +74,27 @@ fprintf('[INFO] Output: %s\n', outDir);
 files = dir(fullfile(dataDir,'**','CSC*.n*'));
 if isempty(files), error('No CSC files in: %s', dataDir); end
 
-% Add channelNumber field to each struct entry
+nums = nan(1, numel(files));
 for i = 1:numel(files)
     tok = regexp(files(i).name, 'CSC(\d+)', 'tokens', 'once');
-    if ~isempty(tok)
-        files(i).channelNumber = str2double(tok{1});
-    else
-        files(i).channelNumber = NaN;
-    end
+    if ~isempty(tok), nums(i) = str2double(tok{1}); end
 end
 
-% Sort struct ascending by channelNumber
-[~, ord] = sort([files.channelNumber]);
-files = files(ord);
-
-% Filter: valid channel numbers, within loadMaxCh, excluding bad channels
-keep = ~isnan([files.channelNumber]) & ([files.channelNumber] <= loadMaxCh);
-for ch = badChannels
-    keep = keep & ([files.channelNumber] ~= ch);
+nums = sort(nums,2,"ascend");
+keep = ~isnan(nums) & (nums <= loadMaxCh);
+badChannelSize = 1:1:length(badChannels);
+for channelnum = badChannelSize
+    removeChannel = badChannels(1,channelnum);
+    keep = keep & (nums ~= removeChannel);
 end
-% Remove duplicates, keeping first occurrence of each channel number
-[~, ia] = unique([files(keep).channelNumber]);
+[~, ia] = unique(nums(keep));
 tmpIdx = find(keep);
 keep(:) = false;
 keep(tmpIdx(ia)) = true;
 
-files = files(keep);
-nums  = [files.channelNumber];
-nCh   = numel(files);
+files = files(keep); nums = nums(keep);
+[nums, ord] = sort(nums); files = files(ord);
+nCh = numel(files);
 fprintf('[INFO] %d channels.\n', nCh);
 
 %% ---- Read sfx and global_min_T_us from CSC headers ----
@@ -166,10 +150,6 @@ nSampWide = round(2 * HWwide_us * sfx / 1e6) + 1;
 wideDec   = max(1, floor(nSampWide / wideTargetCols));
 fprintf('[INFO] Wide window: %d samples -> decimate x%d for display.\n', nSampWide, wideDec);
 
-% Channels used for CSD: first 4, then every other
-csdChIdx = [1:1:nCh];
-nCsdCh   = numel(csdChIdx);
-
 %% ---- PASS A: load every +/-50 ms window once, cache, gather scale stats ----
 fprintf('[INFO] Pass A: loading %d event windows (%d channels each = %d reads)...\n', ...
     nEvt, nCh, nEvt*nCh);
@@ -212,10 +192,9 @@ for k = 1:nEvt
     end
 
     % CSD = -2nd spatial derivative across channels; edge rows blank (NaN)
-    Ysub = Y(csdChIdx, :);
-    C = nan(nCsdCh, nSamp, 'single');
-    if nCsdCh >= 3
-        C(2:end-1,:) = -( Ysub(3:end,:) - 2*Ysub(2:end-1,:) + Ysub(1:end-2,:) );
+    C = nan(nCh, nSamp, 'single');
+    if nCh >= 3
+        C(2:end-1,:) = -( Y(3:end,:) - 2*Y(2:end-1,:) + Y(1:end-2,:) );
     end
     vc = abs(C(isfinite(C)));
     if ~isempty(vc), perEvtCSD(k) = prctile(vc, climPctile); end
@@ -271,11 +250,10 @@ for k = 1:nEvt
     onRelS   =  onS(k) - centerS(k);
     offRelS  = offS(k) - centerS(k);
 
-    % CSD for this event (from cached Y), using first 4 channels then every other
-    Ysub = Y(csdChIdx, :);
-    C = nan(nCsdCh, nSamp, 'single');
-    if nCsdCh >= 3
-        C(2:end-1,:) = -( Ysub(3:end,:) - 2*Ysub(2:end-1,:) + Ysub(1:end-2,:) );
+    % CSD for this event (from cached Y)
+    C = nan(nCh, nSamp, 'single');
+    if nCh >= 3
+        C(2:end-1,:) = -( Y(3:end,:) - 2*Y(2:end-1,:) + Y(1:end-2,:) );
     end
 
     % ---- load + decimate the wide (+/- wideHalfWidthS s) voltage window ----
@@ -311,7 +289,7 @@ for k = 1:nEvt
     % ----- Panel 1 (top-left): voltage raster +/-50 ms (with trace overlay) -----
     ax1 = nexttile(tl);
     imagesc(ax1, tRelMs, 1:nCh, Y);
-    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-2000 2000]);
+    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-climGlobal climGlobal]);
     hold(ax1,'on');
     xregion(ax1, onRelMs, offRelMs, 'FaceColor',[0 0 0], 'FaceAlpha',0.06);
     xline(ax1, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
@@ -331,12 +309,12 @@ for k = 1:nEvt
 
     % ----- Panel 2 (top-right): CSD raster +/-50 ms -----
     ax2 = nexttile(tl);
-    imagesc(ax2, tRelMs, 1:nCsdCh, C, 'AlphaData', ~isnan(C));
+    imagesc(ax2, tRelMs, 1:nCh, C, 'AlphaData', ~isnan(C));
     set(ax2,'YDir','reverse','Color','w'); colormap(ax2, jet); clim(ax2,[-csdClim csdClim]);
     hold(ax2,'on');
     xline(ax2, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
-    ylim(ax2,[0.5 nCsdCh+0.5]); xlim(ax2,[-halfWidthMs halfWidthMs]);
-    set(ax2,'YTick',1:nCsdCh,'YTickLabel',L(csdChIdx),'FontSize',7);
+    ylim(ax2,[0.5 nCh+0.5]); xlim(ax2,[-halfWidthMs halfWidthMs]);
+    set(ax2,'YTick',1:nCh,'YTickLabel',L,'FontSize',7);
     xlabel(ax2,'Relative time (ms)'); ylabel(ax2,'Channel');
     title(ax2,'CSD raster (\pm50 ms)','FontSize',10,'FontWeight','bold');
     cb2 = colorbar(ax2); ylabel(cb2,'CSD (a.u.)');
@@ -344,7 +322,7 @@ for k = 1:nEvt
     % ----- Panel 3 (full-width, below): wide voltage raster +/- wideHalfWidthS s with traces -----
     ax3 = nexttile(tl, [1 2]);
     imagesc(ax3, tWideS, 1:nCh, Yw_disp);
-    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-2000 2000]);
+    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-climGlobal climGlobal]);
     hold(ax3,'on');
     xregion(ax3, onRelS, offRelS, 'FaceColor',[0 0 0], 'FaceAlpha',0.10);
     xline(ax3, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
@@ -385,8 +363,6 @@ for k = 1:nEvt
 end
 
 fprintf('\n[STEP 2-CSD] Done in %.1f s. Output: %s\n', toc(tB), outDir);
-
-end
 
 function val = parseNcsField(hdr, fieldName)
     val = NaN;
