@@ -27,7 +27,7 @@ EXPERIMENTAL DESIGN (read this first)
 - Because it is the SAME probe across a mouse's two sessions, a given Channel
   index is the SAME physical electrode in Baseline and CNO -> we pair by
   (Mouse, Channel).
-
+### This is not true. The probe could have moved. We have to account for anatomical layers. I shall provide you that data.
 PROVENANCE
 ----------
 Source: ../DATA_AND_OUTPUT/Prepped_Merged_Long_Format.csv
