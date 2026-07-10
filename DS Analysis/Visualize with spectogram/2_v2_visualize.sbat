@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --array=1-18
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64gb
+#SBATCH --time=0-12:00:00
+#SBATCH --job-name=ied_viz_v2_spec
+#SBATCH --output=/users/s/a/sakhava1/scratch/logs/ied_viz_v2_spec_%A_%a.out
+#SBATCH --error=/users/s/a/sakhava1/scratch/logs/ied_viz_v2_spec_%A_%a.err
+
+module load matlab
+
+TAKE2_DIR="/users/s/a/sakhava1/scratch/KCNT1 Urethane/Take 2"
+REQS_DIR="/users/s/a/sakhava1/scratch/KCNT1 Urethane/reqsPath"
+
+dirs=(
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M2s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M4s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M5s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M7s3"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M8s3"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M14s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M19s4"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M22s2"
+  "/users/s/a/sakhava1/scratch/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M22s3"
+)
+flags=(true true true true true true true true true)
+NDIR=${#dirs[@]}
+
+# --- Render ALL events (0 = no cap) ---
+TRIAL_MAX_EVENTS=0
+
+# --- Both spectrogram channel-selection modes across one array ---
+#   array tasks 1..NDIR      -> mode HighMag    (specFocusHighMag=true)
+#   array tasks NDIR+1..2N    -> mode EvenSpread (specFocusHighMag=false)
+IDX=$SLURM_ARRAY_TASK_ID
+if [ "$IDX" -le "$NDIR" ]; then
+  DI=$((IDX - 1))
+  SPEC_FOCUS_HIGHMAG=true
+else
+  DI=$((IDX - NDIR - 1))
+  SPEC_FOCUS_HIGHMAG=false
+fi
+
+DATA_DIR="${dirs[$DI]}"
+FIFTYNINEBAD="${flags[$DI]}"
+
+echo "2_v2_visualize | DIR=$DATA_DIR | fiftyNineBad=$FIFTYNINEBAD | specFocusHighMag=$SPEC_FOCUS_HIGHMAG | trialMaxEvents=$TRIAL_MAX_EVENTS"
+
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; fiftyNineBad=${FIFTYNINEBAD}; specFocusHighMag=${SPEC_FOCUS_HIGHMAG}; trialMaxEvents=${TRIAL_MAX_EVENTS}; eval(fileread('${TAKE2_DIR}/2_v2_visualize.m')); exit"
