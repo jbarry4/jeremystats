@@ -1,15 +1,20 @@
 function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 %%2_1_visualize.m  Step 2 (v2): voltage raster + CSD raster + wide context
 %
-% Variant of 2_visualize.m. For each detected event it renders a 2x2 layout:
-%   top-left   Voltage raster, +/-50 ms  (channels x time, colour = uV) with the
-%              per-channel oscillation traces superimposed -- the event detail.
-%   top-right  CSD raster, +/-50 ms      current-source density = -d2V/dchannel^2,
-%              blank (NaN) first/last rows, jet colormap, robust CLim -- matches
-%              the look/feel of CSDRaster_Avg_Pipeline.
-%   bottom     Voltage raster, +/-5 s    full-width context window (loaded on
-%   (spans     demand, block-mean decimated for display) WITH per-channel traces
-%   both cols) overlaid, so each event can be seen in the surrounding recording.
+% Variant of 2_visualize.m. For each detected event it renders a 3x1 layout:
+%   top-left     Voltage raster, +/-50 ms  (channels x time, colour = uV) with the
+%                per-channel oscillation traces superimposed -- the event detail.
+%   top-middle   CSD raster, +/-50 ms      current-source density = -d2V/dchannel^2,
+%                blank (NaN) first/last rows, jet colormap, robust CLim.
+%   top-right    Spectrogram, +/-50 ms     time-frequency map of the "driver" channel
+%   (NEW)        (the active channel with the largest deflection). Continuous wavelet
+%                transform (CWT), log frequency axis (low freq at bottom), jet colormap,
+%                power in dB, with the driver waveform overlaid (white line, black
+%                outline) -- same look/feel as
+%                Scalogram_Waveform_Stacked_ThirdEvent_Pipeline.m.
+%   bottom       Voltage raster, +/-5 s    full-width context window (loaded on
+%   (spans       demand, block-mean decimated for display) WITH per-channel traces
+%   all 3 cols)  overlaid, so each event can be seen in the surrounding recording.
 %
 % Putting voltage and CSD side-by-side (instead of stacked) gives every panel
 % more room. All x-axes are RELATIVE time (ms for the two top panels, s for the
@@ -17,25 +22,20 @@ function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 % is gone; the metadata block lives in an sgtitle above the layout so nothing
 % overlaps.
 %
-% Called via eval(fileread(...)) from 2_1_visualize.sbat.
+% Called via eval(fileread(...)) from visualize_biting_spec.sbat.
 % Required workspace variables (set by sbat before eval):
 %   dataDir       - same animal folder used in Step 1 (contains ets/ech/detector_meta)
 %   Old variable -> fiftyNineBad  - logical true/false
 %   New variable to determine bad channels is badChannels
 %   badChannels - array of channels to skip for analysis
+%   halfWidthMs -> ms either side of event centre (panels 1 & 2) & decides ets range
 %
-% Reads the band-pass+notch detections from 1_1_ied_detect.m
+% Reads the band-pass+notch detections from toothy ets output
 % (ets/ech_hp_1_lp_300_nf.mat).
 %
 % One PNG per event is saved to:
 %   <Take2>/Output2/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout/<animalName>/
-% 
-% Old code for fiftyNineBad
-% if ~exist('fiftyNineBad','var') || isempty(fiftyNineBad)
-%     fiftyNineBad = true;
-% end
 
-% badChannels = [8,41,59];
 
 if nargin < 2 || isempty(badChannels)
     badChannels = 59;
@@ -46,7 +46,6 @@ if nargin < 3 || isempty(halfWidthMs)
 end
 
 %% ---- Parameters ----
-% halfWidthMs    = 50;     % ms either side of event centre (panels 1 & 2) & decides ets range
 wideHalfWidthS = 5;      % s  either side of event centre (panel 3, context)
 minCh          = 1;      % include events with >= this many active channels
 maxCh          = 64;     % include events with <= this many active channels
@@ -311,7 +310,7 @@ for k = 1:nEvt
     % ----- Panel 1 (top-left): voltage raster +/-50 ms (with trace overlay) -----
     ax1 = nexttile(tl);
     imagesc(ax1, tRelMs, 1:nCh, Y);
-    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-2000 2000]);
+    set(ax1,'YDir','reverse'); colormap(ax1, jet); clim(ax1,[-1000 1000]);
     hold(ax1,'on');
     xregion(ax1, onRelMs, offRelMs, 'FaceColor',[0 0 0], 'FaceAlpha',0.06);
     xline(ax1, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
@@ -332,7 +331,7 @@ for k = 1:nEvt
     % ----- Panel 2 (top-right): CSD raster +/-50 ms -----
     ax2 = nexttile(tl);
     imagesc(ax2, tRelMs, 1:nCsdCh, C, 'AlphaData', ~isnan(C));
-    set(ax2,'YDir','reverse','Color','w'); colormap(ax2, jet); clim(ax2,[-csdClim csdClim]);
+    set(ax2,'YDir','reverse','Color','w'); colormap(ax2, jet); clim(ax2,[-200 200]);
     hold(ax2,'on');
     xline(ax2, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);
     ylim(ax2,[0.5 nCsdCh+0.5]); xlim(ax2,[-halfWidthMs halfWidthMs]);
@@ -344,7 +343,7 @@ for k = 1:nEvt
     % ----- Panel 3 (full-width, below): wide voltage raster +/- wideHalfWidthS s with traces -----
     ax3 = nexttile(tl, [1 2]);
     imagesc(ax3, tWideS, 1:nCh, Yw_disp);
-    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-2000 2000]);
+    set(ax3,'YDir','reverse'); colormap(ax3, jet); clim(ax3,[-1000 1000]);
     hold(ax3,'on');
     xregion(ax3, onRelS, offRelS, 'FaceColor',[0 0 0], 'FaceAlpha',0.10);
     xline(ax3, 0, '--k', 'LineWidth',1.0, 'Alpha',0.7);

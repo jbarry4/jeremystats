@@ -26,4 +26,4 @@ BADCHANNELS="${channels[$SLURM_ARRAY_TASK_ID-1]}"
 
 echo "visualize_biting | DIR=$DATA_DIR | badChannels=$BADCHANNELS"
 
-matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; visualize_biting(dataDir, badChannels); exit"
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; visualize_biting_spec(dataDir, badChannels); exit"
