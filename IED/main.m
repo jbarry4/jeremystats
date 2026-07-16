@@ -52,6 +52,14 @@
 %% Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s17aug4",'anchorChannel',24, 'anchorHalfWidthMs', 10e-3)
 %% Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M5_Pten_m5s7nov17", 'anchorHalfWidthMs', 20e-3)
 
+%% IP/PP + Voltage combined pipeline -> Take 4 (10 sessions, exceptions baked in)
+%% Run_Take4_IPP("C:\Users\Z390\Desktop\IED DATA\Take 3", "C:\Users\Z390\Desktop\IED DATA\Take 4")
+%% Single session, e.g.:
+%% IPP_Combined_Pipeline("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s2aug1", "<data>_uV.mat", 'outputDir', "C:\Users\Z390\Desktop\IED DATA\Take 4\PTEN_M13_pten_m13s2aug1", 'sessionName', "PTEN_M13_pten_m13s2aug1")
+
+%% v2: SOLID only, adds Voltage IP/PP profiles -> Take 4\v2
+%% Run_Take4_IPP_v2("C:\Users\Z390\Desktop\IED DATA\Take 3", "C:\Users\Z390\Desktop\IED DATA\Take 4\v2")
+
 Pipeline_Main("C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_M13_pten_m13s2aug1")
 
 

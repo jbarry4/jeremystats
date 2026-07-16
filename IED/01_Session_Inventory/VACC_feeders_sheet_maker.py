@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import PurePosixPath
 
-CSV = "C:/Users/info/Desktop/Barry/jeremystats/IED/batch_input.csv"  # change to your path if needed
+CSV = "C:/Users/info/Desktop/Barry/jeremystats/IED/01_Session_Inventory/batch_input.csv"  # change to your path if needed
 ROOT = "/gpfs2/scratch/sakhava1/Batch_Process_All/myDATA"
 
 df = pd.read_csv(CSV)

@@ -15,7 +15,7 @@ function vacc_ied_detect(basePath, eightBad)
   % Add required deps (LLspikedetector.m, Nlx2MatCSC.m/.mexa64)
   addpath(baseScriptDir);
   % This path was hardcoded in your original file. You may need to update it.
-  addpath(fullfile("C:\\Users\\Z390\\Desktop\\jeremystats\\IED\\reqsPath"));  % contains Nlx2MatCSC.* per repo layout
+  addpath(fullfile("C:\\Users\\Z390\\Desktop\\jeremystats\\IED\\lib\\reqsPath"));  % contains Nlx2MatCSC.* per repo layout
   fprintf('[INFO] Added script directory to path: %s\n', baseScriptDir);
 
   % Find all CSC files in the specified basePath
