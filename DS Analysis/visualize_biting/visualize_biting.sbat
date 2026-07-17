@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-9
+#SBATCH --array=1-2
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
@@ -15,24 +15,15 @@ TAKE2_DIR="/users/s/y/syounger/scratch/DS_toothy"
 REQS_DIR="/users/s/y/syounger/scratch/DS_toothy/reqsPath"
 
 dirs=(
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2ctls3jan23/2024-01-23_16-04-25"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M2_CTL/M2s8jan26/2024-01-26_17-48-00"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M51/m51s1apr8/2025-04-08_16-58-56"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M51/m51s1apr8/2025-04-08_16-58-56"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s4jul7/2025-07-07_12-52-42"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s4jul7/2025-07-07_12-52-42"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s10jul7/2025-07-07_16-42-40"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s10jul7/2025-07-07_16-42-40"
-  "/users/s/y/syounger/scratch/DS_toothy/PTEN/PTENDKOM59/m59s11jul8/2025-07-09_12-19-54"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M34_ptenblind/m34s5jun10/2024-06-10_14-45-34"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M34_ptenblind/m34s8jun10/Clean Data (No gaps)"]
  
 )
-channels=([59] [59] [59] [59] [59] [59] [59] [59] [59])
-window=(200 200 50 200 50 200 50 200 50)
+channels=([8 41 59] [8 41 59])
 
 DATA_DIR="${dirs[$SLURM_ARRAY_TASK_ID-1]}"
 BADCHANNELS="${channels[$SLURM_ARRAY_TASK_ID-1]}"
-HALFWIDTHMS="${window[$SLURM_ARRAY_TASK_ID-1]}"
 
 echo "visualize_biting | DIR=$DATA_DIR | badChannels=$BADCHANNELS"
 
-matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; halfWidthMs=${HALFWIDTHMS}; visualize_biting(dataDir, badChannels, halfWidthMs); exit"
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; visualize_biting(dataDir, badChannels); exit"

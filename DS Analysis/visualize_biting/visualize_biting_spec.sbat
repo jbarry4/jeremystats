@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH --array=1-2
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64gb
+#SBATCH --time=0-14:00:00
+#SBATCH --job-name=ied_visualize_csd
+#SBATCH --output=/users/s/y/syounger/scratch/DS_toothy/logs/ied_viz_biting_csd_%A_%a.out
+#SBATCH --error=/users/s/y/syounger/scratch/DS_toothy/logs/ied_viz_biting_csd_%A_%a.err
+
+module load matlab
+
+TAKE2_DIR="/users/s/y/syounger/scratch/DS_toothy"
+REQS_DIR="/users/s/y/syounger/scratch/DS_toothy/reqsPath"
+
+dirs=(
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M34_ptenblind/m34s5jun10/2024-06-10_14-45-34"
+  "/users/s/y/syounger/scratch/DS_toothy/PTEN/M34_ptenblind/m34s8jun10/Clean Data (No gaps)"]
+ 
+)
+channels=([8 41 59] [8 41 59])
+
+DATA_DIR="${dirs[$SLURM_ARRAY_TASK_ID-1]}"
+BADCHANNELS="${channels[$SLURM_ARRAY_TASK_ID-1]}"
+
+echo "visualize_biting | DIR=$DATA_DIR | badChannels=$BADCHANNELS"
+
+matlab -nodisplay -nosplash -r "addpath('${TAKE2_DIR}'); addpath('${REQS_DIR}'); dataDir='${DATA_DIR}'; badChannels=${BADCHANNELS}; visualize_biting_spec(dataDir, badChannels); exit"
