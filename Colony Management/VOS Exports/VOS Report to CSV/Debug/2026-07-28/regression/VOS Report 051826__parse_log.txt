@@ -1,0 +1,22 @@
+PDF: VOS Report 051826.pdf
+Pages: 16
+page 1: 3 card(s) via rect
+page 2: 3 card(s) via rect
+page 3: 3 card(s) via rect
+page 4: 3 card(s) via rect
+page 5: 3 card(s) via rect
+page 6: 3 card(s) via rect
+page 7: 3 card(s) via rect
+page 8: 3 card(s) via rect
+page 9: 3 card(s) via rect
+page 10: 3 card(s) via rect
+page 11: 3 card(s) via rect
+page 12: 3 card(s) via rect
+page 13: 3 card(s) via rect
+page 14: 3 card(s) via rect
+page 15: 3 card(s) via rect
+page 16: 2 card(s) via rect
+Total cards: 47
+Total mouse rows: 97
+External IDs seen: ['X0-145']
+Rows with warnings: 0

@@ -1,0 +1,25 @@
+PDF: VOS Report 050126.pdf
+Pages: 17
+page 1: 3 card(s) via rect
+[WARN] page 1 card 2 (CC-13964-3): no animal IDs found in notes
+[WARN] page 1 card 2 (CC-13964-3): found 0 IDs but card declares # Animals 1
+page 2: 3 card(s) via rect
+page 3: 3 card(s) via rect
+page 4: 3 card(s) via rect
+page 5: 3 card(s) via rect
+page 6: 3 card(s) via rect
+page 7: 3 card(s) via rect
+page 8: 3 card(s) via rect
+page 9: 3 card(s) via rect
+page 10: 3 card(s) via rect
+page 11: 3 card(s) via rect
+page 12: 3 card(s) via rect
+page 13: 3 card(s) via rect
+page 14: 3 card(s) via rect
+page 15: 3 card(s) via rect
+page 16: 3 card(s) via rect
+page 17: 3 card(s) via rect
+Total cards: 51
+Total mouse rows: 100
+External IDs seen: ['X0-145']
+Rows with warnings: 1

@@ -1,0 +1,525 @@
+FILE: ..\..\VOS Report 072826.pdf
+PAGES: 15
+
+====================================================================================================
+PAGE 1  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 08/08/25 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH
+  4 | Code DOB 7/20/2025
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 508x505
+  9 | 317
+ 10 | Created 7/13/2026 3:57pm • CC-22535-5 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 1
+ 12 | Census 09/25/25 Sex FEMALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 14 | Code DOB 9/4/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | 328x313
+ 19 | 522
+ 20 | Created 7/13/2026 3:57pm • CC-23545-4 • External ID:
+ 21 | X6-041 Species MOUSE # Animals 1
+ 22 | Census 09/25/25 Sex FEMALE
+ 23 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 24 | Code DOB 9/4/25
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | Notes
+ 28 | 328x313
+ 29 | 523
+ 30 | Created 7/13/2026 3:57pm • CC-23546-4 • External ID:
+
+====================================================================================================
+PAGE 2  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 10/06/25 Sex M
+  3 | P.I. Barry J. Strain Kcnt1YH; SST-Cre
+  4 | Code DOB 9/14/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 329 (M) x 302 (F)
+  9 | 577 (previously 534)
+ 10 | Created 7/13/2026 3:57pm • CC-23782-9 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 4
+ 12 | Census 10/22/25 Sex MALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 14 | Code DOB 10/1/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | 328x 313
+ 19 | 542
+ 20 | 543 - no et
+ 21 | 544 - no et
+ 22 | 545 - no et
+ 23 | Created 7/13/2026 3:57pm W-4813 • CC-24051-5 • External ID:
+ 24 | X6-041 Species MOUSE # Animals 3
+ 25 | Census 10/22/25 Sex FEMALE
+ 26 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 27 | Code DOB 10/1/25
+ 28 | Emergency Contact(s)
+ 29 | Rain Younger +19716788621 Source In House
+ 30 | Notes
+ 31 | 328x313
+ 32 | 537
+ 33 | 538
+ 34 | 540
+ 35 | Created 7/14/2026 12:12pm W-4813 • CC-24052-6 • External ID:
+
+====================================================================================================
+PAGE 3  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 11/04/25 Sex FEMALE
+  3 | P.I. Barry J. Strain KCN1-YH het
+  4 | Code DOB 05/29/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 302 (F)
+  9 | Split breeding pair 1
+ 10 | Created 7/13/2026 3:57pm SPLIT-5193 • CC-24368-2 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 1
+ 12 | Census 11/04/25 Sex FEMALE
+ 13 | P.I. Barry J. Strain KCN1-YH het
+ 14 | Code DOB 06/26/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | 313 (F)
+ 19 | Split breeding pair 2
+ 20 | Created 7/13/2026 3:57pm SPLIT-5194 • CC-24369-2 • External ID:
+ 21 | X6-041 Species MOUSE # Animals 4
+ 22 | Census 11/15/25 Sex MALE
+ 23 | P.I. Barry J. Strain Kcnt1-YH; SST-cre (het)
+ 24 | Code DOB 2025-10-25
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | Notes
+ 28 | 329x302
+ 29 | 571
+ 30 | 572
+ 31 | 573
+ 32 | 556
+ 33 | Created 7/13/2026 3:57pm W-4982 • CC-24575-7 • External ID:
+
+====================================================================================================
+PAGE 4  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 4
+  2 | Census 11/15/25 Sex FEMALE
+  3 | P.I. Barry J. Strain FID: Kcnt1-YH; SST-cre (het)
+  4 | Code DOB 2025-10-25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 329x302
+  9 | 547
+ 10 | 548
+ 11 | 549
+ 12 | 551
+ 13 | Created 7/13/2026 3:57pm W-4982 • CC-24576-4 • External ID:
+ 14 | X6-041 Species MOUSE # Animals 2
+ 15 | Census 12/18/25 Sex FEMALE
+ 16 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 17 | Code DOB 11/27/2025
+ 18 | Emergency Contact(s)
+ 19 | Rain Younger +19716788621 Source In House
+ 20 | Notes
+ 21 | 558
+ 22 | 559
+ 23 | Created 7/13/2026 3:57pm W-5191 • CC-25203-5 • External ID:
+ 24 | X6-041 Species MOUSE # Animals 3
+ 25 | Census 12/18/25 Sex MALE
+ 26 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 27 | Code DOB 11/27/2025
+ 28 | Emergency Contact(s)
+ 29 | Rain Younger +19716788621 Source In House
+ 30 | Notes
+ 31 | 560
+ 32 | 561
+ 33 | 562
+ 34 | Created 7/13/2026 3:57pm W-5191 • CC-25204-3 • External ID:
+
+====================================================================================================
+PAGE 5  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 2
+  2 | Census 12/18/25 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+  4 | Code DOB 11/27/2025
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 566
+  9 | 567
+ 10 | Created 7/13/2026 3:57pm W-5191 • CC-25205-4 • External ID:
+ 11 | X6-041 Species MOUSE
+ 12 | # Animals 1
+ 13 | P.I. Barry J. M DOB F DOB
+ 14 | Breeding Date
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | M Strain (ID)
+ 18 | F Strain (ID)
+ 19 | Notes 557 (former breeder)
+ 20 | Created 7/13/2026 3:57pm SPLIT-5973 • CC-26360-3 • External ID:
+ 21 | X6-041 Species MOUSE # Animals 1
+ 22 | Census 03/23/26 Sex MALE
+ 23 | P.I. Barry J. Strain Kcnt1-YH
+ 24 | Code DOB 6/26/25
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | Notes
+ 28 | 508x505
+ 29 | 308
+ 30 | Created 7/13/2026 3:57pm SPLIT-6240 • CC-27042-2 • External ID:
+
+====================================================================================================
+PAGE 6  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 04/02/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+  4 | Code DOB 9/4/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 328x313
+  9 | 520
+ 10 | Created 7/13/2026 3:57pm SPLIT-6317 • CC-27208-2 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 3
+ 12 | Census 04/04/26 Sex MALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 14 | Code DOB 2026-03-14
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | parents 565 (M) x 557 (F)
+ 19 | 583
+ 20 | 584
+ 21 | 1608 (previously 581)
+ 22 | Created 7/13/2026 3:57pm W-5844 • CC-27240-6 • External ID:
+ 23 | X6-041 Species MOUSE # Animals 1
+ 24 | Census 04/04/26 Sex FEMALE
+ 25 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+ 26 | Code DOB 2026-03-14
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger +19716788621 Source In House
+ 29 | Notes
+ 30 | 565 (M) x 557 (F)
+ 31 | 580
+ 32 | Created 7/13/2026 3:57pm W-5844 • CC-27241-3 • External ID:
+
+====================================================================================================
+PAGE 7  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 04/16/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+  4 | Code DOB 9/4/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 328x313
+  9 | 521
+ 10 | Created 7/13/2026 3:57pm SPLIT-6464 • CC-27510-2 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 1
+ 12 | Census 04/21/26 Sex FEMALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 14 | Code DOB 9/4/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | 328x313
+ 19 | 524
+ 20 | Created 7/13/2026 3:57pm SPLIT-6515 • CC-27620-2 • External ID:
+ 21 | X6-041 Species MOUSE # Animals 3
+ 22 | Census 04/27/26 Sex FEMALE
+ 23 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 24 | Code DOB 2026-04-06
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | Notes
+ 28 | parents 565 (M) x 557 (F)
+ 29 | 1610 (previously 592)
+ 30 | 1611 (previously 590)
+ 31 | 1612 (previously 593)
+ 32 | Created 7/21/2026 12:45pm W-6039 • CC-27733-7 • External ID:
+
+====================================================================================================
+PAGE 8  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 2
+  2 | Census 04/27/26 Sex MALE
+  3 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-04-06
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 565 (M) x 557 (F)
+  9 | 594
+ 10 | 595
+ 11 | Created 7/13/2026 3:57pm W-6039 • CC-27734-4 • External ID:
+ 12 | X6-041 Species MOUSE # Animals 1
+ 13 | Census 05/09/26 Sex MALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 15 | Code DOB 2026-04-18
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger +19716788621 Source In House
+ 18 | Notes
+ 19 | parents
+ 20 | 575 (M) x 546 (F)
+ 21 | 1604
+ 22 | Created 7/13/2026 3:57pm W-6131 • CC-28079-7 • External ID:
+ 23 | X6-041 Species MOUSE # Animals 3
+ 24 | Census 05/09/26 Sex FEMALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 26 | Code DOB 2026-04-18
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger +19716788621 Source In House
+ 29 | Notes
+ 30 | parents
+ 31 | 575 (M) x 546 (F)
+ 32 | 0597
+ 33 | 0598
+ 34 | 0599 - no eartag
+ 35 | Created 7/13/2026 3:57pm W-6131 • CC-28080-4 • External ID:
+
+====================================================================================================
+PAGE 9  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 2
+  2 | Census 05/22/26 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-05-01
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 565 (M) x 557 (F)
+  9 | 1613
+ 10 | 1614
+ 11 | Created 7/13/2026 3:57pm W-6205 • CC-28383-3 • External ID:
+ 12 | X6-041 Species MOUSE # Animals 4
+ 13 | Census 05/22/26 Sex FEMALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 15 | Code DOB 2026-05-01
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger +19716788621 Source In House
+ 18 | Notes
+ 19 | 565 (M) x 557 (F)
+ 20 | 1616
+ 21 | 1617
+ 22 | 1619
+ 23 | 1620
+ 24 | Created 7/13/2026 3:57pm W-6205 • CC-28384-3 • External ID:
+ 25 | X6-041 Species MOUSE # Animals 1
+ 26 | Census 05/22/26 Sex M
+ 27 | P.I. Barry J. Strain kcnt1-YH; PV-Cre
+ 28 | Code DOB 11/27/25
+ 29 | Emergency Contact(s)
+ 30 | Rain Younger +19716788621 Source In House
+ 31 | Notes
+ 32 | 565 (former breeder)
+ 33 | Created 7/13/2026 3:57pm SPLIT-6809 • CC-28386-2 • External ID:
+
+====================================================================================================
+PAGE 10  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 05/26/26 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+  4 | Code DOB 2026-04-18
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | parents
+  9 | 575 (M) x 546 (F)
+ 10 | 1606
+ 11 | Created 7/13/2026 3:57pm SPLIT-6831 • CC-28433-3 • External ID:
+ 12 | X6-041 Species MOUSE # Animals 1
+ 13 | Census 05/28/26 Sex FEMALE
+ 14 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+ 15 | Code DOB 2026-04-06
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger +19716788621 Source In House
+ 18 | Notes
+ 19 | parents 565 (M) x 557 (F)
+ 20 | 591
+ 21 | Created 7/13/2026 3:57pm SPLIT-6853 • CC-28501-2 • External ID:
+ 22 | X6-041 Species MOUSE # Animals 2
+ 23 | Census 06/01/26 Sex FEMALE
+ 24 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 25 | Code DOB 2026-05-11
+ 26 | Emergency Contact(s)
+ 27 | Rain Younger +19716788621 Source In House
+ 28 | Notes
+ 29 | 575 (M) x 546 (F)
+ 30 | 1621
+ 31 | 1623
+ 32 | Created 7/13/2026 3:57pm W-6264 • CC-28576-3 • External ID:
+
+====================================================================================================
+PAGE 11  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 3
+  2 | Census 06/01/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+  4 | Code DOB 2026-05-11
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 575 (M) x 546 (F)
+  9 | 1625
+ 10 | 1626
+ 11 | 1627
+ 12 | Created 7/13/2026 3:57pm W-6264 • CC-28577-3 • External ID:
+ 13 | X6-041 Species MOUSE # Animals 1
+ 14 | Census 06/01/26 Sex MALE
+ 15 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 16 | Code DOB 2026-05-11
+ 17 | Emergency Contact(s)
+ 18 | Rain Younger +19716788621 Source In House
+ 19 | Notes
+ 20 | 575 (M) x 546 (F)
+ 21 | 1630
+ 22 | Created 7/13/2026 3:57pm W-6264 • CC-28578-4 • External ID:
+ 23 | X6-041 Species MOUSE # Animals 2
+ 24 | Census 06/09/26 Sex FEMALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 26 | Code DOB 2026-05-11
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger +19716788621 Source In House
+ 29 | Notes
+ 30 | 575 (M) x 546 (F)
+ 31 | 1629
+ 32 | 1631
+ 33 | Created 7/13/2026 3:57pm SPLIT-6919 • CC-28754-2 • External ID:
+
+====================================================================================================
+PAGE 12  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 06/12/26 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;SST-Cre
+  4 | Code DOB 2025-04-21
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 512
+  9 | Created 7/13/2026 3:57pm SPLIT-6958 • CC-28846-2 • External ID:
+ 10 | X6-041 Species MOUSE # Animals 1
+ 11 | Census 06/15/26 Sex FEMALE
+ 12 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 13 | Code DOB 2026-04-18
+ 14 | Emergency Contact(s)
+ 15 | Rain Younger +19716788621 Source In House
+ 16 | Notes
+ 17 | parents
+ 18 | 575 (M) x 546 (F)
+ 19 | 1603 - no eartag, black coat
+ 20 | Created 7/13/2026 3:57pm SPLIT-6966 • CC-28881-2 • External ID:
+ 21 | X6-041 Species MOUSE
+ 22 | # Animals 2
+ 23 | P.I. Barry J. M DOB 04/18/26 F DOB 04/18/26
+ 24 | Breeding Date 06/15/26
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | M Strain (ID) 1602 Kcnt1-YH;SST
+ 28 | F Strain (ID) 1600 Kcnt1-YH; SST-cre
+ 29 | Notes 1602 (M) x 1600 (F)
+ 30 | Created 7/13/2026 3:57pm SPLIT-6969 • CC-28884-2 • External ID:
+
+====================================================================================================
+PAGE 13  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE
+  2 | # Animals 2
+  3 | P.I. Barry J. M DOB 03/14/26 F DOB 03/14/26
+  4 | Breeding Date 06/15/26
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | M Strain (ID) 1607 Kcnt1-YH;PV-Cre
+  8 | F Strain (ID) 579 Kcnt1-YH;PV-Cre
+  9 | Notes 1607(M)(previously 586) x 579(F)
+ 10 | Created 7/13/2026 3:57pm SPLIT-6970 • CC-28885-2 • External ID:
+ 11 | X6-041 Species MOUSE # Animals 1
+ 12 | Census 06/16/26 Sex MALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH
+ 14 | Code DOB 6/26/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger +19716788621 Source In House
+ 17 | Notes
+ 18 | 508x505
+ 19 | 307 - YH-het
+ 20 | Created 7/13/2026 3:57pm SPLIT-6976 • CC-28915-2 • External ID:
+ 21 | X6-041 Species MOUSE # Animals 1
+ 22 | Census 06/17/26 Sex FEMALE
+ 23 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 24 | Code DOB 10/1/25
+ 25 | Emergency Contact(s)
+ 26 | Rain Younger +19716788621 Source In House
+ 27 | Notes
+ 28 | 328x313
+ 29 | 539
+ 30 | Created 7/13/2026 3:57pm SPLIT-6985 • CC-28939-2 • External ID:
+
+====================================================================================================
+PAGE 14  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 4
+  2 | Census 06/30/26 Sex MALE
+  3 | P.I. Barry J. Strain KCNT1;SST-Cre
+  4 | Code DOB 2026-06-09
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | 575 x 546 (parents separated prior to birth)
+  9 | 1632
+ 10 | 1633
+ 11 | 1634
+ 12 | 1635 (black coat)
+ 13 | Created 7/13/2026 3:57pm W-6453 • CC-29225-2 • External ID:
+ 14 | X6-041 Species MOUSE # Animals 2
+ 15 | Census 06/30/26 Sex FEMALE
+ 16 | P.I. Barry J. Strain KCNT1;SST-Cre
+ 17 | Code DOB 2026-06-09
+ 18 | Emergency Contact(s)
+ 19 | Rain Younger +19716788621 Source In House
+ 20 | Notes
+ 21 | 575 x 546 (parents separated prior to birth)
+ 22 | 1636
+ 23 | 1637
+ 24 | Created 7/13/2026 3:57pm W-6453 • CC-29226-2 • External ID:
+ 25 | X6-041 Species MOUSE # Animals 1
+ 26 | Census 07/09/26 Sex MALE
+ 27 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 28 | Code DOB 2026-03-14
+ 29 | Emergency Contact(s)
+ 30 | Rain Younger +19716788621 Source In House
+ 31 | Notes
+ 32 | parents 565 (M) x 557 (F)
+ 33 | 1609 (previously 587)
+ 34 | Created 7/13/2026 3:57pm SPLIT-7218 • CC-29429-2 • External ID:
+
+====================================================================================================
+PAGE 15  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X6-041 Species MOUSE # Animals 1
+  2 | Census 07/21/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-04-06
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Notes
+  8 | parents 565 (M) x 557 (F)
+  9 | 588
+ 10 | Created 7/21/2026 12:45pm SPLIT-7307 • CC-29613-1 • External ID:

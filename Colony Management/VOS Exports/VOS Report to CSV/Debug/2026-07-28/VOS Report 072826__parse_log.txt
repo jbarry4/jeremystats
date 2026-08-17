@@ -1,0 +1,21 @@
+PDF: VOS Report 072826.pdf
+Pages: 15
+page 1: 3 card(s) via rect
+page 2: 3 card(s) via rect
+page 3: 3 card(s) via rect
+page 4: 3 card(s) via rect
+page 5: 3 card(s) via rect
+page 6: 3 card(s) via rect
+page 7: 3 card(s) via rect
+page 8: 3 card(s) via rect
+page 9: 3 card(s) via rect
+page 10: 3 card(s) via rect
+page 11: 3 card(s) via rect
+page 12: 3 card(s) via rect
+page 13: 3 card(s) via rect
+page 14: 3 card(s) via rect
+page 15: 1 card(s) via rect
+Total cards: 43
+Total mouse rows: 79
+External IDs seen: ['X6-041']
+Rows with warnings: 0

@@ -1,0 +1,657 @@
+FILE: ..\..\VOS Report 062226.pdf
+PAGES: 17
+
+====================================================================================================
+PAGE 1  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 08/08/25 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH
+  4 | Code DOB 7/20/2025
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Jeremy Barry +19178175852
+  8 | Notes
+  9 | 508x505
+ 10 | 317
+ 11 | Created 6/16/2026 3:53pm • CC-22535-4 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 08/13/25 Sex MALE
+ 14 | P.I. Barry J. Strain PV-Cre
+ 15 | Code DOB 07/01/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 328 (M)
+ 21 | Split breeding pair 2
+ 22 | Created 11/4/2025 2:22pm • CC-22629-3 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 08/13/25 Sex MALE
+ 25 | P.I. Barry J. Strain SST-Cre
+ 26 | Code DOB 07/01/2025
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger: (971) 678-8621 Source In House
+ 29 | Jeremy Barry: (917) 817-5852
+ 30 | Notes
+ 31 | 329 (M)
+ 32 | Split breeding pair 1
+ 33 | Created 11/4/2025 2:20pm • CC-22630-4 • External ID:
+
+====================================================================================================
+PAGE 2  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 09/25/25 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+  4 | Code DOB 9/4/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger (971) 678-8621 Source In House
+  7 | Jeremy Barry (917) 817-5852
+  8 | Notes
+  9 | 328x313
+ 10 | 522
+ 11 | Created 4/16/2026 3:07pm • CC-23545-3 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 09/25/25 Sex FEMALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 15 | Code DOB 9/4/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger (971) 678-8621 Source In House
+ 18 | Jeremy Barry (917) 817-5852
+ 19 | Notes
+ 20 | 328x313
+ 21 | 523
+ 22 | Created 4/21/2026 8:54am • CC-23546-3 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 10/06/25 Sex F
+ 25 | P.I. Barry J. Strain Kcnt1; SST-Cre
+ 26 | Code DOB 9/14/2025
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger +19716788621 Source In House
+ 29 | Jeremy Barry
+ 30 | Notes
+ 31 | 329 (M) x 302 (F)
+ 32 | 531
+ 33 | Created 4/14/2026 1:14pm • CC-23781-7 • External ID:
+
+====================================================================================================
+PAGE 3  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 10/06/25 Sex M
+  3 | P.I. Barry J. Strain Kcnt1YH; SST-Cre
+  4 | Code DOB 9/14/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger +19716788621 Source In House
+  7 | Jeremy Barry
+  8 | Notes
+  9 | 329 (M) x 302 (F)
+ 10 | 577 (previously 534)
+ 11 | Created 5/20/2026 10:34am • CC-23782-8 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 4
+ 13 | Census 10/22/25 Sex MALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 15 | Code DOB 10/1/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 328x 313
+ 21 | 542
+ 22 | 543 - no et
+ 23 | 544 - no et
+ 24 | 545 - no et
+ 25 | Created 12/12/2025 2:06pm W-4813 • CC-24051-4 • External ID:
+ 26 | X0-145 Species MOUSE # Animals 4
+ 27 | Census 10/22/25 Sex FEMALE
+ 28 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 29 | Code DOB 10/1/25
+ 30 | Emergency Contact(s)
+ 31 | Rain Younger: (971) 678-8621 Source In House
+ 32 | Jeremy Barry: (917) 817-5852
+ 33 | Notes
+ 34 | 328x313
+ 35 | 536
+ 36 | 537
+ 37 | 538
+ 38 | 540
+ 39 | Created 6/17/2026 1:43pm W-4813 • CC-24052-4 • External ID:
+
+====================================================================================================
+PAGE 4  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 11/04/25 Sex FEMALE
+  3 | P.I. Barry J. Strain KCN1-YH het
+  4 | Code DOB 05/29/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 302 (F)
+ 10 | Split breeding pair 1
+ 11 | Created 11/4/2025 2:20pm SPLIT-5193 • CC-24368-1 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 11/04/25 Sex FEMALE
+ 14 | P.I. Barry J. Strain KCN1-YH het
+ 15 | Code DOB 06/26/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 313 (F)
+ 21 | Split breeding pair 2
+ 22 | Created 11/4/2025 2:22pm SPLIT-5194 • CC-24369-1 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 4
+ 24 | Census 11/15/25 Sex MALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH; SST-cre (het)
+ 26 | Code DOB 2025-10-25
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger: (971) 678-8621 Source In House
+ 29 | Jeremy Barry: (917) 817-5852
+ 30 | Notes
+ 31 | 329x302
+ 32 | 571
+ 33 | 572
+ 34 | 573
+ 35 | 556
+ 36 | Created 3/24/2026 2:56pm W-4982 • CC-24575-6 • External ID:
+
+====================================================================================================
+PAGE 5  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 4
+  2 | Census 11/15/25 Sex FEMALE
+  3 | P.I. Barry J. Strain FID: Kcnt1-YH; SST-cre (het)
+  4 | Code DOB 2025-10-25
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 329x302
+ 10 | 547
+ 11 | 548
+ 12 | 549
+ 13 | 551
+ 14 | Created 3/24/2026 2:56pm W-4982 • CC-24576-3 • External ID:
+ 15 | X0-145 Species MOUSE
+ 16 | # Animals 2
+ 17 | P.I. Barry J. M DOB 10/01/25 F DOB 07/20/25
+ 18 | Breeding Date 03/24/26
+ 19 | Emergency Contact(s)
+ 20 | Rain Younger +19716788621 Source In House
+ 21 | M Strain (ID) Kcnt1-YH(het);PV-Cre(het)
+ 22 | F Strain (ID) Kcnt1-YH(hom)
+ 23 | Notes 541(M)x320(F)
+ 24 | Created 3/24/2026 3:02pm • CC-25084-2 • External ID:
+ 25 | X0-145 Species MOUSE
+ 26 | # Animals 2
+ 27 | P.I. Barry J. M DOB 09/14/25 F DOB 08/09/25
+ 28 | Breeding Date 03/24/26
+ 29 | Emergency Contact(s)
+ 30 | Rain Younger +19716788621 Source In House
+ 31 | M Strain (ID) Kcnt1-YH(het);SST-Cre(het)
+ 32 | F Strain (ID) Kcnt1-YH(hom)
+ 33 | Notes 532(M)x515(F)
+ 34 | Created 3/24/2026 3:02pm • CC-25086-2 • External ID:
+
+====================================================================================================
+PAGE 6  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 2
+  2 | Census 12/18/25 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+  4 | Code DOB 11/27/2025
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 558
+ 10 | 559
+ 11 | Created 2/18/2026 4:41pm W-5191 • CC-25203-4 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 3
+ 13 | Census 12/18/25 Sex MALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 15 | Code DOB 11/27/2025
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 560
+ 21 | 561
+ 22 | 562
+ 23 | Created 12/19/2025 2:41pm W-5191 • CC-25204-2 • External ID:
+ 24 | X0-145 Species MOUSE # Animals 2
+ 25 | Census 12/18/25 Sex MALE
+ 26 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 27 | Code DOB 11/27/2025
+ 28 | Emergency Contact(s)
+ 29 | Rain Younger: (971) 678-8621 Source In House
+ 30 | Jeremy Barry: (917) 817-5852
+ 31 | Notes
+ 32 | 566
+ 33 | 567
+ 34 | Created 2/18/2026 4:41pm W-5191 • CC-25205-3 • External ID:
+
+====================================================================================================
+PAGE 7  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 02/18/26 Sex F
+  3 | P.I. Barry J. Strain Kcnt1-YH; PV-Cre
+  4 | Code DOB 11/27/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 557 (former breeder)
+ 10 | Created 5/22/2026 1:46pm SPLIT-5973 • CC-26360-2 • External ID:
+ 11 | X0-145 Species MOUSE # Animals 1
+ 12 | Census 03/17/26 Sex FEMALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 14 | Code DOB 9/4/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger (971) 678-8621 Source In House
+ 17 | Jeremy Barry (917) 817-5852
+ 18 | Notes
+ 19 | 328x313
+ 20 | 525
+ 21 | Created 3/17/2026 1:15pm SPLIT-6207 • CC-26938-1 • External ID:
+ 22 | X0-145 Species MOUSE # Animals 1
+ 23 | Census 03/23/26 Sex MALE
+ 24 | P.I. Barry J. Strain Kcnt1-YH
+ 25 | Code DOB 6/26/25
+ 26 | Emergency Contact(s)
+ 27 | Rain Younger (971) 678-8621 Source In House
+ 28 | Jeremy Barry +19178175852
+ 29 | Notes
+ 30 | 508x505
+ 31 | 308
+ 32 | Created 3/23/2026 10:53am SPLIT-6240 • CC-27042-1 • External ID:
+
+====================================================================================================
+PAGE 8  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 03/24/26 Sex F
+  3 | P.I. Barry J. Strain KCNT1; SST-Cre
+  4 | Code DOB 10/25/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 546 (former breeder)
+ 10 | Created 6/1/2026 3:04pm SPLIT-6268 • CC-27096-2 • External ID:
+ 11 | X0-145 Species MOUSE # Animals 1
+ 12 | Census 04/02/26 Sex FEMALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 14 | Code DOB 9/4/25
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger (971) 678-8621 Source In House
+ 17 | Jeremy Barry (917) 817-5852
+ 18 | Notes
+ 19 | 328x313
+ 20 | 520
+ 21 | Created 4/2/2026 9:32am SPLIT-6317 • CC-27208-1 • External ID:
+ 22 | X0-145 Species MOUSE # Animals 4
+ 23 | Census 04/04/26 Sex MALE
+ 24 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 25 | Code DOB 2026-03-14
+ 26 | Emergency Contact(s)
+ 27 | Rain Younger: (971) 678-8621 Source In House
+ 28 | Jeremy Barry: (917) 817-5852
+ 29 | Notes
+ 30 | parents 565 (M) x 557 (F)
+ 31 | 583
+ 32 | 584
+ 33 | 1608 (previously 581)
+ 34 | 1609 (previously 587)
+ 35 | Created 6/15/2026 12:35pm W-5844 • CC-27240-4 • External ID:
+
+====================================================================================================
+PAGE 9  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 04/04/26 Sex FEMALE
+  3 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-03-14
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 565 (M) x 557 (F)
+ 10 | 580
+ 11 | Created 6/15/2026 12:35pm W-5844 • CC-27241-2 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 04/08/26 Sex FEMALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH
+ 15 | Code DOB 7/19/2025
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger +19716788621 Source In House
+ 18 | Jeremy Barry +19178175852
+ 19 | Notes
+ 20 | 507x503
+ 21 | 326
+ 22 | Created 4/8/2026 11:15am SPLIT-6347 • CC-27298-1 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 04/14/26 Sex F
+ 25 | P.I. Barry J. Strain Kcnt1; SST-Cre
+ 26 | Code DOB 9/14/2025
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger +19716788621 Source In House
+ 29 | Jeremy Barry
+ 30 | Notes
+ 31 | 329 (M) x 302 (F)
+ 32 | 529
+ 33 | Created 4/14/2026 1:14pm SPLIT-6434 • CC-27463-1 • External ID:
+
+====================================================================================================
+PAGE 10  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 04/16/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+  4 | Code DOB 9/4/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger (971) 678-8621 Source In House
+  7 | Jeremy Barry (917) 817-5852
+  8 | Notes
+  9 | 328x313
+ 10 | 521
+ 11 | Created 4/16/2026 3:07pm SPLIT-6464 • CC-27510-1 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 04/16/26 Sex M
+ 14 | P.I. Barry J. Strain Kcnt1YH; SST-Cre
+ 15 | Code DOB 9/14/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger +19716788621 Source In House
+ 18 | Jeremy Barry
+ 19 | Notes
+ 20 | 329 (M) x 302 (F)
+ 21 | 576 (previously 533
+ 22 | Created 4/16/2026 3:08pm SPLIT-6465 • CC-27511-1 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 04/21/26 Sex FEMALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH;PV-cre
+ 26 | Code DOB 9/4/25
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger (971) 678-8621 Source In House
+ 29 | Jeremy Barry (917) 817-5852
+ 30 | Notes
+ 31 | 328x313
+ 32 | 524
+ 33 | Created 4/21/2026 8:54am SPLIT-6515 • CC-27620-1 • External ID:
+
+====================================================================================================
+PAGE 11  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 4
+  2 | Census 04/27/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-04-06
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | parents 565 (M) x 557 (F)
+ 10 | 588
+ 11 | 1610 (previously 592)
+ 12 | 1611 (previously 590)
+ 13 | 1612 (previously 593)
+ 14 | Created 5/29/2026 1:49pm W-6039 • CC-27733-5 • External ID:
+ 15 | X0-145 Species MOUSE # Animals 2
+ 16 | Census 04/27/26 Sex MALE
+ 17 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+ 18 | Code DOB 2026-04-06
+ 19 | Emergency Contact(s)
+ 20 | Rain Younger: (971) 678-8621 Source In House
+ 21 | Jeremy Barry: (917) 817-5852
+ 22 | Notes
+ 23 | 565 (M) x 557 (F)
+ 24 | 594
+ 25 | 595
+ 26 | Created 5/28/2026 10:00am W-6039 • CC-27734-3 • External ID:
+ 27 | X0-145 Species MOUSE # Animals 1
+ 28 | Census 05/09/26 Sex MALE
+ 29 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 30 | Code DOB 2026-04-18
+ 31 | Emergency Contact(s)
+ 32 | Rain Younger: (971) 678-8621 Source In House
+ 33 | Jeremy Barry: (917) 817-5852
+ 34 | Notes
+ 35 | parents
+ 36 | 575 (M) x 546 (F)
+ 37 | 1604
+ 38 | Created 6/16/2026 3:55pm W-6131 • CC-28079-6 • External ID:
+
+====================================================================================================
+PAGE 12  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 3
+  2 | Census 05/09/26 Sex FEMALE
+  3 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+  4 | Code DOB 2026-04-18
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | parents
+ 10 | 575 (M) x 546 (F)
+ 11 | 0597
+ 12 | 0598
+ 13 | 0599 - no eartag
+ 14 | Created 5/26/2026 3:45pm W-6131 • CC-28080-3 • External ID:
+ 15 | X0-145 Species MOUSE # Animals 2
+ 16 | Census 05/22/26 Sex MALE
+ 17 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 18 | Code DOB 2026-05-01
+ 19 | Emergency Contact(s)
+ 20 | Rain Younger: (971) 678-8621 Source In House
+ 21 | Jeremy Barry: (917) 817-5852
+ 22 | Notes
+ 23 | 565 (M) x 557 (F)
+ 24 | 1613
+ 25 | 1614
+ 26 | Created 6/16/2026 4:18pm W-6205 • CC-28383-2 • External ID:
+ 27 | X0-145 Species MOUSE # Animals 4
+ 28 | Census 05/22/26 Sex FEMALE
+ 29 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 30 | Code DOB 2026-05-01
+ 31 | Emergency Contact(s)
+ 32 | Rain Younger: (971) 678-8621 Source In House
+ 33 | Jeremy Barry: (917) 817-5852
+ 34 | Notes
+ 35 | 565 (M) x 557 (F)
+ 36 | 1616
+ 37 | 1617
+ 38 | 1619
+ 39 | 1620
+ 40 | Created 6/16/2026 4:18pm W-6205 • CC-28384-2 • External ID:
+
+====================================================================================================
+PAGE 13  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 05/22/26 Sex M
+  3 | P.I. Barry J. Strain kcnt1-YH; PV-Cre
+  4 | Code DOB 11/27/25
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 565 (former breeder)
+ 10 | Created 5/22/2026 1:46pm SPLIT-6809 • CC-28386-1 • External ID:
+ 11 | X0-145 Species MOUSE # Animals 1
+ 12 | Census 05/26/26 Sex MALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 14 | Code DOB 2026-04-18
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger: (971) 678-8621 Source In House
+ 17 | Jeremy Barry: (917) 817-5852
+ 18 | Notes
+ 19 | parents
+ 20 | 575 (M) x 546 (F)
+ 21 | 1606
+ 22 | Created 6/15/2026 12:33pm SPLIT-6831 • CC-28433-2 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 05/27/26 Sex MALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH;SST-Cre
+ 26 | Code DOB 2025-04-21
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger (971)-678-8621 Source In House
+ 29 | Jeremy Barry +19178175852
+ 30 | Notes
+ 31 | 510
+ 32 | Created 5/27/2026 2:29pm SPLIT-6843 • CC-28450-1 • External ID:
+
+====================================================================================================
+PAGE 14  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 05/28/26 Sex FEMALE
+  3 | P.I. Barry J. Strain FID: Kcnt1-YH;PV-Cre
+  4 | Code DOB 2026-04-06
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | parents 565 (M) x 557 (F)
+ 10 | 591
+ 11 | Created 5/28/2026 9:59am SPLIT-6853 • CC-28501-1 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 2
+ 13 | Census 06/01/26 Sex FEMALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 15 | Code DOB 2026-05-11
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 575 (M) x 546 (F)
+ 21 | 1621
+ 22 | 1623
+ 23 | Created 6/16/2026 3:48pm W-6264 • CC-28576-2 • External ID:
+ 24 | X0-145 Species MOUSE # Animals 3
+ 25 | Census 06/01/26 Sex FEMALE
+ 26 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 27 | Code DOB 2026-05-11
+ 28 | Emergency Contact(s)
+ 29 | Rain Younger: (971) 678-8621 Source In House
+ 30 | Jeremy Barry: (917) 817-5852
+ 31 | Notes
+ 32 | 575 (M) x 546 (F)
+ 33 | 1625
+ 34 | 1626
+ 35 | 1627
+ 36 | Created 6/16/2026 3:49pm W-6264 • CC-28577-2 • External ID:
+
+====================================================================================================
+PAGE 15  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 06/01/26 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+  4 | Code DOB 2026-05-11
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | Notes
+  9 | 575 (M) x 546 (F)
+ 10 | 1630
+ 11 | Created 6/16/2026 3:51pm W-6264 • CC-28578-3 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 06/01/26 Sex M
+ 14 | P.I. Barry J. Strain KCNT1; SST-Cre
+ 15 | Code DOB 10/25/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger: (971) 678-8621 Source In House
+ 18 | Jeremy Barry: (917) 817-5852
+ 19 | Notes
+ 20 | 575 (former breeder)
+ 21 | Created 6/1/2026 3:04pm SPLIT-6874 • CC-28579-1 • External ID:
+ 22 | X0-145 Species MOUSE # Animals 2
+ 23 | Census 06/09/26 Sex FEMALE
+ 24 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 25 | Code DOB 2026-05-11
+ 26 | Emergency Contact(s)
+ 27 | Rain Younger: (971) 678-8621 Source In House
+ 28 | Jeremy Barry: (917) 817-5852
+ 29 | Notes
+ 30 | 575 (M) x 546 (F)
+ 31 | 1629
+ 32 | 1631
+ 33 | Created 6/9/2026 1:14pm SPLIT-6919 • CC-28754-1 • External ID:
+
+====================================================================================================
+PAGE 16  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE # Animals 1
+  2 | Census 06/12/26 Sex MALE
+  3 | P.I. Barry J. Strain Kcnt1-YH;SST-Cre
+  4 | Code DOB 2025-04-21
+  5 | Emergency Contact(s)
+  6 | Rain Younger (971)-678-8621 Source In House
+  7 | Jeremy Barry +19178175852
+  8 | Notes
+  9 | 512
+ 10 | Created 6/12/2026 9:38am SPLIT-6958 • CC-28846-1 • External ID:
+ 11 | X0-145 Species MOUSE # Animals 1
+ 12 | Census 06/15/26 Sex FEMALE
+ 13 | P.I. Barry J. Strain Kcnt1-YH; SST-cre
+ 14 | Code DOB 2026-04-18
+ 15 | Emergency Contact(s)
+ 16 | Rain Younger: (971) 678-8621 Source In House
+ 17 | Jeremy Barry: (917) 817-5852
+ 18 | Notes
+ 19 | parents
+ 20 | 575 (M) x 546 (F)
+ 21 | 1603 - no eartag, black coat
+ 22 | Created 6/15/2026 8:37am SPLIT-6966 • CC-28881-1 • External ID:
+ 23 | X0-145 Species MOUSE
+ 24 | # Animals 2
+ 25 | P.I. Barry J. M DOB 04/18/26 F DOB 04/18/26
+ 26 | Breeding Date 06/15/26
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger: (971) 678-8621 Source In House
+ 29 | Jeremy Barry: (917) 817-5852
+ 30 | M Strain (ID) 1602 Kcnt1-YH;SST
+ 31 | F Strain (ID) 1600 Kcnt1-YH; SST-cre
+ 32 | Notes 1602 (M) x 1600 (F)
+ 33 | Created 6/15/2026 12:32pm SPLIT-6969 • CC-28884-1 • External ID:
+
+====================================================================================================
+PAGE 17  (w=612.0 h=792.0)
+====================================================================================================
+  1 | X0-145 Species MOUSE
+  2 | # Animals 2
+  3 | P.I. Barry J. M DOB 03/14/26 F DOB 03/14/26
+  4 | Breeding Date 06/15/26
+  5 | Emergency Contact(s)
+  6 | Rain Younger: (971) 678-8621 Source In House
+  7 | Jeremy Barry: (917) 817-5852
+  8 | M Strain (ID) 1607 Kcnt1-YH;PV-Cre
+  9 | F Strain (ID) 579 Kcnt1-YH;PV-Cre
+ 10 | Notes 1607(M)(previously 586) x 579(F)
+ 11 | Created 6/15/2026 12:35pm SPLIT-6970 • CC-28885-1 • External ID:
+ 12 | X0-145 Species MOUSE # Animals 1
+ 13 | Census 06/16/26 Sex MALE
+ 14 | P.I. Barry J. Strain Kcnt1-YH
+ 15 | Code DOB 6/26/25
+ 16 | Emergency Contact(s)
+ 17 | Rain Younger (971) 678-8621 Source In House
+ 18 | Jeremy Barry +19178175852
+ 19 | Notes
+ 20 | 508x505
+ 21 | 307 - YH-het
+ 22 | Created 6/16/2026 3:50pm SPLIT-6976 • CC-28915-1 • External ID:
+ 23 | X0-145 Species MOUSE # Animals 1
+ 24 | Census 06/17/26 Sex FEMALE
+ 25 | P.I. Barry J. Strain Kcnt1-YH;PV-Cre
+ 26 | Code DOB 10/1/25
+ 27 | Emergency Contact(s)
+ 28 | Rain Younger: (971) 678-8621 Source In House
+ 29 | Jeremy Barry: (917) 817-5852
+ 30 | Notes
+ 31 | 328x313
+ 32 | 539
+ 33 | Created 6/17/2026 1:43pm SPLIT-6985 • CC-28939-1 • External ID:
