@@ -1,4 +1,4 @@
-function visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
+xplorefinderfunction visualize_biting(dataDir, badChannels, halfWidthMs, varargin)
 %%2_1_visualize.m  Step 2 (v2): voltage raster + CSD raster + wide context
 %
 % Variant of 2_visualize.m. For each detected event it renders a 3x1 layout:
