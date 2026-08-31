@@ -1,0 +1,14 @@
+probeinterface probe catalog - H10 variants only
+manufacturers: 1  |  total probes: 10
+
+[cambridgeneurotech] (10)
+    ASSY-116-H10b
+    ASSY-156-H10
+    ASSY-158-H10
+    ASSY-196-H10b
+    ASSY-236-H10
+    ASSY-276-H10
+    ASSY-325-H10
+    ASSY-325D-H10
+    ASSY-37-H10b
+    ASSY-77-H10

@@ -1,0 +1,13 @@
+Sanity check: C:\Users\ipiatek\OneDrive - UVM Larner College of Medicine\Desktop\Actual Repo\jeremystats\Kilosort\Kilosort-4_additional_code\Probes\probe_config.prb
+manual probe: 64 channels
+comparing against library probes matching 'H3' (7 found)
+
+[cambridgeneurotech] ASSY-156-H3: same geometry, DIFFERENT channel order
+[cambridgeneurotech] ASSY-158-H3: same geometry, DIFFERENT channel order
+[cambridgeneurotech] ASSY-236-H3: same geometry, DIFFERENT channel order
+[cambridgeneurotech] ASSY-276-H3: same geometry, DIFFERENT channel order
+[cambridgeneurotech] ASSY-325-H3: contact count differs (63 vs 64)
+[cambridgeneurotech] ASSY-37-H3: same geometry, DIFFERENT channel order
+[cambridgeneurotech] ASSY-77-H3: same geometry, DIFFERENT channel order
+
+Result: no exact channel-order match. Same physical layout, different wiring order found in: ASSY-156-H3, ASSY-158-H3, ASSY-236-H3, ASSY-276-H3, ASSY-37-H3, ASSY-77-H3 -- double check the channel map ordering used in the manual .prb.
