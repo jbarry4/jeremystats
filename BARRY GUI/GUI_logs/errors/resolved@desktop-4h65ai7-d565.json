@@ -19,5 +19,15 @@
     "at": "2026-09-02T18:08:22-04:00",
     "by": "theexaminedexistence@gmail.com",
     "note": ""
+  },
+  "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": {
+    "at": "2026-09-02T16:57:57-04:00",
+    "by": "barry",
+    "note": ""
+  },
+  "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": {
+    "at": "2026-09-02T16:58:00-04:00",
+    "by": "barry",
+    "note": ""
   }
 }
