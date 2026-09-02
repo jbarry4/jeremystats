@@ -523,6 +523,9 @@ class Registry:
             "last_seen": _newest_sighting(rec),
             "first_seen_by": rec.get("first_seen_by") or "opened",
             # Cheap facts a scan can fill in without anyone opening anything.
+            # From the Toothy workbook: base vs cno. A fact about the
+            # recording, so it belongs on the recording rather than the mouse.
+            "condition": rec.get("condition"),
             "n_channels": rec.get("n_channels"),
             "fs": rec.get("fs"),
             "duration_s": rec.get("duration_s"),

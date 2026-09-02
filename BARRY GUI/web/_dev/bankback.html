@@ -97,11 +97,15 @@ const post = (u, b) => fetch(u, { method: 'POST',
     /* Is it discoverable as something you can click? A row with a click
        handler, no button, and a default cursor is a row nobody clicks. */
     const cur = W.getComputedStyle(row).cursor;
-    say('  row cursor: ' + cur, 'note');
-    check('the row looks clickable', cur === 'pointer', cur);
-    check('or it has a button that says what it does',
-          !!row.querySelector('button'),
-          row.querySelector('button') ? 'yes' : 'no button in the row');
+    const btn = row.querySelector('button');
+    say('  row cursor: ' + cur + (btn ? ', has a button' : ', no button'),
+        'note');
+    /* Either is fine -- what is not fine is a row with a click handler, a
+       default cursor and no button, which nobody would ever click. This was
+       two separate checks, so the second failed whenever the first passed. */
+    check('the row is discoverable as something you can click',
+          cur === 'pointer' || !!btn,
+          'cursor ' + cur + (btn ? ' with a button' : ' and no button'));
 
     // Click it for real.
     row.click();
@@ -115,10 +119,15 @@ const post = (u, b) => fetch(u, { method: 'POST',
 
   const cls = ev('JSON.stringify(Object.keys(' + S + '._eventClasses || {}))');
   say('  event classes: ' + cls, 'note');
-  const last = ev('JSON.stringify(' + S + '.events.slice(-1)[0] || null)');
-  say('  last event: ' + last, 'note');
-  check('and they carry the name they were banked under',
-        /bankback spikes/.test(last), last);
+  /* Events are held in time order, and the recording's own start/stop marks
+     sit at the ends -- so the last one is a .nev mark, not the newest
+     import. The claim is that the banked ones are in there carrying their
+     name, not that they are last. */
+  const named = Number(ev(S + '.events.filter('
+      + '(e) => /bankback spikes/.test(e.label || e.klass || "")).length'));
+  say('  events carrying the banked name: ' + named, 'note');
+  check('and they carry the name they were banked under', named > 0,
+        named + ' of ' + after + ', classes ' + cls);
 
   const marks = $$('.pane-ctl .ctl-menu').find(
     (b) => b.textContent.startsWith('Marks'));

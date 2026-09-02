@@ -3552,3 +3552,99 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .sp-proj { flex: none; font-size: 10px; color: var(--text-3); }
 .sp-none { padding: 8px 10px; font-size: 11px; color: var(--text-3); }
+
+
+/* ==========================================================================
+   Housekeeping: grouping, the table, and the mouse book
+   ========================================================================== */
+.hk-inline { display: flex; align-items: center; gap: 6px; font-size: 11px;
+             color: var(--text-3); }
+.hk-groupby {
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font: inherit; font-size: 11.5px;
+}
+
+/* The table needs the width, so the detail panel steps aside for it. */
+.hk-layout.wide { grid-template-columns: minmax(0, 1fr) 330px; }
+@media (max-width: 1300px) {
+  .hk-layout.wide { grid-template-columns: minmax(0, 1fr); }
+}
+
+.hk-tablecol { min-width: 0; }
+.hk-tablewrap {
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  overflow: auto; max-height: 68vh;
+}
+.hk-table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.hk-table th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--bg-3); color: var(--text-2);
+  text-align: left; font-weight: 600; white-space: nowrap;
+  padding: 7px 10px; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--line);
+}
+.hk-table th:hover { color: var(--text); }
+.hk-table th.sorted { color: var(--accent); }
+.hk-table th.num, .hk-table td.num { text-align: right; }
+.hk-arrow { margin-left: 4px; font-size: 9px; }
+.hk-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap; max-width: 320px; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hk-table td.mono { font-family: var(--mono); font-size: 10.5px;
+                    color: var(--text-3); }
+.hk-table tbody tr { cursor: pointer; }
+.hk-table tbody tr:hover { background: var(--bg-hover); }
+.hk-table tbody tr.sel { background: var(--accent-soft); }
+.hk-table tbody tr.away td { opacity: .55; }
+.hk-table td.editable { cursor: text; }
+.hk-table td.editable:hover {
+  background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
+}
+.hk-unset { color: var(--text-3); }
+
+/* Labels on a mouse branch: what the animal is, without opening anything. */
+.hk-mouse .hk-sub { margin-left: 0; }
+.hk-labels { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; }
+.hk-label {
+  font-size: 10px; padding: 1px 7px; border-radius: 999px;
+  background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line-soft);
+}
+.hk-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--text-3);
+  border: 1px dashed var(--line); font: inherit; font-size: 10px;
+}
+.hk-tag:hover { color: var(--accent); border-color: var(--accent); }
+.hk-branch.sel { background: var(--accent-soft); }
+
+/* The mouse editor */
+.hk-attrs { display: grid; gap: 6px; margin: 10px 0; }
+.hk-attr { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px;
+           align-items: center; }
+.hk-attr.new { grid-template-columns: 1fr 1fr auto; }
+.hk-attr label { font-size: 11px; color: var(--text-3); }
+.hk-attr input {
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font: inherit; font-size: 11.5px; min-width: 0;
+}
+.hk-attr input:focus { border-color: var(--accent); outline: none; }
+.hk-x {
+  background: none; border: none; color: var(--text-3); cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 2px 5px;
+}
+.hk-x:hover { color: var(--err); }
+.hk-actions { display: flex; gap: 8px; margin-top: 14px; }
+.hk-pick {
+  display: flex; flex-wrap: wrap; gap: 6px; max-height: 40vh;
+  overflow: auto; margin: 10px 0;
+}
+
+.sync-ok { color: var(--ok); }
+.sync-warn { border: 1px solid var(--err); border-radius: var(--radius-sm);
+             padding: 10px 12px; margin: 10px 0; }
+.sync-warn pre { font-size: 10.5px; color: var(--text-2); margin: 6px 0; }

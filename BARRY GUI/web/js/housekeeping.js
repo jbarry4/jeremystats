@@ -187,7 +187,10 @@ BARRY.views.housekeeping = (function () {
      you change it. */
   function mouseBranch(key, m) {
     const isOpen = !!open[key];
-    const attrs = BARRY.hk.attrsFor(data, m.sessions[0]);
+    // No mouse number means there is no animal to hang labels off. Say so,
+    // rather than offering a button that quietly does nothing.
+    const known = m.mouse != null;
+    const attrs = known ? BARRY.hk.attrsFor(data, m.sessions[0]) : {};
     const chips = BARRY.hk.attributes(data)
       .filter((a) => attrs[a.id])
       .map((a) => el('span', { class: 'hk-label', title: a.name,
@@ -200,23 +203,32 @@ BARRY.views.housekeeping = (function () {
       onclick: () => { open[key] = !isOpen; render(); },
     }, [
       el('span', { class: 'hk-caret' + (isOpen ? ' open' : ''), text: '▸' }),
-      el('strong', { text: 'm' + m.mouse }),
+      el('strong', { class: known ? '' : 'hk-unset',
+                     text: m.name || ('m' + m.mouse) }),
       el('span', { class: 'hk-sub',
                    text: m.sessions.length + ' session'
                        + (m.sessions.length === 1 ? '' : 's') }),
       el('div', { class: 'hk-labels' }, chips),
-      el('button', {
-        class: 'hk-tag',
-        title: chips.length ? 'Change what this mouse is labelled'
-                            : 'Label this mouse',
-        text: chips.length ? 'edit' : '+ label',
-        onclick: (e) => {
-          e.stopPropagation();
-          mouseSel = { project: m.project, mouse: m.mouse };
-          selected = null;
-          render();
-        },
-      }),
+      known
+        ? el('button', {
+            class: 'hk-tag',
+            title: chips.length ? 'Change what this mouse is labelled'
+                                : 'Label this mouse',
+            text: chips.length ? 'edit' : '+ label',
+            onclick: (e) => {
+              e.stopPropagation();
+              mouseSel = { project: m.project, mouse: m.mouse };
+              selected = null;
+              render();
+            },
+          })
+        : el('span', {
+            class: 'hk-sub',
+            title: 'BARRY could not read a mouse number out of the folder '
+                 + 'name, so there is no animal to hang labels off. Rename '
+                 + 'the folder, or set this recording\u2019s label by hand.',
+            text: 'nothing to label',
+          }),
     ]);
   }
 
@@ -235,6 +247,11 @@ BARRY.views.housekeeping = (function () {
         isSel: (r) => mouseSel && mouseSel.project === r.project
                       && String(mouseSel.mouse) === String(r.mouse),
         onclick: (r) => {
+          if (r.mouse == null) {
+            toast('That row is the recordings with no mouse number, so '
+                  + 'there is no animal to label.', 'err', 6000);
+            return;
+          }
           mouseSel = { project: r.project, mouse: r.mouse };
           selected = null;
           render();
@@ -286,12 +303,12 @@ BARRY.views.housekeeping = (function () {
 
     bar.appendChild(el('div', { class: 'seg' }, [
       el('button', {
-        class: view === 'branches' ? 'on' : '', text: 'Branches',
+        class: view === 'branches' ? 'active' : '', text: 'Branches',
         title: 'Nested by whatever you group on',
         onclick: () => { view = 'branches'; render(); },
       }),
       el('button', {
-        class: view === 'table' ? 'on' : '', text: 'Table',
+        class: view === 'table' ? 'active' : '', text: 'Table',
         title: 'The same records with columns, sortable and copyable',
         onclick: () => { view = 'table'; render(); },
       }),
@@ -319,11 +336,11 @@ BARRY.views.housekeeping = (function () {
     } else {
       bar.appendChild(el('div', { class: 'seg' }, [
         el('button', {
-          class: tableOf === 'sessions' ? 'on' : '', text: 'Recordings',
+          class: tableOf === 'sessions' ? 'active' : '', text: 'Recordings',
           onclick: () => { tableOf = 'sessions'; sort = { col: null, dir: 'asc' }; render(); },
         }),
         el('button', {
-          class: tableOf === 'mice' ? 'on' : '', text: 'Mice',
+          class: tableOf === 'mice' ? 'active' : '', text: 'Mice',
           onclick: () => { tableOf = 'mice'; sort = { col: null, dir: 'asc' }; render(); },
         }),
       ]));
@@ -472,11 +489,13 @@ BARRY.views.housekeeping = (function () {
     const host = $('#hkDetail');
     if (!host) return;
     host.innerHTML = '';
+    if (mouseSel) { renderMouse(host); return; }
     const s = selected && find(selected);
     if (!s) {
       host.appendChild(el('p', { class: 'hint',
         text: 'Pick a recording to see its permanent id, every path it has '
-            + 'been opened from, and everything attached to it.' }));
+            + 'been opened from, and everything attached to it. Pick a mouse '
+            + 'to label it.' }));
       return;
     }
 
@@ -644,6 +663,190 @@ BARRY.views.housekeeping = (function () {
         ? el('span', { class: 'hint', text: 'Split off from ' + s.split_from })
         : null,
     ].filter(Boolean)));
+  }
+
+  /* ==================================================================
+     Labelling a mouse
+
+     Attributes are free-form on purpose: any name works, and a new one shows
+     up as a grouping and as a column the moment it is saved. The suggested
+     ones are offered first only so that everybody spells "genotype" the same
+     way.
+     ================================================================== */
+  function renderMouse(host) {
+    const rows = BARRY.hk.flatten(data).filter(
+      (x) => x.project === mouseSel.project
+             && String(x.mouse) === String(mouseSel.mouse));
+    const attrs = rows.length ? BARRY.hk.attrsFor(data, rows[0]) : {};
+    const known = BARRY.hk.attributes(data);
+    const draft = Object.assign({}, attrs);
+
+    host.appendChild(el('div', { class: 'hk-dhead' }, [
+      el('h3', { text: 'm' + mouseSel.mouse }),
+      el('span', { class: 'hk-sub', text: mouseSel.project }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        onclick: () => { mouseSel = null; render(); },
+      }),
+    ]));
+    host.appendChild(el('p', { class: 'hint',
+      text: rows.length + ' recording' + (rows.length === 1 ? '' : 's')
+          + ' from this animal. What you set here belongs to the mouse, not '
+          + 'to any one recording \u2014 so it stays true whichever session '
+          + 'you are looking at, and the tree can branch on it.' }));
+
+    const list = el('div', { class: 'hk-attrs' });
+    const addRow = (a) => {
+      const input = el('input', {
+        type: 'text', value: draft[a.id] || '', placeholder: a.note || '',
+        list: (a.common && a.common.length) ? 'hkv-' + a.id : null,
+        oninput: (e) => { draft[a.id] = e.target.value; },
+      });
+      const seen = (a.values || []).map((v) => v[0]);
+      const choices = Array.from(new Set([].concat(a.common || [], seen)));
+      list.appendChild(el('div', { class: 'hk-attr' }, [
+        el('label', { text: a.name, title: a.id }),
+        input,
+        choices.length
+          ? el('datalist', { id: 'hkv-' + a.id },
+               choices.map((v) => el('option', { value: v })))
+          : null,
+        el('button', {
+          class: 'hk-x', text: '\u00d7', title: 'Clear this label',
+          onclick: () => { draft[a.id] = ''; input.value = ''; },
+        }),
+      ].filter(Boolean)));
+    };
+    known.forEach(addRow);
+    Object.keys(attrs).forEach((k) => {
+      if (!known.some((a) => a.id === k)) {
+        addRow({ id: k, name: k.replace(/_/g, ' '), common: [], values: [] });
+      }
+    });
+    host.appendChild(list);
+
+    // ---- a label nobody has used yet ------------------------------------
+    const newName = el('input', { type: 'text',
+      placeholder: 'e.g. implant date, virus batch, cage' });
+    const newVal = el('input', { type: 'text', placeholder: 'value' });
+    host.appendChild(el('div', { class: 'section-label',
+                                 text: 'A new kind of label' }));
+    host.appendChild(el('div', { class: 'hk-attr new' }, [
+      newName, newVal,
+      el('button', {
+        class: 'btn ghost sm', text: 'Add',
+        onclick: () => {
+          const name = newName.value.trim();
+          if (!name) { toast('Give the label a name first.', 'err'); return; }
+          draft[name] = newVal.value;
+          save(draft);
+        },
+      }),
+    ]));
+
+    const others = Array.from(new Set(BARRY.hk.flatten(data)
+      .filter((x) => x.project === mouseSel.project)
+      .map((x) => x.mouse)))
+      .filter((m) => String(m) !== String(mouseSel.mouse));
+
+    host.appendChild(el('div', { class: 'hk-actions' }, [
+      el('button', { class: 'btn', text: 'Save',
+                     onclick: () => save(draft) }),
+      others.length
+        ? el('button', {
+            class: 'btn ghost', text: 'Save to several\u2026',
+            title: 'Give the same labels to more than one animal at once',
+            onclick: () => saveMany(draft, others),
+          })
+        : null,
+    ].filter(Boolean)));
+  }
+
+  async function save(attrs) {
+    try {
+      await apiPost('/api/mice/set', {
+        project: mouseSel.project, mouse: mouseSel.mouse, attrs,
+      });
+      toast('Saved.', 'ok');
+      await load();
+    } catch (e) { toast(e.message, 'err', 7000); }
+  }
+
+  /* One label on one mouse at a time is fine for six animals and unbearable
+     for sixty, which is exactly why the lab was using a spreadsheet. */
+  function saveMany(attrs, others) {
+    const picked = new Set([String(mouseSel.mouse)]);
+    const filled = {};
+    Object.keys(attrs).forEach((k) => {
+      if (String(attrs[k] || '').trim()) filled[k] = attrs[k];
+    });
+    const boxes = others.map((m) => el('label', { class: 'toggle' }, [
+      el('input', {
+        type: 'checkbox',
+        onchange: (e) => {
+          if (e.target.checked) picked.add(String(m));
+          else picked.delete(String(m));
+        },
+      }),
+      el('span', { text: 'm' + m }),
+    ]));
+    showModal(el('div', {}, [
+      el('h3', { text: 'Give these labels to other animals' }),
+      el('p', { class: 'hint',
+        text: Object.keys(filled).map((k) => k + ' = ' + filled[k]).join(', ')
+            || 'Nothing is filled in, so this would clear their labels.' }),
+      el('div', { class: 'hk-pick' }, boxes),
+      el('div', { class: 'row' }, [
+        el('button', { class: 'btn', text: 'Apply', onclick: async () => {
+          const targets = Array.from(picked).map((m) => ({
+            project: mouseSel.project, mouse: Number(m),
+          }));
+          try {
+            await apiPost('/api/mice/set', { targets, attrs: filled });
+            toast('Labelled ' + targets.length + ' animal'
+                  + (targets.length === 1 ? '' : 's') + '.', 'ok');
+            closeModal();
+            await load();
+          } catch (e) { toast(e.message, 'err', 7000); }
+        } }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: () => closeModal() }),
+      ]),
+    ]));
+  }
+
+  /* One cell of the table. Filling a column down is the actual job, so this
+     is deliberately the shortest path there is: click, type, enter. */
+  function quickSet(row, attr) {
+    const a = BARRY.hk.attributes(data).find((x) => x.id === attr) || {};
+    const seen = (a.values || []).map((v) => v[0]);
+    const choices = Array.from(new Set([].concat(a.common || [], seen)));
+    const input = el('input', { type: 'text', value: row.attrs[attr] || '',
+                                list: choices.length ? 'hkq' : null });
+    const go = async () => {
+      try {
+        await apiPost('/api/mice/set', {
+          project: row.project, mouse: row.mouse,
+          attrs: { [attr]: input.value },
+        });
+        closeModal();
+        await load();
+      } catch (e) { toast(e.message, 'err', 7000); }
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    showModal(el('div', {}, [
+      el('h3', { text: (a.name || attr) + ' for m' + row.mouse }),
+      el('div', { class: 'row' }, [
+        input,
+        choices.length
+          ? el('datalist', { id: 'hkq' },
+               choices.map((v) => el('option', { value: v })))
+          : null,
+        el('button', { class: 'btn', text: 'Set', onclick: go }),
+      ].filter(Boolean)),
+      el('p', { class: 'hint', text: 'Leave it empty to clear the label.' }),
+    ]));
+    setTimeout(() => { input.focus(); input.select(); }, 30);
   }
 
   function fact(k, v) {

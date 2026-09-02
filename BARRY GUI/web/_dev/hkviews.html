@@ -1,0 +1,251 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — housekeeping views</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, monospace; margin: 0; background: #111;
+         color: #ddd; }
+  #out { padding: 14px 18px; }
+  .ok::before { content: 'ok   '; color: #6c6; }
+  .bad::before { content: 'FAIL '; color: #f66; }
+  .bad { color: #f99; }
+  .note { color: #888; }
+  h2 { font-size: 13px; margin: 16px 0 6px; color: #9cf; }
+  iframe { position: fixed; right: 0; top: 0; width: 62vw; height: 100vh;
+           border: 0; border-left: 1px solid #333; }
+  #out { width: 36vw; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* Housekeeping grew a second view, a grouping control and a mouse book.
+   None of that is provable by reading it: the tree is built from a merge of
+   two API payloads, and the interesting failures are "the branch labels are
+   right but every branch is empty" and "the column sorts as text". So drive
+   the real page. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (cls, msg) => {
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = msg; out.appendChild(d);
+  if (cls === 'bad') bad += 1;
+};
+const check = (name, cond, detail) =>
+  say(cond ? 'ok' : 'bad', name + (cond || !detail ? '' : '  — ' + detail));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function until(fn, ms = 9000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(120);
+  }
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const D = frame.contentDocument;
+  const B = await until(() => W.eval('BARRY'));
+  check('the app booted', !!B);
+  if (!B) return;
+
+  /* A view that throws halfway renders its toolbar and nothing else, which
+     reads as "no data" and sends you looking in the wrong place. Say what
+     actually happened. */
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+  W.addEventListener('unhandledrejection',
+                     (e) => errors.push(String(e.reason)));
+
+  // --- get to housekeeping -------------------------------------------
+  W.eval("setView('sessions')");
+  await sleep(300);
+  W.eval("BARRY.views.sessions.setMode('housekeeping')");
+  const body = await until(() => {
+    const n = D.querySelector('#hkBody .hk-tree, #hkBody .hk-tablecol');
+    return n && n.children.length ? n : null;
+  });
+  check('the housekeeping tree rendered', !!body);
+
+  head('Branches');
+  const projBranches = () =>
+    [...D.querySelectorAll('#hkBody .hk-branch.hk-project strong')]
+      .map((n) => n.textContent);
+  const byProject = projBranches();
+  check('grouped by project by default',
+        byProject.includes('PTEN') && byProject.includes('KCNT1'),
+        byProject.join(', '));
+  check('mouse branches carry their labels',
+        D.querySelectorAll('#hkBody .hk-mouse .hk-label').length > 0);
+
+  const rowCount = () => D.querySelectorAll('#hkBody .hk-row').length;
+  const before = rowCount();
+  check('recordings are listed under the mice', before > 0, before + ' rows');
+
+  // --- regroup on a mouse label ---------------------------------------
+  const sel = D.querySelector('#hkBody .hk-groupby');
+  check('there is a group-by control', !!sel);
+  if (sel) {
+    const opts = [...sel.options].map((o) => o.value);
+    check('every mouse label is offered as a grouping',
+          opts.includes('group') && opts.includes('subgroup'),
+          opts.join(', '));
+    sel.value = 'group';
+    sel.dispatchEvent(new W.Event('change'));
+    await sleep(300);
+    const groups = projBranches();
+    check('regrouping actually changes the branches',
+          groups.includes('PTEN') && groups.includes('CTL')
+          && groups.includes('DKO'), groups.join(', '));
+    check('mice with no value land in "Not set" rather than vanishing',
+          groups.includes('Not set'), groups.join(', '));
+    // The KCNT1 animals have no group label, so they must be under Not set.
+    const after = rowCount();
+    check('no recording is lost by regrouping', after === before,
+          before + ' -> ' + after);
+    sel.value = 'project';
+    sel.dispatchEvent(new W.Event('change'));
+    await sleep(250);
+  }
+
+  // --- the table -------------------------------------------------------
+  head('Table');
+  const segBtn = (label) =>
+    [...D.querySelectorAll('#hkBody .seg button')]
+      .find((b) => b.textContent.trim() === label);
+  segBtn('Table').click();
+  await sleep(350);
+  const tbl = D.querySelector('#hkBody .hk-table');
+  check('the table rendered', !!tbl);
+  if (tbl) {
+    const rows = tbl.querySelectorAll('tbody tr').length;
+    check('one row per recording', rows === before, rows + ' vs ' + before);
+
+    const heads = [...tbl.querySelectorAll('thead th')]
+      .map((n) => n.textContent.replace(/[▴▾]/g, '').trim());
+    check('the columns people asked for are there',
+          ['Recording', 'Mouse', 'Session', 'Date', 'Bad channels']
+            .every((h) => heads.includes(h)), heads.join(' | '));
+
+    // Sorting a numeric column as text is the classic bug: 10 before 9.
+    const mouseIdx = heads.indexOf('Mouse');
+    tbl.querySelectorAll('thead th')[mouseIdx].click();
+    await sleep(200);
+    const t2 = D.querySelector('#hkBody .hk-table');
+    const nums = [...t2.querySelectorAll('tbody tr')]
+      .map((r) => Number(r.children[mouseIdx].textContent));
+    const sorted = nums.every((v, i) => i === 0 || nums[i - 1] <= v);
+    check('numeric columns sort as numbers, not as text', sorted,
+          nums.slice(0, 8).join(','));
+
+    t2.querySelectorAll('thead th')[mouseIdx].click();
+    await sleep(200);
+    const t3 = D.querySelector('#hkBody .hk-table');
+    const desc = [...t3.querySelectorAll('tbody tr')]
+      .map((r) => Number(r.children[mouseIdx].textContent));
+    check('clicking again reverses it',
+          desc.every((v, i) => i === 0 || desc[i - 1] >= v),
+          desc.slice(0, 8).join(','));
+  }
+
+  // --- the mice table --------------------------------------------------
+  segBtn('Mice').click();
+  await sleep(350);
+  const mt = D.querySelector('#hkBody .hk-table');
+  check('the mice table rendered', !!mt);
+  if (mt) {
+    const heads = [...mt.querySelectorAll('thead th')]
+      .map((n) => n.textContent.replace(/[▴▾]/g, '').trim());
+    check('a column per mouse label',
+          heads.includes('Group') && heads.includes('Subgroup'),
+          heads.join(' | '));
+    const cells = mt.querySelectorAll('tbody td.editable').length;
+    check('label cells are editable in place', cells > 0, cells + ' cells');
+    const filled = [...mt.querySelectorAll('tbody tr')]
+      .filter((r) => r.textContent.includes('PTEN')).length;
+    check('the imported labels are showing', filled > 0, filled + ' rows');
+  }
+
+  // --- labelling a mouse ------------------------------------------------
+  head('The mouse book');
+  segBtn('Branches').click();
+  await sleep(300);
+  const tag = D.querySelector('#hkBody .hk-mouse .hk-tag');
+  check('a mouse branch offers a label button', !!tag);
+  // A recording with no mouse number must not offer one, because there is no
+  // animal behind it -- that was a real bug, found here.
+  const nameless = [...D.querySelectorAll('#hkBody .hk-mouse')]
+    .filter((n) => /No mouse number/.test(n.textContent));
+  check('recordings with no mouse number say so instead of "mnull"',
+        !D.body.textContent.includes('mnull'));
+  check('...and offer nothing to label',
+        nameless.every((n) => !n.querySelector('.hk-tag')),
+        nameless.length + ' such branch(es)');
+  if (tag) {
+    tag.click();
+    await sleep(300);
+    const panel = D.querySelector('#hkDetail .hk-attrs');
+    check('the editor opened', !!panel);
+    const labels = [...D.querySelectorAll('#hkDetail .hk-attr label')]
+      .map((n) => n.textContent);
+    check('it offers the suggested labels',
+          labels.includes('Genotype') && labels.includes('Sex'),
+          labels.join(', '));
+    check('and a way to invent a new one',
+          !!D.querySelector('#hkDetail .hk-attr.new'));
+    check('and a way to label several animals at once',
+          [...D.querySelectorAll('#hkDetail .hk-actions button')]
+            .some((b) => /several/i.test(b.textContent)));
+
+    // Actually save one, then confirm it survives a reload.
+    // Watch what the page actually sends, because "200 but nothing saved"
+    // is a question about the request body, not about the server.
+    let sent = null;
+    const realFetch = W.fetch;
+    W.fetch = function (u, o) {
+      if (String(u).includes('/api/mice/set')) sent = (o || {}).body;
+      return realFetch.apply(this, arguments);
+    };
+    const inputs = [...D.querySelectorAll('#hkDetail .hk-attr input')];
+    const gi = labels.indexOf('Genotype');
+    const target = inputs[gi];
+    if (target) {
+      target.value = 'HARNESS-TEST';
+      target.dispatchEvent(new W.Event('input'));
+      [...D.querySelectorAll('#hkDetail .hk-actions button')]
+        .find((b) => b.textContent.trim() === 'Save').click();
+      await sleep(900);
+      const res = await fetch('/api/mice').then((r) => r.json());
+      const hit = res.mice.find(
+        (m) => (m.attrs || {}).genotype === 'HARNESS-TEST');
+      check('saving a label writes it through', !!hit,
+            (hit ? 'm' + hit.mouse : 'not found') + '  sent=' + sent);
+      if (hit) {
+        // Put it back the way it was.
+        await fetch('/api/mice/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project: hit.project, mouse: hit.mouse,
+                                 attrs: { genotype: '' } }),
+        });
+        const back = await fetch('/api/mice').then((r) => r.json());
+        check('and clearing it removes it again',
+              !back.mice.some((m) => (m.attrs || {}).genotype
+                                     === 'HARNESS-TEST'));
+      }
+    }
+  }
+
+  if (errors.length) {
+    head('Errors thrown in the page');
+    errors.forEach((m) => say('bad', m));
+  }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  // In the title too, so a headless capture can be read without parsing.
+  document.title = bad ? 'hkviews: ' + bad + ' FAILED' : 'hkviews: passed';
+})();
+</script>

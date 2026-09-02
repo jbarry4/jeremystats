@@ -1,0 +1,23 @@
+{
+  "format": "png",
+  "id": "97f9d3c46494",
+  "kind": "deck",
+  "label": "arrow harness",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Storyboards/arrow%20harness.png",
+    "path": "c:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Storyboards\\arrow harness.png",
+    "rel": "Storyboards/arrow harness.png"
+  },
+  "parameters": {
+    "slides": 1
+  },
+  "provenance": {
+    "at": "2026-09-02T19:46:52-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "schema": 1,
+  "script": "Storyboard export",
+  "status": "done"
+}

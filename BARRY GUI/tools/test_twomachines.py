@@ -111,9 +111,10 @@ def main():
                   sorted((sheet.get("labels") or {}).items()),
                   [("2", "ca1_so"), ("4", "ca1_sp"),
                    ("6", "hil"), ("8", "dg_gcl1")])
+            got = mouse.get("attrs") or {}
             check("%s: both mouse attributes survived" % who,
-                  sorted((mouse.get("attrs") or {}).items()),
-                  [("genotype", "PTEN fl/fl"), ("sex", "F")])
+                  (got.get("genotype"), got.get("sex")),
+                  ("PTEN fl/fl", "F"))
             check("%s: bad channels are there" % who,
                   rec.get("bad_channels"), [11, 22])
 
@@ -139,7 +140,10 @@ def main():
         print()
         print("Files")
         clash = []
-        for folder, _dirs, files in os.walk(logs):
+        for folder, dirs, files in os.walk(logs):
+            # .cache is derived and git-ignored, which is the whole point of
+            # it being there rather than beside the records.
+            dirs[:] = [d for d in dirs if d not in (".cache", "__pycache__")]
             for name in files:
                 stem = name.rsplit(".", 1)[0]
                 if shards.SIGIL not in stem and "runs" not in folder \

@@ -58,8 +58,14 @@ const post = (u, b) => fetch(u, { method: 'POST',
   btn.click();
   await until(() => $('#strataPick'), 12000);
   await sleep(600);
-  check('it lists the recordings', $('#strataPick').options.length > 0,
-        $('#strataPick').options.length + '');
+  /* The picker used to be a <select>; it is a search field now, because
+     scanning a drive registers hundreds of recordings and a dropdown is the
+     wrong control for that. So count rows, not options. */
+  const pick = $('#strataPick');
+  pick.querySelector('input').focus();
+  await sleep(250);
+  const nRows = pick.querySelectorAll('.sp-row').length;
+  check('it lists the recordings', nRows > 0, nRows + ' row(s)');
   const legend = $$('.strata-legend .cur-tally').map((n) => n.textContent);
   say('  layers: ' + legend.join(', '), 'note');
   check('the layer vocabulary is shown', legend.length >= 10,

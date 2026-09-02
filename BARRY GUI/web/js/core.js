@@ -685,6 +685,42 @@ BARRY.refreshSync = async function refreshSync() {
   }
 };
 
+/* Whether anything in the logs could ever conflict on a pull.
+
+   Worth a line in the sync panel rather than only a script, because this is
+   the one property of the store that quietly stops being true: somebody adds
+   a new kind of record next year, writes it to one shared file, and nobody
+   finds out until two people push in the same afternoon. */
+function conflictNote(c) {
+  if (!c) return null;
+  if (c.ok) {
+    return el('p', {
+      class: 'hint sync-ok',
+      title: c.files + ' files checked. This machine writes as ' + c.mine
+           + (c.machines.length > 1
+              ? '. Also seen here: ' + c.machines.filter((m) => m !== c.mine)
+                  .join(', ')
+              : '.'),
+      text: 'Nothing here can conflict on a pull \u2014 every record that '
+          + 'can be edited is kept per machine and compiled when it is read. '
+          + (c.machines.length > 1
+             ? c.machines.length + ' machines have written here.'
+             : ''),
+    });
+  }
+  return el('div', { class: 'sync-warn' }, [
+    el('p', { text: c.shared.length + ' file(s) here are shared between '
+                  + 'machines, so two people editing the same thing would '
+                  + 'collide on a pull:' }),
+    el('pre', { text: c.shared.join('\n') }),
+    el('p', { class: 'hint',
+      text: 'Route whatever writes them through a shards.Book, or add them '
+          + 'to .gitignore if they are derived. tools/conflict_check.py says '
+          + 'the same thing from the command line.' }),
+  ]);
+}
+
+
 function showSync() {
   const d = BARRY.sync || {};
   const git = d.git || {};
@@ -715,6 +751,7 @@ function showSync() {
         + 'plain JSON — one file per run and per session, so git merges them without '
         + 'conflict. It never commits or pushes on its own.' }),
       el('div', { class: 'source-box' }, [
+        conflictNote(d.conflicts),
         el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
                           + '# to pick up everyone else\'s work:\ngit pull' }),
       ]),

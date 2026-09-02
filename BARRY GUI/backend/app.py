@@ -23,7 +23,7 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 from . import (analysis, compose, csc, curation, discovery, eventbank,
                events, export, extras, ids, layers, live, mice as micebook,
                nlx, pipeline, rebuild, registry, results, runner, sessreg,
-               store, storyboard, sysinfo, toolkit, video)
+               shards, store, storyboard, sysinfo, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -684,7 +684,39 @@ def api_sync_status():
         pass
     return jsonify({"ok": True, "git": STORE.git_status(),
                     "root": LOGS_DIR, "index": idx,
-                    "auto_stage": STORE.auto_stage})
+                    "auto_stage": STORE.auto_stage,
+                    "conflicts": conflict_audit()})
+
+
+def conflict_audit():
+    """Can anything in GUI_logs produce a merge conflict?
+
+    The answer should always be no, and saying so where people can see it is
+    the point: a store added later that forgets to shard its files shows up
+    here the first time it writes one, rather than the first time two people
+    pull. Same check as tools/conflict_check.py, run from inside.
+    """
+    shared, machines, n = [], set(), 0
+    for folder, dirs, files in os.walk(LOGS_DIR):
+        dirs[:] = [d for d in dirs if d not in (".cache", "__pycache__")]
+        for name in files:
+            rel = os.path.relpath(os.path.join(folder, name),
+                                  LOGS_DIR).replace("\\", "/")
+            n += 1
+            if rel.startswith("runs/") or name in ("README.md", ".gitignore"):
+                continue
+            stem = name.rsplit(".", 1)[0]
+            if shards.SIGIL in stem:
+                machines.add(stem.rsplit(shards.SIGIL, 1)[1])
+            elif len(shared) < 12:
+                shared.append(rel)
+    return {
+        "ok": not shared,
+        "files": n,
+        "shared": shared,
+        "machines": sorted(machines),
+        "mine": shards.machine_id(),
+    }
 
 
 @app.route("/api/sync/reindex", methods=["POST"])
@@ -3003,8 +3035,16 @@ def api_mice_set():
         return jsonify({"ok": False, "error": "Nothing to set."}), 400
     out = []
     for t in targets:
+        # No mouse number means no animal to attach anything to. Refusing
+        # beats returning ok and writing nothing, which reads as a bug in the
+        # page rather than a fact about the folder name.
         if t.get("mouse") is None:
-            continue
+            return jsonify({
+                "ok": False,
+                "error": "That recording has no mouse number, so there is no "
+                         "animal to label. Rename the folder so the mouse can "
+                         "be read from it, or set its label by hand.",
+            }), 400
         out.append(MICE.set(t.get("project") or sessreg.UNFILED, t["mouse"],
                             attrs, note=body.get("note"),
                             replace=bool(body.get("replace"))))

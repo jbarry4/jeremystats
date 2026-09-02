@@ -1,10 +1,52 @@
 {
+  "_at": {
+    "bad_channels": "2026-09-02T23:40:53.967396+00:00",
+    "created": "2026-09-02T23:21:29.065201+00:00",
+    "duration_s": "2026-09-02T23:21:29.065201+00:00",
+    "first_seen_by": "2026-09-02T23:21:29.065201+00:00",
+    "fs": "2026-09-02T23:21:29.065201+00:00",
+    "gid": "2026-09-02T23:21:29.065201+00:00",
+    "group": "2026-09-02T23:21:29.065201+00:00",
+    "has_video": "2026-09-02T23:21:29.065201+00:00",
+    "key": "2026-09-02T23:21:29.065201+00:00",
+    "label": "2026-09-02T23:21:29.065201+00:00",
+    "loose_key": "2026-09-02T23:21:29.065201+00:00",
+    "merged_in": "2026-09-02T23:45:47.510618+00:00",
+    "mouse": "2026-09-02T23:21:29.065201+00:00",
+    "n_channels": "2026-09-02T23:21:29.065201+00:00",
+    "note": "2026-09-02T23:45:46.052788+00:00",
+    "project": "2026-09-02T23:45:45.806606+00:00",
+    "project_source": "2026-09-02T23:40:51.328668+00:00",
+    "schema": "2026-09-02T23:21:29.065201+00:00",
+    "session": "2026-09-02T23:21:29.065201+00:00",
+    "start": "2026-09-02T23:21:29.065201+00:00",
+    "updated": "2026-09-02T23:46:07.851438+00:00",
+    "view_state": "2026-09-02T23:46:00.689028+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Z:\\harness\\split-me": [
+        "gone",
+        "2026-09-02T23:45:47.819070+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
+        "set",
+        "2026-09-02T23:21:29.065201+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-02T23:46:07.851438+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-02T23:21:29.065201+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-02T23:46:07.851438+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "bad_channels": [],
   "created": {
     "at": "2026-09-02T18:50:49-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -20,29 +62,80 @@
   "key": "m022_s004_2026-06-18_17-13-10",
   "label": "KCNT1 m22 s4 2026-06-18",
   "loose_key": "m022_s004",
+  "merged_in": [
+    "s4cddfdd3aa83",
+    "s9fd89b2bbd5f"
+  ],
   "mouse": 22,
   "n_channels": 64,
+  "note": "",
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   ],
   "project": "KCNT1",
-  "project_source": "guessed",
+  "project_source": "manual",
   "schema": 2,
   "seen": {
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-02T18:50:49-04:00",
+      "at": "2026-09-02T19:46:07-04:00",
       "by": "theexaminedexistence@gmail.com",
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
-      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
-      "scan": "scan_94ff1eb81c"
+      "root": null,
+      "scan": null
     }
   },
   "session": 4,
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-02T18:50:49-04:00",
+    "at": "2026-09-02T19:46:07-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"
+  },
+  "view_state": {
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "clim": null,
+    "gain": 1,
+    "hp": 0,
+    "lp": 0,
+    "normalize": "shared",
+    "notch": 0,
+    "spacing": 50,
+    "span": 2,
+    "t0": 12.8,
+    "ylim": null
   }
 }

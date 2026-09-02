@@ -171,11 +171,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check('nothing has run yet', $$('.rb-did:not(.hidden)').length === 0);
 
     // No horizontal overflow, whatever the path length.
+    /* Only meaningful once the dialog is actually laid out: a clientWidth of
+       0 (or a sliver, mid-transition) makes "scrollWidth is bigger" trivially
+       true and reports an overflow that is not there. */
     const mb = $('.modal.big .mb');
-    if (mb) {
+    if (mb && mb.clientWidth > 200) {
       check('the dialog body does not scroll sideways',
             mb.scrollWidth <= mb.clientWidth + 1,
             mb.scrollWidth + ' vs ' + mb.clientWidth);
+    } else if (mb) {
+      say('  skip the width check: the dialog is only '
+          + mb.clientWidth + 'px wide, so it is not laid out yet', 'note');
     }
 
     const go = $('#rbGo');

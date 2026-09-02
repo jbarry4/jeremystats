@@ -606,6 +606,46 @@
         placement: 'bottom',
       },
       {
+        title: 'What is true about the animal, not the recording',
+        body: 'Genotype, cohort, sex, implant \u2014 those belong to the mouse, '
+            + 'so they live on the mouse rather than being repeated on every '
+            + 'one of its recordings. Click the label button on any mouse '
+            + 'branch to set them. The names are free-form: type '
+            + '\u201cvirus batch\u201d and it exists, becomes a column, and becomes '
+            + 'something you can branch the tree by.',
+        view: 'sessions',
+        wait: '.hk-mouse .hk-tag',
+        required: false,
+        target: '.hk-mouse .hk-tag',
+        placement: 'right',
+      },
+      {
+        title: 'Then branch on any of it',
+        body: 'Group by is the whole point of putting labels on animals. '
+            + 'Switch it from Project to Group, or Genotype, and the tree '
+            + 're-forms around it \u2014 with the unlabelled ones gathered '
+            + 'under \u201cNot set\u201d, which is usually the list you actually '
+            + 'wanted.',
+        view: 'sessions',
+        wait: '.hk-groupby',
+        required: false,
+        target: '.hk-groupby',
+        placement: 'bottom',
+      },
+      {
+        title: 'Or stop branching and read it as a spreadsheet',
+        body: 'Some questions are about a column, and a tree has none. Table '
+            + 'gives you one row per recording or per mouse, sorted by any '
+            + 'column, with Copy putting it on the clipboard ready to paste '
+            + 'straight into Excel. In the Mice table, clicking a label cell '
+            + 'fills it in on the spot.',
+        view: 'sessions',
+        wait: '#hkBody .seg',
+        required: false,
+        target: '#hkBody .seg',
+        placement: 'bottom',
+      },
+      {
         title: 'Questions about the whole pile',
         body: 'ToolKit is for the things that span recordings rather than '
             + 'sitting inside one. Press T, or click it.',
@@ -629,12 +669,38 @@
       },
       {
         title: 'And it all syncs by being plain files',
-        body: 'GUI_logs is one JSON file per record, so a git pull brings you '
+        body: 'GUI_logs is JSON, one file per record \u2014 and then '
+            + 'split again by machine, so no two computers ever write the '
+            + 'same file. That is what makes a merge conflict impossible '
+            + 'rather than merely unlikely. A git pull brings you '
             + 'everyone else’s bad channels, presets, decks and figures '
             + 'without a merge conflict. The sync chip tells you where you '
             + 'stand.',
         target: '#syncBtn',
         placement: 'right',
+      },
+      {
+        title: 'So what happens when two of you label the same recording?',
+        body: 'Nothing bad. Each machine writes only its own shard, and they '
+            + 'are compiled when they are read by a merge that knows what '
+            + 'each field means: two paths to the same recording are both '
+            + 'kept, two people labelling different channels of one shank '
+            + 'both keep their work, and a note one of you edited later '
+            + 'simply wins. Your theme stays yours, because that describes '
+            + 'your screen rather than the project.',
+        target: '#syncBtn',
+        placement: 'right',
+      },
+      {
+        title: 'And you can check that, not just believe it',
+        body: 'Open the sync chip: it says in as many words whether anything '
+            + 'in the logs could collide on a pull, and names the files if '
+            + 'it ever could. tools/conflict_check.py answers the same '
+            + 'question from a terminal.',
+        target: '#syncBtn',
+        action: 'click',
+        placement: 'right',
+        doText: 'Click Sync.',
       },
     ],
   });

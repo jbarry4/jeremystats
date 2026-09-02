@@ -258,10 +258,19 @@ async function until(fn, ms) {
 
   say('');
   say('=== the page does not scroll sideways ===', 'hd');
+  /* An element that is display:none, or measured before layout settles,
+     reports clientWidth 0 -- and "scrollWidth > 0" is then trivially true.
+     That is a fact about the measurement, not about the CSS, so say so
+     rather than reporting an overflow that is not there. */
   const body = $('#view-toolkit');
-  check('the section fits its width',
-        body.scrollWidth <= body.clientWidth + 1,
-        body.scrollWidth + ' vs ' + body.clientWidth);
+  if (!body.clientWidth) {
+    say('  skip the width check: the section is not laid out right now',
+        'note');
+  } else {
+    check('the section fits its width',
+          body.scrollWidth <= body.clientWidth + 1,
+          body.scrollWidth + ' vs ' + body.clientWidth);
+  }
   const tw = $('#tkResult .tk-tablewrap');
   if (tw) {
     check('a wide table scrolls inside its own box',
