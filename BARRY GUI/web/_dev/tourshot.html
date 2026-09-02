@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>tourshot</title>
+<style>html,body{margin:0;height:100%;overflow:hidden}
+iframe{width:100vw;height:100vh;border:0}</style></head>
+<body><iframe id="app" src="/"></iframe>
+<script>
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const want = new URLSearchParams(location.search).get('at') || 'menu';
+  const D = () => frame.contentDocument;
+  if (want === 'menu') {
+    ev('BARRY.tour.resetProgress()');
+    ev('BARRY.tour.openMenu()');
+    await until(() => D().querySelector('.tour-cards'), 8000);
+  } else {
+    ev("BARRY.tour.start('start')");
+    await until(() => D().querySelector('#tourBox h4'), 15000);
+    const n = Number(want) || 0;
+    for (let i = 0; i < n; i++) {
+      D().body.dispatchEvent(new frame.contentWindow.KeyboardEvent(
+        'keydown', { key: 'ArrowRight', bubbles: true }));
+      await sleep(800);
+    }
+  }
+  await sleep(900);
+  document.title = 'tourshot: ready';
+})();
+</script></body></html>

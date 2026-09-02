@@ -837,7 +837,20 @@ BARRY.views.errors = (function () {
                      text: (g.resolved ? '\u2713 ' : '') + g.count
                            + (g.count > 1 ? '\u00d7' : '') }),
         el('div', {}, [
-          el('div', { class: 'err-gmsg', text: g.message || '(no message)' }),
+          el('div', { class: 'err-gmsg' }, [
+            // A bug that was marked fixed and has come back is the most
+            // interesting row on this page, so it says so rather than
+            // looking like an ordinary open one.
+            g.reopened
+              ? el('span', {
+                  class: 'err-reopened', text: 'came back',
+                  title: 'Marked resolved on '
+                       + (g.resolved_at || '?').replace('T', ' ').slice(0, 16)
+                       + ', and has happened again since',
+                })
+              : null,
+            el('span', { text: g.message || '(no message)' }),
+          ].filter(Boolean)),
           el('div', { class: 'err-gwhere',
                       text: (g.where || 'unknown')
                             + (g.machines.length ? '  \u00b7  '

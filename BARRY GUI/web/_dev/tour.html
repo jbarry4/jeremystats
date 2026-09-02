@@ -1,0 +1,412 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>tour: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  /* ==================================================================
+     Presenter zoom
+     ================================================================== */
+  say('=== presenter zoom ===', 'hd');
+  ev("setView('storyboard')");
+  await sleep(500);
+  const made = await (await fetch('/api/deck', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deck: { title: 'tour harness', slides: [
+      { id: 'z1', title: 'One', notes: 'first note', items: [
+        { id: 'a', type: 'shape', shape: 'rect', x: 0.1, y: 0.1,
+          w: 0.3, h: 0.3, color: '#c0392b', width: 3, z: 3 }],
+        show_notes: true },
+      { id: 'z2', title: 'Two', notes: '', items: [], show_notes: true }] } }),
+  })).json();
+  const deckId = (made.deck || {}).id;
+  await ev('BARRY.views.storyboard.onShow()');
+  await sleep(500);
+  const openBtn = $$('#sbBody .res-card button').find(
+    (b) => b.textContent === 'Open');
+  if (openBtn) openBtn.click();
+  await until(() => $('#sbCanvas'), 12000);
+  await sleep(500);
+
+  // F5 into the presenter.
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'F5', bubbles: true }));
+  const inPres = await until(() => {
+    const h = $('#presenter');
+    return h && !h.classList.contains('hidden');
+  }, 9000);
+  check('F5 opens the presenter', inPres);
+  await sleep(500);
+
+  const slide = () => $('#presSlide');
+  const stage = () => $('#presenter .pres-stage');
+  const zval = () => ($('#presZoom') || {}).textContent;
+  const scaleOf = () => {
+    const t = W.getComputedStyle(slide()).transform;
+    const m = /matrix\(([-\d.e]+)/.exec(t || '');
+    return m ? +m[1] : (t === 'none' ? 1 : NaN);
+  };
+
+  check('it opens at the whole slide', zval() === '100%' && scaleOf() === 1,
+        zval() + ' / scale ' + scaleOf());
+  check('there are zoom controls', $$('.pres-zoom .btn').length === 3,
+        $$('.pres-zoom .btn').map((b) => b.textContent).join(' '));
+
+  // The + button.
+  $$('.pres-zoom .btn').find((b) => b.textContent === '+').click();
+  await sleep(350);
+  check('the + button zooms in', scaleOf() > 1.2,
+        zval() + ' / scale ' + scaleOf().toFixed(2));
+  const z1 = scaleOf();
+
+  // The keyboard.
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: '+', bubbles: true }));
+  await sleep(300);
+  check('+ on the keyboard zooms too', scaleOf() > z1,
+        z1.toFixed(2) + ' -> ' + scaleOf().toFixed(2));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: '-', bubbles: true }));
+  await sleep(300);
+  check('- zooms back out', Math.abs(scaleOf() - z1) < 0.01,
+        scaleOf().toFixed(2));
+
+  check('the stage shows it can be dragged',
+        stage().classList.contains('zoomed'), stage().className);
+
+  /* Zooming has to keep the point under the pointer put -- otherwise the
+     thing you were looking at is the first thing to leave the screen. */
+  const before = slide().getBoundingClientRect();
+  const px = before.left + before.width * 0.7;
+  const py = before.top + before.height * 0.7;
+  // Which point of the slide's own box is under (px, py) right now.
+  const fx = (px - before.left) / before.width;
+  const fy = (py - before.top) / before.height;
+  stage().dispatchEvent(new W.WheelEvent('wheel',
+    { deltaY: -120, clientX: px, clientY: py, bubbles: true, cancelable: true }));
+  await sleep(350);
+  const after = slide().getBoundingClientRect();
+  const nx = after.left + after.width * fx;
+  const ny = after.top + after.height * fy;
+  check('scrolling zooms about the pointer',
+        Math.abs(nx - px) < 3 && Math.abs(ny - py) < 3,
+        'that point moved ' + Math.abs(nx - px).toFixed(1) + ','
+        + Math.abs(ny - py).toFixed(1) + ' px');
+
+  // Drag to pan.
+  const panBefore = slide().getBoundingClientRect().left;
+  stage().dispatchEvent(new W.MouseEvent('mousedown',
+    { clientX: 500, clientY: 400, bubbles: true, cancelable: true }));
+  await sleep(60);
+  W.dispatchEvent(new W.MouseEvent('mousemove',
+    { clientX: 430, clientY: 400, bubbles: true }));
+  await sleep(160);
+  W.dispatchEvent(new W.MouseEvent('mouseup',
+    { clientX: 430, clientY: 400, bubbles: true }));
+  await sleep(250);
+  check('dragging moves the slide',
+        Math.abs(slide().getBoundingClientRect().left - panBefore) > 20,
+        panBefore.toFixed(0) + ' -> '
+        + slide().getBoundingClientRect().left.toFixed(0));
+
+  /* It must not be draggable off the edge entirely. */
+  for (let i = 0; i < 6; i++) {
+    stage().dispatchEvent(new W.MouseEvent('mousedown',
+      { clientX: 900, clientY: 500, bubbles: true, cancelable: true }));
+    W.dispatchEvent(new W.MouseEvent('mousemove',
+      { clientX: 100, clientY: 100, bubbles: true }));
+    W.dispatchEvent(new W.MouseEvent('mouseup',
+      { clientX: 100, clientY: 100, bubbles: true }));
+    await sleep(60);
+  }
+  await sleep(250);
+  const clamped = slide().getBoundingClientRect();
+  const sr = stage().getBoundingClientRect();
+  check('it cannot be dragged off the stage',
+        clamped.right >= sr.left && clamped.bottom >= sr.top
+        && clamped.left <= sr.right,
+        'slide ' + [clamped.left, clamped.right].map(Math.round).join('..')
+        + ' stage ' + [sr.left, sr.right].map(Math.round).join('..'));
+
+  // 0 resets.
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: '0', bubbles: true }));
+  await sleep(350);
+  check('0 goes back to the whole slide',
+        zval() === '100%' && Math.abs(scaleOf() - 1) < 0.01,
+        zval() + ' / ' + scaleOf().toFixed(2));
+  check('and the drag cursor goes away',
+        !stage().classList.contains('zoomed'));
+
+  // Changing slide resets it, so the next slide is not mysteriously zoomed.
+  $$('.pres-zoom .btn').find((b) => b.textContent === '+').click();
+  await sleep(300);
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'ArrowRight', bubbles: true }));
+  await sleep(450);
+  check('moving to the next slide shows it whole',
+        Math.abs(scaleOf() - 1) < 0.01 && zval() === '100%',
+        zval() + ' / ' + scaleOf().toFixed(2));
+
+  // Double-click zooms in on what was clicked.
+  const dr = slide().getBoundingClientRect();
+  stage().dispatchEvent(new W.MouseEvent('dblclick',
+    { clientX: dr.left + dr.width / 2, clientY: dr.top + dr.height / 2,
+      bubbles: true, cancelable: true }));
+  await sleep(350);
+  check('double-click zooms in', scaleOf() > 1.5, scaleOf().toFixed(2));
+
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(450);
+  check('escape leaves the presenter',
+        $('#presenter').classList.contains('hidden'));
+  check('and the zoom is reset for next time',
+        Math.abs(scaleOf() - 1) < 0.01, scaleOf().toFixed(2));
+
+  if (deckId) await fetch('/api/deck/' + deckId + '/delete', { method: 'POST' });
+
+  /* ==================================================================
+     Tutorial mode
+     ================================================================== */
+  say('');
+  say('=== the guide ===', 'hd');
+  check('BARRY.tour exists', ev('typeof BARRY.tour') === 'object');
+  const mods = JSON.parse(ev(
+    'JSON.stringify(BARRY.tour.list().map(m => ({ id: m.id, name: m.name, '
+    + 'n: m.steps.length, blurb: !!m.blurb })))'));
+  say('  modules: ' + mods.map((m) => m.id + '(' + m.n + ')').join(', '), 'note');
+  check('there are several modules', mods.length >= 5, mods.length + '');
+  check('the first one is Getting started', mods[0].id === 'start',
+        mods[0].id);
+  check('every module has a name, a blurb and steps',
+        mods.every((m) => m.name && m.blurb && m.n > 0));
+  const total = mods.reduce((a, m) => a + m.n, 0);
+  say('  ' + total + ' steps in all', 'note');
+
+  // Every step must have something to say.
+  const bad = JSON.parse(ev(
+    'JSON.stringify(BARRY.tour.list().flatMap(m => m.steps'
+    + '.map((s, i) => ({ m: m.id, i: i + 1, title: s.title, body: s.body }))'
+    + '.filter(s => !s.title || !s.body)))'));
+  check('every step has a title and a body', bad.length === 0,
+        JSON.stringify(bad).slice(0, 120));
+
+  // Click steps must have a target, or there is nothing to click.
+  const noTarget = JSON.parse(ev(
+    'JSON.stringify(BARRY.tour.list().flatMap(m => m.steps'
+    + ".map((s, i) => ({ m: m.id, i: i + 1, action: s.action, "
+    + 'has: !!s.target })).filter(s => s.action === "click" && !s.has)))'));
+  check('every click step has something to click', noTarget.length === 0,
+        JSON.stringify(noTarget).slice(0, 120));
+
+  say('');
+  say('=== the menu ===', 'hd');
+  check('there is a Guide chip in the rail', !!$('#tourBtn'),
+        $('#tourBtn') ? $('#tourBtn').textContent.trim() : 'missing');
+  $('#tourBtn').click();
+  await until(() => $('.tour-cards'), 8000);
+  await sleep(300);
+  check('clicking it opens the menu', !!$('.tour-cards'));
+  check('one card per module',
+        $$('.tour-card').length === mods.length,
+        $$('.tour-card').length + ' cards');
+  check('each card says how long it is',
+        $$('.tour-card-len').every((n) => /\d+ steps/.test(n.textContent)));
+
+  say('');
+  say('=== running Getting started ===', 'hd');
+  ev("BARRY.tour.resetProgress()");
+  $$('.tour-card')[0].click();
+  const started = await until(() => $('#tour .tour-box h4'), 15000);
+  check('the first step comes up', started);
+  await sleep(400);
+
+  const boxTitle = () => (($('#tourBox h4') || {}).textContent || '');
+  const stepOf = () => JSON.parse(ev('JSON.stringify(BARRY.tour.state)'));
+  say('  step 1: ' + boxTitle(), 'note');
+  check('the box names the module and the position',
+        /GETTING STARTED|Getting started/i.test(
+          ($('#tourBox .tour-mod') || {}).textContent || '')
+        && /1 of \d+/.test(($('#tourBox .tour-of') || {}).textContent || ''),
+        ($('#tourBox .tour-of') || {}).textContent);
+  check('there is a progress bar', !!$('#tourBox .tour-bar i'));
+  check('Back is disabled on the first step',
+        $$('#tourBox .tour-foot button').find(
+          (b) => b.textContent === 'Back').disabled);
+
+  // The opening step has no target, so the whole screen dims and the box
+  // sits in the middle.
+  check('with no target, the screen dims and there is no ring',
+        $('#tourHole').classList.contains('hidden')
+        && $('#tourBox').dataset.arrow === 'none',
+        $('#tourBox').dataset.arrow);
+  const blocks = () => $$('#tour .tour-block').filter(
+    (n) => !n.classList.contains('hidden')
+           && n.getBoundingClientRect().width > 0);
+  check('and clicks are blocked', blocks().length > 0,
+        blocks().length + ' panels');
+
+  // Step to the rail step, which does have a target.
+  $$('#tourBox .tour-foot button').find(
+    (b) => /^Next/.test(b.textContent)).click();
+  await sleep(700);
+  say('  step 2: ' + boxTitle(), 'note');
+  check('the second step highlights the rail',
+        !$('#tourHole').classList.contains('hidden'));
+  const hole = $('#tourHole').getBoundingClientRect();
+  const rail = $('#rail .nav-group').getBoundingClientRect();
+  check('the ring is on the thing it is talking about',
+        Math.abs(hole.left - (rail.left - 6)) < 3
+        && Math.abs(hole.top - (rail.top - 6)) < 3,
+        'ring ' + [hole.left, hole.top].map(Math.round).join(',')
+        + '  target ' + [rail.left, rail.top].map(Math.round).join(','));
+  check('the box points at it',
+        ['right', 'left', 'top', 'bottom'].includes(
+          $('#tourBox').dataset.arrow),
+        $('#tourBox').dataset.arrow);
+  check('the box is on screen', (() => {
+    const b = $('#tourBox').getBoundingClientRect();
+    return b.left >= 0 && b.top >= 0
+        && b.right <= W.innerWidth + 1 && b.bottom <= W.innerHeight + 1;
+  })(), JSON.stringify($('#tourBox').getBoundingClientRect()).slice(0, 90));
+
+  /* The four blockers must surround the hole and leave it clear -- that is
+     what makes a "click this" step work at all. */
+  const covering = blocks().filter((n) => {
+    const b = n.getBoundingClientRect();
+    const cx = hole.left + hole.width / 2, cy = hole.top + hole.height / 2;
+    return cx > b.left && cx < b.right && cy > b.top && cy < b.bottom;
+  });
+  say('  panels over the highlight: ' + covering.length
+      + '  (a read-only step covers it on purpose)', 'note');
+
+  // Arrow keys drive it.
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'ArrowRight', bubbles: true }));
+  await sleep(700);
+  check('the right arrow advances', stepOf().index === 2,
+        JSON.stringify(stepOf()));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'ArrowLeft', bubbles: true }));
+  await sleep(600);
+  check('the left arrow goes back', stepOf().index === 1,
+        JSON.stringify(stepOf()));
+
+  // Walk to the click-to-continue step and use it as intended.
+  say('');
+  say('=== a step you do rather than read ===', 'hd');
+  // Walk forward until the first click-to-continue step, rather than
+  // counting steps -- the count changes whenever the module is edited.
+  for (let i = 0; i < 8 && !$('#tourBox .tour-do'); i++) {
+    D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'ArrowRight', bubbles: true }));
+    await sleep(700);
+  }
+  say('  now on: ' + boxTitle() + '  (step ' + (stepOf().index + 1) + ')',
+      'note');
+  const clickStep = !!$('#tourBox .tour-do');
+  check('it says to click the thing', clickStep,
+        ($('#tourBox .tour-do') || {}).textContent || 'no instruction');
+  if (clickStep) {
+    check('the ring pulses to say "this one"',
+          $('#tourHole').classList.contains('clickable'));
+    check('nothing covers the highlight, so the click can land',
+          $('#tourBlockC').classList.contains('hidden'));
+    const at = stepOf().index;
+    const target = $('.nav-item[data-view="xplore"]');
+    check('the highlight is on Xplorefinder in the rail', (() => {
+      const h = $('#tourHole').getBoundingClientRect();
+      const t = target.getBoundingClientRect();
+      return Math.abs(h.left - (t.left - 6)) < 3;
+    })());
+    target.click();
+    await sleep(1100);
+    check('clicking it moves the tour on', stepOf().index === at + 1,
+          at + ' -> ' + stepOf().index);
+    check('and the click actually did its job',
+          ev('BARRY.state.view') === 'xplore', ev('BARRY.state.view'));
+  }
+
+  // Run out the rest and check the module is remembered.
+  say('');
+  say('=== finishing ===', 'hd');
+  const n = stepOf().steps;
+  for (let i = stepOf().index; i < n + 1; i++) {
+    if (!ev('BARRY.tour.state')) break;
+    D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'ArrowRight', bubbles: true }));
+    await sleep(750);
+  }
+  check('the tour ends', ev('BARRY.tour.state') === null,
+        JSON.stringify(stepOf()));
+  const done = JSON.parse(ev(
+    'JSON.stringify(Array.from(BARRY.tour.doneSet()))'));
+  check('the module is marked done', done.includes('start'),
+        JSON.stringify(done));
+  check('the overlay is gone', !$('#tour'));
+  check('it drops you back in the menu, with a tick',
+        !!$('.tour-card.done'),
+        $$('.tour-card').map((c) => c.className).join(' | '));
+
+  say('');
+  say('=== escape gets out cleanly ===', 'hd');
+  W.eval('closeModal')();
+  await sleep(250);
+  ev("BARRY.tour.start('reading')");
+  await until(() => $('#tourBox h4'), 15000);
+  await sleep(500);
+  check('a second module starts', !!ev('BARRY.tour.state'));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(450);
+  check('escape stops it', ev('BARRY.tour.state') === null);
+  check('and takes the overlay with it', !$('#tour'));
+  check('nothing is left blocking the interface',
+        $$('.tour-block').length === 0);
+  // The interface has to still work afterwards.
+  $('.nav-item[data-view="history"]').click();
+  await sleep(400);
+  check('the app is usable again', ev('BARRY.state.view') === 'history',
+        ev('BARRY.state.view'));
+
+  ev("BARRY.tour.resetProgress()");
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'tour: ' + fails + ' FAILED' : 'tour: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'tour CRASH'; });
+</script></body></html>

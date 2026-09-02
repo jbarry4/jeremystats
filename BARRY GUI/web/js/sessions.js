@@ -19,6 +19,16 @@ BARRY.views.sessions = (function () {
   const health = {};          // path -> report from /api/session/health
   let healthBusy = false;
 
+  /* Which of the listed recordings this scan actually found.
+
+     The scan page used to hold its results in memory and nothing else, so a
+     refresh emptied it -- a strange thing for a page about what is on your
+     drives to do. Everything BARRY has ever met is in the registry now, so
+     the page opens showing all of it faint and a scan brightens what it
+     finds. Refreshing costs you the brightening, not the list. */
+  const foundNow = new Set();
+  let knownLoaded = false;
+
   const RECENT_KEY = 'barry.roots';
   const LAST_KEY = 'barry.lastSessions';
 
@@ -32,6 +42,75 @@ BARRY.views.sessions = (function () {
   function lastOpen() {
     try { return JSON.parse(localStorage.getItem(LAST_KEY) || '[]'); }
     catch (e) { return []; }
+  }
+
+  /* A registry row, wearing the shape the tree already knows how to draw.
+
+     A translation rather than a second renderer, deliberately: one way of
+     drawing a session means the remembered ones and the found ones cannot
+     drift apart visually, which is the point of showing them together. */
+  function fromRegistry(r) {
+    const path = (r.here || [])[0] || (r.paths || [])[0] || '';
+    return {
+      path,
+      name: r.label || r.key || r.gid,
+      gid: r.gid,
+      _remembered: true,
+      _reachable: !!r.reachable,
+      identity: {
+        group: r.project || 'Unfiled',
+        mouse: r.mouse,
+        session: r.session,
+        start: r.start,
+        label: r.label,
+        mouse_folder: '',
+        confidence: 'high',
+      },
+      channels: r.n_channels || 0,
+      fs: r.fs || null,
+      duration_s: r.duration_s || 0,
+      converted: !!r.converted,
+      has_video: !!r.has_video,
+      has_tracking: false,
+      stored: (r.bad_channels || []).length
+        ? { bad_channels: r.bad_channels } : null,
+    };
+  }
+
+  /* Everything BARRY knows, as the starting list. */
+  async function loadKnown(force) {
+    if (knownLoaded && !force) return;
+    knownLoaded = true;
+    let reg;
+    try {
+      reg = await api('/api/registry');
+    } catch (e) {
+      return;                 // an older server: the page still works
+    }
+    const rows = (reg.tree || []).flatMap(
+      (p) => p.mice.flatMap((m) => m.sessions));
+    const have = new Set(sessions.map((x) => x.gid).filter(Boolean));
+    const seenPath = new Set(sessions.map((x) => x.path).filter(Boolean));
+    const extra = rows
+      .filter((r) => !have.has(r.gid))
+      .map(fromRegistry)
+      .filter((x) => !x.path || !seenPath.has(x.path));
+    if (!extra.length) { renderTree(); return; }
+    sessions = sessions.concat(extra);
+    if (!tree.length) {
+      // The cohort pills come from the scan; without one, build them from
+      // what is known so the filter still works.
+      const by = {};
+      for (const x of sessions) {
+        const g = x.identity.group || 'Ungrouped';
+        by[g] = (by[g] || 0) + 1;
+      }
+      tree = Object.keys(by).sort().map((g) => ({ group: g, n: by[g] }));
+      renderGroupFilter();
+    }
+    const filters = $('#sessFilters');
+    if (filters) filters.classList.remove('hidden');
+    renderTree();
   }
 
   /* ---------- recent roots ---------- */
@@ -112,12 +191,48 @@ BARRY.views.sessions = (function () {
       return;
     }
 
-    sessions = j.sessions || [];
+    /* Merge rather than replace: what the scan found is now known first
+       hand, and what it did not find is still worth listing -- faint -- so
+       "the drive I expected it on does not have it" is visible rather than
+       silent. */
+    const scanned = j.sessions || [];
+    for (const x of scanned) { x._remembered = false; }
+    foundNow.clear();
+    for (const x of scanned) { if (x.gid) foundNow.add(x.gid); }
+    const scannedPaths = new Set(scanned.map((x) => x.path));
+    const kept = sessions.filter(
+      (x) => x._remembered && !(x.gid && foundNow.has(x.gid))
+             && !scannedPaths.has(x.path));
+    sessions = scanned.concat(kept);
     tree = j.tree || [];
     box.appendChild(el('span', {
       class: 'stat-chip good',
       text: sessions.length + ' session(s) in ' + j.elapsed + 's',
     }));
+
+    /* A scan is the one moment BARRY has the whole picture of a drive, so
+       everything it walked past is now registered -- not just the handful
+       anyone opens. The server did the writing; this tells the registry view
+       which ones were actually laid eyes on, so they stop being merely
+       remembered. */
+    const reg = j.registered || {};
+    if (reg.seen) {
+      box.appendChild(el('span', {
+        class: 'stat-chip',
+        title: 'Every recording found is now in Sessions › Everything '
+             + 'BARRY knows, whether or not you open it',
+        text: reg.new
+          ? reg.new + ' new · ' + reg.seen + ' catalogued'
+          : reg.seen + ' catalogued',
+      }));
+    }
+    if (BARRY.views.housekeeping && BARRY.views.housekeeping.confirm) {
+      BARRY.views.housekeeping.confirm(Array.from(foundNow), j.root);
+    }
+    // Anything registered that this scan did not turn up should still be on
+    // the page, faint. Forced, because the registry has just grown.
+    loadKnown(true);
+
     box.appendChild(el('code', { text: j.root }));
     box.appendChild(el('button', {
       class: 'btn ghost sm', text: 'Rescan', onclick: () => start(j.root),
@@ -171,15 +286,22 @@ BARRY.views.sessions = (function () {
     host.innerHTML = '';
     const visible = sessions.filter(matches);
 
+    const nFound = sessions.filter((x) => !x._remembered).length;
+    const nKnown = sessions.length - nFound;
     $('#sessSub').textContent = visible.length + ' of ' + sessions.length
-      + ' session(s)' + (query ? ' matching "' + query + '"' : '')
+      + ' session(s)'
+      + (nKnown ? '  ·  ' + nFound + ' found by this scan, '
+                  + nKnown + ' remembered' : '')
+      + (query ? '  ·  matching "' + query + '"' : '')
       + (picked.size ? '  ·  ' + picked.size + ' selected' : '');
     renderPickBar();
 
     if (!visible.length) {
       host.appendChild(el('div', { class: 'tree-empty',
-        text: sessions.length ? 'Nothing matches those filters.'
-                              : 'Scan a data root to list its recordings.' }));
+        text: sessions.length
+          ? 'Nothing matches those filters.'
+          : 'Nothing registered yet. Scan a data root and everything under '
+            + 'it will be catalogued, whether or not you open it.' }));
       return;
     }
 
@@ -231,9 +353,20 @@ BARRY.views.sessions = (function () {
     const i = s.identity;
     const badN = s.stored ? (s.stored.bad_channels || []).length : 0;
     const isPicked = picked.has(s.path);
+    const remembered = !!s._remembered;
     return el('div', {
-      class: 'sess-card' + (isPicked ? ' picked' : ''), title: s.path,
+      class: 'sess-card' + (isPicked ? ' picked' : '')
+           + (remembered ? ' remembered' : ' found'),
+      title: remembered
+        ? ((s.path || '(no path on this machine)')
+           + '\n\nKnown to BARRY, but this scan has not found it.')
+        : s.path,
       onclick: (e) => {
+        if (!s.path) {
+          toast('None of this recording\u2019s paths are on this machine.',
+                'err', 6000);
+          return;
+        }
         // Ctrl/Cmd or shift adds to the selection; a plain click opens it.
         if (e.ctrlKey || e.metaKey || e.shiftKey || picked.size) {
           togglePick(s.path);
@@ -265,6 +398,10 @@ BARRY.views.sessions = (function () {
         badN ? el('span', { class: 'flagchip bad', text: badN + ' bad' }) : null,
         i.confidence !== 'high' ? el('span', { class: 'flagchip bad',
           text: 'id: ' + i.confidence }) : null,
+        remembered ? el('span', {
+          class: 'flagchip', title: 'From the registry, not from this scan',
+          text: 'remembered',
+        }) : null,
         healthPill(s),
         noteChip(s),
       ]),
@@ -596,6 +733,9 @@ BARRY.views.sessions = (function () {
 
   /* ---------- init ---------- */
   function init() {
+    $$('#sessModeSeg button').forEach((b) =>
+      b.addEventListener('click', () => setMode(b.dataset.mode)));
+
     $('#rootGo').addEventListener('click', () => start());
     $('#rootPath').addEventListener('keydown', (e) => { if (e.key === 'Enter') start(); });
     $('#sessScan').addEventListener('click', () => start());
@@ -647,9 +787,46 @@ BARRY.views.sessions = (function () {
     }
   }
 
+  /* Two views of the same subject: what is on this drive, and what the lab
+     has. Kept in one section because "the sessions" is one idea, and a
+     twelfth rail entry for the other half of it would not help anyone. */
+  let mode = 'scan';
+
+  function setMode(next) {
+    mode = next;
+    const scan = $('#sessScanPad'), hk = $('#hkBody');
+    if (scan) scan.classList.toggle('hidden', mode !== 'scan');
+    if (hk) hk.classList.toggle('hidden', mode !== 'housekeeping');
+    $$('#sessModeSeg button').forEach(
+      (b) => b.classList.toggle('active', b.dataset.mode === mode));
+    const sub = $('#sessSub');
+    if (sub) {
+      sub.textContent = mode === 'scan'
+        ? 'Scan a data root and open any recording.'
+        : 'Every recording BARRY has met, with its permanent id and every '
+          + 'path it has been seen at.';
+    }
+    for (const b of $$('#sessHealth, #sessCompare, #sessReveal, #sessScan')) {
+      b.classList.toggle('hidden', mode !== 'scan');
+    }
+    if (mode === 'housekeeping' && BARRY.views.housekeeping) {
+      BARRY.views.housekeeping.onShow();
+    }
+    BARRY.activity.log('sessions.mode', { mode });
+  }
+
   return {
     init,
     picked: () => Array.from(picked),
-    onShow: () => { renderRecents(); },
+    setMode,
+    onShow: () => {
+      if (mode === 'housekeeping' && BARRY.views.housekeeping) {
+        BARRY.views.housekeeping.onShow();
+      } else {
+        renderRecents();
+        // Open showing what BARRY already knows rather than an empty page.
+        loadKnown();
+      }
+    },
   };
 })();

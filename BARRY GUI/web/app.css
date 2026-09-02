@@ -2969,3 +2969,543 @@ select {
   font-family: var(--mono); font-size: 11px; min-width: 46px;
   font-variant-numeric: tabular-nums;
 }
+
+/* ==========================================================================
+   Guided tours.
+
+   The dim is four panels around the highlight rather than one overlay on top
+   of it. That matters: the thing being pointed at is drawn by the
+   application at full contrast, and on a step that says "click this", the
+   click reaches it because there is nothing in the way.
+   ========================================================================== */
+.tour { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
+
+.tour-block {
+  position: fixed; background: rgba(6, 14, 11, 0.62);
+  pointer-events: auto;          /* swallow clicks outside the highlight */
+  transition: opacity .15s ease;
+}
+.tour-block.hidden { display: none; }
+:root[data-theme="light"] .tour-block,
+:root[data-theme="parchment"] .tour-block,
+:root[data-theme="horizon"] .tour-block { background: rgba(20, 32, 28, 0.48); }
+
+/* The ring around the highlight. No background, so whatever is underneath
+   shows through untouched. */
+.tour-hole {
+  position: fixed; pointer-events: none;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px 2px var(--accent-line);
+  transition: left .18s ease, top .18s ease,
+              width .18s ease, height .18s ease;
+}
+.tour-hole.hidden { display: none; }
+/* A click step pulses, so "this one" is unmistakable. */
+.tour-hole.clickable { animation: tour-pulse 1.5s ease-in-out infinite; }
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft),
+                         0 0 22px 2px var(--accent-line); }
+  50%      { box-shadow: 0 0 0 7px var(--accent-soft),
+                         0 0 30px 5px var(--accent-line); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-hole { transition: none; }
+  .tour-hole.clickable { animation: none; }
+}
+
+.tour-box {
+  position: fixed; pointer-events: auto; width: 330px; max-width: 92vw;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 12px 14px 11px;
+}
+.tour-box.busy { opacity: .8; }
+.tour-box h4 {
+  margin: 8px 0 5px; font-size: 13.5px; line-height: 1.35; color: var(--text);
+}
+.tour-body {
+  margin: 0; font-size: 12px; line-height: 1.62; color: var(--text-2);
+}
+.tour-note {
+  margin: 8px 0 0; font-size: 11px; line-height: 1.55; color: var(--text-3);
+  padding-left: 9px; border-left: 2px solid var(--line);
+}
+.tour-do {
+  margin: 9px 0 0; font-size: 11.5px; line-height: 1.5;
+  color: var(--accent); font-weight: 600;
+}
+.tour-problem {
+  margin: 9px 0 0; padding: 7px 9px; border-radius: var(--radius-sm);
+  background: var(--warn-soft); color: var(--warn);
+  font-size: 11px; line-height: 1.5;
+}
+
+.tour-head { display: flex; align-items: center; gap: 8px; }
+.tour-mod {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--accent); font-weight: 700;
+}
+.tour-of {
+  font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.tour-head .close-x { flex: none; }
+
+.tour-bar {
+  height: 2px; background: var(--line-soft); border-radius: 2px;
+  margin-top: 7px; overflow: hidden;
+}
+.tour-bar i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .25s ease;
+}
+
+.tour-foot { display: flex; align-items: center; gap: 6px; margin-top: 11px; }
+
+/* A small pointer toward whatever is highlighted. */
+.tour-box::after {
+  content: ''; position: absolute; width: 9px; height: 9px;
+  background: var(--bg-2);
+  border-left: 1px solid var(--line); border-top: 1px solid var(--line);
+}
+.tour-box[data-arrow="none"]::after { display: none; }
+.tour-box[data-arrow="bottom"]::after {
+  top: -5px; left: 50%; margin-left: -5px; transform: rotate(45deg);
+}
+.tour-box[data-arrow="top"]::after {
+  bottom: -5px; left: 50%; margin-left: -5px; transform: rotate(225deg);
+}
+.tour-box[data-arrow="right"]::after {
+  left: -5px; top: 50%; margin-top: -5px; transform: rotate(-45deg);
+}
+.tour-box[data-arrow="left"]::after {
+  right: -5px; top: 50%; margin-top: -5px; transform: rotate(135deg);
+}
+
+/* ---- the module menu ---- */
+.tour-cards { display: flex; flex-direction: column; gap: 7px; }
+.tour-card {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 11px 13px; text-align: left; cursor: pointer;
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font: inherit;
+  transition: border-color .15s ease, background .15s ease;
+}
+.tour-card:hover { background: var(--bg-hover); border-color: var(--accent-line); }
+.tour-card.done { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.tour-card.just { background: var(--accent-soft); border-color: var(--accent); }
+.tour-card-mark {
+  flex: none; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px;
+  border: 1px solid var(--line); color: var(--ok);
+}
+.tour-card.done .tour-card-mark {
+  border-color: var(--ok); background: var(--ok-soft);
+}
+.tour-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tour-card-text strong { font-size: 12.5px; }
+.tour-card-text span { font-size: 11px; color: var(--text-2); line-height: 1.5; }
+.tour-card-len {
+  flex: none; font-size: 10px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tour-well {
+  padding: 9px 12px; margin-bottom: 12px; border-radius: var(--radius-sm);
+  background: var(--ok-soft); font-size: 12px;
+  border: 1px solid color-mix(in srgb, var(--ok) 34%, transparent);
+}
+.tour-menu-note { margin: 12px 0 0; font-size: 11px; line-height: 1.55; }
+
+/* ==========================================================================
+   Resizable panes, chrome you can put away, and one pane filling the space.
+   ========================================================================== */
+
+/* The dividers sit over the 1px gaps the grid already leaves, widened to
+   something a hand can actually catch. Absolutely positioned rather than
+   grid items, because every index in xplore.js assumes grid.children[i] is
+   pane i. */
+.pane-grid { position: relative; }
+.pane-split {
+  position: absolute; z-index: 5; background: transparent;
+  transition: background .12s ease;
+}
+.pane-split.col {
+  top: 0; bottom: 0; left: 0; width: 9px; margin-left: -4px;
+  cursor: col-resize;
+  left: var(--split-col, 50%);
+}
+.pane-split.row {
+  left: 0; right: 0; top: 0; height: 9px; margin-top: -4px;
+  cursor: row-resize;
+  top: var(--split-row, 50%);
+}
+.pane-split:hover, body.splitting .pane-split { background: var(--accent-line); }
+/* While dragging, nothing else should be selecting text or catching the
+   pointer -- a splitter drag that lands on a canvas starts a measurement. */
+body.splitting { cursor: col-resize; user-select: none; }
+body.splitting * { pointer-events: none !important; }
+body.splitting .pane-split { pointer-events: auto !important; }
+
+.pane-grid.zoomed { grid-template-columns: 1fr !important;
+                    grid-template-rows: 1fr !important; }
+
+/* ---- what can be put away ---- */
+#view-xplore.hide-channels .pane-chans { display: none; }
+#view-xplore.hide-channels .pane-main { grid-template-columns: 1fr; }
+#view-xplore.hide-strip .pane-ctl { display: none; }
+#view-xplore.hide-heads .pane-head { display: none; }
+#view-xplore.hide-tabs .xf-tabs { display: none; }
+/* With the tabs gone the header is just a title, so give the row back too
+   when everything else on it is hidden as well. */
+#view-xplore.hide-tabs.hide-heads .xf-head h1 { font-size: 13px; }
+
+/* Full screen: the section becomes the whole monitor, so the rail and the
+   log dock are not there to take space and the body has to stretch. */
+#view-xplore:fullscreen { background: var(--bg); }
+#view-xplore:fullscreen .view-head { padding-top: 6px; }
+.pane:fullscreen { background: var(--bg); }
+.pane:fullscreen .pane-main { height: 100%; }
+
+/* ==========================================================================
+   Housekeeping -- every recording BARRY has met.
+   ========================================================================== */
+.hk-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.hk-search {
+  flex: 1; min-width: 220px; max-width: 420px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font: inherit; font-size: 12px;
+}
+.hk-bar .spacer { flex: 1; }
+
+.hk-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .hk-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+.hk-tree {
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  overflow: hidden; min-width: 0;
+}
+.hk-branch {
+  display: flex; align-items: baseline; gap: 8px; cursor: pointer;
+  padding: 7px 11px; background: var(--bg-2);
+  border-bottom: 1px solid var(--line-soft); font-size: 12px;
+}
+.hk-branch:hover { background: var(--bg-hover); }
+.hk-project strong { color: var(--accent); letter-spacing: .02em; }
+.hk-mouse { background: var(--bg); font-size: 11.5px; }
+.hk-caret {
+  display: inline-block; transition: transform .15s ease;
+  color: var(--text-3); font-size: 9px; width: 10px;
+}
+.hk-caret.open { transform: rotate(90deg); }
+.hk-sub { color: var(--text-3); font-size: 10.5px; margin-left: auto; }
+
+.hk-row {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 7px 11px 7px 40px; border-bottom: 1px solid var(--line-soft);
+  font-size: 11.5px; min-width: 0;
+}
+.hk-row:hover { background: var(--bg-hover); }
+.hk-row.sel { background: var(--accent-soft); }
+/* A recording that is registered but not on a drive this machine can reach
+   is a normal state, not a fault -- dimmed, not flagged. */
+.hk-row.away { opacity: .62; }
+.hk-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--text-3);
+}
+.hk-dot.on { background: var(--ok); }
+.hk-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hk-gid {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  background: var(--bg-3); padding: 1px 5px; border-radius: 4px; flex: none;
+}
+.hk-gid.big { font-size: 12px; color: var(--accent); }
+.hk-paths { color: var(--text-3); font-size: 10.5px; flex: none; }
+.hk-chips { display: flex; gap: 3px; flex: none; }
+.hk-chip {
+  font-size: 9.5px; padding: 1px 5px; border-radius: 4px;
+  background: var(--bg-3); color: var(--text-2);
+}
+.hk-chip.warn { background: var(--warn-soft); color: var(--warn); }
+
+/* ---- the detail column ---- */
+.hk-detail {
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  padding: 14px 15px; min-width: 0; position: sticky; top: 8px;
+  max-height: calc(100vh - 190px); overflow-y: auto;
+}
+.hk-dhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hk-dhead h3 { margin: 0; font-size: 14px; }
+.hk-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 14px;
+}
+.hk-fact { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; }
+.hk-fact .k { color: var(--text-3); font-size: 10.5px; }
+.hk-fact .v {
+  font-size: 11.5px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hk-proj { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hk-proj .hint { flex-basis: 100%; margin: 0; font-size: 10.5px; }
+
+.hk-paths-list { display: flex; flex-direction: column; gap: 4px; }
+.hk-path {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  padding: 5px 7px; border-radius: var(--radius-sm); background: var(--bg-2);
+}
+.hk-path code {
+  flex: 1; min-width: 0; font-size: 10.5px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; direction: rtl;
+  text-align: left;
+}
+.hk-path.here { background: var(--ok-soft); }
+
+.hk-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.hk-link {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  min-width: 68px; padding: 7px 9px; cursor: pointer; font: inherit;
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.hk-link:hover:not(.none) {
+  border-color: var(--accent-line); background: var(--bg-hover);
+}
+.hk-link strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.hk-link span { font-size: 9.5px; color: var(--text-3); }
+.hk-link.none { opacity: .45; cursor: default; }
+
+.hk-note {
+  width: 100%; resize: vertical; font: inherit; font-size: 11.5px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+}
+.hk-merge { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.hk-merge .hint { margin: 0; font-size: 10.5px; }
+.hk-empty { padding: 18px 12px; line-height: 1.6; }
+
+/* ==========================================================================
+   Event curation.
+
+   The bar is docked at the bottom of the workspace rather than floating: it
+   is the thing you are working in, and it must never cover the trace it is
+   asking you about.
+   ========================================================================== */
+.cur-bar {
+  flex: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 9px 14px; border-top: 2px solid var(--accent);
+  background: var(--bg-2);
+}
+.cur-where { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.cur-where strong { font-size: 12.5px; }
+.cur-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.cur-count {
+  font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.cur-prog {
+  position: relative; flex: 1; min-width: 160px; max-width: 320px;
+  height: 16px; border-radius: 8px; background: var(--bg-3);
+  overflow: hidden; display: flex; align-items: center;
+}
+.cur-prog i {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--accent-soft); border-right: 2px solid var(--accent);
+  transition: width .2s ease;
+}
+.cur-prog span {
+  position: relative; font-size: 10px; color: var(--text-2);
+  padding-left: 9px; white-space: nowrap;
+}
+.cur-prog.small { height: 5px; max-width: none; margin: 5px 0; }
+.cur-prog.small i { border-right: 0; background: var(--accent); }
+
+/* One button per category, each showing its key. The key is the interface;
+   the button is there so you can learn it. */
+.cur-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+.cur-cat {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; font: inherit;
+  padding: 5px 10px 5px 6px; border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font-size: 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cat, var(--accent));
+  transition: background .12s ease, border-color .12s ease;
+}
+.cur-cat:hover { background: var(--bg-hover); }
+.cur-cat.on {
+  background: color-mix(in srgb, var(--cat) 18%, transparent);
+  border-color: var(--cat);
+}
+.cur-cat kbd {
+  font-family: var(--mono); font-size: 10px; padding: 1px 5px;
+  border-radius: 4px; background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+
+.cur-nav { display: flex; align-items: center; gap: 7px; flex: 1; }
+.cur-nav .ctl { flex-direction: row; align-items: center; gap: 5px; }
+.cur-nav .ctl > label { font-size: 9px; }
+.cur-saving {
+  font-size: 10px; color: var(--text-3); min-width: 46px;
+}
+
+/* ---- the ToolKit list of sets ---- */
+.cur-sets { display: flex; flex-direction: column; gap: 10px; }
+.cur-set {
+  padding: 11px 13px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2);
+}
+.cur-set.done { border-color: color-mix(in srgb, var(--ok) 42%, transparent); }
+.cur-set-top {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+}
+.cur-set-sess { font-size: 11px; color: var(--text-2); }
+.cur-set-n {
+  font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums;
+}
+.cur-set-tally { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 9px; }
+.cur-tally {
+  font-size: 10px; padding: 1px 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--cat) 15%, transparent);
+  color: var(--text-2); border-left: 2px solid var(--cat);
+}
+.cur-set-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ==========================================================================
+   StrataScope -- the layer rail beside the rasters.
+
+   The rail is positioned by measurement against the raster's own plot box,
+   not by assuming even spacing. That is the point of doing this live rather
+   than on an exported PNG: the alignment cannot drift, so nobody has to crop
+   anything.
+   ========================================================================== */
+/* Absolutely positioned over the left edge rather than made a flex sibling:
+   #xfBody is a column, and moving #paneGrid into a new row wrapper would
+   break every bit of code that reaches for its parent. The grid is given a
+   matching left margin instead, so nothing overlaps. */
+.strata-rail {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 122px; z-index: 6;
+  border-right: 1px solid var(--line); background: var(--bg-2);
+  overflow: hidden;
+}
+.strata-head {
+  display: flex; align-items: baseline; gap: 6px; padding: 6px 8px;
+  border-bottom: 1px solid var(--line-soft); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--text-3);
+}
+.strata-n { margin-left: auto; }
+.strata-rows {
+  position: absolute; left: 0; right: 0;
+  display: flex; flex-direction: column;
+}
+.strata-row {
+  display: flex; align-items: center; gap: 5px;
+  height: var(--lane, 14px); min-height: 0; padding: 0 6px;
+  font-size: 10px; cursor: pointer; overflow: hidden;
+  border-bottom: 1px solid transparent;
+}
+.strata-row:hover, .strata-row.hl { background: var(--bg-hover); }
+.strata-row.has { background: color-mix(in srgb, var(--cat) 16%, transparent); }
+.strata-num {
+  width: 22px; text-align: right; color: var(--text-3); flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.strata-sw {
+  width: 8px; height: 8px; border-radius: 2px; flex: none;
+  background: var(--cat, var(--line));
+  border: 1px solid rgba(0, 0, 0, .18);
+}
+.strata-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; color: var(--text-2);
+}
+.strata-row select {
+  flex: 1; min-width: 0; font: inherit; font-size: 10px;
+  height: calc(var(--lane, 14px) - 3px); padding: 0 2px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); color: var(--text);
+}
+
+.strata-bar {
+  flex: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 9px 14px; border-top: 2px solid var(--accent);
+  background: var(--bg-2);
+}
+.strata-brushes { display: flex; gap: 4px; flex-wrap: wrap; }
+.strata-brush {
+  display: flex; align-items: center; gap: 5px; cursor: pointer; font: inherit;
+  padding: 3px 8px 3px 5px; border-radius: var(--radius-sm);
+  font-size: 11px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cat, var(--text-3));
+}
+.strata-brush:hover { background: var(--bg-hover); }
+.strata-brush.on {
+  background: color-mix(in srgb, var(--cat, var(--accent)) 20%, transparent);
+  border-color: var(--cat, var(--accent));
+}
+.strata-brush kbd {
+  font-family: var(--mono); font-size: 9px; padding: 0 4px;
+  border-radius: 3px; background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.strata-legend { display: flex; flex-wrap: wrap; gap: 5px; }
+
+#xfBody.strata-on { position: relative; }
+#xfBody.strata-on .pane-grid { margin-left: 122px; }
+
+/* ---- Remembered vs found -------------------------------------------------
+   A recording BARRY remembers and one it has just laid eyes on are different
+   facts. The list opens showing everything faint -- what I remember -- and a
+   scan brightens whatever it finds, so what stays faint after scanning the
+   drive you expected it on is the interesting part. */
+.hk-row.remembered { opacity: .52; }
+.hk-row.remembered:hover, .hk-row.remembered.sel { opacity: 1; }
+.hk-row.found { opacity: 1; }
+.hk-row.found .hk-name { font-weight: 500; }
+.hk-dot.seen {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.hk-remembered-note {
+  margin: 0 0 12px; font-size: 11px; line-height: 1.6; max-width: 74ch;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  background: var(--bg-2); border-left: 2px solid var(--line);
+}
+/* `away` already dims; do not dim twice or it becomes unreadable. */
+.hk-row.away.remembered { opacity: .42; }
+
+/* An error that was marked resolved and has happened again. The most
+   interesting row on the page, so it does not read as an ordinary open one. */
+.err-reopened {
+  display: inline-block; margin-right: 7px; padding: 0 6px;
+  border-radius: 4px; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+  background: var(--warn-soft); color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+}
+
+/* A recording BARRY remembers but this scan has not found. Faint, so the
+   drive you just scanned reads as "here is what is actually on it" and the
+   rest is visibly a memory rather than a finding. */
+.sess-card.remembered { opacity: .5; }
+.sess-card.remembered:hover, .sess-card.remembered.picked { opacity: 1; }
+.sess-card.remembered .sc-name { font-weight: 400; }

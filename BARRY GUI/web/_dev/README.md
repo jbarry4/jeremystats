@@ -24,6 +24,8 @@ live server with no build step and no test framework:
 | `spike.html` | the threshold detector, the frequency view control, and how many requests one edit makes |
 | `fig.html` | the figure builder's scrolling and preview |
 | `arrowprobe.html` | a scratch page for one drawing interaction at a time |
+| `tour.html` | presenter zoom (that it anchors on the pointer and clamps at the edges) and the guided tours end to end, including a click-to-continue step |
+| `tourshot.html` | poses the tour at a given step for screenshots: `?at=menu` or `?at=<n>` |
 | `probe.html` | a scratch page for walking one flow step by step when something is wrong |
 
 Run them by opening, with the server up:

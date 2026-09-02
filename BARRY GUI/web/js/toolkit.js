@@ -94,6 +94,8 @@ BARRY.views.toolkit = (function () {
   }
 
   const refresh = debounce(async function refresh_() {
+    if (q.tool === 'curate') { await loadCuration(); return; }
+    if (q.tool === 'strata') { await loadStrata(); return; }
     if (busy) return;
     busy = true;
     const host = $('#tkResult');
@@ -123,15 +125,22 @@ BARRY.views.toolkit = (function () {
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
                    + 'project or date range.'),
+        toolButton('curate', 'Event curation',
+                   'Import candidate dentate spikes or IEDs, then go through '
+                   + 'them one at a time and say what each one is.'),
+        toolButton('strata', 'StrataScope',
+                   'Say which anatomical layer each channel is in, against '
+                   + 'the live rasters rather than a cropped screenshot.'),
         el('p', { class: 'hint tk-soon',
           text: 'More tools will land here as they earn their place. This is '
               + 'the section for anything that spans many recordings at '
               + 'once.' }),
       ]),
-      el('div', { class: 'tk-main', id: 'tkMain' }, [
-        scopeCard(),
-        el('div', { class: 'tk-result', id: 'tkResult' }),
-      ]),
+      el('div', { class: 'tk-main', id: 'tkMain' },
+         (q.tool === 'curate' || q.tool === 'strata')
+           ? [el('div', { class: 'tk-result', id: 'tkResult' })]
+           : [scopeCard(),
+              el('div', { class: 'tk-result', id: 'tkResult' })]),
     ]));
     renderResult();
   }
@@ -262,7 +271,366 @@ BARRY.views.toolkit = (function () {
   }
 
   /* ---------- the rows, and what they add up to ---------- */
+  /* ==================================================================
+     Event curation
+
+     A detector says where something might be; curation says what it actually
+     was. Keeping those apart is the whole design: candidates arrive
+     unspecified and stay that way until somebody looks at them.
+     ================================================================== */
+  let cur = null;
+
+  async function loadCuration() {
+    try {
+      cur = await api('/api/curation');
+      cur.registry = await api('/api/registry');
+    } catch (e) {
+      cur = { error: e.message, sets: [], kinds: [] };
+    }
+    renderCuration();
+  }
+
+  function renderCuration() {
+    const host = $('#tkResult');
+    if (!host) return;
+    host.style.opacity = '1';
+    host.innerHTML = '';
+    if (!cur) {
+      host.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return;
+    }
+
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      el('div', {}, [
+        el('h2', { text: 'Event curation' }),
+        el('p', { class: 'sub',
+          text: 'Import a list of candidate times, then go through them one '
+              + 'at a time in the recording and say what each one is.' }),
+      ]),
+      el('div', { class: 'spacer' }),
+      el('button', { class: 'btn', text: 'Import candidates\u2026',
+                     onclick: importCandidates }),
+    ]));
+
+    const sets = cur.sets || [];
+    if (!sets.length) {
+      host.appendChild(el('div', { class: 'hint tk-empty',
+        text: 'Nothing to curate yet. Import a list of candidate times '
+            + '\u2014 from the Event Bank or from a file \u2014 and it '
+            + 'will appear here. Every candidate arrives unspecified.' }));
+      return;
+    }
+
+    const list = el('div', { class: 'cur-sets' });
+    for (const st of sets) {
+      const pr = st.progress || {};
+      const done = pr.left === 0 && pr.total > 0;
+      const reach = st.session && st.session.reachable;
+      list.appendChild(el('div', { class: 'cur-set' + (done ? ' done' : '') }, [
+        el('div', { class: 'cur-set-top' }, [
+          el('strong', { text: st.name }),
+          el('span', { class: 'hk-chip', text: st.kind_name }),
+          el('span', { class: 'cur-set-sess',
+                       text: (st.session || {}).label || st.gid }),
+          el('div', { style: 'flex:1' }),
+          el('span', { class: 'cur-set-n',
+            text: pr.specified + ' / ' + pr.total
+                + (done ? '  \u2713' : '  \u00b7  ' + pr.left + ' left') }),
+        ]),
+        el('div', { class: 'cur-prog small' }, [
+          el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+        ]),
+        el('div', { class: 'cur-set-tally' },
+           (st.labels || []).map((l) => el('span', {
+             class: 'cur-tally', style: '--cat:' + l.color,
+             text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
+           }))),
+        el('div', { class: 'cur-set-acts' }, [
+          el('button', {
+            class: 'btn sm', text: pr.left ? 'Curate\u2026' : 'Review\u2026',
+            disabled: reach ? null : 'disabled',
+            title: reach
+              ? 'Open the recording and step through the candidates'
+              : 'This recording is not on a drive this machine can reach',
+            onclick: () => BARRY.curate.enter(st.gid, st.kind),
+          }),
+          el('button', {
+            class: 'btn ghost sm', text: 'Bank the results\u2026',
+            disabled: pr.specified ? null : 'disabled',
+            title: pr.specified
+              ? 'Send the decided ones to the Event Bank, one entry per '
+                + 'category'
+              : 'Nothing has been decided yet',
+            onclick: () => bankSet(st),
+          }),
+          el('button', {
+            class: 'btn ghost sm', text: 'Export CSV',
+            onclick: () => window.open(
+              '/api/curation/' + encodeURIComponent(st.gid) + '/'
+              + encodeURIComponent(st.kind) + '/export', '_blank'),
+          }),
+          el('button', {
+            class: 'btn ghost sm danger', text: 'Delete',
+            onclick: async () => {
+              await apiPost('/api/curation/' + encodeURIComponent(st.gid)
+                            + '/' + encodeURIComponent(st.kind) + '/delete',
+                            {});
+              loadCuration();
+            },
+          }),
+        ]),
+      ]));
+    }
+    host.appendChild(list);
+  }
+
+  async function bankSet(st) {
+    const who = await askPath('Who is banking these?', 'your name or email');
+    if (!who) return;
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(st.gid) + '/'
+        + encodeURIComponent(st.kind) + '/bank', { added_by: who });
+      toast('Banked ' + res.entries.length + ' entr'
+            + (res.entries.length === 1 ? 'y' : 'ies') + ': '
+            + res.entries.map((x) => x.label + ' (' + x.n + ')').join(', '),
+            'ok', 8000);
+      BARRY.refreshSync();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  /* Where candidates come from. Both sources end at the same place: a list
+     of times, none of them decided. */
+  async function importCandidates() {
+    const reg = (cur.registry || {}).tree || [];
+    const rows = reg.flatMap((p) => p.mice.flatMap((m) => m.sessions));
+    if (!rows.length) {
+      toast('No recordings are registered yet. Open one in Xplorefinder '
+            + 'first.', 'err', 7000);
+      return;
+    }
+
+    const sessSel = el('select', {}, rows.map((s) => el('option', {
+      value: s.gid,
+      text: (s.label || s.key) + (s.reachable ? '' : '   (not on this machine)'),
+    })));
+    const kindSel = el('select', {}, (cur.kinds || []).map((k) =>
+      el('option', { value: k.id, text: k.name })));
+    const nameIn = el('input', { type: 'text',
+                                 placeholder: 'e.g. LL detector pass 1' });
+
+    let staged = [];
+    let from = null;
+    const note = el('p', { class: 'hint', text: 'Nothing picked yet.' });
+    const stage = (evs, what) => {
+      staged = (evs || []).filter(
+        (e) => typeof (e && e.start !== undefined ? e.start : e) === 'number');
+      from = what;
+      note.textContent = staged.length
+        ? staged.length + ' candidate(s) from ' + what
+          + ' \u2014 all of them unspecified until curated.'
+        : 'That source had no usable times in it.';
+    };
+
+    const src = el('div', { class: 'choice-grid' }, [
+      el('button', { class: 'choice', onclick: async () => {
+        const s = rows.find((r) => r.gid === sessSel.value);
+        try {
+          const res = await apiPost('/api/bank/for-session', {
+            identity: { key: s.key, loose_key: s.loose_key, mouse: s.mouse,
+                        session: s.session, start: s.start },
+          });
+          const list = res.entries || [];
+          if (!list.length) { stage([], 'the bank (nothing banked)'); return; }
+          const full = await api('/api/bank/'
+                                 + encodeURIComponent(list[0].id));
+          stage((full.entry || {}).events || [],
+                'the bank: ' + list[0].name);
+        } catch (e) { toast(e.message, 'err', 7000); }
+      } }, [
+        el('strong', { text: 'From the Event Bank' }),
+        el('span', { text: 'whatever is banked against this recording' }),
+      ]),
+      el('button', { class: 'choice', onclick: async () => {
+        const path = await pickPath('file', '');
+        if (!path) return;
+        try {
+          const info = await apiPost('/api/events/inspect', { path });
+          stage(info.events || info.preview || [], baseName(path));
+        } catch (e) { toast(e.message, 'err', 8000); }
+      } }, [
+        el('strong', { text: 'From a file' }),
+        el('span', { text: 'a CSV, .mat or .nev of times' }),
+      ]),
+    ]);
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Import candidates' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'confirm-msg',
+          text: 'Every candidate arrives unspecified. That is the point: the '
+              + 'import records that a detector thought something was here, '
+              + 'not that it was right.' }),
+        el('div', { class: 'wiz-grid' }, [
+          el('div', { class: 'field' }, [
+            el('label', { text: 'Recording' }), sessSel]),
+          el('div', { class: 'field' }, [
+            el('label', { text: 'What kind' }), kindSel]),
+        ]),
+        el('div', { class: 'field' }, [
+          el('label', { text: 'Call this set' }), nameIn]),
+        el('div', { class: 'section-label', text: 'Where from' }),
+        src,
+        note,
+      ]),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        el('button', { class: 'btn primary', text: 'Import', onclick: async () => {
+          if (!staged.length) {
+            toast('Pick a source with some times in it first.', 'err');
+            return;
+          }
+          try {
+            const res = await apiPost('/api/curation/create', {
+              gid: sessSel.value, kind: kindSel.value,
+              name: nameIn.value.trim() || null,
+              events: staged,
+              source: { from },
+            });
+            closeModal();
+            toast('Imported ' + res.added + ' candidate(s).', 'ok', 6000);
+            loadCuration();
+            BARRY.refreshSync();
+          } catch (e) { toast(e.message, 'err', 8000); }
+        } }),
+      ]),
+    ]));
+  }
+
+  /* ==================================================================
+     StrataScope
+     ================================================================== */
+  let strata = null;
+
+  async function loadStrata() {
+    try {
+      strata = await api('/api/layers');
+      strata.registry = await api('/api/registry');
+    } catch (e) {
+      strata = { error: e.message, sheets: [], regions: [] };
+    }
+    renderStrata();
+  }
+
+  function renderStrata() {
+    const host = $('#tkResult');
+    if (!host) return;
+    host.style.opacity = '1';
+    host.innerHTML = '';
+    if (!strata) {
+      host.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return;
+    }
+
+    const rows = ((strata.registry || {}).tree || [])
+      .flatMap((p) => p.mice.flatMap((m) => m.sessions));
+    const pick = el('select', { id: 'strataPick' }, rows.map((s) => el('option', {
+      value: s.gid,
+      text: (s.label || s.key) + (s.reachable ? '' : '   (not on this machine)'),
+      disabled: s.reachable ? null : 'disabled',
+    })));
+
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      el('div', {}, [
+        el('h2', { text: 'StrataScope' }),
+        el('p', { class: 'sub',
+          text: 'Which anatomical layer each channel is sitting in \u2014 '
+              + 'labelled against the live voltage, CSD and theta rasters, so '
+              + 'there is nothing to crop and the rows cannot drift off the '
+              + 'channels.' }),
+      ]),
+      el('div', { class: 'spacer' }),
+      pick,
+      el('button', {
+        class: 'btn', text: 'Open\u2026',
+        disabled: rows.length ? null : 'disabled',
+        onclick: () => BARRY.strata.enter(pick.value),
+      }),
+    ]));
+
+    const sheets = strata.sheets || [];
+    if (!sheets.length) {
+      host.appendChild(el('div', { class: 'hint tk-empty',
+        text: 'No layer sheets yet. Pick a recording above and open it '
+            + '\u2014 a sheet is made the first time.' }));
+    } else {
+      const list = el('div', { class: 'cur-sets' });
+      for (const sh of sheets) {
+        const pr = sh.progress || {};
+        const reach = sh.session && sh.session.reachable;
+        list.appendChild(el('div', {
+          class: 'cur-set' + (pr.left === 0 && pr.total ? ' done' : ''),
+        }, [
+          el('div', { class: 'cur-set-top' }, [
+            el('strong', { text: sh.session_label || sh.gid }),
+            el('span', { class: 'hk-chip', text: 'layers' }),
+            el('div', { style: 'flex:1' }),
+            el('span', { class: 'cur-set-n',
+              text: pr.labelled + ' / ' + pr.total + ' channels' }),
+          ]),
+          el('div', { class: 'cur-prog small' }, [
+            el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+          ]),
+          el('div', { class: 'cur-set-tally' },
+             (sh.regions || []).filter(
+               (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
+                 class: 'cur-tally', style: '--cat:' + r.color,
+                 text: r.name + '  ' + pr.by_region[r.id],
+               }))),
+          el('div', { class: 'cur-set-acts' }, [
+            el('button', {
+              class: 'btn sm',
+              text: pr.left ? 'Continue\u2026' : 'Review\u2026',
+              disabled: reach ? null : 'disabled',
+              onclick: () => BARRY.strata.enter(sh.gid),
+            }),
+            el('button', {
+              class: 'btn ghost sm', text: 'Export CSV',
+              onclick: () => window.open('/api/layers/'
+                + encodeURIComponent(sh.gid) + '/export', '_blank'),
+            }),
+            el('button', {
+              class: 'btn ghost sm danger', text: 'Delete',
+              onclick: async () => {
+                await apiPost('/api/layers/' + encodeURIComponent(sh.gid)
+                              + '/delete', {});
+                loadStrata();
+              },
+            }),
+          ]),
+        ]));
+      }
+      host.appendChild(list);
+    }
+
+    host.appendChild(el('div', { class: 'section-label', text: 'The layers' }));
+    host.appendChild(el('div', { class: 'strata-legend' },
+      (strata.regions || []).map((r) => el('span', {
+        class: 'cur-tally', style: '--cat:' + r.color,
+        title: r.note || '', text: r.name,
+      }))));
+  }
+
   function renderResult() {
+    if (q.tool === 'curate') { renderCuration(); return; }
+    if (q.tool === 'strata') { renderStrata(); return; }
     const host = $('#tkResult');
     if (!host) return;
     host.style.opacity = '1';

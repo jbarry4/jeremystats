@@ -1,0 +1,187 @@
+{
+  "format": "png",
+  "id": "6e047428e1bb",
+  "kind": "figure",
+  "label": "PTEN m11 s10 2023-07-25",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/PTEN%20m11%20s10%202023-07-25/PTEN%20m11%20s10%202023-07-25_20260902_175716_2.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\PTEN m11 s10 2023-07-25\\PTEN m11 s10 2023-07-25_20260902_175716_2.png",
+    "rel": "PTEN m11 s10 2023-07-25/PTEN m11 s10 2023-07-25_20260902_175716_2.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "traces",
+      "row": 0,
+      "title": "Voltage traces"
+    },
+    {
+      "col": 1,
+      "panel": "csd",
+      "row": 0,
+      "title": "CSD raster"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [],
+    "cmap": "jet",
+    "cols": 2,
+    "highpass": 0,
+    "lowpass": 0,
+    "notch": 0,
+    "page": "letter_landscape",
+    "rows": 1,
+    "t0": 15,
+    "t1": 25
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-02T17:57:16-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "recipe": {
+    "bad_channels": [],
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "cmap": "jet",
+    "cols": 2,
+    "dpi": 300,
+    "event_count": 2,
+    "events": [
+      {
+        "event_id": 19,
+        "label": "Starting Recording",
+        "source": "nev",
+        "start": -1.6e-05,
+        "ttl": 0
+      },
+      {
+        "event_id": 19,
+        "label": "Stopping Recording",
+        "source": "nev",
+        "start": 1907.103185,
+        "ttl": 0
+      }
+    ],
+    "events_truncated": false,
+    "gain": 1,
+    "height_in": 8.5,
+    "highpass": 0,
+    "identity": {
+      "confidence": "high",
+      "group": "PTEN",
+      "key": "m011_s010_2023-07-25_14-40-32",
+      "label": "PTEN m11 s10 2023-07-25",
+      "loose_key": "m011_s010",
+      "mouse": 11,
+      "mouse_folder": "M11_Pten",
+      "mouse_source": "mouse_folder:leading",
+      "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
+      "rec_folder": "2023-07-25_14-40-32",
+      "session": 10,
+      "session_folder": "HF2_s10jul25",
+      "start": "2023-07-25T14:40:32",
+      "time_source": "header"
+    },
+    "lowpass": 0,
+    "metadata": {
+      "author": "maliajaff",
+      "date": "9/2/2026, 5:57:05 PM",
+      "machine": "DESKTOP-4H65AI7",
+      "notes": "",
+      "source_path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32"
+    },
+    "notch": 0,
+    "page": "letter_landscape",
+    "panels": [
+      {
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 1,
+        "panel": "traces",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "s2",
+        "title": "Voltage traces"
+      },
+      {
+        "cmap": "jet",
+        "col": 1,
+        "colspan": 1,
+        "panel": "csd",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "s2",
+        "title": "CSD raster"
+      }
+    ],
+    "rows": 1,
+    "schema": 1,
+    "session_label": "PTEN m11 s10 2023-07-25",
+    "sessions": {
+      "default": {
+        "even_only": true,
+        "invert": true,
+        "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32"
+      },
+      "s2": {
+        "even_only": true,
+        "invert": true,
+        "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32"
+      }
+    },
+    "show_metadata": true,
+    "spacing_um": 50,
+    "subtitle": "",
+    "t0": 15,
+    "t1": 25,
+    "title": "PTEN m11 s10 2023-07-25",
+    "width_in": 11
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {
+    "confidence": "high",
+    "group": "PTEN",
+    "key": "m011_s010_2023-07-25_14-40-32",
+    "label": "PTEN m11 s10 2023-07-25",
+    "loose_key": "m011_s010",
+    "mouse": 11,
+    "mouse_folder": "M11_Pten",
+    "mouse_source": "mouse_folder:leading",
+    "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
+    "rec_folder": "2023-07-25_14-40-32",
+    "session": 10,
+    "session_folder": "HF2_s10jul25",
+    "start": "2023-07-25T14:40:32",
+    "time_source": "header"
+  },
+  "status": "done"
+}

@@ -1,195 +1,43 @@
 {
+  "converted": true,
   "created": {
-    "at": "2026-09-02T16:58:47-04:00",
-    "machine": "BarryLab",
+    "at": "2026-09-02T18:49:57-04:00",
+    "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
-    "user": "barry"
+    "user": "theexaminedexistence@gmail.com"
   },
-  "group": null,
+  "duration_s": 1295.9744,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s14510e30e1bd",
+  "group": "PTEN",
+  "has_video": true,
   "key": "m034_s005_2024-06-10_14-45-34",
-  "label": "m34 s5 2024-06-10",
+  "label": "PTEN m34 s5 2024-06-10",
   "loose_key": "m034_s005",
   "mouse": 34,
+  "n_channels": 64,
   "paths": [
-    "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34"
+    "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s5jun10\\2024-06-10_14-45-34"
   ],
-  "schema": 1,
-  "session": 5,
-  "spike_labels": {
-    "sets": [
-      {
-        "committed": {
-          "at": "2026-09-02T17:04:57-04:00",
-          "machine": "BarryLab",
-          "os": "Windows",
-          "user": "barry"
-        },
-        "events": [
-          {
-            "amplitude": -431.2112731933594,
-            "channel": 54,
-            "channels": [
-              52,
-              54
-            ],
-            "label": "thr",
-            "n_channels": 2,
-            "source": "threshold",
-            "start": 70.18020000000001
-          },
-          {
-            "amplitude": -387.0903625488281,
-            "channel": 32,
-            "channels": [
-              32
-            ],
-            "label": "thr",
-            "n_channels": 1,
-            "source": "threshold",
-            "start": 77.68563333333334
-          },
-          {
-            "amplitude": 359.6523132324219,
-            "channel": 60,
-            "channels": [
-              2,
-              4,
-              6,
-              10,
-              12,
-              14,
-              58,
-              60,
-              62,
-              64
-            ],
-            "label": "thr",
-            "n_channels": 10,
-            "source": "threshold",
-            "start": 79.0464
-          },
-          {
-            "amplitude": 361.3963623046875,
-            "channel": 56,
-            "channels": [
-              56
-            ],
-            "label": "thr",
-            "n_channels": 1,
-            "source": "threshold",
-            "start": 79.05390000000001
-          },
-          {
-            "amplitude": -318.7089538574219,
-            "channel": 58,
-            "channels": [
-              58
-            ],
-            "label": "thr",
-            "n_channels": 1,
-            "source": "threshold",
-            "start": 79.08573333333334
-          },
-          {
-            "amplitude": -279.0576477050781,
-            "channel": 22,
-            "channels": [
-              10,
-              12,
-              18,
-              20,
-              22,
-              24,
-              26
-            ],
-            "label": "thr",
-            "n_channels": 7,
-            "source": "threshold",
-            "start": 79.08956666666667
-          },
-          {
-            "amplitude": -268.7754821777344,
-            "channel": 28,
-            "channels": [
-              14,
-              16,
-              28
-            ],
-            "label": "thr",
-            "n_channels": 3,
-            "source": "threshold",
-            "start": 79.09183333333334
-          }
-        ],
-        "id": "48a3edac",
-        "n": 7,
-        "name": "TEST",
-        "params": {
-          "highpass": 5,
-          "lowpass": 100,
-          "merge_channels": true,
-          "merge_ms": 2,
-          "notch": 60,
-          "polarity": "abs",
-          "refractory_ms": 1,
-          "threshold": 4,
-          "threshold_mode": "sd"
-        },
-        "t0": 69.99040000000001,
-        "t1": 80.02560000000001
-      }
-    ]
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s5jun10\\2024-06-10_14-45-34",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
   },
+  "session": 5,
   "start": "2024-06-10T14:45:34",
   "updated": {
-    "at": "2026-09-02T17:07:20-04:00",
-    "machine": "BarryLab",
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
-    "user": "barry"
-  },
-  "view_state": {
-    "channels": [
-      0,
-      1,
-      2,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      31
-    ],
-    "clim": null,
-    "gain": 1,
-    "hp": 5,
-    "lp": 100,
-    "normalize": "shared",
-    "notch": 60,
-    "spacing": 50,
-    "span": 10,
-    "t0": 35,
-    "ylim": null
+    "user": "theexaminedexistence@gmail.com"
   }
 }

@@ -20,9 +20,10 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
-from . import (analysis, compose, csc, discovery, eventbank, events, export,
-               extras, ids, live, nlx, pipeline, rebuild, registry, results,
-               runner, store, storyboard, sysinfo, toolkit, video)
+from . import (analysis, compose, csc, curation, discovery, eventbank,
+               events, export, extras, ids, layers, live, nlx, pipeline,
+               rebuild, registry, results, runner, sessreg, store, storyboard,
+               sysinfo, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -371,10 +372,33 @@ def api_discover_status(job_id):
     include = job.status == "done"
     data = job.snapshot(include_sessions=include)
     if include:
-        # Attach any stored record (bad channels, notes) to each session.
+        # A finished scan is the one moment BARRY has the whole picture of a
+        # drive, so everything it walked past gets written into the registry
+        # -- not just the handful anyone happens to open. Done once per job:
+        # the status route is polled, and re-registering on every poll would
+        # rewrite two hundred files a second.
+        if not getattr(job, "_registered", False):
+            job._registered = True
+            try:
+                job.reg_new, job.reg_seen = REG.ingest(
+                    data.get("sessions") or [], scan_id=job.id, root=job.root)
+                STORE.record_activity([{
+                    "action": "registry.scan",
+                    "detail": {"root": job.root, "found": job.reg_seen,
+                               "new": job.reg_new, "scan": job.id},
+                }])
+            except Exception as exc:                       # noqa: BLE001
+                STORE.record_error("registry/ingest", str(exc), None,
+                                   {"root": job.root})
+        data["registered"] = {"new": getattr(job, "reg_new", 0),
+                              "seen": getattr(job, "reg_seen", 0)}
+
+        # Attach any stored record (bad channels, notes) to each session, and
+        # the permanent id it now certainly has.
         stored = STORE.all_sessions()
         for s in data.get("sessions", []):
             rec, how = ids.match(s["identity"], stored)
+            s["gid"] = (rec or {}).get("gid")
             s["stored"] = {
                 "match": how,
                 "bad_channels": (rec or {}).get("bad_channels", []),
@@ -423,9 +447,16 @@ def api_csc_open():
 
     identity = ids.identify(
         sess["path"], header_time=_header_time(sess))
+    # Opening a recording is also laying eyes on it: make sure it has a
+    # permanent id and a project before anything else reads the record.
+    try:
+        REG.ensure(identity)
+    except Exception as exc:                               # noqa: BLE001
+        STORE.record_error("registry/ensure", str(exc), None, {"path": path})
     stored, how = STORE.get_session(identity)
 
     out = {k: v for k, v in sess.items() if k != "channels"}
+    out["gid"] = (stored or {}).get("gid")
     out["channels"] = [{kk: vv for kk, vv in c.items() if kk != "file"}
                        for c in sess["channels"]]
     out["identity"] = identity
@@ -1442,8 +1473,15 @@ def api_results_file():
     Restricted to files that are actually in the catalog, so this cannot be
     used to read arbitrary paths off the machine.
     """
-    rid = request.args.get("id", "")
-    rec = RESULTS.get(rid)
+    # id first, then the portable identifiers. A page still holding ids from
+    # a deck built on another machine would otherwise show a grid of broken
+    # images, which is what "storyboards do not render across devices"
+    # actually looked like.
+    rec = RESULTS.resolve({
+        "result_id": request.args.get("id", ""),
+        "rel": request.args.get("rel"),
+        "name": request.args.get("name"),
+    })
     if not rec or not os.path.isfile(rec["path"]):
         return jsonify({"ok": False, "error": "No such result."}), 404
     as_attachment = bool(request.args.get("download"))
@@ -1483,6 +1521,495 @@ def api_results_reveal():
     except Exception as exc:
         return fail("results/reveal", exc, 400)
     return jsonify({"ok": True})
+
+
+# ==========================================================================
+# StrataScope -- which anatomical layer each channel is in
+# ==========================================================================
+
+@app.route("/api/layers/regions")
+def api_layers_regions():
+    return jsonify({"ok": True, "regions": layers.REGIONS})
+
+
+@app.route("/api/layers")
+def api_layers_list():
+    """Every layer sheet, for the ToolKit list."""
+    out = []
+    for rec in LAYERS.all():
+        row = LAYERS.summary(rec)
+        sess = REG.by_gid(rec.get("gid"))
+        row["session"] = REG.summary(sess) if sess else None
+        out.append(row)
+    out.sort(key=lambda r: -(r.get("progress", {}).get("labelled") or 0))
+    return jsonify({"ok": True, "sheets": out, "regions": layers.REGIONS})
+
+
+@app.route("/api/layers/<gid>")
+def api_layers_get(gid):
+    rec = LAYERS.get(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
+    sess = REG.by_gid(gid)
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec),
+                    "session": REG.summary(sess) if sess else None})
+
+
+@app.route("/api/layers/<gid>/start", methods=["POST"])
+def api_layers_start(gid):
+    """Open (or make) the sheet for a recording, with its channel order."""
+    body = request.get_json(force=True) or {}
+    sess = REG.by_gid(gid)
+    if not sess:
+        return jsonify({"ok": False,
+                        "error": "No recording with the id " + gid}), 404
+    rec = LAYERS.ensure(gid, session_label=sess.get("label"),
+                        channels=body.get("channels"))
+    # The channel order can change between visits -- even-only toggled, a file
+    # missing -- so it is refreshed rather than trusted from first contact.
+    if body.get("channels"):
+        rec["channels"] = list(body["channels"])
+        LAYERS._write(rec)
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec),
+                    "session": REG.summary(sess)})
+
+
+@app.route("/api/layers/<gid>/set", methods=["POST"])
+def api_layers_set(gid):
+    body = request.get_json(force=True) or {}
+    try:
+        if "labels" in body:
+            rec = LAYERS.set_many(gid, body["labels"])
+        else:
+            rec = LAYERS.set(gid, body.get("channel"), body.get("region"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("layers/set", exc, 400, {"gid": gid})
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/fill", methods=["POST"])
+def api_layers_fill(gid):
+    body = request.get_json(force=True) or {}
+    try:
+        rec, n = LAYERS.fill_down(gid, body.get("channels"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.fill",
+                            "detail": {"gid": gid, "filled": n}}])
+    return jsonify({"ok": True, "filled": n, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/clear", methods=["POST"])
+def api_layers_clear(gid):
+    try:
+        rec = LAYERS.clear(gid)
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/delete", methods=["POST"])
+def api_layers_delete(gid):
+    return jsonify({"ok": LAYERS.delete(gid)})
+
+
+@app.route("/api/layers/<gid>/export")
+def api_layers_export(gid):
+    rec = LAYERS.get(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
+    rows = LAYERS.rows(rec)
+    prog = LAYERS.progress(rec)
+    head = ("# BARRY GUI layer labels -- %s -- %d of %d channels labelled "
+            "-- taken %s\n"
+            % (rec.get("session_label") or gid, prog["labelled"],
+               prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
+    text = head + extras.to_csv(rows, list(layers.CSV_COLUMNS))
+    name = "layers_%s_%s.csv" % (gid, time.strftime("%Y%m%d_%H%M%S"))
+    saved = None
+    try:
+        saved = save_output(text.encode("utf-8"), name, subdir="Layers")
+    except Exception as exc:
+        STORE.record_error("layers/save", str(exc), None, {"name": name})
+    resp = Response(text, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="%s"' % name,
+        "X-Barry-Rows": str(len(rows)),
+    })
+    if saved:
+        resp.headers["X-Barry-Output"] = saved["rel"]
+    return resp
+
+
+# ==========================================================================
+# Event curation -- deciding what each candidate actually is
+# ==========================================================================
+
+def _cur_session(gid):
+    """The registry record a curation set belongs to."""
+    rec = REG.by_gid(gid)
+    if not rec:
+        raise curation.CurationError(
+            "No recording with the id %s. Open it once so it is registered."
+            % gid)
+    return rec
+
+
+@app.route("/api/curation/kinds")
+def api_curation_kinds():
+    """The vocabularies on offer, and where their keys are."""
+    return jsonify({"ok": True,
+                    "kinds": [dict(curation.KINDS[k],
+                                   labels=curation.vocabulary(k))
+                              for k in curation.KINDS],
+                    "reserved": sorted(curation.RESERVED_KEYS)})
+
+
+@app.route("/api/curation")
+def api_curation_list():
+    """Every curation set, with how far through each one is."""
+    out = []
+    for row in CURATE.summaries():
+        rec = REG.by_gid(row["gid"])
+        row["session"] = REG.summary(rec) if rec else None
+        out.append(row)
+    out.sort(key=lambda r: (r.get("progress", {}).get("left", 0) == 0,
+                            -(r.get("progress", {}).get("total") or 0)))
+    return jsonify({"ok": True, "sets": out,
+                    "kinds": [dict(curation.KINDS[k],
+                                   labels=curation.vocabulary(k))
+                              for k in curation.KINDS]})
+
+
+@app.route("/api/curation/<gid>/<kind>")
+def api_curation_get(gid, kind):
+    rec = CURATE.get(gid, kind)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    sess = REG.by_gid(gid)
+    return jsonify({"ok": True, "set": rec,
+                    "progress": CURATE.progress(rec),
+                    "session": REG.summary(sess) if sess else None})
+
+
+@app.route("/api/curation/create", methods=["POST"])
+def api_curation_create():
+    """Import candidates. They all arrive unspecified, on purpose."""
+    body = request.get_json(force=True) or {}
+    gid = body.get("gid")
+    kind = body.get("kind")
+    try:
+        sess = _cur_session(gid)
+        rec, n = CURATE.create(
+            gid, kind, body.get("events") or [],
+            name=body.get("name"),
+            source=body.get("source") or {},
+            session_label=sess.get("label"),
+            replace=bool(body.get("replace")))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("curation/create", exc, 400, {"gid": gid, "kind": kind})
+
+    STORE.record_activity([{
+        "action": "curation.import",
+        "detail": {"gid": gid, "kind": kind, "added": n,
+                   "total": len(rec.get("events") or []),
+                   "source": (body.get("source") or {}).get("from")},
+        "session": {"key": sess.get("key"), "label": sess.get("label")},
+    }])
+    return jsonify({"ok": True, "added": n, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/curation/<gid>/<kind>/label", methods=["POST"])
+def api_curation_label(gid, kind):
+    body = request.get_json(force=True) or {}
+    try:
+        if "labels" in body:
+            n, prog = CURATE.label_many(gid, kind, body["labels"])
+            return jsonify({"ok": True, "changed": n, "progress": prog})
+        ev, prog = CURATE.label(gid, kind, body.get("event"),
+                                body.get("label"), body.get("note"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("curation/label", exc, 400, {"gid": gid, "kind": kind})
+    return jsonify({"ok": True, "event": ev, "progress": prog})
+
+
+@app.route("/api/curation/<gid>/<kind>/rename", methods=["POST"])
+def api_curation_rename(gid, kind):
+    body = request.get_json(force=True) or {}
+    try:
+        rec = CURATE.rename(gid, kind, body.get("name"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/curation/<gid>/<kind>/delete", methods=["POST"])
+def api_curation_delete(gid, kind):
+    ok = CURATE.delete(gid, kind)
+    STORE.record_activity([{"action": "curation.delete",
+                            "detail": {"gid": gid, "kind": kind}}])
+    return jsonify({"ok": ok})
+
+
+@app.route("/api/curation/<gid>/<kind>/bank", methods=["POST"])
+def api_curation_bank(gid, kind):
+    """Send the curated events to the Event Bank, one entry per category."""
+    body = request.get_json(force=True) or {}
+    rec = CURATE.get(gid, kind)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    sess = REG.by_gid(gid)
+    if not sess:
+        return jsonify({"ok": False, "error": "No such recording."}), 404
+
+    groups = CURATE.bank_entries(rec, only_specified=not body.get("include_left"))
+    if not groups:
+        return jsonify({"ok": False,
+                        "error": "Nothing has been curated yet, so there is "
+                                 "nothing to bank."}), 400
+
+    made = []
+    for g in groups:
+        try:
+            entry = BANK.add({
+                "project": sess.get("project") or sess.get("group"),
+                "mouse": sess.get("mouse"),
+                "session": sess.get("session"),
+                "session_key": sess.get("key"),
+                "session_loose_key": sess.get("loose_key"),
+                "session_label": sess.get("label"),
+                "recording_start": sess.get("start"),
+                "name": rec.get("name") + " — " + g["label_name"],
+                "type": kind,
+                "events": g["events"],
+                "pipeline": (body.get("pipeline")
+                             or "BARRY curation (" + kind + ")"),
+                "added_by": body.get("added_by"),
+                # What the bank needs to tell a guess from a decision.
+                "curated": True,
+                "curation_label": g["label"],
+                "gid": gid,
+            })
+            made.append({"id": entry["id"], "label": g["label"],
+                         "n": g["n"]})
+        except eventbank.BankError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+
+    STORE.record_activity([{
+        "action": "curation.bank",
+        "detail": {"gid": gid, "kind": kind,
+                   "entries": len(made),
+                   "n": sum(m["n"] for m in made)},
+        "session": {"key": sess.get("key"), "label": sess.get("label")},
+    }])
+    return jsonify({"ok": True, "entries": made})
+
+
+@app.route("/api/curation/<gid>/<kind>/export")
+def api_curation_export(gid, kind):
+    """The whole set as a CSV, unspecified rows included."""
+    rec = CURATE.get(gid, kind)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+    rows = CURATE.rows(rec)
+    prog = CURATE.progress(rec)
+    head = ("# BARRY GUI event curation -- %s -- %s -- %d of %d specified "
+            "-- taken %s\n"
+            % (rec.get("session_label") or gid, kind, prog["specified"],
+               prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
+    text = head + extras.to_csv(rows, list(curation.CSV_COLUMNS))
+    name = "curation_%s_%s_%s.csv" % (kind, gid,
+                                      time.strftime("%Y%m%d_%H%M%S"))
+    saved = None
+    try:
+        saved = save_output(text.encode("utf-8"), name, subdir="Curation")
+    except Exception as exc:
+        STORE.record_error("curation/save", str(exc), None, {"name": name})
+    resp = Response(text, mimetype="text/csv; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="%s"' % name,
+        "X-Barry-Rows": str(len(rows)),
+    })
+    if saved:
+        resp.headers["X-Barry-Output"] = saved["rel"]
+    return resp
+
+
+# ==========================================================================
+# The session registry -- one record per recording, with a permanent id
+# ==========================================================================
+
+def _attachments(rec):
+    """What is hanging off this recording, counted for the housekeeping view.
+
+    Counted rather than listed: the view wants to say "3 figures, 1 deck" at a
+    glance and fetch the detail only when a row is opened.
+    """
+    key = rec.get("key")
+    loose = rec.get("loose_key")
+    label = rec.get("label")
+    paths = set(rec.get("paths") or [])
+
+    figures = 0
+    for r in RESULTS.catalog():
+        if (r.get("session_key") and r["session_key"] == key) \
+                or (label and r.get("session_label") == label) \
+                or (r.get("session_path") in paths):
+            figures += 1
+
+    decks = 0
+    for d in RESULTS.list_decks():
+        if label and label in (d.get("title") or ""):
+            decks += 1
+
+    banked = 0
+    try:
+        banked = len(BANK.for_session({
+            "key": key, "loose_key": loose,
+            "mouse": rec.get("mouse"), "session": rec.get("session"),
+            "start": rec.get("start"),
+        }) or [])
+    except Exception:                              # noqa: BLE001
+        banked = 0
+
+    spikes = rec.get("spike_sets") or []
+    return {
+        "bad_channels": len(rec.get("bad_channels") or []),
+        "figures": figures,
+        "decks": decks,
+        "banked": banked,
+        "spike_sets": len(spikes),
+        "layers": len((LAYERS.get(rec.get("gid")) or {}).get("labels") or {}),
+        "ds": sum((CURATE.progress(c).get("total") or 0) for c in [CURATE.get(rec.get("gid"), k) for k in curation.KINDS] if c),
+        "note": bool(rec.get("note")),
+    }
+
+
+@app.route("/api/registry")
+def api_registry():
+    """Every recording BARRY has met, as a project / mouse / session tree."""
+    if request.args.get("backfill"):
+        REG.backfill()
+    return jsonify({
+        "ok": True,
+        "projects": REG.projects(),
+        "known_projects": list(sessreg.KNOWN_PROJECTS),
+        "tree": REG.tree(_attachments),
+        "total": len([r for r in REG.all() if not r.get("retired")]),
+    })
+
+
+@app.route("/api/registry/<gid>")
+def api_registry_one(gid):
+    rec = REG.by_gid(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No session " + gid}), 404
+    return jsonify({"ok": True,
+                    "session": REG.summary(rec, _attachments),
+                    "record": {k: v for k, v in rec.items()
+                               if k not in ("view_state",)}})
+
+
+@app.route("/api/registry/<gid>/patch", methods=["POST"])
+def api_registry_patch(gid):
+    """Manual organisation: project, label, note, and the known paths."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec = None
+        if "project" in body:
+            rec = REG.set_project(gid, body["project"])
+        if "label" in body:
+            rec = REG.set_label(gid, body["label"])
+        if "note" in body:
+            rec = REG.set_note(gid, body["note"])
+        if body.get("add_path"):
+            rec = REG.add_path(gid, body["add_path"])
+        if body.get("forget_path"):
+            rec = REG.forget_path(gid, body["forget_path"])
+        if rec is None:
+            return jsonify({"ok": False,
+                            "error": "Nothing to change."}), 400
+    except KeyError:
+        return jsonify({"ok": False, "error": "No session " + gid}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("registry/patch", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "registry.patch",
+        "detail": {"gid": gid, "fields": sorted(body.keys())},
+        "session": {"key": rec.get("key"), "label": rec.get("label")},
+    }])
+    return jsonify({"ok": True, "session": REG.summary(rec, _attachments)})
+
+
+@app.route("/api/registry/<gid>/forget", methods=["POST"])
+def api_registry_forget(gid):
+    """Drop a record entirely.
+
+    For a recording that should never have been registered -- a scratch copy,
+    a test tree, a folder that was moved and re-registered under a new name.
+    The recording itself is untouched; only what BARRY remembers about it
+    goes. Opening or scanning it again starts a fresh record.
+    """
+    rec = REG.by_gid(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No session " + gid}), 404
+    path = STORE.session_path(rec.get("key") or "")
+    try:
+        os.remove(path)
+    except OSError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{
+        "action": "registry.forget",
+        "detail": {"gid": gid, "key": rec.get("key")},
+    }])
+    return jsonify({"ok": True})
+
+
+@app.route("/api/registry/merge", methods=["POST"])
+def api_registry_merge():
+    """Two records that turned out to be the same recording."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec = REG.merge(body.get("keep"), body.get("drop"))
+    except KeyError as exc:
+        return jsonify({"ok": False, "error": "No session %s" % exc}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("registry/merge", exc, 400, dict(body))
+    STORE.record_activity([{
+        "action": "registry.merge",
+        "detail": {"keep": body.get("keep"), "drop": body.get("drop")},
+    }])
+    return jsonify({"ok": True, "session": REG.summary(rec, _attachments)})
+
+
+@app.route("/api/registry/split", methods=["POST"])
+def api_registry_split():
+    """One record that turned out to be two recordings."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec = REG.split(body.get("gid"), body.get("path"))
+    except KeyError as exc:
+        return jsonify({"ok": False, "error": "No session %s" % exc}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("registry/split", exc, 400, dict(body))
+    STORE.record_activity([{
+        "action": "registry.split",
+        "detail": {"from": body.get("gid"), "path": body.get("path"),
+                   "gid": rec.get("gid")},
+    }])
+    return jsonify({"ok": True, "session": REG.summary(rec, _attachments)})
 
 
 # ==========================================================================
@@ -1984,18 +2511,35 @@ def api_errors_grouped():
     recs = STORE.list_errors(limit=int(request.args.get("limit", 600)),
                              day=request.args.get("day") or None)
     book = STORE.resolved_errors()
+
+    # An occurrence counts as resolved only if it happened BEFORE somebody
+    # said so. Marking a signature resolved used to hide it forever, so a bug
+    # that came back after being fixed was filed under a resolved group and
+    # never shown again -- which is the one case where you most want to see
+    # it. A recurrence reopens the group and says when it started again.
     for r in recs:
-        r["resolved"] = extras.signature(r) in book
+        mark = book.get(extras.signature(r))
+        r["resolved"] = bool(mark) and (r.get("at") or "") <= (mark.get("at") or "")
+
     groups = extras.group_errors(recs)
     for g in groups:
         mark = book.get(g["signature"])
-        if mark:
-            g["resolved_at"] = mark.get("at")
-            g["resolved_by"] = mark.get("by")
-            g["resolved_note"] = mark.get("note")
+        if not mark:
+            continue
+        g["resolved_at"] = mark.get("at")
+        g["resolved_by"] = mark.get("by")
+        g["resolved_note"] = mark.get("note")
+        if not g["resolved"]:
+            # It was closed and has happened again since.
+            g["reopened"] = True
+            g["reopened_at"] = next(
+                (r.get("at") for r in reversed(g["records"])
+                 if (r.get("at") or "") > (mark.get("at") or "")),
+                g.get("last"))
     return jsonify({"ok": True, "groups": groups, "days": STORE.error_days(),
                     "total": len(recs),
-                    "unresolved": sum(1 for g in groups if not g["resolved"])})
+                    "unresolved": sum(1 for g in groups if not g["resolved"]),
+                    "reopened": sum(1 for g in groups if g.get("reopened"))})
 
 
 @app.route("/api/errors/resolve", methods=["POST"])
@@ -2413,6 +2957,9 @@ def api_debug_report():
 # Event bank -- the shared record of detected events
 # ==========================================================================
 BANK = eventbank.EventBank(LOGS_DIR, STORE)
+REG = sessreg.Registry(STORE)
+CURATE = curation.Curation(LOGS_DIR, STORE)
+LAYERS = layers.Layers(LOGS_DIR, STORE)
 
 
 @app.route("/api/bank")

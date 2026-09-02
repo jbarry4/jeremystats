@@ -126,6 +126,15 @@ BARRY.tour = (function () {
      One step
      ================================================================== */
   async function show(i) {
+    /* Every await below is a chance for the tour to have been left --
+       escape, the close button, or another module starting. `gone()` is
+       checked after each one rather than trusting that `active` is still
+       there, which is how this used to throw "Cannot read properties of
+       null (reading 'module')" at whoever pressed escape while a step was
+       still setting itself up. */
+    const mine = active;
+    const gone = () => active !== mine;
+
     const st = active.module.steps[i];
     if (!st) { finish(); return; }
 
@@ -137,12 +146,14 @@ BARRY.tour = (function () {
       if (st.view && BARRY.state.view !== st.view) {
         setView(st.view);
         await sleep(220);
+        if (gone()) return;
       }
-      if (st.before) await st.before();
+      if (st.before) { await st.before(); if (gone()) return; }
       if (st.wait) {
         const ok = await until(
           () => (typeof st.wait === 'function' ? st.wait() : !!$(st.wait)),
           st.timeout || 15000);
+        if (gone()) return;
         if (!ok && st.required !== false) {
           // Say what did not appear rather than pointing at nothing.
           setBusy(false);
@@ -153,22 +164,29 @@ BARRY.tour = (function () {
         }
       }
     } catch (e) {
+      if (gone()) return;
       setBusy(false);
+      // A step whose setup failed says so and lets you carry on, rather than
+      // ending the tour. A machine with nothing scanned yet hits this on the
+      // steps that need a recording, and that is a fine reason to skip one
+      // step -- not to refuse the whole walkthrough.
       paint(st, null, 'This step could not set itself up: ' + e.message);
       return;
     }
 
+    if (gone()) return;
     setBusy(false);
     const target = resolve(st.target);
     if (target && target.scrollIntoView) {
       target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       await sleep(140);
+      if (gone()) return;
     }
     paint(st, target);
     watch(st, target);
 
     BARRY.activity.log('tour.step',
-                       { module: active.module.id, step: i + 1,
+                       { module: mine.module.id, step: i + 1,
                          id: st.id || null });
   }
 
@@ -236,7 +254,8 @@ BARRY.tour = (function () {
   function paint(st, target, problem) {
     const box = $('#tourBox');
     const hole = $('#tourHole');
-    if (!box) return;
+    // A timer or a late await can land here after the overlay has gone.
+    if (!box || !active || !st) return;
 
     const mod = active.module;
     const i = active.index;
@@ -401,7 +420,9 @@ BARRY.tour = (function () {
     if (!target) return;
     let last = '';
     watching = setInterval(() => {
-      if (!active) return;
+      // The tour can end between ticks; stop rather than keep measuring a
+      // node nobody is pointing at any more.
+      if (!active) { clearInterval(watching); watching = null; return; }
       const b = target.getBoundingClientRect();
       const key = [b.left, b.top, b.width, b.height].map(Math.round).join();
       if (key !== last) { last = key; reposition(); }

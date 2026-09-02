@@ -277,6 +277,15 @@ async function api(path, opts) {
     throw new Error('Could not reach the server: ' + e.message);
   }
 
+  /* A 404 on an /api/ route means the route is not there -- which almost
+     always means the server is running older code than the page that just
+     asked for it. That happens whenever BARRY is left running while the repo
+     is updated, and the only symptom is a feature quietly doing nothing.
+     Say it once, plainly, rather than letting it look like a bug. */
+  if (res.status === 404 && path.startsWith('/api/')) {
+    staleServer(path);
+  }
+
   let data;
   try { data = await res.json(); }
   catch (e) {
@@ -294,6 +303,20 @@ async function api(path, opts) {
 
 const apiPost = (path, body) =>
   api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+
+/* Told once per session, not once per request: a stale server produces a
+   burst of these, and twenty identical toasts is worse than none. */
+let staleTold = false;
+function staleServer(path) {
+  BARRY.debug.note('warn', 'stale server: no route ' + path);
+  if (staleTold) return;
+  staleTold = true;
+  toast('This page asked the server for ' + path.split('?')[0]
+        + ' and it does not have it — BARRY is running older code than '
+        + 'the files on disk. Restart it (close the window and run '
+        + '"Start BARRY GUI" again) to pick up the new version.',
+        'err', 20000);
+}
 
 /* ---------- loading state ----------
    A themed placeholder, used everywhere something is being fetched or
@@ -664,6 +687,25 @@ function applyTheme(theme, remember) {
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own
    colors -- a gold-on-green favicon over a pink interface looks like a
    different application. */
+/* Offer the tour once, on a machine that has never run one.
+
+   Once, and only once: a nudge that reappears every morning is not a nudge,
+   it is a nag. The Guide chip is in the rail either way, and the command
+   palette knows the word "tour". */
+function offerTour() {
+  const KEY = 'barry.tour.offered';
+  try {
+    if (localStorage.getItem(KEY)) return;
+    if (BARRY.tour.doneSet().size) return;
+    localStorage.setItem(KEY, '1');
+  } catch (e) { return; }        // private window: skip it rather than nag
+  setTimeout(() => {
+    toast('First time here? "Guide" at the bottom of the rail walks you '
+          + 'through it — four minutes, and it points at the real '
+          + 'thing rather than describing it.', null, 14000);
+  }, 1800);
+}
+
 function paintFavicon() {
   const cs = getComputedStyle(document.documentElement);
   const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
@@ -825,6 +867,13 @@ BARRY.init = async function init() {
   else applyTheme(BARRY.state.theme, true);   // records it for this machine
 
   BARRY.activity.init();
+  // Housekeeping lives inside the Sessions view rather than owning a rail
+  // slot, so it is wired here rather than by the view loop.
+  if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();
+  if (BARRY.tour) {
+    BARRY.tour.init();
+    offerTour();
+  }
 
   // One view failing to start must not take the rest of the interface with it.
   for (const key of Object.keys(BARRY.views)) {

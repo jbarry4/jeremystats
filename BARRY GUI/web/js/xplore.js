@@ -21,6 +21,13 @@ BARRY.views.xplore = (function () {
     active: null,
     panes: [],           // [{sessionId, panel, channel, cmap, ...}]
     nPanes: 1,
+    // What is put away. Kept on the workspace rather than per pane: hiding
+    // the channel column on one pane and not the other looks like a bug.
+    chrome: { channels: true, strip: true, heads: true, tabs: true },
+    // Pane sizes, as fractions of the grid. null means "share it evenly",
+    // which is what a fresh layout should do.
+    split: { col: null, row: null },
+    zoomed: null,               // index of the pane filling the workspace
     linkMode: 'session',   // 'none' | 'session' | 'all'
     focused: 0,
     presets: { filters: [], imports: [] },
@@ -344,7 +351,9 @@ BARRY.views.xplore = (function () {
 
   function renderPanes() {
     const grid = $('#paneGrid');
-    grid.className = 'pane-grid panes-' + XF.nPanes;
+    grid.className = 'pane-grid panes-' + XF.nPanes
+                   + (XF.zoomed != null ? ' zoomed' : '');
+    applySplit(grid);
     for (let i = 0; i < XF.panes.length; i++) disposePane(i);
     grid.innerHTML = '';
 
@@ -352,8 +361,12 @@ BARRY.views.xplore = (function () {
     XF.panes.length = Math.max(XF.nPanes, 1);
 
     for (let i = 0; i < XF.nPanes; i++) {
+      // One pane filling the workspace is just the others not being built.
+      // Simpler than a CSS overlay, and the hidden panes stop fetching.
+      if (XF.zoomed != null && i !== XF.zoomed) continue;
       grid.appendChild(buildPane(i));
     }
+    if (XF.zoomed == null) addSplitters(grid);
 
     // Rebuilding the panes can change their height (the control strip wraps
     // differently), and a canvas keeps whatever size it was last drawn at. So
@@ -409,6 +422,200 @@ BARRY.views.xplore = (function () {
     return box;
   }
 
+  /* The grid's own proportions. Dragging a splitter writes a fraction here
+     and nothing else changes -- the panes are still grid children, so the
+     canvases resize through the ResizeObserver that is already watching. */
+  function applySplit(grid) {
+    const c = XF.split.col, r = XF.split.row;
+    if (XF.zoomed != null || XF.nPanes === 1) {
+      grid.style.gridTemplateColumns = '';
+      grid.style.gridTemplateRows = '';
+      return;
+    }
+    const pct = (f) => (f * 100).toFixed(3) + '%';
+    if (XF.nPanes >= 2) {
+      grid.style.gridTemplateColumns = c
+        ? pct(c) + ' ' + pct(1 - c) : '';
+    }
+    if (XF.nPanes === 4) {
+      grid.style.gridTemplateRows = r ? pct(r) + ' ' + pct(1 - r) : '';
+    }
+    // The divider has to follow the split it controls. Written as custom
+    // properties so the CSS owns the hit-area geometry and this owns only
+    // where the line is.
+    grid.style.setProperty('--split-col', pct(c == null ? 0.5 : c));
+    grid.style.setProperty('--split-row', pct(r == null ? 0.5 : r));
+  }
+
+  /* Draggable dividers, laid over the gaps between panes.
+
+     They are absolutely positioned rather than being grid items: a grid item
+     would have to be woven into the pane order, and every index in this file
+     assumes grid.children[i] is pane i. */
+  function addSplitters(grid) {
+    if (XF.nPanes < 2) return;
+    const drag = (kind) => (e) => {
+      e.preventDefault();
+      const r = grid.getBoundingClientRect();
+      const move = (ev) => {
+        const f = kind === 'col'
+          ? (ev.clientX - r.left) / r.width
+          : (ev.clientY - r.top) / r.height;
+        // Never let a pane be dragged away to nothing -- a 0px pane cannot
+        // be grabbed back.
+        XF.split[kind] = Math.max(0.15, Math.min(0.85, f));
+        applySplit(grid);
+      };
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        document.body.classList.remove('splitting');
+        for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+        BARRY.activity.log('panes.resize', { [kind]: XF.split[kind] });
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      document.body.classList.add('splitting');
+    };
+
+    grid.appendChild(el('div', {
+      class: 'pane-split col', title: 'Drag to resize \u00b7 double-click to even up',
+      onmousedown: drag('col'),
+      ondblclick: () => { XF.split.col = null; applySplit(grid);
+                          for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i); },
+    }));
+    if (XF.nPanes === 4) {
+      grid.appendChild(el('div', {
+        class: 'pane-split row', title: 'Drag to resize \u00b7 double-click to even up',
+        onmousedown: drag('row'),
+        ondblclick: () => { XF.split.row = null; applySplit(grid);
+                            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i); },
+      }));
+    }
+  }
+
+  /* One pane fills the workspace, and comes back. */
+  function zoomPane(index) {
+    XF.zoomed = XF.zoomed === index ? null : index;
+    BARRY.activity.log('panes.zoom',
+                       { pane: index, on: XF.zoomed != null });
+    render();
+    refreshAll();
+  }
+
+  /* Put a piece of chrome away, or bring it back. */
+  function toggleChrome(what) {
+    XF.chrome[what] = !XF.chrome[what];
+    BARRY.activity.log('panes.chrome', { what, on: XF.chrome[what] });
+    applyChrome();
+    render();
+    // The plot got bigger or smaller, so the canvases have to be remeasured.
+    requestAnimationFrame(() => {
+      for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+    });
+  }
+
+  function applyChrome() {
+    const v = document.getElementById('view-xplore');
+    if (!v) return;
+    for (const k of ['channels', 'strip', 'heads', 'tabs']) {
+      v.classList.toggle('hide-' + k, !XF.chrome[k]);
+    }
+  }
+
+  /* Real full screen, for the pane and for a popped-out window.
+
+     A popped-out pane is its own browser window, and the thing people want
+     from one is the whole monitor with nothing else on it. That needs the
+     Fullscreen API rather than a CSS class -- a maximised browser window
+     still has its own chrome above the page. */
+  async function goFullscreen(node) {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return false;
+      }
+      await (node || document.documentElement).requestFullscreen();
+      return true;
+    } catch (e) {
+      toast('This browser would not go full screen: ' + e.message, 'err', 6000);
+      return false;
+    }
+  }
+
+  /* What can be put away, and how to say it. */
+  const CHROME_BITS = [
+    ['channels', 'Channel list',
+     'The column of channel names beside a raster'],
+    ['strip', 'Control strip',
+     'The window, scale and menu row above each pane'],
+    ['heads', 'Pane headers',
+     'The name, panel picker and pane buttons'],
+    ['tabs', 'Session tabs',
+     'The row of open recordings at the top'],
+  ];
+
+  function viewMenu() {
+    const box = el('div', { class: 'ctl-pop-body' });
+    box.appendChild(el('div', { class: 'ctl-pop-title', text: 'Show' }));
+    for (const [key, name, why] of CHROME_BITS) {
+      box.appendChild(el('label', {
+        class: 'toggle' + (XF.chrome[key] ? ' on' : ''), title: why,
+      }, [
+        el('input', {
+          type: 'checkbox', checked: XF.chrome[key] ? 'checked' : null,
+          onchange: () => { toggleChrome(key); },
+        }),
+        el('span', { text: name }),
+      ]));
+    }
+    box.appendChild(el('p', { class: 'ctl-pop-note',
+      text: 'Hiding a piece of chrome gives its space to the data. Nothing '
+          + 'is lost — tick it back on here.' }));
+
+    box.appendChild(el('div', { class: 'ctl-pop-title', text: 'Space' }));
+    box.appendChild(el('div', { class: 'ctl-pop-row' }, [
+      el('button', {
+        class: 'mini', text: 'Hide it all',
+        title: 'Everything off at once, for a screenshot or a talk',
+        onclick: () => {
+          for (const [k] of CHROME_BITS) XF.chrome[k] = false;
+          applyChrome(); render();
+          requestAnimationFrame(() => {
+            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+          });
+        },
+      }),
+      el('button', {
+        class: 'mini', text: 'Bring it back',
+        onclick: () => {
+          for (const [k] of CHROME_BITS) XF.chrome[k] = true;
+          applyChrome(); render();
+          requestAnimationFrame(() => {
+            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+          });
+        },
+      }),
+      el('button', {
+        class: 'mini', text: 'Even up the panes',
+        title: 'Undo any resizing of the splitters',
+        onclick: () => {
+          XF.split = { col: null, row: null };
+          render();
+          requestAnimationFrame(() => {
+            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+          });
+        },
+      }),
+      el('button', {
+        class: 'mini', text: 'Full screen',
+        title: 'The whole monitor, nothing else on it',
+        onclick: () => goFullscreen(document.getElementById('view-xplore')),
+      }),
+    ]));
+    return box;
+  }
+
   function isChannelPanel(panel) {
     return ['traces', 'voltage', 'csd', 'theta'].includes(panel);
   }
@@ -452,8 +659,31 @@ BARRY.views.xplore = (function () {
         onclick: (e) => { e.stopPropagation(); setMeasure(!XF.measure); },
       }),
       el('button', {
-        class: 'mini', text: '⇱', title: 'Pop this pane out into its own window',
-        onclick: () => popOut(pane, sess),
+        class: 'mini' + (XF.zoomed === index ? ' active' : ''),
+        text: XF.zoomed === index ? '\u2921' : '\u2922',
+        title: XF.zoomed === index
+          ? 'Back to the other panes'
+          : 'Fill the workspace with this pane',
+        onclick: (e) => { e.stopPropagation(); zoomPane(index); },
+      }),
+      el('button', {
+        class: 'mini', text: '\u26f6',
+        title: 'Full screen \u2014 the whole monitor, nothing else on it',
+        onclick: (e) => {
+          e.stopPropagation();
+          const box = $('#paneGrid').children[
+            XF.zoomed != null ? 0 : index];
+          goFullscreen(box || document.getElementById('view-xplore'));
+        },
+      }),
+      el('button', {
+        class: 'mini', text: '⇱',
+        title: 'Pop this pane out into its own window '
+             + '(shift-click for full screen)',
+        onclick: (e) => {
+          e.stopPropagation();
+          popOut(pane, sess, { full: e.shiftKey, chrome: 'notabs' });
+        },
       }),
       el('button', {
         class: 'mini pane-x', text: '✕',
@@ -1076,16 +1306,26 @@ BARRY.views.xplore = (function () {
     host.appendChild(pop);
   }
 
-  function popOut(pane, sess) {
+  function popOut(pane, sess, opts) {
     const q = new URLSearchParams({
       csc: sess.path, t0: sess.t0.toFixed(4), span: sess.span.toFixed(4),
       panel: pane.panel, hp: sess.hp, lp: sess.lp, notch: sess.notch,
       theme: BARRY.state.theme,
       // Carry the scope across, or the new window would not be listening.
       link: XF.linkMode,
+      // A pop-out is a second screen: it opens with the tab bar put away,
+      // because there is only one recording in it.
+      chrome: (opts && opts.chrome) || 'notabs',
     });
-    window.open(location.origin + '/?' + q.toString() + '#xplore', '_blank',
-                'width=1200,height=800');
+    if (opts && opts.full) q.set('full', '1');
+    const w = window.open(location.origin + '/?' + q.toString() + '#xplore',
+                          '_blank',
+                          'width=1400,height=900,menubar=no,toolbar=no');
+    if (!w) {
+      toast('The pop-out was blocked. Allow pop-ups for 127.0.0.1 and try '
+            + 'again.', 'err', 8000);
+    }
+    return w;
   }
 
   /* ==================================================================
@@ -2816,6 +3056,47 @@ BARRY.views.xplore = (function () {
     refreshSession(sess);
   }
 
+  /* Put a committed spike set onto the trace as events.
+
+     Detected spikes used to be a parallel world: a committed set drew its own
+     ticks and counted under Marks, but never entered the event system -- so
+     the marks browser read "Events (2)" beside "Spikes (1522)", and none of
+     the things you can do to an event (name the class, color it, hide it,
+     step through it, send it to the bank as events) could touch a spike.
+     Finding 1458 marks and then having no way to work with them is the gap.
+
+     This copies rather than moves. A spike set is the record of a detector
+     run and should not evaporate because someone wanted to recolor it; the
+     events are a working copy. Running it twice replaces the earlier copy
+     instead of doubling it. */
+  function spikesToEvents(sess, set_) {
+    const evs = (set_.events || []).map((e) => Object.assign({}, e, {
+      label: set_.name,
+      source: 'spikes',
+      spike_set: set_.id,
+    }));
+    if (!evs.length) {
+      toast('That set has no marks in it.', 'err');
+      return 0;
+    }
+    const had = sess.events.length;
+    sess.events = sess.events.filter((e) => e.spike_set !== set_.id);
+    const replaced = had - sess.events.length;
+
+    addEvents(sess, evs, {
+      file: 'spikes: ' + set_.name,
+      units: 'seconds',
+      spike_set: set_.id,
+      n: evs.length,
+    });
+    BARRY.activity.log('spikes.to_events',
+                       { set: set_.name, n: evs.length, replaced }, sess);
+    toast(evs.length + ' mark(s) from "' + set_.name + '" are now events'
+          + (replaced ? ' (replacing the earlier copy)' : '')
+          + ' — name and color them under Events.', 'ok', 7000);
+    return evs.length;
+  }
+
   /* ---------- event classes ---------- */
   function addEvents(sess, evts, meta) {
     // Imports accumulate rather than replace: a session often has TTLs from
@@ -3074,19 +3355,45 @@ BARRY.views.xplore = (function () {
         sess.spikeDraft = null;
         BARRY.activity.log('spikes.commit',
           { name, n: (res.set || {}).n }, sess);
+
+        // Committing used to stop here, which left the marks visible but
+        // untouchable: not events, so not nameable, colorable, or
+        // exportable as events. Putting them on the trace is what people
+        // meant by committing them, so it happens now and says so.
+        const saved = (res.sets || []).find((x) => x.name === name)
+                   || res.set || null;
+        const n = saved ? spikesToEvents(sess, saved) : 0;
+
         closeModal(); render(); refreshSession(sess);
-        toast('Committed "' + name + '" \u2014 marks are now solid', 'ok');
+        if (!n) {
+          toast('Committed "' + name + '" \u2014 marks are now solid', 'ok');
+        }
         BARRY.refreshSync();
       } catch (e) { toast(e.message, 'err', 7000); }
     };
 
     const setList = el('div', { class: 'bm-list' });
     for (const st of sess.spikeSets) {
+      const onTrace = sess.events.some((e) => e.spike_set === st.id);
       setList.appendChild(el('div', { class: 'bm-row' }, [
         el('span', { class: 'stat-chip committed-chip', text: st.n + '' }),
         el('span', { text: st.name }),
         el('span', { class: 't', text: (st.params || {}).threshold != null
           ? st.params.threshold + (st.params.threshold_mode === 'sd' ? ' SD' : ' uV') : '' }),
+        el('button', {
+          class: 'mini' + (onTrace ? ' active' : ''),
+          text: onTrace ? 'on the trace' : 'Add to events',
+          title: onTrace
+            ? 'Already on the trace as events — click to refresh the copy'
+            : 'Copy these marks onto the trace as events, so they can be '
+              + 'named, colored, hidden, stepped through and exported like '
+              + 'any other event',
+          onclick: (e) => {
+            e.stopPropagation();
+            spikesToEvents(sess, st);
+            render(); refreshSession(sess); openSpikes(index, sess);
+          },
+        }),
         el('span', {
           class: 'x', text: '\u2715', title: 'Delete this set',
           onclick: async () => {
@@ -4204,6 +4511,14 @@ BARRY.views.xplore = (function () {
     drawEventMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
     drawSpikeMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
     drawBookmarkMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    // Curation draws last, over everything, because while you are curating
+    // it is the only thing you are looking at.
+    if (BARRY.curate && BARRY.curate.draw) {
+      BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
+    if (BARRY.strata && BARRY.strata.draw) {
+      BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
 
     // A pinned amplitude is applied here rather than fetched. The server
     // echoes ylim back as robust_max, but the envelope it returns does not
@@ -4940,6 +5255,34 @@ BARRY.views.xplore = (function () {
       if (p) openSession(p);
     });
     $('#xfGoSessions').addEventListener('click', () => setView('sessions'));
+
+    // The View menu reuses the strip's popover, so there is one way a menu
+    // behaves in this section rather than two.
+    $('#xfView').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      const wasMine = openMenu && openMenu.button === btn;
+      closeMenu();
+      if (wasMine) return;
+      const node = el('div', { class: 'ctl-pop' }, [viewMenu()]);
+      document.body.appendChild(node);
+      btn.classList.add('active');
+      const r = btn.getBoundingClientRect();
+      node.style.left = Math.max(8, Math.min(
+        r.right - node.offsetWidth, window.innerWidth - node.offsetWidth - 8))
+        + 'px';
+      node.style.top = (r.bottom + 6) + 'px';
+      const away = (evt) => {
+        if (!node.contains(evt.target) && !btn.contains(evt.target)) closeMenu();
+      };
+      const esc = (evt) => { if (evt.key === 'Escape') closeMenu(); };
+      openMenu = { node, button: btn, away, esc };
+      setTimeout(() => {
+        document.addEventListener('mousedown', away, true);
+        document.addEventListener('keydown', esc, true);
+        window.addEventListener('resize', closeMenu);
+      }, 0);
+    });
     $('#xfFigure').addEventListener('click', () => {
       if (!XF.order.length) { toast('Open a session first.', 'err'); return; }
       BARRY.figure.open(XF, active());
@@ -5007,6 +5350,33 @@ BARRY.views.xplore = (function () {
     }
     setLink(savedMode || 'session');
 
+    /* A pop-out arrives with instructions.
+
+       `chrome` says what to put away -- a pop-out is a second screen showing
+       one recording, so the tab bar is pointless in it by default. `full`
+       asks for the whole monitor, which a browser will only grant off the
+       back of a gesture, so it waits for the first click rather than being
+       refused on load. */
+    const params = new URLSearchParams(location.search);
+    const chrome = params.get('chrome');
+    if (chrome) {
+      const off = chrome === 'none'
+        ? ['channels', 'strip', 'heads', 'tabs']
+        : chrome.split(',').map((k) => k.replace(/^no/, ''));
+      for (const k of off) {
+        if (k in XF.chrome) XF.chrome[k] = false;
+      }
+    }
+    applyChrome();
+    if (params.get('full')) {
+      const once = () => {
+        document.removeEventListener('click', once);
+        goFullscreen(document.getElementById('view-xplore'));
+      };
+      document.addEventListener('click', once);
+      toast('Click anywhere to go full screen.', null, 8000);
+    }
+
     loadPresets();
     api('/api/panels').then((d) => {
       XF.panelDefs = d.panels || [];
@@ -5042,6 +5412,31 @@ BARRY.views.xplore = (function () {
     fillPanes,
     state: XF,
     refreshAll,
+    render,
+    setWindow,
+    // Repaint what is already loaded. Curation redraws its overlay on every
+    // keystroke; going back to the server for the same samples would make
+    // the fastest part of the job the slowest.
+    redraw: (index) => {
+      if (index === undefined) {
+        for (let i = 0; i < XF.nPanes; i++) drawPane(i);
+      } else drawPane(index);
+    },
+    // Curation mode needs to arrange the panes for its own job, and to move
+    // the window to each candidate. Exposed rather than reimplemented, so
+    // there is one function that knows how a pane is built.
+    setPanes: (specs, split) => {
+      XF.nPanes = Math.max(1, Math.min(4, specs.length));
+      XF.panes = specs.slice(0, XF.nPanes).map((p) => Object.assign(
+        { sessionId: XF.active }, p));
+      // Applied before the render that reads it, or the first paint uses the
+      // old proportions and then jumps.
+      if (split) XF.split = split;
+      $$('#xfLayoutSeg button').forEach(
+        (b) => b.classList.toggle('active', +b.dataset.panes === XF.nPanes));
+      render();
+      refreshAll();
+    },
     onShow: () => { if (XF.order.length) { render(); refreshAll(); } },
   };
 })();

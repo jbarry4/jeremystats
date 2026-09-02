@@ -1,0 +1,41 @@
+{
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2711.3472,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s79ba9ba163c4",
+  "group": "PTEN",
+  "key": "m002_s003_2024-01-23_16-04-25",
+  "label": "PTEN m2 s3 2024-01-23",
+  "loose_key": "m002_s003",
+  "mouse": 2,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 3,
+  "start": "2024-01-23T16:04:25",
+  "updated": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

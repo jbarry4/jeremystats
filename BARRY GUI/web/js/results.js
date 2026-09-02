@@ -484,6 +484,7 @@ BARRY.views.results = (function () {
       ]),
       el('div', { class: 'res-acts' }, [
         el('button', { class: 'mini', text: 'Open', onclick: () => preview(r) }),
+        rebuildBtn(r),
         el('button', { class: 'mini', text: 'Tag', onclick: () => editTags(r) }),
         el('button', { class: 'mini', text: 'Reveal',
           onclick: () => apiPost('/api/results/reveal', { id: r.id }).catch(() => {}) }),
@@ -492,7 +493,6 @@ BARRY.views.results = (function () {
           title: 'Open the recording this came from',
           onclick: () => { setView('xplore'); BARRY.views.xplore.open(r.session_path); },
         }) : null,
-        rebuildBtn(r),
         r.run_id ? el('button', {
           class: 'mini', text: 'Run',
           title: 'Show the run that produced this: ' + r.run_id,
@@ -658,6 +658,14 @@ BARRY.views.results = (function () {
           onclick: () => apiPost('/api/results/reveal', { id: r.id }).catch(() => {}) }),
         el('button', { class: 'btn ghost sm', text: 'Download',
           onclick: () => window.open(fileUrl(r, true), '_blank') }),
+        r.run_id && r.kind === 'figure' && BARRY.figrebuild
+          ? el('button', {
+              class: 'btn ghost sm', text: 'Rebuild…',
+              title: 'Check what this figure needs, then walk through '
+                   + 'remaking it',
+              onclick: () => { closeModal(); BARRY.figrebuild.start(r.run_id); },
+            })
+          : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn', text: 'Add to storyboard',
           onclick: () => {

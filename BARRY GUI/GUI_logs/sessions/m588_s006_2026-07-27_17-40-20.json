@@ -1,0 +1,42 @@
+{
+  "created": {
+    "at": "2026-09-02T18:50:54-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1571.4133333333334,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s60989b93bd44",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m588_s006_2026-07-27_17-40-20",
+  "label": "KCNT1 m588 s6 2026-07-27",
+  "loose_key": "m588_s006",
+  "mouse": 588,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0588\\KCNT1_m0588_s06_072726\\2026-07-27_17-40-20"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:54-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0588\\KCNT1_m0588_s06_072726\\2026-07-27_17-40-20",
+      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
+      "scan": "scan_94ff1eb81c"
+    }
+  },
+  "session": 6,
+  "start": "2026-07-27T17:40:20",
+  "updated": {
+    "at": "2026-09-02T18:50:54-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}
