@@ -1,0 +1,42 @@
+{
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T19:30:18-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 1856.4096,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s386b15f2b56d",
+  "group": null,
+  "key": "m005_s033_2024-01-22_11-34-29",
+  "label": "m5 s33 2024-01-22",
+  "loose_key": "m005_s033",
+  "mouse": 5,
+  "n_channels": 128,
+  "paths": [
+    "E:\\Data\\m5s33jan22-real\\2024-01-22_11-34-29"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:37:48-04:00",
+      "by": "barry",
+      "path": "E:\\Data\\m5s33jan22-real\\2024-01-22_11-34-29",
+      "root": "E:/Data",
+      "scan": "scan_c15bcdc6dd"
+    }
+  },
+  "session": 33,
+  "start": "2024-01-22T11:34:29",
+  "updated": {
+    "at": "2026-09-02T19:37:48-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

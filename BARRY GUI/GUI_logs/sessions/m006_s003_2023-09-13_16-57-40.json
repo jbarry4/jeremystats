@@ -1,0 +1,56 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.042714+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1506.6624,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s1f8505cbe8c9",
+  "group": "PTEN",
+  "key": "m006_s003_2023-09-13_16-57-40",
+  "label": "PTEN m6 s3 2023-09-13",
+  "loose_key": "m006_s003",
+  "mouse": 6,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s3sept13\\2023-09-13_16-57-40",
+    "G:\\PTEN\\M6_s3"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:38:00-04:00",
+      "by": "barry",
+      "path": "G:\\PTEN\\M6_s3",
+      "root": "G:/PTEN",
+      "scan": "scan_597c4266fa"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s3sept13\\2023-09-13_16-57-40",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 3,
+  "start": "2023-09-13T16:57:40",
+  "updated": {
+    "at": "2026-09-02T19:38:01-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

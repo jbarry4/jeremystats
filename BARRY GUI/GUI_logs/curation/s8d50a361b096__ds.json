@@ -1,0 +1,883 @@
+{
+  "created": {
+    "at": "2026-09-02T19:35:49-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "events": [
+    {
+      "id": "ee420912cde",
+      "label": null,
+      "start": 15.839
+    },
+    {
+      "id": "e0066bc3167",
+      "label": null,
+      "start": 19.32
+    },
+    {
+      "id": "e5e9680588d",
+      "label": null,
+      "start": 21.437
+    },
+    {
+      "id": "e356a5a07f5",
+      "label": null,
+      "start": 31.64
+    },
+    {
+      "id": "ed039d6288f",
+      "label": null,
+      "start": 41.813
+    },
+    {
+      "id": "e86ddac0d5d",
+      "label": null,
+      "start": 71.561
+    },
+    {
+      "id": "ea3f1bad3b7",
+      "label": null,
+      "start": 71.664
+    },
+    {
+      "id": "e24ec2f6f3a",
+      "label": null,
+      "start": 71.971
+    },
+    {
+      "id": "ed1e9f75375",
+      "label": null,
+      "start": 73.552
+    },
+    {
+      "id": "ec1f34a71b2",
+      "label": null,
+      "start": 74.905
+    },
+    {
+      "id": "edeb4b64cfd",
+      "label": null,
+      "start": 84.242
+    },
+    {
+      "id": "e313b51b508",
+      "label": null,
+      "start": 91.026
+    },
+    {
+      "id": "ecbbfab7184",
+      "label": null,
+      "start": 93.998
+    },
+    {
+      "id": "e3903aea630",
+      "label": null,
+      "start": 94.856
+    },
+    {
+      "id": "e5da9a8f68a",
+      "label": null,
+      "start": 101.775
+    },
+    {
+      "id": "e5472b7bdec",
+      "label": null,
+      "start": 101.923
+    },
+    {
+      "id": "ef835171508",
+      "label": null,
+      "start": 102.63
+    },
+    {
+      "id": "ea231ecc514",
+      "label": null,
+      "start": 105.717
+    },
+    {
+      "id": "e967ac2f54b",
+      "label": null,
+      "start": 107.845
+    },
+    {
+      "id": "e791dcf30af",
+      "label": null,
+      "start": 111.521
+    },
+    {
+      "id": "eda6538ded1",
+      "label": null,
+      "start": 114.614
+    },
+    {
+      "id": "ee822eb4f54",
+      "label": null,
+      "start": 132.792
+    },
+    {
+      "id": "ef837b62703",
+      "label": null,
+      "start": 134.546
+    },
+    {
+      "id": "ecbc6a00c79",
+      "label": null,
+      "start": 134.726
+    },
+    {
+      "id": "e299a07e320",
+      "label": null,
+      "start": 167.0
+    },
+    {
+      "id": "e211e498f52",
+      "label": null,
+      "start": 173.217
+    },
+    {
+      "id": "e5e4b7dd4ef",
+      "label": null,
+      "start": 180.299
+    },
+    {
+      "id": "e1ccce061d3",
+      "label": null,
+      "start": 182.007
+    },
+    {
+      "id": "e863531e918",
+      "label": null,
+      "start": 182.387
+    },
+    {
+      "id": "e73dbd55c67",
+      "label": null,
+      "start": 193.08
+    },
+    {
+      "id": "e449fcd8e21",
+      "label": null,
+      "start": 198.53
+    },
+    {
+      "id": "e3957cf21db",
+      "label": null,
+      "start": 216.219
+    },
+    {
+      "id": "e82ab86228e",
+      "label": null,
+      "start": 222.942
+    },
+    {
+      "id": "e09477a83f7",
+      "label": null,
+      "start": 223.635
+    },
+    {
+      "id": "eed3f579bc9",
+      "label": null,
+      "start": 224.623
+    },
+    {
+      "id": "e83d1c6c47c",
+      "label": null,
+      "start": 226.618
+    },
+    {
+      "id": "e39cccc758a",
+      "label": null,
+      "start": 231.403
+    },
+    {
+      "id": "e90177eb96f",
+      "label": null,
+      "start": 232.461
+    },
+    {
+      "id": "e3b2fedb625",
+      "label": null,
+      "start": 233.995
+    },
+    {
+      "id": "e10f0c1088a",
+      "label": null,
+      "start": 245.665
+    },
+    {
+      "id": "ea4b64fcb5c",
+      "label": null,
+      "start": 249.82
+    },
+    {
+      "id": "e8113ce046d",
+      "label": null,
+      "start": 250.262
+    },
+    {
+      "id": "e311beaa550",
+      "label": null,
+      "start": 277.245
+    },
+    {
+      "id": "efddabd4026",
+      "label": null,
+      "start": 284.566
+    },
+    {
+      "id": "e904de06930",
+      "label": null,
+      "start": 286.527
+    },
+    {
+      "id": "eedc85a93e2",
+      "label": null,
+      "start": 290.784
+    },
+    {
+      "id": "e6280385267",
+      "label": null,
+      "start": 298.434
+    },
+    {
+      "id": "e2631af2222",
+      "label": null,
+      "start": 313.368
+    },
+    {
+      "id": "e0158c41757",
+      "label": null,
+      "start": 327.019
+    },
+    {
+      "id": "e71d75cc9dd",
+      "label": null,
+      "start": 415.795
+    },
+    {
+      "id": "e0718f60b97",
+      "label": null,
+      "start": 466.513
+    },
+    {
+      "id": "eefe132d7ca",
+      "label": null,
+      "start": 518.666
+    },
+    {
+      "id": "e1e76851add",
+      "label": null,
+      "start": 631.959
+    },
+    {
+      "id": "e718b9d67db",
+      "label": null,
+      "start": 655.994
+    },
+    {
+      "id": "e240cd324fd",
+      "label": null,
+      "start": 661.585
+    },
+    {
+      "id": "eb93b1c984f",
+      "label": null,
+      "start": 671.002
+    },
+    {
+      "id": "e95cb67d6df",
+      "label": null,
+      "start": 697.12
+    },
+    {
+      "id": "e35ad8ae9f0",
+      "label": null,
+      "start": 707.509
+    },
+    {
+      "id": "e5bddb2bdd0",
+      "label": null,
+      "start": 710.611
+    },
+    {
+      "id": "e44426f6d23",
+      "label": null,
+      "start": 724.018
+    },
+    {
+      "id": "e5e50ea9a7a",
+      "label": null,
+      "start": 724.645
+    },
+    {
+      "id": "ee42faf21cd",
+      "label": null,
+      "start": 724.832
+    },
+    {
+      "id": "eabed709a51",
+      "label": null,
+      "start": 738.713
+    },
+    {
+      "id": "e1c2049f9ab",
+      "label": null,
+      "start": 741.589
+    },
+    {
+      "id": "e4b95a84158",
+      "label": null,
+      "start": 750.729
+    },
+    {
+      "id": "e751c542250",
+      "label": null,
+      "start": 753.288
+    },
+    {
+      "id": "e3d7b6d4c51",
+      "label": null,
+      "start": 754.303
+    },
+    {
+      "id": "eb09ffc84b5",
+      "label": null,
+      "start": 756.944
+    },
+    {
+      "id": "e1e1962091e",
+      "label": null,
+      "start": 771.897
+    },
+    {
+      "id": "e859b55ec9e",
+      "label": null,
+      "start": 779.815
+    },
+    {
+      "id": "e4cff26c1ef",
+      "label": null,
+      "start": 784.064
+    },
+    {
+      "id": "e908caae067",
+      "label": null,
+      "start": 795.219
+    },
+    {
+      "id": "ec766ad0e8e",
+      "label": null,
+      "start": 796.708
+    },
+    {
+      "id": "ef7d2e86184",
+      "label": null,
+      "start": 820.758
+    },
+    {
+      "id": "edb10b9787c",
+      "label": null,
+      "start": 832.1
+    },
+    {
+      "id": "ec72f909caa",
+      "label": null,
+      "start": 832.781
+    },
+    {
+      "id": "ea4b35c0d7a",
+      "label": null,
+      "start": 851.795
+    },
+    {
+      "id": "ece45448bac",
+      "label": null,
+      "start": 854.454
+    },
+    {
+      "id": "eb84b098fbe",
+      "label": null,
+      "start": 902.344
+    },
+    {
+      "id": "e5877bfc9da",
+      "label": null,
+      "start": 1030.068
+    },
+    {
+      "id": "e2f87de878c",
+      "label": null,
+      "start": 1069.03
+    },
+    {
+      "id": "ed20da23e7f",
+      "label": null,
+      "start": 1098.524
+    },
+    {
+      "id": "e4d018a6c38",
+      "label": null,
+      "start": 1103.318
+    },
+    {
+      "id": "ec6064d06b3",
+      "label": null,
+      "start": 1138.211
+    },
+    {
+      "id": "e145004f6e2",
+      "label": null,
+      "start": 1173.338
+    },
+    {
+      "id": "e85992d7dca",
+      "label": null,
+      "start": 1215.543
+    },
+    {
+      "id": "e448954775c",
+      "label": null,
+      "start": 1222.271
+    },
+    {
+      "id": "e5026c89e1f",
+      "label": null,
+      "start": 1232.467
+    },
+    {
+      "id": "e47c89dafb6",
+      "label": null,
+      "start": 1245.713
+    },
+    {
+      "id": "eeb4d4ae50c",
+      "label": null,
+      "start": 1266.815
+    },
+    {
+      "id": "e5aa39f48ce",
+      "label": null,
+      "start": 1300.52
+    },
+    {
+      "id": "e0ebbae648b",
+      "label": null,
+      "start": 1314.615
+    },
+    {
+      "id": "e902f7e590f",
+      "label": null,
+      "start": 1329.121
+    },
+    {
+      "id": "eadd7bb0757",
+      "label": null,
+      "start": 1338.818
+    },
+    {
+      "id": "e847faa1a30",
+      "label": null,
+      "start": 1342.239
+    },
+    {
+      "id": "e4a3b125167",
+      "label": null,
+      "start": 1344.482
+    },
+    {
+      "id": "e6de00ce804",
+      "label": null,
+      "start": 1349.584
+    },
+    {
+      "id": "e705360fbda",
+      "label": null,
+      "start": 1350.159
+    },
+    {
+      "id": "ee1880d8bac",
+      "label": null,
+      "start": 1352.817
+    },
+    {
+      "id": "e689a9e85ee",
+      "label": null,
+      "start": 1371.303
+    },
+    {
+      "id": "e21b93639ba",
+      "label": null,
+      "start": 1401.26
+    },
+    {
+      "id": "eef84e564e6",
+      "label": null,
+      "start": 1409.073
+    },
+    {
+      "id": "e4da0f57952",
+      "label": null,
+      "start": 1410.013
+    },
+    {
+      "id": "e5e744d08f4",
+      "label": null,
+      "start": 1416.285
+    },
+    {
+      "id": "e9ccc55d8eb",
+      "label": null,
+      "start": 1436.271
+    },
+    {
+      "id": "ea6cc7d44e4",
+      "label": null,
+      "start": 1437.329
+    },
+    {
+      "id": "e1b3d47c7fe",
+      "label": null,
+      "start": 1438.979
+    },
+    {
+      "id": "e122cac3b44",
+      "label": null,
+      "start": 1520.31
+    },
+    {
+      "id": "e11e6944677",
+      "label": null,
+      "start": 1550.191
+    },
+    {
+      "id": "e369106bc61",
+      "label": null,
+      "start": 1561.995
+    },
+    {
+      "id": "e371cea047b",
+      "label": null,
+      "start": 1566.838
+    },
+    {
+      "id": "e604d71e263",
+      "label": null,
+      "start": 1579.907
+    },
+    {
+      "id": "e541920f121",
+      "label": null,
+      "start": 1580.249
+    },
+    {
+      "id": "e208bf3532b",
+      "label": null,
+      "start": 1584.002
+    },
+    {
+      "id": "eea36811efd",
+      "label": null,
+      "start": 1593.445
+    },
+    {
+      "id": "e679eced038",
+      "label": null,
+      "start": 1607.033
+    },
+    {
+      "id": "e3d476a6dd4",
+      "label": null,
+      "start": 1611.436
+    },
+    {
+      "id": "ea855072890",
+      "label": null,
+      "start": 1613.792
+    },
+    {
+      "id": "ef700cfbccc",
+      "label": null,
+      "start": 1623.273
+    },
+    {
+      "id": "ed7d91265ba",
+      "label": null,
+      "start": 1630.054
+    },
+    {
+      "id": "e1f2c0f31d5",
+      "label": null,
+      "start": 1632.935
+    },
+    {
+      "id": "ee6133574a1",
+      "label": null,
+      "start": 1640.555
+    },
+    {
+      "id": "ef01ff59a51",
+      "label": null,
+      "start": 1645.322
+    },
+    {
+      "id": "ea0bed52310",
+      "label": null,
+      "start": 1645.764
+    },
+    {
+      "id": "ebdb2369a1f",
+      "label": null,
+      "start": 1649.107
+    },
+    {
+      "id": "ed130f55e6e",
+      "label": null,
+      "start": 1650.856
+    },
+    {
+      "id": "e33a15fbe09",
+      "label": null,
+      "start": 1662.286
+    },
+    {
+      "id": "e5ad8a87181",
+      "label": null,
+      "start": 1668.398
+    },
+    {
+      "id": "edfd0456b60",
+      "label": null,
+      "start": 1672.839
+    },
+    {
+      "id": "e364d2bc309",
+      "label": null,
+      "start": 1675.173
+    },
+    {
+      "id": "e654a0378bb",
+      "label": null,
+      "start": 1678.371
+    },
+    {
+      "id": "e081cb6f5fe",
+      "label": null,
+      "start": 1678.708
+    },
+    {
+      "id": "eb9523e379f",
+      "label": null,
+      "start": 1679.822
+    },
+    {
+      "id": "eb58afd5f47",
+      "label": null,
+      "start": 1682.083
+    },
+    {
+      "id": "eae47318b28",
+      "label": null,
+      "start": 1694.791
+    },
+    {
+      "id": "e5c2340cb5a",
+      "label": null,
+      "start": 1695.204
+    },
+    {
+      "id": "ea3487a252c",
+      "label": null,
+      "start": 1698.037
+    },
+    {
+      "id": "effb9edd172",
+      "label": null,
+      "start": 1699.626
+    },
+    {
+      "id": "e2a7509906f",
+      "label": null,
+      "start": 1699.903
+    },
+    {
+      "id": "e6cee5cf2cb",
+      "label": null,
+      "start": 1705.641
+    },
+    {
+      "id": "ecd87348908",
+      "label": null,
+      "start": 1706.062
+    },
+    {
+      "id": "ec31dc4e436",
+      "label": null,
+      "start": 1710.489
+    },
+    {
+      "id": "ee91cbc8a4f",
+      "label": null,
+      "start": 1716.469
+    },
+    {
+      "id": "e148fbdce76",
+      "label": null,
+      "start": 1718.638
+    },
+    {
+      "id": "e629e19370d",
+      "label": null,
+      "start": 1726.929
+    },
+    {
+      "id": "e91939dc9a9",
+      "label": null,
+      "start": 1728.187
+    },
+    {
+      "id": "ed12e222ae8",
+      "label": null,
+      "start": 1736.186
+    },
+    {
+      "id": "e62db068539",
+      "label": null,
+      "start": 1737.177
+    },
+    {
+      "id": "e9957d4b287",
+      "label": null,
+      "start": 1737.499
+    },
+    {
+      "id": "e063ddfcfeb",
+      "label": null,
+      "start": 1738.485
+    },
+    {
+      "id": "e0c8a9c1db1",
+      "label": null,
+      "start": 1740.265
+    },
+    {
+      "id": "e4520dd4000",
+      "label": null,
+      "start": 1757.658
+    },
+    {
+      "id": "e0e7e2e64b2",
+      "label": null,
+      "start": 1775.072
+    },
+    {
+      "id": "ef6bfb9ce41",
+      "label": null,
+      "start": 1781.038
+    },
+    {
+      "id": "ef612daf9cf",
+      "label": null,
+      "start": 1785.042
+    },
+    {
+      "id": "e0ccc490dc0",
+      "label": null,
+      "start": 1785.864
+    },
+    {
+      "id": "ed388847c2d",
+      "label": null,
+      "start": 1788.067
+    },
+    {
+      "id": "e35eb13f2b4",
+      "label": null,
+      "start": 1791.036
+    },
+    {
+      "id": "ee73a086fc9",
+      "label": null,
+      "start": 1791.626
+    },
+    {
+      "id": "e932c354bbb",
+      "label": null,
+      "start": 1807.516
+    },
+    {
+      "id": "eee6b6fafc3",
+      "label": null,
+      "start": 1807.733
+    },
+    {
+      "id": "ee3768bf648",
+      "label": null,
+      "start": 1808.869
+    }
+  ],
+  "gid": "s8d50a361b096",
+  "imports": [
+    {
+      "at": "2026-09-02T19:35:49-0400",
+      "n": 162,
+      "skipped": 0,
+      "source": {
+        "from": "the bank: DS candidates (ETS)"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "TEST",
+  "schema": 1,
+  "session_label": "PTEN m34 s8 2024-06-10",
+  "source": {
+    "from": "the bank: DS candidates (ETS)"
+  },
+  "updated": {
+    "at": "2026-09-02T19:35:49-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}
