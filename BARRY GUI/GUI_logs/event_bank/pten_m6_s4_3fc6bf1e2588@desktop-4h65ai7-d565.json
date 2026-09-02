@@ -1,0 +1,516 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.410925+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 7.941
+    },
+    {
+      "start": 8.137
+    },
+    {
+      "start": 11.445
+    },
+    {
+      "start": 11.728
+    },
+    {
+      "start": 28.834
+    },
+    {
+      "start": 29.449
+    },
+    {
+      "start": 34.598
+    },
+    {
+      "start": 34.75
+    },
+    {
+      "start": 37.536
+    },
+    {
+      "start": 40.985
+    },
+    {
+      "start": 42.02
+    },
+    {
+      "start": 43.17
+    },
+    {
+      "start": 49.743
+    },
+    {
+      "start": 58.078
+    },
+    {
+      "start": 72.238
+    },
+    {
+      "start": 89.083
+    },
+    {
+      "start": 110.484
+    },
+    {
+      "start": 116.238
+    },
+    {
+      "start": 117.178
+    },
+    {
+      "start": 120.895
+    },
+    {
+      "start": 121.067
+    },
+    {
+      "start": 121.493
+    },
+    {
+      "start": 126.082
+    },
+    {
+      "start": 131.277
+    },
+    {
+      "start": 159.483
+    },
+    {
+      "start": 160.137
+    },
+    {
+      "start": 163.199
+    },
+    {
+      "start": 164.271
+    },
+    {
+      "start": 164.437
+    },
+    {
+      "start": 164.617
+    },
+    {
+      "start": 165.416
+    },
+    {
+      "start": 171.309
+    },
+    {
+      "start": 177.686
+    },
+    {
+      "start": 184.45
+    },
+    {
+      "start": 198.622
+    },
+    {
+      "start": 198.803
+    },
+    {
+      "start": 211.087
+    },
+    {
+      "start": 215.262
+    },
+    {
+      "start": 218.4
+    },
+    {
+      "start": 224.807
+    },
+    {
+      "start": 231.993
+    },
+    {
+      "start": 233.348
+    },
+    {
+      "start": 243.878
+    },
+    {
+      "start": 247.088
+    },
+    {
+      "start": 254.023
+    },
+    {
+      "start": 268.176
+    },
+    {
+      "start": 268.714
+    },
+    {
+      "start": 304.996
+    },
+    {
+      "start": 307.428
+    },
+    {
+      "start": 334.072
+    },
+    {
+      "start": 337.613
+    },
+    {
+      "start": 339.137
+    },
+    {
+      "start": 339.343
+    },
+    {
+      "start": 342.151
+    },
+    {
+      "start": 345.308
+    },
+    {
+      "start": 350.802
+    },
+    {
+      "start": 355.025
+    },
+    {
+      "start": 361.845
+    },
+    {
+      "start": 367.572
+    },
+    {
+      "start": 369.939
+    },
+    {
+      "start": 371.118
+    },
+    {
+      "start": 372.944
+    },
+    {
+      "start": 400.931
+    },
+    {
+      "start": 403.671
+    },
+    {
+      "start": 406.09
+    },
+    {
+      "start": 408.266
+    },
+    {
+      "start": 413.825
+    },
+    {
+      "start": 445.414
+    },
+    {
+      "start": 448.928
+    },
+    {
+      "start": 452.248
+    },
+    {
+      "start": 461.983
+    },
+    {
+      "start": 466.808
+    },
+    {
+      "start": 475.842
+    },
+    {
+      "start": 476.589
+    },
+    {
+      "start": 477.758
+    },
+    {
+      "start": 481.219
+    },
+    {
+      "start": 488.847
+    },
+    {
+      "start": 488.988
+    },
+    {
+      "start": 507.337
+    },
+    {
+      "start": 509.206
+    },
+    {
+      "start": 514.696
+    },
+    {
+      "start": 519.162
+    },
+    {
+      "start": 527.132
+    },
+    {
+      "start": 527.451
+    },
+    {
+      "start": 566.292
+    },
+    {
+      "start": 592.869
+    },
+    {
+      "start": 594.368
+    },
+    {
+      "start": 594.501
+    },
+    {
+      "start": 594.886
+    },
+    {
+      "start": 595.279
+    },
+    {
+      "start": 596.1
+    },
+    {
+      "start": 596.746
+    },
+    {
+      "start": 603.416
+    },
+    {
+      "start": 603.568
+    },
+    {
+      "start": 611.0
+    },
+    {
+      "start": 612.425
+    },
+    {
+      "start": 616.042
+    },
+    {
+      "start": 624.5
+    },
+    {
+      "start": 639.899
+    },
+    {
+      "start": 646.138
+    },
+    {
+      "start": 647.074
+    },
+    {
+      "start": 661.289
+    },
+    {
+      "start": 663.163
+    },
+    {
+      "start": 676.861
+    },
+    {
+      "start": 693.731
+    },
+    {
+      "start": 694.065
+    },
+    {
+      "start": 694.201
+    },
+    {
+      "start": 695.311
+    },
+    {
+      "start": 695.476
+    },
+    {
+      "start": 703.679
+    },
+    {
+      "start": 705.02
+    },
+    {
+      "start": 717.336
+    },
+    {
+      "start": 723.446
+    },
+    {
+      "start": 724.39
+    },
+    {
+      "start": 732.86
+    },
+    {
+      "start": 734.202
+    },
+    {
+      "start": 736.121
+    },
+    {
+      "start": 740.108
+    },
+    {
+      "start": 744.046
+    },
+    {
+      "start": 744.52
+    },
+    {
+      "start": 744.682
+    },
+    {
+      "start": 746.199
+    },
+    {
+      "start": 746.399
+    },
+    {
+      "start": 757.993
+    },
+    {
+      "start": 787.499
+    },
+    {
+      "start": 787.632
+    },
+    {
+      "start": 791.838
+    },
+    {
+      "start": 793.332
+    },
+    {
+      "start": 797.194
+    },
+    {
+      "start": 803.667
+    },
+    {
+      "start": 813.463
+    },
+    {
+      "start": 814.996
+    },
+    {
+      "start": 832.343
+    },
+    {
+      "start": 832.812
+    },
+    {
+      "start": 833.305
+    },
+    {
+      "start": 842.977
+    },
+    {
+      "start": 855.609
+    },
+    {
+      "start": 859.294
+    },
+    {
+      "start": 865.125
+    },
+    {
+      "start": 875.96
+    },
+    {
+      "start": 876.291
+    },
+    {
+      "start": 888.096
+    },
+    {
+      "start": 889.378
+    },
+    {
+      "start": 892.902
+    },
+    {
+      "start": 893.262
+    },
+    {
+      "start": 908.975
+    },
+    {
+      "start": 916.787
+    },
+    {
+      "start": 923.617
+    },
+    {
+      "start": 924.612
+    },
+    {
+      "start": 928.226
+    },
+    {
+      "start": 933.269
+    },
+    {
+      "start": 934.543
+    },
+    {
+      "start": 966.942
+    },
+    {
+      "start": 971.676
+    },
+    {
+      "start": 975.997
+    },
+    {
+      "start": 978.802
+    },
+    {
+      "start": 986.126
+    }
+  ],
+  "gid": "s9eb56573e0b4",
+  "id": "3fc6bf1e2588",
+  "mouse": 6,
+  "n": 157,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2023-09-13T17:24:49",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m006_s004_2023-09-13_17-24-49",
+  "session_label": "PTEN m6 s4 2023-09-13",
+  "session_loose_key": "m006_s004",
+  "session_path": "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s4sept13\\2023-09-13_17-24-49",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m6s4_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

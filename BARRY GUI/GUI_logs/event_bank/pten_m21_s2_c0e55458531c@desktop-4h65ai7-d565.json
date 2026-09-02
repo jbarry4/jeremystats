@@ -1,0 +1,111 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.331457+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 35.968
+    },
+    {
+      "start": 264.612
+    },
+    {
+      "start": 302.185
+    },
+    {
+      "start": 331.905
+    },
+    {
+      "start": 373.337
+    },
+    {
+      "start": 376.837
+    },
+    {
+      "start": 377.966
+    },
+    {
+      "start": 399.602
+    },
+    {
+      "start": 410.204
+    },
+    {
+      "start": 461.366
+    },
+    {
+      "start": 501.694
+    },
+    {
+      "start": 541.002
+    },
+    {
+      "start": 605.032
+    },
+    {
+      "start": 742.484
+    },
+    {
+      "start": 871.682
+    },
+    {
+      "start": 1367.416
+    },
+    {
+      "start": 1437.588
+    },
+    {
+      "start": 1553.63
+    },
+    {
+      "start": 1628.977
+    },
+    {
+      "start": 1741.413
+    },
+    {
+      "start": 1767.717
+    },
+    {
+      "start": 1768.293
+    }
+  ],
+  "gid": "s37c7c8edfe10",
+  "id": "c0e55458531c",
+  "mouse": 21,
+  "n": 22,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2024-07-29T13:05:17",
+  "schema": 1,
+  "session": 2,
+  "session_key": "m021_s002_2024-07-29_13-05-17",
+  "session_label": "PTEN m21 s2 2024-07-29",
+  "session_loose_key": "m021_s002",
+  "session_path": "D:\\PTEN\\CTL\\m21_ptenblind\\m21s2jul29\\2024-07-29_13-05-17",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m21s2_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

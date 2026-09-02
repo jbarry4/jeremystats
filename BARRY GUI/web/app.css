@@ -3509,3 +3509,46 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .sess-card.remembered { opacity: .5; }
 .sess-card.remembered:hover, .sess-card.remembered.picked { opacity: 1; }
 .sess-card.remembered .sc-name { font-weight: 400; }
+
+/* ==========================================================================
+   The session search field.
+
+   A <select> was right when BARRY knew six recordings; a scan registers every
+   one it walks past, so the list is in the hundreds and a dropdown you cannot
+   type at is the wrong control.
+   ========================================================================== */
+.sp-box { position: relative; min-width: 260px; }
+.sp-input {
+  width: 100%; padding: 6px 10px; font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); color: var(--text);
+}
+.sp-input:focus { outline: none; border-color: var(--accent-line); }
+.sp-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 320;
+  max-height: 320px; overflow-y: auto;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+}
+.sp-list.hidden { display: none; }
+.sp-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  font-size: 11.5px; cursor: pointer;
+}
+.sp-row.on { background: var(--accent-soft); }
+.sp-row.away { opacity: .6; }
+.sp-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: var(--text-3);
+}
+.sp-dot.on { background: var(--ok); }
+.sp-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-tag {
+  flex: none; font-size: 9.5px; padding: 0 5px; border-radius: 4px;
+  background: var(--accent-soft); color: var(--accent);
+}
+.sp-proj { flex: none; font-size: 10px; color: var(--text-3); }
+.sp-none { padding: 8px 10px; font-size: 11px; color: var(--text-3); }

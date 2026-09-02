@@ -19,6 +19,8 @@ import platform
 import re
 import threading
 import uuid
+
+from . import shards
 from datetime import datetime, timezone
 
 SCHEMA = 1
@@ -57,6 +59,15 @@ class EventBank:
         self.root = os.path.join(root, "event_bank")
         self.store = store
         os.makedirs(self.root, exist_ok=True)
+        # An entry is imported by one machine but curated by another, and
+        # "specified" is written back onto it -- so it is edited by more than
+        # one person and has to be sharded like everything else.
+        self.book = shards.Book(self.root, {
+            "events": shards.LWW,
+            "added": shards.FIRST,
+            "history": shards.BYID,
+        }, store)
+        self.book.absorb_legacy()
         self._cache = None
         self._stamp = None
 
@@ -87,19 +98,11 @@ class EventBank:
         if self._cache is not None and stamp == self._stamp:
             return self._cache
         out = []
-        try:
-            names = sorted(os.listdir(self.root))
-        except OSError:
-            names = []
-        for name in names:
-            if not name.endswith(".json"):
-                continue
-            rec = _read_json(os.path.join(self.root, name))
-            if rec:
-                # The event list can be long; the index carries a summary and
-                # the detail view fetches the whole entry by id.
-                rec.setdefault("n", len(rec.get("events") or []))
-                out.append(rec)
+        for rec in self.book.all():
+            # The event list can be long; the index carries a summary and
+            # the detail view fetches the whole entry by id.
+            rec.setdefault("n", len(rec.get("events") or []))
+            out.append(rec)
         out.sort(key=lambda r: (r.get("added") or {}).get("at") or "", reverse=True)
         self._cache = out
         self._stamp = stamp
@@ -234,19 +237,35 @@ class EventBank:
                 "at": _now(),
                 "machine": entry.get("machine") or platform.node(),
             },
+            # Whether anyone has said what these events ARE.
+            #
+            # A detector's output and a curated set are both lists of times,
+            # and treating them the same is how a guess ends up in a figure as
+            # a finding. An import is unspecified until somebody has gone
+            # through it; curation writes back entries that carry a label and
+            # are specified from the moment they are created.
+            "specified": bool(entry.get("curated")),
+            "curation_label": entry.get("curation_label"),
+            "gid": entry.get("gid"),
         }
 
-        name = "%s_%s_%s_%s.json" % (
-            _slug(rec["project"], "unfiled"),
-            _slug("m%s" % rec["mouse"] if rec["mouse"] is not None else "m", "m"),
-            _slug("s%s" % rec["session"] if rec["session"] is not None else "s", "s"),
-            rec["id"])
-        path = os.path.join(self.root, name)
+        base = self._base_of(rec)
         with _LOCK:
-            _write_json(path, rec)
+            rec = self.book.write(base, rec)
             self._cache = None
-        rec["path"] = path
+        rec["path"] = self.book.mine(base)
         return rec
+
+    def _base_of(self, rec):
+        """The filename stem. The entry id is last so _base_for_id can find
+        it again without having to reconstruct the project and mouse."""
+        return shards.safe_base("%s_%s_%s_%s" % (
+            _slug(rec.get("project"), "unfiled"),
+            _slug("m%s" % rec["mouse"] if rec.get("mouse") is not None
+                  else "m", "m"),
+            _slug("s%s" % rec["session"] if rec.get("session") is not None
+                  else "s", "s"),
+            rec["id"]))
 
     def update(self, entry_id, patch):
         """Edit the describable parts. Provenance is not one of them."""
@@ -264,30 +283,29 @@ class EventBank:
             "changed": sorted(k for k in patch if k in editable),
         })
         with _LOCK:
-            _write_json(self._path_of(entry_id), rec)
+            base = self._base_for_id(entry_id)
+            rec = self.book.write(base, rec) if base else rec
             self._cache = None
         return rec
 
     def delete(self, entry_id):
-        path = self._path_of(entry_id)
-        if not path:
+        base = self._base_for_id(entry_id)
+        if not base:
             return False
         with _LOCK:
-            try:
-                os.remove(path)
-            except OSError:
-                return False
+            gone = self.book.erase(base)
             self._cache = None
-        return True
+        return bool(gone)
+
+    def _base_for_id(self, entry_id):
+        for base in self.book.bases():
+            if base.endswith("_" + str(entry_id)):
+                return base
+        return None
 
     def _path_of(self, entry_id):
-        try:
-            for name in os.listdir(self.root):
-                if name.endswith(entry_id + ".json"):
-                    return os.path.join(self.root, name)
-        except OSError:
-            pass
-        return None
+        base = self._base_for_id(entry_id)
+        return self.book.mine(base) if base else None
 
     # ------------------------------------------------------------------
     # Matching an entry to an open recording

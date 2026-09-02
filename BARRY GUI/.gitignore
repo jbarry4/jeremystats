@@ -9,3 +9,10 @@ __pycache__/
 # beside the code and the log entry that produced it is the point of it. Only
 # the transcoded video scratch is not worth carrying.
 Output/**/_videocache/
+
+# Derived: a roll-up of everything in GUI_logs, regenerated on every boot.
+# Tracking it would mean a merge conflict on literally every pull, over a file
+# anyone can rebuild in a second. Everything real lives in the per-machine
+# records it is compiled from.
+GUI_logs/.cache/
+GUI_logs/index.json

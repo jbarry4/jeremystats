@@ -1,0 +1,135 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.355194+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 109.343
+    },
+    {
+      "start": 153.781
+    },
+    {
+      "start": 159.04
+    },
+    {
+      "start": 284.261
+    },
+    {
+      "start": 477.384
+    },
+    {
+      "start": 509.731
+    },
+    {
+      "start": 519.174
+    },
+    {
+      "start": 529.386
+    },
+    {
+      "start": 565.93
+    },
+    {
+      "start": 592.64
+    },
+    {
+      "start": 657.825
+    },
+    {
+      "start": 764.643
+    },
+    {
+      "start": 773.434
+    },
+    {
+      "start": 799.744
+    },
+    {
+      "start": 918.399
+    },
+    {
+      "start": 932.359
+    },
+    {
+      "start": 1011.782
+    },
+    {
+      "start": 1034.516
+    },
+    {
+      "start": 1051.498
+    },
+    {
+      "start": 1054.487
+    },
+    {
+      "start": 1097.577
+    },
+    {
+      "start": 1098.743
+    },
+    {
+      "start": 1190.181
+    },
+    {
+      "start": 1201.898
+    },
+    {
+      "start": 1266.503
+    },
+    {
+      "start": 1307.779
+    },
+    {
+      "start": 1402.971
+    },
+    {
+      "start": 1533.857
+    },
+    {
+      "start": 1546.637
+    },
+    {
+      "start": 1555.435
+    }
+  ],
+  "gid": "sf95925ed3403",
+  "id": "67da33b0020c",
+  "mouse": 29,
+  "n": 30,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2024-07-23T13:03:52",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m029_s001_2024-07-23_13-03-52",
+  "session_label": "PTEN m29 s1 2024-07-23",
+  "session_loose_key": "m029_s001",
+  "session_path": "D:\\PTEN\\PTEN\\m29_ptenblind\\m29s1jul23\\2024-07-23_13-03-51",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m29s1_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

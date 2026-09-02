@@ -30,6 +30,8 @@ import json
 import os
 import time
 
+from . import shards
+
 SCHEMA = 1
 
 # The hippocampal layers, in the order they are met going down a shank. Order
@@ -76,43 +78,32 @@ def _now():
 class Layers:
     def __init__(self, logs_dir, store):
         self.dir = os.path.join(logs_dir, "layers")
+        # Per machine, compiled on read: two people can label different
+        # stretches of the same shank and both keep their work.
+        self.book = shards.Book(self.dir, {
+            "labels": shards.MAPLWW,
+            "channels": shards.UNION,
+            "created": shards.FIRST,
+        }, store)
+        self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
 
+    def base(self, gid):
+        return shards.safe_base(gid)
+
     def path(self, gid):
-        safe = "".join(c for c in str(gid) if c.isalnum() or c in "._-")
-        return os.path.join(self.dir, safe + ".json")
+        return self.book.mine(self.base(gid))
 
     def get(self, gid):
-        try:
-            with open(self.path(gid), "r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except (OSError, json.JSONDecodeError):
-            return None
+        return self.book.read(self.base(gid))
 
     def all(self):
-        out = []
-        for name in sorted(os.listdir(self.dir)) if os.path.isdir(self.dir) else []:
-            if not name.endswith(".json"):
-                continue
-            try:
-                with open(os.path.join(self.dir, name), "r",
-                          encoding="utf-8") as fh:
-                    out.append(json.load(fh))
-            except (OSError, json.JSONDecodeError):
-                continue
-        return out
+        return self.book.all()
 
     def _write(self, rec):
         rec["updated"] = self.store.provenance() if self.store else {"at": _now()}
-        p = self.path(rec["gid"])
-        tmp = p + ".tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(rec, fh, indent=2, sort_keys=True)
-        os.replace(tmp, p)
-        if self.store:
-            self.store._stage(p)
-        return rec
+        return self.book.write(self.base(rec["gid"]), rec)
 
     def ensure(self, gid, session_label=None, channels=None):
         rec = self.get(gid)
@@ -192,11 +183,7 @@ class Layers:
         return self._write(rec)
 
     def delete(self, gid):
-        try:
-            os.remove(self.path(gid))
-            return True
-        except OSError:
-            return False
+        return bool(self.book.erase(self.base(gid)))
 
     # ------------------------------------------------------------------
     @staticmethod

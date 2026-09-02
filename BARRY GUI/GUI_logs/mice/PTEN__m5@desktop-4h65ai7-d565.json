@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "created": "2026-09-02T23:23:56.404538+00:00",
+    "mouse": "2026-09-02T23:23:56.404538+00:00",
+    "project": "2026-09-02T23:23:56.404538+00:00",
+    "schema": "2026-09-02T23:23:56.404538+00:00",
+    "updated": "2026-09-02T23:23:56.404538+00:00"
+  },
+  "_keys": {
+    "attrs": {
+      "group": [
+        "set",
+        "2026-09-02T23:23:56.404538+00:00"
+      ],
+      "subgroup": [
+        "set",
+        "2026-09-02T23:23:56.404538+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-02T23:23:56.404538+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "attrs": {
+    "group": "PTEN",
+    "subgroup": "IED+"
+  },
+  "created": {
+    "at": "2026-09-02T19:23:56-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "mouse": 5,
+  "project": "PTEN",
+  "schema": 1,
+  "updated": {
+    "at": "2026-09-02T19:23:56-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

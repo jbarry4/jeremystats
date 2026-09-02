@@ -1,0 +1,102 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.388087+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 620.383
+    },
+    {
+      "start": 704.376
+    },
+    {
+      "start": 859.148
+    },
+    {
+      "start": 1048.745
+    },
+    {
+      "start": 1093.952
+    },
+    {
+      "start": 1108.867
+    },
+    {
+      "start": 1175.694
+    },
+    {
+      "start": 1178.496
+    },
+    {
+      "start": 1252.636
+    },
+    {
+      "start": 1289.831
+    },
+    {
+      "start": 1352.384
+    },
+    {
+      "start": 1358.062
+    },
+    {
+      "start": 1358.207
+    },
+    {
+      "start": 1399.954
+    },
+    {
+      "start": 1584.717
+    },
+    {
+      "start": 1605.182
+    },
+    {
+      "start": 1707.722
+    },
+    {
+      "start": 1839.978
+    },
+    {
+      "start": 1903.54
+    }
+  ],
+  "gid": "sa9275263c832",
+  "id": "8f189e010219",
+  "mouse": 55,
+  "n": 19,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2025-06-11T13:22:40",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m055_s001_2025-06-11_13-22-40",
+  "session_label": "PTEN_DKO m55 s1 2025-06-11",
+  "session_loose_key": "m055_s001",
+  "session_path": "D:\\PTEN\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-11_13-22-40",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m55s1_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

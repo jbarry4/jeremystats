@@ -21,9 +21,9 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (analysis, compose, csc, curation, discovery, eventbank,
-               events, export, extras, ids, layers, live, nlx, pipeline,
-               rebuild, registry, results, runner, sessreg, store, storyboard,
-               sysinfo, toolkit, video)
+               events, export, extras, ids, layers, live, mice as micebook,
+               nlx, pipeline, rebuild, registry, results, runner, sessreg,
+               store, storyboard, sysinfo, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -1902,6 +1902,9 @@ def api_registry():
         "known_projects": list(sessreg.KNOWN_PROJECTS),
         "tree": REG.tree(_attachments),
         "total": len([r for r in REG.all() if not r.get("retired")]),
+        # So the tree can branch on any of them without a second round trip.
+        "mice": MICE.index(),
+        "attributes": MICE.attributes(),
     })
 
 
@@ -1961,11 +1964,13 @@ def api_registry_forget(gid):
     rec = REG.by_gid(gid)
     if not rec:
         return jsonify({"ok": False, "error": "No session " + gid}), 404
-    path = STORE.session_path(rec.get("key") or "")
-    try:
-        os.remove(path)
-    except OSError as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 400
+    # Every machine's shard of this record, not just this one's: forgetting a
+    # session that only half the lab stops knowing about is worse than not
+    # forgetting it, because the next scan pulls the other half back in.
+    base = STORE.session_base(rec.get("key") or "")
+    if not STORE.sessions.erase(base):
+        return jsonify({"ok": False,
+                        "error": "Nothing on disk for " + gid}), 400
     STORE.record_activity([{
         "action": "registry.forget",
         "detail": {"gid": gid, "key": rec.get("key")},
@@ -2960,6 +2965,61 @@ BANK = eventbank.EventBank(LOGS_DIR, STORE)
 REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
+MICE = micebook.MouseBook(LOGS_DIR, STORE)
+
+
+# ==========================================================================
+# Mice -- what is true about the animal rather than the recording
+# ==========================================================================
+@app.route("/api/mice")
+def api_mice():
+    """Every mouse record, plus every attribute anyone has used.
+
+    The attribute list is what lets the housekeeping tree offer "group by
+    genotype" without anyone declaring a schema: the names come from what has
+    actually been filled in.
+    """
+    return jsonify({
+        "ok": True,
+        "mice": MICE.all(),
+        "attributes": MICE.attributes(),
+        "suggested": micebook.SUGGESTED,
+    })
+
+
+@app.route("/api/mice/set", methods=["POST"])
+def api_mice_set():
+    """Attach attributes to one mouse, or to several at once.
+
+    Several at once because that is how labelling actually goes -- you select
+    the six DKO animals and say so once, rather than opening six panels.
+    """
+    body = request.get_json(force=True) or {}
+    targets = body.get("targets")
+    if not targets:
+        targets = [{"project": body.get("project"), "mouse": body.get("mouse")}]
+    attrs = body.get("attrs") or {}
+    if not attrs and body.get("note") is None:
+        return jsonify({"ok": False, "error": "Nothing to set."}), 400
+    out = []
+    for t in targets:
+        if t.get("mouse") is None:
+            continue
+        out.append(MICE.set(t.get("project") or sessreg.UNFILED, t["mouse"],
+                            attrs, note=body.get("note"),
+                            replace=bool(body.get("replace"))))
+    STORE.record_activity([{
+        "action": "mice.label",
+        "detail": {"n": len(out), "attrs": sorted(attrs)},
+    }])
+    return jsonify({"ok": True, "mice": out, "attributes": MICE.attributes()})
+
+
+@app.route("/api/mice/forget", methods=["POST"])
+def api_mice_forget():
+    body = request.get_json(force=True) or {}
+    ok = MICE.delete(body.get("project") or sessreg.UNFILED, body.get("mouse"))
+    return jsonify({"ok": bool(ok), "attributes": MICE.attributes()})
 
 
 @app.route("/api/bank")

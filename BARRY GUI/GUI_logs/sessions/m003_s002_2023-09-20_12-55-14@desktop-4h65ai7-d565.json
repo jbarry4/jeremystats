@@ -1,0 +1,135 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-02T23:23:56.676689+00:00",
+    "bad_channels_note": "2026-09-02T23:23:56.676689+00:00",
+    "condition": "2026-09-02T23:23:56.686993+00:00",
+    "converted": "2026-09-02T23:21:29.032721+00:00",
+    "created": "2026-09-02T23:21:29.032721+00:00",
+    "duration_s": "2026-09-02T23:21:29.032721+00:00",
+    "fs": "2026-09-02T23:21:29.032721+00:00",
+    "gid": "2026-09-02T23:21:29.032721+00:00",
+    "group": "2026-09-02T23:21:29.032721+00:00",
+    "key": "2026-09-02T23:21:29.032721+00:00",
+    "label": "2026-09-02T23:21:29.032721+00:00",
+    "loose_key": "2026-09-02T23:21:29.032721+00:00",
+    "mouse": "2026-09-02T23:21:29.032721+00:00",
+    "n_channels": "2026-09-02T23:21:29.032721+00:00",
+    "project": "2026-09-02T23:21:29.032721+00:00",
+    "project_source": "2026-09-02T23:21:29.032721+00:00",
+    "schema": "2026-09-02T23:21:29.032721+00:00",
+    "session": "2026-09-02T23:21:29.032721+00:00",
+    "start": "2026-09-02T23:21:29.032721+00:00",
+    "updated": "2026-09-02T23:23:56.676689+00:00",
+    "view_state": "2026-09-02T23:21:29.032721+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14": [
+        "set",
+        "2026-09-02T23:21:29.032721+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-02T23:21:29.032721+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-02T23:23:56.686993+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "bad_channels": [
+    41,
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "base",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T16:44:51-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1985.6213333333333,
+  "fs": 30000.0,
+  "gid": "sd0d0bded958b",
+  "group": "PTEN",
+  "key": "m003_s002_2023-09-20_12-55-14",
+  "label": "PTEN m3 s2 2023-09-20",
+  "loose_key": "m003_s002",
+  "mouse": 3,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 2,
+  "start": "2023-09-20T12:55:14",
+  "updated": {
+    "at": "2026-09-02T19:23:56-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "view_state": {
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "clim": null,
+    "gain": 1,
+    "hp": 0,
+    "lp": 0,
+    "normalize": "shared",
+    "notch": 0,
+    "spacing": 50,
+    "span": 10.000000000000002,
+    "t0": 25.000000000000004,
+    "ylim": null
+  }
+}

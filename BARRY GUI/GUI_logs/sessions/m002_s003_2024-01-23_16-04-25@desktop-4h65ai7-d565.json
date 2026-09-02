@@ -1,0 +1,87 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-02T23:23:56.634318+00:00",
+    "bad_channels_note": "2026-09-02T23:23:56.634318+00:00",
+    "condition": "2026-09-02T23:23:56.643941+00:00",
+    "created": "2026-09-02T23:21:29.030072+00:00",
+    "duration_s": "2026-09-02T23:21:29.030072+00:00",
+    "first_seen_by": "2026-09-02T23:21:29.030072+00:00",
+    "fs": "2026-09-02T23:21:29.030072+00:00",
+    "gid": "2026-09-02T23:21:29.030072+00:00",
+    "group": "2026-09-02T23:21:29.030072+00:00",
+    "key": "2026-09-02T23:21:29.030072+00:00",
+    "label": "2026-09-02T23:21:29.030072+00:00",
+    "loose_key": "2026-09-02T23:21:29.030072+00:00",
+    "mouse": "2026-09-02T23:21:29.030072+00:00",
+    "n_channels": "2026-09-02T23:21:29.030072+00:00",
+    "project": "2026-09-02T23:21:29.030072+00:00",
+    "project_source": "2026-09-02T23:21:29.030072+00:00",
+    "schema": "2026-09-02T23:21:29.030072+00:00",
+    "session": "2026-09-02T23:21:29.030072+00:00",
+    "start": "2026-09-02T23:21:29.030072+00:00",
+    "updated": "2026-09-02T23:23:56.634318+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25": [
+        "set",
+        "2026-09-02T23:21:29.030072+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-02T23:21:29.030072+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-02T23:23:56.643941+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "base",
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2711.3472,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s79ba9ba163c4",
+  "group": "PTEN",
+  "key": "m002_s003_2024-01-23_16-04-25",
+  "label": "PTEN m2 s3 2024-01-23",
+  "loose_key": "m002_s003",
+  "mouse": 2,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 3,
+  "start": "2024-01-23T16:04:25",
+  "updated": {
+    "at": "2026-09-02T19:23:56-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

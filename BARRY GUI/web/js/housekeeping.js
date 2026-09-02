@@ -26,6 +26,16 @@ BARRY.views.housekeeping = (function () {
   let query = '';
   let onlyHere = false;      // hide recordings this machine cannot reach
 
+  /* Two views over the same records, and one control that changes what the
+     branches mean. Grouping is by project until you say otherwise; every
+     label anyone has put on a mouse is also a grouping, which is what makes
+     "show me the DKO animals" a dropdown rather than a feature request. */
+  let view = 'branches';     // 'branches' | 'table'
+  let groupBy = 'project';
+  let tableOf = 'sessions';  // 'sessions' | 'mice'
+  let sort = { col: null, dir: 'asc' };
+  let mouseSel = null;       // {project, mouse} being labelled
+
   /* Which recordings a scan has actually found since the app started.
 
      A recording BARRY remembers and a recording BARRY has just laid eyes on
@@ -72,15 +82,22 @@ BARRY.views.housekeeping = (function () {
        found were invisible, and the count in the toolbar disagreed with the
        list underneath it. Anything already collapsed by hand stays
        collapsed; only genuinely new branches default to open. */
-    for (const p of data.tree || []) {
-      const pk = 'p:' + p.project;
-      if (!(pk in open)) open[pk] = true;
-      for (const m of p.mice) {
-        const mk = 'm:' + p.project + '/' + m.mouse;
+    openNewBranches();
+    render();
+  }
+
+  /* A branch BARRY has not seen before starts open, whichever grouping is
+     showing. Anything collapsed by hand stays collapsed. */
+  function openNewBranches() {
+    if (!data) return;
+    for (const g of BARRY.hk.groupsOf(data, BARRY.hk.flatten(data), groupBy)) {
+      const gk = 'g:' + groupBy + ':' + g.key;
+      if (!(gk in open)) open[gk] = true;
+      for (const m of g.mice) {
+        const mk = gk + '/' + m.mouse;
         if (!(mk in open)) open[mk] = true;
       }
     }
-    render();
   }
 
   async function onShow() {
@@ -121,33 +138,11 @@ BARRY.views.housekeeping = (function () {
             + 'what is not where you expected it.' }));
     }
 
-    const shown = [];
-    const tree = el('div', { class: 'hk-tree' });
-    for (const proj of (data.tree || [])) {
-      const mice = proj.mice
-        .map((m) => ({ ...m, sessions: m.sessions.filter(matches) }))
-        .filter((m) => m.sessions.length);
-      if (!mice.length) continue;
-      const n = mice.reduce((a, m) => a + m.sessions.length, 0);
-      shown.push(...mice.flatMap((m) => m.sessions));
+    const rows = BARRY.hk.flatten(data).filter(matches);
+    const left = view === 'table' ? tableView(rows) : branchView(rows);
 
-      const pkey = 'p:' + proj.project;
-      tree.appendChild(branch(pkey, 'project', proj.project,
-        mice.length + ' mice · ' + n + ' session' + (n === 1 ? '' : 's')));
-      if (!open[pkey]) continue;
-
-      for (const m of mice) {
-        const mkey = 'm:' + proj.project + '/' + m.mouse;
-        tree.appendChild(branch(mkey, 'mouse', m.mouse,
-          m.sessions.length + ' session'
-          + (m.sessions.length === 1 ? '' : 's'), 1));
-        if (!open[mkey]) continue;
-        for (const s of m.sessions) tree.appendChild(sessionRow(s));
-      }
-    }
-
-    if (!shown.length) {
-      tree.appendChild(el('div', { class: 'hint hk-empty',
+    if (!rows.length) {
+      left.appendChild(el('div', { class: 'hint hk-empty',
         text: data.total
           ? 'Nothing matches that. ' + data.total + ' recording'
             + (data.total === 1 ? ' is' : 's are') + ' registered.'
@@ -155,15 +150,191 @@ BARRY.views.housekeeping = (function () {
             + 'will be given a permanent id and appear here.' }));
     }
 
-    host.appendChild(el('div', { class: 'hk-layout' }, [
-      tree,
+    host.appendChild(el('div', {
+      class: 'hk-layout' + (view === 'table' ? ' wide' : ''),
+    }, [
+      left,
       el('div', { class: 'hk-detail', id: 'hkDetail' }),
     ]));
     renderDetail();
   }
 
+  /* ==================================================================
+     Branches -- grouped by whatever you picked
+     ================================================================== */
+  function branchView(rows) {
+    const tree = el('div', { class: 'hk-tree' });
+    for (const g of BARRY.hk.groupsOf(data, rows, groupBy)) {
+      const n = g.mice.reduce((a, m) => a + m.sessions.length, 0);
+      const gk = 'g:' + groupBy + ':' + g.key;
+      tree.appendChild(branch(gk, 'project', g.label,
+        g.mice.length + ' mice · ' + n + ' session'
+        + (n === 1 ? '' : 's')));
+      if (!open[gk]) continue;
+
+      for (const m of g.mice) {
+        const mk = gk + '/' + m.mouse;
+        tree.appendChild(mouseBranch(mk, m));
+        if (!open[mk]) continue;
+        for (const sess of m.sessions) tree.appendChild(sessionRow(sess));
+      }
+    }
+    return tree;
+  }
+
+  /* A mouse branch carries its labels, so the tree answers "what is this
+     animal" without anyone having to open a panel -- and clicking one is how
+     you change it. */
+  function mouseBranch(key, m) {
+    const isOpen = !!open[key];
+    const attrs = BARRY.hk.attrsFor(data, m.sessions[0]);
+    const chips = BARRY.hk.attributes(data)
+      .filter((a) => attrs[a.id])
+      .map((a) => el('span', { class: 'hk-label', title: a.name,
+                               text: attrs[a.id] }));
+    const isSel = mouseSel && mouseSel.project === m.project
+                  && String(mouseSel.mouse) === String(m.mouse);
+    return el('div', {
+      class: 'hk-branch hk-mouse' + (isSel ? ' sel' : ''),
+      style: 'padding-left:18px',
+      onclick: () => { open[key] = !isOpen; render(); },
+    }, [
+      el('span', { class: 'hk-caret' + (isOpen ? ' open' : ''), text: '▸' }),
+      el('strong', { text: 'm' + m.mouse }),
+      el('span', { class: 'hk-sub',
+                   text: m.sessions.length + ' session'
+                       + (m.sessions.length === 1 ? '' : 's') }),
+      el('div', { class: 'hk-labels' }, chips),
+      el('button', {
+        class: 'hk-tag',
+        title: chips.length ? 'Change what this mouse is labelled'
+                            : 'Label this mouse',
+        text: chips.length ? 'edit' : '+ label',
+        onclick: (e) => {
+          e.stopPropagation();
+          mouseSel = { project: m.project, mouse: m.mouse };
+          selected = null;
+          render();
+        },
+      }),
+    ]);
+  }
+
+  /* ==================================================================
+     Table -- the same records with columns, because some questions are
+     about a column and a tree has none
+     ================================================================== */
+  function tableView(rows) {
+    const wrap = el('div', { class: 'hk-tablecol' });
+    if (tableOf === 'mice') {
+      const cols = BARRY.hk.mouseCols(data);
+      const mrows = BARRY.hk.sortRows(
+        BARRY.hk.miceRows(data, rows), cols, sort);
+      wrap.appendChild(BARRY.hk.table({
+        cols, rows: mrows, sort, onsort: resort,
+        isSel: (r) => mouseSel && mouseSel.project === r.project
+                      && String(mouseSel.mouse) === String(r.mouse),
+        onclick: (r) => {
+          mouseSel = { project: r.project, mouse: r.mouse };
+          selected = null;
+          render();
+        },
+        // Clicking a label cell edits that one label in place, which is how
+        // you fill a column down a spreadsheet.
+        edit: (r, attr) => quickSet(r, attr),
+      }));
+      wrap.appendChild(el('div', { class: 'hint',
+        text: mrows.length + ' mice. Click a label to set it, or a row to '
+            + 'edit all of them.' }));
+    } else {
+      const cols = BARRY.hk.SESSION_COLS;
+      const srows = BARRY.hk.sortRows(rows, cols, sort);
+      wrap.appendChild(BARRY.hk.table({
+        cols, rows: srows, sort, onsort: resort,
+        isSel: (r) => selected === r.gid,
+        onclick: (r) => { selected = r.gid; mouseSel = null; render(); },
+      }));
+      wrap.appendChild(el('div', { class: 'hint',
+        text: srows.length + ' recording' + (srows.length === 1 ? '' : 's')
+            + '. Click a column heading to sort, a row to inspect it.' }));
+    }
+    return wrap;
+  }
+
+  function resort(col) {
+    sort = (sort.col === col)
+      ? { col, dir: sort.dir === 'asc' ? 'desc' : 'asc' }
+      : { col, dir: 'asc' };
+    render();
+  }
+
+  function copyTable() {
+    const rows = BARRY.hk.flatten(data).filter(matches);
+    const cols = tableOf === 'mice'
+      ? BARRY.hk.mouseCols(data) : BARRY.hk.SESSION_COLS;
+    const body = tableOf === 'mice' ? BARRY.hk.miceRows(data, rows) : rows;
+    const text = BARRY.hk.toTSV(cols, BARRY.hk.sortRows(body, cols, sort));
+    navigator.clipboard.writeText(text).then(
+      () => toast('Copied ' + body.length + ' row'
+                  + (body.length === 1 ? '' : 's')
+                  + ' — paste straight into a spreadsheet.', 'ok'),
+      () => toast('The browser would not let me use the clipboard.', 'err'));
+  }
+
   function toolbar() {
     const bar = el('div', { class: 'hk-bar' });
+
+    bar.appendChild(el('div', { class: 'seg' }, [
+      el('button', {
+        class: view === 'branches' ? 'on' : '', text: 'Branches',
+        title: 'Nested by whatever you group on',
+        onclick: () => { view = 'branches'; render(); },
+      }),
+      el('button', {
+        class: view === 'table' ? 'on' : '', text: 'Table',
+        title: 'The same records with columns, sortable and copyable',
+        onclick: () => { view = 'table'; render(); },
+      }),
+    ]));
+
+    if (view === 'branches') {
+      const opts = [
+        el('option', { value: 'project', text: 'Project' }),
+        el('option', { value: 'cohort', text: 'Cohort' }),
+      ];
+      for (const a of BARRY.hk.attributes(data)) {
+        opts.push(el('option', {
+          value: a.id,
+          text: a.name + (a.n ? '  (' + a.n + ')' : ''),
+        }));
+      }
+      const sel = el('select', {
+        class: 'hk-groupby', title: 'What the top-level branches mean',
+        onchange: (e) => { groupBy = e.target.value; openNewBranches(); render(); },
+      }, opts);
+      sel.value = groupBy;
+      bar.appendChild(el('label', { class: 'hk-inline' }, [
+        el('span', { text: 'Group by' }), sel,
+      ]));
+    } else {
+      bar.appendChild(el('div', { class: 'seg' }, [
+        el('button', {
+          class: tableOf === 'sessions' ? 'on' : '', text: 'Recordings',
+          onclick: () => { tableOf = 'sessions'; sort = { col: null, dir: 'asc' }; render(); },
+        }),
+        el('button', {
+          class: tableOf === 'mice' ? 'on' : '', text: 'Mice',
+          onclick: () => { tableOf = 'mice'; sort = { col: null, dir: 'asc' }; render(); },
+        }),
+      ]));
+      bar.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Copy',
+        title: 'Copy what is showing as tab-separated text, ready to paste '
+             + 'into a spreadsheet',
+        onclick: copyTable,
+      }));
+    }
+
     bar.appendChild(el('input', {
       type: 'search', class: 'hk-search',
       placeholder: 'Filter by mouse, project, date, id or path…',
@@ -213,9 +384,11 @@ BARRY.views.housekeeping = (function () {
     bar.appendChild(el('button', {
       class: 'btn ghost sm', text: 'Expand all',
       onclick: () => {
-        for (const p of data.tree) {
-          open['p:' + p.project] = true;
-          for (const m of p.mice) open['m:' + p.project + '/' + m.mouse] = true;
+        for (const g of BARRY.hk.groupsOf(data, BARRY.hk.flatten(data),
+                                          groupBy)) {
+          const gk = 'g:' + groupBy + ':' + g.key;
+          open[gk] = true;
+          for (const m of g.mice) open[gk + '/' + m.mouse] = true;
         }
         render();
       },

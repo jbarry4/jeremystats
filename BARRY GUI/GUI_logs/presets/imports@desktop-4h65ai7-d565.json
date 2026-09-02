@@ -1,0 +1,37 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.289308+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "presets": [
+    {
+      "builtin": true,
+      "columns": {
+        "end": 1,
+        "start": 0
+      },
+      "id": "ets_mat",
+      "kind": "mat",
+      "name": "LLspikedetector ets.mat",
+      "note": "ets = [onset offset] in samples; ech gives channel participation",
+      "units": "samples"
+    },
+    {
+      "builtin": true,
+      "columns": {
+        "channel": "ch",
+        "start": "idx"
+      },
+      "filter": {
+        "is_valid": 1
+      },
+      "id": "toothy_ds",
+      "kind": "csv",
+      "name": "Toothy DS_DF",
+      "note": "Toothy dentate-spike table; idx is a sample index",
+      "units": "samples"
+    }
+  ]
+}

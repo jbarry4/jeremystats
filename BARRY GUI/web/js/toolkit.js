@@ -410,10 +410,14 @@ BARRY.views.toolkit = (function () {
       return;
     }
 
-    const sessSel = el('select', {}, rows.map((s) => el('option', {
-      value: s.gid,
-      text: (s.label || s.key) + (s.reachable ? '' : '   (not on this machine)'),
-    })));
+    // A search field, not a dropdown: there are hundreds of recordings now.
+    let pickedGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    const sessPick = BARRY.pickSession({
+      rows,
+      value: pickedGid,
+      placeholder: 'Which recording? Type a mouse, session or date\u2026',
+      onpick: (r) => { pickedGid = r.gid; },
+    });
     const kindSel = el('select', {}, (cur.kinds || []).map((k) =>
       el('option', { value: k.id, text: k.name })));
     const nameIn = el('input', { type: 'text',
@@ -434,7 +438,8 @@ BARRY.views.toolkit = (function () {
 
     const src = el('div', { class: 'choice-grid' }, [
       el('button', { class: 'choice', onclick: async () => {
-        const s = rows.find((r) => r.gid === sessSel.value);
+        const s = rows.find((r) => r.gid === pickedGid);
+        if (!s) { toast('Pick a recording first.', 'err'); return; }
         try {
           const res = await apiPost('/api/bank/for-session', {
             identity: { key: s.key, loose_key: s.loose_key, mouse: s.mouse,
@@ -478,7 +483,7 @@ BARRY.views.toolkit = (function () {
               + 'not that it was right.' }),
         el('div', { class: 'wiz-grid' }, [
           el('div', { class: 'field' }, [
-            el('label', { text: 'Recording' }), sessSel]),
+            el('label', { text: 'Recording' }), sessPick]),
           el('div', { class: 'field' }, [
             el('label', { text: 'What kind' }), kindSel]),
         ]),
@@ -499,7 +504,7 @@ BARRY.views.toolkit = (function () {
           }
           try {
             const res = await apiPost('/api/curation/create', {
-              gid: sessSel.value, kind: kindSel.value,
+              gid: pickedGid, kind: kindSel.value,
               name: nameIn.value.trim() || null,
               events: staged,
               source: { from },
@@ -541,11 +546,14 @@ BARRY.views.toolkit = (function () {
 
     const rows = ((strata.registry || {}).tree || [])
       .flatMap((p) => p.mice.flatMap((m) => m.sessions));
-    const pick = el('select', { id: 'strataPick' }, rows.map((s) => el('option', {
-      value: s.gid,
-      text: (s.label || s.key) + (s.reachable ? '' : '   (not on this machine)'),
-      disabled: s.reachable ? null : 'disabled',
-    })));
+    // Same search field as the curation importer, for the same reason.
+    let strataGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    const pick = BARRY.pickSession({
+      rows, value: strataGid,
+      placeholder: 'Which recording? Type a mouse, session or date…',
+      onpick: (r) => { strataGid = r.gid; },
+    });
+    pick.id = 'strataPick';
 
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
@@ -561,7 +569,10 @@ BARRY.views.toolkit = (function () {
       el('button', {
         class: 'btn', text: 'Open\u2026',
         disabled: rows.length ? null : 'disabled',
-        onclick: () => BARRY.strata.enter(pick.value),
+        onclick: () => {
+          if (!strataGid) { toast('Pick a recording first.', 'err'); return; }
+          BARRY.strata.enter(strataGid);
+        },
       }),
     ]));
 

@@ -1,0 +1,37 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.285045+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-02T18:48:28-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "gid": "s68d318a1e035",
+  "group": null,
+  "key": "split_991f631c",
+  "label": "unidentified",
+  "loose_key": null,
+  "merged_into": "s651afb2f3657",
+  "mouse": null,
+  "paths": [
+    "Z:\\harness\\split-me"
+  ],
+  "project": "KCNT1",
+  "project_source": "inherited",
+  "retired": true,
+  "schema": 2,
+  "session": null,
+  "split_from": "s651afb2f3657",
+  "start": null,
+  "updated": {
+    "at": "2026-09-02T18:48:28-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

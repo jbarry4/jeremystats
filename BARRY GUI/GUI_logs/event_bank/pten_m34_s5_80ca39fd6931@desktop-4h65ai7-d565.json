@@ -1,0 +1,249 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.369128+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 19.128
+    },
+    {
+      "start": 29.736
+    },
+    {
+      "start": 85.751
+    },
+    {
+      "start": 132.99
+    },
+    {
+      "start": 170.302
+    },
+    {
+      "start": 180.672
+    },
+    {
+      "start": 193.424
+    },
+    {
+      "start": 213.115
+    },
+    {
+      "start": 243.05
+    },
+    {
+      "start": 265.397
+    },
+    {
+      "start": 299.752
+    },
+    {
+      "start": 300.116
+    },
+    {
+      "start": 313.646
+    },
+    {
+      "start": 327.064
+    },
+    {
+      "start": 351.201
+    },
+    {
+      "start": 355.218
+    },
+    {
+      "start": 367.618
+    },
+    {
+      "start": 379.467
+    },
+    {
+      "start": 387.718
+    },
+    {
+      "start": 391.842
+    },
+    {
+      "start": 399.197
+    },
+    {
+      "start": 411.791
+    },
+    {
+      "start": 419.762
+    },
+    {
+      "start": 420.073
+    },
+    {
+      "start": 422.904
+    },
+    {
+      "start": 439.693
+    },
+    {
+      "start": 529.474
+    },
+    {
+      "start": 530.458
+    },
+    {
+      "start": 530.804
+    },
+    {
+      "start": 531.045
+    },
+    {
+      "start": 532.549
+    },
+    {
+      "start": 610.765
+    },
+    {
+      "start": 639.158
+    },
+    {
+      "start": 640.134
+    },
+    {
+      "start": 640.923
+    },
+    {
+      "start": 683.794
+    },
+    {
+      "start": 688.982
+    },
+    {
+      "start": 706.209
+    },
+    {
+      "start": 719.162
+    },
+    {
+      "start": 722.379
+    },
+    {
+      "start": 739.226
+    },
+    {
+      "start": 748.825
+    },
+    {
+      "start": 750.487
+    },
+    {
+      "start": 782.348
+    },
+    {
+      "start": 782.915
+    },
+    {
+      "start": 808.073
+    },
+    {
+      "start": 817.402
+    },
+    {
+      "start": 899.933
+    },
+    {
+      "start": 1067.27
+    },
+    {
+      "start": 1086.2
+    },
+    {
+      "start": 1101.904
+    },
+    {
+      "start": 1104.115
+    },
+    {
+      "start": 1104.26
+    },
+    {
+      "start": 1105.047
+    },
+    {
+      "start": 1152.449
+    },
+    {
+      "start": 1155.964
+    },
+    {
+      "start": 1164.315
+    },
+    {
+      "start": 1171.644
+    },
+    {
+      "start": 1171.791
+    },
+    {
+      "start": 1175.972
+    },
+    {
+      "start": 1186.334
+    },
+    {
+      "start": 1187.745
+    },
+    {
+      "start": 1197.372
+    },
+    {
+      "start": 1197.736
+    },
+    {
+      "start": 1208.961
+    },
+    {
+      "start": 1209.208
+    },
+    {
+      "start": 1216.014
+    },
+    {
+      "start": 1272.729
+    }
+  ],
+  "gid": "s14510e30e1bd",
+  "id": "80ca39fd6931",
+  "mouse": 34,
+  "n": 68,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2024-06-10T14:45:34",
+  "schema": 1,
+  "session": 5,
+  "session_key": "m034_s005_2024-06-10_14-45-34",
+  "session_label": "PTEN m34 s5 2024-06-10",
+  "session_loose_key": "m034_s005",
+  "session_path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s5jun10\\2024-06-10_14-45-34",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m34s5_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

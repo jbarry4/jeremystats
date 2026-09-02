@@ -33,6 +33,8 @@ import os
 import time
 import uuid
 
+from . import shards
+
 SCHEMA = 1
 
 # Unspecified is the absence of a label, not a label. A candidate nobody has
@@ -116,34 +118,32 @@ def _now():
 class Curation:
     def __init__(self, logs_dir, store):
         self.dir = os.path.join(logs_dir, "curation")
+        # Decisions merge per candidate, so two people working through the
+        # same set from opposite ends both keep every call they made.
+        self.book = shards.Book(self.dir, {
+            "events": shards.BYID,
+            "created": shards.FIRST,
+        }, store)
+        self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Files
     # ------------------------------------------------------------------
+    def base(self, gid, kind):
+        return shards.safe_base(gid, "".join(
+            c for c in str(kind) if c.isalnum()))
+
     def path(self, gid, kind):
-        safe = "".join(c for c in str(gid) if c.isalnum() or c in "._-")
-        k = "".join(c for c in str(kind) if c.isalnum())
-        return os.path.join(self.dir, "%s__%s.json" % (safe, k))
+        return self.book.mine(self.base(gid, kind))
 
     def _read(self, gid, kind):
-        try:
-            with open(self.path(gid, kind), "r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except (OSError, json.JSONDecodeError):
-            return None
+        return self.book.read(self.base(gid, kind))
 
     def _write(self, rec):
         rec["updated"] = self.store.provenance() if self.store else {"at": _now()}
-        p = self.path(rec["gid"], rec["kind"])
-        tmp = p + ".tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(rec, fh, indent=2, sort_keys=True)
-        os.replace(tmp, p)
-        if self.store:
-            self.store._stage(p)
-        return rec
+        return self.book.write(self.base(rec["gid"], rec["kind"]), rec)
 
     # ------------------------------------------------------------------
     # Reading
@@ -159,17 +159,7 @@ class Curation:
         return rec
 
     def all(self):
-        out = []
-        for name in sorted(os.listdir(self.dir)) if os.path.isdir(self.dir) else []:
-            if not name.endswith(".json"):
-                continue
-            try:
-                with open(os.path.join(self.dir, name), "r",
-                          encoding="utf-8") as fh:
-                    out.append(json.load(fh))
-            except (OSError, json.JSONDecodeError):
-                continue
-        return out
+        return self.book.all()
 
     @staticmethod
     def progress(rec):
@@ -356,11 +346,7 @@ class Curation:
         return self._write(rec)
 
     def delete(self, gid, kind):
-        try:
-            os.remove(self.path(gid, kind))
-            return True
-        except OSError:
-            return False
+        return bool(self.book.erase(self.base(gid, kind)))
 
     # ------------------------------------------------------------------
     # Out

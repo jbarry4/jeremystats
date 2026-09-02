@@ -1,0 +1,219 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.356599+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 51.913
+    },
+    {
+      "start": 102.057
+    },
+    {
+      "start": 140.027
+    },
+    {
+      "start": 183.916
+    },
+    {
+      "start": 184.181
+    },
+    {
+      "start": 223.283
+    },
+    {
+      "start": 275.166
+    },
+    {
+      "start": 298.151
+    },
+    {
+      "start": 312.376
+    },
+    {
+      "start": 312.555
+    },
+    {
+      "start": 386.595
+    },
+    {
+      "start": 390.127
+    },
+    {
+      "start": 415.403
+    },
+    {
+      "start": 435.144
+    },
+    {
+      "start": 453.562
+    },
+    {
+      "start": 488.921
+    },
+    {
+      "start": 497.153
+    },
+    {
+      "start": 509.463
+    },
+    {
+      "start": 515.406
+    },
+    {
+      "start": 539.344
+    },
+    {
+      "start": 550.81
+    },
+    {
+      "start": 551.079
+    },
+    {
+      "start": 556.877
+    },
+    {
+      "start": 589.936
+    },
+    {
+      "start": 618.136
+    },
+    {
+      "start": 628.262
+    },
+    {
+      "start": 628.542
+    },
+    {
+      "start": 639.661
+    },
+    {
+      "start": 707.251
+    },
+    {
+      "start": 751.091
+    },
+    {
+      "start": 751.218
+    },
+    {
+      "start": 800.571
+    },
+    {
+      "start": 827.348
+    },
+    {
+      "start": 879.554
+    },
+    {
+      "start": 914.355
+    },
+    {
+      "start": 983.568
+    },
+    {
+      "start": 983.674
+    },
+    {
+      "start": 983.786
+    },
+    {
+      "start": 1021.611
+    },
+    {
+      "start": 1029.882
+    },
+    {
+      "start": 1081.988
+    },
+    {
+      "start": 1133.509
+    },
+    {
+      "start": 1171.643
+    },
+    {
+      "start": 1206.72
+    },
+    {
+      "start": 1461.861
+    },
+    {
+      "start": 1461.981
+    },
+    {
+      "start": 1494.744
+    },
+    {
+      "start": 1528.021
+    },
+    {
+      "start": 1528.314
+    },
+    {
+      "start": 1542.249
+    },
+    {
+      "start": 1574.154
+    },
+    {
+      "start": 1601.084
+    },
+    {
+      "start": 1611.127
+    },
+    {
+      "start": 1667.593
+    },
+    {
+      "start": 1721.632
+    },
+    {
+      "start": 1810.673
+    },
+    {
+      "start": 1857.994
+    },
+    {
+      "start": 1872.306
+    }
+  ],
+  "gid": "sd24a31e0e55b",
+  "id": "2b8509151db1",
+  "mouse": 29,
+  "n": 58,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2024-07-23T15:31:49",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m029_s004_2024-07-23_15-31-49",
+  "session_label": "PTEN m29 s4 2024-07-23",
+  "session_loose_key": "m029_s004",
+  "session_path": "D:\\PTEN\\PTEN\\m29_ptenblind\\m29s4jul23\\2024-07-23_15-31-49",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m29s4_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

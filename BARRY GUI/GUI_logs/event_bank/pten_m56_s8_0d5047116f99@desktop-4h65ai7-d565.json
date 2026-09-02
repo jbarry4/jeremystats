@@ -1,0 +1,318 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.389484+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 10.036
+    },
+    {
+      "start": 10.161
+    },
+    {
+      "start": 13.179
+    },
+    {
+      "start": 16.831
+    },
+    {
+      "start": 28.054
+    },
+    {
+      "start": 57.921
+    },
+    {
+      "start": 86.625
+    },
+    {
+      "start": 89.462
+    },
+    {
+      "start": 105.559
+    },
+    {
+      "start": 115.219
+    },
+    {
+      "start": 117.417
+    },
+    {
+      "start": 126.925
+    },
+    {
+      "start": 140.956
+    },
+    {
+      "start": 164.107
+    },
+    {
+      "start": 173.23
+    },
+    {
+      "start": 176.363
+    },
+    {
+      "start": 180.055
+    },
+    {
+      "start": 188.21
+    },
+    {
+      "start": 236.583
+    },
+    {
+      "start": 289.956
+    },
+    {
+      "start": 291.554
+    },
+    {
+      "start": 314.148
+    },
+    {
+      "start": 314.286
+    },
+    {
+      "start": 324.175
+    },
+    {
+      "start": 379.974
+    },
+    {
+      "start": 382.197
+    },
+    {
+      "start": 405.211
+    },
+    {
+      "start": 480.732
+    },
+    {
+      "start": 486.559
+    },
+    {
+      "start": 513.108
+    },
+    {
+      "start": 514.175
+    },
+    {
+      "start": 514.283
+    },
+    {
+      "start": 520.313
+    },
+    {
+      "start": 530.204
+    },
+    {
+      "start": 530.781
+    },
+    {
+      "start": 544.628
+    },
+    {
+      "start": 594.649
+    },
+    {
+      "start": 625.476
+    },
+    {
+      "start": 642.276
+    },
+    {
+      "start": 764.139
+    },
+    {
+      "start": 776.235
+    },
+    {
+      "start": 921.072
+    },
+    {
+      "start": 929.25
+    },
+    {
+      "start": 939.204
+    },
+    {
+      "start": 946.778
+    },
+    {
+      "start": 973.472
+    },
+    {
+      "start": 977.739
+    },
+    {
+      "start": 979.119
+    },
+    {
+      "start": 1040.977
+    },
+    {
+      "start": 1046.843
+    },
+    {
+      "start": 1084.331
+    },
+    {
+      "start": 1101.744
+    },
+    {
+      "start": 1114.413
+    },
+    {
+      "start": 1136.295
+    },
+    {
+      "start": 1197.664
+    },
+    {
+      "start": 1214.961
+    },
+    {
+      "start": 1252.356
+    },
+    {
+      "start": 1258.53
+    },
+    {
+      "start": 1299.717
+    },
+    {
+      "start": 1318.625
+    },
+    {
+      "start": 1325.706
+    },
+    {
+      "start": 1346.298
+    },
+    {
+      "start": 1358.579
+    },
+    {
+      "start": 1365.37
+    },
+    {
+      "start": 1366.647
+    },
+    {
+      "start": 1380.191
+    },
+    {
+      "start": 1421.532
+    },
+    {
+      "start": 1454.468
+    },
+    {
+      "start": 1460.022
+    },
+    {
+      "start": 1464.296
+    },
+    {
+      "start": 1472.248
+    },
+    {
+      "start": 1490.526
+    },
+    {
+      "start": 1492.972
+    },
+    {
+      "start": 1519.225
+    },
+    {
+      "start": 1541.681
+    },
+    {
+      "start": 1542.994
+    },
+    {
+      "start": 1543.663
+    },
+    {
+      "start": 1546.397
+    },
+    {
+      "start": 1551.575
+    },
+    {
+      "start": 1610.71
+    },
+    {
+      "start": 1624.264
+    },
+    {
+      "start": 1649.731
+    },
+    {
+      "start": 1664.192
+    },
+    {
+      "start": 1664.994
+    },
+    {
+      "start": 1672.08
+    },
+    {
+      "start": 1672.364
+    },
+    {
+      "start": 1728.147
+    },
+    {
+      "start": 1743.018
+    },
+    {
+      "start": 1747.159
+    },
+    {
+      "start": 1786.139
+    },
+    {
+      "start": 1789.645
+    }
+  ],
+  "gid": "sb5b24f9f8e93",
+  "id": "0d5047116f99",
+  "mouse": 56,
+  "n": 91,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2025-06-19T16:39:58",
+  "schema": 1,
+  "session": 8,
+  "session_key": "m056_s008_2025-06-19_16-39-58",
+  "session_label": "PTEN_DKO m56 s8 2025-06-19",
+  "session_loose_key": "m056_s008",
+  "session_path": "D:\\PTEN\\PTEN_DKO\\PTENDKOm56\\m56s8_06192025\\2025-06-19_16-39-58",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m56s8_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

@@ -148,6 +148,129 @@ BARRY.hues = function hues(n) {
   return n === undefined ? base : base[n % (base.length - 1)];
 };
 
+
+/* ==========================================================================
+   Picking one recording out of hundreds.
+
+   A <select> was fine when BARRY knew about six recordings. Scanning a drive
+   registers every one it walks past, so the list is now in the hundreds and a
+   dropdown is the wrong control entirely -- you cannot type at it, you cannot
+   see the project or whether the drive is mounted, and finding m59 s11 means
+   scrolling.
+
+   So: a search field that filters as you type, over the label, the mouse and
+   session numbers, the project, the cohort, the date and the permanent id.
+   Arrow keys move, enter picks, escape closes.
+   ========================================================================== */
+BARRY.pickSession = function pickSession(opts) {
+  const rows = (opts && opts.rows) || [];
+  const onpick = (opts && opts.onpick) || function () {};
+  let value = (opts && opts.value) || null;
+  let cursor = 0;
+  let open = false;
+
+  const hayOf = (r) => [
+    r.label, r.key, r.gid, r.project, r.cohort,
+    'm' + r.mouse, 's' + r.session, r.date,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  const input = el('input', {
+    type: 'search', class: 'sp-input',
+    placeholder: (opts && opts.placeholder)
+      || 'Type a mouse, session, project or date\u2026',
+    autocomplete: 'off', spellcheck: 'false',
+  });
+  const list = el('div', { class: 'sp-list hidden' });
+  const box = el('div', { class: 'sp-box' }, [input, list]);
+
+  const current = () => rows.find((r) => r.gid === value) || null;
+
+  function matches() {
+    const q = input.value.trim().toLowerCase();
+    if (!q) return rows.slice(0, 60);
+    const terms = q.split(/\s+/);
+    return rows.filter((r) => {
+      const hay = hayOf(r);
+      return terms.every((t) => hay.includes(t));
+    }).slice(0, 60);
+  }
+
+  function draw() {
+    const found = matches();
+    cursor = Math.max(0, Math.min(cursor, found.length - 1));
+    list.innerHTML = '';
+    if (!found.length) {
+      list.appendChild(el('div', { class: 'sp-none',
+        text: rows.length ? 'Nothing matches that.'
+                          : 'No recordings registered yet.' }));
+    }
+    found.forEach((r, i) => {
+      list.appendChild(el('div', {
+        class: 'sp-row' + (i === cursor ? ' on' : '')
+             + (r.reachable ? '' : ' away'),
+        onmouseenter: () => { cursor = i; paintCursor(); },
+        onmousedown: (e) => { e.preventDefault(); choose(r); },
+      }, [
+        el('span', { class: 'sp-dot' + (r.reachable ? ' on' : ''),
+                     title: r.reachable ? 'On a drive this machine can reach'
+                                        : 'Not mounted here' }),
+        el('span', { class: 'sp-name', text: r.label || r.key || r.gid }),
+        r.cohort ? el('span', { class: 'sp-tag', text: r.cohort }) : null,
+        el('span', { class: 'sp-proj', text: r.project || '' }),
+      ].filter(Boolean)));
+    });
+    if (rows.length > found.length) {
+      list.appendChild(el('div', { class: 'sp-none',
+        text: found.length + ' of ' + rows.length + ' shown \u2014 keep '
+            + 'typing to narrow it.' }));
+    }
+  }
+
+  function paintCursor() {
+    Array.from(list.querySelectorAll('.sp-row')).forEach(
+      (n, i) => n.classList.toggle('on', i === cursor));
+  }
+
+  function show() { open = true; list.classList.remove('hidden'); draw(); }
+  function hide() { open = false; list.classList.add('hidden'); }
+
+  function choose(r) {
+    value = r.gid;
+    input.value = r.label || r.key || r.gid;
+    hide();
+    onpick(r);
+  }
+
+  input.addEventListener('focus', () => { input.select(); show(); });
+  input.addEventListener('input', () => { cursor = 0; show(); });
+  input.addEventListener('blur', () => setTimeout(hide, 140));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { show(); return; }
+      cursor += e.key === 'ArrowDown' ? 1 : -1;
+      const n = list.querySelectorAll('.sp-row').length;
+      cursor = (cursor + n) % (n || 1);
+      paintCursor();
+      const on = list.querySelector('.sp-row.on');
+      if (on) on.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const found = matches();
+      if (found[cursor]) choose(found[cursor]);
+    } else if (e.key === 'Escape') {
+      if (open) { e.preventDefault(); e.stopPropagation(); hide(); }
+    }
+  });
+
+  const start = current();
+  if (start) input.value = start.label || start.key || start.gid;
+
+  box.pickerValue = () => value;
+  box.pickerRow = () => current();
+  return box;
+};
+
 /* ---------- rate limiting ---------- */
 function debounce(fn, ms) {
   let h = null;

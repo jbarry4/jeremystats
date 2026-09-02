@@ -1,22 +1,27 @@
 """
 store.py -- The GUI_logs store: everything BARRY remembers, on disk, in git.
 
-Layout (all JSON, all designed to merge cleanly when two people push):
+Layout -- and every path in it is chosen so that **no two machines ever write
+the same file**, which is what makes a git conflict impossible rather than
+merely unlikely. See shards.py for the mechanism.
 
     GUI_logs/
       README.md
-      runs/YYYY-MM-DD/<runid>.json    one file per script run
-      sessions/<identity>.json        per-session: bad channels, notes, events
-      presets/filters.json            named filter presets
-      presets/imports.json            event-import presets
-      presets/layouts.json            saved figure layouts
-      errors/YYYY-MM-DD.jsonl         one error per line
-      index.json                      pooled roll-up, regenerated on demand
+      runs/YYYY-MM-DD/<runid>.json         written once, by its own machine
+      sessions/<identity>@<machine>.json   bad channels, notes, paths, gid
+      presets/filters@<machine>.json       named filter presets
+      presets/imports@<machine>.json       event-import presets
+      presets/layouts@<machine>.json       saved figure layouts
+      prefs/workbench@<machine>.json       theme, favourites, where-was-I
+      errors/YYYY-MM-DD@<machine>.jsonl    one error per line
+      activity/YYYY-MM-DD@<machine>.jsonl  one action per line
+      .cache/index.json                    derived; git ignores it
 
-The one-file-per-run and one-file-per-session choices are deliberate: git
-merges separate files without conflict, so two machines can both record work
-and a pull just brings both sets in. A single shared log file would conflict on
-almost every push.
+Records that can be edited are split per machine and compiled on read.
+Append-only logs get the machine in the filename instead, because two people
+appending to one file is the oldest conflict there is. And the pooled index is
+derived from all of the above, so it is a local cache rather than something to
+track -- a regenerated roll-up in git conflicts on literally every pull.
 
 Nothing here ever commits or pushes. It writes files; you commit them.
 """
@@ -33,9 +38,53 @@ import threading
 import uuid
 from datetime import datetime, timezone
 
+from . import shards
+
 _LOCK = threading.RLock()
 
 SCHEMA = 1
+
+# How each field of a record is compiled when two machines disagree.
+# Anything unlisted is last-writer-wins, which is right for a field that
+# holds one person's decision.
+SESSION_SPEC = {
+    # Birth facts. The global id must never flip, or every attachment keyed
+    # on it comes loose, so the earliest one minted wins for good.
+    "gid": shards.FIRST,
+    "created": shards.FIRST,
+    # Each machine knows a different mount and none of them is wrong.
+    "paths": shards.UNION,
+    # One key per machine, written only by that machine.
+    "seen": shards.MAPLWW,
+    "bookmarks": shards.BYID,
+}
+
+PRESET_SPEC = {"presets": shards.BYID}
+
+PREFS_BASE = "workbench"
+PREFS_SPEC = {
+    # Favourited scripts are about the work, so everyone's picks add up --
+    # and un-favouriting still removes, because UNION carries tombstones.
+    "fav_scripts": shards.UNION,
+    # Named collections of results: merged per collection.
+    "result_collections": shards.BYID,
+    # Already a map keyed by hostname, which is the same idea one level down;
+    # merging it per key means each machine only ever changes its own entry.
+    "themes": shards.MAPLWW,
+}
+
+# Settings that describe this screen rather than this project. Merging them
+# would mean a colleague's push changes what is in front of you, which is a
+# bug however tidy the diff looks -- and half of them are absolute paths that
+# do not exist on the other machine anyway. Stored per machine like everything
+# else, and simply read from your own shard.
+PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
+               "chrome", "fullscreen", "zoom",
+               "recent_scripts", "recent_bookmarks", "pipeline_folders",
+               "scratch_draft")
+
+TRIAGE_SPEC = {"marks": shards.MAPLWW}
+TRIAGE_BASE = "resolved"
 
 
 class Store:
@@ -47,7 +96,17 @@ class Store:
             "sessions": os.path.join(self.root, "sessions"),
             "presets": os.path.join(self.root, "presets"),
             "errors": os.path.join(self.root, "errors"),
+            "activity": os.path.join(self.root, "activity"),
+            "prefs": os.path.join(self.root, "prefs"),
+            "cache": os.path.join(self.root, ".cache"),
         }
+        # Everything editable, per machine, compiled on read.
+        self.sessions = shards.Book(self.dirs["sessions"], SESSION_SPEC, self)
+        self.presets = shards.Book(self.dirs["presets"], PRESET_SPEC, self)
+        self.prefs = shards.Book(self.dirs["prefs"], PREFS_SPEC, self)
+        self.triage = shards.Book(self.dirs["errors"], TRIAGE_SPEC, self)
+        self.error_log = shards.DayLog(self.dirs["errors"], self)
+        self.activity_log = shards.DayLog(self.dirs["activity"], self)
         # Runs are one small JSON file each, which merges cleanly in git but
         # means listing them is one open() per run. Cached in memory and
         # invalidated by the day folders' own mtimes, so a colleague's
@@ -65,12 +124,65 @@ class Store:
         readme = os.path.join(self.root, "README.md")
         if not os.path.exists(readme):
             _write_text(readme, _README)
-        for name, default in (("filters.json", _DEFAULT_FILTERS),
-                              ("imports.json", _DEFAULT_IMPORTS),
-                              ("layouts.json", {"presets": []})):
-            p = os.path.join(self.dirs["presets"], name)
-            if not os.path.exists(p):
-                _write_json(p, default)
+        # Any file written before sharding becomes this machine's shard.
+        # Done once, up front: both sides of a pull doing it produces "both
+        # deleted the old file and each added their own", which git resolves
+        # by itself, whereas one machine editing a file another has deleted
+        # is exactly the conflict this whole design exists to avoid.
+        for book in (self.sessions, self.presets, self.triage):
+            book.absorb_legacy()
+        self._absorb_legacy_prefs()
+        self._absorb_legacy_logs()
+        for kind, default in (("filters", _DEFAULT_FILTERS),
+                              ("imports", _DEFAULT_IMPORTS),
+                              ("layouts", {"presets": []})):
+            # Built-in presets carry fixed ids, so every machine writing them
+            # once still compiles to one set rather than N copies.
+            if not self.presets.read(kind):
+                self.presets.write(kind, dict(default))
+
+    def _absorb_legacy_prefs(self):
+        old = os.path.join(self.root, "preferences.json")
+        if os.path.isfile(old):
+            data = _read_json(old) or {}
+            data.pop("updated", None)
+            if data:
+                cur = self.prefs.read(PREFS_BASE) or {}
+                cur.update(data)
+                self.prefs.write(PREFS_BASE, cur)
+            try:
+                os.remove(old)
+            except OSError:
+                pass
+            self._stage(old)
+        stale = os.path.join(self.root, "index.json")
+        if os.path.isfile(stale):
+            try:
+                os.remove(stale)        # derived; it lives in .cache now
+            except OSError:
+                pass
+            self._stage(stale)
+
+    def _absorb_legacy_logs(self):
+        """A day's log written before sharding becomes this machine's."""
+        for d in (self.dirs["errors"], self.dirs["activity"]):
+            for name in sorted(_listdir(d)):
+                if not name.endswith(".jsonl") or shards.SIGIL in name:
+                    continue
+                day = name[:-len(".jsonl")]
+                src = os.path.join(d, name)
+                dst = os.path.join(d, "%s%s%s.jsonl"
+                                   % (day, shards.SIGIL, shards.machine_id()))
+                try:
+                    with open(src, "r", encoding="utf-8") as fh:
+                        body = fh.read()
+                    with open(dst, "a", encoding="utf-8", newline="\n") as fh:
+                        fh.write(body)
+                    os.remove(src)
+                except OSError:
+                    continue
+                self._stage(src)
+                self._stage(dst)
 
     # ------------------------------------------------------------------
     # Provenance -- who/what/where, stamped on every record
@@ -197,16 +309,21 @@ class Store:
     # ------------------------------------------------------------------
     # Sessions (bad channels, notes, remembered event files)
     # ------------------------------------------------------------------
+    def session_base(self, key):
+        return shards.safe_base(key)
+
     def session_path(self, key):
-        safe = "".join(c for c in str(key) if c.isalnum() or c in "._-")
-        return os.path.join(self.dirs["sessions"], safe + ".json")
+        """This machine's shard for a session. Deliberately not "the file":
+        there is no such thing any more, and code that wants the record should
+        ask get_session for the compiled one."""
+        return self.sessions.mine(self.session_base(key))
 
     def get_session(self, identity):
         """Look up a stored session record, matching across machines."""
         from . import ids
         key = identity.get("key")
         if key:
-            rec = _read_json(self.session_path(key))
+            rec = self.sessions.read(self.session_base(key))
             if rec:
                 return rec, "exact"
         stored = self.all_sessions()
@@ -214,13 +331,7 @@ class Store:
         return rec, how
 
     def all_sessions(self):
-        out = []
-        for name in sorted(_listdir(self.dirs["sessions"])):
-            if name.endswith(".json"):
-                rec = _read_json(os.path.join(self.dirs["sessions"], name))
-                if rec:
-                    out.append(rec)
-        return out
+        return self.sessions.all()
 
     def upsert_session(self, identity, patch):
         """Create or update the record for a session, merging `patch`."""
@@ -247,10 +358,9 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
-            target = self.session_path(rec.get("key") or identity.get("loose_key") or "unknown")
-            _write_json(target, rec)
-            self._stage(target)
-            return rec
+            base = self.session_base(
+                rec.get("key") or identity.get("loose_key") or "unknown")
+            return self.sessions.write(base, rec)
 
     def set_bad_channels(self, identity, bad, note=None):
         """`bad` is a list of CSC channel NUMBERS (not row indices).
@@ -268,11 +378,13 @@ class Store:
     # Presets
     # ------------------------------------------------------------------
     def _preset_file(self, kind):
-        return os.path.join(self.dirs["presets"], kind + ".json")
+        return self.presets.mine(shards.safe_base(kind))
+
+    def _preset_doc(self, kind):
+        return self.presets.read(shards.safe_base(kind)) or {"presets": []}
 
     def get_presets(self, kind):
-        data = _read_json(self._preset_file(kind)) or {"presets": []}
-        return data.get("presets", [])
+        return self._preset_doc(kind).get("presets", [])
 
     def save_preset(self, kind, preset):
         with _LOCK:
@@ -288,73 +400,51 @@ class Store:
                      and p.get("name") != preset.get("name")]
             items.append(preset)
             items.sort(key=lambda p: (p.get("name") or "").lower())
-            path = self._preset_file(kind)
-            _write_json(path, {"presets": items})
-            self._stage(path)
+            doc = self._preset_doc(kind)
+            doc["presets"] = items
+            self.presets.write(shards.safe_base(kind), doc)
             return preset
 
     def delete_preset(self, kind, preset_id):
         with _LOCK:
-            items = [p for p in self.get_presets(kind) if p.get("id") != preset_id]
-            path = self._preset_file(kind)
-            _write_json(path, {"presets": items})
-            self._stage(path)
-            return items
+            doc = self._preset_doc(kind)
+            doc["presets"] = [p for p in doc.get("presets", [])
+                              if p.get("id") != preset_id]
+            self.presets.write(shards.safe_base(kind), doc)
+            return doc["presets"]
 
     # ------------------------------------------------------------------
     # Errors
     # ------------------------------------------------------------------
     def record_error(self, where, message, detail=None, context=None):
-        """Append one error. JSONL so concurrent writers never corrupt it."""
-        with _LOCK:
-            rec = {
-                "id": uuid.uuid4().hex[:12],
-                "at": _now(),
-                "where": where,
-                "message": str(message),
-                "detail": detail,
-                "context": context or {},
-                "machine": platform.node(),
-                "user": _git_user() or _os_user(),
-            }
-            day = rec["at"][:10]
-            path = os.path.join(self.dirs["errors"], day + ".jsonl")
-            try:
-                with open(path, "a", encoding="utf-8") as fh:
-                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                self._stage(path)
-            except OSError:
-                pass          # never let logging an error raise another
-            return rec
+        """Append one error to this machine's log for today.
+
+        JSONL because it is append-only, and one file per machine per day
+        because two people appending to a shared day file is the single most
+        reliable way to produce a merge conflict.
+        """
+        rec = {
+            "id": uuid.uuid4().hex[:12],
+            "at": _now(),
+            "where": where,
+            "message": str(message),
+            "detail": detail,
+            "context": context or {},
+            "machine": platform.node(),
+            "shard": shards.machine_id(),
+            "user": _git_user() or _os_user(),
+        }
+        try:
+            self.error_log.append([rec])
+        except Exception:          # noqa: BLE001
+            pass                   # never let logging an error raise another
+        return rec
 
     def list_errors(self, limit=300, day=None):
-        out = []
-        days = [day] if day else sorted(_listdir(self.dirs["errors"]), reverse=True)
-        for d in days:
-            name = d if str(d).endswith(".jsonl") else str(d) + ".jsonl"
-            path = os.path.join(self.dirs["errors"], name)
-            if not os.path.isfile(path):
-                continue
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    lines = fh.readlines()
-            except OSError:
-                continue
-            for line in reversed(lines):
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    out.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-                if len(out) >= limit:
-                    return out
-        return out
+        return self.error_log.read(limit=limit, day=day)
 
     def error_days(self):
-        return sorted((n[:-6] for n in _listdir(self.dirs["errors"])
-                       if n.endswith(".jsonl")), reverse=True)
+        return self.error_log.days()
 
     # ------------------------------------------------------------------
     # Pooled index
@@ -417,9 +507,13 @@ class Store:
                     } for r in runs[:100]
                 ],
             }
-            path = os.path.join(self.root, "index.json")
-            _write_json(path, index)
-            self._stage(path)
+            # Derived, so it is a cache and not a tracked file. A roll-up of
+            # everything else, regenerated on every boot, is guaranteed to
+            # differ between two clones -- tracking it would mean a conflict
+            # on every single pull, over a file anyone can rebuild in a
+            # second. .cache is in .gitignore.
+            os.makedirs(self.dirs["cache"], exist_ok=True)
+            _write_json(os.path.join(self.dirs["cache"], "index.json"), index)
             return index
 
     # ------------------------------------------------------------------
@@ -624,87 +718,59 @@ even though one mounts the data at `D:\\PTEN` and another at
 # above focused on the original four record types.
 # ==========================================================================
 def _activity_dir(self):
-    d = os.path.join(self.root, "activity")
-    os.makedirs(d, exist_ok=True)
-    return d
+    return self.dirs["activity"]
 
 
 def record_activity(self, entries):
-    """Append UI/analysis actions. `entries` is a list of dicts.
+    """Append UI/analysis actions to this machine's log for today.
 
-    This is deliberately high-volume -- every filter change, colormap pick,
-    raster switch, event import and download -- so it is JSONL, one file per
-    day, appended in batches the client sends. That keeps it cheap to write and
-    trivial to merge in git.
+    Deliberately high-volume -- every filter change, colormap pick, raster
+    switch, event import and download -- so it is JSONL, appended in batches
+    the client sends. One file per machine per day: an append-only log shared
+    between two people conflicts on essentially every push, because both sides
+    add lines in the same place and git has no way to know whose come first.
     """
     if isinstance(entries, dict):
         entries = [entries]
     if not entries:
         return 0
-
     prov = self.provenance()
-    day = prov["at"][:10]
-    path = os.path.join(_activity_dir(self), day + ".jsonl")
-
-    written = 0
-    with _LOCK:
-        try:
-            with open(path, "a", encoding="utf-8") as fh:
-                for e in entries:
-                    rec = {
-                        "id": uuid.uuid4().hex[:10],
-                        "at": e.get("at") or prov["at"],
-                        "action": e.get("action") or "unknown",
-                        "detail": e.get("detail") or {},
-                        "session": e.get("session") or {},
-                        "view": e.get("view"),
-                        "user": prov["user"],
-                        "machine": prov["machine"],
-                        "os": prov["os"],
-                    }
-                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                    written += 1
-            self._stage(path)
-        except OSError:
-            return 0
-    return written
+    rows = []
+    for e in entries:
+        rows.append({
+            "id": uuid.uuid4().hex[:10],
+            "at": e.get("at") or prov["at"],
+            "action": e.get("action") or "unknown",
+            "detail": e.get("detail") or {},
+            "session": e.get("session") or {},
+            "view": e.get("view"),
+            "user": prov["user"],
+            "machine": prov["machine"],
+            "shard": shards.machine_id(),
+            "os": prov["os"],
+        })
+    # One day per call: a batch that straddles midnight goes to both files.
+    total = 0
+    by_day = {}
+    for r in rows:
+        by_day.setdefault(str(r["at"])[:10], []).append(r)
+    for _day, batch in sorted(by_day.items()):
+        total += self.activity_log.append(batch)
+    return total
 
 
 def list_activity(self, limit=500, day=None, action=None, session_key=None):
-    out = []
-    d = _activity_dir(self)
-    days = [day] if day else sorted(_listdir(d), reverse=True)
-    for entry in days:
-        name = entry if str(entry).endswith(".jsonl") else str(entry) + ".jsonl"
-        path = os.path.join(d, name)
-        if not os.path.isfile(path):
-            continue
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                lines = fh.readlines()
-        except OSError:
-            continue
-        for line in reversed(lines):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if action and rec.get("action") != action:
-                continue
-            if session_key and (rec.get("session") or {}).get("key") != session_key:
-                continue
-            out.append(rec)
-            if len(out) >= limit:
-                return out
-    return out
+    def keep(rec):
+        if action and rec.get("action") != action:
+            return False
+        if session_key and (rec.get("session") or {}).get("key") != session_key:
+            return False
+        return True
+    return self.activity_log.read(limit=limit, day=day, keep=keep)
 
 
 def activity_days(self):
-    return sorted((n[:-6] for n in _listdir(_activity_dir(self))
-                   if n.endswith(".jsonl")), reverse=True)
+    return self.activity_log.days()
 
 
 def get_bookmarks(self, identity):
@@ -767,26 +833,40 @@ def delete_spike_set(self, identity, set_id):
 # One file rather than one per setting: favourites, smart collections and
 # "where was I" all live here, so a git pull brings the whole workbench over.
 def _prefs_path(self):
-    return os.path.join(self.root, "preferences.json")
+    return self.prefs.mine(PREFS_BASE)
 
 
 def get_prefs(self):
-    return _read_json(self._prefs_path()) or {}
+    """Compiled preferences, with the screen-shaped ones kept local.
+
+    Favourites, smart collections and named views are worth sharing: they are
+    about the project. Theme, density and pane sizes are about the monitor in
+    front of you, and merging those means a colleague's push silently
+    restyles your workbench. So they are read from this machine's own shard
+    and never taken from anyone else's.
+    """
+    merged = self.prefs.read(PREFS_BASE) or {}
+    merged.pop("_sync", None)
+    own = shards._read_json(self._prefs_path()) or {}
+    for key in PREFS_LOCAL:
+        merged.pop(key, None)
+        if key in own and own[key] is not None:
+            merged[key] = own[key]
+    return merged
 
 
 def set_prefs(self, patch):
     """Shallow-merge a patch into preferences. A null value clears a key."""
     with _LOCK:
-        prefs = self.get_prefs()
+        rec = self.prefs.read(PREFS_BASE) or {}
         for k, v in (patch or {}).items():
             if v is None:
-                prefs.pop(k, None)
+                rec.pop(k, None)
             else:
-                prefs[k] = v
-        prefs["updated"] = _now()
-        _write_json(self._prefs_path(), prefs)
-        self._stage(self._prefs_path())
-        return prefs
+                rec[k] = v
+        rec["updated"] = _now()
+        self.prefs.write(PREFS_BASE, rec)
+        return self.get_prefs()
 
 
 # ==========================================================================
@@ -796,24 +876,30 @@ def set_prefs(self, patch):
 # keyed on the grouping signature -- one mark clears every past repeat and
 # any future one that looks the same.
 def _resolved_path(self):
-    return os.path.join(self.dirs["errors"], "resolved.json")
+    return self.triage.mine(TRIAGE_BASE)
 
 
 def resolved_errors(self):
-    return _read_json(self._resolved_path()) or {}
+    return (self.triage.read(TRIAGE_BASE) or {}).get("marks") or {}
 
 
 def resolve_error(self, signature, resolved=True, note=None):
+    """Mark an error signature handled -- or un-mark it.
+
+    Merged key by key, so two people triaging different errors on the same
+    day both keep their marks instead of one overwriting the other.
+    """
     with _LOCK:
-        book = self.resolved_errors()
+        rec = self.triage.read(TRIAGE_BASE) or {"marks": {}}
+        marks = rec.setdefault("marks", {})
         if resolved:
-            book[signature] = {"at": _now(), "by": _git_user() or _os_user(),
-                               "note": note or ""}
+            marks[signature] = {"at": _now(), "by": _git_user() or _os_user(),
+                                "machine": shards.machine_id(),
+                                "note": note or ""}
         else:
-            book.pop(signature, None)
-        _write_json(self._resolved_path(), book)
-        self._stage(self._resolved_path())
-        return book
+            marks.pop(signature, None)
+        self.triage.write(TRIAGE_BASE, rec)
+        return self.resolved_errors()
 
 
 for _fn in (record_activity, list_activity, activity_days,

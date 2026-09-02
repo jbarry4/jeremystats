@@ -1,0 +1,23 @@
+{
+  "_shard": {
+    "at": "2026-09-02T23:21:29.291856+00:00",
+    "from": "pre-shard file",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "selftest||Test error from the Errors panel": {
+    "at": "2026-09-02T18:53:42-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "note": ""
+  },
+  "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": {
+    "at": "2026-09-02T18:08:25-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "note": ""
+  },
+  "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": {
+    "at": "2026-09-02T18:08:22-04:00",
+    "by": "theexaminedexistence@gmail.com",
+    "note": ""
+  }
+}

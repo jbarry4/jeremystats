@@ -69,11 +69,18 @@ def _newest_sighting(rec):
 
 
 def guess_project(identity, paths=()):
-    """Which project a recording probably belongs to.
+    """Which project a recording belongs to.
 
-    From the path, because that is where the answer usually is. Checked
-    against the known names first so that "PTEN" wins over a folder that
-    merely happens to contain the letters.
+    A project is the body of work -- PTEN, KCNT1 -- not the genotype. So a
+    PTEN_DKO folder is PTEN: the DKO part says which cohort within the project
+    an animal is in, and that lives in `cohort` beside this rather than
+    splitting the project in two.
+
+    The known names are therefore matched as a prefix of the folder name, not
+    only as a whole word: PTEN_DKO, PTEN-DKO and PTEN2 are all the PTEN
+    project. Anything with no recognisable project keeps whatever grouping the
+    folder tree gave it, and failing that is Unfiled for someone to file by
+    hand.
     """
     hay = " ".join(
         [str(identity.get("group") or "")]
@@ -81,10 +88,30 @@ def guess_project(identity, paths=()):
         + [str(identity.get("path") or "")]
     ).upper()
     for name in KNOWN_PROJECTS:
-        if re.search(r"\b" + re.escape(name) + r"\b", hay) or name in hay:
+        # A path segment that STARTS with the project name. Anchored so
+        # "PTEN_DKO" counts and an unrelated folder that merely contains the
+        # letters somewhere in the middle does not.
+        if re.search(r"(?<![A-Z0-9])" + re.escape(name), hay):
             return name
     g = (identity.get("group") or "").strip()
     return g or UNFILED
+
+
+def cohort_of(identity_or_rec):
+    """The sub-grouping inside a project, when the folders name one.
+
+    PTEN_DKO within PTEN, say. Kept separate from the project so a cohort is
+    something you can see and filter on without it fragmenting the project it
+    belongs to.
+    """
+    group = (identity_or_rec.get("group") or "").strip()
+    if not group:
+        return None
+    project = guess_project(identity_or_rec,
+                            identity_or_rec.get("paths") or [])
+    if group.upper() == (project or "").upper():
+        return None            # the group IS the project; not a cohort
+    return group
 
 
 class Registry:
@@ -471,6 +498,10 @@ class Registry:
             "label": rec.get("label"),
             "project": rec.get("project") or UNFILED,
             "project_source": rec.get("project_source") or "guessed",
+            # The sub-grouping the folders name, when it is not just the
+            # project again -- PTEN_DKO inside PTEN. Visible and filterable
+            # without splitting the project it belongs to.
+            "cohort": rec.get("cohort") or cohort_of(rec),
             "mouse": rec.get("mouse"),
             "session": rec.get("session"),
             "date": (rec.get("start") or "")[:10] or None,

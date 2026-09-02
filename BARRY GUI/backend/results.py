@@ -23,6 +23,8 @@ import json
 import os
 import time
 import uuid
+
+from . import shards
 from datetime import datetime, timezone
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
@@ -50,6 +52,16 @@ class Results:
         self.repo_root = repo_root
         self.root = os.path.join(store.root, "results")
         self.decks_dir = os.path.join(store.root, "storyboards")
+        # Tags and decks are both edited by whoever is looking at them, so
+        # both are per machine and compiled on read.
+        self.tags = shards.Book(os.path.join(self.root, "curation"),
+                                {"tags": shards.UNION,
+                                 "created": shards.FIRST}, store)
+        self.decks = shards.Book(self.decks_dir,
+                                 {"created": shards.FIRST}, store)
+        self.tags.absorb_legacy()
+        self.decks.absorb_legacy()
+        self._absorb_shared_sidecar()
         os.makedirs(self.root, exist_ok=True)
         os.makedirs(self.decks_dir, exist_ok=True)
         self._cache = {"at": 0, "items": []}
@@ -244,8 +256,41 @@ class Results:
     def _legacy_sidecar(self):
         return os.path.join(self.root, "curation.json")
 
+    def _absorb_shared_sidecar(self):
+        """Fold the one-file-for-everything sidecar into per-result shards.
+
+        `results/curation.json` predates both the per-result split and the
+        per-machine split, and being a single shared file it is the most
+        conflict-prone thing that was ever in here. Read once, redistributed,
+        removed.
+        """
+        old = self._legacy_sidecar()
+        if not os.path.isfile(old):
+            return
+        try:
+            with open(old, "r", encoding="utf-8") as fh:
+                data = json.load(fh) or {}
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        for k, v in data.items():
+            key = k if not os.path.isabs(k) else self.rel_key(k)
+            base = self._sidecar_base(key)
+            if self.tags.read(base):
+                continue
+            rec = dict(v)
+            rec["key"] = key
+            self.tags.write(base, rec)
+        try:
+            os.remove(old)
+        except OSError:
+            pass
+        self.store._stage(old)
+
+    def _sidecar_base(self, key):
+        return shards.safe_base(_hash(key))
+
     def _sidecar_file(self, key):
-        return os.path.join(self._sidecar_dir(), _hash(key) + ".json")
+        return self.tags.mine(self._sidecar_base(key))
 
     def _sidecars(self):
         """Every result's curation, keyed the portable way.
@@ -269,15 +314,7 @@ class Results:
         except (OSError, json.JSONDecodeError):
             pass
 
-        d = self._sidecar_dir()
-        try:
-            names = sorted(os.listdir(d))
-        except OSError:
-            names = []
-        for name in names:
-            if not name.endswith(".json"):
-                continue
-            rec = _read_json(os.path.join(d, name))
+        for rec in self.tags.all():
             if rec and rec.get("key"):
                 out[rec["key"]] = rec
         return out
@@ -285,16 +322,15 @@ class Results:
     def curate(self, path, patch):
         """Attach tags/notes/title to a result, in its own file."""
         key = self.rel_key(path)
-        target = self._sidecar_file(key)
-        rec = _read_json(target) or self._sidecars().get(key, {})
+        base = self._sidecar_base(key)
+        rec = self.tags.read(base) or dict(self._sidecars().get(key, {}))
         rec["key"] = key
         rec["rel"] = os.path.relpath(os.path.abspath(path),
                                      self.outputs_dir).replace("\\", "/")
         rec.update({k: v for k, v in patch.items()
                     if k in ("title", "tags", "notes", "starred")})
         rec["updated"] = self.store.provenance()
-        _write_json(target, rec)
-        self.store._stage(target)
+        rec = self.tags.write(base, rec)
         self._cache["at"] = 0
         return rec
 
@@ -366,16 +402,15 @@ class Results:
     # ------------------------------------------------------------------
     # Storyboard decks
     # ------------------------------------------------------------------
+    def deck_base(self, deck_id):
+        return shards.safe_base(deck_id)
+
     def deck_path(self, deck_id):
-        safe = "".join(c for c in str(deck_id) if c.isalnum() or c in "._-")
-        return os.path.join(self.decks_dir, safe + ".json")
+        return self.decks.mine(self.deck_base(deck_id))
 
     def list_decks(self):
         out = []
-        for name in sorted(os.listdir(self.decks_dir)) if os.path.isdir(self.decks_dir) else []:
-            if not name.endswith(".json"):
-                continue
-            d = _read_json(os.path.join(self.decks_dir, name))
+        for d in self.decks.all():
             if not d:
                 continue
             out.append({
@@ -393,7 +428,7 @@ class Results:
         return out
 
     def get_deck(self, deck_id):
-        deck = _read_json(self.deck_path(deck_id))
+        deck = self.decks.read(self.deck_base(deck_id))
         # A deck that came through git points at result ids from whichever
         # machine built it. Re-point them at the same files here, or every
         # slide comes up blank.
@@ -409,10 +444,7 @@ class Results:
         deck.setdefault("created", self.store.provenance())
         deck["updated"] = self.store.provenance()
         deck["schema"] = 1
-        path = self.deck_path(deck["id"])
-        _write_json(path, deck)
-        self.store._stage(path)
-        return deck
+        return self.decks.write(self.deck_base(deck["id"]), deck)
 
     def _first_image(self, deck):
         """The id of the first result on a deck, as known here."""
@@ -426,12 +458,7 @@ class Results:
         return None
 
     def delete_deck(self, deck_id):
-        path = self.deck_path(deck_id)
-        try:
-            os.remove(path)
-            return True
-        except OSError:
-            return False
+        return bool(self.decks.erase(self.deck_base(deck_id)))
 
 
 def _hash(text):
