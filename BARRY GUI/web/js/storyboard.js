@@ -263,9 +263,23 @@ BARRY.views.storyboard = (function () {
   function resultItem(r, x, y, w, h) {
     return {
       id: 'i' + Math.random().toString(36).slice(2, 9),
-      type: 'result', result_id: r.id, name: r.name,
+      // rel and name travel with the item on purpose. The id is derived from
+      // where the file sits relative to the repo, which is the same
+      // everywhere -- but a deck saved before that was true, or one whose
+      // file has been moved within Results, still finds its figure by path
+      // or by name.
+      type: 'result', result_id: r.id, rel: r.rel, name: r.name,
       x, y, w, h, z: 1, caption: '',
     };
+  }
+
+  /* Where to fetch a result item's image. */
+  function resultSrc(it) {
+    const q = new URLSearchParams();
+    if (it.result_id) q.set('id', it.result_id);
+    if (it.rel) q.set('rel', it.rel);
+    if (it.name) q.set('name', it.name);
+    return '/api/results/file?' + q.toString();
   }
 
 
@@ -1021,8 +1035,7 @@ BARRY.views.storyboard = (function () {
               + (it.w * 100) + '%;height:' + (it.h * 100) + '%;';
       if (it.type === 'result' && it.result_id) {
         box.appendChild(el('img', {
-          class: 'sb-mini-item', style: s,
-          src: '/api/results/file?id=' + encodeURIComponent(it.result_id), alt: '',
+          class: 'sb-mini-item', style: s, src: resultSrc(it), alt: '',
         }));
       } else {
         box.appendChild(el('div', {
@@ -1160,10 +1173,18 @@ BARRY.views.storyboard = (function () {
       },
     });
 
-    if (it.type === 'result' && it.result_id) {
+    if (it.type === 'result' && (it.result_id || it.rel || it.name)) {
       node.appendChild(el('img', {
-        src: '/api/results/file?id=' + encodeURIComponent(it.result_id),
-        alt: '', draggable: 'false',
+        src: resultSrc(it), alt: '', draggable: 'false',
+        // A result that cannot be found says so, rather than leaving a blank
+        // rectangle that looks like an empty slide.
+        onerror: (e) => {
+          e.target.remove();
+          node.appendChild(el('div', { class: 'sb-missing' }, [
+            el('strong', { text: 'Not in Results' }),
+            el('span', { text: it.name || it.rel || it.result_id || '' }),
+          ]));
+        },
       }));
       if (it.caption) node.appendChild(el('div', { class: 'sb-cap', text: it.caption }));
     } else if (it.type === 'image' && it.src) {

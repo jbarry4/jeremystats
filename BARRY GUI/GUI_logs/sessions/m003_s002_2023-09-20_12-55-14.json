@@ -1,24 +1,40 @@
 {
   "bad_channels": [],
+  "converted": true,
   "created": {
     "at": "2026-09-02T16:44:51-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"
   },
+  "duration_s": 1985.6213333333333,
+  "fs": 30000.0,
+  "gid": "sd0d0bded958b",
   "group": "PTEN",
   "key": "m003_s002_2023-09-20_12-55-14",
   "label": "PTEN m3 s2 2023-09-20",
   "loose_key": "m003_s002",
   "mouse": 3,
+  "n_channels": 64,
   "paths": [
     "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14"
   ],
-  "schema": 1,
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
   "session": 2,
   "start": "2023-09-20T12:55:14",
   "updated": {
-    "at": "2026-09-02T16:45:22-04:00",
+    "at": "2026-09-02T18:50:19-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"
@@ -65,8 +81,8 @@
     "normalize": "shared",
     "notch": 0,
     "spacing": 50,
-    "span": 8.196721311475411,
-    "t0": 0.13605329596238347,
+    "span": 10.000000000000002,
+    "t0": 25.000000000000004,
     "ylim": null
   }
 }

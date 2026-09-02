@@ -1,0 +1,222 @@
+BARRY GUI debug report
+generated  2026-09-02 18:34:42
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     not found
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    None
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+written by the check harness
+
+UI ACTIONS, oldest first (4)
+------------------------------------------------------------------
+:37.041Z  link.scope                 {"scope": "session"}
+:37.134Z  session.open               {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "channels": 32, "fs": 30000, "duration_s": 1709.8581333333334, "restored": ["1 
+:37.144Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:38.034Z  ylim.change                {"ylim": 250}
+
+REQUESTS AS THE BROWSER SAW THEM (55)
+------------------------------------------------------------------
+18:34:37  GET  /api/catalog                         200       10 ms
+18:34:37  GET  /api/prefs                           200       10 ms
+18:34:37  GET  /api/pipeline                        200       10 ms
+18:34:37  GET  /api/presets/filters                 200       10 ms
+18:34:37  GET  /api/jobs                            200       10 ms
+18:34:37  GET  /api/panels                          200       10 ms
+18:34:37  GET  /api/presets/layouts                 200       10 ms
+18:34:37  POST /api/pipeline/check                  200       10 ms
+18:34:37  GET  /api/sync/status                     200       30 ms
+18:34:37  POST /api/csc/open                        200       10 ms
+18:34:37  POST /api/events/nev                      200       10 ms
+18:34:37  POST /api/csc/overview                    200       10 ms
+18:34:37  POST /api/csc/window                      200       10 ms
+18:34:37  POST /api/prefs                           200       10 ms
+18:34:37  GET  /api/link                            200       10 ms
+18:34:37  POST /api/csc/window                      200       10 ms
+18:34:37  GET  /api/link                            200       10 ms
+18:34:38  POST /api/link                            200       10 ms
+18:34:38  GET  /api/link                            200       10 ms
+18:34:38  GET  /api/link                            200       10 ms
+18:34:38  POST /api/link                            200       10 ms
+18:34:39  GET  /api/link                            200       10 ms
+18:34:39  GET  /api/link                            200       10 ms
+18:34:39  GET  /api/link                            200       10 ms
+18:34:40  POST /api/session/state                   200       10 ms
+18:34:40  POST /api/link                            200       10 ms
+18:34:40  GET  /api/link                            200       10 ms
+18:34:40  GET  /api/link                            200       10 ms
+18:34:41  GET  /api/link                            200       10 ms
+18:34:41  POST /api/csc/window                      200       10 ms
+18:34:41  GET  /api/link                            200       10 ms
+18:34:41  GET  /api/link                            200       10 ms
+18:34:42  POST /api/session/state                   200       10 ms
+18:34:42  GET  /api/link                            200       10 ms
+18:34:42  GET  /api/link                            200       10 ms
+18:34:43  GET  /api/link                            200       10 ms
+18:34:43  GET  /api/link                            200       10 ms
+18:34:43  POST /api/panel                           200       10 ms
+18:34:43  GET  /api/link                            200       10 ms
+18:34:44  GET  /api/link                            200       10 ms
+18:34:44  GET  /api/link                            200       10 ms
+18:34:44  POST /api/panel                           200       10 ms
+18:34:45  GET  /api/link                            200       10 ms
+18:34:45  GET  /api/link                            200       10 ms
+18:34:45  GET  /api/link                            200       10 ms
+18:34:46  GET  /api/link                            200       10 ms
+18:34:46  POST /api/panel                           200       10 ms
+18:34:46  GET  /api/link                            200       10 ms
+18:34:47  GET  /api/link                            200       10 ms
+18:34:47  GET  /api/link                            200       10 ms
+18:34:47  GET  /api/errors                          200       10 ms
+18:34:47  GET  /api/errors/grouped                  200       10 ms
+18:34:47  GET  /api/debug/trace                     200       10 ms
+18:34:47  GET  /api/link                            200       10 ms
+18:34:48  GET  /api/link                            200       10 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (66)
+------------------------------------------------------------------
+18:34:42  GET  /api/errors/grouped              200      1.0 ms  limit=600
+18:34:42  GET  /api/errors                      200      0.8 ms  limit=300
+18:34:42  POST /api/panel                       200   1819.0 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "panel": "scalogram", "t0": 1703.139509307534, "t1": 1709.858133
+18:34:40  POST /api/panel                       200   1838.3 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "panel": "scalogram", "t0": 1703.139509307534, "t1": 1709.858133
+18:34:38  POST /api/panel                       200    254.1 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "panel": "csd", "t0": 1703.139509307534, "t1": 1709.858133333333
+18:34:38  POST /api/session/state               200     16.3 ms  {"identity": "{confidence, group, key, label, loose_key, mouse, mouse_folder, mouse_source}", "state": "{channels, clim, gain, hp, lp, normalize, notch, spacing}"}
+18:34:38  POST /api/csc/window                  200     94.9 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 1703.139509307534, "t1": 1709.8581333333334, "channels": "
+18:34:38  POST /api/session/state               200      1.9 ms  {"identity": "{confidence, group, key, label, loose_key, mouse, mouse_folder, mouse_source}", "state": "{channels, clim, gain, hp, lp, normalize, notch, spacing}"}
+18:34:37  POST /api/csc/window                  200     84.2 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 1703.139509307534, "t1": 1709.8581333333334, "channels": "
+18:34:37  POST /api/prefs                       200      1.7 ms  {"patch": "{themes}"}
+18:34:37  POST /api/csc/window                  200     94.4 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 1703.139509307534, "t1": 1709.8581333333334, "channels": "
+18:34:37  POST /api/csc/overview                200      0.6 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "channel": 0, "bins": 700}
+18:34:37  POST /api/events/nev                  200      0.7 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03\\Events.nev", "session_path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"}
+18:34:37  POST /api/csc/open                    200     18.8 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true}
+18:34:37  GET  /api/sync/status                 200     40.5 ms  
+18:34:37  POST /api/pipeline/check              200     19.5 ms  {"folder": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "track": "session"}
+18:34:37  GET  /api/presets/layouts             200      0.6 ms  
+18:34:37  GET  /api/panels                      200      7.8 ms  
+18:34:37  GET  /api/jobs                        200      0.1 ms  
+18:34:37  GET  /api/presets/filters             200      0.6 ms  
+18:34:37  GET  /api/pipeline                    200      0.1 ms  
+18:34:37  GET  /api/prefs                       200      0.6 ms  
+18:34:37  GET  /api/catalog                     200     24.3 ms  
+18:34:34  POST /api/session/state               200      7.0 ms  {"identity": "{confidence, group, key, label, loose_key, mouse, mouse_folder, mouse_source}", "state": "{channels, clim, gain, hp, lp, normalize, notch, spacing}"}
+18:34:34  POST /api/csc/window                  200    124.6 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 1703.139509307534, "t1": 1709.8581333333334, "channels": "
+18:34:34  POST /api/session/state               200      3.7 ms  {"identity": "{confidence, group, key, label, loose_key, mouse, mouse_folder, mouse_source}", "state": "{channels, clim, gain, hp, lp, normalize, notch, spacing}"}
+18:34:34  POST /api/csc/window                  200    102.3 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 0, "t1": 6.718624025799517, "channels": "[30 items]", "px"
+18:34:33  POST /api/csc/window                  200     80.5 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 1.6796560064498793, "t1": 8.398280032249396, "channels": "
+18:34:33  POST /api/csc/window                  200     98.2 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "t0": 0, "t1": 6.718624025799517, "channels": "[30 items]", "px"
+18:34:33  POST /api/csc/overview                200    181.0 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true, "channel": 0, "bins": 700}
+18:34:33  POST /api/events/nev                  200      0.6 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03\\Events.nev", "session_path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"}
+18:34:33  POST /api/csc/open                    200     14.4 ms  {"path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "even_only": true, "invert": true}
+18:34:33  GET  /api/housekeeping                200    142.3 ms  big=25
+18:34:33  GET  /api/outputs                     200      1.7 ms  
+18:34:33  POST /api/repo/grep                   200    474.8 ms  {"pattern": "def detect_spikes", "regex": false, "case": false, "limit": 400}
+18:34:32  GET  /api/outputs                     200      3.8 ms  
+18:34:32  GET  /api/scratch/saved               200      6.1 ms  
+18:34:32  GET  /api/outputs                     200      1.3 ms  
+18:34:32  GET  /api/deck/deck_d726f9b2          200      0.4 ms  
+18:34:32  GET  /api/decks                       200      0.7 ms  
+18:34:32  GET  /api/results                     200     28.4 ms  
+18:34:32  POST /api/errors/bundle               200     20.4 ms  
+18:34:32  GET  /api/errors/grouped              200      1.1 ms  limit=600
+18:34:32  GET  /api/errors                      200     10.6 ms  limit=300
+18:34:32  POST /api/errors/test                 200     16.4 ms  
+18:34:32  GET  /api/history                     200      0.7 ms  limit=400
+18:34:32  POST /api/pipeline/preflight          200     23.2 ms  {"folder": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "track": "session"}
+18:34:32  POST /api/prefs                       200     12.3 ms  {"patch": "{fav_scripts, pipeline_folders}"}
+18:34:32  POST /api/pipeline/check              200     42.6 ms  {"folder": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "track": "session"}
+18:34:32  POST /api/pipeline/check              200     30.5 ms  {"folder": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "track": "session"}
+18:34:31  POST /api/prefs                       200     11.9 ms  {"patch": "{fav_scripts, recent_scripts}"}
+18:34:31  GET  /api/presets/layouts             200      0.5 ms  
+18:34:31  GET  /api/script                      200      1.1 ms  source=1&rel=IED%2F03_IED_Detection%2Fvacc_ied_detect.m
+18:34:31  POST /api/prefs                       200      1.6 ms  {"patch": "{smoke_probe}"}
+18:34:31  GET  /api/prefs                       200      8.0 ms  
+18:34:31  POST /api/prefs                       200      3.2 ms  {"patch": "{smoke_probe, themes}"}
+18:34:31  GET  /api/sync/status                 200     56.6 ms  
+18:34:31  POST /api/pipeline/check              200     31.9 ms  {"folder": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03", "track": "session"}
+18:34:31  GET  /api/presets/layouts             200      0.5 ms  
+18:34:31  GET  /api/jobs                        200      0.1 ms  
+18:34:31  GET  /api/panels                      200      7.5 ms  
+18:34:31  GET  /api/presets/filters             200      3.1 ms  
+18:34:31  GET  /api/pipeline                    200      0.1 ms  
+18:34:31  GET  /api/prefs                       200      0.4 ms  
+18:34:31  GET  /api/catalog                     200     24.3 ms  
+18:34:30  GET  /api/sessions                    200      6.7 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-02T18:34:32-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T18:32:16-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T18:31:20-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T18:05:36-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T16:58:30-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T16:36:48-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T16:32:01-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-02T16:18:18-04:00] unhandled:/api/toolkit/bad-channels/export: filename() got multiple values for argument 'scope'
+Traceback (most recent call last):
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 1594, in api_toolkit_bad_channels_export
+    stem = toolkit.filename(args["scope"], form, **args)
+TypeError: filename() got multiple values for argument 'scope'
+
+[2026-09-02T16:18:18-04:00] unhandled:/api/toolkit/bad-channels: filename() got multiple values for argument 'scope'
+Traceback (most recent call last):
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 1558, in api_toolkit_bad_channels
+    "filename": toolkit.filename(args["scope"], form, **args) + ".csv",
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: filename() got multiple values for argument 'scope'
+
+[2026-09-02T16:18:18-04:00] unhandled:/api/toolkit/bad-channels: filename() got multiple values for argument 'scope'
+Traceback (most recent call last):
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 1558, in api_toolkit_bad_channels
+    "filename": toolkit.filename(args["scope"], form, **args) + ".csv",
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: filename() got multiple values for argument 'scope'
+
+[2026-09-02T16:18:18-04:00] unhandled:/api/toolkit/bad-channels: filename() got multiple values for argument 'scope'
+Traceback (most recent call last):
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 1558, in api_toolkit_bad_channels
+    "filename": toolkit.filename(args["scope"], form, **args) + ".csv",
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: filename() got multiple values for argument 'scope'
+
+[2026-09-02T16:18:18-04:00] unhandled:/api/toolkit/bad-channels: filename() got multiple values for argument 'scope'
+Traceback (most recent call last):
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 1558, in api_toolkit_bad_channels
+    "filename": toolkit.filename(args["scope"], form, **args) + ".csv",
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: filename() got multiple values for argument 'scope'

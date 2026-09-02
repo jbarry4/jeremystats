@@ -225,7 +225,13 @@ def _draw_item(ax, item, results):
 
 
 def _draw_result(ax, item, results):
-    rec = results.get(item.get("result_id", "")) if results else None
+    # resolve(), not get(): a deck built on another machine carries ids that
+    # were derived from that machine's absolute paths, and the file it means
+    # is sitting right here under the same name.
+    rec = None
+    if results:
+        rec = (results.resolve(item) if hasattr(results, "resolve")
+               else results.get(item.get("result_id", "")))
     if not rec:
         raise DeckError("result no longer in the catalog")
     img = _load_image(rec["path"])

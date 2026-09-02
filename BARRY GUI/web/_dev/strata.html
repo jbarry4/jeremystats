@@ -1,0 +1,209 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>strata: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const post = (u, b) => fetch(u, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b) }).then((r) => r.json());
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  const reg = await (await fetch('/api/registry?backfill=1')).json();
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  const target = rows.find((s) => s.reachable);
+  check('there is a reachable recording', !!target);
+  if (!target) { document.title = 'strata: FAILED'; return; }
+  const gid = target.gid;
+  say('labelling ' + target.label + '  (' + gid + ')', 'note');
+  await post('/api/layers/' + gid + '/delete', {});
+
+  say('');
+  say('=== the ToolKit offers it ===', 'hd');
+  ev("setView('toolkit')");
+  await sleep(700);
+  const btn = $$('.tk-tool').find((b) => /StrataScope/.test(b.textContent));
+  check('there is a StrataScope tool', !!btn,
+        $$('.tk-tool strong').map((n) => n.textContent).join(' | '));
+  btn.click();
+  await until(() => $('#strataPick'), 12000);
+  await sleep(600);
+  check('it lists the recordings', $('#strataPick').options.length > 0,
+        $('#strataPick').options.length + '');
+  const legend = $$('.strata-legend .cur-tally').map((n) => n.textContent);
+  say('  layers: ' + legend.join(', '), 'note');
+  check('the layer vocabulary is shown', legend.length >= 10,
+        legend.length + '');
+  check('it includes the hippocampal layers',
+        legend.includes('CA1 SP') && legend.includes('HIL')
+        && legend.includes('DG GCL1'), legend.join(', '));
+
+  say('');
+  say('=== entering the mode ===', 'hd');
+  $('#strataPick').value = gid;
+  $$('.tk-head button').find((b) => /Open/.test(b.textContent)).click();
+  const entered = await until(() => $('#strataRail'), 45000);
+  check('the layer rail appears', entered);
+  await sleep(3000);
+  check('it switched to Xplorefinder', ev('BARRY.state.view') === 'xplore');
+
+  const panels = JSON.parse(ev(
+    'JSON.stringify(BARRY.views.xplore.state.panes.map(p => p && p.panel))'));
+  say('  panes: ' + JSON.stringify(panels), 'note');
+  check('it sets up the four views the old tool made you export',
+        panels.includes('voltage') && panels.includes('csd')
+        && panels.includes('theta') && panels.includes('traces'),
+        JSON.stringify(panels));
+
+  const chans = Number(ev('BARRY.views.xplore.state.sessions['
+    + 'BARRY.views.xplore.state.active].info.channels.length'));
+  const railRows = $$('.strata-row').length;
+  say('  ' + chans + ' channels, ' + railRows + ' rail rows', 'note');
+  check('one rail row per channel', railRows === chans,
+        railRows + ' vs ' + chans);
+
+  /* The point of doing this live: the rail is measured onto the raster's
+     plot box rather than assuming an even split of a cropped image. */
+  say('');
+  say('=== the rail is aligned to the raster, not guessed ===', 'hd');
+  const railBox = $('.strata-rows').getBoundingClientRect();
+  const canvasBox = $('#paneGrid .pane .pane-canvas-host')
+    .getBoundingClientRect();
+  say('  rail rows ' + Math.round(railBox.top) + '..'
+      + Math.round(railBox.bottom) + '   canvas '
+      + Math.round(canvasBox.top) + '..' + Math.round(canvasBox.bottom),
+      'note');
+  check('the rail starts inside the raster box',
+        railBox.top >= canvasBox.top - 2
+        && railBox.top <= canvasBox.top + 30,
+        Math.round(railBox.top - canvasBox.top) + 'px in');
+  check('and ends inside it',
+        railBox.bottom <= canvasBox.bottom + 2,
+        Math.round(canvasBox.bottom - railBox.bottom) + 'px up');
+  check('the rail does not sit on top of the panes',
+        $('#paneGrid').getBoundingClientRect().left
+          >= $('.strata-rail').getBoundingClientRect().right - 2,
+        'grid ' + Math.round($('#paneGrid').getBoundingClientRect().left)
+        + ' rail right '
+        + Math.round($('.strata-rail').getBoundingClientRect().right));
+
+  say('');
+  say('=== labelling ===', 'hd');
+  const brushes = $$('.strata-brush');
+  say('  brushes: ' + brushes.map((b) => b.textContent.trim()).join(' | ')
+      .slice(0, 150), 'note');
+  check('there is a brush per layer', brushes.length >= 11,
+        brushes.length + '');
+  // Pick CA1 SP and paint a few rows.
+  const sp = brushes.find((b) => /CA1 SP/.test(b.textContent));
+  check('CA1 SP is one of them', !!sp);
+  sp.click();
+  await sleep(600);
+  // The bar re-renders on pick, so the old node is detached -- ask again.
+  check('picking a brush marks it',
+        $$('.strata-brush').some(
+          (b) => /CA1 SP/.test(b.textContent) && b.classList.contains('on')),
+        $$('.strata-brush.on').map((b) => b.textContent.trim()).join(', '));
+
+  const rowsEls = $$('.strata-row');
+  rowsEls[2].dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+  W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
+  await sleep(1200);
+  const st = () => JSON.parse(ev('JSON.stringify(BARRY.strata.state)'));
+  say('  state: ' + JSON.stringify((st() || {}).progress), 'note');
+  check('clicking a row labels that channel',
+        ((st() || {}).progress || {}).labelled === 1,
+        JSON.stringify((st() || {}).progress));
+
+  await sleep(700);
+  const onDisk = await (await fetch('/api/layers/' + gid)).json();
+  check('the label reached the server',
+        Object.keys(onDisk.sheet.labels || {}).length === 1,
+        JSON.stringify(onDisk.sheet.labels));
+  check('and it is keyed by channel number, not row index',
+        Object.keys(onDisk.sheet.labels)[0]
+          === String(JSON.parse(ev('JSON.stringify('
+            + 'BARRY.views.xplore.state.sessions['
+            + 'BARRY.views.xplore.state.active].info.channels[2].number)'))),
+        Object.keys(onDisk.sheet.labels)[0]);
+
+  say('');
+  say('=== fill down ===', 'hd');
+  $$('.strata-bar .mini').find((b) => /Fill down/.test(b.textContent)).click();
+  await sleep(2000);
+  const filled = st().progress;
+  say('  after fill: ' + JSON.stringify(filled), 'note');
+  check('everything below the label inherits it',
+        filled.labelled === chans - 2,
+        filled.labelled + ' of ' + chans + ' (2 above it stay blank)');
+
+  say('');
+  say('=== the overlay reaches the raster ===', 'hd');
+  const painted = ev('(function(){'
+    + 'var c=document.querySelector("#paneGrid .pane canvas");'
+    + 'if(!c) return -1;'
+    + 'var d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;'
+    + 'var n=0; for(var i=3;i<d.length;i+=4){ if(d[i]>30) n++; } return n;})()');
+  check('the raster has the layer wash on it', painted > 1000, String(painted));
+
+  say('');
+  say('=== clear, and leave ===', 'hd');
+  $$('.strata-bar .mini').find((b) => b.textContent === 'Clear').click();
+  await sleep(1500);
+  check('clear empties the sheet', st().progress.labelled === 0,
+        JSON.stringify(st().progress));
+
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(900);
+  check('escape leaves the mode', ev('BARRY.strata.state') === null);
+  check('the rail is gone', !$('#strataRail'));
+  check('and the grid gets its space back',
+        !$('#xfBody').classList.contains('strata-on'),
+        $('#xfBody').className);
+
+  say('');
+  say('=== it is reachable only through ToolKit ===', 'hd');
+  check('no rail button for it',
+        !$('.nav-item[data-view="strata"]'));
+  check('but the ToolKit tool is there',
+        (await (await fetch('/api/layers/regions')).json()).ok === true);
+
+  await post('/api/layers/' + gid + '/delete', {});
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'strata: ' + fails + ' FAILED' : 'strata: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'strata CRASH'; });
+</script></body></html>

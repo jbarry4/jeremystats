@@ -58,9 +58,33 @@ It prints what it found and opens `http://127.0.0.1:8733/`. Stop with `Ctrl+C`.
 | **`?`** | the full keyboard sheet |
 | **`0`–`9`** | switch section |
 | **`T`** | ToolKit — the eleventh section, and there are only ten digits |
+| **Guide** | bottom of the rail: guided tours that point at the real thing |
 
 The palette ranks by a subsequence score, so `cscconv` finds
 `CSCconverter_LLready_pure.m`, and anything you have starred floats to the top.
+
+## Show me around
+
+Everything in BARRY is visible and almost none of it is obvious — which
+is the usual problem with an instrument. **Guide**, at the bottom of the rail
+(or `ctrl`+`K` and "tour"), runs a guided walkthrough: the screen dims except
+for one thing, a box beside it says what that thing is for, and on the steps
+worth doing rather than reading you click the thing itself and the tour
+follows you.
+
+| Module | |
+|---|---|
+| **Getting started** | the shape of the place — the rail, the palette, opening a recording, and where your work goes |
+| **Reading a recording** | panels, the shared window, filters, bad channels, and what the scale is actually claiming |
+| **Finding events** | importing marks, the threshold detector, and the Event Bank |
+| **Making a figure** | the builder, the preview, and why every export can be rebuilt |
+| **Telling the story** | Storyboard: drawing, arrows, and presenting with zoom |
+| **Keeping track** | History, the debug trace, ToolKit, and how GUI_logs syncs |
+
+Nothing is a mock-up: every step points at the live control, and where it
+says to click, the real click happens. Escape leaves at any point. Progress is
+remembered on that computer only — it is a fact about the person at the
+desk, not about the project, so it does not travel through git.
 
 ## The eleven views
 
@@ -448,6 +472,13 @@ on the left reorders by drag and shows a live miniature of each slide.
 - **Presenter mode** — `F5`. Full screen, arrow keys, speaker notes below, and
   the same fractional geometry the export uses, so what is on screen is what
   lands in the PDF.
+- **Zoom, mid-sentence.** Scroll to zoom about the pointer, drag to move
+  around, double-click to jump in on what you double-clicked, `0` for the
+  whole slide again — or `+` / `−` and the buttons in the bar. Once
+  zoomed, the up and down arrows pan instead of changing slide. The point is
+  to be able to point at one channel of a raster during a talk without having
+  made a second zoomed slide in advance. Changing slide always comes up whole,
+  so you never land on the next one showing a corner of itself.
 - **Align, distribute, order and snap** — flush and center against the slide,
   match another item's width or height, space everything evenly, bring to
   front, `ctrl`+`D` to duplicate. Dragging snaps to the slide's own edges and

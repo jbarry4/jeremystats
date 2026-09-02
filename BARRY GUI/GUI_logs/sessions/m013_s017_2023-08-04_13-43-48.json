@@ -1,0 +1,42 @@
+{
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:49:57-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 5685.111466666666,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s838980579a4b",
+  "group": "PTEN",
+  "key": "m013_s017_2023-08-04_13-43-48",
+  "label": "PTEN m13 s17 2023-08-04",
+  "loose_key": "m013_s017",
+  "mouse": 13,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\M13_pten\\HF4s17aug4\\2023-08-04_13-43-48"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s17aug4\\2023-08-04_13-43-48",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 17,
+  "start": "2023-08-04T13:43:48",
+  "updated": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

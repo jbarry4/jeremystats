@@ -90,11 +90,54 @@
       "notes": "",
       "show_notes": true,
       "title": "PTEN m7 s2 2023-08-22"
+    },
+    {
+      "id": "s3usdku7",
+      "items": [
+        {
+          "caption": "",
+          "h": 0.72,
+          "id": "ip0bxw0x",
+          "name": "PTEN m7 s2 2023-08-22_20260902_150342.png",
+          "rel": "PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_150342.png",
+          "result_id": "a483da8a176e",
+          "type": "result",
+          "w": 0.84,
+          "x": 0.08,
+          "y": 0.16,
+          "z": 1
+        },
+        {
+          "a": [
+            1,
+            0
+          ],
+          "alpha": 1,
+          "b": [
+            0,
+            1
+          ],
+          "color": "#c0392b",
+          "filled": false,
+          "h": 0.336,
+          "id": "ipu8ume2",
+          "shape": "arrow",
+          "type": "shape",
+          "w": 0.31700000000000006,
+          "width": 2,
+          "x": 0.576,
+          "y": 0.07777777777777778,
+          "z": 3
+        }
+      ],
+      "notes": "",
+      "show_notes": true,
+      "title": "PTEN m7 s2 2023-08-22"
     }
   ],
   "title": "Test story",
   "updated": {
-    "at": "2026-09-02T16:48:00-04:00",
+    "at": "2026-09-02T17:58:56-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"

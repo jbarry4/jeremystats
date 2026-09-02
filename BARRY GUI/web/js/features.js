@@ -119,12 +119,33 @@ BARRY.palette = (function () {
       ['results', 'Results', 'Everything saved'],
       ['storyboard', 'Storyboard', 'Build a deck'],
       ['eventbank', 'Event Bank', 'Banked events by project, mouse and session'],
+      ['toolkit', 'ToolKit', 'Jobs that span many recordings at once'],
       ['misc', 'Misc', 'Loose scripts and utilities'],
     ];
     for (const [id, name, sub] of views) {
       out.push({ kind: 'view', label: 'Go to ' + name, sub,
                  hay: 'go to ' + name + ' ' + sub,
                  run: () => setView(id) });
+    }
+
+    // Tours. One entry each, plus the menu, so someone who half-remembers
+    // there was a walkthrough of figures can find it by typing "figure".
+    if (BARRY.tour) {
+      out.push({ kind: 'action', label: 'Show me around',
+                 sub: 'the guided tours',
+                 hay: 'show me around guide tour tutorial help walkthrough',
+                 run: () => BARRY.tour.openMenu() });
+      const done = BARRY.tour.doneSet();
+      for (const m of BARRY.tour.list()) {
+        out.push({
+          kind: 'action',
+          label: 'Tour: ' + m.name,
+          sub: (done.has(m.id) ? 'done · ' : '')
+             + m.steps.length + ' steps',
+          hay: 'tour tutorial guide ' + m.name + ' ' + (m.blurb || ''),
+          run: () => BARRY.tour.start(m.id),
+        });
+      }
     }
 
     // Actions.
