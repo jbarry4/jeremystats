@@ -1,0 +1,176 @@
+{
+  "format": "png",
+  "id": "ea177e1ca79b",
+  "kind": "figure",
+  "label": "rebuild test",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/PTEN%20m7%20s2%202023-08-22/rebuild%20test_20260902_165133.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\PTEN m7 s2 2023-08-22\\rebuild test_20260902_165133.png",
+    "rel": "PTEN m7 s2 2023-08-22/rebuild test_20260902_165133.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "voltage",
+      "row": 0,
+      "title": "Voltage raster"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [],
+    "cmap": "jet",
+    "cols": 1,
+    "highpass": 0,
+    "lowpass": 300,
+    "notch": 0,
+    "page": "letter_landscape",
+    "rows": 1,
+    "t0": 0,
+    "t1": 14.884
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-02T16:51:33-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "recipe": {
+    "bad_channels": [],
+    "channels": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "cmap": "jet",
+    "cols": 1,
+    "dpi": 300,
+    "event_count": 2,
+    "events": [
+      {
+        "event_id": 19,
+        "label": "Starting Recording",
+        "source": "nev",
+        "start": -1.7e-05,
+        "ttl": 0
+      },
+      {
+        "event_id": 19,
+        "label": "Stopping Recording",
+        "source": "nev",
+        "start": 1404.918853,
+        "ttl": 0
+      }
+    ],
+    "events_truncated": false,
+    "gain": 2.25,
+    "height_in": 8.5,
+    "highpass": 0,
+    "identity": {
+      "confidence": "high",
+      "group": "PTEN",
+      "key": "m007_s002_2023-08-22_15-46-13",
+      "label": "PTEN m7 s2 2023-08-22",
+      "loose_key": "m007_s002",
+      "mouse": 7,
+      "mouse_folder": "M7_HF5_pten",
+      "mouse_source": "session_folder:m<n>s<n>",
+      "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
+      "rec_folder": "2023-08-22_15-46-13",
+      "session": 2,
+      "session_folder": "M7s2aug22",
+      "start": "2023-08-22T15:46:13",
+      "time_source": "header"
+    },
+    "lowpass": 300,
+    "metadata": {
+      "author": "maliajaff",
+      "date": "9/2/2026, 4:51:16 PM",
+      "machine": "DESKTOP-4H65AI7",
+      "notes": "",
+      "source_path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13"
+    },
+    "notch": 0,
+    "page": "letter_landscape",
+    "panels": [
+      {
+        "cmap": "inferno",
+        "col": 0,
+        "colspan": 1,
+        "panel": "voltage",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "s1",
+        "title": "Voltage raster"
+      }
+    ],
+    "rows": 1,
+    "schema": 1,
+    "session_label": "PTEN m7 s2 2023-08-22",
+    "sessions": {
+      "default": {
+        "even_only": true,
+        "invert": true,
+        "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13"
+      },
+      "s1": {
+        "even_only": true,
+        "invert": true,
+        "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13"
+      }
+    },
+    "show_metadata": true,
+    "spacing_um": 50,
+    "subtitle": "",
+    "t0": 0,
+    "t1": 14.884,
+    "title": "rebuild test",
+    "width_in": 11
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {
+    "confidence": "high",
+    "group": "PTEN",
+    "key": "m007_s002_2023-08-22_15-46-13",
+    "label": "PTEN m7 s2 2023-08-22",
+    "loose_key": "m007_s002",
+    "mouse": 7,
+    "mouse_folder": "M7_HF5_pten",
+    "mouse_source": "session_folder:m<n>s<n>",
+    "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
+    "rec_folder": "2023-08-22_15-46-13",
+    "session": 2,
+    "session_folder": "M7s2aug22",
+    "start": "2023-08-22T15:46:13",
+    "time_source": "header"
+  },
+  "status": "done"
+}

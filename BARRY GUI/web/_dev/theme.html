@@ -1,0 +1,145 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>theme: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const tok = (n) => getComputedStyle(D().documentElement)
+    .getPropertyValue(n).trim();
+
+  say('=== the color helper survived features.js ===');
+  check('BARRY.hues is the color helper', ev('typeof BARRY.hues') === 'function');
+  check('BARRY.palette is still the command palette',
+        ev('typeof BARRY.palette') === 'object'
+        && ev('typeof BARRY.palette.toggle') === 'function');
+  check('BARRY.token reads a live token',
+        /^#|^rgb/.test(ev("BARRY.token('--accent')")), ev("BARRY.token('--accent')"));
+
+  const themes = ev('THEMES').map((t) => t.id);
+  say('');
+  say('=== every theme defines the second accent ===');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(160);
+    const a2 = tok('--accent-2');
+    const warn = tok('--warn');
+    check(id.padEnd(15) + ' accent-2=' + (a2 || 'MISSING'), !!a2, 'warn=' + warn);
+  }
+
+  say('');
+  say('=== the chart ramp is internally distinct in every theme ===');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(150);
+    const ramp = ['--c1', '--c2', '--c3', '--c4', '--c5'].map(tok);
+    check(id.padEnd(15) + ' 5 distinct steps',
+          new Set(ramp).size === 5 && ramp.every(Boolean), ramp.join(' '));
+  }
+  ev("applyTheme('dark', false)");
+  await sleep(120);
+  check('BARRY.hues() returns the ramp',
+        ev('JSON.stringify(BARRY.hues())')
+          === JSON.stringify(['--c1','--c2','--c3','--c4','--c5'].map(tok)),
+        ev('JSON.stringify(BARRY.hues())'));
+  check('BARRY.hues(n) skips the neutral and wraps at 4',
+        ev('BARRY.hues(0)') === ev('BARRY.hues(4)')
+        && ev('BARRY.hues(3)') !== ev('BARRY.hues(4)'),
+        ev('BARRY.hues(0)') + ' / ' + ev('BARRY.hues(4)'));
+
+  say('');
+  say('=== Horizon leads with pink, not orange ===');
+  const hue = (hex) => {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+    if (!m) return -1;
+    const [r, g, b] = m.slice(1).map((h) => parseInt(h, 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d) return -1;
+    let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60; return h < 0 ? h + 360 : h;
+  };
+  for (const id of ['horizon', 'horizon-night']) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(160);
+    const w = tok('--warn'), h = hue(w);
+    // Orange is roughly 20-50 deg. Pink/magenta is 300-360 or 0-20.
+    check(id + ' --warn is pink, not orange', h > 290 || (h >= 0 && h < 20),
+          w + '  hue=' + h.toFixed(0) + 'deg');
+    const a2 = tok('--accent-2'), h2 = hue(a2);
+    check(id + ' --accent-2 is pink', h2 > 290 || (h2 >= 0 && h2 < 20),
+          a2 + '  hue=' + h2.toFixed(0) + 'deg');
+  }
+
+  say('');
+  say('=== the favicon follows the theme ===');
+  const hrefs = {};
+  for (const id of ['dark', 'horizon', 'phosphor']) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(200);
+    const link = D().querySelector('link[rel="icon"]');
+    hrefs[id] = link ? decodeURIComponent(link.href) : '';
+    const stroke = (/stroke="([^"]+)"/.exec(hrefs[id]) || [])[1];
+    const fill = (/fill="([^"]+)"/.exec(hrefs[id]) || [])[1];
+    check(id.padEnd(10) + ' icon repainted', !!stroke,
+          'bg=' + fill + ' ink=' + stroke);
+  }
+  check('the three icons differ from each other',
+        new Set(Object.values(hrefs)).size === 3);
+
+  say('');
+  say('=== the log timeline reads its colors from the theme ===');
+  ev("applyTheme('horizon', false)");
+  await sleep(150);
+  check('the history view is loaded', ev('typeof BARRY.views.history') === 'object');
+  ev("setView('history')");
+  await until(() => $('#histTimeline .tl-legend'), 12000);
+  await sleep(600);
+  const swatches = Array.from(D().querySelectorAll('#histTimeline .tl-legend i'))
+    .map((n) => getComputedStyle(n).backgroundColor);
+  say('  legend swatches: ' + (swatches.join('  ') || '(none found)'), 'note');
+  const goldish = swatches.filter((c) => {
+    const m = /(\d+), (\d+), (\d+)/.exec(c);
+    if (!m) return false;
+    return hue('#' + m.slice(1).map((v) => (+v).toString(16).padStart(2, '0')).join('')) > 20
+      && hue('#' + m.slice(1).map((v) => (+v).toString(16).padStart(2, '0')).join('')) < 60;
+  });
+  check('no orange left in the Horizon legend', goldish.length === 0,
+        goldish.join(', '));
+  check('the five legend swatches are all different',
+        new Set(swatches).size === swatches.length && swatches.length === 5,
+        swatches.length + ' swatches, ' + new Set(swatches).size + ' distinct');
+
+  ev("applyTheme(themeForThisMachine(), false)");
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'theme: ' + fails + ' FAILED' : 'theme: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'theme CRASH'; });
+</script></body></html>

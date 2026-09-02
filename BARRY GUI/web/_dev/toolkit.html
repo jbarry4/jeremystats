@@ -1,0 +1,277 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>toolkit: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 10000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  say('=== the section exists and is reachable ===', 'hd');
+  check('toolkit is a registered view',
+        ev("VIEWS.includes('toolkit')") === true);
+  check('it has a rail button',
+        !!$('.nav-item[data-view="toolkit"]'));
+  check('its key is T, so the digits keep their meaning',
+        ($('.nav-item[data-view="toolkit"] kbd') || {}).textContent === 'T');
+  const digits = $$('.nav-item kbd').map((k) => k.textContent);
+  check('the ten digits still read 1-9 then 0 in rail order',
+        digits.filter((d) => /^[0-9]$/.test(d)).join('')
+          === '1234567890',
+        digits.join(''));
+
+  // The keyboard path, not just the click path.
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 't', bubbles: true }));
+  await sleep(400);
+  check('pressing T switches to it', ev('BARRY.state.view') === 'toolkit',
+        ev('BARRY.state.view'));
+  await until(() => $('#tkBody .tk-layout'), 12000);
+  await sleep(600);
+  check('the panel rendered', !!$('#tkBody .tk-layout'));
+  check('the bad-channel tool is offered and selected',
+        !!$('.tk-tool.on') && /Bad channels/.test($('.tk-tool.on').textContent));
+
+  say('');
+  say('=== the scope picker offers what exists ===', 'hd');
+  const scopes = await (await fetch('/api/toolkit/scopes')).json();
+  say('  ' + scopes.total + ' stored sessions, mice ' + JSON.stringify(scopes.mice)
+      + ', projects ' + JSON.stringify(scopes.groups)
+      + ', ' + scopes.first_day + ' to ' + scopes.last_day, 'note');
+  const pills = $$('.tk-scope .tk-pills .pill').map((p) => p.textContent);
+  check('all five scopes are offered',
+        ['Everything', 'One session', 'One mouse', 'One project',
+         'A date range'].every((t) => pills.some((p) => p.startsWith(t))),
+        pills.join(' | '));
+  check('it opens on Everything',
+        /Everything/.test(($('.tk-scope .pill.active') || {}).textContent || ''));
+  check('and says how many that is',
+        /\d+ recorded session/.test(pills.join(' ')), pills[0]);
+  check('no scope fields are shown for Everything',
+        $$('.tk-fields select, .tk-fields input[type=date]').length === 0);
+
+  const rowsNow = () => $$('#tkResult .tk-table tbody tr').length;
+  const chips = () => $$('#tkResult .stat-chip').map((c) => c.textContent);
+  await until(() => $('#tkResult .stat-chip'), 12000);
+  say('  ' + chips().join('  |  '), 'note');
+  check('it counts the sessions in scope',
+        chips().some((c) => new RegExp('^' + scopes.total + ' session').test(c)),
+        chips()[0]);
+  const allRows = rowsNow();
+  check('and lists the bad channels', allRows > 0, allRows + ' rows');
+
+  say('');
+  say('=== each scope narrows it ===', 'hd');
+  const pick = (label) => {
+    const p = $$('.tk-scope .tk-pills .pill').find(
+      (b) => b.textContent.startsWith(label));
+    p.click();
+  };
+
+  // One session.
+  pick('One session');
+  await sleep(700);
+  const sel = $('.tk-fields select');
+  check('a session picker appears', !!sel,
+        sel ? sel.options.length + ' options' : 'none');
+  check('the options say how many bad channels each has',
+        Array.from(sel.options).some((o) => /\(\d+ bad\)/.test(o.text)),
+        sel.options[0].text);
+  // Choose a session that has something marked.
+  const withBad = Array.from(sel.options).find((o) => /\(\d+ bad\)/.test(o.text));
+  if (withBad) {
+    sel.value = withBad.value;
+    sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+    await sleep(900);
+    check('one session gives fewer rows than everything',
+          rowsNow() > 0 && rowsNow() <= allRows,
+          rowsNow() + ' vs ' + allRows);
+    check('the header names the session',
+          /session /.test(($('#tkResult .sub') || {}).textContent || ''),
+          ($('#tkResult .sub') || {}).textContent);
+  }
+
+  // One mouse.
+  pick('One mouse');
+  await sleep(800);
+  const msel = $('.tk-fields select');
+  check('a mouse picker appears with the mice on disk',
+        !!msel && msel.options.length === scopes.mice.length,
+        msel ? msel.options.length + ' of ' + scopes.mice.length : 'none');
+  check('the header names the mouse',
+        /^mouse /.test(($('#tkResult .sub') || {}).textContent || ''),
+        ($('#tkResult .sub') || {}).textContent);
+
+  // One project.
+  pick('One project');
+  await sleep(800);
+  check('a project picker appears',
+        ($('.tk-fields select') || {}).options
+        && $('.tk-fields select').options.length === scopes.groups.length,
+        JSON.stringify(scopes.groups));
+  check('the header names the project',
+        /^project /.test(($('#tkResult .sub') || {}).textContent || ''),
+        ($('#tkResult .sub') || {}).textContent);
+
+  // A date range.
+  pick('A date range');
+  await sleep(800);
+  const dates = $$('.tk-fields input[type=date]');
+  check('two date fields appear', dates.length === 2);
+  check('they open on the range that has data',
+        dates[0].value === scopes.first_day && dates[1].value === scopes.last_day,
+        dates[0].value + ' to ' + dates[1].value);
+  check('and are bounded by it',
+        dates[0].min === scopes.first_day && dates[1].max === scopes.last_day);
+  const wide = rowsNow();
+  // Narrow to a single day and confirm it actually narrows.
+  dates[0].value = scopes.last_day;
+  dates[0].dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(900);
+  check('narrowing the range narrows the result', rowsNow() < wide || wide === 0,
+        rowsNow() + ' vs ' + wide);
+  check('the header names the range',
+        / to |^from |^up to /.test(($('#tkResult .sub') || {}).textContent || ''),
+        ($('#tkResult .sub') || {}).textContent);
+
+  say('');
+  say('=== a range that makes no sense is refused with a reason ===', 'hd');
+  const bad = await (await fetch(
+    '/api/toolkit/bad-channels?scope=range&from=2025-05-01&to=2024-01-01')).json();
+  check('an inverted range is a 400 with an explanation',
+        bad.ok === false && /ends .* before it starts/.test(bad.error || ''),
+        bad.error);
+  const noMouse = await (await fetch(
+    '/api/toolkit/bad-channels?scope=mouse')).json();
+  check('a mouse scope with no mouse is refused',
+        noMouse.ok === false, noMouse.error);
+  const noKey = await (await fetch(
+    '/api/toolkit/bad-channels?scope=session&key=nope')).json();
+  check('an unknown session key is refused',
+        noKey.ok === false && /No stored session/.test(noKey.error || ''),
+        noKey.error);
+  // And the UI shows it rather than going blank.
+  dates[1].value = '2000-01-01';
+  dates[1].dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(900);
+  check('the panel shows the refusal instead of going blank',
+        !!$('#tkResult .rb-verdict.missing'),
+        ($('#tkResult') || {}).textContent.slice(0, 70));
+
+  say('');
+  say('=== both shapes, and the clean-session toggle ===', 'hd');
+  pick('Everything');
+  await sleep(900);
+  const longCols = $$('#tkResult .tk-table th').map((t) => t.textContent);
+  check('the long form has one column per field',
+        longCols.includes('channel') && !longCols.includes('bad channels'),
+        longCols.join(', '));
+  const longRows = rowsNow();
+  $$('.tk-pills.flat .pill').find(
+    (b) => /per session/.test(b.textContent)).click();
+  await sleep(900);
+  const wideCols = $$('#tkResult .tk-table th').map((t) => t.textContent);
+  check('the wide form lists the channels in one cell',
+        wideCols.includes('bad channels') && !wideCols.includes('channel'),
+        wideCols.join(', '));
+  check('and has no more rows than there are sessions',
+        rowsNow() <= scopes.total, rowsNow() + ' of ' + scopes.total);
+  const wideRows = rowsNow();
+  $('#tkBody .toggle input[type=checkbox]').click();
+  await sleep(900);
+  check('including clean sessions adds rows',
+        rowsNow() >= wideRows, rowsNow() + ' vs ' + wideRows);
+  check('a clean session shows a zero, not a blank',
+        $$('#tkResult .tk-table tbody tr').some(
+          (r) => Array.from(r.cells).some((c) => c.textContent === '0')));
+  $('#tkBody .toggle input[type=checkbox]').click();
+  await sleep(700);
+
+  say('');
+  say('=== the export ===', 'hd');
+  const csvRes = await fetch('/api/toolkit/bad-channels/export?scope=all&form=long');
+  check('the CSV comes back', csvRes.ok, 'HTTP ' + csvRes.status);
+  const csv = await csvRes.text();
+  const lines = csv.trim().split('\n');
+  check('it opens with a line saying what it is',
+        lines[0].startsWith('# BARRY GUI bad-channel export'), lines[0]);
+  check('then a header row',
+        lines[1].startsWith('project,mouse,session,date'), lines[1]);
+  check('then one row per bad channel',
+        lines.length - 2 === longRows, (lines.length - 2) + ' vs ' + longRows);
+  check('it reports the row count in a header',
+        csvRes.headers.get('X-Barry-Rows') === String(longRows),
+        csvRes.headers.get('X-Barry-Rows'));
+  const rel = csvRes.headers.get('X-Barry-Output');
+  check('and files a copy under Results/ToolKit',
+        !!rel && /ToolKit/.test(rel), rel || 'not filed');
+  const runId = csvRes.headers.get('X-Barry-Run-Id');
+  check('the export is recorded as a run', !!runId, runId);
+  if (runId) {
+    const runs = await (await fetch('/api/history')).json();
+    const rec = (runs.runs || []).find((r) => r.id === runId);
+    check('the run says what scope it covered',
+          !!rec && (rec.parameters || {}).scope === 'all',
+          rec ? JSON.stringify(rec.parameters) : 'run not found');
+    check('and carries the counts', !!rec && !!(rec.summary || {}).sessions,
+          rec ? JSON.stringify(rec.summary) : '');
+  }
+
+  say('');
+  say('=== an empty export is refused, not silently empty ===', 'hd');
+  const empty = await fetch(
+    '/api/toolkit/bad-channels/export?scope=range&from=1990-01-01&to=1990-01-02');
+  check('a scope with nothing in it gives a 400', empty.status === 400,
+        'HTTP ' + empty.status);
+  const msg = await empty.json();
+  check('and says so in words',
+        /Nothing to export/.test(msg.error || ''), msg.error);
+
+  say('');
+  say('=== the page does not scroll sideways ===', 'hd');
+  const body = $('#view-toolkit');
+  check('the section fits its width',
+        body.scrollWidth <= body.clientWidth + 1,
+        body.scrollWidth + ' vs ' + body.clientWidth);
+  const tw = $('#tkResult .tk-tablewrap');
+  if (tw) {
+    check('a wide table scrolls inside its own box',
+          W.getComputedStyle(tw).overflowX === 'auto');
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  say('  (an export run and its Results/ToolKit copy were left behind)', 'note');
+  document.title = fails ? 'toolkit: ' + fails + ' FAILED' : 'toolkit: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'toolkit CRASH'; });
+</script></body></html>

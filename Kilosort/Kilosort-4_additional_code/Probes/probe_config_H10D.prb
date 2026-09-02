@@ -1,82 +1,103 @@
 # probe_config_H10D.prb
-# Cambridge NeuroTech ASSY-77 H10-D, verified against ASSY-77 H10-D-map.pdf
-# Source session: H10_D_open_Cheetah2026-07-21_16-59-03.cfg
-# Decode: probe_pin = raw_hw_channel - 63; CSC1-32 = Back top->tip, CSC33-64 = Front top->tip
-# WARNING: channel 31 (CSC32) did not decode (raw hw=60).
-#   Placeholder geometry uses the one unclaimed real site (Back-shank tip, pin 48).
-#   Treat as unverified until cross-checked against real recorded data --
-#   it may instead be a REF/GND tap with no real spatial position (flat/reference-like trace).
-#   Recommended: pass bad_channels=[31] to run_kilosort until resolved.
+# Cambridge NeuroTech ASSY-77-H10 (H10-D), 64 ch, 2 shanks x 32.
+#
+# Geometry     : probeinterface cambridgeneurotech/ASSY-77-H10 (authoritative)
+# Pin order    : ASSY-77 H10-D-map.pdf
+# Hardware map : H10_D_open_Cheetah2026-07-21_16-59-03.cfg
+# Verified vs  : screen_details.txt (6 Cheetah display windows)
+#
+# Journey: probe pin --(+63)--> NLX AD ch --> CSCn --> CSCn.ncs
+#          --> binary row n-1 --> Kilosort channel n-1
+#
+# y is HEIGHT ABOVE THE TIP (y=0 tip, y=330 topmost), matching
+# probeinterface. This is flipped vs. the earlier revision of this file.
+#
+# Slot pitch 15 um. Each shank has 23 slots but only
+# 22 contacts: slot(s) [21] (y=[15.0]) are empty, so
+# each tip contact sits 30 um below its neighbour, not 15 um.
+#
+# All 64 channels resolve to a real contact. CSC32 (AD ch 60) does not
+# decode via pin = hw-63, but is the back-shank tip (pin 48): AD ch 111
+# is unused, pin 48 is the only unclaimed site, and the screen layout
+# places CSC32 at the bottom of the back centre column. Not a bad channel.
+#
+# Groups are shanks: 0 = back (ch 0-31), 1 = front (ch 32-63).
 
 channel_groups = {
-    0.0: {
-        'channels': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
+    0: {  # back shank
+        'channels': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
         'geometry': {
-            0: (18.5, 0.0),
-            1: (0.0, 15.0),
-            2: (37.0, 15.0),
-            3: (18.5, 30.0),
-            4: (0.0, 45.0),
-            5: (37.0, 45.0),
-            6: (18.5, 60.0),
-            7: (0.0, 75.0),
-            8: (37.0, 75.0),
-            9: (18.5, 90.0),
-            10: (0.0, 105.0),
-            11: (37.0, 105.0),
-            12: (18.5, 120.0),
-            13: (0.0, 135.0),
-            14: (37.0, 135.0),
-            15: (18.5, 150.0),
-            16: (0.0, 165.0),
-            17: (37.0, 165.0),
-            18: (18.5, 180.0),
-            19: (0.0, 195.0),
-            20: (37.0, 195.0),
-            21: (18.5, 210.0),
-            22: (0.0, 225.0),
-            23: (37.0, 225.0),
-            24: (18.5, 240.0),
-            25: (0.0, 255.0),
-            26: (37.0, 255.0),
-            27: (18.5, 270.0),
-            28: (0.0, 285.0),
-            29: (37.0, 285.0),
-            30: (18.5, 300.0),
-            31: (18.5, 315.0),  # UNRESOLVED -- see header
-            32: (168.5, 0.0),
-            33: (150.0, 15.0),
-            34: (187.0, 15.0),
-            35: (168.5, 30.0),
-            36: (150.0, 45.0),
-            37: (187.0, 45.0),
-            38: (168.5, 60.0),
-            39: (150.0, 75.0),
-            40: (187.0, 75.0),
-            41: (168.5, 90.0),
-            42: (150.0, 105.0),
-            43: (187.0, 105.0),
-            44: (168.5, 120.0),
-            45: (150.0, 135.0),
-            46: (187.0, 135.0),
-            47: (168.5, 150.0),
-            48: (150.0, 165.0),
-            49: (187.0, 165.0),
-            50: (168.5, 180.0),
-            51: (150.0, 195.0),
-            52: (187.0, 195.0),
-            53: (168.5, 210.0),
-            54: (150.0, 225.0),
-            55: (187.0, 225.0),
-            56: (168.5, 240.0),
-            57: (150.0, 255.0),
-            58: (187.0, 255.0),
-            59: (168.5, 270.0),
-            60: (150.0, 285.0),
-            61: (187.0, 285.0),
-            62: (168.5, 300.0),
-            63: (168.5, 315.0),
+            0: (18.5, 330.0),  # pin 21  AD  84  CSC1  W1 centre
+            1: (0.0, 315.0),  # pin 41  AD 104  CSC2  W3 left
+            2: (37.0, 315.0),  # pin 32  AD  95  CSC3  W4 right
+            3: (18.5, 300.0),  # pin 43  AD 106  CSC4  W1 centre
+            4: (0.0, 285.0),  # pin 42  AD 105  CSC5  W3 left
+            5: (37.0, 285.0),  # pin 28  AD  91  CSC6  W4 right
+            6: (18.5, 270.0),  # pin 23  AD  86  CSC7  W1 centre
+            7: (0.0, 255.0),  # pin 44  AD 107  CSC8  W3 left
+            8: (37.0, 255.0),  # pin 22  AD  85  CSC9  W4 right
+            9: (18.5, 240.0),  # pin 24  AD  87  CSC10 W1 centre
+            10: (0.0, 225.0),  # pin 35  AD  98  CSC11 W3 left
+            11: (37.0, 225.0),  # pin 26  AD  89  CSC12 W4 right
+            12: (18.5, 210.0),  # pin 30  AD  93  CSC13 W1 centre
+            13: (0.0, 195.0),  # pin 36  AD  99  CSC14 W3 left
+            14: (37.0, 195.0),  # pin 25  AD  88  CSC15 W4 right
+            15: (18.5, 180.0),  # pin 29  AD  92  CSC16 W1 centre
+            16: (0.0, 165.0),  # pin 49  AD 112  CSC17 W3 left
+            17: (37.0, 165.0),  # pin 17  AD  80  CSC18 W4 right
+            18: (18.5, 150.0),  # pin 16  AD  79  CSC19 W1 centre
+            19: (0.0, 135.0),  # pin 47  AD 110  CSC20 W3 left
+            20: (37.0, 135.0),  # pin 19  AD  82  CSC21 W4 right
+            21: (18.5, 120.0),  # pin 37  AD 100  CSC22 W1 centre
+            22: (0.0, 105.0),  # pin 45  AD 108  CSC23 W3 left
+            23: (37.0, 105.0),  # pin 27  AD  90  CSC24 W4 right
+            24: (18.5, 90.0),  # pin 33  AD  96  CSC25 W1 centre
+            25: (0.0, 75.0),  # pin 38  AD 101  CSC26 W3 left
+            26: (37.0, 75.0),  # pin 20  AD  83  CSC27 W4 right
+            27: (18.5, 60.0),  # pin 39  AD 102  CSC28 W1 centre
+            28: (0.0, 45.0),  # pin 46  AD 109  CSC29 W3 left
+            29: (37.0, 45.0),  # pin 18  AD  81  CSC30 W4 right
+            30: (18.5, 30.0),  # pin 40  AD 103  CSC31 W1 centre
+            31: (18.5, 0.0),  # pin 48  AD  60  CSC32 W1 centre  <- see header
         },
         'graph': [],
-    }
+    },
+    1: {  # front shank
+        'channels': [32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
+        'geometry': {
+            32: (168.5, 330.0),  # pin 64  AD 127  CSC33 W2 centre
+            33: (150.0, 315.0),  # pin  5  AD  68  CSC34 W6 left
+            34: (187.0, 315.0),  # pin 59  AD 122  CSC35 W5 right
+            35: (168.5, 300.0),  # pin  2  AD  65  CSC36 W2 centre
+            36: (150.0, 285.0),  # pin  3  AD  66  CSC37 W6 left
+            37: (187.0, 285.0),  # pin 61  AD 124  CSC38 W5 right
+            38: (168.5, 270.0),  # pin 62  AD 125  CSC39 W2 centre
+            39: (150.0, 255.0),  # pin  1  AD  64  CSC40 W6 left
+            40: (187.0, 255.0),  # pin 63  AD 126  CSC41 W5 right
+            41: (168.5, 240.0),  # pin 60  AD 123  CSC42 W2 centre
+            42: (150.0, 225.0),  # pin  7  AD  70  CSC43 W6 left
+            43: (187.0, 225.0),  # pin 57  AD 120  CSC44 W5 right
+            44: (168.5, 210.0),  # pin 58  AD 121  CSC45 W2 centre
+            45: (150.0, 195.0),  # pin  9  AD  72  CSC46 W6 left
+            46: (187.0, 195.0),  # pin 55  AD 118  CSC47 W5 right
+            47: (168.5, 180.0),  # pin 56  AD 119  CSC48 W2 centre
+            48: (150.0, 165.0),  # pin 11  AD  74  CSC49 W6 left
+            49: (187.0, 165.0),  # pin 53  AD 116  CSC50 W5 right
+            50: (168.5, 150.0),  # pin 54  AD 117  CSC51 W2 centre
+            51: (150.0, 135.0),  # pin 13  AD  76  CSC52 W6 left
+            52: (187.0, 135.0),  # pin 51  AD 114  CSC53 W5 right
+            53: (168.5, 120.0),  # pin  4  AD  67  CSC54 W2 centre
+            54: (150.0, 105.0),  # pin 15  AD  78  CSC55 W6 left
+            55: (187.0, 105.0),  # pin 34  AD  97  CSC56 W5 right
+            56: (168.5, 90.0),  # pin  6  AD  69  CSC57 W2 centre
+            57: (150.0, 75.0),  # pin 31  AD  94  CSC58 W6 left
+            58: (187.0, 75.0),  # pin 50  AD 113  CSC59 W5 right
+            59: (168.5, 60.0),  # pin  8  AD  71  CSC60 W2 centre
+            60: (150.0, 45.0),  # pin 14  AD  77  CSC61 W6 left
+            61: (187.0, 45.0),  # pin 52  AD 115  CSC62 W5 right
+            62: (168.5, 30.0),  # pin 10  AD  73  CSC63 W2 centre
+            63: (168.5, 0.0),  # pin 12  AD  75  CSC64 W2 centre
+        },
+        'graph': [],
+    },
 }

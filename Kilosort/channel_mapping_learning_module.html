@@ -1,0 +1,650 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>The Five Names of One Electrode</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,400&display=swap">
+<style>
+:root{
+  --ground:#f4f6f9; --surface:#ffffff; --surface-2:#eef1f6;
+  --ink:#191d26; --ink-2:#414958; --muted:#6b7385;
+  --rule:#dde2ea; --rule-strong:#c3cad6;
+  --accent:#b8801a; --accent-bg:#fbf1dc; --accent-rule:#e6cd97;
+  --ok:#3c7a44; --ok-bg:#e5f2e6; --ok-rule:#a8cfab;
+  --bad:#a83535; --bad-bg:#faeaea; --bad-rule:#e0b3b3;
+  --back:#0072B2; --front:#D55E00;
+  --code-bg:#f1f3f7;
+  --shadow:0 1px 2px rgba(25,29,38,.05),0 6px 18px -8px rgba(25,29,38,.14);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0f1218; --surface:#161a22; --surface-2:#1c212b;
+    --ink:#e7eaf0; --ink-2:#c2c8d4; --muted:#939bab;
+    --rule:#262c38; --rule-strong:#3a4252;
+    --accent:#e0aa48; --accent-bg:#2a2314; --accent-rule:#5a4a24;
+    --ok:#71c07a; --ok-bg:#152315; --ok-rule:#2f5233;
+    --bad:#e08585; --bad-bg:#271515; --bad-rule:#5a2e2e;
+    --back:#54a9e0; --front:#f08d43;
+    --code-bg:#1b202a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -10px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0f1218; --surface:#161a22; --surface-2:#1c212b;
+  --ink:#e7eaf0; --ink-2:#c2c8d4; --muted:#939bab;
+  --rule:#262c38; --rule-strong:#3a4252;
+  --accent:#e0aa48; --accent-bg:#2a2314; --accent-rule:#5a4a24;
+  --ok:#71c07a; --ok-bg:#152315; --ok-rule:#2f5233;
+  --bad:#e08585; --bad-bg:#271515; --bad-rule:#5a2e2e;
+  --back:#54a9e0; --front:#f08d43;
+  --code-bg:#1b202a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -10px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:68ch}
+p{margin:0 0 1em}
+a{color:var(--accent)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+code{background:var(--code-bg);padding:.1em .35em;border-radius:3px;font-size:.88em}
+pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.6;margin:0 0 1.2em}
+pre .cm{color:var(--muted)}
+pre .hi{color:var(--accent);font-weight:600}
+
+/* ---------- masthead ---------- */
+header.top{padding:64px 0 40px;border-bottom:2px solid var(--ink);margin-bottom:0}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1{font-family:"IBM Plex Serif",Georgia,serif;font-weight:600;font-size:clamp(34px,5.4vw,58px);line-height:1.05;letter-spacing:-.015em;margin:0 0 20px;text-wrap:balance;max-width:16ch}
+.lede{font-size:19px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin:0 0 8px}
+.byline{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);margin-top:24px}
+
+/* ---------- sections ---------- */
+section{padding:52px 0;border-bottom:1px solid var(--rule)}
+.sec-head{display:flex;gap:18px;align-items:baseline;margin-bottom:22px}
+.sec-num{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.1em;padding-top:.5em;flex:0 0 auto}
+h2{font-family:"IBM Plex Serif",Georgia,serif;font-weight:600;font-size:clamp(24px,3.2vw,34px);line-height:1.15;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h3{font-size:16px;font-weight:600;letter-spacing:.01em;margin:34px 0 10px}
+h4{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+
+/* ---------- name chain ---------- */
+.chain{display:flex;flex-wrap:wrap;gap:10px;margin:28px 0 8px}
+.chain .link{flex:1 1 160px;min-width:150px;background:var(--surface);border:1px solid var(--rule);border-radius:7px;padding:12px 14px;position:relative}
+.chain .link .n{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:5px}
+.chain .link .v{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:600;display:block;line-height:1.2}
+.chain .link .d{font-size:12px;color:var(--muted);line-height:1.4;display:block;margin-top:4px}
+.chain .link.key{border-color:var(--accent-rule);background:var(--accent-bg)}
+.chain .link.key .v{color:var(--accent)}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:22px;margin:26px 0;box-shadow:var(--shadow)}
+.panel.tight{padding:18px}
+.note{border-left:3px solid var(--rule-strong);padding:2px 0 2px 16px;margin:22px 0;color:var(--ink-2)}
+.note.key{border-color:var(--accent)}
+.note.ok{border-color:var(--ok)}
+.note.bad{border-color:var(--bad)}
+.note strong{color:var(--ink)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;border:1px solid}
+.tag.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-rule)}
+.tag.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad-rule)}
+.tag.key{color:var(--accent);background:var(--accent-bg);border-color:var(--accent-rule)}
+
+/* ---------- stage list ---------- */
+ol.stages{list-style:none;counter-reset:none;margin:24px 0 0;padding:0}
+ol.stages li{display:grid;grid-template-columns:44px 1fr;gap:0 18px;padding:0 0 22px;position:relative}
+ol.stages li:not(:last-child)::before{content:"";position:absolute;left:21px;top:34px;bottom:-2px;width:1px;background:var(--rule-strong)}
+.st-badge{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--rule-strong);color:var(--ink-2);z-index:1}
+ol.stages li.key .st-badge{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.st-t{font-weight:600;margin:5px 0 3px;font-size:15px}
+.st-b{font-size:14.5px;color:var(--ink-2);margin:0}
+.st-b em{color:var(--muted);font-style:normal}
+
+/* ---------- tracer ---------- */
+.tracer-ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.tracer-ctl label{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+input[type=range]{flex:1 1 220px;min-width:180px;accent-color:var(--accent);height:22px}
+.stepper{display:flex;align-items:center;gap:2px}
+button.step{font-family:"IBM Plex Mono",monospace;font-size:15px;width:30px;height:30px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);border-radius:5px;cursor:pointer;line-height:1}
+button.step:hover{background:var(--surface-2)}
+button.step:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;min-width:5.5ch;text-align:center}
+
+/* ---------- table ---------- */
+.tbl-wrap{overflow-x:auto;margin:22px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule)}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--rule-strong);white-space:nowrap}
+td.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--surface-2)}
+td.b{color:var(--back);font-weight:600}
+td.f{color:var(--front);font-weight:600}
+
+/* ---------- svg figures ---------- */
+figure{margin:26px 0}
+figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5;max-width:64ch}
+svg{display:block;max-width:100%;height:auto}
+.svg-scroll{overflow-x:auto}
+
+/* ---------- probe map ---------- */
+.mapgrid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(240px,1.1fr);gap:26px;align-items:start}
+@media(max-width:720px){.mapgrid{grid-template-columns:1fr}}
+.site{cursor:pointer}
+.site:hover circle{stroke-width:2.2}
+.detail dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0;font-size:14px}
+.detail dt{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.detail dd{margin:0;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:15px}
+
+.seg{display:inline-flex;border:1px solid var(--rule-strong);border-radius:6px;overflow:hidden;margin-bottom:14px}
+.seg button{font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;padding:6px 13px;border:0;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+
+/* ---------- trap cards ---------- */
+.traps{display:grid;grid-template-columns:1fr;gap:16px;margin-top:24px}
+@media(min-width:720px){.traps{grid-template-columns:1fr 1fr}}
+.trap{background:var(--surface);border:1px solid var(--rule);border-top:3px solid var(--bad);border-radius:7px;padding:18px}
+.trap h3{margin:0 0 8px;font-size:15px}
+.trap p{font-size:14px;color:var(--ink-2);margin:0 0 10px}
+.trap p:last-child{margin:0}
+.trap .fix{font-size:13.5px;color:var(--ink);border-top:1px dashed var(--rule-strong);padding-top:10px}
+.trap .fix b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ok);display:block;margin-bottom:3px}
+
+/* ---------- quiz ---------- */
+details.q{border:1px solid var(--rule);border-radius:7px;background:var(--surface);margin-bottom:12px;overflow:hidden}
+details.q summary{cursor:pointer;padding:15px 18px;font-weight:600;font-size:15px;list-style:none;display:flex;gap:12px;align-items:flex-start}
+details.q summary::-webkit-details-marker{display:none}
+details.q summary::before{content:"?";font-family:"IBM Plex Mono",monospace;color:var(--accent);font-weight:600;flex:0 0 auto}
+details.q[open] summary{border-bottom:1px solid var(--rule)}
+details.q .a{padding:15px 18px 16px 42px;font-size:14.5px;color:var(--ink-2)}
+details.q .a p:last-child{margin:0}
+
+footer{padding:44px 0 0;font-size:13.5px;color:var(--muted)}
+footer ul{padding-left:18px;margin:10px 0 0}
+footer li{margin-bottom:5px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="kicker">Channel mapping · Cambridge NeuroTech · Neuralynx → Kilosort</p>
+  <h1>The Five Names of One Electrode</h1>
+  <p class="lede">A single recording site gets renamed four times between the silicon and Kilosort's <code>(x, y)</code>. Mapping is nothing more than keeping those names in sync. Start with H3, where the chain is a straight line — then H10, where it isn't.</p>
+  <p class="byline">Built from the code and figures in <span class="mono">Kilosort/</span> · H3 · H10-D (ASSY-77)</p>
+</header>
+
+<!-- ===================================================== 01 -->
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>The problem is naming, not geometry</h2></div>
+  <div class="col">
+    <p>Kilosort never sees your probe. It sees a flat binary of 64 columns and a text file that says where each column sits in space. Everything that could go wrong lives in the gap between those two — and that gap is made of renames.</p>
+    <p>The same physical electrode carries five different identities on its way through the pipeline. Each handoff is a chance for the order to shift:</p>
+  </div>
+
+  <div class="chain">
+    <div class="link"><span class="n">1 · SILICON</span><span class="v">site</span><span class="d">Nth site down the shank. Physical. Has no number yet.</span></div>
+    <div class="link"><span class="n">2 · PROBE</span><span class="v">pin 21</span><span class="d">Connector pin, fixed at manufacture. Vendor's numbering.</span></div>
+    <div class="link"><span class="n">3 · AMPLIFIER</span><span class="v">hw 84</span><span class="d">Raw ADC channel on the DigitalLynx SX.</span></div>
+    <div class="link key"><span class="n">4 · CHEETAH</span><span class="v">CSC1</span><span class="d">Logical name. <strong>This is where the unscramble happens.</strong></span></div>
+    <div class="link"><span class="n">5 · KILOSORT</span><span class="v">ch 0</span><span class="d">0-based binary column, plus an (x, y) from the .prb.</span></div>
+  </div>
+
+  <div class="col">
+    <div class="note key"><p><strong>The whole job:</strong> make sure that when Kilosort reads column <code>i</code> of the binary and looks up <code>geometry[i]</code>, it gets the position of the electrode those samples actually came from. Nothing in the pipeline checks this for you.</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== 02 -->
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>The seven stages, once</h2></div>
+  <div class="col"><p>Both probes travel the same seven stages. Only two of them do anything interesting; the other five are passthrough. Learn the chain here and the H3 / H10 difference collapses into one question — <em>what does stage C actually say?</em></p></div>
+
+  <ol class="stages">
+    <li><span class="st-badge">A</span><div><p class="st-t">Physical electrode sites</p><p class="st-b">Silicon. Sites exist in a fixed spatial order, top of shank to tip. <em>No numbers yet — numbering is a convention applied later.</em></p></div></li>
+    <li><span class="st-badge">B</span><div><p class="st-t">Headstage / EIB wiring</p><p class="st-b">Copper traces on the adapter board, set when it was manufactured. Not a file, not configurable, not inspectable from software. <em>Site → raw ADC channel.</em></p></div></li>
+    <li class="key"><span class="st-badge">C</span><div><p class="st-t">Cheetah <code>.cfg</code> — <code>-SetChannelNumber</code></p><p class="st-b"><strong>The only unscramble step in the entire pipeline.</strong> One line per channel: <code>-SetChannelNumber "CSC1" 84</code> means "what everything downstream calls channel 1 is really raw hardware pin 84." <em>Get this right and everything after it can stay simple.</em></p></div></li>
+    <li><span class="st-badge">D</span><div><p class="st-t">Neuralynx writes <code>CSCn.ncs</code></p><p class="st-b">The logical number from stage C becomes the literal filename. From here on, "CSC1" is a name every downstream tool inherits and trusts without re-deriving.</p></div></li>
+    <li><span class="st-badge">E</span><div><p class="st-t"><code>perpl_NLX2Binary.m</code></p><p class="st-b">Loops <code>for CSC = 1:64</code> and writes each channel's samples in that exact numeric order. No geometry, no reordering — pure passthrough. <em>Kilosort channel index = CSC number − 1.</em></p></div></li>
+    <li><span class="st-badge">F</span><div><p class="st-t"><code>kilosort_automation.py</code> handoff</p><p class="st-b">Kilosort receives exactly two things about your recording: <code>CSC_Raw.dat</code> and <code>probe_config.prb</code>. It never sees stages A–E. It trusts the .prb completely.</p></div></li>
+    <li class="key"><span class="st-badge">G</span><div><p class="st-t"><code>probe_config.prb</code> geometry</p><p class="st-b"><strong>The second place with real content.</strong> A dict of <code>{channel index: (x, y)}</code> in µm. Whitening, template matching, drift correction and unit depth all fall out of these numbers alone.</p></div></li>
+  </ol>
+
+  <div class="col">
+    <div class="note"><p><strong>So: C and G are the only two stages that carry information.</strong> A, B are physics; D, E, F are bookkeeping. If C's table and G's geometry describe the same probe in the same order, the pipeline is correct. If they don't, nothing downstream will complain — you'll just get spikes assigned to the wrong depths.</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== 03 : H3 -->
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>H3 — one shank, one column, one straight line</h2></div>
+  <div class="col">
+    <p>H3 is the case worth learning first, because the answer turns out to be the simplest thing you could have hoped for: <strong>CSC number is depth rank.</strong> CSC1 is the shallowest site, CSC64 is the tip, and every step between them is one 20 µm hop down the shank.</p>
+    <p>That is not obvious from the config, though. Stage C for H3 is a genuine scramble — the hardware channels arrive in an order that looks random.</p>
+  </div>
+
+  <div class="panel">
+    <h4>Trace one channel, end to end</h4>
+    <div class="tracer-ctl">
+      <label for="h3slider">CSC</label>
+      <div class="stepper">
+        <button class="step" id="h3dn" aria-label="Previous channel">−</button>
+        <span class="readout" id="h3read">1</span>
+        <button class="step" id="h3up" aria-label="Next channel">+</button>
+      </div>
+      <input type="range" id="h3slider" min="1" max="64" value="1" step="1" aria-label="CSC channel number">
+    </div>
+    <div class="chain" id="h3chain"></div>
+    <p style="font-size:13.5px;color:var(--muted);margin:14px 0 0" id="h3note"></p>
+  </div>
+
+  <figure>
+    <h4>Stage C for H3 — real remap, drawn from the config</h4>
+    <div class="svg-scroll"><svg id="h3fig" viewBox="0 0 720 470" role="img" aria-label="Bipartite diagram: 64 raw hardware ADC channels on the left connected to CSC1 through CSC64 on the right, with heavily crossing lines showing a non-identity remap."></svg></div>
+    <figcaption>Every line is one <code>-SetChannelNumber</code> entry from <span class="mono">Cheetah2026-06-01_wheel_H3.cfg</span>. The crossings are the point: this table is doing real work. Hover a CSC endpoint to isolate its line. Colour runs shallow → deep, the same viridis ramp used in the source figures.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3>Why the straight line is allowed here</h3>
+    <p>Two independent facts make H3's simple <code>y = i × 20</code> geometry correct rather than merely convenient:</p>
+  </div>
+
+  <div class="col">
+    <div class="note ok"><p><strong>1. The table is a hardware constant, not a per-session setting.</strong> The <code>-SetChannelNumber</code> block is byte-identical across every H3 config on file from 2023 through 2026 — a one-time calibration for this headstage, verified by direct comparison, not an assumption.</p></div>
+    <div class="note ok"><p><strong>2. Insertion order confirms the direction in vivo.</strong> During probe descent, signal appears on CSC64 first, then 63, 62 … down to CSC1 last. CSC64 is the tip; CSC1 is the top. So consecutive CSC numbers really are consecutive physical sites — and since the .prb puts channel 0 at <code>y = 0</code> and channel 63 at <code>y = 1260</code>, "larger y = deeper" is correctly oriented. The geometry is not mirrored.</p></div>
+  </div>
+
+<pre><span class="cm"># probe_config.prb — the entire H3 geometry</span>
+channel_groups = {
+    0.0: {
+        'channels': [0, 1, 2, ..., 63],
+        'geometry': {
+            0:  (5.5,    0.0),   <span class="cm"># CSC1  — shallowest, enters tissue last</span>
+            1:  (5.5,   20.0),
+            2:  (5.5,   40.0),
+            ...
+            63: (5.5, <span class="hi">1260.0</span>),   <span class="cm"># CSC64 — tip, enters first, deepest</span>
+        },
+        'graph': [],           <span class="cm"># empty on purpose — see below</span>
+    }
+}</pre>
+
+  <div class="col">
+    <p><code>x = 5.5</code> is a constant — a nominal shank half-width, meaningless on a single-column probe. <code>graph</code> is deliberately empty: Kilosort derives spatial neighbours straight from the geometry, which is exactly why stage C being right matters so much. Whitening, templates, drift and unit depth all fall out of those <code>(x, y)</code> pairs and nothing else.</p>
+    <div class="note bad"><p><strong>One caveat that trips people up.</strong> A <span class="mono">probeinterface</span> sanity check will report that this .prb has "the same geometry, different channel order" from every library <span class="mono">ASSY-*-H3</span> entry. That is not a bug in your data. The library encodes Cambridge NeuroTech's Omnetics pin order for <em>Intan-based</em> acquisition (OpenEphys / SpikeGLX). Your chain is Neuralynx DigitalLynx SX + Cheetah, and its unscramble already happened at stage C, before the .ncs files existed. The comparison was against the wrong reference convention.</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== 04 : H10 -->
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>H10-D — two shanks, and a straight line can't describe it</h2></div>
+  <div class="col">
+    <p>Everything structural changes at once. H10-D has <strong>two shanks</strong> — the connector calls them <em>Back</em> and <em>Front</em> — with 32 sites each, arranged in <strong>22 depth rows</strong> that alternate between single centre contacts and left/right pairs, tapering to singles near the tip. Row pitch is 15 µm; the two columns sit ±18.5 µm off centre; the shanks are 150 µm apart.</p>
+    <p>No single line of <code>y = i × pitch</code> can represent that. Two sites can share a depth. Two sites at the same depth can be on <em>different shanks</em>, 150 µm apart, and must never be treated as neighbours. H10 needs its own probe file.</p>
+  </div>
+
+  <div class="col">
+    <h3>The decode: subtract 63</h3>
+    <p>The surprise is how clean stage B turns out to be for this probe. Take any raw hardware channel from this session's config and subtract a constant:</p>
+  </div>
+
+<pre><span class="cm"># the entire H10-D decoding rule</span>
+probe_pin = raw_hw_channel <span class="hi">- 63</span>
+
+<span class="cm"># CSC1–32  → "Back"  shank, top → tip, in order</span>
+<span class="cm"># CSC33–64 → "Front" shank, top → tip, in order</span></pre>
+
+  <div class="col">
+    <p>That recovers the vendor pinout exactly for <strong>63 of 64 channels</strong>. The headstage isn't scrambling anything at the board level — it's simply plugged into a hardware port that starts at ADC channel 64. The apparent chaos you see plotting CSC index against hardware channel comes entirely from CSC numbers being assigned in physical <em>depth</em> order per shank, not in pin order.</p>
+  </div>
+
+  <div class="panel">
+    <h4>The decoder</h4>
+    <div class="tracer-ctl">
+      <label for="h10slider">CSC</label>
+      <div class="stepper">
+        <button class="step" id="h10dn" aria-label="Previous channel">−</button>
+        <span class="readout" id="h10read">1</span>
+        <button class="step" id="h10up" aria-label="Next channel">+</button>
+      </div>
+      <input type="range" id="h10slider" min="1" max="64" value="1" step="1" aria-label="CSC channel number">
+    </div>
+    <div class="mapgrid">
+      <div>
+        <div class="seg" role="group" aria-label="Colour sites by">
+          <button id="modeDepth" aria-pressed="true">Colour by CSC index</button>
+          <button id="modeShank" aria-pressed="false">Colour by shank</button>
+        </div>
+        <div class="svg-scroll"><svg id="h10map" viewBox="0 0 300 500" role="img" aria-label="Two probe shanks, Back and Front, each with 32 recording sites arranged in 22 rows. Click a site for its channel details."></svg></div>
+      </div>
+      <div class="detail">
+        <h4>Selected site</h4>
+        <dl id="h10detail"></dl>
+        <div id="h10math" style="margin-top:18px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>The one channel that doesn't decode</h3>
+    <div class="note bad"><p><strong>CSC32 maps to raw hardware channel 60.</strong> 60 − 63 = −3, which is not a probe pin. It is the only channel in the table that fails, and every other channel claims a distinct real site — leaving exactly one physical position unclaimed: <span class="mono">pin 48</span>, the tip of the Back shank.</p></div>
+    <p>That leaves two live hypotheses, and the data can settle it:</p>
+    <ul>
+      <li><strong>(a) It really is the Back tip</strong>, routed some other way. Its trace should look like a normal tip-depth signal, continuous with its neighbours.</li>
+      <li><strong>(b) It's a REF/GND tap.</strong> The vendor PDF documents several connector pins as dedicated reference or ground rather than recording sites. Then the trace should look flat and reference-like — and it has no spatial position at all.</li>
+    </ul>
+    <p>The generated <code>probe_config_H10D.prb</code> parks channel 31 at pin 48 as a <em>geometric placeholder</em> and says so in its own header. Until it's resolved, the honest thing is to exclude it:</p>
+  </div>
+
+<pre>run_kilosort(settings=settings_main,
+             probe_name=<span class="hi">'probe_config_H10D.prb'</span>,
+             filename=f'{data_path}\\CSC_Raw.dat',
+             <span class="hi">bad_channels=[31]</span>,   <span class="cm"># CSC32 — unresolved, see .prb header</span>
+             ...)</pre>
+
+  <div class="col">
+    <div class="note"><p>Worth noticing: the H3 table also contains a <code>60</code> — at CSC59. Same hardware channel, different probe. Whatever port or tap 60 corresponds to, it shows up in both chains, which is mild circumstantial support for hypothesis (b).</p></div>
+
+    <h3>How far does the −63 rule actually reach?</h3>
+    <p>Not as far as you'd like. Parsing every H10 config in <span class="mono">Config files/</span> turns up <strong>three distinct <code>-SetChannelNumber</code> tables</strong>. Subtracting 63 produces valid-looking pin numbers for all of them — but only one puts CSC1–32 on the Back shank and CSC33–64 on the Front:</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Table</th><th>Sessions</th><th>CSC1 → hw</th><th>−63 gives real pins</th><th>CSC1–32 = Back?</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="mono" style="font-size:12.5px">Cheetah2023-10-27 chronicH10</td><td class="num">126</td><td class="num">64 / 64</td><td><span class="tag bad">no</span></td></tr>
+        <tr><td class="num">2</td><td class="mono" style="font-size:12.5px">2026-04-10 · 2026-04-20 Corners · "H10 Acute modify March 4"</td><td class="num">64</td><td class="num">63 / 64</td><td><span class="tag bad">no</span></td></tr>
+        <tr><td class="num">3</td><td class="mono" style="font-size:12.5px">H10_D_open · H10_D_filtered (2026-07-21)</td><td class="num">84</td><td class="num">63 / 64</td><td><span class="tag ok">yes</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <div class="note bad"><p><strong>This is the sharpest trap on the page.</strong> "Subtract 63" is not a property of the H10 probe — it's a property of which hardware port that headstage happened to be plugged into, for those two files. Tables 1 and 2 still decode to real pin numbers, so an arithmetic check alone would pass them; it's the <em>shank assignment</em> that comes out wrong. <code>probe_config_H10D.prb</code> is valid for table 3 and nothing else.</p></div>
+  </div>
+
+  <h3 style="margin-left:0">Side by side</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th></th><th>H3</th><th>H10-D (ASSY-77)</th></tr></thead>
+      <tbody>
+        <tr><td>Shanks</td><td>1</td><td>2 &mdash; <span style="color:var(--back);font-weight:600">Back</span> + <span style="color:var(--front);font-weight:600">Front</span>, 150 µm apart</td></tr>
+        <tr><td>Sites</td><td class="num">64, single column</td><td class="num">64 = 32 + 32, 22 rows each</td></tr>
+        <tr><td>Pitch</td><td class="num">20 µm, uniform</td><td class="num">15 µm rows, ±18.5 µm columns</td></tr>
+        <tr><td>Depth span</td><td class="num">1260 µm</td><td class="num">315 µm per shank</td></tr>
+        <tr><td>Stage C table</td><td>Real scramble, but <strong>identical 2023 → 2026</strong></td><td>Clean <code>+63</code> offset &mdash; but <strong>3 different tables</strong> across H10 sessions; only one decodes to Back/Front correctly</td></tr>
+        <tr><td>CSC → depth</td><td>Monotonic. CSC <em>n</em> is depth rank <em>n</em>.</td><td>Monotonic <em>within</em> each shank only. CSC33 sits back at the top.</td></tr>
+        <tr><td>Ground truth</td><td>In vivo insertion order</td><td>Vendor pinout PDF, arithmetic cross-check</td></tr>
+        <tr><td>Verified</td><td><span class="tag ok">64 / 64</span></td><td><span class="tag ok">63 / 64</span> <span class="tag bad">CSC32 open</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================================================== 05 -->
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>Four ways this breaks silently</h2></div>
+  <div class="col"><p>None of these throw an error. Kilosort runs, produces clusters, and reports depths. The output is simply wrong in a way that looks entirely plausible.</p></div>
+
+  <div class="traps">
+    <div class="trap">
+      <h3>Reusing one .prb across probes</h3>
+      <p><code>kilosort_automation.py</code> defaults <code>probe_name='probe_config.prb'</code> for every call. That file is the 64-channel single-shank H3 line. Point an H10 session at it and both shanks get collapsed onto one imaginary column — sites 150 µm apart become "neighbours" for whitening and template matching.</p>
+      <p class="fix"><b>Guard</b>Pass <code>probe_name</code> explicitly, per probe type. Never let it default.</p>
+    </div>
+    <div class="trap">
+      <h3>Reusing one .prb across H10 sessions</h3>
+      <p>Unlike H3's frozen table, the H10 configs on file carry three distinct <code>-SetChannelNumber</code> tables, and only one of them puts CSC1–32 on the Back shank. A .prb generated from one session's config is valid only for sessions sharing that exact table — and the arithmetic check won't catch it, because the wrong tables still decode to real pin numbers.</p>
+      <p class="fix"><b>Guard</b>Diff the session's <code>-SetChannelNumber</code> block against the one the .prb was built from. Not equal → regenerate, and name the source config in the header.</p>
+    </div>
+    <div class="trap">
+      <h3>Off-by-one at the binary boundary</h3>
+      <p>The .ncs files are named 1–64. Kilosort indexes 0–63. Stage E's loop is what ties them: <code>channel index = CSC number − 1</code>. The same shift applies to <code>bad_channels</code> — excluding CSC32 means passing <code>31</code>.</p>
+      <p class="fix"><b>Guard</b>State the convention in the .prb header and check one known-bad channel end to end before trusting a batch.</p>
+    </div>
+    <div class="trap">
+      <h3>Checking against the wrong reference</h3>
+      <p>Comparing your .prb to <span class="mono">probeinterface</span>'s vendor library flags a mismatch on every H3 variant. The library describes an Intan/Omnetics chain, not a Neuralynx one. A "failed" check against an irrelevant convention is worse than no check — it burns trust in a file that was fine.</p>
+      <p class="fix"><b>Guard</b>Verify against ground truth from <em>your</em> chain: the session .cfg, the vendor pinout PDF, and in vivo insertion order.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================== 06 -->
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Check yourself</h2></div>
+  <details class="q"><summary>CSC17 on H3 maps to hardware channel 64. Does that mean it's the first site on the probe?</summary><div class="a"><p>No. Hardware channel numbers carry no spatial meaning at all — they're just which amplifier input the trace happens to land on. CSC17 is the 17th site down the shank, at <code>y = 320 µm</code>, regardless of what stage B's wiring did. Its neighbours are CSC16 and CSC18, not "hardware 63 and 65."</p></div></details>
+
+  <details class="q"><summary>On H10-D, are CSC32 and CSC33 physically adjacent?</summary><div class="a"><p>No — they're about as far apart as two sites on this probe can be. CSC32 is the last channel on the <strong>Back</strong> shank (nominally the tip), and CSC33 is the <em>first</em> channel on the <strong>Front</strong> shank (the top, <code>y = 0</code>). Numeric adjacency in CSC space says nothing about spatial adjacency once there's more than one shank. This is exactly the assumption a single-shank .prb quietly encodes and gets wrong.</p></div></details>
+
+  <details class="q"><summary>Kilosort ran without errors on an H10 session using the H3 probe file. Is the output usable?</summary><div class="a"><p>No. Kilosort has no way to detect the mismatch — it received 64 columns and 64 positions, which is internally consistent. But it built its neighbourhood structure from a 1260 µm single line that doesn't exist, so whitening pooled channels that aren't neighbours, templates spanned imaginary distances, and every reported unit depth is fiction. Re-run it with a probe file generated from that session's config.</p></div></details>
+
+  <details class="q"><summary>Why does the H3 <code>.prb</code> set every x to 5.5 — where does that number come from?</summary><div class="a"><p>Nowhere meaningful. It's a nominal shank half-width placeholder. On a single-column probe every site shares one x, so the value is arbitrary as long as it's constant — only the <em>differences</em> between positions affect Kilosort's spatial reasoning. On H10 that stops being true: x becomes load-bearing, encoding both the ±18.5 µm column offset and the 150 µm shank separation.</p></div></details>
+
+  <details class="q"><summary>You get a new H10 recording from a config you haven't seen. What's the minimum you check before sorting?</summary><div class="a"><p>Parse that config's <code>-SetChannelNumber</code> block and diff it against the table your existing .prb was built from. Equal → reuse the file. Not equal → do <em>not</em> just re-run the arithmetic and call it verified: two of the three H10 tables on file decode to perfectly valid pin numbers while still scattering CSC1–32 across both shanks. The check that matters is the shank one — confirm CSC1–32 land on Back top-to-tip and CSC33–64 on Front top-to-tip. If they don't, the <code>−63</code> rule doesn't apply to that session and the mapping has to be worked out from the pinout PDF again.</p></div></details>
+</section>
+
+<footer>
+  <p>Built from these files:</p>
+  <ul>
+    <li>Config files/Cheetah2026-06-01_wheel_H3.cfg &nbsp;· stage C source for H3</li>
+    <li>Config files/H10_D_open_Cheetah2026-07-21_16-59-03.cfg &nbsp;· stage C source for H10-D</li>
+    <li>Probes/generate_probe_config_H10D.py &nbsp;· the −63 decode and .prb writer</li>
+    <li>Probes/probe_config_H10D_channel_table.csv &nbsp;· channel → shank / depth table</li>
+    <li>H3_channel_journey_diagrams/ · H10_channel_journey_diagrams/ &nbsp;· stage figures</li>
+    <li>Config files/AD_channel_mapping_figures.py &nbsp;· cross-session table stability</li>
+    <li>neuralynx converter/perpl_NLX2Binary.m &nbsp;· stage E loop</li>
+    <li>Probe_Playground/ASSY-77 H10-D-map.pdf &nbsp;· vendor pinout ground truth</li>
+  </ul>
+</footer>
+
+</div>
+
+<script>
+const H3_HW = [84, 86, 87, 93, 92, 79, 81, 83, 90, 82, 80, 88, 89, 95, 91, 85, 64, 66, 68, 70, 72, 74, 76, 78, 94, 77, 75, 73, 71, 69, 67, 65, 127, 125, 123, 121, 119, 117, 115, 113, 97, 114, 116, 118, 120, 122, 124, 126, 107, 105, 104, 98, 99, 112, 110, 108, 101, 109, 60, 103, 102, 96, 100, 106];
+const H10 = [{"ch":0,"csc":1,"hw":84,"pin":21,"shank":"back","row":0,"x":18.5,"y":0.0,"ok":true},{"ch":1,"csc":2,"hw":104,"pin":41,"shank":"back","row":1,"x":0.0,"y":15.0,"ok":true},{"ch":2,"csc":3,"hw":95,"pin":32,"shank":"back","row":1,"x":37.0,"y":15.0,"ok":true},{"ch":3,"csc":4,"hw":106,"pin":43,"shank":"back","row":2,"x":18.5,"y":30.0,"ok":true},{"ch":4,"csc":5,"hw":105,"pin":42,"shank":"back","row":3,"x":0.0,"y":45.0,"ok":true},{"ch":5,"csc":6,"hw":91,"pin":28,"shank":"back","row":3,"x":37.0,"y":45.0,"ok":true},{"ch":6,"csc":7,"hw":86,"pin":23,"shank":"back","row":4,"x":18.5,"y":60.0,"ok":true},{"ch":7,"csc":8,"hw":107,"pin":44,"shank":"back","row":5,"x":0.0,"y":75.0,"ok":true},{"ch":8,"csc":9,"hw":85,"pin":22,"shank":"back","row":5,"x":37.0,"y":75.0,"ok":true},{"ch":9,"csc":10,"hw":87,"pin":24,"shank":"back","row":6,"x":18.5,"y":90.0,"ok":true},{"ch":10,"csc":11,"hw":98,"pin":35,"shank":"back","row":7,"x":0.0,"y":105.0,"ok":true},{"ch":11,"csc":12,"hw":89,"pin":26,"shank":"back","row":7,"x":37.0,"y":105.0,"ok":true},{"ch":12,"csc":13,"hw":93,"pin":30,"shank":"back","row":8,"x":18.5,"y":120.0,"ok":true},{"ch":13,"csc":14,"hw":99,"pin":36,"shank":"back","row":9,"x":0.0,"y":135.0,"ok":true},{"ch":14,"csc":15,"hw":88,"pin":25,"shank":"back","row":9,"x":37.0,"y":135.0,"ok":true},{"ch":15,"csc":16,"hw":92,"pin":29,"shank":"back","row":10,"x":18.5,"y":150.0,"ok":true},{"ch":16,"csc":17,"hw":112,"pin":49,"shank":"back","row":11,"x":0.0,"y":165.0,"ok":true},{"ch":17,"csc":18,"hw":80,"pin":17,"shank":"back","row":11,"x":37.0,"y":165.0,"ok":true},{"ch":18,"csc":19,"hw":79,"pin":16,"shank":"back","row":12,"x":18.5,"y":180.0,"ok":true},{"ch":19,"csc":20,"hw":110,"pin":47,"shank":"back","row":13,"x":0.0,"y":195.0,"ok":true},{"ch":20,"csc":21,"hw":82,"pin":19,"shank":"back","row":13,"x":37.0,"y":195.0,"ok":true},{"ch":21,"csc":22,"hw":100,"pin":37,"shank":"back","row":14,"x":18.5,"y":210.0,"ok":true},{"ch":22,"csc":23,"hw":108,"pin":45,"shank":"back","row":15,"x":0.0,"y":225.0,"ok":true},{"ch":23,"csc":24,"hw":90,"pin":27,"shank":"back","row":15,"x":37.0,"y":225.0,"ok":true},{"ch":24,"csc":25,"hw":96,"pin":33,"shank":"back","row":16,"x":18.5,"y":240.0,"ok":true},{"ch":25,"csc":26,"hw":101,"pin":38,"shank":"back","row":17,"x":0.0,"y":255.0,"ok":true},{"ch":26,"csc":27,"hw":83,"pin":20,"shank":"back","row":17,"x":37.0,"y":255.0,"ok":true},{"ch":27,"csc":28,"hw":102,"pin":39,"shank":"back","row":18,"x":18.5,"y":270.0,"ok":true},{"ch":28,"csc":29,"hw":109,"pin":46,"shank":"back","row":19,"x":0.0,"y":285.0,"ok":true},{"ch":29,"csc":30,"hw":81,"pin":18,"shank":"back","row":19,"x":37.0,"y":285.0,"ok":true},{"ch":30,"csc":31,"hw":103,"pin":40,"shank":"back","row":20,"x":18.5,"y":300.0,"ok":true},{"ch":31,"csc":32,"hw":60,"pin":48,"shank":"back","row":21,"x":18.5,"y":315.0,"ok":false},{"ch":32,"csc":33,"hw":127,"pin":64,"shank":"front","row":0,"x":168.5,"y":0.0,"ok":true},{"ch":33,"csc":34,"hw":68,"pin":5,"shank":"front","row":1,"x":150.0,"y":15.0,"ok":true},{"ch":34,"csc":35,"hw":122,"pin":59,"shank":"front","row":1,"x":187.0,"y":15.0,"ok":true},{"ch":35,"csc":36,"hw":65,"pin":2,"shank":"front","row":2,"x":168.5,"y":30.0,"ok":true},{"ch":36,"csc":37,"hw":66,"pin":3,"shank":"front","row":3,"x":150.0,"y":45.0,"ok":true},{"ch":37,"csc":38,"hw":124,"pin":61,"shank":"front","row":3,"x":187.0,"y":45.0,"ok":true},{"ch":38,"csc":39,"hw":125,"pin":62,"shank":"front","row":4,"x":168.5,"y":60.0,"ok":true},{"ch":39,"csc":40,"hw":64,"pin":1,"shank":"front","row":5,"x":150.0,"y":75.0,"ok":true},{"ch":40,"csc":41,"hw":126,"pin":63,"shank":"front","row":5,"x":187.0,"y":75.0,"ok":true},{"ch":41,"csc":42,"hw":123,"pin":60,"shank":"front","row":6,"x":168.5,"y":90.0,"ok":true},{"ch":42,"csc":43,"hw":70,"pin":7,"shank":"front","row":7,"x":150.0,"y":105.0,"ok":true},{"ch":43,"csc":44,"hw":120,"pin":57,"shank":"front","row":7,"x":187.0,"y":105.0,"ok":true},{"ch":44,"csc":45,"hw":121,"pin":58,"shank":"front","row":8,"x":168.5,"y":120.0,"ok":true},{"ch":45,"csc":46,"hw":72,"pin":9,"shank":"front","row":9,"x":150.0,"y":135.0,"ok":true},{"ch":46,"csc":47,"hw":118,"pin":55,"shank":"front","row":9,"x":187.0,"y":135.0,"ok":true},{"ch":47,"csc":48,"hw":119,"pin":56,"shank":"front","row":10,"x":168.5,"y":150.0,"ok":true},{"ch":48,"csc":49,"hw":74,"pin":11,"shank":"front","row":11,"x":150.0,"y":165.0,"ok":true},{"ch":49,"csc":50,"hw":116,"pin":53,"shank":"front","row":11,"x":187.0,"y":165.0,"ok":true},{"ch":50,"csc":51,"hw":117,"pin":54,"shank":"front","row":12,"x":168.5,"y":180.0,"ok":true},{"ch":51,"csc":52,"hw":76,"pin":13,"shank":"front","row":13,"x":150.0,"y":195.0,"ok":true},{"ch":52,"csc":53,"hw":114,"pin":51,"shank":"front","row":13,"x":187.0,"y":195.0,"ok":true},{"ch":53,"csc":54,"hw":67,"pin":4,"shank":"front","row":14,"x":168.5,"y":210.0,"ok":true},{"ch":54,"csc":55,"hw":78,"pin":15,"shank":"front","row":15,"x":150.0,"y":225.0,"ok":true},{"ch":55,"csc":56,"hw":97,"pin":34,"shank":"front","row":15,"x":187.0,"y":225.0,"ok":true},{"ch":56,"csc":57,"hw":69,"pin":6,"shank":"front","row":16,"x":168.5,"y":240.0,"ok":true},{"ch":57,"csc":58,"hw":94,"pin":31,"shank":"front","row":17,"x":150.0,"y":255.0,"ok":true},{"ch":58,"csc":59,"hw":113,"pin":50,"shank":"front","row":17,"x":187.0,"y":255.0,"ok":true},{"ch":59,"csc":60,"hw":71,"pin":8,"shank":"front","row":18,"x":168.5,"y":270.0,"ok":true},{"ch":60,"csc":61,"hw":77,"pin":14,"shank":"front","row":19,"x":150.0,"y":285.0,"ok":true},{"ch":61,"csc":62,"hw":115,"pin":52,"shank":"front","row":19,"x":187.0,"y":285.0,"ok":true},{"ch":62,"csc":63,"hw":73,"pin":10,"shank":"front","row":20,"x":168.5,"y":300.0,"ok":true},{"ch":63,"csc":64,"hw":75,"pin":12,"shank":"front","row":21,"x":168.5,"y":315.0,"ok":true}];
+const BACK_ROWS = [[21], [41, 32], [43], [42, 28], [23], [44, 22], [24], [35, 26], [30], [36, 25], [29], [49, 17], [16], [47, 19], [37], [45, 27], [33], [38, 20], [39], [46, 18], [40], [48]];
+const FRONT_ROWS = [[64], [5, 59], [2], [3, 61], [62], [1, 63], [60], [7, 57], [58], [9, 55], [56], [11, 53], [54], [13, 51], [4], [15, 34], [6], [31, 50], [8], [14, 52], [10], [12]];
+</script>
+<script>
+/* ---------- viridis ---------- */
+const VIRIDIS=[[68,1,84],[72,40,120],[62,74,137],[49,104,142],[38,130,142],[31,158,137],[53,183,121],[109,205,89],[180,222,44],[253,231,37]];
+function viridis(t){
+  t=Math.max(0,Math.min(1,t));
+  const p=t*(VIRIDIS.length-1), i=Math.floor(p), f=p-i;
+  const a=VIRIDIS[i], b=VIRIDIS[Math.min(i+1,VIRIDIS.length-1)];
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`;
+}
+const SVGNS="http://www.w3.org/2000/svg";
+const el=(n,a={})=>{const e=document.createElementNS(SVGNS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ================= H3 tracer ================= */
+const h3s=document.getElementById('h3slider'), h3read=document.getElementById('h3read'),
+      h3chain=document.getElementById('h3chain'), h3note=document.getElementById('h3note');
+
+function h3render(csc){
+  const hw=H3_HW[csc-1], ch=csc-1, y=(ch*20).toFixed(1);
+  h3read.textContent=csc;
+  h3chain.innerHTML=`
+   <div class="link"><span class="n">1 · SILICON</span><span class="v">site ${csc}</span><span class="d">${csc===1?'top of shank':csc===64?'the tip':`${csc}th site from the top`}</span></div>
+   <div class="link"><span class="n">2 · PROBE PIN</span><span class="v">—</span><span class="d">Not needed: stage C already resolved it.</span></div>
+   <div class="link"><span class="n">3 · RAW ADC</span><span class="v">hw ${hw}</span><span class="d">DigitalLynx SX input. Carries no spatial meaning.</span></div>
+   <div class="link key"><span class="n">4 · CHEETAH</span><span class="v">CSC${csc}</span><span class="d"><code>-SetChannelNumber "CSC${csc}" ${hw}</code></span></div>
+   <div class="link"><span class="n">5 · KILOSORT</span><span class="v">ch ${ch}</span><span class="d">binary column ${ch} · <strong>(5.5, ${y})</strong> µm</span></div>`;
+  h3note.innerHTML = `<span class="mono">CSC${csc}.ncs</span> → binary column <span class="mono">${ch}</span> → depth <span class="mono">${y} µm</span>` +
+    (csc===64?' &nbsp;· deepest site, enters tissue first during insertion.'
+    :csc===1?' &nbsp;· shallowest site, enters tissue last.'
+    :hw===60?' &nbsp;· note: hardware channel 60 also appears as the undecodable channel on H10.':'');
+  h3fig.querySelectorAll('.h3line').forEach(l=>{
+    const on = +l.dataset.csc===csc;
+    l.setAttribute('stroke-opacity', on?1:0.16);
+    l.setAttribute('stroke-width', on?2.2:0.7);
+  });
+  h3fig.querySelectorAll('.h3dot').forEach(d=>{
+    d.setAttribute('r', +d.dataset.csc===csc?4.6:2.6);
+  });
+}
+
+/* ---- H3 bipartite figure ---- */
+(function(){
+  const svg=document.getElementById('h3fig');
+  const W=720,TOP=52,BOT=436, LX=150, RX=430;
+  const hwSorted=[...H3_HW].sort((a,b)=>a-b);
+  const hwY={}; hwSorted.forEach((v,i)=>hwY[v]=TOP+(BOT-TOP)*i/(hwSorted.length-1));
+  const cscY=c=>TOP+(BOT-TOP)*(c-1)/63;
+
+  const lab=(x,y,t,anchor='middle',size=11,weight=600,cls='')=>{
+    const e=el('text',{x,y,'text-anchor':anchor,'font-size':size,'font-weight':weight,
+      'font-family':'IBM Plex Mono, monospace',fill:css('--muted')});
+    e.textContent=t; if(cls)e.setAttribute('class',cls); svg.appendChild(e); return e;
+  };
+  lab(LX,26,'RAW ADC CHANNEL'); lab(LX,41,'stage B output','middle',10,400);
+  lab(RX,26,'LOGICAL CSC'); lab(RX,41,'stage C output','middle',10,400);
+
+  // lines
+  for(let c=1;c<=64;c++){
+    const hw=H3_HW[c-1];
+    const l=el('path',{
+      d:`M ${LX+8} ${hwY[hw]} C ${LX+120} ${hwY[hw]}, ${RX-120} ${cscY(c)}, ${RX-8} ${cscY(c)}`,
+      fill:'none',stroke:viridis((c-1)/63),'stroke-width':0.7,'stroke-opacity':0.16,'class':'h3line'});
+    l.dataset.csc=c; svg.appendChild(l);
+  }
+  // dots
+  for(const v of hwSorted){ svg.appendChild(el('circle',{cx:LX+8,cy:hwY[v],r:2.2,fill:css('--muted')})); }
+  for(let c=1;c<=64;c++){
+    const g=el('g',{class:'site'});
+    const d=el('circle',{cx:RX-8,cy:cscY(c),r:2.6,fill:viridis((c-1)/63),stroke:css('--surface'),'stroke-width':0.8,'class':'h3dot'});
+    d.dataset.csc=c;
+    const hit=el('circle',{cx:RX-8,cy:cscY(c),r:6,fill:'transparent'});
+    hit.addEventListener('mouseenter',()=>{h3s.value=c;h3render(c);});
+    g.appendChild(d); g.appendChild(hit); svg.appendChild(g);
+  }
+  [1,16,32,48,64].forEach(c=>{
+    const t=el('text',{x:RX+8,y:cscY(c)+3.5,'font-size':10,'font-family':'IBM Plex Mono, monospace',fill:css('--ink-2')});
+    t.textContent='CSC'+c; svg.appendChild(t);
+  });
+  // right annotation
+  const notes=[['CSC1',85,'shallowest'],['CSC64',428,'tip · deepest']];
+  const n1=el('text',{x:520,y:TOP+4,'font-size':11,'font-family':'IBM Plex Sans, sans-serif',fill:css('--ink-2')});
+  n1.textContent='CSC1 — top of shank, y = 0 µm'; svg.appendChild(n1);
+  const n2=el('text',{x:520,y:BOT+4,'font-size':11,'font-family':'IBM Plex Sans, sans-serif',fill:css('--ink-2')});
+  n2.textContent='CSC64 — tip, y = 1260 µm'; svg.appendChild(n2);
+  const n3=el('text',{x:520,y:(TOP+BOT)/2,'font-size':11,'font-family':'IBM Plex Sans, sans-serif',fill:css('--muted')});
+  n3.textContent='left order ≠ right order'; svg.appendChild(n3);
+  const n4=el('text',{x:520,y:(TOP+BOT)/2+16,'font-size':11,'font-family':'IBM Plex Sans, sans-serif',fill:css('--muted')});
+  n4.textContent='— that gap is what stage C fixes'; svg.appendChild(n4);
+})();
+
+h3s.addEventListener('input',e=>h3render(+e.target.value));
+document.getElementById('h3up').addEventListener('click',()=>{h3s.value=Math.min(64,+h3s.value+1);h3render(+h3s.value);});
+document.getElementById('h3dn').addEventListener('click',()=>{h3s.value=Math.max(1,+h3s.value-1);h3render(+h3s.value);});
+h3render(1);
+
+/* ================= H10 map ================= */
+const h10s=document.getElementById('h10slider'), h10read=document.getElementById('h10read'),
+      h10detail=document.getElementById('h10detail'), h10math=document.getElementById('h10math');
+let colourMode='depth';
+
+const N_ROWS=22;
+const MAPW=300, MTOP=82, MBOT=430, XB=90, XF=210, JIT=17;
+const rowY=r=>MTOP+(MBOT-MTOP)*r/(N_ROWS-1);
+
+(function(){
+  const svg=document.getElementById('h10map');
+  const mk=(x,y,t,s=10,anchor='middle',fill=null)=>{
+    const e=el('text',{x,y,'text-anchor':anchor,'font-size':s,'font-weight':600,
+      'font-family':'IBM Plex Mono, monospace',fill:fill||css('--muted')});
+    e.textContent=t; svg.appendChild(e);
+  };
+  // shank bodies
+  [XB,XF].forEach(xc=>{
+    const hw=32, taper=MBOT+8;
+    svg.appendChild(el('path',{
+      d:`M ${xc-hw} ${MTOP-16} L ${xc+hw} ${MTOP-16} L ${xc+hw} ${taper} L ${xc} ${MBOT+30} L ${xc-hw} ${taper} Z`,
+      fill:css('--surface-2'),stroke:css('--rule-strong'),'stroke-width':1.4}));
+  });
+  mk(MAPW/2,16,'top · insertion end',9);
+  mk(XB,44,'BACK',11.5,'middle',css('--back'));
+  mk(XF,44,'FRONT',11.5,'middle',css('--front'));
+  mk(XB,58,'ch 0–31',9);
+  mk(XF,58,'ch 32–63',9);
+  mk(MAPW/2,MBOT+52,'tip · enters tissue first',9);
+
+  H10.forEach(d=>{
+    const xc = d.shank==='back'?XB:XF;
+    const col = d.x===0||d.x===150 ? -1 : (d.x===37||d.x===187 ? 1 : 0);
+    const cx = xc + col*JIT, cy = rowY(d.row);
+    const g=el('g',{class:'site'});
+    const c=el('circle',{cx,cy,r:6,'stroke-width':d.ok?0.8:2,
+      stroke:d.ok?css('--surface'):css('--bad'),'class':'h10dot'});
+    c.dataset.csc=d.csc;
+    g.appendChild(c);
+    const hit=el('circle',{cx,cy,r:9,fill:'transparent'});
+    hit.setAttribute('tabindex','0');
+    hit.setAttribute('role','button');
+    hit.setAttribute('aria-label',`CSC${d.csc}, ${d.shank} shank, depth ${d.y} micrometres`);
+    const pick=()=>{h10s.value=d.csc;h10render(d.csc);};
+    hit.addEventListener('click',pick);
+    hit.addEventListener('mouseenter',pick);
+    hit.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+    g.appendChild(hit);
+    svg.appendChild(g);
+  });
+  // selection ring drawn last
+  const ring=el('circle',{id:'h10ring',r:10,fill:'none',stroke:css('--ink'),'stroke-width':2,cx:-99,cy:-99});
+  svg.appendChild(ring);
+})();
+
+function paint(){
+  document.querySelectorAll('#h10map .h10dot').forEach(c=>{
+    const d=H10[+c.dataset.csc-1];
+    c.setAttribute('fill', colourMode==='depth'
+      ? viridis((d.csc-1)/63)
+      : (d.shank==='back'?css('--back'):css('--front')));
+  });
+}
+
+function h10render(csc){
+  const d=H10[csc-1];
+  h10read.textContent=csc;
+  h10s.value=csc;
+  const shankLabel = d.shank==='back'
+    ? `<span style="color:var(--back)">Back</span>` : `<span style="color:var(--front)">Front</span>`;
+  h10detail.innerHTML=`
+    <dt>Cheetah</dt><dd>CSC${d.csc}</dd>
+    <dt>Kilosort ch</dt><dd>${d.ch}</dd>
+    <dt>Raw ADC</dt><dd>hw ${d.hw}</dd>
+    <dt>Probe pin</dt><dd>${d.ok?d.pin:'<span style="color:var(--bad)">no valid pin</span>'}</dd>
+    <dt>Shank</dt><dd>${shankLabel}</dd>
+    <dt>Row</dt><dd>${d.row} of 21</dd>
+    <dt>Position</dt><dd>(${d.x}, ${d.y}) µm</dd>`;
+  h10math.innerHTML = d.ok
+    ? `<div class="note ok" style="margin:0"><p style="font-size:13.5px;margin:0"><span class="mono">${d.hw} − 63 = ${d.pin}</span> → a real site on the ${d.shank} shank, row ${d.row}. <span class="tag ok" style="margin-left:4px">decodes</span></p></div>`
+    : `<div class="note bad" style="margin:0"><p style="font-size:13.5px;margin:0"><span class="mono">${d.hw} − 63 = ${d.hw-63}</span> — not a probe pin. Position shown is a placeholder at the one unclaimed site (pin 48, Back tip). <span class="tag bad" style="margin-left:4px">unresolved</span></p></div>`;
+  // ring
+  const xc = d.shank==='back'?XB:XF;
+  const col = d.x===0||d.x===150 ? -1 : (d.x===37||d.x===187 ? 1 : 0);
+  const ring=document.getElementById('h10ring');
+  ring.setAttribute('cx', xc+col*JIT); ring.setAttribute('cy', rowY(d.row));
+  ring.setAttribute('stroke', css('--ink'));
+}
+
+h10s.addEventListener('input',e=>h10render(+e.target.value));
+document.getElementById('h10up').addEventListener('click',()=>h10render(Math.min(64,+h10s.value+1)));
+document.getElementById('h10dn').addEventListener('click',()=>h10render(Math.max(1,+h10s.value-1)));
+const bD=document.getElementById('modeDepth'), bS=document.getElementById('modeShank');
+bD.addEventListener('click',()=>{colourMode='depth';bD.setAttribute('aria-pressed','true');bS.setAttribute('aria-pressed','false');paint();});
+bS.addEventListener('click',()=>{colourMode='shank';bS.setAttribute('aria-pressed','true');bD.setAttribute('aria-pressed','false');paint();});
+paint(); h10render(1);
+
+/* repaint theme-dependent colours if the viewer's scheme flips */
+if(window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
+    paint(); h10render(+h10s.value);
+  });
+}
+</script>
+</body></html>

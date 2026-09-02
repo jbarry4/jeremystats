@@ -1,0 +1,69 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>leak: running</title>
+<style>body{font:12px/1.6 ui-monospace,Consolas,monospace;background:#0a1310;
+color:#dfeae4;margin:0;display:flex}#log{width:700px;padding:12px;overflow:auto;
+height:100vh;white-space:pre}iframe{flex:1;height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow;
+  const B = ev('BARRY'); const setView = ev('setView');
+  const D = () => frame.contentDocument;
+
+  // Count listeners by wrapping addEventListener/removeEventListener on the
+  // iframe's own window -- the thing the leak attached to.
+  let added = 0, removed = 0;
+  const origAdd = W.addEventListener.bind(W);
+  const origRem = W.removeEventListener.bind(W);
+  W.addEventListener = function (t, f, o) { added++; return origAdd(t, f, o); };
+  W.removeEventListener = function (t, f, o) { removed++; return origRem(t, f, o); };
+
+  const sess = new URLSearchParams(location.search).get('session');
+  setView('xplore');
+  await B.views.xplore.open(sess);
+  await until(() => D().querySelector('.pane-canvas-host canvas'), 25000);
+  await sleep(600);
+
+  const base = { added, removed };
+  say('after opening a session:  added ' + added + '  removed ' + removed);
+
+  // 60 pane rebuilds -- what a normal hour of switching panels looks like.
+  const XF = B.views.xplore.state;
+  for (let i = 0; i < 60; i++) {
+    XF.measure = !XF.measure;                 // forces a full render()
+    B.views.xplore.state.panes[0].panel = (i % 2) ? 'traces' : 'traces';
+    ev('BARRY.views.xplore.refreshAll');      // keep it warm
+    D().querySelector('#paneGrid');
+    B.views.xplore.onShow();
+    await sleep(12);
+  }
+  await sleep(600);
+  say('after 60 pane rebuilds:   added ' + added + '  removed ' + removed);
+  const net = (added - base.added) - (removed - base.removed);
+  say('');
+  say('net window listeners retained over 60 rebuilds: ' + net);
+  say(net <= 8 ? 'PASS  -- teardown is keeping up'
+               : 'FAIL  -- ' + net + ' listeners leaked');
+  say('');
+  say('teardown list length on pane 0: '
+      + ((XF.panes[0] && XF.panes[0]._teardown) || []).length
+      + '   (should stay small, not grow)');
+  document.title = 'leak: net ' + net;
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'leak CRASH'; });
+</script></body></html>

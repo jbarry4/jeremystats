@@ -1,0 +1,74 @@
+{
+  "presets": [
+    {
+      "builtin": true,
+      "highpass": 0,
+      "id": "none",
+      "label": "None  (no filtering)",
+      "lowpass": 0,
+      "name": "None",
+      "notch": 0,
+      "note": "Raw signal, exactly as recorded"
+    },
+    {
+      "builtin": true,
+      "highpass": 0,
+      "id": "lfp",
+      "label": "LFP  <300 Hz",
+      "lowpass": 300,
+      "name": "LFP",
+      "notch": 0,
+      "note": "Wideband local field potential"
+    },
+    {
+      "builtin": true,
+      "highpass": 4,
+      "id": "theta",
+      "label": "Theta  4-12 Hz",
+      "lowpass": 12,
+      "name": "Theta",
+      "notch": 0,
+      "note": "Hippocampal theta band"
+    },
+    {
+      "builtin": true,
+      "highpass": 300,
+      "id": "spike",
+      "label": "Spikes  >300 Hz",
+      "lowpass": 0,
+      "name": "Spikes",
+      "notch": 0,
+      "note": "Unit/spike band"
+    },
+    {
+      "builtin": true,
+      "highpass": 1,
+      "id": "ied",
+      "label": "IED  1-70 Hz, notch 60",
+      "lowpass": 70,
+      "name": "IED",
+      "notch": 60,
+      "note": "Interictal discharge band with line notch"
+    },
+    {
+      "builtin": true,
+      "highpass": 120,
+      "id": "ripple",
+      "label": "Ripple  120-250 Hz",
+      "lowpass": 250,
+      "name": "Ripple",
+      "notch": 0,
+      "note": "Sharp-wave ripple band"
+    },
+    {
+      "builtin": true,
+      "highpass": 5,
+      "id": "ds",
+      "label": "Dentate spike  5-100 Hz, notch 60",
+      "lowpass": 100,
+      "name": "Dentate spike",
+      "notch": 60,
+      "note": "Toothy dentate-spike band"
+    }
+  ]
+}

@@ -1,0 +1,259 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>strip2: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  // Open a recording.
+  const cat = await (await fetch('/api/sessions')).json();
+  // A stored session record keeps every path it has been opened from; the
+  // newest is the one most likely to still be there.
+  let path = null;
+  for (const rec of (cat.sessions || [])) {
+    const ps = rec.paths || [];
+    if (ps.length) { path = ps[ps.length - 1]; break; }
+  }
+  say('recording: ' + path, 'note');
+  ev("setView('xplore')");
+  await sleep(400);
+  await ev('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await until(() => $('.pane-ctl'), 25000);
+  await sleep(1400);
+
+  const strip = () => $('.pane-ctl');
+  const measure = () => {
+    const s = strip();
+    return { scroll: s.scrollWidth, client: s.clientWidth,
+             over: s.scrollWidth - s.clientWidth };
+  };
+
+  say('');
+  say('=== the strip fits the pane ===', 'hd');
+  let m = measure();
+  say('  traces pane: ' + m.scroll + 'px of controls in ' + m.client + 'px',
+      'note');
+  check('nothing is hidden horizontally', m.over <= 1,
+        m.over > 1 ? m.over + 'px hidden' : 'fits');
+  check('nothing is hidden vertically either',
+        strip().scrollHeight <= strip().clientHeight + 1,
+        strip().scrollHeight + ' vs ' + strip().clientHeight);
+  const groups = $$('.pane-ctl > .ctl').length;
+  say('  ' + groups + ' control groups on the strip', 'note');
+  // What each group actually costs, so compaction is aimed rather than
+  // guessed at.
+  const widths = () => $$('.pane-ctl > *').map((n) => {
+    const lbl = n.querySelector('label, .ctl-menu-label');
+    const name = n.classList.contains('ctl-sep') ? '|'
+      : n.classList.contains('ctl-spacer') ? '<spacer>'
+      : (lbl ? lbl.textContent.trim() : (n.textContent || '?').slice(0, 12));
+    return name + ' ' + Math.round(n.getBoundingClientRect().width);
+  });
+  say('  ' + widths().join('   '), 'note');
+  say('  strip height ' + strip().clientHeight + 'px ('
+      + (strip().clientHeight <= 56 ? 'one row' : 'wrapped') + ')', 'note');
+  check('it is at most two rows tall',
+        strip().clientHeight <= 94, strip().clientHeight + 'px tall');
+
+  say('');
+  say('=== the buttons state their own settings ===', 'hd');
+  const menus = $$('.pane-ctl .ctl-menu').map(
+    (b) => b.textContent.replace(/▾/, '').trim());
+  say('  ' + menus.join('   |   '), 'note');
+  check('there is a Filter button carrying the band',
+        menus.some((t) => /^Filter/.test(t)),
+        menus.find((t) => /^Filter/.test(t)));
+  check('and a channel button carrying the count',
+        menus.some((t) => /^Ch\s*\d+\/\d+/.test(t)),
+        menus.find((t) => /^Ch/.test(t)));
+  check('and Marks and More',
+        ['Marks', 'More'].every((k) => menus.some((t) => t.startsWith(k))),
+        menus.join(' | '));
+  check('the window fields are still on the strip, not hidden',
+        $$('.pane-ctl > .ctl > label').map((l) => l.textContent)
+          .filter((t) => /Start|Span|Move/.test(t)).length === 3,
+        $$('.pane-ctl > .ctl > label').map((l) => l.textContent).join(', '));
+
+  say('');
+  say('=== a menu opens, and what it holds works ===', 'hd');
+  const btn = (name) => $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith(name));
+  btn('Filter').click();
+  await sleep(400);
+  check('the Filter popover opens', !!$('.ctl-pop'));
+  const labels = () => $$('.ctl-pop .ctl > label').map((l) => l.textContent);
+  check('it holds all three corners',
+        ['High-pass', 'Low-pass', 'Notch'].every((k) => labels().includes(k)),
+        labels().join(', '));
+  check('and the preset picker and a save',
+        !!$('.ctl-pop select')
+        && $$('.ctl-pop button').some((b) => /Save these/.test(b.textContent)));
+
+  // It must escape the strip's own overflow clipping.
+  const pop = $('.ctl-pop');
+  const pr = pop.getBoundingClientRect();
+  const sr = strip().getBoundingClientRect();
+  check('the popover is drawn outside the scrolling strip',
+        pr.bottom > sr.bottom && pop.parentElement === D().body,
+        'parent = ' + pop.parentElement.tagName);
+  check('it is fully on screen',
+        pr.left >= 0 && pr.right <= W.innerWidth + 1
+        && pr.top >= 0 && pr.bottom <= W.innerHeight + 1,
+        [pr.left, pr.top, pr.right, pr.bottom].map(Math.round).join(', ')
+        + ' in ' + W.innerWidth + 'x' + W.innerHeight);
+
+  // Change the high-pass and check the button relabels. The value has to
+  // differ from whatever is already saved on this session, or "no change"
+  // reads as "did not relabel".
+  const SESS = 'BARRY.views.xplore.state.sessions['
+             + 'BARRY.views.xplore.state.active]';
+  const hp0 = Number(ev(SESS + '.hp')) || 0;
+  const want = hp0 === 3 ? 7 : 3;
+  const before = btn('Filter').textContent;
+  const hp = $$('.ctl-pop .ctl').find(
+    (c) => (c.querySelector('label') || {}).textContent === 'High-pass')
+    .querySelector('input');
+  hp.value = String(want);
+  hp.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(1800);
+  const after = (btn('Filter') || {}).textContent || '';
+  check('setting a corner relabels the button',
+        after !== before && after.includes(String(want)),
+        before + '  ->  ' + after + '  (was ' + hp0 + ', set ' + want + ')');
+  check('and the session actually changed',
+        Number(ev(SESS + '.hp')) === want, String(ev(SESS + '.hp')));
+
+  say('');
+  say('=== one popover at a time, and it closes ===', 'hd');
+  check('editing a setting did not orphan the popover',
+        $$('.ctl-pop').length === 1, $$('.ctl-pop').length + ' popovers open');
+  check('and the button it belongs to is still in the document',
+        !!$('.ctl-menu[data-menu="Filter"]')
+        && $('.ctl-menu[data-menu="Filter"]').classList.contains('active'));
+  btn('Filter').click();
+  await sleep(350);
+  check('a second click on the same button closes it', !$('.ctl-pop'));
+  btn('Filter').click();
+  await sleep(300);
+  btn('Marks').click();
+  await sleep(400);
+  check('opening another closes the first',
+        $$('.ctl-pop').length === 1, $$('.ctl-pop').length + ' open');
+  check('the Marks popover offers Browse and Add',
+        $$('.ctl-pop button').some((b) => /Browse/.test(b.textContent))
+        && $$('.ctl-pop button').some((b) => /Add a bookmark/.test(b.textContent)));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(350);
+  check('escape closes it', !$('.ctl-pop'));
+  btn('More').click();
+  await sleep(300);
+  check('More holds the read options',
+        $$('.ctl-pop .toggle').length === 2,
+        $$('.ctl-pop .toggle').map((t) => t.textContent).join(' | '));
+  check('and the on-disk actions',
+        $$('.ctl-pop button').some((b) => /Show in folder/.test(b.textContent))
+        && $$('.ctl-pop button').some((b) => /Figure builder/.test(b.textContent)));
+  check('and the jump-to-start / jump-to-end buttons',
+        $$('.ctl-pop button').some((b) => /To the start/.test(b.textContent))
+        && $$('.ctl-pop button').some((b) => /To the end/.test(b.textContent)));
+  check('and the event actions',
+        ['Classes', 'Import', 'Export'].every((k) => $$('.ctl-pop button')
+          .some((b) => b.textContent.startsWith(k))),
+        $$('.ctl-pop button').map((b) => b.textContent).join(' | '));
+  check('and the spike detector',
+        $$('.ctl-pop button').some(
+          (b) => /Threshold detector/.test(b.textContent)));
+  D().body.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+  await sleep(350);
+  check('clicking away closes it', !$('.ctl-pop'));
+
+  say('');
+  say('=== every panel type still fits ===', 'hd');
+  const PANELS = ['traces', 'voltage', 'csd', 'spectrogram', 'scalogram',
+                  'theta', 'raster'];
+  for (const p of PANELS) {
+    const ok = ev('(function(){var XF=BARRY.views.xplore.state;'
+      + 'if(!XF.panes[0])return false;XF.panes[0].panel=' + JSON.stringify(p)
+      + ';BARRY.views.xplore.onShow();return true;})()');
+    if (!ok) { say('  (no pane 0)', 'bad'); fails++; break; }
+    await sleep(1500);
+    if (!strip()) { say('  ' + p + ': no strip', 'bad'); fails++; continue; }
+    m = measure();
+    const h = strip().clientHeight;
+    check((p + ':').padEnd(14) + m.scroll + 'px in ' + m.client + 'px, '
+          + h + 'px tall',
+          m.over <= 1 && strip().scrollHeight <= h + 1,
+          m.over > 1 ? m.over + 'px hidden sideways'
+            : (strip().scrollHeight > h + 1
+               ? (strip().scrollHeight - h) + 'px hidden below'
+               : (h <= 56 ? 'one row' : 'two rows')));
+  }
+
+  // A time-frequency panel has the most settings; check they are all reachable.
+  ev('(function(){var XF=BARRY.views.xplore.state;'
+     + "XF.panes[0].panel='spectrogram';BARRY.views.xplore.onShow();})()");
+  await sleep(1800);
+  say('');
+  say('=== the spectrogram settings are all still reachable ===', 'hd');
+  const pb = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('Panel'));
+  check('there is a Panel button', !!pb,
+        pb ? pb.textContent : $$('.pane-ctl .ctl-menu')
+          .map((b) => b.textContent).join(' | '));
+  if (pb) {
+    check('it states the analyzed band', /\d+–\d+/.test(pb.textContent),
+          pb.textContent);
+    pb.click();
+    await sleep(450);
+    const t = ($('.ctl-pop') || {}).textContent || '';
+    for (const k of ['Channels', 'Combine', 'f min', 'f max', 'Colormap']) {
+      check('it holds ' + k, t.includes(k));
+    }
+    check('and the display-only frequency crop',
+          /Show|view/i.test(t), t.slice(0, 120));
+  }
+
+  // Leave the stored session as it was found: the harness edited a filter,
+  // and that is saved per session.
+  ev(SESS + '.hp = ' + hp0);
+  ev('BARRY.views.xplore.refreshAll()');
+  await sleep(1500);
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'strip2: ' + fails + ' FAILED' : 'strip2: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'strip2 CRASH'; });
+</script></body></html>

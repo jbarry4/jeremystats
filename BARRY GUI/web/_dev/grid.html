@@ -1,0 +1,82 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>grid: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.5 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:520px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre;z-index:9}
+iframe{position:fixed;left:520px;top:0;right:0;bottom:0;width:calc(100vw - 520px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(100);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const sess = new URLSearchParams(location.search).get('session');
+
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+
+  for (const panel of ['voltage', 'csd', 'theta']) {
+    B.views.xplore.state.panes[0].panel = panel;
+    B.views.xplore.refreshAll();
+    await until(() => $('.pane-img-host img:not(.hidden)'), 40000);
+    await sleep(1400);
+
+    const g = $('.raster-grid');
+    const img = $('.pane-img-host img');
+    say('=== ' + panel + ' ===');
+    if (!g) { say('  NO GRID CANVAS'); continue; }
+    const gr = g.getBoundingClientRect(), ir = img.getBoundingClientRect();
+    say('  grid  x=' + gr.x.toFixed(0) + ' y=' + gr.y.toFixed(0)
+        + ' w=' + gr.width.toFixed(0) + ' h=' + gr.height.toFixed(0)
+        + '  bitmap=' + g.width + 'x' + g.height);
+    say('  image x=' + ir.x.toFixed(0) + ' y=' + ir.y.toFixed(0)
+        + ' w=' + ir.width.toFixed(0) + ' h=' + ir.height.toFixed(0));
+    const over = Math.abs(gr.x - ir.x) < 1 && Math.abs(gr.y - ir.y) < 1
+              && Math.abs(gr.width - ir.width) < 1 && Math.abs(gr.height - ir.height) < 1;
+    say('  overlays the image exactly: ' + over);
+
+    // Count drawn pixels, and find the columns/rows that are mostly drawn.
+    const ctx = g.getContext('2d');
+    const d = ctx.getImageData(0, 0, g.width, g.height).data;
+    let painted = 0;
+    const colHit = new Array(g.width).fill(0);
+    const rowHit = new Array(g.height).fill(0);
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.width; x++) {
+        if (d[(y * g.width + x) * 4 + 3] > 24) {
+          painted++; colHit[x]++; rowHit[y]++;
+        }
+      }
+    }
+    const vlines = colHit.filter((n) => n > g.height * 0.7).length;
+    const hlines = rowHit.filter((n) => n > g.width * 0.7).length;
+    say('  painted pixels: ' + painted
+        + '  (' + (100 * painted / (g.width * g.height)).toFixed(1) + '% of the canvas)');
+    say('  full-height vertical rules: ' + vlines);
+    say('  full-width horizontal rules: ' + hlines);
+    say('  channels in this panel: '
+        + ((B.views.xplore.state.panes[0]._panelData || {}).rows || []).length);
+    say('');
+  }
+  document.title = 'grid: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'grid CRASH'; });
+</script></body></html>

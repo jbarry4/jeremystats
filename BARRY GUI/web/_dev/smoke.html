@@ -1,0 +1,494 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>smoke: running</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, Consolas, monospace; background:#0a1310;
+         color:#dfeae4; margin:0; display:flex; }
+  #log { width: 620px; padding: 10px; overflow:auto; height:100vh; }
+  #log div { white-space: pre-wrap; }
+  .ok   { color:#5cc98d; }
+  .bad  { color:#ff6b5e; }
+  .note { color:#6f8c7d; }
+  iframe { flex:1; height:100vh; border:0; border-left:1px solid #1a3227; }
+</style></head>
+<body>
+<div id="log"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+const LOG = document.getElementById('log');
+let pass = 0, fail = 0;
+function say(msg, cls) {
+  LOG.appendChild(Object.assign(document.createElement('div'),
+                                { textContent: msg, className: cls || '' }));
+  LOG.scrollTop = LOG.scrollHeight;
+}
+function check(name, cond, extra) {
+  if (cond) { pass++; say('PASS  ' + name, 'ok'); }
+  else { fail++; say('FAIL  ' + name + (extra ? '   ' + extra : ''), 'bad'); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function until(fn, ms, label) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not ready */ }
+    await sleep(90);
+  }
+  say('  timed out waiting for ' + (label || 'condition'), 'note');
+  return null;
+}
+
+async function run() {
+  const frame = document.getElementById('app');
+  // contentWindow is replaced when the iframe navigates, so it has to be
+  // read fresh rather than captured once up front.
+  const win = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+
+  await new Promise((r) => {
+    if (frame.contentDocument
+        && frame.contentDocument.readyState === 'complete') r();
+    else frame.addEventListener('load', r, { once: true });
+  });
+  // core.js declares BARRY with const, so it is a lexical global, not a
+  // property of window. eval() runs in the page's global scope and can see it.
+  const ev = (code) => win().eval(code);
+  await until(() => ev('typeof BARRY') === 'object'
+                    && ev('BARRY.state.catalog'), 25000, 'boot');
+
+  const W = win();
+  W.BARRY = ev('BARRY');
+  W.setView = ev('setView');
+  W.closeModal = ev('closeModal');
+  W.showModal = ev('showModal');
+  check('app boots with a catalog',
+        !!(W.BARRY.state.catalog && W.BARRY.state.catalog.items.length));
+  check('no boot error shown',
+        D().getElementById('bootError').classList.contains('hidden'),
+        D().getElementById('bootError').textContent);
+  check('features.js loaded', !!(W.BARRY.palette && W.BARRY.prefs));
+
+  const $ = (sel) => D().querySelector(sel);
+  const $$ = (sel) => Array.from(D().querySelectorAll(sel));
+  const click = (sel) => { const n = $(sel); if (n) n.click(); return !!n; };
+
+  /* ---------------- command palette ---------------- */
+  say('--- palette ---', 'note');
+  W.BARRY.palette.show();
+  await until(() => $('#palette') && !$('#palette').classList.contains('hidden'),
+              4000, 'palette open');
+  check('palette opens', !!$('#palette') &&
+        !$('#palette').classList.contains('hidden'));
+  const rows0 = $$('.pal-row').length;
+  check('palette lists commands', rows0 > 10, rows0 + ' rows');
+  const inp = $('#palInput');
+  inp.value = 'housekeep';
+  inp.dispatchEvent(new W.Event('input'));
+  await sleep(120);
+  const hk = $$('.pal-row .pal-label').map((n) => n.textContent);
+  check('palette filters by fuzzy score',
+        hk.some((t) => /housekeep/i.test(t)), hk.slice(0, 3).join(' | '));
+  W.BARRY.palette.hide();
+
+  /* ---------------- preferences round trip ---------------- */
+  say('--- preferences ---', 'note');
+  W.BARRY.prefs.set('smoke_probe', { hello: 1 });
+  await W.BARRY.prefs.flush();
+  const got = await (await fetch('/api/prefs')).json();
+  check('prefs write reaches the server',
+        !!(got.prefs && got.prefs.smoke_probe && got.prefs.smoke_probe.hello === 1),
+        JSON.stringify(got.prefs && got.prefs.smoke_probe));
+  W.BARRY.prefs.set('smoke_probe', null);
+  await W.BARRY.prefs.flush();
+
+  /* ---------------- explorer: favourites + source + command ---------------- */
+  say('--- explorer ---', 'note');
+  W.setView('explorer');
+  await sleep(150);
+  const first = $$('.tree-item')[0];
+  check('script tree renders', !!first);
+  const star = first && first.querySelector('.tree-fav');
+  check('every row has a favourite star', !!star);
+  if (star) {
+    star.click();
+    await sleep(200);
+    check('favourite is remembered',
+          (W.BARRY.prefs.get('fav_scripts', []) || []).length > 0);
+    check('a Favourites section appears',
+          $$('.tree-head span').some((n) => /Favourites/.test(n.textContent)));
+  }
+  await W.BARRY.views.explorer.select('IED/03_IED_Detection/vacc_ied_detect.m');
+  await sleep(250);
+  check('a script opens in the detail pane',
+        /vacc_ied_detect/.test(($('#scriptDetail h2') || {}).textContent || ''));
+  check('Copy command button present',
+        $$('#scriptDetail button').some((b) => b.textContent === 'Copy command'));
+  const viewSrc = $$('#scriptDetail button')
+    .find((b) => /View source/.test(b.textContent));
+  check('View source button present', !!viewSrc);
+  if (viewSrc) {
+    viewSrc.click();
+    await sleep(200);
+    check('source shows numbered lines', $$('.src-line').length > 5,
+          $$('.src-line').length + ' lines');
+    const find = $('.source-box') && $('#scriptDetail input[type=search]');
+    if (find) {
+      find.value = 'function';
+      find.dispatchEvent(new W.Event('input'));
+      await sleep(200);
+      check('find-in-file highlights matches', $$('.src-line.hit').length > 0,
+            $$('.src-line.hit').length + ' hits');
+    } else { check('find-in-file input present', false); }
+  }
+  // Un-favourite so the test leaves no trace.
+  const onStar = $$('.tree-fav.on')[0];
+  if (onStar) onStar.click();
+
+  /* ---------------- pipeline: preflight ---------------- */
+  say('--- pipeline ---', 'note');
+  W.setView('pipeline');
+  await sleep(120);
+  check('Preflight button present',
+        $$('#stageList button').some((b) => b.textContent === 'Preflight'));
+  check('Batch button present',
+        $$('#stageList button').some((b) => /^Batch/.test(b.textContent)));
+  check('Presets button present',
+        $$('#stageList button').some((b) => /^Presets/.test(b.textContent)));
+  check('per-stage Check button present',
+        $$('#stageList button').some((b) => b.textContent === 'Check'));
+
+  const root = (new URLSearchParams(location.search).get('session')
+                || '').trim();
+  if (root) {
+    await W.BARRY.views.pipeline.setFolder(root);
+    await sleep(400);
+    const okrun = await W.BARRY.views.pipeline.preflight();
+    await until(() => $$('.check-row').length > 3, 9000, 'preflight rows');
+    check('preflight renders check rows', $$('.check-row').length > 3,
+          $$('.check-row').length + ' rows');
+    check('preflight found MATLAB',
+          $$('.check-name').some((n) => n.textContent === 'MATLAB'));
+    check('preflight is not blocking on a real session', okrun !== false);
+    W.closeModal();
+  } else { say('  (no session path given, preflight skipped)', 'note'); }
+
+  /* ---------------- history: timeline + export ---------------- */
+  say('--- history ---', 'note');
+  W.setView('history');
+  await until(() => $$('#histList .hist-row').length > 0
+                 || $('#histList .tree-empty'), 9000, 'history load');
+  check('timeline wrapper exists', !!$('#histTimeline'));
+  await until(() => $('#histTimeline canvas') || $('#histTimeline .hint'),
+              5000, 'timeline paint');
+  check('timeline draws a canvas or says it is empty',
+        !!($('#histTimeline canvas') || $('#histTimeline .hint')));
+  check('Export CSV button present', !!$('#histExport'));
+  const rowsH = $$('#histList .hist-row');
+  if (rowsH.length) {
+    rowsH[0].click();
+    await sleep(250);
+    check('a run detail renders', !!$('#histDetail h2'));
+    check('Copy as JSON offered',
+          $$('#histDetail button').some((b) => /Copy as JSON/.test(b.textContent)));
+  }
+
+  /* ---------------- errors: groups + triage ---------------- */
+  say('--- errors ---', 'note');
+  await fetch('/api/errors/test', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  W.setView('errors');
+  await until(() => $$('.err-group').length > 0, 9000, 'error groups');
+  check('errors are grouped', $$('.err-group').length > 0,
+        $$('.err-group').length + ' groups');
+  check('a group shows a repeat count', !!$('.err-count'));
+  check('diagnostic bundle button present',
+        $$('#errBody button').some((b) => /diagnostic bundle/i.test(b.textContent)));
+  const ghead = $('.err-ghead');
+  if (ghead) {
+    ghead.click();
+    await sleep(200);
+    check('a group expands to show occurrences', $$('.err-occ').length > 0);
+    check('Mark resolved offered',
+          $$('.err-gbody button').some((b) => /Mark resolved/.test(b.textContent)));
+  }
+  const bundle = await (await fetch('/api/errors/bundle', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: '{}' })).json();
+  check('bundle text names this machine',
+        /machine/.test(bundle.text || ''), (bundle.text || '').slice(0, 40));
+
+  /* ---------------- results: bulk + compare + collections ---------------- */
+  say('--- results ---', 'note');
+  W.setView('results');
+  await until(() => $$('.res-card').length > 0 || $('#resultsBody .empty-state'),
+              12000, 'results load');
+  const cards = $$('.res-card');
+  // A clean store legitimately has nothing cataloged, and the empty state is
+  // part of what should be checked -- not a reason for the suite to fail.
+  check('results catalog renders cards or its empty state',
+        cards.length > 0 || !!$('#resultsBody .empty-state'),
+        cards.length + ' cards');
+  if (!cards.length) say('  (nothing cataloged; selection checks skipped)', 'note');
+  check('collections row present', !!$('#resultsBody .coll-row'));
+  check('sort control present',
+        $$('#resultsBody select').some((sel) =>
+          Array.from(sel.options).some((o) => o.value === 'bytes')));
+  if (cards.length >= 2) {
+    $$('.res-pick')[0].click();
+    await sleep(150);
+    check('bulk bar appears on selection', !!$('.bulk-bar'));
+    $$('.res-pick')[1].click();
+    await sleep(150);
+    check('bulk bar counts the selection',
+          /2 selected/.test(($('.bulk-bar .n') || {}).textContent || ''));
+    const cmp = $$('.bulk-bar button').find((b) => b.textContent === 'Compare');
+    if (cmp) {
+      cmp.click();
+      await sleep(400);
+      check('compare mode shows both side by side',
+            $$('.cmp-cell').length === 2, $$('.cmp-cell').length + ' cells');
+    }
+    const clear = $$('.bulk-bar button').find((b) => b.textContent === 'Clear');
+    if (clear) clear.click();
+    await sleep(150);
+  }
+
+  /* ---------------- storyboard: layouts + presenter ---------------- */
+  say('--- storyboard ---', 'note');
+  W.setView('storyboard');
+  await until(() => $('#sbBody .res-toolbar') || $('.sb-layout'), 9000,
+              'storyboard load');
+  let deckCard = $$('#sbBody .res-card button')
+    .find((b) => b.textContent === 'Open');
+  if (deckCard) {
+    deckCard.click();
+    await until(() => $('#sbCanvas'), 6000, 'deck open');
+  } else {
+    // No saved deck on a clean store, so make one and keep going -- the
+    // editor, the layouts and the presenter all need to be exercised.
+    say('  (no saved deck; creating one)', 'note');
+    const deck = await (await fetch('/api/deck', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deck: { title: 'smoke test deck', slides: [
+        { id: 's1', title: 'Slide 1', notes: 'made by the smoke test',
+          items: [], show_notes: true },
+      ] } }),
+    })).json();
+    await W.BARRY.views.storyboard.onShow();
+    await sleep(250);
+    deckCard = $$('#sbBody .res-card button').find((b) => b.textContent === 'Open');
+    if (deckCard) { deckCard.click(); await until(() => $('#sbCanvas'), 8000); }
+    W.SMOKE_DECK = (deck.deck || {}).id || null;
+  }
+  if ($('#sbCanvas')) {
+    check('slide canvas renders', !!$('#sbCanvas'));
+    check('slide rail renders', $$('.sb-thumb').length > 0);
+    check('Present button present',
+          $$('#sbBar button').some((b) => b.textContent === 'Present'));
+    check('Layout button present',
+          $$('.sb-rail-foot button').some((b) => /Layout/.test(b.textContent)));
+    const lay = $$('.sb-rail-foot button').find((b) => /Layout/.test(b.textContent));
+    if (lay) {
+      lay.click();
+      await sleep(250);
+      check('layout gallery renders cards', $$('.layout-card').length >= 6,
+            $$('.layout-card').length + ' layouts');
+      W.closeModal();
+    }
+    W.BARRY.views.storyboard.present();
+    await sleep(400);
+    const pres = $('#presenter');
+    check('presenter opens', !!pres && !pres.classList.contains('hidden'));
+    check('presenter renders the slide', !!$('#presSlide'));
+    check('presenter shows a slide count',
+          /\d+ \/ \d+/.test(($('#presCount') || {}).textContent || ''),
+          ($('#presCount') || {}).textContent);
+    D().body.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(250);
+    check('escape leaves presenter',
+          !$('#presenter') || $('#presenter').classList.contains('hidden'));
+  }
+
+  /* ---------------- misc: grep + scratch + housekeeping ---------------- */
+  say('--- misc ---', 'note');
+  W.setView('misc');
+  await sleep(250);
+  check('scratch editor is seeded with code',
+        ($('.scratch-code') || {}).value &&
+        $('.scratch-code').value.indexOf('nlx') >= 0);
+  check('housekeeping card present',
+        $$('#miscBody .card h3').some((h) => h.textContent === 'Housekeeping'));
+  const gin = $('.grep-form input[type=search]');
+  check('repo search box present', !!gin);
+  if (gin) {
+    gin.value = 'def detect_spikes';
+    $$('.grep-form button').find((b) => b.textContent === 'Search').click();
+    await until(() => $$('.grep-hit').length > 0
+                   || ($('.grep-form .hint')
+                       && /hit\(s\)|Bad pattern|No matches/
+                          .test($('.grep-form .hint').textContent)),
+                40000, 'grep');
+    check('repo search finds a known symbol', $$('.grep-hit').length > 0,
+          $$('.grep-hit').length + ' hits');
+  }
+  await W.BARRY.views.misc.housekeeping();
+  await until(() => $$('.hk-row').length > 0, 30000, 'housekeeping scan');
+  check('housekeeping lists clutter', $$('.hk-row').length > 0,
+        $$('.hk-row').length + ' rows');
+  check('housekeeping shows disk stats', $$('.hk-stats .stat-chip').length >= 4);
+  W.closeModal();
+
+  /* ---------------- xplorefinder ---------------- */
+  say('--- xplorefinder ---', 'note');
+  W.setView('xplore');
+  await sleep(200);
+  if (root) {
+    const sess = await W.BARRY.views.xplore.open(root);
+    check('a session opens', !!sess);
+    if (sess) {
+      await until(() => $('.pane-canvas-host canvas'), 20000, 'trace pane');
+      check('trace pane draws', !!$('.pane-canvas-host canvas'));
+      check('event navigator present', !!$('.ev-nav'));
+      check('measure button present',
+            $$('.pane-head button').some((b) => b.title &&
+                                                /Measure/.test(b.title)));
+      // The overview strip fetches its profile lazily.
+      await until(() => sess.overview, 40000, 'overview profile');
+      check('overview amplitude profile loads', !!sess.overview,
+            sess.overview ? sess.overview.bins + ' bins' : 'none');
+
+      // Sessions reopen where they were last left, so a previous run could
+      // leave the window at the end of the recording -- where panning right
+      // is correctly a no-op. Home goes to the start, and going through the
+      // app's own key handler means the cross-window link sync is told about
+      // it too; assigning sess.t0 directly just gets overwritten by the next
+      // poll.
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+        { key: 'Home', bubbles: true }));
+      await sleep(900);
+      const t0 = W.BARRY.views.xplore.state.sessions[sess.id].t0;
+      check('Home goes to the start of the recording', t0 < 1, String(t0));
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      await sleep(400);
+      check('arrow key pans the window', W.BARRY.views.xplore.state
+              .sessions[sess.id].t0 !== t0,
+            t0 + ' -> ' + W.BARRY.views.xplore.state.sessions[sess.id].t0);
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'm', bubbles: true }));
+      await sleep(250);
+      check('m arms the measure tool', W.BARRY.views.xplore.state.measure);
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'm', bubbles: true }));
+      await sleep(150);
+
+      /* ---- events must stay serializable ----
+         They used to carry a back-pointer to their session, which made every
+         event part of a reference cycle. JSON.stringify refuses to walk one,
+         so previewing or saving a figure died the moment a recording had any
+         events -- which is always, since Events.nev auto-imports. */
+      say('--- serialization ---', 'note');
+      check('the session has events to test with', sess.events.length > 0,
+            sess.events.length + ' events');
+      let ser = true, serErr = '';
+      try { JSON.stringify(sess.events); }
+      catch (err) { ser = false; serErr = err.message; }
+      check('events survive JSON.stringify (no reference cycle)', ser, serErr);
+      let ser2 = true, serErr2 = '';
+      try { JSON.stringify({ events: sess.events, bookmarks: sess.bookmarks,
+                             spikeSets: sess.spikeSets }); }
+      catch (err) { ser2 = false; serErr2 = err.message; }
+      check('a whole figure-layout-shaped body serializes', ser2, serErr2);
+
+      /* ---- the marks panel ---- */
+      say('--- marks ---', 'note');
+      // Same reason: go somewhere known, through the app's own handler.
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+        { key: 'Home', bubbles: true }));
+      await sleep(800);
+      const before = W.BARRY.views.xplore.state.sessions[sess.id].t0;
+      // The Marks button on the strip now carries the count and opens a
+      // popover; the browse action is inside it.
+      const marksBtn = $$('.pane-ctl .ctl-menu').find(
+        (b) => b.textContent.startsWith('Marks'));
+      check('the Marks control is present', !!marksBtn,
+            marksBtn ? marksBtn.textContent
+                     : $$('.pane-ctl .ctl-menu').map(
+                         (b) => b.textContent).join(' | '));
+      if (marksBtn) marksBtn.click();
+      await sleep(450);
+      const openBtn = $$('.ctl-pop button').find(
+        (b) => /Browse/.test(b.textContent));
+      if (openBtn) {
+        openBtn.click();
+        await until(() => $('.bm-list.tall'), 5000, 'marks panel');
+        check('marks panel opens', !!$('.bm-list.tall'));
+        const kinds = $$('.mk-kind').map((n) => n.textContent);
+        check('it lists events alongside bookmarks',
+              kinds.indexOf('event') >= 0, kinds.slice(0, 6).join(','));
+        const pills = $$('.mb .filter-row .pill').map((b) => b.textContent);
+        check('it offers per-kind filters',
+              pills.some((t) => /^Events/.test(t))
+              && pills.some((t) => /^Spikes/.test(t)), pills.join(' | '));
+        // Pick the row furthest in time from where the window actually is,
+        // so the jump is guaranteed to move it.
+        const rows = $$('.bm-list.tall .bm-row');
+        check('marks are listed as rows', rows.length > 0, rows.length + ' rows');
+        if (rows.length) {
+          const here = W.BARRY.views.xplore.state.sessions[sess.id].t0;
+          const times = $$('.bm-list.tall .bm-row .t').map((n) => n.textContent);
+          const secs = times.map((t) => {
+            const p = t.split(':');
+            return p.length === 3
+              ? (+p[0]) * 3600 + (+p[1]) * 60 + parseFloat(p[2])
+              : (+p[0]) * 60 + parseFloat(p[1]);
+          });
+          let best = 0;
+          for (let i = 1; i < secs.length; i++) {
+            if (Math.abs(secs[i] - here) > Math.abs(secs[best] - here)) best = i;
+          }
+          rows[best].click();
+          await sleep(500);
+          const after = W.BARRY.views.xplore.state.sessions[sess.id].t0;
+          check('clicking a mark jumps to its timestamp',
+                Math.abs(after - before) > 0.001,
+                before.toFixed(3) + ' -> ' + after.toFixed(3));
+          check('the panel closes after jumping', !$('.bm-list.tall'));
+        }
+      }
+    }
+  } else { say('  (no session path, xplore checks skipped)', 'note'); }
+
+  /* ---------------- sessions ---------------- */
+  say('--- sessions ---', 'note');
+  W.setView('sessions');
+  await sleep(200);
+  check('Health check all button present', !!$('#sessHealth'));
+  check('Compare button present', !!$('#sessCompare'));
+  check('new filter pills present',
+        $$('.pill[data-flag]').length >= 6, $$('.pill[data-flag]').length + ' pills');
+
+  /* ---------------- shortcut sheet ---------------- */
+  say('--- shortcuts ---', 'note');
+  W.BARRY.shortcuts();
+  await sleep(250);
+  check('shortcut sheet renders', $$('.keys-row').length > 10,
+        $$('.keys-row').length + ' rows');
+  W.closeModal();
+
+  // Leave the store as it was found: the deck this suite made and the test
+  // error entries it wrote are scaffolding, not history.
+  if (W.SMOKE_DECK) {
+    try {
+      await fetch('/api/deck/' + W.SMOKE_DECK + '/delete', { method: 'POST' });
+      say('cleaned up the test deck', 'note');
+    } catch (e) { say('could not remove the test deck', 'bad'); }
+  }
+
+  say('');
+  say(pass + ' passed, ' + fail + ' failed', fail ? 'bad' : 'ok');
+  document.title = 'smoke: ' + pass + ' pass ' + fail + ' fail';
+}
+
+run().catch((e) => {
+  say('HARNESS CRASH: ' + e.message, 'bad');
+  say(String(e.stack || ''), 'note');
+  document.title = 'smoke: CRASH ' + e.message;
+});
+</script>
+</body></html>

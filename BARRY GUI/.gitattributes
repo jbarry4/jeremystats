@@ -1,0 +1,14 @@
+# Shell launchers must keep LF endings or macOS will not run them.
+*.command text eol=lf
+*.sh       text eol=lf
+
+# Windows batch files need CRLF.
+*.bat      text eol=crlf
+
+# GUI_logs is generated JSON; keep it LF so merges stay clean.
+GUI_logs/**/*.json text eol=lf
+
+# The dev harnesses and the JSONL logs are text; normalise them too so a
+# checkout on macOS and one on Windows produce identical diffs.
+GUI_logs/**/*.jsonl text eol=lf
+web/_dev/*.html     text eol=lf

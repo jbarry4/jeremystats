@@ -1,0 +1,134 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>pose</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+</head><body>
+<iframe id="app" src="/"></iframe>
+<script>
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const win = () => frame.contentWindow;
+  const ev = (c) => win().eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const p = new URLSearchParams(location.search);
+  const pose = p.get('pose');
+  const sess = p.get('session') || '';
+
+  if (pose === 'xplore') {
+    setView('xplore');
+    const s = await B.views.xplore.open(sess);
+    await until(() => $('.pane-canvas-host canvas'), 25000);
+    await until(() => s && s.overview, 60000);
+    B.views.xplore.state.measure = true;
+    B.views.xplore.refreshAll();
+    await sleep(2500);
+  } else if (pose === 'compact') {
+    setView('xplore');
+    const s0 = await B.views.xplore.open(sess, { evenOnly: false });
+    await until(() => $('.pane-canvas-host canvas'), 25000);
+    // Click the panel's own "All" button, the way a person would.
+    const all = $$('.ch-quick button').find((b) => b.textContent === 'All');
+    if (all) all.click();
+    await until(() => (B.views.xplore.state.panes[0]._geom || {}).n
+                      === (s0 ? s0.info.channels.length : 64), 40000);
+    await sleep(2000);
+  } else if (pose === 'raster') {
+    setView('xplore');
+    await B.views.xplore.open(sess);
+    await until(() => $('.pane-canvas-host canvas'), 25000);
+    const which = p.get('panel') || 'voltage';
+    B.views.xplore.state.panes[0].panel = which;
+    B.views.xplore.refreshAll();
+    await until(() => {
+      const g = $('.raster-grid');
+      return g && g.width > 100 && $('.pane-img-host img:not(.hidden)');
+    }, 40000);
+    await sleep(1500);
+  } else if (pose === 'marks') {
+    setView('xplore');
+    await B.views.xplore.open(sess);
+    await until(() => $('.pane-canvas-host canvas'), 25000);
+    await sleep(1200);
+    const marks = $$('.pane-ctl .ctl-menu').find(
+      (b) => b.textContent.startsWith('Marks'));
+    if (marks) marks.click();
+    await sleep(450);
+    const btn = $$('.ctl-pop button').find((b) => /Browse/.test(b.textContent));
+    if (btn) btn.click();
+    await sleep(900);
+  } else if (pose === 'debug') {
+    setView('xplore');
+    await B.views.xplore.open(sess);
+    await until(() => $('.pane-canvas-host canvas'), 25000);
+    setView('errors');
+    await sleep(1200);
+    const dbg = $$('#errBody .pill').find((b) => /Debug trace/.test(b.textContent));
+    if (dbg) dbg.click();
+    await sleep(900);
+  } else if (pose === 'errors') {
+    await fetch('/api/errors/test', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    setView('errors');
+    await until(() => $$('.err-group').length > 0, 12000);
+    const h = $('.err-ghead'); if (h) h.click();
+    await sleep(700);
+  } else if (pose === 'layouts') {
+    setView('storyboard');
+    await until(() => $('#sbBody .res-card') || $('.sb-layout'), 12000);
+    const open = $$('#sbBody .res-card button').find((b) => b.textContent === 'Open');
+    if (open) { open.click(); await until(() => $('#sbCanvas'), 9000); }
+    const lay = $$('.sb-rail-foot button').find((b) => /Layout/.test(b.textContent));
+    if (lay) lay.click();
+    await sleep(900);
+  } else if (pose === 'preflight') {
+    setView('pipeline');
+    await B.views.pipeline.setFolder(sess);
+    await sleep(600);
+    B.views.pipeline.preflight();
+    await until(() => $$('.check-row').length > 3, 15000);
+    await sleep(600);
+  } else if (pose === 'palette') {
+    setView('explorer');
+    B.palette.show();
+    await sleep(300);
+    const i = $('#palInput');
+    i.value = 'csc';
+    const W = win();
+    i.dispatchEvent(new W.Event('input'));
+    await sleep(500);
+  } else if (pose === 'health') {
+    setView('sessions');
+    await sleep(200);
+    B.views.sessions.picked();
+    // Health-check the one session we know about, then show its report.
+    const r = await fetch('/api/session/health', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths: [sess], deep: true }),
+    });
+    const d = await r.json();
+    const rep = d.reports[0];
+    win().eval('showModal')(win().eval('el')('div', {}, [
+      win().eval('el')('div', { class: 'mh' }, [
+        win().eval('el')('h3', { text: 'Health — ' + (rep.identity.label || '') }),
+        win().eval('el')('span', { class: 'sub', text: rep.path }),
+      ]),
+      win().eval('el')('div', { class: 'mb' }, [B.checkList(rep.checks)]),
+    ]));
+    await sleep(600);
+  }
+  document.title = 'pose: ' + pose + ' ready';
+})().catch((e) => { document.title = 'pose CRASH ' + e.message; });
+</script></body></html>

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.edgeprof/
+
+# Visual Studio's local cache, if anyone opens the folder there.
+.vs/
+
+# The Output folder IS committed on purpose -- a figure viewable on GitHub
+# beside the code and the log entry that produced it is the point of it. Only
+# the transcoded video scratch is not worth carrying.
+Output/**/_videocache/

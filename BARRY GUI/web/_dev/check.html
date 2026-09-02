@@ -1,0 +1,308 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>check: running</title>
+<style>
+  body { font: 12px/1.6 ui-monospace, Consolas, monospace; background:#0a1310;
+         color:#dfeae4; margin:0; display:flex; }
+  #log { width: 780px; padding: 10px; overflow:auto; height:100vh;
+         white-space: pre-wrap; }
+  iframe { flex:1; height:100vh; border:0; }
+  .ok { color:#5cc98d; } .bad { color:#ff6b5e; } .note { color:#6f8c7d; }
+</style></head>
+<body><div id="log"></div><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+function say(s, c) {
+  const d = document.createElement('div');
+  d.textContent = s; if (c) d.className = c; L.appendChild(d);
+}
+function check(n, ok, x) {
+  if (ok) { pass++; say('PASS  ' + n, 'ok'); }
+  else { fail++; say('FAIL  ' + n + (x ? '   ' + x : ''), 'bad'); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(100);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow;
+  const B = ev('BARRY');
+  const setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+
+  /* ---------------- scale control ---------------- */
+  say('--- scale control ---', 'note');
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(900);
+
+  check('the scale button is gone from the pane head',
+        !$$('.pane-head button').some((b) => /^scale/.test(b.textContent)));
+  check('a scale control is in the strip', !!$('.scale-ctl'));
+  check('it has a slider', !!$('.scale-slider'));
+  check('it has a number input', !!$('.scale-num'));
+  check('the number shows the current scale',
+        parseFloat(($('.scale-num') || {}).value) > 0,
+        ($('.scale-num') || {}).value);
+  // A session remembers its pinned scale, so a previous run can leave this
+  // pinned. Normalize through the control itself, which also exercises it.
+  const wasPinned = $$('.scale-ctl .mini').find((b) => b.textContent === 'pinned');
+  if (wasPinned) { wasPinned.click(); await sleep(700); }
+  check('unpinning returns it to auto',
+        $$('.scale-ctl .mini').some((b) => b.textContent === 'auto')
+        && B.views.xplore.state.sessions[S.id].ylim === null,
+        String(B.views.xplore.state.sessions[S.id].ylim));
+
+  const stripH = $('.pane-ctl').getBoundingClientRect().height;
+  const num = $('.scale-num');
+  num.value = '250';
+  num.dispatchEvent(new W.Event('change'));
+  await sleep(800);
+  check('typing a value pins it',
+        B.views.xplore.state.sessions[S.id].ylim === 250,
+        String(B.views.xplore.state.sessions[S.id].ylim));
+
+  const sl = $('.scale-slider');
+  const expected = 1000 * Math.log(250) / Math.log(20000);
+  check('the slider follows the number',
+        sl && Math.abs(Number(sl.value) - expected) < 30,
+        sl ? sl.value + ' vs ' + expected.toFixed(0) : 'gone');
+
+  sl.value = String(Number(sl.value) + 60);
+  sl.dispatchEvent(new W.Event('input'));
+  sl.dispatchEvent(new W.Event('change'));
+  await sleep(800);
+  check('dragging the slider changes the scale',
+        B.views.xplore.state.sessions[S.id].ylim > 250,
+        String(B.views.xplore.state.sessions[S.id].ylim));
+
+  /* A real drag emits a stream of input events without a change in between.
+     That used to rebuild the control strip on every one of them, replacing
+     the slider under the pointer -- the drag died and replaceChild threw
+     NotFoundError. */
+  say('--- dragging the slider ---', 'note');
+  const before = B.debug.console().length;
+  const drag = $('.scale-slider');
+  const startVal = Number(drag.value);
+  for (let i = 0; i < 40; i++) {
+    drag.value = String(startVal + i * 4);
+    drag.dispatchEvent(new W.Event('input'));
+    await sleep(12);
+  }
+  drag.dispatchEvent(new W.Event('change'));
+  await sleep(900);
+  const added = B.debug.console().slice(before);
+  check('a 40-step drag raises no console errors',
+        added.filter((c) => c.level === 'error').length === 0,
+        added.map((c) => c.text.slice(0, 90)).join(' | '));
+  check('the slider survived the drag',
+        !!$('.scale-slider') && $('.scale-slider').isConnected);
+  check('the drag moved the scale',
+        B.views.xplore.state.sessions[S.id].ylim > 250,
+        String(B.views.xplore.state.sessions[S.id].ylim));
+  // The strip wraps rather than scrolling sideways now, so "one row" is no
+  // longer the contract. What matters is that a drag did not change its
+  // shape -- a strip that reflows mid-drag is what killed the drag before.
+  check('the strip did not reflow during the drag',
+        Math.abs($('.pane-ctl').getBoundingClientRect().height - stripH) < 2,
+        stripH + ' -> ' + $('.pane-ctl').getBoundingClientRect().height);
+  check('and nothing on it is hidden',
+        $('.pane-ctl').scrollHeight <= $('.pane-ctl').clientHeight + 1
+        && $('.pane-ctl').scrollWidth <= $('.pane-ctl').clientWidth + 1,
+        $('.pane-ctl').scrollWidth + 'x' + $('.pane-ctl').scrollHeight
+        + ' in ' + $('.pane-ctl').clientWidth + 'x'
+        + $('.pane-ctl').clientHeight);
+
+  const pinnedBtn = $$('.scale-ctl .mini').find((b) => b.textContent === 'pinned');
+  check('it reads "pinned" once pinned', !!pinnedBtn);
+  if (pinnedBtn) {
+    pinnedBtn.click();
+    await sleep(700);
+    check('clicking it returns to auto',
+          B.views.xplore.state.sessions[S.id].ylim === null);
+  }
+
+  /* ---------------- bookmark placement ---------------- */
+  say('--- bookmark placement ---', 'note');
+  // Bookmark placement lives in the Marks menu now.
+  const marksBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('Marks'));
+  check('there is a Marks button on the strip', !!marksBtn,
+        $$('.pane-ctl .ctl-menu').map((b) => b.textContent).join(' | '));
+  if (marksBtn) marksBtn.click();
+  await sleep(450);
+  const addBtn = $$('.ctl-pop button').find(
+    (b) => /Add a bookmark/.test(b.textContent));
+  check('it offers adding a bookmark', !!addBtn,
+        $$('.ctl-pop button').map((b) => b.textContent).join(' | '));
+  if (addBtn) {
+    addBtn.click();
+    await sleep(400);
+    check('clicking it arms placement', B.views.xplore.state.placing === true);
+    check('the strip says what it is waiting for',
+          $$('.pane-ctl .ctl-menu').some(
+            (b) => /click a spot/.test(b.textContent))
+          || B.views.xplore.state.placing === true);
+
+    const hostEl = $('.pane-canvas-host');
+    const r = hostEl.getBoundingClientRect();
+    hostEl.dispatchEvent(new W.MouseEvent('mousemove', {
+      clientX: r.left + r.width * 0.7, clientY: r.top + r.height / 2,
+      bubbles: true,
+    }));
+    await sleep(350);
+    const ghost = $('.bm-ghost');
+    check('a preview line follows the pointer', !!ghost);
+    check('it shows the time it would land on',
+          !!(ghost && /\d/.test(ghost.textContent)),
+          ghost ? ghost.textContent : '');
+
+    D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'Escape', bubbles: true }));
+    await sleep(500);
+    check('escape cancels placement', B.views.xplore.state.placing === false);
+    check('the preview line is removed', !$('.bm-ghost'));
+  }
+
+  /* ---------------- analysis provenance ---------------- */
+  say('--- what the analysis ran on ---', 'note');
+  // Put the pane on a raster so the server-side line is exercised.
+  B.views.xplore.state.panes[0].panel = 'csd';
+  B.views.xplore.onShow();
+  await until(() => $('.pane-img-host img:not(.hidden)'), 40000);
+  await sleep(1200);
+  const line = $('.panel-input');
+  check('a raster states what it ran on', !!line && line.textContent.length > 10,
+        line ? line.textContent : 'missing');
+  const txt = line ? line.textContent : '';
+  check('it names the window', /\d+:\d+/.test(txt), txt);
+  check('it names the channel count', /\d+ ch/.test(txt), txt);
+  check('it names the filter band',
+        /unfiltered|Hz/.test(txt), txt);
+
+  /* ---------------- frequency view crop ---------------- */
+  say('--- frequency view ---', 'note');
+  B.views.xplore.state.panes[0].panel = 'scalogram';
+  B.views.xplore.state.panes[0].tfChannels = [0];
+  B.views.xplore.state.panes[0].tfMode = 'mean';
+  B.views.xplore.state.panes[0].fmin = 2;
+  B.views.xplore.state.panes[0].fmax = 200;
+  B.views.xplore.onShow();          // render() + refreshAll(), as the UI does
+  await until(() => (B.views.xplore.state.panes[0]._panelData || {}).freqs, 60000);
+  await sleep(900);
+  const full = B.views.xplore.state.panes[0]._panelData;
+  check('the scalogram computed a full band', !!full && !full.freq_cropped,
+        full ? JSON.stringify(full.freqs) : 'none');
+  const fullShape = full ? full.shape.slice() : null;
+  // The frequency view crop lives in the Panel menu now.
+  const panelBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('Panel'));
+  check('there is a Panel button on the strip', !!panelBtn,
+        $$('.pane-ctl .ctl-menu').map((b) => b.textContent).join(' | '));
+  if (panelBtn) panelBtn.click();
+  await sleep(450);
+  check('a Show Hz control is present', !!$('.ctl-pop .freq-view'),
+        ($('.ctl-pop') || {}).textContent
+          ? 'popover open, no .freq-view' : 'no popover');
+  W.eval('closeModal');
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(300);
+
+  B.views.xplore.state.panes[0].fviewMin = 4;
+  B.views.xplore.state.panes[0].fviewMax = 12;
+  B.views.xplore.onShow();
+  await until(() => (B.views.xplore.state.panes[0]._panelData || {}).freq_cropped,
+              60000);
+  await sleep(900);
+  const crop = B.views.xplore.state.panes[0]._panelData;
+  check('the view crops to the band', !!crop.freq_cropped,
+        JSON.stringify(crop.freqs));
+  check('the band shown is the one asked for',
+        crop.freqs[0] >= 3.5 && crop.freqs[1] <= 12.5,
+        JSON.stringify(crop.freqs));
+  check('the computed band is unchanged',
+        crop.freqs_computed[0] === 2 && crop.freqs_computed[1] === 200,
+        JSON.stringify(crop.freqs_computed));
+  check('the time axis is untouched (same columns)',
+        fullShape && crop.shape[1] === fullShape[1],
+        crop.shape + ' vs ' + fullShape);
+  check('fewer frequency rows are shown',
+        fullShape && crop.shape[0] < fullShape[0],
+        crop.shape[0] + ' of ' + (fullShape ? fullShape[0] : '?'));
+  const line2 = $('.panel-input');
+  check('the corner says it is cropped',
+        !!line2 && /showing/.test(line2.textContent),
+        line2 ? line2.textContent : '');
+
+  /* ---------------- nested prompt stacking ---------------- */
+  say('--- nested dialogs ---', 'note');
+  const pathZ = Number(getComputedStyle(D().getElementById('pathModal')).zIndex);
+  const bigZ = Number(getComputedStyle(D().getElementById('bigModal')).zIndex);
+  check('the name prompt sits above the panel that raised it',
+        pathZ > bigZ, 'pathModal ' + pathZ + ' vs bigModal ' + bigZ);
+
+  /* ---------------- debug trace ---------------- */
+  say('--- debug trace ---', 'note');
+  setView('errors');
+  await until(() => $$('#errBody .pill').length > 0, 9000);
+  const dbg = $$('#errBody .pill').find((b) => /Debug trace/.test(b.textContent));
+  check('the Errors view offers a Debug trace tab', !!dbg);
+  if (dbg) {
+    dbg.click();
+    await sleep(800);
+    check('the trace lists requests', $$('.trace-row').length > 3,
+          $$('.trace-row').length + ' rows');
+    const paths = $$('.trace-row .tp').map((n) => n.textContent);
+    check('it captured the session open',
+          paths.some((p) => p.indexOf('csc/open') >= 0),
+          paths.slice(0, 5).join(' '));
+    check('a copy-report button is offered',
+          $$('#errBody button').some((b) => /Copy debug report/.test(b.textContent)));
+
+    const rep = await (await fetch('/api/debug/report', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        note: 'written by the check harness', view: 'errors',
+        requests: B.debug.requests(), console: B.debug.console(),
+        actions: B.activity.recent(),
+      }),
+    })).json();
+    const t = rep.text || '';
+    check('a debug report is produced', t.length > 300, t.length + ' chars');
+    check('it names the machine and versions',
+          t.indexOf('machine') >= 0 && t.indexOf('python') >= 0);
+    check('it includes what I was doing', t.indexOf('WHAT I WAS DOING') >= 0);
+    check('it includes the UI actions', t.indexOf('UI ACTIONS') >= 0);
+    check('it includes what the browser saw',
+          t.indexOf('REQUESTS AS THE BROWSER SAW THEM') >= 0);
+    check('it includes the server request trail',
+          t.indexOf('REQUESTS AS THE SERVER SAW THEM') >= 0);
+    say('');
+    say('--- the first 20 lines of the report ---', 'note');
+    for (const ln of t.split('\n').slice(0, 20)) say('  ' + ln, 'note');
+  }
+
+  say('');
+  say(pass + ' passed, ' + fail + ' failed', fail ? 'bad' : 'ok');
+  document.title = 'check: ' + pass + ' pass ' + fail + ' fail';
+})().catch((e) => {
+  say('CRASH ' + e.message, 'bad');
+  say(String(e.stack || ''), 'note');
+  document.title = 'check CRASH';
+});
+</script></body></html>

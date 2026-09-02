@@ -1,0 +1,57 @@
+{
+  "format": "png",
+  "id": "067ec3d28b6d",
+  "kind": "figure",
+  "label": "PTEN m7 s2 2023-08-22",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/PTEN%20m7%20s2%202023-08-22/PTEN%20m7%20s2%202023-08-22_20260902_152927.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\PTEN m7 s2 2023-08-22\\PTEN m7 s2 2023-08-22_20260902_152927.png",
+    "rel": "PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_152927.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "spectrogram",
+      "row": 0,
+      "title": "Spectrogram"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [],
+    "cmap": "jet",
+    "cols": 1,
+    "highpass": 0,
+    "lowpass": 0,
+    "notch": 60,
+    "page": "letter_landscape",
+    "rows": 1,
+    "t0": 1377.56464,
+    "t1": 1399.717986
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-02T15:29:27-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {
+    "confidence": "high",
+    "group": "PTEN",
+    "key": "m007_s002_2023-08-22_15-46-13",
+    "label": "PTEN m7 s2 2023-08-22",
+    "loose_key": "m007_s002",
+    "mouse": 7,
+    "mouse_folder": "M7_HF5_pten",
+    "mouse_source": "session_folder:m<n>s<n>",
+    "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
+    "rec_folder": "2023-08-22_15-46-13",
+    "session": 2,
+    "session_folder": "M7s2aug22",
+    "start": "2023-08-22T15:46:13",
+    "time_source": "header"
+  },
+  "status": "done"
+}
