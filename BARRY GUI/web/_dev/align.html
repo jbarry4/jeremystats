@@ -1,0 +1,106 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>align: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:760px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const sess = new URLSearchParams(location.search).get('session');
+
+  setView('xplore');
+  const evenOnly = new URLSearchParams(location.search).get('all') !== '1';
+  const opened = await B.views.xplore.open(sess, { evenOnly });
+  await until(() => D().querySelector('.pane-canvas-host canvas'), 25000);
+  if (!evenOnly && opened) {
+    // Saved view state remembers a subset; show every channel so the compact
+    // lane path is what gets measured.
+    opened.sel = new Set(opened.info.channels.map((c) => c.index));
+    B.views.xplore.refreshAll();
+    await until(() => (B.views.xplore.state.panes[0]._geom || {}).n
+                      === opened.info.channels.length, 25000);
+  }
+  await sleep(1500);
+
+  const pane = B.views.xplore.state.panes[0];
+  const host = D().querySelector('.pane-canvas-host');
+  const cv = D().querySelector('.pane-canvas-host canvas');
+  const ov = D().querySelector('.ch-overlay');
+  const hr = host.getBoundingClientRect();
+  const cr = cv.getBoundingClientRect();
+  const or_ = ov.getBoundingClientRect();
+
+  say('host  top=' + hr.top.toFixed(2) + ' h=' + hr.height.toFixed(2));
+  say('canvas top=' + cr.top.toFixed(2) + ' h=' + cr.height.toFixed(2)
+      + '  bitmap=' + cv.width + 'x' + cv.height + ' dpr=' + devicePixelRatio);
+  say('overlay top=' + or_.top.toFixed(2) + ' h=' + or_.height.toFixed(2));
+  say('geom  ' + JSON.stringify({ top: pane._geom.top, lane: pane._geom.lane,
+                                  n: pane._geom.n }));
+  say('overlay padding = ' + getComputedStyle(ov).paddingTop + ' / '
+      + getComputedStyle(ov).paddingBottom
+      + '   rows = ' + getComputedStyle(ov).gridTemplateRows.split(' ').length);
+  say('');
+  const lanes = Array.from(D().querySelectorAll('.ch-lane'));
+  say('lane  label      styleTop   domCenter  expected   delta');
+  lanes.forEach((n, i) => {
+    const r = n.getBoundingClientRect();
+    const domCenter = r.top + r.height / 2 - hr.top;
+    const plotH = or_.height - pane._geom.top - pane._geom.padBottom;
+    const expected = pane._geom.top + (plotH / lanes.length) * (i + 0.5);
+    if (i < 4 || i > lanes.length - 4 || i === Math.floor(lanes.length / 2)) {
+      say(String(i).padStart(4) + '  ' + (n.querySelector('.nm').textContent).padEnd(9)
+          + '  ' + n.style.top.padStart(9)
+          + '  ' + domCenter.toFixed(2).padStart(9)
+          + '  ' + expected.toFixed(2).padStart(8)
+          + '  ' + (domCenter - expected).toFixed(2).padStart(7));
+    }
+  });
+  say('');
+  say('lane height css = ' + getComputedStyle(lanes[0]).height
+      + '  n lanes = ' + lanes.length);
+
+  // Now shrink the window and check the rows still track their traces
+  // WITHOUT waiting for a redraw -- the old absolute placement failed here.
+  say('');
+  say('--- after forcing the pane 120px shorter, with no redraw ---');
+  frame.style.height = (frame.getBoundingClientRect().height - 160) + 'px';
+  await sleep(400);
+  const or2 = ov.getBoundingClientRect();
+  const plotH2 = or2.height - pane._geom.top - pane._geom.padBottom;
+  say('overlay h now ' + or2.height.toFixed(1));
+  // Re-query: a resize makes the app redraw, and alignChannelRows rebuilds
+  // the rows. Holding the nodes from before the resize measures detached
+  // elements, which report a zero-sized rect and look like a huge error.
+  const lanes2 = Array.from(D().querySelectorAll('.ch-lane'));
+  say('rows after resize: ' + lanes2.length
+      + (lanes2.length === lanes.length ? ' (rebuilt)' : ' CHANGED'));
+  let worst = 0, worstAt = -1;
+  lanes2.forEach((n, i) => {
+    const r = n.getBoundingClientRect();
+    const dom = r.top + r.height / 2 - or2.top;
+    const exp = pane._geom.top + (plotH2 / lanes2.length) * (i + 0.5);
+    if (Math.abs(dom - exp) > worst) { worst = Math.abs(dom - exp); worstAt = i; }
+  });
+  say('worst row-vs-lane error after resize = ' + worst.toFixed(2)
+      + ' px  (row ' + worstAt + ')');
+  document.title = 'align: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'align: CRASH'; });
+</script></body></html>

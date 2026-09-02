@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solid or Sputter</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2a2f3a;
+    --text:#e7e9ee; --muted:#9aa3b2; --accent:#4f8cff;
+    --solid:#2aa198; --sputter:#b58900; --garbage:#dc322f; --flag:#6c71c4;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font-family:"Segoe UI",system-ui,Arial,sans-serif;overflow:hidden}
+  button{font-family:inherit;cursor:pointer}
+  .hidden{display:none!important}
+
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;
+         background:var(--panel);border-bottom:1px solid var(--border)}
+  header h1{font-size:18px;margin:0;font-weight:700}
+  header .mode{font-size:12px;color:var(--muted);padding:2px 8px;border:1px solid var(--border);border-radius:999px}
+  header .spacer{flex:1}
+  .btn{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+       border-radius:8px;padding:8px 12px;font-size:13px}
+  .btn:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .center{height:calc(100% - 52px);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+        padding:24px;width:100%;max-width:520px}
+  .card h2{margin:0 0 6px}
+  .card p{color:var(--muted);margin:0 0 18px;font-size:14px;line-height:1.55}
+  .field{margin-bottom:12px}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .err{color:var(--garbage);font-size:13px;margin-top:10px;min-height:16px}
+  .hint{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.6}
+  .hint code{background:var(--panel2);padding:1px 5px;border-radius:4px}
+  .warn{background:#2a2213;border:1px solid #5a4a1a;color:#e9d9a6;
+        padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.5;margin-bottom:16px}
+
+  #viewer{display:flex;flex-direction:column;height:calc(100% - 52px)}
+  .stage{flex:1;position:relative;background:#0a0c10;overflow:hidden;user-select:none;cursor:grab}
+  .stage.panning{cursor:grabbing}
+  .stage img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;
+             transform-origin:center center;will-change:transform;-webkit-user-drag:none}
+  .overlay{position:absolute;pointer-events:none;font-size:13px;color:#fff}
+  .badge{top:12px;right:12px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:8px;font-weight:700}
+  .fname{left:12px;bottom:10px;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:8px}
+  .counter{right:12px;bottom:10px;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:8px}
+  .zoombar{position:absolute;left:12px;top:12px;display:flex;gap:6px;align-items:center;pointer-events:auto}
+  .zoombar .btn{padding:5px 10px;font-size:13px}
+  .zoombar .pct{font-size:12px;color:var(--muted);background:rgba(0,0,0,.6);padding:4px 8px;border-radius:6px}
+  .progresswrap{padding:8px 16px;background:var(--panel);border-top:1px solid var(--border);
+                display:flex;align-items:center;gap:14px}
+  .bar{flex:1;height:8px;background:var(--panel2);border-radius:999px;overflow:hidden}
+  .bar>div{height:100%;background:var(--accent);width:0;transition:width .15s}
+  .counts{font-size:12px;color:var(--muted);white-space:nowrap}
+  .actions{display:flex;gap:8px;padding:10px 16px;background:var(--panel);flex-wrap:wrap;justify-content:center}
+  .lbl-solid{border-color:var(--solid)} .lbl-sputter{border-color:var(--sputter)}
+  .lbl-garbage{border-color:var(--garbage)} .lbl-flag{border-color:var(--flag)}
+  .help{font-size:11px;color:var(--muted);text-align:center;padding:0 16px 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Solid or Sputter</h1>
+  <span class="mode" id="modeChip"></span>
+  <div class="spacer"></div>
+  <button class="btn hidden" id="switchBtn">Open another folder</button>
+  <button class="btn hidden" id="quitBtn">Start over</button>
+</header>
+
+<!-- LANDING -->
+<div class="center" id="landing">
+  <div class="card">
+    <h2>Choose a source</h2>
+    <p>Sort images into <b>Solid</b>, <b>Sputter</b>, <b>Garbage</b>, and <b>Flag</b>.
+       Originals stay in the main folder; a <b>copy</b> is placed in each category subfolder.</p>
+    <div class="field"><button class="btn primary" style="width:100%" id="chooseLocal">💻 &nbsp;Open a folder on this computer</button></div>
+    <div class="field"><button class="btn" style="width:100%" id="chooseVacc">🔗 &nbsp;Sort files on the VACC</button></div>
+    <div class="err" id="landErr"></div>
+    <div class="hint" id="supportHint"></div>
+  </div>
+</div>
+
+<!-- VACC INFO -->
+<div class="center hidden" id="vaccInfo">
+  <div class="card">
+    <h2>Sorting VACC files from your browser</h2>
+    <div class="warn">A web page cannot log in to the VACC directly — browsers can't make SSH connections.
+      To sort VACC files here, make that VACC storage look like a normal folder on this PC, then open it below.</div>
+    <p style="margin-bottom:10px"><b>Recommended options:</b></p>
+    <div class="hint" style="margin-top:0">
+      <b>1. Map Netfiles / Research Storage as a drive</b> — if your images live on a
+      Netfiles share (<code>/netfiles/&lt;share&gt;</code>), map it as a network drive in Windows
+      (This PC → Map network drive), then click <b>Open the mapped folder</b> below.<br><br>
+      <b>2. Mount VACC over SFTP</b> — use a tool that mounts SSH storage as a drive letter
+      (e.g. WinFsp + SSHFS-Win, or your file-transfer client's "mount"), log in with your NetID,
+      then open that drive here.<br><br>
+      <b>3. Use the Python server version</b> (<code>Solid or Sputter Web.py</code>) — it logs in
+      with your NetID and does the sorting <i>on the cluster</i>, no drive-mapping needed.
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="vBack">Back</button>
+      <button class="btn primary" id="vOpenMapped">Open the mapped folder</button>
+    </div>
+    <div class="err" id="vErr"></div>
+  </div>
+</div>
+
+<!-- VIEWER -->
+<div id="viewer" class="hidden">
+  <div class="stage" id="stage">
+    <img id="img" alt="">
+    <div class="zoombar">
+      <button class="btn" id="zOut">−</button>
+      <button class="btn" id="zFit">Fit</button>
+      <button class="btn" id="zIn">+</button>
+      <span class="pct" id="zPct">100%</span>
+    </div>
+    <div class="overlay badge" id="badge">Unlabeled</div>
+    <div class="overlay fname" id="fname"></div>
+    <div class="overlay counter" id="counter"></div>
+  </div>
+  <div class="progresswrap">
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="counts" id="counts"></div>
+  </div>
+  <div class="actions">
+    <button class="btn lbl-solid"   data-label="Solid">Solid [1]</button>
+    <button class="btn lbl-sputter" data-label="Sputter">Sputter [2]</button>
+    <button class="btn lbl-garbage" data-label="Garbage">Garbage [3]</button>
+    <button class="btn lbl-flag"    data-label="Flag">Flag [4/F]</button>
+    <button class="btn" id="aClear">Clear [C]</button>
+    <button class="btn" id="aUndo">Undo [Z]</button>
+    <button class="btn" id="aPrev">◀ Prev [←]</button>
+    <button class="btn" id="aNext">Next [→] ▶</button>
+  </div>
+  <div class="help">Solid: keep • Sputter: imperfect • Garbage: discard • Flag: review • Clear removes the copy (original stays). Auto-advances after labeling. Wheel = zoom, drag = pan, double-click / 0 = fit.</div>
+</div>
+
+<script>
+"use strict";
+const CATEGORIES = ["Solid","Sputter","Garbage","Flag"];
+const IMAGE_EXTS = new Set([".png",".jpg",".jpeg",".bmp",".gif",".tif",".tiff",".webp",".jfif"]);
+const BADGE_COLORS = {Solid:"var(--solid)",Sputter:"var(--sputter)",Garbage:"var(--garbage)",Flag:"var(--flag)"};
+const $ = id => document.getElementById(id);
+const SUPPORTED = typeof window.showDirectoryPicker === "function";
+
+// ---------- state ----------
+let dirHandle = null;          // main folder
+let catDirs = {};              // category name -> directory handle
+let entries = [];              // {name, handle, label, copyName}
+let index = 0;
+let history = [];
+let curObjectURL = null;
+
+function extOf(name){ const i = name.lastIndexOf("."); return i<0 ? "" : name.slice(i).toLowerCase(); }
+function splitName(name){ const i = name.lastIndexOf("."); return i<0 ? [name,""] : [name.slice(0,i), name.slice(i)]; }
+function naturalKey(name){
+  const stem = splitName(name)[0];
+  return stem.split(/(\d+)/).map(t => /^\d+$/.test(t) ? t.padStart(12,"0") : t.toLowerCase()).join(" ");
+}
+
+// ---------- view switching ----------
+function show(id){ ["landing","vaccInfo","viewer"].forEach(x=>$(x).classList.toggle("hidden", x!==id)); }
+
+// ---------- landing ----------
+$("supportHint").innerHTML = SUPPORTED
+  ? "Works in Chrome or Edge (desktop). You'll be asked to allow the app to view and edit the folder."
+  : "⚠ This browser doesn't support folder access. Please open this file in <b>Chrome</b> or <b>Edge</b> (desktop).";
+$("chooseLocal").disabled = !SUPPORTED;
+$("chooseVacc").disabled = !SUPPORTED;
+
+$("chooseLocal").onclick = () => pickFolder("Local");
+$("chooseVacc").onclick = () => { $("vErr").textContent=""; show("vaccInfo"); };
+$("vBack").onclick = () => show("landing");
+$("vOpenMapped").onclick = () => pickFolder("VACC (mapped)");
+
+async function pickFolder(modeLabel){
+  $("landErr").textContent = ""; $("vErr").textContent = "";
+  let handle;
+  try{
+    handle = await window.showDirectoryPicker({ mode:"readwrite" });
+  }catch(e){
+    if(e && e.name === "AbortError") return;           // user cancelled
+    const msg = "Couldn't open the folder: " + (e && e.message ? e.message : e);
+    ($("vaccInfo").classList.contains("hidden") ? $("landErr") : $("vErr")).textContent = msg;
+    return;
+  }
+  try{ await loadFolder(handle, modeLabel); }
+  catch(e){
+    const msg = "Error reading folder: " + (e && e.message ? e.message : e);
+    ($("vaccInfo").classList.contains("hidden") ? $("landErr") : $("vErr")).textContent = msg;
+  }
+}
+
+// ---------- load folder ----------
+async function loadFolder(handle, modeLabel){
+  dirHandle = handle;
+  catDirs = {};
+  for(const cat of CATEGORIES){
+    catDirs[cat] = await handle.getDirectoryHandle(cat, { create:true });
+  }
+
+  // collect original image files in the main folder (skip category subfolders)
+  const files = [];
+  for await (const [name, entry] of handle.entries()){
+    if(entry.kind === "file" && IMAGE_EXTS.has(extOf(name))) files.push({name, handle:entry});
+  }
+  files.sort((a,b)=> naturalKey(a.name) < naturalKey(b.name) ? -1 : naturalKey(a.name) > naturalKey(b.name) ? 1 : 0);
+
+  entries = [];
+  for(const f of files){
+    let label = null, copyName = null;
+    for(const cat of CATEGORIES){
+      if(await fileExists(catDirs[cat], f.name)){ label = cat; copyName = f.name; break; }
+    }
+    entries.push({ name:f.name, handle:f.handle, label, copyName });
+  }
+
+  index = 0; history = [];
+  if(!entries.length){
+    ($("vaccInfo").classList.contains("hidden") ? $("landErr") : $("vErr")).textContent =
+      "No images found in that folder.";
+    return;
+  }
+  $("modeChip").textContent = modeLabel + " · " + handle.name;
+  $("switchBtn").classList.remove("hidden");
+  $("quitBtn").classList.remove("hidden");
+  show("viewer");
+  await render();
+}
+
+// ---------- file helpers ----------
+async function fileExists(dir, name){
+  try{ await dir.getFileHandle(name); return true; }
+  catch{ return false; }
+}
+async function uniqueName(dir, name){
+  if(!(await fileExists(dir, name))) return name;
+  const [stem, suf] = splitName(name);
+  let i = 1;
+  while(await fileExists(dir, `${stem} (${i})${suf}`)) i++;
+  return `${stem} (${i})${suf}`;
+}
+async function writeInto(dir, name, blob){
+  const fh = await dir.getFileHandle(name, { create:true });
+  const w = await fh.createWritable();
+  await w.write(blob);
+  await w.close();
+}
+async function removeFrom(dir, name){
+  try{ await dir.removeEntry(name); }catch(e){ /* already gone */ }
+}
+async function originalBlob(entry){ return await entry.handle.getFile(); }
+
+// ---------- labeling ----------
+async function applyLabel(newLabel){
+  if(!entries.length) return;
+  const e = entries[index];
+  const prevLabel = e.label, prevCopy = e.copyName;
+
+  if(prevLabel === newLabel){ advance(); await render(); return; }
+
+  const blob = await originalBlob(e);
+  const target = await uniqueName(catDirs[newLabel], e.name);
+  await writeInto(catDirs[newLabel], target, blob);
+
+  if(prevLabel === null){
+    history.push({action:"create", idx:index, prevLabel:null, prevCopy:null, newLabel, newCopy:target});
+  }else{
+    await removeFrom(catDirs[prevLabel], prevCopy);
+    history.push({action:"move", idx:index, prevLabel, prevCopy, newLabel, newCopy:target});
+  }
+  e.label = newLabel; e.copyName = target;
+  advance(); await render();
+}
+
+async function clearLabel(){
+  if(!entries.length) return;
+  const e = entries[index];
+  if(e.label === null) return;
+  const prevLabel = e.label, prevCopy = e.copyName;
+  await removeFrom(catDirs[prevLabel], prevCopy);
+  history.push({action:"delete", idx:index, prevLabel, prevCopy, newLabel:null, newCopy:null});
+  e.label = null; e.copyName = null;
+  await render();                          // no auto-advance on clear
+}
+
+async function undo(){
+  if(!history.length) return;
+  const h = history.pop();
+  const e = entries[h.idx];
+  if(h.action === "create"){
+    await removeFrom(catDirs[h.newLabel], h.newCopy);
+    e.label = null; e.copyName = null;
+  }else if(h.action === "move"){
+    await removeFrom(catDirs[h.newLabel], h.newCopy);
+    const dst = await uniqueName(catDirs[h.prevLabel], h.prevCopy || e.name);
+    await writeInto(catDirs[h.prevLabel], dst, await originalBlob(e));
+    e.label = h.prevLabel; e.copyName = dst;
+  }else if(h.action === "delete"){
+    const dst = await uniqueName(catDirs[h.prevLabel], h.prevCopy || e.name);
+    await writeInto(catDirs[h.prevLabel], dst, await originalBlob(e));
+    e.label = h.prevLabel; e.copyName = dst;
+  }
+  index = h.idx;
+  await render();
+}
+
+// ---------- navigation ----------
+function advance(){ if(entries.length) index = (index+1) % entries.length; }
+async function nav(delta){ if(entries.length){ index = (index+delta+entries.length) % entries.length; await render(); } }
+
+// ---------- render ----------
+async function render(){
+  const e = entries[index];
+  if(curObjectURL){ URL.revokeObjectURL(curObjectURL); curObjectURL = null; }
+  const blob = await originalBlob(e);
+  curObjectURL = URL.createObjectURL(blob);
+  $("img").src = curObjectURL;
+  resetView();
+
+  $("badge").textContent = e.label ? e.label : "Unlabeled";
+  $("badge").style.color = e.label ? BADGE_COLORS[e.label] : "var(--muted)";
+  $("fname").textContent = e.name;
+  $("counter").textContent = (index+1) + " / " + entries.length;
+
+  const counts = {Solid:0,Sputter:0,Garbage:0,Flag:0};
+  let labeled = 0;
+  for(const x of entries){ if(x.label){ labeled++; counts[x.label]++; } }
+  $("barFill").style.width = (entries.length ? labeled/entries.length*100 : 0) + "%";
+  $("counts").textContent =
+    `Labeled ${labeled}/${entries.length}  |  Solid:${counts.Solid} Sputter:${counts.Sputter} Garbage:${counts.Garbage} Flag:${counts.Flag}`;
+  $("aUndo").disabled = !history.length;
+}
+
+// ---------- buttons ----------
+document.querySelectorAll(".actions .btn[data-label]").forEach(b=>{
+  b.onclick = () => applyLabel(b.dataset.label);
+});
+$("aClear").onclick = clearLabel;
+$("aUndo").onclick = undo;
+$("aPrev").onclick = () => nav(-1);
+$("aNext").onclick = () => nav(1);
+$("switchBtn").onclick = () => pickFolder($("modeChip").textContent.split(" · ")[0] || "Local");
+$("quitBtn").onclick = () => {
+  entries = []; dirHandle = null; history = [];
+  if(curObjectURL){ URL.revokeObjectURL(curObjectURL); curObjectURL = null; }
+  $("switchBtn").classList.add("hidden"); $("quitBtn").classList.add("hidden");
+  $("modeChip").textContent = ""; $("landErr").textContent = "";
+  show("landing");
+};
+
+// ---------- keyboard ----------
+document.addEventListener("keydown", e=>{
+  if($("viewer").classList.contains("hidden")) return;
+  if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if(k==="1") applyLabel("Solid");
+  else if(k==="2") applyLabel("Sputter");
+  else if(k==="3") applyLabel("Garbage");
+  else if(k==="4"||k==="f") applyLabel("Flag");
+  else if(k==="c") clearLabel();
+  else if(k==="z") undo();
+  else if(e.key==="ArrowLeft") nav(-1);
+  else if(e.key==="ArrowRight") nav(1);
+  else if(k==="0") resetView();
+  else if(k==="+"||k==="=") zoomAt(1.1);
+  else if(k==="-") zoomAt(0.9);
+  else return;
+  e.preventDefault();
+});
+
+// ---------- zoom & pan ----------
+let scale=1, tx=0, ty=0; const MINZ=0.25, MAXZ=8;
+let panning=false, sx=0, sy=0;
+function applyTransform(){
+  $("img").style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  $("zPct").textContent = Math.round(scale*100)+"%";
+}
+function resetView(){ scale=1; tx=0; ty=0; applyTransform(); }
+function zoomAt(factor, px, py){
+  const r = $("stage").getBoundingClientRect();
+  if(px===undefined){ px = r.width/2; py = r.height/2; }
+  const cx = px - r.width/2, cy = py - r.height/2;
+  const ns = Math.min(MAXZ, Math.max(MINZ, scale*factor));
+  tx = cx - ((cx - tx)/scale)*ns;
+  ty = cy - ((cy - ty)/scale)*ns;
+  scale = ns; applyTransform();
+}
+$("zIn").onclick = () => zoomAt(1.1);
+$("zOut").onclick = () => zoomAt(0.9);
+$("zFit").onclick = resetView;
+$("stage").addEventListener("wheel", e=>{
+  e.preventDefault();
+  const r = $("stage").getBoundingClientRect();
+  zoomAt(e.deltaY<0?1.1:0.9, e.clientX-r.left, e.clientY-r.top);
+}, {passive:false});
+$("stage").addEventListener("mousedown", e=>{ panning=true; sx=e.clientX; sy=e.clientY; $("stage").classList.add("panning"); });
+window.addEventListener("mousemove", e=>{
+  if(!panning) return; tx += e.clientX-sx; ty += e.clientY-sy; sx=e.clientX; sy=e.clientY; applyTransform();
+});
+window.addEventListener("mouseup", ()=>{ panning=false; $("stage").classList.remove("panning"); });
+$("stage").addEventListener("dblclick", resetView);
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+{
+  "counts": {
+    "errors": 11,
+    "runs": 3,
+    "sessions": 6
+  },
+  "generated": "2026-09-02T16:51:33-04:00",
+  "recent_runs": [
+    {
+      "at": "2026-09-02T16:51:33-04:00",
+      "id": "ea177e1ca79b",
+      "script": "Xplorefinder figure",
+      "session": "PTEN m7 s2 2023-08-22",
+      "status": "done"
+    },
+    {
+      "at": "2026-09-02T15:03:42-04:00",
+      "id": "5ea1a0f3211a",
+      "script": "Xplorefinder figure",
+      "session": "PTEN m7 s2 2023-08-22",
+      "status": "done"
+    },
+    {
+      "at": "2026-09-02T15:29:27-04:00",
+      "id": "067ec3d28b6d",
+      "script": "Xplorefinder figure",
+      "session": "PTEN m7 s2 2023-08-22",
+      "status": "done"
+    }
+  ],
+  "schema": 1,
+  "sessions": [
+    {
+      "bad_channels": [
+        18
+      ],
+      "group": "PTEN",
+      "key": "m001_s002_2023-10-02_16-58-03",
+      "label": "PTEN m1 s2 2023-10-02",
+      "loose_key": "m001_s002",
+      "mouse": 1,
+      "paths": [
+        "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"
+      ],
+      "runs": 0,
+      "session": 2,
+      "start": "2023-10-02T16:58:03"
+    },
+    {
+      "bad_channels": [],
+      "group": "PTEN",
+      "key": "m003_s002_2023-09-20_12-55-14",
+      "label": "PTEN m3 s2 2023-09-20",
+      "loose_key": "m003_s002",
+      "mouse": 3,
+      "paths": [
+        "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14"
+      ],
+      "runs": 0,
+      "session": 2,
+      "start": "2023-09-20T12:55:14"
+    },
+    {
+      "bad_channels": [],
+      "group": "PTEN",
+      "key": "m007_s002_2023-08-22_15-46-13",
+      "label": "PTEN m7 s2 2023-08-22",
+      "loose_key": "m007_s002",
+      "mouse": 7,
+      "paths": [
+        "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13"
+      ],
+      "runs": 3,
+      "session": 2,
+      "start": "2023-08-22T15:46:13"
+    },
+    {
+      "bad_channels": [],
+      "group": "PTEN",
+      "key": "m010_s004_2023-08-23_17-14-35",
+      "label": "PTEN m10 s4 2023-08-23",
+      "loose_key": "m010_s004",
+      "mouse": 10,
+      "paths": [
+        "D:\\PTEN\\PTEN\\M10_HF6_pten\\m10s4aug23\\2023-08-23_17-14-35"
+      ],
+      "runs": 0,
+      "session": 4,
+      "start": "2023-08-23T17:14:35"
+    },
+    {
+      "bad_channels": [
+        8
+      ],
+      "group": "PTEN",
+      "key": "m029_s004_2024-07-23_15-31-49",
+      "label": "PTEN m29 s4 2024-07-23",
+      "loose_key": "m029_s004",
+      "mouse": 29,
+      "paths": [
+        "D:\\PTEN\\PTEN\\m29_ptenblind\\m29s4jul23\\2024-07-23_15-31-49"
+      ],
+      "runs": 0,
+      "session": 4,
+      "start": "2024-07-23T15:31:49"
+    },
+    {
+      "bad_channels": [
+        32
+      ],
+      "group": "KCNT1",
+      "key": "m1609_s005_2026-07-16_13-42-08",
+      "label": "KCNT1 m1609 s5 2026-07-16",
+      "loose_key": "m1609_s005",
+      "mouse": 1609,
+      "paths": [
+        "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s5_071626\\2026-07-16_13-42-08"
+      ],
+      "runs": 0,
+      "session": 5,
+      "start": "2026-07-16T13:42:08"
+    }
+  ]
+}

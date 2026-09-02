@@ -1,0 +1,252 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>arrows: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 10000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  /* Open a throwaway deck. */
+  ev("setView('storyboard')");
+  await sleep(500);
+  const made = await (await fetch('/api/deck', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deck: { title: 'arrow harness', slides: [
+      { id: 'a1', title: 'One', notes: '', items: [], show_notes: false }] } }),
+  })).json();
+  const deckId = (made.deck || {}).id;
+  await ev('BARRY.views.storyboard.onShow()');
+  await sleep(500);
+  const openBtn = $$('#sbBody .res-card button').find(
+    (b) => b.textContent === 'Open');
+  if (openBtn) openBtn.click();
+  const ready = await until(() => $('#sbCanvas'), 12000);
+  check('a deck is open', ready);
+  await sleep(500);
+
+  const TOOL = { select: 0, text: 1, rect: 2, ellipse: 3, arrow: 4,
+                 line: 5, highlight: 6, ink: 7 };
+
+  async function drag(tool, x0, y0, x1, y1, shift) {
+    $$('.sb-tool')[TOOL[tool]].click();
+    await sleep(150);
+    const c = $('#sbCanvas'), r = c.getBoundingClientRect();
+    const pt = (fx, fy) => ({ clientX: r.left + r.width * fx,
+                              clientY: r.top + r.height * fy,
+                              bubbles: true, shiftKey: !!shift });
+    c.dispatchEvent(new W.MouseEvent('mousedown', pt(x0, y0)));
+    await sleep(50);
+    for (let i = 1; i <= 4; i++) {
+      const f = i / 4;
+      W.dispatchEvent(new W.MouseEvent('mousemove',
+        pt(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)));
+      await sleep(35);
+    }
+    W.dispatchEvent(new W.MouseEvent('mouseup', pt(x1, y1)));
+    await sleep(350);
+  }
+
+  /* Where the arrowhead sits, in the item's own 0..1 box coordinates.
+     The polygon lives in a 100x100 viewBox inset by 2, so a point p maps
+     back to (p - 2) / 96. Measuring the drawn SVG rather than reading the
+     item's own fields is the point: the fields could be right while the
+     drawing ignores them, which is exactly the bug being fixed. */
+  const lastItem = () => $$('#sbCanvas .sb-item').pop() || null;
+
+  function headFrac() {
+    const it = lastItem();
+    const poly = it && it.querySelector('svg.sb-shape polygon');
+    if (!poly) return null;
+    const pts = poly.getAttribute('points').trim().split(/\s+/)
+      .map((s) => s.split(',').map(Number));
+    // The tip is the first point; arrowMarkup writes it first.
+    return [(pts[0][0] - 2) / 96, (pts[0][1] - 2) / 96];
+  }
+
+  function lineFrac() {
+    const it = lastItem();
+    const ln = it && it.querySelector('svg.sb-shape line');
+    if (!ln) return null;
+    const g = (a) => (Number(ln.getAttribute(a)) - 2) / 96;
+    return [g('x1'), g('y1'), g('x2'), g('y2')];
+  }
+
+  say('');
+  say('=== an arrow points where the drag ended ===', 'hd');
+  const cases = [
+    ['down-right', 0.2, 0.2, 0.6, 0.6, [1, 1]],
+    ['up-left',    0.6, 0.6, 0.2, 0.2, [0, 0]],
+    ['down-left',  0.6, 0.2, 0.2, 0.6, [0, 1]],
+    ['up-right',   0.2, 0.6, 0.6, 0.2, [1, 0]],
+  ];
+  for (const [name, x0, y0, x1, y1, want] of cases) {
+    await drag('arrow', x0, y0, x1, y1);
+    const h = headFrac();
+    const ok = h && Math.abs(h[0] - want[0]) < 0.08
+                 && Math.abs(h[1] - want[1]) < 0.08;
+    check(('the head lands ' + name).padEnd(34), ok,
+          h ? 'head=(' + h[0].toFixed(2) + ',' + h[1].toFixed(2) + ') want=('
+              + want.join(',') + ')' : 'no polygon drawn');
+  }
+
+  /* The old bug in one assertion: two opposite drags used to draw the same
+     thing, because only the box was stored. */
+  say('');
+  say('=== opposite drags no longer draw the same arrow ===', 'hd');
+  await drag('arrow', 0.25, 0.25, 0.55, 0.55);
+  const one = headFrac();
+  await drag('arrow', 0.55, 0.55, 0.25, 0.25);
+  const two = headFrac();
+  check('the two heads are at opposite corners',
+        one && two && Math.abs(one[0] - two[0]) > 0.8
+        && Math.abs(one[1] - two[1]) > 0.8,
+        JSON.stringify(one) + ' vs ' + JSON.stringify(two));
+
+  say('');
+  say('=== a plain line follows the drag too ===', 'hd');
+  await drag('line', 0.6, 0.25, 0.25, 0.55);
+  const lf = lineFrac();
+  check('it runs from the start corner to the end corner',
+        lf && Math.abs(lf[0] - 1) < 0.08 && Math.abs(lf[1] - 0) < 0.08
+           && Math.abs(lf[2] - 0) < 0.08 && Math.abs(lf[3] - 1) < 0.08,
+        lf ? lf.map((v) => v.toFixed(2)).join(', ') : 'no line drawn');
+  check('a line has no arrowhead',
+        !lastItem().querySelector('svg.sb-shape polygon'));
+
+  say('');
+  say('=== the handles are the right ones for the shape ===', 'hd');
+  // Select the line just drawn.
+  $$('.sb-tool')[TOOL.select].click();
+  await sleep(150);
+  lastItem().dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+  W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
+  await sleep(400);
+  check('a selected line gets two endpoint grips',
+        $$('#sbCanvas .sb-item.sel .sb-end').length === 2,
+        $$('#sbCanvas .sb-item.sel .sb-end').length + ' grips');
+  check('and no rotate grip, which would fight them',
+        $$('#sbCanvas .sb-item.sel .sb-rot').length === 0);
+  check('the inspector offers Swap ends',
+        $$('.sb-inspector button').some((b) => b.textContent === 'Swap ends'));
+
+  // Now a rectangle, which should get corners and a rotate grip instead.
+  await drag('rect', 0.15, 0.7, 0.4, 0.9);
+  $$('.sb-tool')[TOOL.select].click();
+  await sleep(150);
+  lastItem().dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+  W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
+  await sleep(400);
+  check('a selected box gets four corner handles',
+        $$('#sbCanvas .sb-item.sel .sb-handle:not(.sb-end)').length === 4,
+        $$('#sbCanvas .sb-item.sel .sb-handle:not(.sb-end)').length + '');
+  const rot = $('#sbCanvas .sb-item.sel .sb-rot');
+  check('and a rotate grip', !!rot);
+  if (rot) {
+    const rr = rot.getBoundingClientRect();
+    const ir = $('#sbCanvas .sb-item.sel').getBoundingClientRect();
+    check('the grip sits above the shape, where the hand goes',
+          rr.top < ir.top && Math.abs(rr.left + rr.width / 2
+                                      - (ir.left + ir.width / 2)) < 4,
+          'grip ' + rr.top.toFixed(0) + ' vs item ' + ir.top.toFixed(0));
+  }
+
+  say('');
+  say('=== rotating actually rotates ===', 'hd');
+  const item = () => $('#sbCanvas .sb-item.sel');
+  const before = W.getComputedStyle(item()).transform;
+  check('an unrotated shape has no transform',
+        before === 'none' || before === 'matrix(1, 0, 0, 1, 0, 0)', before);
+  if (rot) {
+    const ir = item().getBoundingClientRect();
+    const cx = ir.left + ir.width / 2, cy = ir.top + ir.height / 2;
+    rot.dispatchEvent(new W.MouseEvent('mousedown',
+      { clientX: cx, clientY: ir.top - 20, bubbles: true }));
+    await sleep(60);
+    // Drag round to the right of the shape: that is 90 degrees.
+    W.dispatchEvent(new W.MouseEvent('mousemove',
+      { clientX: cx + 140, clientY: cy, bubbles: true, shiftKey: true }));
+    await sleep(150);
+    W.dispatchEvent(new W.MouseEvent('mouseup',
+      { clientX: cx + 140, clientY: cy, bubbles: true, shiftKey: true }));
+    await sleep(400);
+    const after = W.getComputedStyle($('#sbCanvas .sb-item.sel')).transform;
+    check('dragging the grip applies a rotation',
+          after !== 'none' && after !== before, after);
+    // matrix(a,b,c,d,..) with a=cos, b=sin -- 90 degrees is (0,1).
+    const m = /matrix\(([-\d.e]+), ([-\d.e]+)/.exec(after || '');
+    if (m) {
+      const deg = Math.round(Math.atan2(+m[2], +m[1]) * 180 / Math.PI);
+      check('shift snapped it to a round 90 degrees',
+            Math.abs(deg - 90) <= 1, deg + 'deg');
+    }
+    const fld = $$('.sb-inspector .field').find(
+      (f) => /Angle/.test((f.querySelector('label') || {}).textContent || ''));
+    const inp = fld && fld.querySelector('input');
+    check('the inspector shows the angle', !!inp && Math.abs(+inp.value - 90) <= 1,
+          inp ? inp.value : 'no angle field');
+  }
+
+  say('');
+  say('=== the deck survives a round trip through the server ===', 'hd');
+  await sleep(3200);
+  const saved = await (await fetch('/api/deck/' + deckId)).json();
+  const items = ((saved.deck || {}).slides || [{}])[0].items || [];
+  const lines = items.filter((i) => i.shape === 'line' || i.shape === 'arrow');
+  check('the endpoints were saved', lines.length > 0 && lines.every(
+    (i) => Array.isArray(i.a) && Array.isArray(i.b)),
+        lines.length + ' lines, '
+        + lines.filter((i) => i.a).length + ' with endpoints');
+  const rotated = items.filter((i) => i.rot);
+  check('the rotation was saved', rotated.length > 0,
+        JSON.stringify(rotated.map((i) => i.rot)));
+
+  say('');
+  say('=== and it exports the same way it looks ===', 'hd');
+  const exp = await fetch('/api/deck/export', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: deckId, format: 'png' }),
+  });
+  check('the deck exports without error', exp.ok, 'HTTP ' + exp.status);
+  if (exp.ok) {
+    const blob = await exp.blob();
+    check('the PNG has real content', blob.size > 8000, blob.size + ' bytes');
+  }
+
+  if (deckId) await fetch('/api/deck/' + deckId + '/delete', { method: 'POST' });
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'arrows: ' + fails + ' FAILED' : 'arrows: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'arrows CRASH'; });
+</script></body></html>

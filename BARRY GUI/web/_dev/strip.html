@@ -1,0 +1,113 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>strip: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.5 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre;z-index:9}
+iframe{position:fixed;left:560px;top:0;right:0;bottom:0;width:calc(100vw - 560px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) { const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) { try { if (fn()) return true; } catch (e) {}
+    await sleep(100); } return false; }
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+  setView('xplore');
+  await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(1200);
+
+  const strip = $('.pane-ctl');
+  const r = strip.getBoundingClientRect();
+  say('pane-ctl  w=' + r.width.toFixed(0) + ' h=' + r.height.toFixed(0)
+      + '  scrollW=' + strip.scrollWidth + '  overflowing='
+      + (strip.scrollWidth > strip.clientWidth + 1));
+  say('');
+  say('group                       x     w    h   label');
+  for (const c of Array.from(strip.children)) {
+    const cr = c.getBoundingClientRect();
+    const lab = (c.querySelector('label') || {}).textContent || c.className;
+    say((c.className || '?').padEnd(24)
+        + String(Math.round(cr.x - r.x)).padStart(5)
+        + String(Math.round(cr.width)).padStart(6)
+        + String(Math.round(cr.height)).padStart(5)
+        + '   ' + lab);
+  }
+  say('');
+  const sc = $('.scale-ctl');
+  if (sc) {
+    const sr = sc.getBoundingClientRect();
+    say('scale-ctl x=' + Math.round(sr.x - r.x) + ' w=' + Math.round(sr.width)
+        + ' h=' + Math.round(sr.height));
+    for (const c of Array.from(sc.querySelectorAll('label,input,button'))) {
+      const cr = c.getBoundingClientRect();
+      say('  ' + (c.tagName + '.' + (c.className || '')).padEnd(26)
+          + ' x=' + Math.round(cr.x - sr.x) + ' w=' + Math.round(cr.width)
+          + ' h=' + Math.round(cr.height)
+          + '  ' + (c.textContent || c.value || c.type || ''));
+    }
+    const sl = sc.querySelector('.scale-slider');
+    if (sl) {
+      const cs = getComputedStyle(sl);
+      say('  slider appearance=' + cs.webkitAppearance + ' bg=' + cs.backgroundColor
+          + ' h=' + cs.height);
+    }
+  } else { say('NO .scale-ctl'); }
+  // Switch to a spectrogram and measure again -- that panel adds Combine,
+  // the channel picker, f min / f max and Show Hz to the same strip.
+  for (const panel of ['spectrogram', 'scalogram']) {
+    B.views.xplore.state.panes[0].panel = panel;
+    B.views.xplore.state.panes[0].tfChannels = [0, 1, 2];
+    B.views.xplore.onShow();
+    await until(() => $('.pane-img-host img:not(.hidden)')
+                   || $('.plot-error'), 60000);
+    await sleep(1500);
+    const st = $('.pane-ctl');
+    const r2 = st.getBoundingClientRect();
+    say('');
+    say('=== ' + panel + ' ===');
+    say('pane-ctl w=' + r2.width.toFixed(0) + ' h=' + r2.height.toFixed(0)
+        + ' scrollW=' + st.scrollWidth
+        + ' overflowing=' + (st.scrollWidth > st.clientWidth + 1));
+    say('group                       x     w    h   label');
+    for (const c of Array.from(st.children)) {
+      const cr = c.getBoundingClientRect();
+      const lab = (c.querySelector('label') || {}).textContent || c.className;
+      say((c.className || '?').padEnd(24)
+          + String(Math.round(cr.x - r2.x)).padStart(5)
+          + String(Math.round(cr.width)).padStart(6)
+          + String(Math.round(cr.height)).padStart(5)
+          + '   ' + lab);
+    }
+    const host = $('.pane-img-host');
+    const img = $('.pane-img-host img');
+    if (host && img) {
+      const hr = host.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      say('img host  w=' + hr.width.toFixed(0) + ' h=' + hr.height.toFixed(0));
+      say('img       w=' + ir.width.toFixed(0) + ' h=' + ir.height.toFixed(0)
+          + '  natural ' + img.naturalWidth + 'x' + img.naturalHeight);
+      say('aspect: natural ' + (img.naturalWidth / img.naturalHeight).toFixed(2)
+          + '  displayed ' + (ir.width / ir.height).toFixed(2)
+          + (Math.abs(img.naturalWidth / img.naturalHeight
+                      - ir.width / ir.height) > 0.15 ? '   <-- SQUASHED' : ''));
+    }
+    const d = B.views.xplore.state.panes[0]._panelData || {};
+    say('panel rows x cols: ' + JSON.stringify(d.shape)
+        + '  stacked=' + d.stacked + '  freqs=' + JSON.stringify(d.freqs));
+  }
+  document.title = 'strip: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'strip CRASH'; });
+</script></body></html>

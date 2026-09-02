@@ -1,0 +1,2899 @@
+#Cheetah system setup file
+#Generated using Cheetah v6.3.2 
+#File Generation Date:(yyyy/mm/dd hh:mm:ss) 2022/10/19 16:09:16
+
+
+#System Options Setup
+
+
+#Acquisition Control Setup
+-SetDataDirectory "D:\Jeremy2\KCNT1M14_YH\kcnt1m14s2oct19\"
+-SetCreateNewFilesPerRecording False
+-SetMaxFileLength 0
+
+
+#Hardware Subsystem Creation and Setup for: AcqSystem1
+-CreateHardwareSubSystem "AcqSystem1" DigitalLynxSX "30000" "192.168.3.10" "26011" "192.168.3.100" "26090"
+-SetInputCalibrationOffset "AcqSystem1" 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+-SetInputCalibrationGain "AcqSystem1" 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+
+
+#Reference Manager Setup
+
+
+#Video Capture Setup
+# Device Setup for VT1 (Hauppauge HVR USB2 Video Capture)
+-CreateVideoTracker "VT1" "7510-00-f0905ff9"
+-SetVideoInput "VT1" "SVideo"
+-SetAnalogVideoFormat "VT1" "NTSC"
+-SetVideoResolution "VT1" 720 480
+-SetBrightness "VT1" 128
+-SetSaturation "VT1" 128
+-SetHue "VT1" 128
+-SetContrast "VT1" 128
+-SetSharpness "VT1" 0
+-SetGamma "VT1" -1
+-SetWhiteBalance "VT1" -1
+-SetBacklightCompensation "VT1" -1
+-SetVideoGain "VT1" -1
+
+
+
+
+#Acquisition Entity creation and setup for: Events
+-SetNetComDataBufferingEnabled Events False
+-SetNetComDataBufferSize Events 3000
+
+
+#Acquisition Entity creation and setup for: "CSC1"
+-CreateCscAcqEnt "CSC1" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC1" True
+-SetChannelNumber "CSC1" 84
+-SetInputRange "CSC1" 2000
+-SetDspLowCutFilterEnabled "CSC1" True
+-SetDspLowCutFrequency "CSC1" 0.1
+-SetDspLowCutNumberTaps "CSC1" 0
+-SetDspHighCutFilterEnabled "CSC1" True
+-SetDspHighCutFrequency "CSC1" 7500
+-SetDspHighCutNumberTaps "CSC1" 256
+-SetSubSamplingInterleave "CSC1" 1
+-SetInputInverted "CSC1" True
+-SetDiskWriteEnabled "CSC1" True
+-SetNetComDataBufferingEnabled "CSC1" False
+-SetNetComDataBufferSize "CSC1" 3000
+
+#Acquisition Entity creation and setup for: "CSC2"
+-CreateCscAcqEnt "CSC2" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC2" True
+-SetChannelNumber "CSC2" 86
+-SetInputRange "CSC2" 2000
+-SetDspLowCutFilterEnabled "CSC2" True
+-SetDspLowCutFrequency "CSC2" 0.1
+-SetDspLowCutNumberTaps "CSC2" 0
+-SetDspHighCutFilterEnabled "CSC2" True
+-SetDspHighCutFrequency "CSC2" 7500
+-SetDspHighCutNumberTaps "CSC2" 256
+-SetSubSamplingInterleave "CSC2" 1
+-SetInputInverted "CSC2" True
+-SetDiskWriteEnabled "CSC2" True
+-SetNetComDataBufferingEnabled "CSC2" False
+-SetNetComDataBufferSize "CSC2" 3000
+
+#Acquisition Entity creation and setup for: "CSC3"
+-CreateCscAcqEnt "CSC3" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC3" True
+-SetChannelNumber "CSC3" 87
+-SetInputRange "CSC3" 2000
+-SetDspLowCutFilterEnabled "CSC3" True
+-SetDspLowCutFrequency "CSC3" 0.1
+-SetDspLowCutNumberTaps "CSC3" 0
+-SetDspHighCutFilterEnabled "CSC3" True
+-SetDspHighCutFrequency "CSC3" 7500
+-SetDspHighCutNumberTaps "CSC3" 256
+-SetSubSamplingInterleave "CSC3" 1
+-SetInputInverted "CSC3" True
+-SetDiskWriteEnabled "CSC3" True
+-SetNetComDataBufferingEnabled "CSC3" False
+-SetNetComDataBufferSize "CSC3" 3000
+
+#Acquisition Entity creation and setup for: "CSC4"
+-CreateCscAcqEnt "CSC4" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC4" True
+-SetChannelNumber "CSC4" 93
+-SetInputRange "CSC4" 2000
+-SetDspLowCutFilterEnabled "CSC4" True
+-SetDspLowCutFrequency "CSC4" 0.1
+-SetDspLowCutNumberTaps "CSC4" 0
+-SetDspHighCutFilterEnabled "CSC4" True
+-SetDspHighCutFrequency "CSC4" 7500
+-SetDspHighCutNumberTaps "CSC4" 256
+-SetSubSamplingInterleave "CSC4" 1
+-SetInputInverted "CSC4" True
+-SetDiskWriteEnabled "CSC4" True
+-SetNetComDataBufferingEnabled "CSC4" False
+-SetNetComDataBufferSize "CSC4" 3000
+
+#Acquisition Entity creation and setup for: "CSC5"
+-CreateCscAcqEnt "CSC5" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC5" True
+-SetChannelNumber "CSC5" 92
+-SetInputRange "CSC5" 2000
+-SetDspLowCutFilterEnabled "CSC5" True
+-SetDspLowCutFrequency "CSC5" 0.1
+-SetDspLowCutNumberTaps "CSC5" 0
+-SetDspHighCutFilterEnabled "CSC5" True
+-SetDspHighCutFrequency "CSC5" 7500
+-SetDspHighCutNumberTaps "CSC5" 256
+-SetSubSamplingInterleave "CSC5" 1
+-SetInputInverted "CSC5" True
+-SetDiskWriteEnabled "CSC5" True
+-SetNetComDataBufferingEnabled "CSC5" False
+-SetNetComDataBufferSize "CSC5" 3000
+
+#Acquisition Entity creation and setup for: "CSC6"
+-CreateCscAcqEnt "CSC6" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC6" True
+-SetChannelNumber "CSC6" 79
+-SetInputRange "CSC6" 2000
+-SetDspLowCutFilterEnabled "CSC6" True
+-SetDspLowCutFrequency "CSC6" 0.1
+-SetDspLowCutNumberTaps "CSC6" 0
+-SetDspHighCutFilterEnabled "CSC6" True
+-SetDspHighCutFrequency "CSC6" 7500
+-SetDspHighCutNumberTaps "CSC6" 256
+-SetSubSamplingInterleave "CSC6" 1
+-SetInputInverted "CSC6" True
+-SetDiskWriteEnabled "CSC6" True
+-SetNetComDataBufferingEnabled "CSC6" False
+-SetNetComDataBufferSize "CSC6" 3000
+
+#Acquisition Entity creation and setup for: "CSC7"
+-CreateCscAcqEnt "CSC7" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC7" True
+-SetChannelNumber "CSC7" 81
+-SetInputRange "CSC7" 2000
+-SetDspLowCutFilterEnabled "CSC7" True
+-SetDspLowCutFrequency "CSC7" 0.1
+-SetDspLowCutNumberTaps "CSC7" 0
+-SetDspHighCutFilterEnabled "CSC7" True
+-SetDspHighCutFrequency "CSC7" 7500
+-SetDspHighCutNumberTaps "CSC7" 256
+-SetSubSamplingInterleave "CSC7" 1
+-SetInputInverted "CSC7" True
+-SetDiskWriteEnabled "CSC7" True
+-SetNetComDataBufferingEnabled "CSC7" False
+-SetNetComDataBufferSize "CSC7" 3000
+
+#Acquisition Entity creation and setup for: "CSC8"
+-CreateCscAcqEnt "CSC8" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC8" True
+-SetChannelNumber "CSC8" 83
+-SetInputRange "CSC8" 2000
+-SetDspLowCutFilterEnabled "CSC8" True
+-SetDspLowCutFrequency "CSC8" 0.1
+-SetDspLowCutNumberTaps "CSC8" 0
+-SetDspHighCutFilterEnabled "CSC8" True
+-SetDspHighCutFrequency "CSC8" 7500
+-SetDspHighCutNumberTaps "CSC8" 256
+-SetSubSamplingInterleave "CSC8" 1
+-SetInputInverted "CSC8" True
+-SetDiskWriteEnabled "CSC8" True
+-SetNetComDataBufferingEnabled "CSC8" False
+-SetNetComDataBufferSize "CSC8" 3000
+
+#Acquisition Entity creation and setup for: "CSC9"
+-CreateCscAcqEnt "CSC9" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC9" True
+-SetChannelNumber "CSC9" 90
+-SetInputRange "CSC9" 2000
+-SetDspLowCutFilterEnabled "CSC9" True
+-SetDspLowCutFrequency "CSC9" 0.1
+-SetDspLowCutNumberTaps "CSC9" 0
+-SetDspHighCutFilterEnabled "CSC9" True
+-SetDspHighCutFrequency "CSC9" 7500
+-SetDspHighCutNumberTaps "CSC9" 256
+-SetSubSamplingInterleave "CSC9" 1
+-SetInputInverted "CSC9" True
+-SetDiskWriteEnabled "CSC9" True
+-SetNetComDataBufferingEnabled "CSC9" False
+-SetNetComDataBufferSize "CSC9" 3000
+
+#Acquisition Entity creation and setup for: "CSC10"
+-CreateCscAcqEnt "CSC10" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC10" True
+-SetChannelNumber "CSC10" 82
+-SetInputRange "CSC10" 2000
+-SetDspLowCutFilterEnabled "CSC10" True
+-SetDspLowCutFrequency "CSC10" 0.1
+-SetDspLowCutNumberTaps "CSC10" 0
+-SetDspHighCutFilterEnabled "CSC10" True
+-SetDspHighCutFrequency "CSC10" 7500
+-SetDspHighCutNumberTaps "CSC10" 256
+-SetSubSamplingInterleave "CSC10" 1
+-SetInputInverted "CSC10" True
+-SetDiskWriteEnabled "CSC10" True
+-SetNetComDataBufferingEnabled "CSC10" False
+-SetNetComDataBufferSize "CSC10" 3000
+
+#Acquisition Entity creation and setup for: "CSC11"
+-CreateCscAcqEnt "CSC11" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC11" True
+-SetChannelNumber "CSC11" 80
+-SetInputRange "CSC11" 2000
+-SetDspLowCutFilterEnabled "CSC11" True
+-SetDspLowCutFrequency "CSC11" 0.1
+-SetDspLowCutNumberTaps "CSC11" 0
+-SetDspHighCutFilterEnabled "CSC11" True
+-SetDspHighCutFrequency "CSC11" 7500
+-SetDspHighCutNumberTaps "CSC11" 256
+-SetSubSamplingInterleave "CSC11" 1
+-SetInputInverted "CSC11" True
+-SetDiskWriteEnabled "CSC11" True
+-SetNetComDataBufferingEnabled "CSC11" False
+-SetNetComDataBufferSize "CSC11" 3000
+
+#Acquisition Entity creation and setup for: "CSC12"
+-CreateCscAcqEnt "CSC12" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC12" True
+-SetChannelNumber "CSC12" 88
+-SetInputRange "CSC12" 2000
+-SetDspLowCutFilterEnabled "CSC12" True
+-SetDspLowCutFrequency "CSC12" 0.1
+-SetDspLowCutNumberTaps "CSC12" 0
+-SetDspHighCutFilterEnabled "CSC12" True
+-SetDspHighCutFrequency "CSC12" 7500
+-SetDspHighCutNumberTaps "CSC12" 256
+-SetSubSamplingInterleave "CSC12" 1
+-SetInputInverted "CSC12" True
+-SetDiskWriteEnabled "CSC12" True
+-SetNetComDataBufferingEnabled "CSC12" False
+-SetNetComDataBufferSize "CSC12" 3000
+
+#Acquisition Entity creation and setup for: "CSC13"
+-CreateCscAcqEnt "CSC13" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC13" True
+-SetChannelNumber "CSC13" 89
+-SetInputRange "CSC13" 2000
+-SetDspLowCutFilterEnabled "CSC13" True
+-SetDspLowCutFrequency "CSC13" 0.1
+-SetDspLowCutNumberTaps "CSC13" 0
+-SetDspHighCutFilterEnabled "CSC13" True
+-SetDspHighCutFrequency "CSC13" 7500
+-SetDspHighCutNumberTaps "CSC13" 256
+-SetSubSamplingInterleave "CSC13" 1
+-SetInputInverted "CSC13" True
+-SetDiskWriteEnabled "CSC13" True
+-SetNetComDataBufferingEnabled "CSC13" False
+-SetNetComDataBufferSize "CSC13" 3000
+
+#Acquisition Entity creation and setup for: "CSC14"
+-CreateCscAcqEnt "CSC14" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC14" True
+-SetChannelNumber "CSC14" 95
+-SetInputRange "CSC14" 2000
+-SetDspLowCutFilterEnabled "CSC14" True
+-SetDspLowCutFrequency "CSC14" 0.1
+-SetDspLowCutNumberTaps "CSC14" 0
+-SetDspHighCutFilterEnabled "CSC14" True
+-SetDspHighCutFrequency "CSC14" 7500
+-SetDspHighCutNumberTaps "CSC14" 256
+-SetSubSamplingInterleave "CSC14" 1
+-SetInputInverted "CSC14" True
+-SetDiskWriteEnabled "CSC14" True
+-SetNetComDataBufferingEnabled "CSC14" False
+-SetNetComDataBufferSize "CSC14" 3000
+
+#Acquisition Entity creation and setup for: "CSC15"
+-CreateCscAcqEnt "CSC15" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC15" True
+-SetChannelNumber "CSC15" 91
+-SetInputRange "CSC15" 2000
+-SetDspLowCutFilterEnabled "CSC15" True
+-SetDspLowCutFrequency "CSC15" 0.1
+-SetDspLowCutNumberTaps "CSC15" 0
+-SetDspHighCutFilterEnabled "CSC15" True
+-SetDspHighCutFrequency "CSC15" 7500
+-SetDspHighCutNumberTaps "CSC15" 256
+-SetSubSamplingInterleave "CSC15" 1
+-SetInputInverted "CSC15" True
+-SetDiskWriteEnabled "CSC15" True
+-SetNetComDataBufferingEnabled "CSC15" False
+-SetNetComDataBufferSize "CSC15" 3000
+
+#Acquisition Entity creation and setup for: "CSC16"
+-CreateCscAcqEnt "CSC16" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC16" True
+-SetChannelNumber "CSC16" 85
+-SetInputRange "CSC16" 2000
+-SetDspLowCutFilterEnabled "CSC16" True
+-SetDspLowCutFrequency "CSC16" 0.1
+-SetDspLowCutNumberTaps "CSC16" 0
+-SetDspHighCutFilterEnabled "CSC16" True
+-SetDspHighCutFrequency "CSC16" 7500
+-SetDspHighCutNumberTaps "CSC16" 256
+-SetSubSamplingInterleave "CSC16" 1
+-SetInputInverted "CSC16" True
+-SetDiskWriteEnabled "CSC16" True
+-SetNetComDataBufferingEnabled "CSC16" False
+-SetNetComDataBufferSize "CSC16" 3000
+
+#Acquisition Entity creation and setup for: "CSC17"
+-CreateCscAcqEnt "CSC17" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC17" True
+-SetChannelNumber "CSC17" 64
+-SetInputRange "CSC17" 2000
+-SetDspLowCutFilterEnabled "CSC17" True
+-SetDspLowCutFrequency "CSC17" 0.1
+-SetDspLowCutNumberTaps "CSC17" 0
+-SetDspHighCutFilterEnabled "CSC17" True
+-SetDspHighCutFrequency "CSC17" 7500
+-SetDspHighCutNumberTaps "CSC17" 256
+-SetSubSamplingInterleave "CSC17" 1
+-SetInputInverted "CSC17" True
+-SetDiskWriteEnabled "CSC17" True
+-SetNetComDataBufferingEnabled "CSC17" False
+-SetNetComDataBufferSize "CSC17" 3000
+
+#Acquisition Entity creation and setup for: "CSC18"
+-CreateCscAcqEnt "CSC18" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC18" True
+-SetChannelNumber "CSC18" 66
+-SetInputRange "CSC18" 2000
+-SetDspLowCutFilterEnabled "CSC18" True
+-SetDspLowCutFrequency "CSC18" 0.1
+-SetDspLowCutNumberTaps "CSC18" 0
+-SetDspHighCutFilterEnabled "CSC18" True
+-SetDspHighCutFrequency "CSC18" 7500
+-SetDspHighCutNumberTaps "CSC18" 256
+-SetSubSamplingInterleave "CSC18" 1
+-SetInputInverted "CSC18" True
+-SetDiskWriteEnabled "CSC18" True
+-SetNetComDataBufferingEnabled "CSC18" False
+-SetNetComDataBufferSize "CSC18" 3000
+
+#Acquisition Entity creation and setup for: "CSC19"
+-CreateCscAcqEnt "CSC19" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC19" True
+-SetChannelNumber "CSC19" 68
+-SetInputRange "CSC19" 2000
+-SetDspLowCutFilterEnabled "CSC19" True
+-SetDspLowCutFrequency "CSC19" 0.1
+-SetDspLowCutNumberTaps "CSC19" 0
+-SetDspHighCutFilterEnabled "CSC19" True
+-SetDspHighCutFrequency "CSC19" 7500
+-SetDspHighCutNumberTaps "CSC19" 256
+-SetSubSamplingInterleave "CSC19" 1
+-SetInputInverted "CSC19" True
+-SetDiskWriteEnabled "CSC19" True
+-SetNetComDataBufferingEnabled "CSC19" False
+-SetNetComDataBufferSize "CSC19" 3000
+
+#Acquisition Entity creation and setup for: "CSC20"
+-CreateCscAcqEnt "CSC20" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC20" True
+-SetChannelNumber "CSC20" 70
+-SetInputRange "CSC20" 2000
+-SetDspLowCutFilterEnabled "CSC20" True
+-SetDspLowCutFrequency "CSC20" 0.1
+-SetDspLowCutNumberTaps "CSC20" 0
+-SetDspHighCutFilterEnabled "CSC20" True
+-SetDspHighCutFrequency "CSC20" 7500
+-SetDspHighCutNumberTaps "CSC20" 256
+-SetSubSamplingInterleave "CSC20" 1
+-SetInputInverted "CSC20" True
+-SetDiskWriteEnabled "CSC20" True
+-SetNetComDataBufferingEnabled "CSC20" False
+-SetNetComDataBufferSize "CSC20" 3000
+
+#Acquisition Entity creation and setup for: "CSC21"
+-CreateCscAcqEnt "CSC21" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC21" True
+-SetChannelNumber "CSC21" 72
+-SetInputRange "CSC21" 2000
+-SetDspLowCutFilterEnabled "CSC21" True
+-SetDspLowCutFrequency "CSC21" 0.1
+-SetDspLowCutNumberTaps "CSC21" 0
+-SetDspHighCutFilterEnabled "CSC21" True
+-SetDspHighCutFrequency "CSC21" 7500
+-SetDspHighCutNumberTaps "CSC21" 256
+-SetSubSamplingInterleave "CSC21" 1
+-SetInputInverted "CSC21" True
+-SetDiskWriteEnabled "CSC21" True
+-SetNetComDataBufferingEnabled "CSC21" False
+-SetNetComDataBufferSize "CSC21" 3000
+
+#Acquisition Entity creation and setup for: "CSC22"
+-CreateCscAcqEnt "CSC22" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC22" True
+-SetChannelNumber "CSC22" 74
+-SetInputRange "CSC22" 2000
+-SetDspLowCutFilterEnabled "CSC22" True
+-SetDspLowCutFrequency "CSC22" 0.1
+-SetDspLowCutNumberTaps "CSC22" 0
+-SetDspHighCutFilterEnabled "CSC22" True
+-SetDspHighCutFrequency "CSC22" 7500
+-SetDspHighCutNumberTaps "CSC22" 256
+-SetSubSamplingInterleave "CSC22" 1
+-SetInputInverted "CSC22" True
+-SetDiskWriteEnabled "CSC22" True
+-SetNetComDataBufferingEnabled "CSC22" False
+-SetNetComDataBufferSize "CSC22" 3000
+
+#Acquisition Entity creation and setup for: "CSC23"
+-CreateCscAcqEnt "CSC23" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC23" True
+-SetChannelNumber "CSC23" 76
+-SetInputRange "CSC23" 2000
+-SetDspLowCutFilterEnabled "CSC23" True
+-SetDspLowCutFrequency "CSC23" 0.1
+-SetDspLowCutNumberTaps "CSC23" 0
+-SetDspHighCutFilterEnabled "CSC23" True
+-SetDspHighCutFrequency "CSC23" 7500
+-SetDspHighCutNumberTaps "CSC23" 256
+-SetSubSamplingInterleave "CSC23" 1
+-SetInputInverted "CSC23" True
+-SetDiskWriteEnabled "CSC23" True
+-SetNetComDataBufferingEnabled "CSC23" False
+-SetNetComDataBufferSize "CSC23" 3000
+
+#Acquisition Entity creation and setup for: "CSC24"
+-CreateCscAcqEnt "CSC24" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC24" True
+-SetChannelNumber "CSC24" 78
+-SetInputRange "CSC24" 2000
+-SetDspLowCutFilterEnabled "CSC24" True
+-SetDspLowCutFrequency "CSC24" 0.1
+-SetDspLowCutNumberTaps "CSC24" 0
+-SetDspHighCutFilterEnabled "CSC24" True
+-SetDspHighCutFrequency "CSC24" 7500
+-SetDspHighCutNumberTaps "CSC24" 256
+-SetSubSamplingInterleave "CSC24" 1
+-SetInputInverted "CSC24" True
+-SetDiskWriteEnabled "CSC24" True
+-SetNetComDataBufferingEnabled "CSC24" False
+-SetNetComDataBufferSize "CSC24" 3000
+
+#Acquisition Entity creation and setup for: "CSC25"
+-CreateCscAcqEnt "CSC25" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC25" True
+-SetChannelNumber "CSC25" 94
+-SetInputRange "CSC25" 2000
+-SetDspLowCutFilterEnabled "CSC25" True
+-SetDspLowCutFrequency "CSC25" 0.1
+-SetDspLowCutNumberTaps "CSC25" 0
+-SetDspHighCutFilterEnabled "CSC25" True
+-SetDspHighCutFrequency "CSC25" 7500
+-SetDspHighCutNumberTaps "CSC25" 256
+-SetSubSamplingInterleave "CSC25" 1
+-SetInputInverted "CSC25" True
+-SetDiskWriteEnabled "CSC25" True
+-SetNetComDataBufferingEnabled "CSC25" False
+-SetNetComDataBufferSize "CSC25" 3000
+
+#Acquisition Entity creation and setup for: "CSC26"
+-CreateCscAcqEnt "CSC26" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC26" True
+-SetChannelNumber "CSC26" 77
+-SetInputRange "CSC26" 2000
+-SetDspLowCutFilterEnabled "CSC26" True
+-SetDspLowCutFrequency "CSC26" 0.1
+-SetDspLowCutNumberTaps "CSC26" 0
+-SetDspHighCutFilterEnabled "CSC26" True
+-SetDspHighCutFrequency "CSC26" 7500
+-SetDspHighCutNumberTaps "CSC26" 256
+-SetSubSamplingInterleave "CSC26" 1
+-SetInputInverted "CSC26" True
+-SetDiskWriteEnabled "CSC26" True
+-SetNetComDataBufferingEnabled "CSC26" False
+-SetNetComDataBufferSize "CSC26" 3000
+
+#Acquisition Entity creation and setup for: "CSC27"
+-CreateCscAcqEnt "CSC27" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC27" True
+-SetChannelNumber "CSC27" 75
+-SetInputRange "CSC27" 2000
+-SetDspLowCutFilterEnabled "CSC27" True
+-SetDspLowCutFrequency "CSC27" 0.1
+-SetDspLowCutNumberTaps "CSC27" 0
+-SetDspHighCutFilterEnabled "CSC27" True
+-SetDspHighCutFrequency "CSC27" 7500
+-SetDspHighCutNumberTaps "CSC27" 256
+-SetSubSamplingInterleave "CSC27" 1
+-SetInputInverted "CSC27" True
+-SetDiskWriteEnabled "CSC27" True
+-SetNetComDataBufferingEnabled "CSC27" False
+-SetNetComDataBufferSize "CSC27" 3000
+
+#Acquisition Entity creation and setup for: "CSC28"
+-CreateCscAcqEnt "CSC28" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC28" True
+-SetChannelNumber "CSC28" 73
+-SetInputRange "CSC28" 2000
+-SetDspLowCutFilterEnabled "CSC28" True
+-SetDspLowCutFrequency "CSC28" 0.1
+-SetDspLowCutNumberTaps "CSC28" 0
+-SetDspHighCutFilterEnabled "CSC28" True
+-SetDspHighCutFrequency "CSC28" 7500
+-SetDspHighCutNumberTaps "CSC28" 256
+-SetSubSamplingInterleave "CSC28" 1
+-SetInputInverted "CSC28" True
+-SetDiskWriteEnabled "CSC28" True
+-SetNetComDataBufferingEnabled "CSC28" False
+-SetNetComDataBufferSize "CSC28" 3000
+
+#Acquisition Entity creation and setup for: "CSC29"
+-CreateCscAcqEnt "CSC29" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC29" True
+-SetChannelNumber "CSC29" 71
+-SetInputRange "CSC29" 2000
+-SetDspLowCutFilterEnabled "CSC29" True
+-SetDspLowCutFrequency "CSC29" 0.1
+-SetDspLowCutNumberTaps "CSC29" 0
+-SetDspHighCutFilterEnabled "CSC29" True
+-SetDspHighCutFrequency "CSC29" 7500
+-SetDspHighCutNumberTaps "CSC29" 256
+-SetSubSamplingInterleave "CSC29" 1
+-SetInputInverted "CSC29" True
+-SetDiskWriteEnabled "CSC29" True
+-SetNetComDataBufferingEnabled "CSC29" False
+-SetNetComDataBufferSize "CSC29" 3000
+
+#Acquisition Entity creation and setup for: "CSC30"
+-CreateCscAcqEnt "CSC30" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC30" True
+-SetChannelNumber "CSC30" 69
+-SetInputRange "CSC30" 2000
+-SetDspLowCutFilterEnabled "CSC30" True
+-SetDspLowCutFrequency "CSC30" 0.1
+-SetDspLowCutNumberTaps "CSC30" 0
+-SetDspHighCutFilterEnabled "CSC30" True
+-SetDspHighCutFrequency "CSC30" 7500
+-SetDspHighCutNumberTaps "CSC30" 256
+-SetSubSamplingInterleave "CSC30" 1
+-SetInputInverted "CSC30" True
+-SetDiskWriteEnabled "CSC30" True
+-SetNetComDataBufferingEnabled "CSC30" False
+-SetNetComDataBufferSize "CSC30" 3000
+
+#Acquisition Entity creation and setup for: "CSC31"
+-CreateCscAcqEnt "CSC31" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC31" True
+-SetChannelNumber "CSC31" 67
+-SetInputRange "CSC31" 2000
+-SetDspLowCutFilterEnabled "CSC31" True
+-SetDspLowCutFrequency "CSC31" 0.1
+-SetDspLowCutNumberTaps "CSC31" 0
+-SetDspHighCutFilterEnabled "CSC31" True
+-SetDspHighCutFrequency "CSC31" 7500
+-SetDspHighCutNumberTaps "CSC31" 256
+-SetSubSamplingInterleave "CSC31" 1
+-SetInputInverted "CSC31" True
+-SetDiskWriteEnabled "CSC31" True
+-SetNetComDataBufferingEnabled "CSC31" False
+-SetNetComDataBufferSize "CSC31" 3000
+
+#Acquisition Entity creation and setup for: "CSC32"
+-CreateCscAcqEnt "CSC32" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC32" True
+-SetChannelNumber "CSC32" 65
+-SetInputRange "CSC32" 2000
+-SetDspLowCutFilterEnabled "CSC32" True
+-SetDspLowCutFrequency "CSC32" 0.1
+-SetDspLowCutNumberTaps "CSC32" 0
+-SetDspHighCutFilterEnabled "CSC32" True
+-SetDspHighCutFrequency "CSC32" 7500
+-SetDspHighCutNumberTaps "CSC32" 256
+-SetSubSamplingInterleave "CSC32" 1
+-SetInputInverted "CSC32" True
+-SetDiskWriteEnabled "CSC32" True
+-SetNetComDataBufferingEnabled "CSC32" False
+-SetNetComDataBufferSize "CSC32" 3000
+
+#Acquisition Entity creation and setup for: "CSC33"
+-CreateCscAcqEnt "CSC33" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC33" True
+-SetChannelNumber "CSC33" 127
+-SetInputRange "CSC33" 2000
+-SetDspLowCutFilterEnabled "CSC33" True
+-SetDspLowCutFrequency "CSC33" 0.1
+-SetDspLowCutNumberTaps "CSC33" 0
+-SetDspHighCutFilterEnabled "CSC33" True
+-SetDspHighCutFrequency "CSC33" 7500
+-SetDspHighCutNumberTaps "CSC33" 256
+-SetSubSamplingInterleave "CSC33" 1
+-SetInputInverted "CSC33" True
+-SetDiskWriteEnabled "CSC33" True
+-SetNetComDataBufferingEnabled "CSC33" False
+-SetNetComDataBufferSize "CSC33" 3000
+
+#Acquisition Entity creation and setup for: "CSC34"
+-CreateCscAcqEnt "CSC34" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC34" True
+-SetChannelNumber "CSC34" 125
+-SetInputRange "CSC34" 2000
+-SetDspLowCutFilterEnabled "CSC34" True
+-SetDspLowCutFrequency "CSC34" 0.1
+-SetDspLowCutNumberTaps "CSC34" 0
+-SetDspHighCutFilterEnabled "CSC34" True
+-SetDspHighCutFrequency "CSC34" 7500
+-SetDspHighCutNumberTaps "CSC34" 256
+-SetSubSamplingInterleave "CSC34" 1
+-SetInputInverted "CSC34" True
+-SetDiskWriteEnabled "CSC34" True
+-SetNetComDataBufferingEnabled "CSC34" False
+-SetNetComDataBufferSize "CSC34" 3000
+
+#Acquisition Entity creation and setup for: "CSC35"
+-CreateCscAcqEnt "CSC35" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC35" True
+-SetChannelNumber "CSC35" 123
+-SetInputRange "CSC35" 2000
+-SetDspLowCutFilterEnabled "CSC35" True
+-SetDspLowCutFrequency "CSC35" 0.1
+-SetDspLowCutNumberTaps "CSC35" 0
+-SetDspHighCutFilterEnabled "CSC35" True
+-SetDspHighCutFrequency "CSC35" 7500
+-SetDspHighCutNumberTaps "CSC35" 256
+-SetSubSamplingInterleave "CSC35" 1
+-SetInputInverted "CSC35" True
+-SetDiskWriteEnabled "CSC35" True
+-SetNetComDataBufferingEnabled "CSC35" False
+-SetNetComDataBufferSize "CSC35" 3000
+
+#Acquisition Entity creation and setup for: "CSC36"
+-CreateCscAcqEnt "CSC36" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC36" True
+-SetChannelNumber "CSC36" 121
+-SetInputRange "CSC36" 2000
+-SetDspLowCutFilterEnabled "CSC36" True
+-SetDspLowCutFrequency "CSC36" 0.1
+-SetDspLowCutNumberTaps "CSC36" 0
+-SetDspHighCutFilterEnabled "CSC36" True
+-SetDspHighCutFrequency "CSC36" 7500
+-SetDspHighCutNumberTaps "CSC36" 256
+-SetSubSamplingInterleave "CSC36" 1
+-SetInputInverted "CSC36" True
+-SetDiskWriteEnabled "CSC36" True
+-SetNetComDataBufferingEnabled "CSC36" False
+-SetNetComDataBufferSize "CSC36" 3000
+
+#Acquisition Entity creation and setup for: "CSC37"
+-CreateCscAcqEnt "CSC37" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC37" True
+-SetChannelNumber "CSC37" 119
+-SetInputRange "CSC37" 2000
+-SetDspLowCutFilterEnabled "CSC37" True
+-SetDspLowCutFrequency "CSC37" 0.1
+-SetDspLowCutNumberTaps "CSC37" 0
+-SetDspHighCutFilterEnabled "CSC37" True
+-SetDspHighCutFrequency "CSC37" 7500
+-SetDspHighCutNumberTaps "CSC37" 256
+-SetSubSamplingInterleave "CSC37" 1
+-SetInputInverted "CSC37" True
+-SetDiskWriteEnabled "CSC37" True
+-SetNetComDataBufferingEnabled "CSC37" False
+-SetNetComDataBufferSize "CSC37" 3000
+
+#Acquisition Entity creation and setup for: "CSC38"
+-CreateCscAcqEnt "CSC38" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC38" True
+-SetChannelNumber "CSC38" 117
+-SetInputRange "CSC38" 2000
+-SetDspLowCutFilterEnabled "CSC38" True
+-SetDspLowCutFrequency "CSC38" 0.1
+-SetDspLowCutNumberTaps "CSC38" 0
+-SetDspHighCutFilterEnabled "CSC38" True
+-SetDspHighCutFrequency "CSC38" 7500
+-SetDspHighCutNumberTaps "CSC38" 256
+-SetSubSamplingInterleave "CSC38" 1
+-SetInputInverted "CSC38" True
+-SetDiskWriteEnabled "CSC38" True
+-SetNetComDataBufferingEnabled "CSC38" False
+-SetNetComDataBufferSize "CSC38" 3000
+
+#Acquisition Entity creation and setup for: "CSC39"
+-CreateCscAcqEnt "CSC39" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC39" True
+-SetChannelNumber "CSC39" 115
+-SetInputRange "CSC39" 2000
+-SetDspLowCutFilterEnabled "CSC39" True
+-SetDspLowCutFrequency "CSC39" 0.1
+-SetDspLowCutNumberTaps "CSC39" 0
+-SetDspHighCutFilterEnabled "CSC39" True
+-SetDspHighCutFrequency "CSC39" 7500
+-SetDspHighCutNumberTaps "CSC39" 256
+-SetSubSamplingInterleave "CSC39" 1
+-SetInputInverted "CSC39" True
+-SetDiskWriteEnabled "CSC39" True
+-SetNetComDataBufferingEnabled "CSC39" False
+-SetNetComDataBufferSize "CSC39" 3000
+
+#Acquisition Entity creation and setup for: "CSC40"
+-CreateCscAcqEnt "CSC40" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC40" True
+-SetChannelNumber "CSC40" 113
+-SetInputRange "CSC40" 2000
+-SetDspLowCutFilterEnabled "CSC40" True
+-SetDspLowCutFrequency "CSC40" 0.1
+-SetDspLowCutNumberTaps "CSC40" 0
+-SetDspHighCutFilterEnabled "CSC40" True
+-SetDspHighCutFrequency "CSC40" 7500
+-SetDspHighCutNumberTaps "CSC40" 256
+-SetSubSamplingInterleave "CSC40" 1
+-SetInputInverted "CSC40" True
+-SetDiskWriteEnabled "CSC40" True
+-SetNetComDataBufferingEnabled "CSC40" False
+-SetNetComDataBufferSize "CSC40" 3000
+
+#Acquisition Entity creation and setup for: "CSC41"
+-CreateCscAcqEnt "CSC41" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC41" True
+-SetChannelNumber "CSC41" 97
+-SetInputRange "CSC41" 2000
+-SetDspLowCutFilterEnabled "CSC41" True
+-SetDspLowCutFrequency "CSC41" 0.1
+-SetDspLowCutNumberTaps "CSC41" 0
+-SetDspHighCutFilterEnabled "CSC41" True
+-SetDspHighCutFrequency "CSC41" 7500
+-SetDspHighCutNumberTaps "CSC41" 256
+-SetSubSamplingInterleave "CSC41" 1
+-SetInputInverted "CSC41" True
+-SetDiskWriteEnabled "CSC41" True
+-SetNetComDataBufferingEnabled "CSC41" False
+-SetNetComDataBufferSize "CSC41" 3000
+
+#Acquisition Entity creation and setup for: "CSC42"
+-CreateCscAcqEnt "CSC42" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC42" True
+-SetChannelNumber "CSC42" 114
+-SetInputRange "CSC42" 2000
+-SetDspLowCutFilterEnabled "CSC42" True
+-SetDspLowCutFrequency "CSC42" 0.1
+-SetDspLowCutNumberTaps "CSC42" 0
+-SetDspHighCutFilterEnabled "CSC42" True
+-SetDspHighCutFrequency "CSC42" 7500
+-SetDspHighCutNumberTaps "CSC42" 256
+-SetSubSamplingInterleave "CSC42" 1
+-SetInputInverted "CSC42" True
+-SetDiskWriteEnabled "CSC42" True
+-SetNetComDataBufferingEnabled "CSC42" False
+-SetNetComDataBufferSize "CSC42" 3000
+
+#Acquisition Entity creation and setup for: "CSC43"
+-CreateCscAcqEnt "CSC43" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC43" True
+-SetChannelNumber "CSC43" 116
+-SetInputRange "CSC43" 2000
+-SetDspLowCutFilterEnabled "CSC43" True
+-SetDspLowCutFrequency "CSC43" 0.1
+-SetDspLowCutNumberTaps "CSC43" 0
+-SetDspHighCutFilterEnabled "CSC43" True
+-SetDspHighCutFrequency "CSC43" 7500
+-SetDspHighCutNumberTaps "CSC43" 256
+-SetSubSamplingInterleave "CSC43" 1
+-SetInputInverted "CSC43" True
+-SetDiskWriteEnabled "CSC43" True
+-SetNetComDataBufferingEnabled "CSC43" False
+-SetNetComDataBufferSize "CSC43" 3000
+
+#Acquisition Entity creation and setup for: "CSC44"
+-CreateCscAcqEnt "CSC44" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC44" True
+-SetChannelNumber "CSC44" 118
+-SetInputRange "CSC44" 2000
+-SetDspLowCutFilterEnabled "CSC44" True
+-SetDspLowCutFrequency "CSC44" 0.1
+-SetDspLowCutNumberTaps "CSC44" 0
+-SetDspHighCutFilterEnabled "CSC44" True
+-SetDspHighCutFrequency "CSC44" 7500
+-SetDspHighCutNumberTaps "CSC44" 256
+-SetSubSamplingInterleave "CSC44" 1
+-SetInputInverted "CSC44" True
+-SetDiskWriteEnabled "CSC44" True
+-SetNetComDataBufferingEnabled "CSC44" False
+-SetNetComDataBufferSize "CSC44" 3000
+
+#Acquisition Entity creation and setup for: "CSC45"
+-CreateCscAcqEnt "CSC45" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC45" True
+-SetChannelNumber "CSC45" 120
+-SetInputRange "CSC45" 2000
+-SetDspLowCutFilterEnabled "CSC45" True
+-SetDspLowCutFrequency "CSC45" 0.1
+-SetDspLowCutNumberTaps "CSC45" 0
+-SetDspHighCutFilterEnabled "CSC45" True
+-SetDspHighCutFrequency "CSC45" 7500
+-SetDspHighCutNumberTaps "CSC45" 256
+-SetSubSamplingInterleave "CSC45" 1
+-SetInputInverted "CSC45" True
+-SetDiskWriteEnabled "CSC45" True
+-SetNetComDataBufferingEnabled "CSC45" False
+-SetNetComDataBufferSize "CSC45" 3000
+
+#Acquisition Entity creation and setup for: "CSC46"
+-CreateCscAcqEnt "CSC46" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC46" True
+-SetChannelNumber "CSC46" 122
+-SetInputRange "CSC46" 2000
+-SetDspLowCutFilterEnabled "CSC46" True
+-SetDspLowCutFrequency "CSC46" 0.1
+-SetDspLowCutNumberTaps "CSC46" 0
+-SetDspHighCutFilterEnabled "CSC46" True
+-SetDspHighCutFrequency "CSC46" 7500
+-SetDspHighCutNumberTaps "CSC46" 256
+-SetSubSamplingInterleave "CSC46" 1
+-SetInputInverted "CSC46" True
+-SetDiskWriteEnabled "CSC46" True
+-SetNetComDataBufferingEnabled "CSC46" False
+-SetNetComDataBufferSize "CSC46" 3000
+
+#Acquisition Entity creation and setup for: "CSC47"
+-CreateCscAcqEnt "CSC47" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC47" True
+-SetChannelNumber "CSC47" 124
+-SetInputRange "CSC47" 2000
+-SetDspLowCutFilterEnabled "CSC47" True
+-SetDspLowCutFrequency "CSC47" 0.1
+-SetDspLowCutNumberTaps "CSC47" 0
+-SetDspHighCutFilterEnabled "CSC47" True
+-SetDspHighCutFrequency "CSC47" 7500
+-SetDspHighCutNumberTaps "CSC47" 256
+-SetSubSamplingInterleave "CSC47" 1
+-SetInputInverted "CSC47" True
+-SetDiskWriteEnabled "CSC47" True
+-SetNetComDataBufferingEnabled "CSC47" False
+-SetNetComDataBufferSize "CSC47" 3000
+
+#Acquisition Entity creation and setup for: "CSC48"
+-CreateCscAcqEnt "CSC48" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC48" True
+-SetChannelNumber "CSC48" 126
+-SetInputRange "CSC48" 2000
+-SetDspLowCutFilterEnabled "CSC48" True
+-SetDspLowCutFrequency "CSC48" 0.1
+-SetDspLowCutNumberTaps "CSC48" 0
+-SetDspHighCutFilterEnabled "CSC48" True
+-SetDspHighCutFrequency "CSC48" 7500
+-SetDspHighCutNumberTaps "CSC48" 256
+-SetSubSamplingInterleave "CSC48" 1
+-SetInputInverted "CSC48" True
+-SetDiskWriteEnabled "CSC48" True
+-SetNetComDataBufferingEnabled "CSC48" False
+-SetNetComDataBufferSize "CSC48" 3000
+
+#Acquisition Entity creation and setup for: "CSC49"
+-CreateCscAcqEnt "CSC49" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC49" True
+-SetChannelNumber "CSC49" 107
+-SetInputRange "CSC49" 2000
+-SetDspLowCutFilterEnabled "CSC49" True
+-SetDspLowCutFrequency "CSC49" 0.1
+-SetDspLowCutNumberTaps "CSC49" 0
+-SetDspHighCutFilterEnabled "CSC49" True
+-SetDspHighCutFrequency "CSC49" 7500
+-SetDspHighCutNumberTaps "CSC49" 256
+-SetSubSamplingInterleave "CSC49" 1
+-SetInputInverted "CSC49" True
+-SetDiskWriteEnabled "CSC49" True
+-SetNetComDataBufferingEnabled "CSC49" False
+-SetNetComDataBufferSize "CSC49" 3000
+
+#Acquisition Entity creation and setup for: "CSC50"
+-CreateCscAcqEnt "CSC50" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC50" True
+-SetChannelNumber "CSC50" 105
+-SetInputRange "CSC50" 2000
+-SetDspLowCutFilterEnabled "CSC50" True
+-SetDspLowCutFrequency "CSC50" 0.1
+-SetDspLowCutNumberTaps "CSC50" 0
+-SetDspHighCutFilterEnabled "CSC50" True
+-SetDspHighCutFrequency "CSC50" 7500
+-SetDspHighCutNumberTaps "CSC50" 256
+-SetSubSamplingInterleave "CSC50" 1
+-SetInputInverted "CSC50" True
+-SetDiskWriteEnabled "CSC50" True
+-SetNetComDataBufferingEnabled "CSC50" False
+-SetNetComDataBufferSize "CSC50" 3000
+
+#Acquisition Entity creation and setup for: "CSC51"
+-CreateCscAcqEnt "CSC51" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC51" True
+-SetChannelNumber "CSC51" 104
+-SetInputRange "CSC51" 2000
+-SetDspLowCutFilterEnabled "CSC51" True
+-SetDspLowCutFrequency "CSC51" 0.1
+-SetDspLowCutNumberTaps "CSC51" 0
+-SetDspHighCutFilterEnabled "CSC51" True
+-SetDspHighCutFrequency "CSC51" 7500
+-SetDspHighCutNumberTaps "CSC51" 256
+-SetSubSamplingInterleave "CSC51" 1
+-SetInputInverted "CSC51" True
+-SetDiskWriteEnabled "CSC51" True
+-SetNetComDataBufferingEnabled "CSC51" False
+-SetNetComDataBufferSize "CSC51" 3000
+
+#Acquisition Entity creation and setup for: "CSC52"
+-CreateCscAcqEnt "CSC52" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC52" True
+-SetChannelNumber "CSC52" 98
+-SetInputRange "CSC52" 2000
+-SetDspLowCutFilterEnabled "CSC52" True
+-SetDspLowCutFrequency "CSC52" 0.1
+-SetDspLowCutNumberTaps "CSC52" 0
+-SetDspHighCutFilterEnabled "CSC52" True
+-SetDspHighCutFrequency "CSC52" 7500
+-SetDspHighCutNumberTaps "CSC52" 256
+-SetSubSamplingInterleave "CSC52" 1
+-SetInputInverted "CSC52" True
+-SetDiskWriteEnabled "CSC52" True
+-SetNetComDataBufferingEnabled "CSC52" False
+-SetNetComDataBufferSize "CSC52" 3000
+
+#Acquisition Entity creation and setup for: "CSC53"
+-CreateCscAcqEnt "CSC53" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC53" True
+-SetChannelNumber "CSC53" 99
+-SetInputRange "CSC53" 2000
+-SetDspLowCutFilterEnabled "CSC53" True
+-SetDspLowCutFrequency "CSC53" 0.1
+-SetDspLowCutNumberTaps "CSC53" 0
+-SetDspHighCutFilterEnabled "CSC53" True
+-SetDspHighCutFrequency "CSC53" 7500
+-SetDspHighCutNumberTaps "CSC53" 256
+-SetSubSamplingInterleave "CSC53" 1
+-SetInputInverted "CSC53" True
+-SetDiskWriteEnabled "CSC53" True
+-SetNetComDataBufferingEnabled "CSC53" False
+-SetNetComDataBufferSize "CSC53" 3000
+
+#Acquisition Entity creation and setup for: "CSC54"
+-CreateCscAcqEnt "CSC54" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC54" True
+-SetChannelNumber "CSC54" 112
+-SetInputRange "CSC54" 2000
+-SetDspLowCutFilterEnabled "CSC54" True
+-SetDspLowCutFrequency "CSC54" 0.1
+-SetDspLowCutNumberTaps "CSC54" 0
+-SetDspHighCutFilterEnabled "CSC54" True
+-SetDspHighCutFrequency "CSC54" 7500
+-SetDspHighCutNumberTaps "CSC54" 256
+-SetSubSamplingInterleave "CSC54" 1
+-SetInputInverted "CSC54" True
+-SetDiskWriteEnabled "CSC54" True
+-SetNetComDataBufferingEnabled "CSC54" False
+-SetNetComDataBufferSize "CSC54" 3000
+
+#Acquisition Entity creation and setup for: "CSC55"
+-CreateCscAcqEnt "CSC55" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC55" True
+-SetChannelNumber "CSC55" 110
+-SetInputRange "CSC55" 2000
+-SetDspLowCutFilterEnabled "CSC55" True
+-SetDspLowCutFrequency "CSC55" 0.1
+-SetDspLowCutNumberTaps "CSC55" 0
+-SetDspHighCutFilterEnabled "CSC55" True
+-SetDspHighCutFrequency "CSC55" 7500
+-SetDspHighCutNumberTaps "CSC55" 256
+-SetSubSamplingInterleave "CSC55" 1
+-SetInputInverted "CSC55" True
+-SetDiskWriteEnabled "CSC55" True
+-SetNetComDataBufferingEnabled "CSC55" False
+-SetNetComDataBufferSize "CSC55" 3000
+
+#Acquisition Entity creation and setup for: "CSC56"
+-CreateCscAcqEnt "CSC56" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC56" True
+-SetChannelNumber "CSC56" 108
+-SetInputRange "CSC56" 2000
+-SetDspLowCutFilterEnabled "CSC56" True
+-SetDspLowCutFrequency "CSC56" 0.1
+-SetDspLowCutNumberTaps "CSC56" 0
+-SetDspHighCutFilterEnabled "CSC56" True
+-SetDspHighCutFrequency "CSC56" 7500
+-SetDspHighCutNumberTaps "CSC56" 256
+-SetSubSamplingInterleave "CSC56" 1
+-SetInputInverted "CSC56" True
+-SetDiskWriteEnabled "CSC56" True
+-SetNetComDataBufferingEnabled "CSC56" False
+-SetNetComDataBufferSize "CSC56" 3000
+
+#Acquisition Entity creation and setup for: "CSC57"
+-CreateCscAcqEnt "CSC57" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC57" True
+-SetChannelNumber "CSC57" 101
+-SetInputRange "CSC57" 2000
+-SetDspLowCutFilterEnabled "CSC57" True
+-SetDspLowCutFrequency "CSC57" 0.1
+-SetDspLowCutNumberTaps "CSC57" 0
+-SetDspHighCutFilterEnabled "CSC57" True
+-SetDspHighCutFrequency "CSC57" 7500
+-SetDspHighCutNumberTaps "CSC57" 256
+-SetSubSamplingInterleave "CSC57" 1
+-SetInputInverted "CSC57" True
+-SetDiskWriteEnabled "CSC57" True
+-SetNetComDataBufferingEnabled "CSC57" False
+-SetNetComDataBufferSize "CSC57" 3000
+
+#Acquisition Entity creation and setup for: "CSC58"
+-CreateCscAcqEnt "CSC58" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC58" True
+-SetChannelNumber "CSC58" 109
+-SetInputRange "CSC58" 2000
+-SetDspLowCutFilterEnabled "CSC58" True
+-SetDspLowCutFrequency "CSC58" 0.1
+-SetDspLowCutNumberTaps "CSC58" 0
+-SetDspHighCutFilterEnabled "CSC58" True
+-SetDspHighCutFrequency "CSC58" 7500
+-SetDspHighCutNumberTaps "CSC58" 256
+-SetSubSamplingInterleave "CSC58" 1
+-SetInputInverted "CSC58" True
+-SetDiskWriteEnabled "CSC58" True
+-SetNetComDataBufferingEnabled "CSC58" False
+-SetNetComDataBufferSize "CSC58" 3000
+
+#Acquisition Entity creation and setup for: "CSC59"
+-CreateCscAcqEnt "CSC59" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC59" True
+-SetChannelNumber "CSC59" 60
+-SetAcqEntReference "CSC59" 43
+-SetInputRange "CSC59" 2000
+-SetDspLowCutFilterEnabled "CSC59" True
+-SetDspLowCutFrequency "CSC59" 0.1
+-SetDspLowCutNumberTaps "CSC59" 0
+-SetDspHighCutFilterEnabled "CSC59" True
+-SetDspHighCutFrequency "CSC59" 7500
+-SetDspHighCutNumberTaps "CSC59" 256
+-SetSubSamplingInterleave "CSC59" 1
+-SetInputInverted "CSC59" True
+-SetDiskWriteEnabled "CSC59" True
+-SetNetComDataBufferingEnabled "CSC59" False
+-SetNetComDataBufferSize "CSC59" 3000
+
+#Acquisition Entity creation and setup for: "CSC60"
+-CreateCscAcqEnt "CSC60" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC60" True
+-SetChannelNumber "CSC60" 103
+-SetInputRange "CSC60" 2000
+-SetDspLowCutFilterEnabled "CSC60" True
+-SetDspLowCutFrequency "CSC60" 0.1
+-SetDspLowCutNumberTaps "CSC60" 0
+-SetDspHighCutFilterEnabled "CSC60" True
+-SetDspHighCutFrequency "CSC60" 7500
+-SetDspHighCutNumberTaps "CSC60" 256
+-SetSubSamplingInterleave "CSC60" 1
+-SetInputInverted "CSC60" True
+-SetDiskWriteEnabled "CSC60" True
+-SetNetComDataBufferingEnabled "CSC60" False
+-SetNetComDataBufferSize "CSC60" 3000
+
+#Acquisition Entity creation and setup for: "CSC61"
+-CreateCscAcqEnt "CSC61" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC61" True
+-SetChannelNumber "CSC61" 102
+-SetInputRange "CSC61" 2000
+-SetDspLowCutFilterEnabled "CSC61" True
+-SetDspLowCutFrequency "CSC61" 0.1
+-SetDspLowCutNumberTaps "CSC61" 0
+-SetDspHighCutFilterEnabled "CSC61" True
+-SetDspHighCutFrequency "CSC61" 7500
+-SetDspHighCutNumberTaps "CSC61" 256
+-SetSubSamplingInterleave "CSC61" 1
+-SetInputInverted "CSC61" True
+-SetDiskWriteEnabled "CSC61" True
+-SetNetComDataBufferingEnabled "CSC61" False
+-SetNetComDataBufferSize "CSC61" 3000
+
+#Acquisition Entity creation and setup for: "CSC62"
+-CreateCscAcqEnt "CSC62" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC62" True
+-SetChannelNumber "CSC62" 96
+-SetInputRange "CSC62" 2000
+-SetDspLowCutFilterEnabled "CSC62" True
+-SetDspLowCutFrequency "CSC62" 0.1
+-SetDspLowCutNumberTaps "CSC62" 0
+-SetDspHighCutFilterEnabled "CSC62" True
+-SetDspHighCutFrequency "CSC62" 7500
+-SetDspHighCutNumberTaps "CSC62" 256
+-SetSubSamplingInterleave "CSC62" 1
+-SetInputInverted "CSC62" True
+-SetDiskWriteEnabled "CSC62" True
+-SetNetComDataBufferingEnabled "CSC62" False
+-SetNetComDataBufferSize "CSC62" 3000
+
+#Acquisition Entity creation and setup for: "CSC63"
+-CreateCscAcqEnt "CSC63" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC63" True
+-SetChannelNumber "CSC63" 100
+-SetInputRange "CSC63" 2000
+-SetDspLowCutFilterEnabled "CSC63" True
+-SetDspLowCutFrequency "CSC63" 0.1
+-SetDspLowCutNumberTaps "CSC63" 0
+-SetDspHighCutFilterEnabled "CSC63" True
+-SetDspHighCutFrequency "CSC63" 7500
+-SetDspHighCutNumberTaps "CSC63" 256
+-SetSubSamplingInterleave "CSC63" 1
+-SetInputInverted "CSC63" True
+-SetDiskWriteEnabled "CSC63" True
+-SetNetComDataBufferingEnabled "CSC63" False
+-SetNetComDataBufferSize "CSC63" 3000
+
+#Acquisition Entity creation and setup for: "CSC64"
+-CreateCscAcqEnt "CSC64" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC64" True
+-SetChannelNumber "CSC64" 106
+-SetInputRange "CSC64" 2000
+-SetDspLowCutFilterEnabled "CSC64" True
+-SetDspLowCutFrequency "CSC64" 0.1
+-SetDspLowCutNumberTaps "CSC64" 0
+-SetDspHighCutFilterEnabled "CSC64" True
+-SetDspHighCutFrequency "CSC64" 7500
+-SetDspHighCutNumberTaps "CSC64" 256
+-SetSubSamplingInterleave "CSC64" 1
+-SetInputInverted "CSC64" True
+-SetDiskWriteEnabled "CSC64" True
+-SetNetComDataBufferingEnabled "CSC64" False
+-SetNetComDataBufferSize "CSC64" 3000
+
+#Acquisition Entity creation and setup for: "CSC65"
+-CreateCscAcqEnt "CSC65" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC65" True
+-SetChannelNumber "CSC65" 148
+-SetInputRange "CSC65" 2000
+-SetDspLowCutFilterEnabled "CSC65" True
+-SetDspLowCutFrequency "CSC65" 0.1
+-SetDspLowCutNumberTaps "CSC65" 0
+-SetDspHighCutFilterEnabled "CSC65" True
+-SetDspHighCutFrequency "CSC65" 7500
+-SetDspHighCutNumberTaps "CSC65" 256
+-SetSubSamplingInterleave "CSC65" 1
+-SetInputInverted "CSC65" True
+-SetDiskWriteEnabled "CSC65" True
+-SetNetComDataBufferingEnabled "CSC65" False
+-SetNetComDataBufferSize "CSC65" 3000
+
+#Acquisition Entity creation and setup for: "CSC66"
+-CreateCscAcqEnt "CSC66" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC66" True
+-SetChannelNumber "CSC66" 151
+-SetInputRange "CSC66" 2000
+-SetDspLowCutFilterEnabled "CSC66" True
+-SetDspLowCutFrequency "CSC66" 0.1
+-SetDspLowCutNumberTaps "CSC66" 0
+-SetDspHighCutFilterEnabled "CSC66" True
+-SetDspHighCutFrequency "CSC66" 7500
+-SetDspHighCutNumberTaps "CSC66" 256
+-SetSubSamplingInterleave "CSC66" 1
+-SetInputInverted "CSC66" True
+-SetDiskWriteEnabled "CSC66" True
+-SetNetComDataBufferingEnabled "CSC66" False
+-SetNetComDataBufferSize "CSC66" 3000
+
+#Acquisition Entity creation and setup for: "CSC67"
+-CreateCscAcqEnt "CSC67" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC67" True
+-SetChannelNumber "CSC67" 156
+-SetInputRange "CSC67" 2000
+-SetDspLowCutFilterEnabled "CSC67" True
+-SetDspLowCutFrequency "CSC67" 0.1
+-SetDspLowCutNumberTaps "CSC67" 0
+-SetDspHighCutFilterEnabled "CSC67" True
+-SetDspHighCutFrequency "CSC67" 7500
+-SetDspHighCutNumberTaps "CSC67" 256
+-SetSubSamplingInterleave "CSC67" 1
+-SetInputInverted "CSC67" True
+-SetDiskWriteEnabled "CSC67" True
+-SetNetComDataBufferingEnabled "CSC67" False
+-SetNetComDataBufferSize "CSC67" 3000
+
+#Acquisition Entity creation and setup for: "CSC68"
+-CreateCscAcqEnt "CSC68" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC68" True
+-SetChannelNumber "CSC68" 145
+-SetInputRange "CSC68" 2000
+-SetDspLowCutFilterEnabled "CSC68" True
+-SetDspLowCutFrequency "CSC68" 0.1
+-SetDspLowCutNumberTaps "CSC68" 0
+-SetDspHighCutFilterEnabled "CSC68" True
+-SetDspHighCutFrequency "CSC68" 7500
+-SetDspHighCutNumberTaps "CSC68" 256
+-SetSubSamplingInterleave "CSC68" 1
+-SetInputInverted "CSC68" True
+-SetDiskWriteEnabled "CSC68" True
+-SetNetComDataBufferingEnabled "CSC68" False
+-SetNetComDataBufferSize "CSC68" 3000
+
+#Acquisition Entity creation and setup for: "CSC69"
+-CreateCscAcqEnt "CSC69" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC69" True
+-SetChannelNumber "CSC69" 150
+-SetInputRange "CSC69" 2000
+-SetDspLowCutFilterEnabled "CSC69" True
+-SetDspLowCutFrequency "CSC69" 0.1
+-SetDspLowCutNumberTaps "CSC69" 0
+-SetDspHighCutFilterEnabled "CSC69" True
+-SetDspHighCutFrequency "CSC69" 7500
+-SetDspHighCutNumberTaps "CSC69" 256
+-SetSubSamplingInterleave "CSC69" 1
+-SetInputInverted "CSC69" True
+-SetDiskWriteEnabled "CSC69" True
+-SetNetComDataBufferingEnabled "CSC69" False
+-SetNetComDataBufferSize "CSC69" 3000
+
+#Acquisition Entity creation and setup for: "CSC70"
+-CreateCscAcqEnt "CSC70" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC70" True
+-SetChannelNumber "CSC70" 157
+-SetInputRange "CSC70" 2000
+-SetDspLowCutFilterEnabled "CSC70" True
+-SetDspLowCutFrequency "CSC70" 0.1
+-SetDspLowCutNumberTaps "CSC70" 0
+-SetDspHighCutFilterEnabled "CSC70" True
+-SetDspHighCutFrequency "CSC70" 7500
+-SetDspHighCutNumberTaps "CSC70" 256
+-SetSubSamplingInterleave "CSC70" 1
+-SetInputInverted "CSC70" True
+-SetDiskWriteEnabled "CSC70" True
+-SetNetComDataBufferingEnabled "CSC70" False
+-SetNetComDataBufferSize "CSC70" 3000
+
+#Acquisition Entity creation and setup for: "CSC71"
+-CreateCscAcqEnt "CSC71" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC71" True
+-SetChannelNumber "CSC71" 143
+-SetInputRange "CSC71" 2000
+-SetDspLowCutFilterEnabled "CSC71" True
+-SetDspLowCutFrequency "CSC71" 0.1
+-SetDspLowCutNumberTaps "CSC71" 0
+-SetDspHighCutFilterEnabled "CSC71" True
+-SetDspHighCutFrequency "CSC71" 7500
+-SetDspHighCutNumberTaps "CSC71" 256
+-SetSubSamplingInterleave "CSC71" 1
+-SetInputInverted "CSC71" True
+-SetDiskWriteEnabled "CSC71" True
+-SetNetComDataBufferingEnabled "CSC71" False
+-SetNetComDataBufferSize "CSC71" 3000
+
+#Acquisition Entity creation and setup for: "CSC72"
+-CreateCscAcqEnt "CSC72" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC72" True
+-SetChannelNumber "CSC72" 147
+-SetInputRange "CSC72" 2000
+-SetDspLowCutFilterEnabled "CSC72" True
+-SetDspLowCutFrequency "CSC72" 0.1
+-SetDspLowCutNumberTaps "CSC72" 0
+-SetDspHighCutFilterEnabled "CSC72" True
+-SetDspHighCutFrequency "CSC72" 7500
+-SetDspHighCutNumberTaps "CSC72" 256
+-SetSubSamplingInterleave "CSC72" 1
+-SetInputInverted "CSC72" True
+-SetDiskWriteEnabled "CSC72" True
+-SetNetComDataBufferingEnabled "CSC72" False
+-SetNetComDataBufferSize "CSC72" 3000
+
+#Acquisition Entity creation and setup for: "CSC73"
+-CreateCscAcqEnt "CSC73" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC73" True
+-SetChannelNumber "CSC73" 154
+-SetInputRange "CSC73" 2000
+-SetDspLowCutFilterEnabled "CSC73" True
+-SetDspLowCutFrequency "CSC73" 0.1
+-SetDspLowCutNumberTaps "CSC73" 0
+-SetDspHighCutFilterEnabled "CSC73" True
+-SetDspHighCutFrequency "CSC73" 7500
+-SetDspHighCutNumberTaps "CSC73" 256
+-SetSubSamplingInterleave "CSC73" 1
+-SetInputInverted "CSC73" True
+-SetDiskWriteEnabled "CSC73" True
+-SetNetComDataBufferingEnabled "CSC73" False
+-SetNetComDataBufferSize "CSC73" 3000
+
+#Acquisition Entity creation and setup for: "CSC74"
+-CreateCscAcqEnt "CSC74" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC74" True
+-SetChannelNumber "CSC74" 146
+-SetInputRange "CSC74" 2000
+-SetDspLowCutFilterEnabled "CSC74" True
+-SetDspLowCutFrequency "CSC74" 0.1
+-SetDspLowCutNumberTaps "CSC74" 0
+-SetDspHighCutFilterEnabled "CSC74" True
+-SetDspHighCutFrequency "CSC74" 7500
+-SetDspHighCutNumberTaps "CSC74" 256
+-SetSubSamplingInterleave "CSC74" 1
+-SetInputInverted "CSC74" True
+-SetDiskWriteEnabled "CSC74" True
+-SetNetComDataBufferingEnabled "CSC74" False
+-SetNetComDataBufferSize "CSC74" 3000
+
+#Acquisition Entity creation and setup for: "CSC75"
+-CreateCscAcqEnt "CSC75" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC75" True
+-SetChannelNumber "CSC75" 144
+-SetInputRange "CSC75" 2000
+-SetDspLowCutFilterEnabled "CSC75" True
+-SetDspLowCutFrequency "CSC75" 0.1
+-SetDspLowCutNumberTaps "CSC75" 0
+-SetDspHighCutFilterEnabled "CSC75" True
+-SetDspHighCutFrequency "CSC75" 7500
+-SetDspHighCutNumberTaps "CSC75" 256
+-SetSubSamplingInterleave "CSC75" 1
+-SetInputInverted "CSC75" True
+-SetDiskWriteEnabled "CSC75" True
+-SetNetComDataBufferingEnabled "CSC75" False
+-SetNetComDataBufferSize "CSC75" 3000
+
+#Acquisition Entity creation and setup for: "CSC76"
+-CreateCscAcqEnt "CSC76" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC76" True
+-SetChannelNumber "CSC76" 152
+-SetInputRange "CSC76" 2000
+-SetDspLowCutFilterEnabled "CSC76" True
+-SetDspLowCutFrequency "CSC76" 0.1
+-SetDspLowCutNumberTaps "CSC76" 0
+-SetDspHighCutFilterEnabled "CSC76" True
+-SetDspHighCutFrequency "CSC76" 7500
+-SetDspHighCutNumberTaps "CSC76" 256
+-SetSubSamplingInterleave "CSC76" 1
+-SetInputInverted "CSC76" True
+-SetDiskWriteEnabled "CSC76" True
+-SetNetComDataBufferingEnabled "CSC76" False
+-SetNetComDataBufferSize "CSC76" 3000
+
+#Acquisition Entity creation and setup for: "CSC77"
+-CreateCscAcqEnt "CSC77" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC77" True
+-SetChannelNumber "CSC77" 153
+-SetInputRange "CSC77" 2000
+-SetDspLowCutFilterEnabled "CSC77" True
+-SetDspLowCutFrequency "CSC77" 0.1
+-SetDspLowCutNumberTaps "CSC77" 0
+-SetDspHighCutFilterEnabled "CSC77" True
+-SetDspHighCutFrequency "CSC77" 7500
+-SetDspHighCutNumberTaps "CSC77" 256
+-SetSubSamplingInterleave "CSC77" 1
+-SetInputInverted "CSC77" True
+-SetDiskWriteEnabled "CSC77" True
+-SetNetComDataBufferingEnabled "CSC77" False
+-SetNetComDataBufferSize "CSC77" 3000
+
+#Acquisition Entity creation and setup for: "CSC78"
+-CreateCscAcqEnt "CSC78" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC78" True
+-SetChannelNumber "CSC78" 159
+-SetInputRange "CSC78" 2000
+-SetDspLowCutFilterEnabled "CSC78" True
+-SetDspLowCutFrequency "CSC78" 0.1
+-SetDspLowCutNumberTaps "CSC78" 0
+-SetDspHighCutFilterEnabled "CSC78" True
+-SetDspHighCutFrequency "CSC78" 7500
+-SetDspHighCutNumberTaps "CSC78" 256
+-SetSubSamplingInterleave "CSC78" 1
+-SetInputInverted "CSC78" True
+-SetDiskWriteEnabled "CSC78" True
+-SetNetComDataBufferingEnabled "CSC78" False
+-SetNetComDataBufferSize "CSC78" 3000
+
+#Acquisition Entity creation and setup for: "CSC79"
+-CreateCscAcqEnt "CSC79" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC79" True
+-SetChannelNumber "CSC79" 155
+-SetInputRange "CSC79" 2000
+-SetDspLowCutFilterEnabled "CSC79" True
+-SetDspLowCutFrequency "CSC79" 0.1
+-SetDspLowCutNumberTaps "CSC79" 0
+-SetDspHighCutFilterEnabled "CSC79" True
+-SetDspHighCutFrequency "CSC79" 7500
+-SetDspHighCutNumberTaps "CSC79" 256
+-SetSubSamplingInterleave "CSC79" 1
+-SetInputInverted "CSC79" True
+-SetDiskWriteEnabled "CSC79" True
+-SetNetComDataBufferingEnabled "CSC79" False
+-SetNetComDataBufferSize "CSC79" 3000
+
+#Acquisition Entity creation and setup for: "CSC80"
+-CreateCscAcqEnt "CSC80" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC80" True
+-SetChannelNumber "CSC80" 149
+-SetInputRange "CSC80" 2000
+-SetDspLowCutFilterEnabled "CSC80" True
+-SetDspLowCutFrequency "CSC80" 0.1
+-SetDspLowCutNumberTaps "CSC80" 0
+-SetDspHighCutFilterEnabled "CSC80" True
+-SetDspHighCutFrequency "CSC80" 7500
+-SetDspHighCutNumberTaps "CSC80" 256
+-SetSubSamplingInterleave "CSC80" 1
+-SetInputInverted "CSC80" True
+-SetDiskWriteEnabled "CSC80" True
+-SetNetComDataBufferingEnabled "CSC80" False
+-SetNetComDataBufferSize "CSC80" 3000
+
+#Acquisition Entity creation and setup for: "CSC81"
+-CreateCscAcqEnt "CSC81" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC81" True
+-SetChannelNumber "CSC81" 128
+-SetInputRange "CSC81" 2000
+-SetDspLowCutFilterEnabled "CSC81" True
+-SetDspLowCutFrequency "CSC81" 0.1
+-SetDspLowCutNumberTaps "CSC81" 0
+-SetDspHighCutFilterEnabled "CSC81" True
+-SetDspHighCutFrequency "CSC81" 7500
+-SetDspHighCutNumberTaps "CSC81" 256
+-SetSubSamplingInterleave "CSC81" 1
+-SetInputInverted "CSC81" True
+-SetDiskWriteEnabled "CSC81" True
+-SetNetComDataBufferingEnabled "CSC81" False
+-SetNetComDataBufferSize "CSC81" 3000
+
+#Acquisition Entity creation and setup for: "CSC82"
+-CreateCscAcqEnt "CSC82" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC82" True
+-SetChannelNumber "CSC82" 130
+-SetInputRange "CSC82" 2000
+-SetDspLowCutFilterEnabled "CSC82" True
+-SetDspLowCutFrequency "CSC82" 0.1
+-SetDspLowCutNumberTaps "CSC82" 0
+-SetDspHighCutFilterEnabled "CSC82" True
+-SetDspHighCutFrequency "CSC82" 7500
+-SetDspHighCutNumberTaps "CSC82" 256
+-SetSubSamplingInterleave "CSC82" 1
+-SetInputInverted "CSC82" True
+-SetDiskWriteEnabled "CSC82" True
+-SetNetComDataBufferingEnabled "CSC82" False
+-SetNetComDataBufferSize "CSC82" 3000
+
+#Acquisition Entity creation and setup for: "CSC83"
+-CreateCscAcqEnt "CSC83" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC83" True
+-SetChannelNumber "CSC83" 132
+-SetInputRange "CSC83" 2000
+-SetDspLowCutFilterEnabled "CSC83" True
+-SetDspLowCutFrequency "CSC83" 0.1
+-SetDspLowCutNumberTaps "CSC83" 0
+-SetDspHighCutFilterEnabled "CSC83" True
+-SetDspHighCutFrequency "CSC83" 7500
+-SetDspHighCutNumberTaps "CSC83" 256
+-SetSubSamplingInterleave "CSC83" 1
+-SetInputInverted "CSC83" True
+-SetDiskWriteEnabled "CSC83" True
+-SetNetComDataBufferingEnabled "CSC83" False
+-SetNetComDataBufferSize "CSC83" 3000
+
+#Acquisition Entity creation and setup for: "CSC84"
+-CreateCscAcqEnt "CSC84" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC84" True
+-SetChannelNumber "CSC84" 134
+-SetInputRange "CSC84" 2000
+-SetDspLowCutFilterEnabled "CSC84" True
+-SetDspLowCutFrequency "CSC84" 0.1
+-SetDspLowCutNumberTaps "CSC84" 0
+-SetDspHighCutFilterEnabled "CSC84" True
+-SetDspHighCutFrequency "CSC84" 7500
+-SetDspHighCutNumberTaps "CSC84" 256
+-SetSubSamplingInterleave "CSC84" 1
+-SetInputInverted "CSC84" True
+-SetDiskWriteEnabled "CSC84" True
+-SetNetComDataBufferingEnabled "CSC84" False
+-SetNetComDataBufferSize "CSC84" 3000
+
+#Acquisition Entity creation and setup for: "CSC85"
+-CreateCscAcqEnt "CSC85" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC85" True
+-SetChannelNumber "CSC85" 136
+-SetInputRange "CSC85" 2000
+-SetDspLowCutFilterEnabled "CSC85" True
+-SetDspLowCutFrequency "CSC85" 0.1
+-SetDspLowCutNumberTaps "CSC85" 0
+-SetDspHighCutFilterEnabled "CSC85" True
+-SetDspHighCutFrequency "CSC85" 7500
+-SetDspHighCutNumberTaps "CSC85" 256
+-SetSubSamplingInterleave "CSC85" 1
+-SetInputInverted "CSC85" True
+-SetDiskWriteEnabled "CSC85" True
+-SetNetComDataBufferingEnabled "CSC85" False
+-SetNetComDataBufferSize "CSC85" 3000
+
+#Acquisition Entity creation and setup for: "CSC86"
+-CreateCscAcqEnt "CSC86" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC86" True
+-SetChannelNumber "CSC86" 138
+-SetInputRange "CSC86" 2000
+-SetDspLowCutFilterEnabled "CSC86" True
+-SetDspLowCutFrequency "CSC86" 0.1
+-SetDspLowCutNumberTaps "CSC86" 0
+-SetDspHighCutFilterEnabled "CSC86" True
+-SetDspHighCutFrequency "CSC86" 7500
+-SetDspHighCutNumberTaps "CSC86" 256
+-SetSubSamplingInterleave "CSC86" 1
+-SetInputInverted "CSC86" True
+-SetDiskWriteEnabled "CSC86" True
+-SetNetComDataBufferingEnabled "CSC86" False
+-SetNetComDataBufferSize "CSC86" 3000
+
+#Acquisition Entity creation and setup for: "CSC87"
+-CreateCscAcqEnt "CSC87" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC87" True
+-SetChannelNumber "CSC87" 140
+-SetInputRange "CSC87" 2000
+-SetDspLowCutFilterEnabled "CSC87" True
+-SetDspLowCutFrequency "CSC87" 0.1
+-SetDspLowCutNumberTaps "CSC87" 0
+-SetDspHighCutFilterEnabled "CSC87" True
+-SetDspHighCutFrequency "CSC87" 7500
+-SetDspHighCutNumberTaps "CSC87" 256
+-SetSubSamplingInterleave "CSC87" 1
+-SetInputInverted "CSC87" True
+-SetDiskWriteEnabled "CSC87" True
+-SetNetComDataBufferingEnabled "CSC87" False
+-SetNetComDataBufferSize "CSC87" 3000
+
+#Acquisition Entity creation and setup for: "CSC88"
+-CreateCscAcqEnt "CSC88" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC88" True
+-SetChannelNumber "CSC88" 142
+-SetInputRange "CSC88" 2000
+-SetDspLowCutFilterEnabled "CSC88" True
+-SetDspLowCutFrequency "CSC88" 0.1
+-SetDspLowCutNumberTaps "CSC88" 0
+-SetDspHighCutFilterEnabled "CSC88" True
+-SetDspHighCutFrequency "CSC88" 7500
+-SetDspHighCutNumberTaps "CSC88" 256
+-SetSubSamplingInterleave "CSC88" 1
+-SetInputInverted "CSC88" True
+-SetDiskWriteEnabled "CSC88" True
+-SetNetComDataBufferingEnabled "CSC88" False
+-SetNetComDataBufferSize "CSC88" 3000
+
+#Acquisition Entity creation and setup for: "CSC89"
+-CreateCscAcqEnt "CSC89" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC89" True
+-SetChannelNumber "CSC89" 158
+-SetInputRange "CSC89" 2000
+-SetDspLowCutFilterEnabled "CSC89" True
+-SetDspLowCutFrequency "CSC89" 0.1
+-SetDspLowCutNumberTaps "CSC89" 0
+-SetDspHighCutFilterEnabled "CSC89" True
+-SetDspHighCutFrequency "CSC89" 7500
+-SetDspHighCutNumberTaps "CSC89" 256
+-SetSubSamplingInterleave "CSC89" 1
+-SetInputInverted "CSC89" True
+-SetDiskWriteEnabled "CSC89" True
+-SetNetComDataBufferingEnabled "CSC89" False
+-SetNetComDataBufferSize "CSC89" 3000
+
+#Acquisition Entity creation and setup for: "CSC90"
+-CreateCscAcqEnt "CSC90" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC90" True
+-SetChannelNumber "CSC90" 141
+-SetInputRange "CSC90" 2000
+-SetDspLowCutFilterEnabled "CSC90" True
+-SetDspLowCutFrequency "CSC90" 0.1
+-SetDspLowCutNumberTaps "CSC90" 0
+-SetDspHighCutFilterEnabled "CSC90" True
+-SetDspHighCutFrequency "CSC90" 7500
+-SetDspHighCutNumberTaps "CSC90" 256
+-SetSubSamplingInterleave "CSC90" 1
+-SetInputInverted "CSC90" True
+-SetDiskWriteEnabled "CSC90" True
+-SetNetComDataBufferingEnabled "CSC90" False
+-SetNetComDataBufferSize "CSC90" 3000
+
+#Acquisition Entity creation and setup for: "CSC91"
+-CreateCscAcqEnt "CSC91" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC91" True
+-SetChannelNumber "CSC91" 139
+-SetInputRange "CSC91" 2000
+-SetDspLowCutFilterEnabled "CSC91" True
+-SetDspLowCutFrequency "CSC91" 0.1
+-SetDspLowCutNumberTaps "CSC91" 0
+-SetDspHighCutFilterEnabled "CSC91" True
+-SetDspHighCutFrequency "CSC91" 7500
+-SetDspHighCutNumberTaps "CSC91" 256
+-SetSubSamplingInterleave "CSC91" 1
+-SetInputInverted "CSC91" True
+-SetDiskWriteEnabled "CSC91" True
+-SetNetComDataBufferingEnabled "CSC91" False
+-SetNetComDataBufferSize "CSC91" 3000
+
+#Acquisition Entity creation and setup for: "CSC92"
+-CreateCscAcqEnt "CSC92" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC92" True
+-SetChannelNumber "CSC92" 137
+-SetInputRange "CSC92" 2000
+-SetDspLowCutFilterEnabled "CSC92" True
+-SetDspLowCutFrequency "CSC92" 0.1
+-SetDspLowCutNumberTaps "CSC92" 0
+-SetDspHighCutFilterEnabled "CSC92" True
+-SetDspHighCutFrequency "CSC92" 7500
+-SetDspHighCutNumberTaps "CSC92" 256
+-SetSubSamplingInterleave "CSC92" 1
+-SetInputInverted "CSC92" True
+-SetDiskWriteEnabled "CSC92" True
+-SetNetComDataBufferingEnabled "CSC92" False
+-SetNetComDataBufferSize "CSC92" 3000
+
+#Acquisition Entity creation and setup for: "CSC93"
+-CreateCscAcqEnt "CSC93" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC93" True
+-SetChannelNumber "CSC93" 135
+-SetInputRange "CSC93" 2000
+-SetDspLowCutFilterEnabled "CSC93" True
+-SetDspLowCutFrequency "CSC93" 0.1
+-SetDspLowCutNumberTaps "CSC93" 0
+-SetDspHighCutFilterEnabled "CSC93" True
+-SetDspHighCutFrequency "CSC93" 7500
+-SetDspHighCutNumberTaps "CSC93" 256
+-SetSubSamplingInterleave "CSC93" 1
+-SetInputInverted "CSC93" True
+-SetDiskWriteEnabled "CSC93" True
+-SetNetComDataBufferingEnabled "CSC93" False
+-SetNetComDataBufferSize "CSC93" 3000
+
+#Acquisition Entity creation and setup for: "CSC94"
+-CreateCscAcqEnt "CSC94" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC94" True
+-SetChannelNumber "CSC94" 133
+-SetInputRange "CSC94" 2000
+-SetDspLowCutFilterEnabled "CSC94" True
+-SetDspLowCutFrequency "CSC94" 0.1
+-SetDspLowCutNumberTaps "CSC94" 0
+-SetDspHighCutFilterEnabled "CSC94" True
+-SetDspHighCutFrequency "CSC94" 7500
+-SetDspHighCutNumberTaps "CSC94" 256
+-SetSubSamplingInterleave "CSC94" 1
+-SetInputInverted "CSC94" True
+-SetDiskWriteEnabled "CSC94" True
+-SetNetComDataBufferingEnabled "CSC94" False
+-SetNetComDataBufferSize "CSC94" 3000
+
+#Acquisition Entity creation and setup for: "CSC95"
+-CreateCscAcqEnt "CSC95" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC95" True
+-SetChannelNumber "CSC95" 131
+-SetInputRange "CSC95" 2000
+-SetDspLowCutFilterEnabled "CSC95" True
+-SetDspLowCutFrequency "CSC95" 0.1
+-SetDspLowCutNumberTaps "CSC95" 0
+-SetDspHighCutFilterEnabled "CSC95" True
+-SetDspHighCutFrequency "CSC95" 7500
+-SetDspHighCutNumberTaps "CSC95" 256
+-SetSubSamplingInterleave "CSC95" 1
+-SetInputInverted "CSC95" True
+-SetDiskWriteEnabled "CSC95" True
+-SetNetComDataBufferingEnabled "CSC95" False
+-SetNetComDataBufferSize "CSC95" 3000
+
+#Acquisition Entity creation and setup for: "CSC96"
+-CreateCscAcqEnt "CSC96" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC96" True
+-SetChannelNumber "CSC96" 129
+-SetInputRange "CSC96" 2000
+-SetDspLowCutFilterEnabled "CSC96" True
+-SetDspLowCutFrequency "CSC96" 0.1
+-SetDspLowCutNumberTaps "CSC96" 0
+-SetDspHighCutFilterEnabled "CSC96" True
+-SetDspHighCutFrequency "CSC96" 7500
+-SetDspHighCutNumberTaps "CSC96" 256
+-SetSubSamplingInterleave "CSC96" 1
+-SetInputInverted "CSC96" True
+-SetDiskWriteEnabled "CSC96" True
+-SetNetComDataBufferingEnabled "CSC96" False
+-SetNetComDataBufferSize "CSC96" 3000
+
+#Acquisition Entity creation and setup for: "CSC97"
+-CreateCscAcqEnt "CSC97" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC97" True
+-SetChannelNumber "CSC97" 191
+-SetInputRange "CSC97" 2000
+-SetDspLowCutFilterEnabled "CSC97" True
+-SetDspLowCutFrequency "CSC97" 0.1
+-SetDspLowCutNumberTaps "CSC97" 0
+-SetDspHighCutFilterEnabled "CSC97" True
+-SetDspHighCutFrequency "CSC97" 7500
+-SetDspHighCutNumberTaps "CSC97" 256
+-SetSubSamplingInterleave "CSC97" 1
+-SetInputInverted "CSC97" True
+-SetDiskWriteEnabled "CSC97" True
+-SetNetComDataBufferingEnabled "CSC97" False
+-SetNetComDataBufferSize "CSC97" 3000
+
+#Acquisition Entity creation and setup for: "CSC98"
+-CreateCscAcqEnt "CSC98" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC98" True
+-SetChannelNumber "CSC98" 187
+-SetInputRange "CSC98" 2000
+-SetDspLowCutFilterEnabled "CSC98" True
+-SetDspLowCutFrequency "CSC98" 0.1
+-SetDspLowCutNumberTaps "CSC98" 0
+-SetDspHighCutFilterEnabled "CSC98" True
+-SetDspHighCutFrequency "CSC98" 7500
+-SetDspHighCutNumberTaps "CSC98" 256
+-SetSubSamplingInterleave "CSC98" 1
+-SetInputInverted "CSC98" True
+-SetDiskWriteEnabled "CSC98" True
+-SetNetComDataBufferingEnabled "CSC98" False
+-SetNetComDataBufferSize "CSC98" 3000
+
+#Acquisition Entity creation and setup for: "CSC99"
+-CreateCscAcqEnt "CSC99" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC99" True
+-SetChannelNumber "CSC99" 183
+-SetInputRange "CSC99" 2000
+-SetDspLowCutFilterEnabled "CSC99" True
+-SetDspLowCutFrequency "CSC99" 0.1
+-SetDspLowCutNumberTaps "CSC99" 0
+-SetDspHighCutFilterEnabled "CSC99" True
+-SetDspHighCutFrequency "CSC99" 7500
+-SetDspHighCutNumberTaps "CSC99" 256
+-SetSubSamplingInterleave "CSC99" 1
+-SetInputInverted "CSC99" True
+-SetDiskWriteEnabled "CSC99" True
+-SetNetComDataBufferingEnabled "CSC99" False
+-SetNetComDataBufferSize "CSC99" 3000
+
+#Acquisition Entity creation and setup for: "CSC100"
+-CreateCscAcqEnt "CSC100" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC100" True
+-SetChannelNumber "CSC100" 179
+-SetInputRange "CSC100" 2000
+-SetDspLowCutFilterEnabled "CSC100" True
+-SetDspLowCutFrequency "CSC100" 0.1
+-SetDspLowCutNumberTaps "CSC100" 0
+-SetDspHighCutFilterEnabled "CSC100" True
+-SetDspHighCutFrequency "CSC100" 7500
+-SetDspHighCutNumberTaps "CSC100" 256
+-SetSubSamplingInterleave "CSC100" 1
+-SetInputInverted "CSC100" True
+-SetDiskWriteEnabled "CSC100" True
+-SetNetComDataBufferingEnabled "CSC100" False
+-SetNetComDataBufferSize "CSC100" 3000
+
+#Acquisition Entity creation and setup for: "CSC101"
+-CreateCscAcqEnt "CSC101" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC101" True
+-SetChannelNumber "CSC101" 189
+-SetInputRange "CSC101" 2000
+-SetDspLowCutFilterEnabled "CSC101" True
+-SetDspLowCutFrequency "CSC101" 0.1
+-SetDspLowCutNumberTaps "CSC101" 0
+-SetDspHighCutFilterEnabled "CSC101" True
+-SetDspHighCutFrequency "CSC101" 7500
+-SetDspHighCutNumberTaps "CSC101" 256
+-SetSubSamplingInterleave "CSC101" 1
+-SetInputInverted "CSC101" True
+-SetDiskWriteEnabled "CSC101" True
+-SetNetComDataBufferingEnabled "CSC101" False
+-SetNetComDataBufferSize "CSC101" 3000
+
+#Acquisition Entity creation and setup for: "CSC102"
+-CreateCscAcqEnt "CSC102" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC102" True
+-SetChannelNumber "CSC102" 185
+-SetInputRange "CSC102" 2000
+-SetDspLowCutFilterEnabled "CSC102" True
+-SetDspLowCutFrequency "CSC102" 0.1
+-SetDspLowCutNumberTaps "CSC102" 0
+-SetDspHighCutFilterEnabled "CSC102" True
+-SetDspHighCutFrequency "CSC102" 7500
+-SetDspHighCutNumberTaps "CSC102" 256
+-SetSubSamplingInterleave "CSC102" 1
+-SetInputInverted "CSC102" True
+-SetDiskWriteEnabled "CSC102" True
+-SetNetComDataBufferingEnabled "CSC102" False
+-SetNetComDataBufferSize "CSC102" 3000
+
+#Acquisition Entity creation and setup for: "CSC103"
+-CreateCscAcqEnt "CSC103" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC103" True
+-SetChannelNumber "CSC103" 181
+-SetInputRange "CSC103" 2000
+-SetDspLowCutFilterEnabled "CSC103" True
+-SetDspLowCutFrequency "CSC103" 0.1
+-SetDspLowCutNumberTaps "CSC103" 0
+-SetDspHighCutFilterEnabled "CSC103" True
+-SetDspHighCutFrequency "CSC103" 7500
+-SetDspHighCutNumberTaps "CSC103" 256
+-SetSubSamplingInterleave "CSC103" 1
+-SetInputInverted "CSC103" True
+-SetDiskWriteEnabled "CSC103" True
+-SetNetComDataBufferingEnabled "CSC103" False
+-SetNetComDataBufferSize "CSC103" 3000
+
+#Acquisition Entity creation and setup for: "CSC104"
+-CreateCscAcqEnt "CSC104" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC104" True
+-SetChannelNumber "CSC104" 177
+-SetInputRange "CSC104" 2000
+-SetDspLowCutFilterEnabled "CSC104" True
+-SetDspLowCutFrequency "CSC104" 0.1
+-SetDspLowCutNumberTaps "CSC104" 0
+-SetDspHighCutFilterEnabled "CSC104" True
+-SetDspHighCutFrequency "CSC104" 7500
+-SetDspHighCutNumberTaps "CSC104" 256
+-SetSubSamplingInterleave "CSC104" 1
+-SetInputInverted "CSC104" True
+-SetDiskWriteEnabled "CSC104" True
+-SetNetComDataBufferingEnabled "CSC104" False
+-SetNetComDataBufferSize "CSC104" 3000
+
+#Acquisition Entity creation and setup for: "CSC105"
+-CreateCscAcqEnt "CSC105" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC105" True
+-SetChannelNumber "CSC105" 161
+-SetInputRange "CSC105" 2000
+-SetDspLowCutFilterEnabled "CSC105" True
+-SetDspLowCutFrequency "CSC105" 0.1
+-SetDspLowCutNumberTaps "CSC105" 0
+-SetDspHighCutFilterEnabled "CSC105" True
+-SetDspHighCutFrequency "CSC105" 7500
+-SetDspHighCutNumberTaps "CSC105" 256
+-SetSubSamplingInterleave "CSC105" 1
+-SetInputInverted "CSC105" True
+-SetDiskWriteEnabled "CSC105" True
+-SetNetComDataBufferingEnabled "CSC105" False
+-SetNetComDataBufferSize "CSC105" 3000
+
+#Acquisition Entity creation and setup for: "CSC106"
+-CreateCscAcqEnt "CSC106" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC106" True
+-SetChannelNumber "CSC106" 179
+-SetInputRange "CSC106" 2000
+-SetDspLowCutFilterEnabled "CSC106" True
+-SetDspLowCutFrequency "CSC106" 0.1
+-SetDspLowCutNumberTaps "CSC106" 0
+-SetDspHighCutFilterEnabled "CSC106" True
+-SetDspHighCutFrequency "CSC106" 7500
+-SetDspHighCutNumberTaps "CSC106" 256
+-SetSubSamplingInterleave "CSC106" 1
+-SetInputInverted "CSC106" True
+-SetDiskWriteEnabled "CSC106" True
+-SetNetComDataBufferingEnabled "CSC106" False
+-SetNetComDataBufferSize "CSC106" 3000
+
+#Acquisition Entity creation and setup for: "CSC107"
+-CreateCscAcqEnt "CSC107" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC107" True
+-SetChannelNumber "CSC107" 180
+-SetInputRange "CSC107" 2000
+-SetDspLowCutFilterEnabled "CSC107" True
+-SetDspLowCutFrequency "CSC107" 0.1
+-SetDspLowCutNumberTaps "CSC107" 0
+-SetDspHighCutFilterEnabled "CSC107" True
+-SetDspHighCutFrequency "CSC107" 7500
+-SetDspHighCutNumberTaps "CSC107" 256
+-SetSubSamplingInterleave "CSC107" 1
+-SetInputInverted "CSC107" True
+-SetDiskWriteEnabled "CSC107" True
+-SetNetComDataBufferingEnabled "CSC107" False
+-SetNetComDataBufferSize "CSC107" 3000
+
+#Acquisition Entity creation and setup for: "CSC108"
+-CreateCscAcqEnt "CSC108" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC108" True
+-SetChannelNumber "CSC108" 182
+-SetInputRange "CSC108" 2000
+-SetDspLowCutFilterEnabled "CSC108" True
+-SetDspLowCutFrequency "CSC108" 0.1
+-SetDspLowCutNumberTaps "CSC108" 0
+-SetDspHighCutFilterEnabled "CSC108" True
+-SetDspHighCutFrequency "CSC108" 7500
+-SetDspHighCutNumberTaps "CSC108" 256
+-SetSubSamplingInterleave "CSC108" 1
+-SetInputInverted "CSC108" True
+-SetDiskWriteEnabled "CSC108" True
+-SetNetComDataBufferingEnabled "CSC108" False
+-SetNetComDataBufferSize "CSC108" 3000
+
+#Acquisition Entity creation and setup for: "CSC109"
+-CreateCscAcqEnt "CSC109" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC109" True
+-SetChannelNumber "CSC109" 184
+-SetInputRange "CSC109" 2000
+-SetDspLowCutFilterEnabled "CSC109" True
+-SetDspLowCutFrequency "CSC109" 0.1
+-SetDspLowCutNumberTaps "CSC109" 0
+-SetDspHighCutFilterEnabled "CSC109" True
+-SetDspHighCutFrequency "CSC109" 7500
+-SetDspHighCutNumberTaps "CSC109" 256
+-SetSubSamplingInterleave "CSC109" 1
+-SetInputInverted "CSC109" True
+-SetDiskWriteEnabled "CSC109" True
+-SetNetComDataBufferingEnabled "CSC109" False
+-SetNetComDataBufferSize "CSC109" 3000
+
+#Acquisition Entity creation and setup for: "CSC110"
+-CreateCscAcqEnt "CSC110" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC110" True
+-SetChannelNumber "CSC110" 186
+-SetInputRange "CSC110" 2000
+-SetDspLowCutFilterEnabled "CSC110" True
+-SetDspLowCutFrequency "CSC110" 0.1
+-SetDspLowCutNumberTaps "CSC110" 0
+-SetDspHighCutFilterEnabled "CSC110" True
+-SetDspHighCutFrequency "CSC110" 7500
+-SetDspHighCutNumberTaps "CSC110" 256
+-SetSubSamplingInterleave "CSC110" 1
+-SetInputInverted "CSC110" True
+-SetDiskWriteEnabled "CSC110" True
+-SetNetComDataBufferingEnabled "CSC110" False
+-SetNetComDataBufferSize "CSC110" 3000
+
+#Acquisition Entity creation and setup for: "CSC111"
+-CreateCscAcqEnt "CSC111" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC111" True
+-SetChannelNumber "CSC111" 188
+-SetInputRange "CSC111" 2000
+-SetDspLowCutFilterEnabled "CSC111" True
+-SetDspLowCutFrequency "CSC111" 0.1
+-SetDspLowCutNumberTaps "CSC111" 0
+-SetDspHighCutFilterEnabled "CSC111" True
+-SetDspHighCutFrequency "CSC111" 7500
+-SetDspHighCutNumberTaps "CSC111" 256
+-SetSubSamplingInterleave "CSC111" 1
+-SetInputInverted "CSC111" True
+-SetDiskWriteEnabled "CSC111" True
+-SetNetComDataBufferingEnabled "CSC111" False
+-SetNetComDataBufferSize "CSC111" 3000
+
+#Acquisition Entity creation and setup for: "CSC112"
+-CreateCscAcqEnt "CSC112" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC112" True
+-SetChannelNumber "CSC112" 190
+-SetInputRange "CSC112" 2000
+-SetDspLowCutFilterEnabled "CSC112" True
+-SetDspLowCutFrequency "CSC112" 0.1
+-SetDspLowCutNumberTaps "CSC112" 0
+-SetDspHighCutFilterEnabled "CSC112" True
+-SetDspHighCutFrequency "CSC112" 7500
+-SetDspHighCutNumberTaps "CSC112" 256
+-SetSubSamplingInterleave "CSC112" 1
+-SetInputInverted "CSC112" True
+-SetDiskWriteEnabled "CSC112" True
+-SetNetComDataBufferingEnabled "CSC112" False
+-SetNetComDataBufferSize "CSC112" 3000
+
+#Acquisition Entity creation and setup for: "CSC113"
+-CreateCscAcqEnt "CSC113" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC113" True
+-SetChannelNumber "CSC113" 171
+-SetInputRange "CSC113" 2000
+-SetDspLowCutFilterEnabled "CSC113" True
+-SetDspLowCutFrequency "CSC113" 0.1
+-SetDspLowCutNumberTaps "CSC113" 0
+-SetDspHighCutFilterEnabled "CSC113" True
+-SetDspHighCutFrequency "CSC113" 7500
+-SetDspHighCutNumberTaps "CSC113" 256
+-SetSubSamplingInterleave "CSC113" 1
+-SetInputInverted "CSC113" True
+-SetDiskWriteEnabled "CSC113" True
+-SetNetComDataBufferingEnabled "CSC113" False
+-SetNetComDataBufferSize "CSC113" 3000
+
+#Acquisition Entity creation and setup for: "CSC114"
+-CreateCscAcqEnt "CSC114" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC114" True
+-SetChannelNumber "CSC114" 169
+-SetInputRange "CSC114" 2000
+-SetDspLowCutFilterEnabled "CSC114" True
+-SetDspLowCutFrequency "CSC114" 0.1
+-SetDspLowCutNumberTaps "CSC114" 0
+-SetDspHighCutFilterEnabled "CSC114" True
+-SetDspHighCutFrequency "CSC114" 7500
+-SetDspHighCutNumberTaps "CSC114" 256
+-SetSubSamplingInterleave "CSC114" 1
+-SetInputInverted "CSC114" True
+-SetDiskWriteEnabled "CSC114" True
+-SetNetComDataBufferingEnabled "CSC114" False
+-SetNetComDataBufferSize "CSC114" 3000
+
+#Acquisition Entity creation and setup for: "CSC115"
+-CreateCscAcqEnt "CSC115" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC115" True
+-SetChannelNumber "CSC115" 168
+-SetInputRange "CSC115" 2000
+-SetDspLowCutFilterEnabled "CSC115" True
+-SetDspLowCutFrequency "CSC115" 0.1
+-SetDspLowCutNumberTaps "CSC115" 0
+-SetDspHighCutFilterEnabled "CSC115" True
+-SetDspHighCutFrequency "CSC115" 7500
+-SetDspHighCutNumberTaps "CSC115" 256
+-SetSubSamplingInterleave "CSC115" 1
+-SetInputInverted "CSC115" True
+-SetDiskWriteEnabled "CSC115" True
+-SetNetComDataBufferingEnabled "CSC115" False
+-SetNetComDataBufferSize "CSC115" 3000
+
+#Acquisition Entity creation and setup for: "CSC116"
+-CreateCscAcqEnt "CSC116" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC116" True
+-SetChannelNumber "CSC116" 162
+-SetInputRange "CSC116" 2000
+-SetDspLowCutFilterEnabled "CSC116" True
+-SetDspLowCutFrequency "CSC116" 0.1
+-SetDspLowCutNumberTaps "CSC116" 0
+-SetDspHighCutFilterEnabled "CSC116" True
+-SetDspHighCutFrequency "CSC116" 7500
+-SetDspHighCutNumberTaps "CSC116" 256
+-SetSubSamplingInterleave "CSC116" 1
+-SetInputInverted "CSC116" True
+-SetDiskWriteEnabled "CSC116" True
+-SetNetComDataBufferingEnabled "CSC116" False
+-SetNetComDataBufferSize "CSC116" 3000
+
+#Acquisition Entity creation and setup for: "CSC117"
+-CreateCscAcqEnt "CSC117" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC117" True
+-SetChannelNumber "CSC117" 163
+-SetInputRange "CSC117" 2000
+-SetDspLowCutFilterEnabled "CSC117" True
+-SetDspLowCutFrequency "CSC117" 0.1
+-SetDspLowCutNumberTaps "CSC117" 0
+-SetDspHighCutFilterEnabled "CSC117" True
+-SetDspHighCutFrequency "CSC117" 7500
+-SetDspHighCutNumberTaps "CSC117" 256
+-SetSubSamplingInterleave "CSC117" 1
+-SetInputInverted "CSC117" True
+-SetDiskWriteEnabled "CSC117" True
+-SetNetComDataBufferingEnabled "CSC117" False
+-SetNetComDataBufferSize "CSC117" 3000
+
+#Acquisition Entity creation and setup for: "CSC118"
+-CreateCscAcqEnt "CSC118" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC118" True
+-SetChannelNumber "CSC118" 176
+-SetInputRange "CSC118" 2000
+-SetDspLowCutFilterEnabled "CSC118" True
+-SetDspLowCutFrequency "CSC118" 0.1
+-SetDspLowCutNumberTaps "CSC118" 0
+-SetDspHighCutFilterEnabled "CSC118" True
+-SetDspHighCutFrequency "CSC118" 7500
+-SetDspHighCutNumberTaps "CSC118" 256
+-SetSubSamplingInterleave "CSC118" 1
+-SetInputInverted "CSC118" True
+-SetDiskWriteEnabled "CSC118" True
+-SetNetComDataBufferingEnabled "CSC118" False
+-SetNetComDataBufferSize "CSC118" 3000
+
+#Acquisition Entity creation and setup for: "CSC119"
+-CreateCscAcqEnt "CSC119" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC119" True
+-SetChannelNumber "CSC119" 174
+-SetInputRange "CSC119" 2000
+-SetDspLowCutFilterEnabled "CSC119" True
+-SetDspLowCutFrequency "CSC119" 0.1
+-SetDspLowCutNumberTaps "CSC119" 0
+-SetDspHighCutFilterEnabled "CSC119" True
+-SetDspHighCutFrequency "CSC119" 7500
+-SetDspHighCutNumberTaps "CSC119" 256
+-SetSubSamplingInterleave "CSC119" 1
+-SetInputInverted "CSC119" True
+-SetDiskWriteEnabled "CSC119" True
+-SetNetComDataBufferingEnabled "CSC119" False
+-SetNetComDataBufferSize "CSC119" 3000
+
+#Acquisition Entity creation and setup for: "CSC120"
+-CreateCscAcqEnt "CSC120" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC120" True
+-SetChannelNumber "CSC120" 172
+-SetInputRange "CSC120" 2000
+-SetDspLowCutFilterEnabled "CSC120" True
+-SetDspLowCutFrequency "CSC120" 0.1
+-SetDspLowCutNumberTaps "CSC120" 0
+-SetDspHighCutFilterEnabled "CSC120" True
+-SetDspHighCutFrequency "CSC120" 7500
+-SetDspHighCutNumberTaps "CSC120" 256
+-SetSubSamplingInterleave "CSC120" 1
+-SetInputInverted "CSC120" True
+-SetDiskWriteEnabled "CSC120" True
+-SetNetComDataBufferingEnabled "CSC120" False
+-SetNetComDataBufferSize "CSC120" 3000
+
+#Acquisition Entity creation and setup for: "CSC121"
+-CreateCscAcqEnt "CSC121" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC121" True
+-SetChannelNumber "CSC121" 165
+-SetInputRange "CSC121" 2000
+-SetDspLowCutFilterEnabled "CSC121" True
+-SetDspLowCutFrequency "CSC121" 0.1
+-SetDspLowCutNumberTaps "CSC121" 0
+-SetDspHighCutFilterEnabled "CSC121" True
+-SetDspHighCutFrequency "CSC121" 7500
+-SetDspHighCutNumberTaps "CSC121" 256
+-SetSubSamplingInterleave "CSC121" 1
+-SetInputInverted "CSC121" True
+-SetDiskWriteEnabled "CSC121" True
+-SetNetComDataBufferingEnabled "CSC121" False
+-SetNetComDataBufferSize "CSC121" 3000
+
+#Acquisition Entity creation and setup for: "CSC122"
+-CreateCscAcqEnt "CSC122" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC122" True
+-SetChannelNumber "CSC122" 173
+-SetInputRange "CSC122" 2000
+-SetDspLowCutFilterEnabled "CSC122" True
+-SetDspLowCutFrequency "CSC122" 0.1
+-SetDspLowCutNumberTaps "CSC122" 0
+-SetDspHighCutFilterEnabled "CSC122" True
+-SetDspHighCutFrequency "CSC122" 7500
+-SetDspHighCutNumberTaps "CSC122" 256
+-SetSubSamplingInterleave "CSC122" 1
+-SetInputInverted "CSC122" True
+-SetDiskWriteEnabled "CSC122" True
+-SetNetComDataBufferingEnabled "CSC122" False
+-SetNetComDataBufferSize "CSC122" 3000
+
+#Acquisition Entity creation and setup for: "CSC123"
+-CreateCscAcqEnt "CSC123" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC123" True
+-SetChannelNumber "CSC123" 175
+-SetInputRange "CSC123" 2000
+-SetDspLowCutFilterEnabled "CSC123" True
+-SetDspLowCutFrequency "CSC123" 0.1
+-SetDspLowCutNumberTaps "CSC123" 0
+-SetDspHighCutFilterEnabled "CSC123" True
+-SetDspHighCutFrequency "CSC123" 7500
+-SetDspHighCutNumberTaps "CSC123" 256
+-SetSubSamplingInterleave "CSC123" 1
+-SetInputInverted "CSC123" True
+-SetDiskWriteEnabled "CSC123" True
+-SetNetComDataBufferingEnabled "CSC123" False
+-SetNetComDataBufferSize "CSC123" 3000
+
+#Acquisition Entity creation and setup for: "CSC124"
+-CreateCscAcqEnt "CSC124" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC124" True
+-SetChannelNumber "CSC124" 167
+-SetInputRange "CSC124" 2000
+-SetDspLowCutFilterEnabled "CSC124" True
+-SetDspLowCutFrequency "CSC124" 0.1
+-SetDspLowCutNumberTaps "CSC124" 0
+-SetDspHighCutFilterEnabled "CSC124" True
+-SetDspHighCutFrequency "CSC124" 7500
+-SetDspHighCutNumberTaps "CSC124" 256
+-SetSubSamplingInterleave "CSC124" 1
+-SetInputInverted "CSC124" True
+-SetDiskWriteEnabled "CSC124" True
+-SetNetComDataBufferingEnabled "CSC124" False
+-SetNetComDataBufferSize "CSC124" 3000
+
+#Acquisition Entity creation and setup for: "CSC125"
+-CreateCscAcqEnt "CSC125" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC125" True
+-SetChannelNumber "CSC125" 166
+-SetInputRange "CSC125" 2000
+-SetDspLowCutFilterEnabled "CSC125" True
+-SetDspLowCutFrequency "CSC125" 0.1
+-SetDspLowCutNumberTaps "CSC125" 0
+-SetDspHighCutFilterEnabled "CSC125" True
+-SetDspHighCutFrequency "CSC125" 7500
+-SetDspHighCutNumberTaps "CSC125" 256
+-SetSubSamplingInterleave "CSC125" 1
+-SetInputInverted "CSC125" True
+-SetDiskWriteEnabled "CSC125" True
+-SetNetComDataBufferingEnabled "CSC125" False
+-SetNetComDataBufferSize "CSC125" 3000
+
+#Acquisition Entity creation and setup for: "CSC126"
+-CreateCscAcqEnt "CSC126" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC126" True
+-SetChannelNumber "CSC126" 160
+-SetInputRange "CSC126" 2000
+-SetDspLowCutFilterEnabled "CSC126" True
+-SetDspLowCutFrequency "CSC126" 0.1
+-SetDspLowCutNumberTaps "CSC126" 0
+-SetDspHighCutFilterEnabled "CSC126" True
+-SetDspHighCutFrequency "CSC126" 7500
+-SetDspHighCutNumberTaps "CSC126" 256
+-SetSubSamplingInterleave "CSC126" 1
+-SetInputInverted "CSC126" True
+-SetDiskWriteEnabled "CSC126" True
+-SetNetComDataBufferingEnabled "CSC126" False
+-SetNetComDataBufferSize "CSC126" 3000
+
+#Acquisition Entity creation and setup for: "CSC127"
+-CreateCscAcqEnt "CSC127" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC127" True
+-SetChannelNumber "CSC127" 164
+-SetInputRange "CSC127" 2000
+-SetDspLowCutFilterEnabled "CSC127" True
+-SetDspLowCutFrequency "CSC127" 0.1
+-SetDspLowCutNumberTaps "CSC127" 0
+-SetDspHighCutFilterEnabled "CSC127" True
+-SetDspHighCutFrequency "CSC127" 7500
+-SetDspHighCutNumberTaps "CSC127" 256
+-SetSubSamplingInterleave "CSC127" 1
+-SetInputInverted "CSC127" True
+-SetDiskWriteEnabled "CSC127" True
+-SetNetComDataBufferingEnabled "CSC127" False
+-SetNetComDataBufferSize "CSC127" 3000
+
+#Acquisition Entity creation and setup for: "CSC128"
+-CreateCscAcqEnt "CSC128" "AcqSystem1"
+-SetAcqEntProcessingEnabled "CSC128" True
+-SetChannelNumber "CSC128" 170
+-SetInputRange "CSC128" 2000
+-SetDspLowCutFilterEnabled "CSC128" True
+-SetDspLowCutFrequency "CSC128" 0.1
+-SetDspLowCutNumberTaps "CSC128" 0
+-SetDspHighCutFilterEnabled "CSC128" True
+-SetDspHighCutFrequency "CSC128" 7500
+-SetDspHighCutNumberTaps "CSC128" 256
+-SetSubSamplingInterleave "CSC128" 1
+-SetInputInverted "CSC128" True
+-SetDiskWriteEnabled "CSC128" True
+-SetNetComDataBufferingEnabled "CSC128" False
+-SetNetComDataBufferSize "CSC128" 3000
+
+
+
+# Acquisition Entity Setup for VT1
+-SetCameraDelay "VT1" 0
+-SetCameraDelayEnabled "VT1" False
+-SetTargetDistance "VT1" 5
+-SetTargetRadius "VT1" 100
+-SetFieldEstimationEnabled "VT1" False
+-SetHeadDirectionOffset "VT1" 0
+-SetVideoTrackingMode "VT1" 2LED
+-SetLedColor "VT1" 0 GREEN
+-SetLedColor "VT1" 1 RED
+-SetRedThreshold "VT1" 255
+-SetRedThresholdEnabled "VT1" False
+-SetGreenThreshold "VT1" 255
+-SetGreenThresholdEnabled "VT1" False
+-SetBlueThreshold "VT1" 255
+-SetBlueThresholdEnabled "VT1" False
+-SetIntensityThreshold "VT1" 255
+-SetIntensityThresholdEnabled "VT1" False
+
+
+#Setup NetCom Buffering for VT1
+-SetNetComDataBufferingEnabled "VT1" False
+
+
+
+#Main Window Setup
+-SetDialogPosition Main 5 4
+#Hardware Properties Dialog Setup
+-SetDialogPosition Hardware 0 52
+-SetDialogVisible Hardware False
+
+
+#System Status Dialog Setup
+-SetSystemStatusShowDetails True
+-SetDialogPosition Status 96 161
+-SetSystemStatusMessageFilter Fatal on
+-SetSystemStatusMessageFilter Error on
+-SetSystemStatusMessageFilter Warning on
+-SetSystemStatusMessageFilter Notice off
+-SetSystemStatusMessageFilter Data off
+-SetDialogVisible Status True
+
+
+#Properties Display Setup
+-SetDialogPosition Properties 658 82
+-SetDialogVisible Properties True
+
+
+#Event Dialog Setup
+-SetDialogPosition Events 1527 467
+-SetDialogVisible Events True
+-SetEventStringImmediateMode Off
+-SetEventStringSingleKeyMode Off
+-SetEventDisplayTTLValueFormat Binary
+
+
+# Plot Window Setup for "Tracker1"
+-CreatePlotWindow VideoTracker "Tracker1"
+-SetPlotWindowPlotType "Tracker1" Live
+-SetPlotWindowPosition "Tracker1" 959 569 640 480
+-SetPlotWindowOverlay "Tracker1" False
+-SetPlotWindowShowTitleBar "Tracker1" True
+# Plot addition and setup for "Tracker1"
+-AddPlot "Tracker1" "VT1"
+-SetShowDirectionArrow "Tracker1" True
+-SetShowPositionCross "Tracker1" True
+-SetPlotWindowCurrentPlot "Tracker1" "VT1"
+-SetPlotWindowMaximizeView "Tracker1" False
+
+# Plot Window Setup for "Time Window 1"
+-CreatePlotWindow Time "Time Window 1"
+-SetPlotWindowSpreadType "Time Window 1" Spread
+-SetPlotWindowPlotType "Time Window 1" Sweep
+-SetPlotWindowTimeframe "Time Window 1" 5000
+-SetPlotWindowHistoryTimeframe "Time Window 1" 30
+-SetPlotWindowShowGridLines "Time Window 1" True
+-SetPlotWindowBackgroundColor "Time Window 1" 0 0 0
+-SetPlotWindowPosition "Time Window 1" 27 91 1702 964
+-SetPlotWindowOverlay "Time Window 1" False
+-SetPlotWindowShowTitleBar "Time Window 1" True
+# Plot addition and setup for "Time Window 1"
+-AddPlot "Time Window 1" "CSC1"
+-SetPlotEnabled "Time Window 1" "CSC1" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC1" 16
+-SetPlotWaveformColor "Time Window 1" "CSC1" 0 0 255
+-AddPlot "Time Window 1" "CSC2"
+-SetPlotEnabled "Time Window 1" "CSC2" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC2" 16
+-SetPlotWaveformColor "Time Window 1" "CSC2" 153 222 255
+-AddPlot "Time Window 1" "CSC3"
+-SetPlotEnabled "Time Window 1" "CSC3" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC3" 16
+-SetPlotWaveformColor "Time Window 1" "CSC3" 0 255 161
+-AddPlot "Time Window 1" "CSC4"
+-SetPlotEnabled "Time Window 1" "CSC4" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC4" 16
+-SetPlotWaveformColor "Time Window 1" "CSC4" 158 255 153
+-AddPlot "Time Window 1" "CSC5"
+-SetPlotEnabled "Time Window 1" "CSC5" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC5" 16
+-SetPlotWaveformColor "Time Window 1" "CSC5" 187 255 0
+-AddPlot "Time Window 1" "CSC6"
+-SetPlotEnabled "Time Window 1" "CSC6" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC6" 16
+-SetPlotWaveformColor "Time Window 1" "CSC6" 255 212 153
+-AddPlot "Time Window 1" "CSC7"
+-SetPlotEnabled "Time Window 1" "CSC7" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC7" 16
+-SetPlotWaveformColor "Time Window 1" "CSC7" 255 0 25
+-AddPlot "Time Window 1" "CSC8"
+-SetPlotEnabled "Time Window 1" "CSC8" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC8" 16
+-SetPlotWaveformColor "Time Window 1" "CSC8" 255 153 232
+-AddPlot "Time Window 1" "CSC9"
+-SetPlotEnabled "Time Window 1" "CSC9" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC9" 16
+-SetPlotWaveformColor "Time Window 1" "CSC9" 135 0 255
+-AddPlot "Time Window 1" "CSC10"
+-SetPlotEnabled "Time Window 1" "CSC10" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC10" 16
+-SetPlotWaveformColor "Time Window 1" "CSC10" 153 168 255
+-AddPlot "Time Window 1" "CSC11"
+-SetPlotEnabled "Time Window 1" "CSC11" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC11" 16
+-SetPlotWaveformColor "Time Window 1" "CSC11" 0 212 255
+-AddPlot "Time Window 1" "CSC12"
+-SetPlotEnabled "Time Window 1" "CSC12" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC12" 16
+-SetPlotWaveformColor "Time Window 1" "CSC12" 153 255 202
+-AddPlot "Time Window 1" "CSC13"
+-SetPlotEnabled "Time Window 1" "CSC13" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC13" 16
+-SetPlotWaveformColor "Time Window 1" "CSC13" 51 255 0
+-AddPlot "Time Window 1" "CSC14"
+-SetPlotEnabled "Time Window 1" "CSC14" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC14" 16
+-SetPlotWaveformColor "Time Window 1" "CSC14" 243 255 153
+-AddPlot "Time Window 1" "CSC15"
+-SetPlotEnabled "Time Window 1" "CSC15" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC15" 16
+-SetPlotWaveformColor "Time Window 1" "CSC15" 255 110 0
+-AddPlot "Time Window 1" "CSC16"
+-SetPlotEnabled "Time Window 1" "CSC16" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC16" 16
+-SetPlotWaveformColor "Time Window 1" "CSC16" 255 153 178
+-AddPlot "Time Window 1" "CSC17"
+-SetPlotEnabled "Time Window 1" "CSC17" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC17" 16
+-SetPlotWaveformColor "Time Window 1" "CSC17" 255 0 238
+-AddPlot "Time Window 1" "CSC18"
+-SetPlotEnabled "Time Window 1" "CSC18" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC18" 16
+-SetPlotWaveformColor "Time Window 1" "CSC18" 192 153 255
+-AddPlot "Time Window 1" "CSC19"
+-SetPlotEnabled "Time Window 1" "CSC19" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC19" 16
+-SetPlotWaveformColor "Time Window 1" "CSC19" 0 76 255
+-AddPlot "Time Window 1" "CSC20"
+-SetPlotEnabled "Time Window 1" "CSC20" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC20" 16
+-SetPlotWaveformColor "Time Window 1" "CSC20" 153 253 255
+-AddPlot "Time Window 1" "CSC21"
+-SetPlotEnabled "Time Window 1" "CSC21" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC21" 16
+-SetPlotWaveformColor "Time Window 1" "CSC21" 0 255 84
+-AddPlot "Time Window 1" "CSC22"
+-SetPlotEnabled "Time Window 1" "CSC22" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC22" 16
+-SetPlotWaveformColor "Time Window 1" "CSC22" 188 255 153
+-AddPlot "Time Window 1" "CSC23"
+-SetPlotEnabled "Time Window 1" "CSC23" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC23" 16
+-SetPlotWaveformColor "Time Window 1" "CSC23" 255 246 0
+-AddPlot "Time Window 1" "CSC24"
+-SetPlotEnabled "Time Window 1" "CSC24" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC24" 16
+-SetPlotWaveformColor "Time Window 1" "CSC24" 255 181 153
+-AddPlot "Time Window 1" "CSC25"
+-SetPlotEnabled "Time Window 1" "CSC25" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC25" 16
+-SetPlotWaveformColor "Time Window 1" "CSC25" 255 0 102
+-AddPlot "Time Window 1" "CSC26"
+-SetPlotEnabled "Time Window 1" "CSC26" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC26" 16
+-SetPlotWaveformColor "Time Window 1" "CSC26" 246 153 255
+-AddPlot "Time Window 1" "CSC27"
+-SetPlotEnabled "Time Window 1" "CSC27" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC27" 16
+-SetPlotWaveformColor "Time Window 1" "CSC27" 59 0 255
+-AddPlot "Time Window 1" "CSC28"
+-SetPlotEnabled "Time Window 1" "CSC28" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC28" 16
+-SetPlotWaveformColor "Time Window 1" "CSC28" 153 198 255
+-AddPlot "Time Window 1" "CSC29"
+-SetPlotEnabled "Time Window 1" "CSC29" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC29" 16
+-SetPlotWaveformColor "Time Window 1" "CSC29" 0 255 221
+-AddPlot "Time Window 1" "CSC30"
+-SetPlotEnabled "Time Window 1" "CSC30" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC30" 16
+-SetPlotWaveformColor "Time Window 1" "CSC30" 153 255 171
+-AddPlot "Time Window 1" "CSC31"
+-SetPlotEnabled "Time Window 1" "CSC31" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC31" 16
+-SetPlotWaveformColor "Time Window 1" "CSC31" 127 255 0
+-AddPlot "Time Window 1" "CSC32"
+-SetPlotEnabled "Time Window 1" "CSC32" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC32" 16
+-SetPlotWaveformColor "Time Window 1" "CSC32" 255 236 153
+-AddPlot "Time Window 1" "CSC33"
+-SetPlotEnabled "Time Window 1" "CSC33" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC33" 16
+-SetPlotWaveformColor "Time Window 1" "CSC33" 255 33 0
+-AddPlot "Time Window 1" "CSC34"
+-SetPlotEnabled "Time Window 1" "CSC34" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC34" 16
+-SetPlotWaveformColor "Time Window 1" "CSC34" 255 153 209
+-AddPlot "Time Window 1" "CSC35"
+-SetPlotEnabled "Time Window 1" "CSC35" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC35" 16
+-SetPlotWaveformColor "Time Window 1" "CSC35" 195 0 255
+-AddPlot "Time Window 1" "CSC36"
+-SetPlotEnabled "Time Window 1" "CSC36" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC36" 16
+-SetPlotWaveformColor "Time Window 1" "CSC36" 161 153 255
+-AddPlot "Time Window 1" "CSC37"
+-SetPlotEnabled "Time Window 1" "CSC37" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC37" 16
+-SetPlotWaveformColor "Time Window 1" "CSC37" 0 153 255
+-AddPlot "Time Window 1" "CSC38"
+-SetPlotEnabled "Time Window 1" "CSC38" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC38" 16
+-SetPlotWaveformColor "Time Window 1" "CSC38" 153 255 226
+-AddPlot "Time Window 1" "CSC39"
+-SetPlotEnabled "Time Window 1" "CSC39" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC39" 16
+-SetPlotWaveformColor "Time Window 1" "CSC39" 0 255 8
+-AddPlot "Time Window 1" "CSC40"
+-SetPlotEnabled "Time Window 1" "CSC40" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC40" 16
+-SetPlotWaveformColor "Time Window 1" "CSC40" 219 255 153
+-AddPlot "Time Window 1" "CSC41"
+-SetPlotEnabled "Time Window 1" "CSC41" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC41" 16
+-SetPlotWaveformColor "Time Window 1" "CSC41" 255 169 0
+-AddPlot "Time Window 1" "CSC42"
+-SetPlotEnabled "Time Window 1" "CSC42" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC42" 16
+-SetPlotWaveformColor "Time Window 1" "CSC42" 255 153 154
+-AddPlot "Time Window 1" "CSC43"
+-SetPlotEnabled "Time Window 1" "CSC43" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC43" 16
+-SetPlotWaveformColor "Time Window 1" "CSC43" 255 0 178
+-AddPlot "Time Window 1" "CSC44"
+-SetPlotEnabled "Time Window 1" "CSC44" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC44" 16
+-SetPlotWaveformColor "Time Window 1" "CSC44" 215 153 255
+-AddPlot "Time Window 1" "CSC45"
+-SetPlotEnabled "Time Window 1" "CSC45" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC45" 16
+-SetPlotWaveformColor "Time Window 1" "CSC45" 0 16 255
+-AddPlot "Time Window 1" "CSC46"
+-SetPlotEnabled "Time Window 1" "CSC46" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC46" 16
+-SetPlotWaveformColor "Time Window 1" "CSC46" 153 229 255
+-AddPlot "Time Window 1" "CSC47"
+-SetPlotEnabled "Time Window 1" "CSC47" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC47" 16
+-SetPlotWaveformColor "Time Window 1" "CSC47" 0 255 144
+-AddPlot "Time Window 1" "CSC48"
+-SetPlotEnabled "Time Window 1" "CSC48" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC48" 16
+-SetPlotWaveformColor "Time Window 1" "CSC48" 164 255 153
+-AddPlot "Time Window 1" "CSC49"
+-SetPlotEnabled "Time Window 1" "CSC49" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC49" 16
+-SetPlotWaveformColor "Time Window 1" "CSC49" 203 255 0
+-AddPlot "Time Window 1" "CSC50"
+-SetPlotEnabled "Time Window 1" "CSC50" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC50" 16
+-SetPlotWaveformColor "Time Window 1" "CSC50" 255 205 153
+-AddPlot "Time Window 1" "CSC51"
+-SetPlotEnabled "Time Window 1" "CSC51" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC51" 16
+-SetPlotWaveformColor "Time Window 1" "CSC51" 255 0 42
+-AddPlot "Time Window 1" "CSC52"
+-SetPlotEnabled "Time Window 1" "CSC52" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC52" 16
+-SetPlotWaveformColor "Time Window 1" "CSC52" 255 153 239
+-AddPlot "Time Window 1" "CSC53"
+-SetPlotEnabled "Time Window 1" "CSC53" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC53" 16
+-SetPlotWaveformColor "Time Window 1" "CSC53" 119 0 255
+-AddPlot "Time Window 1" "CSC54"
+-SetPlotEnabled "Time Window 1" "CSC54" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC54" 16
+-SetPlotWaveformColor "Time Window 1" "CSC54" 153 175 255
+-AddPlot "Time Window 1" "CSC55"
+-SetPlotEnabled "Time Window 1" "CSC55" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC55" 16
+-SetPlotWaveformColor "Time Window 1" "CSC55" 0 229 255
+-AddPlot "Time Window 1" "CSC56"
+-SetPlotEnabled "Time Window 1" "CSC56" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC56" 16
+-SetPlotWaveformColor "Time Window 1" "CSC56" 153 255 195
+-AddPlot "Time Window 1" "CSC57"
+-SetPlotEnabled "Time Window 1" "CSC57" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC57" 16
+-SetPlotWaveformColor "Time Window 1" "CSC57" 67 255 0
+-AddPlot "Time Window 1" "CSC58"
+-SetPlotEnabled "Time Window 1" "CSC58" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC58" 16
+-SetPlotWaveformColor "Time Window 1" "CSC58" 249 255 153
+-AddPlot "Time Window 1" "CSC59"
+-SetPlotEnabled "Time Window 1" "CSC59" False
+-SetTimePlotZoomFactor "Time Window 1" "CSC59" 16
+-SetPlotWaveformColor "Time Window 1" "CSC59" 255 93 0
+-AddPlot "Time Window 1" "CSC60"
+-SetPlotEnabled "Time Window 1" "CSC60" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC60" 16
+-SetPlotWaveformColor "Time Window 1" "CSC60" 255 153 185
+-AddPlot "Time Window 1" "CSC61"
+-SetPlotEnabled "Time Window 1" "CSC61" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC61" 16
+-SetPlotWaveformColor "Time Window 1" "CSC61" 255 0 255
+-AddPlot "Time Window 1" "CSC62"
+-SetPlotEnabled "Time Window 1" "CSC62" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC62" 16
+-SetPlotWaveformColor "Time Window 1" "CSC62" 185 153 255
+-AddPlot "Time Window 1" "CSC63"
+-SetPlotEnabled "Time Window 1" "CSC63" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC63" 16
+-SetPlotWaveformColor "Time Window 1" "CSC63" 0 93 255
+-AddPlot "Time Window 1" "CSC64"
+-SetPlotEnabled "Time Window 1" "CSC64" True
+-SetTimePlotZoomFactor "Time Window 1" "CSC64" 16
+-SetPlotWaveformColor "Time Window 1" "CSC64" 153 255 249
+-SetPlotWindowCurrentPlot "Time Window 1" "CSC36"
+-SetPlotWindowMaximizeView "Time Window 1" False
+
+# Plot Window Setup for "Time Window 2"
+-CreatePlotWindow Time "Time Window 2"
+-SetPlotWindowSpreadType "Time Window 2" Spread
+-SetPlotWindowPlotType "Time Window 2" Sweep
+-SetPlotWindowTimeframe "Time Window 2" 5000
+-SetPlotWindowHistoryTimeframe "Time Window 2" 30
+-SetPlotWindowShowGridLines "Time Window 2" True
+-SetPlotWindowBackgroundColor "Time Window 2" 0 0 0
+-SetPlotWindowPosition "Time Window 2" 1675 6 1284 967
+-SetPlotWindowOverlay "Time Window 2" False
+-SetPlotWindowShowTitleBar "Time Window 2" True
+# Plot addition and setup for "Time Window 2"
+-AddPlot "Time Window 2" "CSC65"
+-SetPlotEnabled "Time Window 2" "CSC65" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC65" 16
+-SetPlotWaveformColor "Time Window 2" "CSC65" 0 0 255
+-AddPlot "Time Window 2" "CSC66"
+-SetPlotEnabled "Time Window 2" "CSC66" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC66" 16
+-SetPlotWaveformColor "Time Window 2" "CSC66" 153 222 255
+-AddPlot "Time Window 2" "CSC67"
+-SetPlotEnabled "Time Window 2" "CSC67" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC67" 16
+-SetPlotWaveformColor "Time Window 2" "CSC67" 0 255 161
+-AddPlot "Time Window 2" "CSC68"
+-SetPlotEnabled "Time Window 2" "CSC68" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC68" 16
+-SetPlotWaveformColor "Time Window 2" "CSC68" 158 255 153
+-AddPlot "Time Window 2" "CSC69"
+-SetPlotEnabled "Time Window 2" "CSC69" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC69" 16
+-SetPlotWaveformColor "Time Window 2" "CSC69" 187 255 0
+-AddPlot "Time Window 2" "CSC70"
+-SetPlotEnabled "Time Window 2" "CSC70" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC70" 16
+-SetPlotWaveformColor "Time Window 2" "CSC70" 255 212 153
+-AddPlot "Time Window 2" "CSC71"
+-SetPlotEnabled "Time Window 2" "CSC71" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC71" 16
+-SetPlotWaveformColor "Time Window 2" "CSC71" 255 0 25
+-AddPlot "Time Window 2" "CSC72"
+-SetPlotEnabled "Time Window 2" "CSC72" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC72" 16
+-SetPlotWaveformColor "Time Window 2" "CSC72" 255 153 232
+-AddPlot "Time Window 2" "CSC73"
+-SetPlotEnabled "Time Window 2" "CSC73" False
+-SetTimePlotZoomFactor "Time Window 2" "CSC73" 16
+-SetPlotWaveformColor "Time Window 2" "CSC73" 135 0 255
+-AddPlot "Time Window 2" "CSC74"
+-SetPlotEnabled "Time Window 2" "CSC74" False
+-SetTimePlotZoomFactor "Time Window 2" "CSC74" 16
+-SetPlotWaveformColor "Time Window 2" "CSC74" 153 168 255
+-AddPlot "Time Window 2" "CSC75"
+-SetPlotEnabled "Time Window 2" "CSC75" False
+-SetTimePlotZoomFactor "Time Window 2" "CSC75" 16
+-SetPlotWaveformColor "Time Window 2" "CSC75" 0 212 255
+-AddPlot "Time Window 2" "CSC76"
+-SetPlotEnabled "Time Window 2" "CSC76" False
+-SetTimePlotZoomFactor "Time Window 2" "CSC76" 16
+-SetPlotWaveformColor "Time Window 2" "CSC76" 153 255 202
+-AddPlot "Time Window 2" "CSC77"
+-SetPlotEnabled "Time Window 2" "CSC77" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC77" 16
+-SetPlotWaveformColor "Time Window 2" "CSC77" 51 255 0
+-AddPlot "Time Window 2" "CSC78"
+-SetPlotEnabled "Time Window 2" "CSC78" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC78" 16
+-SetPlotWaveformColor "Time Window 2" "CSC78" 243 255 153
+-AddPlot "Time Window 2" "CSC79"
+-SetPlotEnabled "Time Window 2" "CSC79" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC79" 16
+-SetPlotWaveformColor "Time Window 2" "CSC79" 255 110 0
+-AddPlot "Time Window 2" "CSC80"
+-SetPlotEnabled "Time Window 2" "CSC80" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC80" 16
+-SetPlotWaveformColor "Time Window 2" "CSC80" 255 153 178
+-AddPlot "Time Window 2" "CSC81"
+-SetPlotEnabled "Time Window 2" "CSC81" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC81" 16
+-SetPlotWaveformColor "Time Window 2" "CSC81" 255 0 238
+-AddPlot "Time Window 2" "CSC82"
+-SetPlotEnabled "Time Window 2" "CSC82" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC82" 16
+-SetPlotWaveformColor "Time Window 2" "CSC82" 192 153 255
+-AddPlot "Time Window 2" "CSC83"
+-SetPlotEnabled "Time Window 2" "CSC83" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC83" 16
+-SetPlotWaveformColor "Time Window 2" "CSC83" 0 76 255
+-AddPlot "Time Window 2" "CSC84"
+-SetPlotEnabled "Time Window 2" "CSC84" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC84" 16
+-SetPlotWaveformColor "Time Window 2" "CSC84" 153 253 255
+-AddPlot "Time Window 2" "CSC85"
+-SetPlotEnabled "Time Window 2" "CSC85" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC85" 16
+-SetPlotWaveformColor "Time Window 2" "CSC85" 0 255 84
+-AddPlot "Time Window 2" "CSC86"
+-SetPlotEnabled "Time Window 2" "CSC86" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC86" 16
+-SetPlotWaveformColor "Time Window 2" "CSC86" 188 255 153
+-AddPlot "Time Window 2" "CSC87"
+-SetPlotEnabled "Time Window 2" "CSC87" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC87" 16
+-SetPlotWaveformColor "Time Window 2" "CSC87" 255 246 0
+-AddPlot "Time Window 2" "CSC88"
+-SetPlotEnabled "Time Window 2" "CSC88" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC88" 16
+-SetPlotWaveformColor "Time Window 2" "CSC88" 255 181 153
+-AddPlot "Time Window 2" "CSC89"
+-SetPlotEnabled "Time Window 2" "CSC89" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC89" 16
+-SetPlotWaveformColor "Time Window 2" "CSC89" 255 0 102
+-AddPlot "Time Window 2" "CSC90"
+-SetPlotEnabled "Time Window 2" "CSC90" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC90" 16
+-SetPlotWaveformColor "Time Window 2" "CSC90" 246 153 255
+-AddPlot "Time Window 2" "CSC91"
+-SetPlotEnabled "Time Window 2" "CSC91" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC91" 16
+-SetPlotWaveformColor "Time Window 2" "CSC91" 59 0 255
+-AddPlot "Time Window 2" "CSC92"
+-SetPlotEnabled "Time Window 2" "CSC92" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC92" 16
+-SetPlotWaveformColor "Time Window 2" "CSC92" 153 198 255
+-AddPlot "Time Window 2" "CSC93"
+-SetPlotEnabled "Time Window 2" "CSC93" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC93" 16
+-SetPlotWaveformColor "Time Window 2" "CSC93" 0 255 221
+-AddPlot "Time Window 2" "CSC94"
+-SetPlotEnabled "Time Window 2" "CSC94" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC94" 16
+-SetPlotWaveformColor "Time Window 2" "CSC94" 153 255 171
+-AddPlot "Time Window 2" "CSC95"
+-SetPlotEnabled "Time Window 2" "CSC95" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC95" 16
+-SetPlotWaveformColor "Time Window 2" "CSC95" 127 255 0
+-AddPlot "Time Window 2" "CSC96"
+-SetPlotEnabled "Time Window 2" "CSC96" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC96" 16
+-SetPlotWaveformColor "Time Window 2" "CSC96" 255 236 153
+-AddPlot "Time Window 2" "CSC97"
+-SetPlotEnabled "Time Window 2" "CSC97" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC97" 16
+-SetPlotWaveformColor "Time Window 2" "CSC97" 255 33 0
+-AddPlot "Time Window 2" "CSC98"
+-SetPlotEnabled "Time Window 2" "CSC98" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC98" 16
+-SetPlotWaveformColor "Time Window 2" "CSC98" 255 153 209
+-AddPlot "Time Window 2" "CSC99"
+-SetPlotEnabled "Time Window 2" "CSC99" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC99" 16
+-SetPlotWaveformColor "Time Window 2" "CSC99" 195 0 255
+-AddPlot "Time Window 2" "CSC100"
+-SetPlotEnabled "Time Window 2" "CSC100" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC100" 16
+-SetPlotWaveformColor "Time Window 2" "CSC100" 161 153 255
+-AddPlot "Time Window 2" "CSC101"
+-SetPlotEnabled "Time Window 2" "CSC101" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC101" 16
+-SetPlotWaveformColor "Time Window 2" "CSC101" 0 153 255
+-AddPlot "Time Window 2" "CSC102"
+-SetPlotEnabled "Time Window 2" "CSC102" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC102" 16
+-SetPlotWaveformColor "Time Window 2" "CSC102" 153 255 226
+-AddPlot "Time Window 2" "CSC103"
+-SetPlotEnabled "Time Window 2" "CSC103" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC103" 16
+-SetPlotWaveformColor "Time Window 2" "CSC103" 0 255 8
+-AddPlot "Time Window 2" "CSC104"
+-SetPlotEnabled "Time Window 2" "CSC104" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC104" 16
+-SetPlotWaveformColor "Time Window 2" "CSC104" 219 255 153
+-AddPlot "Time Window 2" "CSC105"
+-SetPlotEnabled "Time Window 2" "CSC105" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC105" 16
+-SetPlotWaveformColor "Time Window 2" "CSC105" 255 169 0
+-AddPlot "Time Window 2" "CSC106"
+-SetPlotEnabled "Time Window 2" "CSC106" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC106" 16
+-SetPlotWaveformColor "Time Window 2" "CSC106" 255 153 154
+-AddPlot "Time Window 2" "CSC107"
+-SetPlotEnabled "Time Window 2" "CSC107" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC107" 16
+-SetPlotWaveformColor "Time Window 2" "CSC107" 255 0 178
+-AddPlot "Time Window 2" "CSC108"
+-SetPlotEnabled "Time Window 2" "CSC108" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC108" 16
+-SetPlotWaveformColor "Time Window 2" "CSC108" 215 153 255
+-AddPlot "Time Window 2" "CSC109"
+-SetPlotEnabled "Time Window 2" "CSC109" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC109" 16
+-SetPlotWaveformColor "Time Window 2" "CSC109" 0 16 255
+-AddPlot "Time Window 2" "CSC110"
+-SetPlotEnabled "Time Window 2" "CSC110" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC110" 16
+-SetPlotWaveformColor "Time Window 2" "CSC110" 153 229 255
+-AddPlot "Time Window 2" "CSC111"
+-SetPlotEnabled "Time Window 2" "CSC111" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC111" 16
+-SetPlotWaveformColor "Time Window 2" "CSC111" 0 255 144
+-AddPlot "Time Window 2" "CSC112"
+-SetPlotEnabled "Time Window 2" "CSC112" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC112" 16
+-SetPlotWaveformColor "Time Window 2" "CSC112" 164 255 153
+-AddPlot "Time Window 2" "CSC113"
+-SetPlotEnabled "Time Window 2" "CSC113" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC113" 16
+-SetPlotWaveformColor "Time Window 2" "CSC113" 203 255 0
+-AddPlot "Time Window 2" "CSC114"
+-SetPlotEnabled "Time Window 2" "CSC114" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC114" 16
+-SetPlotWaveformColor "Time Window 2" "CSC114" 255 205 153
+-AddPlot "Time Window 2" "CSC115"
+-SetPlotEnabled "Time Window 2" "CSC115" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC115" 16
+-SetPlotWaveformColor "Time Window 2" "CSC115" 255 0 42
+-AddPlot "Time Window 2" "CSC116"
+-SetPlotEnabled "Time Window 2" "CSC116" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC116" 16
+-SetPlotWaveformColor "Time Window 2" "CSC116" 255 153 239
+-AddPlot "Time Window 2" "CSC117"
+-SetPlotEnabled "Time Window 2" "CSC117" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC117" 16
+-SetPlotWaveformColor "Time Window 2" "CSC117" 119 0 255
+-AddPlot "Time Window 2" "CSC118"
+-SetPlotEnabled "Time Window 2" "CSC118" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC118" 16
+-SetPlotWaveformColor "Time Window 2" "CSC118" 153 175 255
+-AddPlot "Time Window 2" "CSC119"
+-SetPlotEnabled "Time Window 2" "CSC119" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC119" 16
+-SetPlotWaveformColor "Time Window 2" "CSC119" 0 229 255
+-AddPlot "Time Window 2" "CSC120"
+-SetPlotEnabled "Time Window 2" "CSC120" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC120" 16
+-SetPlotWaveformColor "Time Window 2" "CSC120" 153 255 195
+-AddPlot "Time Window 2" "CSC121"
+-SetPlotEnabled "Time Window 2" "CSC121" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC121" 16
+-SetPlotWaveformColor "Time Window 2" "CSC121" 67 255 0
+-AddPlot "Time Window 2" "CSC122"
+-SetPlotEnabled "Time Window 2" "CSC122" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC122" 16
+-SetPlotWaveformColor "Time Window 2" "CSC122" 249 255 153
+-AddPlot "Time Window 2" "CSC123"
+-SetPlotEnabled "Time Window 2" "CSC123" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC123" 16
+-SetPlotWaveformColor "Time Window 2" "CSC123" 255 93 0
+-AddPlot "Time Window 2" "CSC124"
+-SetPlotEnabled "Time Window 2" "CSC124" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC124" 16
+-SetPlotWaveformColor "Time Window 2" "CSC124" 255 153 185
+-AddPlot "Time Window 2" "CSC125"
+-SetPlotEnabled "Time Window 2" "CSC125" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC125" 16
+-SetPlotWaveformColor "Time Window 2" "CSC125" 255 0 255
+-AddPlot "Time Window 2" "CSC126"
+-SetPlotEnabled "Time Window 2" "CSC126" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC126" 16
+-SetPlotWaveformColor "Time Window 2" "CSC126" 185 153 255
+-AddPlot "Time Window 2" "CSC127"
+-SetPlotEnabled "Time Window 2" "CSC127" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC127" 16
+-SetPlotWaveformColor "Time Window 2" "CSC127" 0 93 255
+-AddPlot "Time Window 2" "CSC128"
+-SetPlotEnabled "Time Window 2" "CSC128" True
+-SetTimePlotZoomFactor "Time Window 2" "CSC128" 16
+-SetPlotWaveformColor "Time Window 2" "CSC128" 153 255 249
+-SetPlotWindowCurrentPlot "Time Window 2" "CSC73"
+-SetPlotWindowMaximizeView "Time Window 2" False
+
+
+#Audio Output Dialog Setup
+-SetDialogPosition Audio 981 12
+-SetDialogVisible Audio True
+
+
+#TTL Response Dialog Setup
+-SetDialogPosition TTLResponse 0 52
+-SetDialogVisible TTLResponse False
+
+
+#Audio Device Setup for Primary Sound Driver
+-SetAudioSource "Primary Sound Driver" Left CSC58
+-SetAudioStreamEnabled "Primary Sound Driver" Left 0 true
+-SetAudioVolume "Primary Sound Driver" Left 100
+-SetAudioMute "Primary Sound Driver" Left Off
+-SetAudioSource "Primary Sound Driver" Right None
+-SetAudioVolume "Primary Sound Driver" Right 100
+-SetAudioMute "Primary Sound Driver" Right Off
+
+#Audio Device Setup for AcqSystem1_Audio0
+-SetAudioSource "AcqSystem1_Audio0" Left None
+-SetAudioVolume "AcqSystem1_Audio0" Left 100
+-SetAudioMute "AcqSystem1_Audio0" Left Off
+-SetAudioSource "AcqSystem1_Audio0" Right None
+-SetAudioVolume "AcqSystem1_Audio0" Right 100
+-SetAudioMute "AcqSystem1_Audio0" Right Off
+
+#Audio Device Setup for AcqSystem1_Audio1
+-SetAudioSource "AcqSystem1_Audio1" Left CSC9
+-SetAudioStreamEnabled "AcqSystem1_Audio1" Left 0 true
+-SetAudioStreamEnabled "AcqSystem1_Audio1" Left 1 false
+-SetAudioStreamEnabled "AcqSystem1_Audio1" Left 2 false
+-SetAudioStreamEnabled "AcqSystem1_Audio1" Left 3 false
+-SetAudioVolume "AcqSystem1_Audio1" Left 100
+-SetAudioMute "AcqSystem1_Audio1" Left Off
+-SetAudioSource "AcqSystem1_Audio1" Right None
+-SetAudioVolume "AcqSystem1_Audio1" Right 100
+-SetAudioMute "AcqSystem1_Audio1" Right Off
+
+
+#Digital IO Device Creation and Setup for: AcqSystem1_0
+-SetDigitalIOBitsPerPort "AcqSystem1_0" 8
+-SetDigitalIOPortDirection "AcqSystem1_0" 0 Input
+-SetDigitalIOUseStrobeBit "AcqSystem1_0" 0 False
+-SetDigitalIOEventsEnabled "AcqSystem1_0" 0 True
+-SetDigitalIOPulseDuration "AcqSystem1_0" 0 15
+-SetDigitalIOPortDirection "AcqSystem1_0" 1 Input
+-SetDigitalIOUseStrobeBit "AcqSystem1_0" 1 False
+-SetDigitalIOEventsEnabled "AcqSystem1_0" 1 True
+-SetDigitalIOPulseDuration "AcqSystem1_0" 1 15
+-SetDigitalIOPortDirection "AcqSystem1_0" 2 Input
+-SetDigitalIOUseStrobeBit "AcqSystem1_0" 2 False
+-SetDigitalIOEventsEnabled "AcqSystem1_0" 2 True
+-SetDigitalIOPulseDuration "AcqSystem1_0" 2 15
+-SetDigitalIOPortDirection "AcqSystem1_0" 3 Input
+-SetDigitalIOUseStrobeBit "AcqSystem1_0" 3 False
+-SetDigitalIOEventsEnabled "AcqSystem1_0" 3 True
+-SetDigitalIOPulseDuration "AcqSystem1_0" 3 15
+-SetDigitalIOInputScanDelay "AcqSystem1_0" 1
+
+

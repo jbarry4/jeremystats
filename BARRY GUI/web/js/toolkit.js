@@ -1,0 +1,416 @@
+/* ==========================================================================
+   toolkit.js -- The jobs that are about the whole pile, not one recording.
+
+   Everywhere else you are looking at a single session. These are the
+   questions that span it: which channels have we thrown away, across this
+   mouse, over this month, in this project.
+
+   The first tool is the bad-channel export. It is deliberately more than a
+   download button: you pick the scope, you see the rows and the counts before
+   committing to anything, and the file that comes out carries a header saying
+   what it was a list of and when it was taken -- because a CSV called
+   "export.csv" in a downloads folder is not a record.
+   ========================================================================== */
+'use strict';
+
+BARRY.views.toolkit = (function () {
+  let scopes = null;      // what there is to choose from
+  let preview = null;     // the last previewed rows
+  let busy = false;
+
+  // What is being asked for. Held here rather than read off the DOM so a
+  // re-render cannot lose a half-filled form.
+  const q = {
+    tool: 'bad',
+    scope: 'all',
+    key: '', mouse: '', group: '',
+    from: '', to: '',
+    form: 'long',
+    clean: false,
+  };
+
+  /* ==================================================================
+     Loading
+     ================================================================== */
+  async function onShow() {
+    render();
+    if (!scopes) await loadScopes();
+    refresh();
+  }
+
+  async function loadScopes() {
+    try {
+      scopes = await api('/api/toolkit/scopes');
+      // Fill in every scope's default up front, so the fields are never
+      // empty by the time one of them is shown -- including the date range,
+      // which otherwise opens as two blank boxes that look broken.
+      const was = q.scope;
+      for (const sc of ['session', 'mouse', 'group', 'range']) {
+        q.scope = sc;
+        seedScope();
+      }
+      q.scope = was;
+    } catch (e) {
+      toast('Could not read the session list: ' + e.message, 'err', 8000);
+      scopes = { sessions: [], mice: [], groups: [] };
+    }
+    render();
+  }
+
+  /* A scope arrives with its first option already chosen. Otherwise picking
+     "One mouse" asks the server about mouse (nothing), which it rightly
+     refuses -- so the panel answered a deliberate click with an error. */
+  function seedScope() {
+    const s = scopes || {};
+    if (q.scope === 'session' && !q.key && (s.sessions || []).length) {
+      // Prefer one that actually has something marked: an empty session is a
+      // confusing thing to land on in a bad-channel report.
+      const withBad = (s.sessions || []).find((x) => x.n_bad > 0);
+      q.key = (withBad || s.sessions[0]).key;
+    }
+    if (q.scope === 'mouse' && !q.mouse && (s.mice || []).length) {
+      q.mouse = String(s.mice[0]);
+    }
+    if (q.scope === 'group' && !q.group && (s.groups || []).length) {
+      q.group = s.groups[0];
+    }
+    if (q.scope === 'range') {
+      if (!q.from && s.first_day) q.from = s.first_day;
+      if (!q.to && s.last_day) q.to = s.last_day;
+    }
+  }
+
+  function args() {
+    const p = new URLSearchParams({ scope: q.scope, form: q.form });
+    if (q.scope === 'session') p.set('key', q.key);
+    if (q.scope === 'mouse') p.set('mouse', q.mouse);
+    if (q.scope === 'group') p.set('group', q.group);
+    if (q.scope === 'range') {
+      if (q.from) p.set('from', q.from);
+      if (q.to) p.set('to', q.to);
+    }
+    if (q.clean) p.set('clean', '1');
+    return p.toString();
+  }
+
+  const refresh = debounce(async function refresh_() {
+    if (busy) return;
+    busy = true;
+    const host = $('#tkResult');
+    if (host) host.style.opacity = '0.55';
+    try {
+      preview = await api('/api/toolkit/bad-channels?' + args());
+      preview.error = null;
+    } catch (e) {
+      preview = { error: e.message, rows: [], columns: [], summary: {} };
+    } finally {
+      busy = false;
+      renderResult();
+    }
+  }, 220);
+
+  /* ==================================================================
+     The page
+     ================================================================== */
+  function render() {
+    const host = $('#tkBody');
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'tk-layout' }, [
+      el('div', { class: 'tk-tools' }, [
+        el('div', { class: 'section-label', style: 'margin-top:0',
+                    text: 'Tools' }),
+        toolButton('bad', 'Bad channels',
+                   'Export which channels were marked bad, by session, mouse, '
+                   + 'project or date range.'),
+        el('p', { class: 'hint tk-soon',
+          text: 'More tools will land here as they earn their place. This is '
+              + 'the section for anything that spans many recordings at '
+              + 'once.' }),
+      ]),
+      el('div', { class: 'tk-main', id: 'tkMain' }, [
+        scopeCard(),
+        el('div', { class: 'tk-result', id: 'tkResult' }),
+      ]),
+    ]));
+    renderResult();
+  }
+
+  function toolButton(id, name, blurb) {
+    return el('button', {
+      class: 'tk-tool' + (q.tool === id ? ' on' : ''),
+      onclick: () => { q.tool = id; render(); refresh(); },
+    }, [
+      el('strong', { text: name }),
+      el('span', { text: blurb }),
+    ]);
+  }
+
+  /* ---------- picking the scope ---------- */
+  function scopeCard() {
+    const box = el('div', { class: 'card tk-scope' });
+    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                text: 'Which recordings' }));
+
+    const total = (scopes && scopes.total) || 0;
+    const choices = [
+      ['all', 'Everything', total + ' recorded session'
+        + (total === 1 ? '' : 's')],
+      ['session', 'One session', 'pick it below'],
+      ['mouse', 'One mouse', 'every session for that animal'],
+      ['group', 'One project', 'every session in it'],
+      ['range', 'A date range', 'by recording date'],
+    ];
+    box.appendChild(el('div', { class: 'tk-pills' }, choices.map(([id, name, sub]) =>
+      el('button', {
+        class: 'pill' + (q.scope === id ? ' active' : ''),
+        title: sub,
+        onclick: () => { q.scope = id; seedScope(); render(); refresh(); },
+      }, [
+        el('span', { text: name }),
+        el('span', { class: 'tk-pill-sub', text: sub }),
+      ]))));
+
+    // Only the fields the chosen scope actually uses, so there is never a
+    // date range sitting greyed out next to a session picker.
+    const fields = el('div', { class: 'tk-fields' });
+    if (q.scope === 'session') fields.appendChild(sessionPicker());
+    if (q.scope === 'mouse') fields.appendChild(listPicker(
+      'Mouse', (scopes && scopes.mice) || [], q.mouse,
+      (v) => { q.mouse = v; refresh(); }, (m) => 'm' + m));
+    if (q.scope === 'group') fields.appendChild(listPicker(
+      'Project', (scopes && scopes.groups) || [], q.group,
+      (v) => { q.group = v; refresh(); }));
+    if (q.scope === 'range') {
+      fields.appendChild(field('From', el('input', {
+        type: 'date', value: q.from,
+        min: (scopes || {}).first_day || null,
+        max: (scopes || {}).last_day || null,
+        onchange: (e) => { q.from = e.target.value; refresh(); },
+      })));
+      fields.appendChild(field('To', el('input', {
+        type: 'date', value: q.to,
+        min: (scopes || {}).first_day || null,
+        max: (scopes || {}).last_day || null,
+        onchange: (e) => { q.to = e.target.value; refresh(); },
+      })));
+      if (scopes && scopes.first_day) {
+        fields.appendChild(el('p', { class: 'hint',
+          text: 'Recordings on disk run ' + scopes.first_day + ' to '
+              + scopes.last_day + '.' }));
+      }
+    }
+    if (fields.childNodes.length) box.appendChild(fields);
+
+    box.appendChild(el('div', { class: 'section-label', text: 'Shape' }));
+    box.appendChild(el('div', { class: 'tk-pills flat' }, [
+      el('button', {
+        class: 'pill' + (q.form === 'long' ? ' active' : ''),
+        title: 'One row per bad channel. Filters and pivots cleanly.',
+        onclick: () => { q.form = 'long'; render(); refresh(); },
+      }, [el('span', { text: 'One row per channel' })]),
+      el('button', {
+        class: 'pill' + (q.form === 'wide' ? ' active' : ''),
+        title: 'One row per session, channels listed in a cell. Easier to read.',
+        onclick: () => { q.form = 'wide'; render(); refresh(); },
+      }, [el('span', { text: 'One row per session' })]),
+    ]));
+    box.appendChild(el('label', { class: 'toggle' + (q.clean ? ' on' : '') }, [
+      el('input', {
+        type: 'checkbox', checked: q.clean ? 'checked' : null,
+        onchange: (e) => { q.clean = e.target.checked; refresh(); },
+      }),
+      el('span', { text: 'Include sessions with nothing marked' }),
+    ]));
+    box.appendChild(el('p', { class: 'hint',
+      text: 'A zero row is the only way to tell a session that was checked '
+          + 'and found clean from one nobody has looked at.' }));
+    return box;
+  }
+
+  function sessionPicker() {
+    const list = (scopes && scopes.sessions) || [];
+    return field('Session', el('select', {
+      onchange: (e) => { q.key = e.target.value; refresh(); },
+    }, list.map((s) => el('option', {
+      value: s.key,
+      selected: q.key === s.key ? 'selected' : null,
+      // The bad count in the label answers the question before it is asked.
+      text: (s.label || s.key) + (s.n_bad ? '   (' + s.n_bad + ' bad)' : ''),
+    }))));
+  }
+
+  function listPicker(label, values, current, onchange, fmt) {
+    if (!values.length) {
+      return el('p', { class: 'hint',
+        text: 'No ' + label.toLowerCase() + ' has been recorded yet. Open a '
+            + 'recording in Xplorefinder first.' });
+    }
+    return field(label, el('select', {
+      onchange: (e) => onchange(e.target.value),
+    }, values.map((v) => el('option', {
+      value: String(v),
+      selected: String(current) === String(v) ? 'selected' : null,
+      text: fmt ? fmt(v) : String(v),
+    }))));
+  }
+
+  function field(label, control) {
+    return el('div', { class: 'field' }, [
+      el('label', { text: label }), control,
+    ]);
+  }
+
+  /* ---------- the rows, and what they add up to ---------- */
+  function renderResult() {
+    const host = $('#tkResult');
+    if (!host) return;
+    host.style.opacity = '1';
+    host.innerHTML = '';
+
+    if (!preview) {
+      host.appendChild(el('div', { class: 'hint', text: 'Reading…' }));
+      return;
+    }
+    if (preview.error) {
+      host.appendChild(el('div', { class: 'rb-verdict missing' }, [
+        el('div', { class: 'rb-verdict-top' }, [
+          el('span', { class: 'rb-dot missing' }),
+          el('strong', { text: 'That scope does not work' }),
+        ]),
+        el('p', { style: 'margin:0;font-size:12px', text: preview.error }),
+      ]));
+      return;
+    }
+
+    const sm = preview.summary || {};
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      el('div', {}, [
+        el('h2', { text: 'Bad channels' }),
+        el('p', { class: 'sub', text: preview.scope_label || '' }),
+      ]),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn', text: 'Download CSV',
+        disabled: preview.rows.length ? null : 'disabled',
+        title: preview.rows.length
+          ? 'Also filed under Results/ToolKit'
+          : 'Nothing to export in this scope',
+        onclick: download,
+      }),
+    ]));
+
+    host.appendChild(el('div', { class: 'stat-row' }, [
+      chip(sm.sessions + ' session' + (sm.sessions === 1 ? '' : 's'), 'good'),
+      chip(sm.with_bad + ' with something marked',
+           sm.with_bad ? 'warn' : null),
+      chip(sm.clean + ' with nothing marked'),
+      chip(sm.bad_total + ' bad channel'
+           + (sm.bad_total === 1 ? '' : 's') + ' in total'),
+      chip(sm.distinct_channels + ' distinct channel number'
+           + (sm.distinct_channels === 1 ? '' : 's')),
+      sm.first_day ? chip(sm.first_day + ' → ' + sm.last_day) : null,
+    ].filter(Boolean)));
+
+    // A channel that goes bad in several sessions is usually a wire, not a
+    // recording -- which is a different problem, so it gets said out loud.
+    const rep = sm.repeat_offenders || [];
+    if (rep.length) {
+      host.appendChild(el('div', { class: 'tk-repeat' }, [
+        el('strong', { text: 'Bad more than once: ' }),
+        el('span', { text: rep.map((r) => 'CSC ' + r.channel
+                     + ' (' + r.sessions + ')').join(',  ') }),
+        el('p', { class: 'hint', style: 'margin:4px 0 0',
+          text: 'A channel that keeps coming up is worth checking at the '
+              + 'headstage rather than in the analysis.' }),
+      ]));
+    }
+
+    if (!preview.rows.length) {
+      host.appendChild(el('div', { class: 'hint tk-empty',
+        text: 'No bad channels are marked in ' + (preview.scope_label || 'this scope')
+            + '. Mark them on the channel list in Xplorefinder and they will '
+            + 'appear here.' }));
+      return;
+    }
+
+    host.appendChild(table(preview.columns, preview.rows));
+  }
+
+  function chip(text, kind) {
+    return el('span', { class: 'stat-chip' + (kind ? ' ' + kind : ''), text });
+  }
+
+  function table(cols, rows) {
+    // Wide tables scroll inside their own box; the page must not.
+    const wrap = el('div', { class: 'tk-tablewrap' });
+    const t = el('table', { class: 'res-table tk-table' });
+    t.appendChild(el('thead', {}, [el('tr', {}, cols.map((c) =>
+      el('th', { text: c.replace(/_/g, ' ') })))]));
+    const body = el('tbody');
+    // A cap on what is drawn, not on what is exported: 4000 rows of DOM is
+    // slow to build and nobody reads past the first screen anyway.
+    const CAP = 500;
+    for (const r of rows.slice(0, CAP)) {
+      body.appendChild(el('tr', {}, cols.map((c) => el('td', {
+        text: r[c] === null || r[c] === undefined ? '' : String(r[c]),
+        title: c === 'path' ? String(r[c] || '') : null,
+        class: c === 'channel' || c === 'bad_channels' ? 'tk-ch' : null,
+      }))));
+    }
+    t.appendChild(body);
+    wrap.appendChild(t);
+    if (rows.length > CAP) {
+      wrap.appendChild(el('p', { class: 'hint',
+        text: 'Showing the first ' + CAP + ' of ' + rows.length
+            + ' rows. The download has all of them.' }));
+    }
+    return wrap;
+  }
+
+  /* ---------- the download ---------- */
+  async function download() {
+    const url = '/api/toolkit/bad-channels/export?' + args();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        let msg = 'HTTP ' + res.status;
+        try { msg = (await res.json()).error || msg; } catch (e) { /* text */ }
+        toast(msg, 'err', 8000);
+        return;
+      }
+      const blob = await res.blob();
+      const name = (res.headers.get('Content-Disposition') || '')
+        .replace(/.*filename="?([^"]+)"?.*/, '$1') || 'bad-channels.csv';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+
+      const rel = res.headers.get('X-Barry-Output');
+      toast((res.headers.get('X-Barry-Rows') || '?') + ' rows downloaded'
+            + (rel ? ' — also filed at Results/' + rel : ''), 'ok', 7000);
+      BARRY.activity.log('toolkit.bad_channels.export', {
+        scope: q.scope, form: q.form, rows: res.headers.get('X-Barry-Rows'),
+        run: res.headers.get('X-Barry-Run-Id'),
+      });
+      BARRY.refreshSync();
+    } catch (e) {
+      toast('Export failed: ' + e.message, 'err', 8000);
+    }
+  }
+
+  function init() {
+    const r = $('#tkRefresh');
+    if (r) {
+      r.addEventListener('click', async () => {
+        scopes = null;
+        await loadScopes();
+        refresh();
+      });
+    }
+  }
+
+  return { init, onShow, refresh };
+})();

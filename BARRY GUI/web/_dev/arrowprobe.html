@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>arrowprobe: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 10000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  ev("setView('storyboard')");
+  await sleep(600);
+  const made = await (await fetch('/api/deck', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deck: { title: 'arrow probe', slides: [
+      { id: 'p1', title: 'One', notes: '', items: [], show_notes: false }] } }),
+  })).json();
+  const deckId = (made.deck || {}).id;
+  say('deck: ' + deckId);
+  await ev('BARRY.views.storyboard.onShow()');
+  await sleep(600);
+  const openBtn = $$('#sbBody .res-card button').find((b) => b.textContent === 'Open');
+  say('Open button: ' + (openBtn ? 'found' : 'NOT FOUND'));
+  say('cards: ' + $$('#sbBody .res-card').length);
+  if (openBtn) openBtn.click();
+  await until(() => $('#sbCanvas'), 12000);
+  await sleep(700);
+
+  const c = () => $('#sbCanvas');
+  say('canvas: ' + (c() ? 'present' : 'MISSING'));
+  if (c()) {
+    const r = c().getBoundingClientRect();
+    say('canvas rect: ' + r.width.toFixed(0) + 'x' + r.height.toFixed(0)
+        + ' at ' + r.left.toFixed(0) + ',' + r.top.toFixed(0));
+  }
+  const tools = $$('.sb-tool');
+  say('sb-tool buttons: ' + tools.length + '  ['
+      + tools.map((b) => b.textContent).join(' ') + ']');
+  say('active tool: ' + ($('.sb-tool.active') || {}).textContent);
+
+  // Click the arrow tool.
+  tools[4].click();
+  await sleep(250);
+  say('after clicking index 4, active = ' + ($('.sb-tool.active') || {}).textContent);
+  say('items before drag: ' + $$('#sbCanvas .sb-item').length);
+
+  const r = c().getBoundingClientRect();
+  const pt = (fx, fy) => ({ clientX: r.left + r.width * fx,
+                            clientY: r.top + r.height * fy, bubbles: true });
+  say('mousedown at ' + JSON.stringify(pt(0.2, 0.2)));
+  c().dispatchEvent(new W.MouseEvent('mousedown', pt(0.2, 0.2)));
+  await sleep(120);
+  say('items after mousedown: ' + $$('#sbCanvas .sb-item').length);
+  W.dispatchEvent(new W.MouseEvent('mousemove', pt(0.4, 0.4)));
+  await sleep(80);
+  W.dispatchEvent(new W.MouseEvent('mousemove', pt(0.6, 0.6)));
+  await sleep(80);
+  W.dispatchEvent(new W.MouseEvent('mouseup', pt(0.6, 0.6)));
+  await sleep(500);
+  const items = $$('#sbCanvas .sb-item');
+  say('items after mouseup: ' + items.length);
+  for (const it of items) {
+    say('  ' + it.className + '  style=' + it.getAttribute('style'));
+    say('    inner: ' + it.innerHTML.slice(0, 240));
+  }
+
+  const saved = await (await fetch('/api/deck/' + deckId)).json();
+  say('server items: ' + JSON.stringify(
+    ((saved.deck || {}).slides || [{}])[0].items || []).slice(0, 600));
+
+  await fetch('/api/deck/' + deckId + '/delete', { method: 'POST' });
+  document.title = 'arrowprobe: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'arrowprobe CRASH'; });
+</script></body></html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>spike: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.5 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(100);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow, B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+
+  /* The frequency-view control lives in the Panel menu on the strip now, so
+     it has to be opened before it can be inspected. */
+  async function openPanelMenu() {
+    const btn = $$('.pane-ctl .ctl-menu').find(
+      (b) => b.textContent.startsWith('Panel'));
+    if (!btn) return null;
+    btn.click();
+    await sleep(450);
+    return $('.ctl-pop .freq-view');
+  }
+
+
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(900);
+
+  /* ---------- the spike panel ---------- */
+  say('=== threshold spike labeling ===');
+  // The threshold detector moved into the More menu on the strip.
+  const moreBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('More'));
+  if (moreBtn) moreBtn.click();
+  await sleep(450);
+  const spikeBtn = $$('.ctl-pop button').find(
+    (b) => /Threshold detector/.test(b.textContent));
+  if (!spikeBtn) { say('  spike button NOT FOUND'); }
+  else {
+    spikeBtn.click();
+    await until(() => $('.wiz-grid'), 8000);
+    await sleep(700);
+    const modal = $('.modal.big');
+    const mb = $('.modal.big .mb');
+    const grid = $('.wiz-grid');
+    const r = (n) => n.getBoundingClientRect();
+    say('modal   w=' + r(modal).width.toFixed(0) + ' h=' + r(modal).height.toFixed(0)
+        + '  scroll ' + modal.scrollWidth + 'x' + modal.scrollHeight);
+    say('body    w=' + r(mb).width.toFixed(0) + ' h=' + r(mb).height.toFixed(0)
+        + '  scroll ' + mb.scrollWidth + 'x' + mb.scrollHeight
+        + '  ovf-x=' + (mb.scrollWidth > mb.clientWidth + 1));
+    say('grid    w=' + r(grid).width.toFixed(0)
+        + '  scroll ' + grid.scrollWidth
+        + '  cols=' + getComputedStyle(grid).gridTemplateColumns
+        + '  ovf=' + (grid.scrollWidth > grid.clientWidth + 1));
+    say('');
+    say('any element sticking out past the body?');
+    const bodyRight = r(mb).right;
+    let over = 0;
+    for (const n of Array.from(mb.querySelectorAll('*'))) {
+      const rr = n.getBoundingClientRect();
+      if (rr.width && rr.right > bodyRight + 2) {
+        over++;
+        if (over <= 6) {
+          say('  ' + n.tagName + '.' + (n.className || '')
+              + '  right=' + rr.right.toFixed(0) + ' vs ' + bodyRight.toFixed(0)
+              + '  "' + (n.textContent || '').trim().slice(0, 34) + '"');
+        }
+      }
+    }
+    say('  total overflowing: ' + over);
+    say('');
+    say('label / control overlap check:');
+    let overlap = 0;
+    for (const f of $$('.wiz-grid .field')) {
+      const lab = f.querySelector('label');
+      const ctl = f.querySelector('input, select, .seg');
+      if (!lab || !ctl) continue;
+      const a = r(lab), b = r(ctl);
+      if (a.bottom > b.top + 1) {
+        overlap++;
+        say('  OVERLAP: "' + lab.textContent + '" bottom=' + a.bottom.toFixed(0)
+            + ' over control top=' + b.top.toFixed(0));
+      }
+    }
+    say('  overlapping fields: ' + overlap);
+    W.eval('closeModal')();
+    await sleep(400);
+  }
+
+  /* ---------- Show Hz on a stacked panel ---------- */
+  say('');
+  say('=== Show Hz ===');
+  B.views.xplore.state.panes[0].panel = 'scalogram';
+  B.views.xplore.state.panes[0].tfChannels = [0, 1, 2];
+  B.views.xplore.state.panes[0].tfMode = 'stack';
+  B.views.xplore.onShow();
+  await until(() => (B.views.xplore.state.panes[0]._panelData || {}).freqs, 60000);
+  await sleep(900);
+  let fv = await openPanelMenu();
+  say('stacked: control classes = ' + (fv ? fv.className : 'MISSING'));
+  say('  inputs disabled? ' + $$('.ctl-pop .freq-view input').map(
+    (i) => i.disabled || getComputedStyle(fv).pointerEvents === 'none').join(','));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(300);
+
+  B.views.xplore.state.panes[0].tfMode = 'mean';
+  B.views.xplore.onShow();
+  await until(() => {
+    const d = B.views.xplore.state.panes[0]._panelData || {};
+    return d.freqs && !d.stacked;
+  }, 60000);
+  await sleep(900);
+  fv = await openPanelMenu();
+  say('averaged: control classes = ' + (fv ? fv.className : 'MISSING'));
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(300);
+
+  /* ---------- duplicate panel requests ---------- */
+  say('');
+  say('=== how many requests does one edit make? ===');
+  const before = B.debug.requests().filter((x) => x.path === '/api/panel').length;
+  B.views.xplore.state.panes[0].fviewMin = 4;
+  B.views.xplore.state.panes[0].fviewMax = 40;
+  B.views.xplore.onShow();
+  await sleep(6000);
+  const after = B.debug.requests().filter((x) => x.path === '/api/panel').length;
+  say('  /api/panel requests for one change: ' + (after - before));
+  const recent = B.debug.requests().filter((x) => x.path === '/api/panel').slice(-8);
+  for (const rq of recent) say('    ' + rq.at + '  ' + rq.status + '  ' + rq.ms + ' ms');
+
+  document.title = 'spike: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'spike CRASH'; });
+</script></body></html>

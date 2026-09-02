@@ -1,0 +1,78 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>probe: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:12px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) { const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) { try { if (fn()) return true; } catch (e) {}
+    await sleep(100); } return false; }
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow, B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(1000);
+  say('events loaded: ' + S.events.length);
+
+  // Export moved into the More menu on the strip.
+  const moreBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('More'));
+  say('More button: ' + (moreBtn ? 'found' : 'MISSING'));
+  if (moreBtn) moreBtn.click();
+  await sleep(450);
+  const expBtn = $$('.ctl-pop button').find((b) => /^Export/.test(b.textContent));
+  say('export button: ' + (expBtn ? 'found' : 'MISSING'));
+  expBtn.click();
+  await sleep(500);
+  say('chooser options: '
+      + $$('.choice strong').map((n) => n.textContent).join(' | '));
+
+  $$('.choice').find((b) => /Event Bank/.test(b.textContent)).click();
+  await until(() => $('.bm-list.tall'), 6000);
+  await sleep(400);
+  say('');
+  say('REVIEW MODAL');
+  say('  .mb field labels : '
+      + $$('.mb .field label').map((n) => n.textContent).join(' | '));
+  say('  .mf buttons      : '
+      + $$('.mf button').map((n) => JSON.stringify(n.textContent)).join(' | '));
+  say('  rows             : ' + $$('.bm-list.tall .bm-row').length);
+
+  const cont = $$('.mf button').find((b) => /Continue/.test(b.textContent));
+  say('  Continue button  : ' + (cont ? JSON.stringify(cont.textContent) : 'NOT FOUND'));
+  if (cont) {
+    cont.click();
+    await sleep(1600);
+    say('');
+    say('AFTER CLICKING CONTINUE');
+    say('  .mb field labels : '
+        + $$('.mb .field label').map((n) => n.textContent).join(' | '));
+    say('  modal class      : ' + D().getElementById('bigModal').className);
+    say('  h3               : ' + (($('.mh h3') || {}).textContent || ''));
+  }
+
+  say('');
+  for (const c of B.debug.console().slice(-8)) {
+    say('console ' + c.level + ': ' + c.text.slice(0, 400));
+  }
+  document.title = 'probe: done';
+})().catch((e) => { say('HARNESS CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'probe CRASH'; });
+</script></body></html>

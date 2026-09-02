@@ -1,0 +1,317 @@
+===== [0] RUNNING ThetaRaster_Pipeline =====
+
+===== JB: ThetaRaster_Pipeline =====
+Input folder: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)
+Opening theta.fig (invisible): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\theta.fig
+JB: Extracted -> x1:575 | y1:63 | c1:63x575
+Closed source theta.fig.
+Saving mats to: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots
+JB: Rendering Theta heatmap...
+JB: Saving PNG -> C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.png
+JB: Saving PDF -> C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.pdf
+JB: Closed rendering figure.
+ThetaRaster pipeline outputs:
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.png
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.pdf
+===== JB: ThetaRaster_Pipeline done =====
+
+  [0] SUCCESS: ThetaRaster_Pipeline completed.
+      -> PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.png
+      -> PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.pdf
+--------------------------------------------------------
+===== [1] RUNNING EventStacks_ampWidth_Avg_Pipeline =====
+EventStacks_ampWidth_Avg_Pipeline: sfx=30000.0 Hz | display ±50.0 ms | metrics ±5.0 ms | anchorSearch ±5.0 ms | channels=32
+Found 10 SOLID, 8 SPUTTER events (by filenames).
+[ANCHOR] Using LAST channel (row 32) as reference for anchoring.
+SOLID: used 10/10 events (any channel contributed).
+Saved group stats: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_stats.mat
+[ANCHOR] Using LAST channel (row 32) as reference for anchoring.
+SPUTTER: used 8/8 events (any channel contributed).
+Saved group stats: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_stats.mat
+Global y-limit (both figs): ±3528.9 µV (auto)
+Saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.png
+Saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.pdf
+Saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.png
+Saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.pdf
+Warning: Failed writing EventStacks per-channel stats CSV: Duplicate dimension and variable name:
+'Row'. 
+> In EventStacks_ampWidth_Avg_Pipeline (line 193)
+In Pipeline_Main (line 55)
+In main (line 27) 
+EventStacks pipeline outputs:
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.png
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.png
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\EventStacks_perChannel_Stats.csv
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.pdf
+  C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.pdf
+  [1] SUCCESS: EventStacks_ampWidth_Avg_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.pdf
+      -> STATS CSV: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\EventStacks_perChannel_Stats.csv
+--------------------------------------------------------
+===== [2] RUNNING VoltageRaster_EventsAvg_Pipeline =====
+VoltageRaster_AvgGroups: sfx=30000.0 Hz | window ±20.0 ms | anchor: lastCh max (±5.0 ms)
+Found 10 SOLID, 8 SPUTTER events (by filenames).
+Global CLim (averages): ±1409.48 µV.
+Saved SOLID average raster (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SOLID.png
+Saved SOLID average raster (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SOLID.pdf
+Saved SPUTTER average raster (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SPUTTER.png
+Saved SPUTTER average raster (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SPUTTER.pdf
+  [2] SUCCESS: VoltageRaster_EventsAvg_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SOLID.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SOLID.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SPUTTER.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SPUTTER.pdf
+      -> STATS CSV: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\VoltageRaster_Avg_stats.csv
+--------------------------------------------------------
+===== [3] RUNNING CSDRaster_Avg_Pipeline =====
+CSD AvgGroups: sfx=30000.0 Hz | window ±20.0 ms | anchor: lastCh max (±5.0 ms)
+Found 10 SOLID, 8 SPUTTER events (by filenames).
+Global CSD CLim (averages): ±722.80 (CSD units).
+Saved SOLID average CSD raster (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SOLID.png
+Saved SOLID average CSD raster (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SOLID.pdf
+Saved SPUTTER average CSD raster (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SPUTTER.png
+Saved SPUTTER average CSD raster (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SPUTTER.pdf
+  [3] SUCCESS: CSDRaster_Avg_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SOLID.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SOLID.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SPUTTER.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SPUTTER.pdf
+      -> STATS CSV: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSDRaster_Avg_stats.csv
+--------------------------------------------------------
+===== [4] RUNNING CSD_CenterSlices_Waveform_AvgGroups_Pipeline =====
+CSD Center Slices PIPELINE: sfx=30000.0 Hz | window ±20.0 ms | anchor: lastCh max (±5.0 ms)
+Found 10 SOLID, 8 SPUTTER events (by filenames).
+Saved SOLID (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SOLID.png
+Saved SOLID (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SOLID.pdf
+Saved SPUTTER (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SPUTTER.png
+Saved SPUTTER (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SPUTTER.pdf
+  [4] SUCCESS: CSD_CenterSlices_Waveform_AvgGroups_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SOLID.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SOLID.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SPUTTER.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SPUTTER.pdf
+      -> STATS CSV: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_stats.csv
+--------------------------------------------------------
+===== [5] RUNNING CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline =====
+CSD Time-Average Slices: sfx=30000.0 Hz | avg window [+0.0,+15.0] ms | anchor: lastCh max (±5.0 ms)
+Found 10 SOLID, 8 SPUTTER events (by filenames).
+Saved SOLID (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SOLID.png
+Saved SOLID (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SOLID.pdf
+Saved SPUTTER (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SPUTTER.png
+Saved SPUTTER (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SPUTTER.pdf
+  [5] SUCCESS: CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SOLID.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SOLID.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SPUTTER.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SPUTTER.pdf
+      -> STATS CSV: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_stats.csv
+--------------------------------------------------------
+===== [6] RUNNING Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline =====
+Found 10 SOLID, 8 SPUTTER (by filenames). Using the 3rd of each if present.
+SOLID Evt 20: anchoring on LAST channel (row 32)
+Saved SOLID (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Solid\Evt020_SpecWave_Stacked.png
+Saved SOLID (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Solid\Evt020_SpecWave_Stacked.pdf
+SPUTTER Evt 54: anchoring on LAST channel (row 32)
+Saved SPUTTER (PNG): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Sputter\Evt054_SpecWave_Stacked.png
+Saved SPUTTER (PDF): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Sputter\Evt054_SpecWave_Stacked.pdf
+Spectrogram_Waveform_Stacked_ThirdEvent pipeline done.
+  [6] SUCCESS: Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline completed.
+      -> SOLID PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Solid\Evt020_SpecWave_Stacked.png
+      -> SOLID PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Solid\Evt020_SpecWave_Stacked.pdf
+      -> SPUTTER PNG: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Sputter\Evt054_SpecWave_Stacked.png
+      -> SPUTTER PDF: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Sputter\Evt054_SpecWave_Stacked.pdf
+--------------------------------------------------------
+===== [7] ASSEMBLING Master_Compact_SOLID.png =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Compact_SOLID.png
+  Gathering SOLID files:
+    LEFT col 1 (VoltRaster): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SOLID.png
+    LEFT col 2 (CSDSlices): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SOLID.png
+    LEFT col 3 (Theta): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.png
+    LEFT col 4 (Spectrogram): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Solid\Evt020_SpecWave_Stacked.png
+    CENTER col (EvtStacks): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SOLID_anchor-max_disp1500s_met150s.png
+    RIGHT col 1 (CSDRaster): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SOLID.png
+    RIGHT col 2 (CSDTimeAvg): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SOLID.png
+  [7] Assembling 3 columns...
+  [7] SUCCESS: Master SOLID compact montage saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Compact_SOLID.png
+--------------------------------------------------------
+===== [8] ASSEMBLING Master_Compact_SPUTTER.png =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Compact_SPUTTER.png
+  Gathering SPUTTER files:
+    LEFT col 1 (VoltRaster): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\Raster_Avg_SPUTTER.png
+    LEFT col 2 (CSDSlices): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_SPUTTER.png
+    LEFT col 3 (Theta): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Theta_Plots\Theta_Raster.png
+    LEFT col 4 (Spectrogram): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Spectrogram Waveform Stacked Output\Sputter\Evt054_SpecWave_Stacked.png
+    CENTER col (EvtStacks): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\AvgStack_SPUTTER_anchor-max_disp1500s_met150s.png
+    RIGHT col 1 (CSDRaster): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSD_Raster_Avg_SPUTTER.png
+    RIGHT col 2 (CSDTimeAvg): C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_SPUTTER.png
+  [8] Assembling 3 columns...
+  [8] SUCCESS: Master SPUTTER compact montage saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Compact_SPUTTER.png
+--------------------------------------------------------
+===== [9] MERGING Stats CSV =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Stats.csv
+  Found CSVs to merge:
+    -> EventStacks: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\EventStacks_perChannel_Stats.csv
+    -> VoltageRaster: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\VoltageRaster_Avg_stats.csv
+    -> CSDRaster: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Raster Output\CSDRaster_Avg_stats.csv
+    -> CSDCenterSlices: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_CenterSlices_stats.csv
+    -> CSDTimeAvg: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\CSD Center Slices Output\CSD_TimeAvg_stats.csv
+    -> Successfully added C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\EventStacks AmpWidth Output\EventStacks_perChannel_Stats.csv
+    -> Successfully added C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Voltage Raster Output\VoltageRaster_Avg_stats.csv
+Warning: Failed to merge stats from CSDRaster: To assign to or create a variable in a table, the
+number of rows must match the height of the table. 
+> In Pipeline_Main>tryAddCSV (line 486)
+In Pipeline_Main (line 277)
+In main (line 27) 
+      -> Error details: To assign to or create a variable in a table, the number of rows must match the height of the table. (Identifier: MATLAB:table:RowDimensionMismatch)
+Warning: Failed to merge stats from CSDCenterSlices: To assign to or create a variable in a table,
+the number of rows must match the height of the table. 
+> In Pipeline_Main>tryAddCSV (line 486)
+In Pipeline_Main (line 278)
+In main (line 27) 
+      -> Error details: To assign to or create a variable in a table, the number of rows must match the height of the table. (Identifier: MATLAB:table:RowDimensionMismatch)
+Warning: Failed to merge stats from CSDTimeAvg: To assign to or create a variable in a table, the
+number of rows must match the height of the table. 
+> In Pipeline_Main>tryAddCSV (line 486)
+In Pipeline_Main (line 279)
+In main (line 27) 
+      -> Error details: To assign to or create a variable in a table, the number of rows must match the height of the table. (Identifier: MATLAB:table:RowDimensionMismatch)
+  [9] Merged 2 rows of stats.
+  [9] SUCCESS: Master stats CSV saved: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\Master_Stats.csv
+--------------------------------------------------------
+===== [10] COLLECTING PDFs =====
+
+  [10] Rounding up non-Sputter PDFs into: C:\Users\Z390\Desktop\IED DATA\Take 2\PTEN_M13_pten_HF4s1aug1\group_05-10 (1)\Pipeline Output\PDF_OUT
+    -> Found 7 unique non-Sputter PDFs to copy:
+      -> Copied: Theta_Raster.pdf
+      -> Copied: AvgStack_SOLID_anchor-max_disp1500s_met150s.pdf
+      -> Copied: Raster_Avg_SOLID.pdf
+      -> Copied: CSD_Raster_Avg_SOLID.pdf
+      -> Copied: CSD_CenterSlices_SOLID.pdf
+      -> Copied: CSD_TimeAvg_SOLID.pdf
+      -> Copied: Evt020_SpecWave_Stacked.pdf
+    -> Successfully copied 7 PDF files.
+  [10] SUCCESS: PDF collection complete.
+--------------------------------------------------------
+
+========================================================
+===== Pipeline_Main COMPLETE =====
+========================================================
+>> 
+
+No worries about the warnings about the excel sheet not writing... that's a backburner issue
+
+
+Take 2
+
+
+===== [0] RUNNING ThetaRaster_Pipeline =====
+
+===== JB: ThetaRaster_Pipeline =====
+Input folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18
+Opening theta.fig (invisible): C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\theta.fig
+JB: Extracted -> x1:575 | y1:63 | c1:63x575
+Closed source theta.fig.
+Saving mats to: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots
+JB: Rendering Theta heatmap...
+JB: Saving PNG -> C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.png
+JB: Saving PDF -> C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.pdf
+JB: Closed rendering figure.
+ThetaRaster pipeline outputs:
+  C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.png
+  C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.pdf
+===== JB: ThetaRaster_Pipeline done =====
+
+  [0] SUCCESS: ThetaRaster_Pipeline completed.
+      -> PNG: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.png
+      -> PDF: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.pdf
+--------------------------------------------------------
+===== [1] RUNNING EventStacks_ampWidth_Avg_Pipeline =====
+  [1] FAILED: EventStacks_ampWidth_Avg_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [2] RUNNING VoltageRaster_EventsAvg_Pipeline =====
+  [2] FAILED: VoltageRaster_EventsAvg_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [3] RUNNING CSDRaster_Avg_Pipeline =====
+  [3] FAILED: CSDRaster_Avg_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [4] RUNNING CSD_CenterSlices_Waveform_AvgGroups_Pipeline =====
+  [4] FAILED: CSD_CenterSlices_Waveform_AvgGroups_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [5] RUNNING CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline =====
+  [5] FAILED: CSD_TimeAvgSlices_Waveforms_AvgGroups_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [6] RUNNING Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline =====
+  [6] FAILED: Spectrogram_Waveform_Stacked_ThirdEvent_Pipeline.
+      -> Error details: Missing folder: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Solid (Identifier: )
+--------------------------------------------------------
+===== [7] ASSEMBLING Master_Compact_SOLID.png =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Compact_SOLID.png
+  Gathering SOLID files:
+    LEFT col 1 (VoltRaster): 
+    LEFT col 2 (CSDSlices): 
+    LEFT col 3 (Theta): C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.png
+    LEFT col 4 (Spectrogram): 
+    CENTER col (EvtStacks): 
+    RIGHT col 1 (CSDRaster): 
+    RIGHT col 2 (CSDTimeAvg): 
+      ERROR in stackVerticalHiRes (reading images): File "" does not exist.
+      ERROR in stackVerticalHiRes (reading images): File "" does not exist.
+  [7] Assembling 1 columns...
+      ERROR in composeColumnsHiRes (reading images): File "" does not exist.
+  [7] SUCCESS: Master SOLID compact montage saved: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Compact_SOLID.png
+--------------------------------------------------------
+===== [8] ASSEMBLING Master_Compact_SPUTTER.png =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Compact_SPUTTER.png
+  Gathering SPUTTER files:
+    LEFT col 1 (VoltRaster): 
+    LEFT col 2 (CSDSlices): 
+    LEFT col 3 (Theta): C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Theta_Plots\Theta_Raster.png
+    LEFT col 4 (Spectrogram): 
+    CENTER col (EvtStacks): 
+    RIGHT col 1 (CSDRaster): 
+    RIGHT col 2 (CSDTimeAvg): 
+      ERROR in stackVerticalHiRes (reading images): File "" does not exist.
+      ERROR in stackVerticalHiRes (reading images): File "" does not exist.
+  [8] Assembling 1 columns...
+      ERROR in composeColumnsHiRes (reading images): File "" does not exist.
+  [8] SUCCESS: Master SPUTTER compact montage saved: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Compact_SPUTTER.png
+--------------------------------------------------------
+===== [9] MERGING Stats CSV =====
+  Target path: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Stats.csv
+  Found CSVs to merge:
+    -> EventStacks: 
+    -> VoltageRaster: 
+    -> CSDRaster: 
+    -> CSDCenterSlices: 
+    -> CSDTimeAvg: 
+    -> No CSV found for EventStacks.
+    -> No CSV found for VoltageRaster.
+    -> No CSV found for CSDRaster.
+    -> No CSV found for CSDCenterSlices.
+    -> No CSV found for CSDTimeAvg.
+  [9] No stats CSVs found. Creating an EMPTY stats file.
+  [9] SUCCESS: Master stats CSV saved: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\Master_Stats.csv
+--------------------------------------------------------
+===== [10] COLLECTING PDFs =====
+
+  [10] Rounding up non-Sputter PDFs into: C:\Users\Z390\Desktop\IED DATA\Take 3\PTEN_m28_ptenblind_m28s2jun18\Pipeline Output\PDF_OUT
+    -> Found 1 unique non-Sputter PDFs to copy:
+      -> Copied: Theta_Raster.pdf
+    -> Successfully copied 1 PDF files.
+  [10] SUCCESS: PDF collection complete.
+--------------------------------------------------------
+
+========================================================
+===== Pipeline_Main COMPLETE =====
+========================================================
+>> 
+
+

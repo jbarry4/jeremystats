@@ -1,0 +1,249 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>sbdebug: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+.bad{color:#ff8a7a}.ok{color:#7fe3b0}.hd{color:#ffb81c}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let bad = 0;
+const say = (s, cls) => {
+  if (cls === 'bad') bad++;
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow, B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  /* Does el() even produce a real SVG element? */
+  say('=== does el() build SVG in the right namespace? ===');
+  const probe = ev('el')('svg', { viewBox: '0 0 10 10',
+                                  html: '<rect x="1" y="1" width="8" height="8"/>' });
+  say('  tagName      : ' + probe.tagName);
+  say('  namespaceURI : ' + probe.namespaceURI);
+  say('  is SVGElement: ' + (probe instanceof W.SVGElement));
+  say('  child count  : ' + probe.childNodes.length);
+  say('  first child  : ' + (probe.firstChild
+      ? probe.firstChild.nodeName + ' ns=' + (probe.firstChild.namespaceURI || '-')
+      : 'none'));
+  D().body.appendChild(probe);
+  const pr = probe.getBoundingClientRect();
+  say('  rendered size: ' + pr.width.toFixed(0) + 'x' + pr.height.toFixed(0)
+      + (pr.width === 0 ? '   <-- NOT RENDERING' : ''));
+  probe.remove();
+
+  /* Open a deck and try each tool the way a person would. */
+  say('');
+  say('=== drawing tools ===');
+  setView('storyboard');
+  await until(() => $('#sbBody .res-toolbar') || $('.sb-layout'), 12000);
+  const made = await (await fetch('/api/deck', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deck: { title: 'sbdebug', slides: [
+      { id: 'd1', title: 'One', notes: '', items: [], show_notes: true },
+      { id: 'd2', title: 'Two', notes: '', items: [], show_notes: true },
+      { id: 'd3', title: 'Three', notes: '', items: [], show_notes: true }] } }),
+  })).json();
+  const deckId = (made.deck || {}).id;
+  await B.views.storyboard.onShow();
+  await sleep(400);
+  const open = $$('#sbBody .res-card button').find((b) => b.textContent === 'Open');
+  if (open) open.click();
+  await until(() => $('#sbCanvas'), 9000);
+  await sleep(600);
+
+  const canvas = () => $('#sbCanvas');
+  const drag = async (tool, x0, y0, x1, y1) => {
+    // Pick the tool from the toolbar, as a person would.
+    const btns = $$('.sb-tool');
+    const map = { select: 0, text: 1, rect: 2, ellipse: 3, arrow: 4,
+                  line: 5, highlight: 6, ink: 7 };
+    btns[map[tool]].click();
+    await sleep(200);
+    const c = canvas(), r = c.getBoundingClientRect();
+    const pt = (fx, fy) => ({ clientX: r.left + r.width * fx,
+                              clientY: r.top + r.height * fy, bubbles: true });
+    c.dispatchEvent(new W.MouseEvent('mousedown', pt(x0, y0)));
+    await sleep(60);
+    for (let i = 1; i <= 5; i++) {
+      const f = i / 5;
+      W.dispatchEvent(new W.MouseEvent('mousemove',
+        pt(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)));
+      await sleep(40);
+    }
+    W.dispatchEvent(new W.MouseEvent('mouseup', pt(x1, y1)));
+    await sleep(400);
+  };
+
+  // The drawn items, counted from the canvas. drawSlide appends the slide
+  // heading after them, so :last-child is the heading -- take the last
+  // .sb-item instead.
+  const items = () => $$('#sbCanvas .sb-item');
+  const lastItem = () => items().pop() || null;
+
+  for (const tool of ['rect', 'ellipse', 'arrow', 'line', 'highlight']) {
+    const before = items().length;
+    await drag(tool, 0.15, 0.2, 0.55, 0.6);
+    const added = items().length - before;
+    const node = lastItem();
+    let vis = 'no node';
+    if (node) {
+      const nr = node.getBoundingClientRect();
+      const svg = node.querySelector('svg');
+      vis = nr.width.toFixed(0) + 'x' + nr.height.toFixed(0)
+          + '  svg=' + (svg ? (svg instanceof W.SVGElement ? 'real' : 'FAKE')
+                            : 'MISSING');
+      if (svg) {
+        const sr = svg.getBoundingClientRect();
+        vis += '  svgSize=' + sr.width.toFixed(0) + 'x' + sr.height.toFixed(0);
+        const shapes = svg.querySelectorAll('rect,ellipse,line,polygon,polyline');
+        vis += '  parts=' + shapes.length;
+      }
+      vis += '  class=' + node.className.replace('sb-item ', '');
+    }
+    say('  ' + tool.padEnd(10) + ' added=' + added + '  ' + vis,
+        added === 1 && node ? 'ok' : 'bad');
+  }
+
+  /* Slide order */
+  say('');
+  say('=== slide order ===');
+  const thumbs = () => $$('.sb-thumb');
+  const railNames = () => thumbs().map(
+    (t) => (t.querySelector('.sb-name') || {}).textContent);
+  say('  rail: ' + railNames().join(', '));
+  say('  thumbs: ' + thumbs().length + '  draggable='
+      + (thumbs()[0] ? thumbs()[0].getAttribute('draggable') : '-'));
+  const reorder = $$('.sb-thumb .sb-order button');
+  say('  reorder buttons: ' + (reorder.length
+      ? reorder.length + ' (' + reorder.slice(0, 2).map(
+          (b) => b.textContent).join(' ') + ')'
+      : 'none'), reorder.length ? 'ok' : 'bad');
+
+  // Move the first slide down and check the rail actually reorders.
+  const was = railNames().join(',');
+  const down = thumbs()[0].querySelector('.sb-order button:last-child');
+  if (down) {
+    down.click();
+    await sleep(600);
+    const now = railNames().join(',');
+    say('  after moving slide 1 down: ' + now,
+        now !== was ? 'ok' : 'bad');
+    say('  the numbering follows the order: '
+        + thumbs().map((t) => (t.querySelector('.sb-num') || {}).textContent)
+            .join(''),
+        thumbs().map((t) => (t.querySelector('.sb-num') || {}).textContent)
+          .join('') === '123' ? 'ok' : 'bad');
+  } else {
+    say('  no reorder buttons to try', 'bad');
+  }
+
+  /* Undo */
+  say('');
+  say('=== undo / redo ===');
+  const undoBtn = $('#sbUndo'), redoBtn = $('#sbRedo');
+  say('  undo/redo buttons: ' + (undoBtn && redoBtn ? 'present' : 'MISSING'),
+      undoBtn && redoBtn ? 'ok' : 'bad');
+  say('  undo enabled: ' + (undoBtn ? !undoBtn.disabled : '-'));
+
+  // Draw one more shape, then take it back with the keyboard.
+  await drag('rect', 0.62, 0.62, 0.82, 0.82);
+  const n0 = items().length;
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'z', ctrlKey: true, bubbles: true }));
+  await sleep(700);
+  const n1 = items().length;
+  say('  ctrl+Z: ' + n0 + ' items -> ' + n1, n1 === n0 - 1 ? 'ok' : 'bad');
+
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'z', ctrlKey: true, shiftKey: true, bubbles: true }));
+  await sleep(700);
+  const n2 = items().length;
+  say('  ctrl+shift+Z: ' + n1 + ' items -> ' + n2, n2 === n0 ? 'ok' : 'bad');
+
+  /* Background control */
+  say('');
+  say('=== inspector ===');
+  // With an item selected the inspector shows the item panel; the slide
+  // background lives on the panel shown when nothing is selected. An undo
+  // clears the selection, so an item has to be picked again first.
+  $$('.sb-tool')[0].click();               // select tool
+  await sleep(200);
+  const anyItem = $$('#sbCanvas .sb-item').pop();
+  if (anyItem) {
+    anyItem.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+    W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
+    await sleep(600);
+  }
+  say('  item panel shown: '
+      + ($$('.sb-inspector .section-label').length ? 'yes' : 'no')
+      + '  (' + $$('.sb-inspector .section-label')
+          .map((n) => n.textContent).join(', ') + ')');
+  const itemSwatch = $('.sb-inspector .color-swatch');
+  say('  an item offers a color picker as well as the swatches: '
+      + (itemSwatch ? 'yes' : 'NO'), itemSwatch ? 'ok' : 'bad');
+  const inItem = $$('.sb-inspector input').map(
+    (i) => i.type + ' "' + (i.value || '') + '"');
+  say('  item inputs: ' + inItem.join(' | '));
+
+  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'Escape', bubbles: true }));
+  await sleep(600);
+  const swatch = $('.sb-inspector .color-swatch');
+  say('  slide background is a color picker, not a hex field: '
+      + (swatch ? 'yes (' + swatch.type + ')' : 'NO'),
+      swatch && swatch.type === 'color' ? 'ok' : 'bad');
+  const styled = swatch
+    ? W.getComputedStyle(swatch).webkitAppearance || 'default' : '-';
+  say('  and it is styled, not the raw browser control: ' + styled,
+      swatch && styled === 'none' ? 'ok' : 'bad');
+  const slideInputs = $$('.sb-inspector input').map(
+    (i) => i.type + ' "' + (i.value || '') + '"');
+  say('  slide inputs: ' + slideInputs.join(' | '));
+
+  // What actually reached the server -- the endpoints and the rotation are
+  // saved per item, so a shape that draws right but saves wrong is still
+  // broken.
+  say('');
+  say('=== what got saved ===', 'hd');
+  await sleep(3200);
+  const saved = await (await fetch('/api/deck/' + deckId)).json();
+  const slides = (saved.deck || {}).slides || [];
+  say('  slides: ' + slides.map((sl) => sl.title).join(', '));
+  const all = slides.reduce((acc, sl) => acc.concat(sl.items || []), []);
+  say('  items: ' + all.map((it) => it.shape || it.type).join(', '));
+  const lines = all.filter((it) => it.shape === 'line' || it.shape === 'arrow');
+  say('  lines/arrows with endpoints: '
+      + lines.filter((it) => it.a && it.b).length + ' of ' + lines.length,
+      lines.length && lines.every((it) => it.a && it.b) ? 'ok' : 'bad');
+
+  if (deckId) await fetch('/api/deck/' + deckId + '/delete', { method: 'POST' });
+  document.title = bad ? 'sbdebug: ' + bad + ' PROBLEMS' : 'sbdebug: clean';
+  say('');
+  say(bad ? bad + ' problems' : 'nothing looks broken', bad ? 'bad' : 'ok');
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'sbdebug CRASH'; });
+</script></body></html>

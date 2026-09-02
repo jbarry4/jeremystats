@@ -1,0 +1,90 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>sb: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.5 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:420px;height:100vh;overflow:auto;
+padding:8px;background:#06100c;white-space:pre;z-index:9;border-right:1px solid #1a3227}
+iframe{position:fixed;left:420px;top:0;right:0;bottom:0;width:calc(100vw - 420px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/#storyboard"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+
+  setView('storyboard');
+  await until(() => $('#sbBody .res-toolbar') || $('.sb-layout'), 12000);
+  // Make a deck so the editor is on screen.
+  const made = await (await fetch('/api/deck', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deck: { title: 'Test', slides: [
+      { id: 'sx', title: 'Slide 2', notes: '', items: [], show_notes: true }] } }),
+  })).json();
+  await B.views.storyboard.onShow();
+  await sleep(400);
+  const open = Array.from(D().querySelectorAll('#sbBody .res-card button'))
+    .find((b) => b.textContent === 'Open');
+  if (open) open.click();
+  await until(() => $('#sbCanvas'), 9000);
+  await sleep(900);
+
+  const W = frame.contentWindow;
+  const box = (sel) => {
+    const n = $(sel);
+    if (!n) return sel + ': MISSING';
+    const r = n.getBoundingClientRect();
+    return sel.padEnd(20) + 'x=' + r.x.toFixed(0).padStart(6)
+      + ' w=' + r.width.toFixed(0).padStart(6)
+      + ' y=' + r.y.toFixed(0).padStart(5)
+      + ' h=' + r.height.toFixed(0).padStart(5)
+      + ' | scrollW=' + n.scrollWidth + ' scrollH=' + n.scrollHeight;
+  };
+  say('viewport ' + W.innerWidth + ' x ' + W.innerHeight);
+  say('');
+  for (const sel of ['#main', '#view-storyboard', '#view-storyboard .view-head',
+                     '#sbBar', '.sb-title', '#sbBody', '.sb-layout',
+                     '.sb-rail', '.sb-rail-list', '.sb-rail-foot',
+                     '.sb-stage', '.sb-tools', '.sb-canvas-wrap', '.sb-canvas',
+                     '.sb-notes', '.sb-inspector']) {
+    say(box(sel));
+  }
+  say('');
+  const doc = D().documentElement;
+  say('document scrollWidth=' + doc.scrollWidth + ' clientWidth=' + doc.clientWidth
+      + '   overflowing horizontally: ' + (doc.scrollWidth > doc.clientWidth));
+  const layout = $('.sb-layout');
+  if (layout) {
+    const cs = getComputedStyle(layout);
+    say('sb-layout grid-template-columns = ' + cs.gridTemplateColumns);
+    say('sb-layout width ' + layout.getBoundingClientRect().width.toFixed(0)
+        + '  scrollWidth ' + layout.scrollWidth);
+  }
+  const stage = $('.sb-stage');
+  if (stage) say('sb-stage min-content width probe: scrollWidth=' + stage.scrollWidth);
+  const tools = $('.sb-tools');
+  if (tools) say('sb-tools scrollWidth=' + tools.scrollWidth
+                 + ' clientWidth=' + tools.clientWidth);
+  const head = $('#view-storyboard .view-head');
+  if (head) say('view-head scrollWidth=' + head.scrollWidth
+                + ' clientWidth=' + head.clientWidth);
+  await fetch('/api/deck/' + (made.deck || {}).id + '/delete', { method: 'POST' });
+  document.title = 'sb: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'sb CRASH'; });
+</script></body></html>

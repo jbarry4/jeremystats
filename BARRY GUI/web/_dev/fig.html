@@ -1,0 +1,101 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>fig: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.5 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:600px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre;z-index:9}
+iframe{position:fixed;left:600px;top:0;right:0;bottom:0;width:calc(100vw - 600px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) { const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) { try { if (fn()) return true; } catch (e) {}
+    await sleep(100); } return false; }
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow, B = ev('BARRY'), setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(800);
+  B.figure.open(B.views.xplore.state, S);
+  await until(() => $('.fig-layout'), 12000);
+  await sleep(2500);
+
+  say('viewport ' + W.innerWidth + ' x ' + W.innerHeight);
+  say('');
+  const box = (sel, label) => {
+    const n = $(sel);
+    if (!n) { say((label || sel).padEnd(22) + 'MISSING'); return null; }
+    const r = n.getBoundingClientRect();
+    const cs = getComputedStyle(n);
+    say((label || sel).padEnd(22)
+      + ' x=' + r.x.toFixed(0).padStart(5)
+      + ' y=' + r.y.toFixed(0).padStart(5)
+      + ' w=' + r.width.toFixed(0).padStart(5)
+      + ' h=' + r.height.toFixed(0).padStart(5)
+      + ' | scroll ' + n.scrollWidth + 'x' + n.scrollHeight
+      + ' | ovf ' + cs.overflowX + '/' + cs.overflowY);
+    return n;
+  };
+  box('.modal.big', 'modal');
+  box('.modal.big .mh', 'header');
+  box('.modal.big .mb', 'body');
+  box('.modal.big .mf', 'footer');
+  box('.fig-layout', 'layout');
+  const cols = $$('.fig-col');
+  cols.forEach((c, i) => {
+    const r = c.getBoundingClientRect();
+    const cs = getComputedStyle(c);
+    say(('col ' + i).padEnd(22)
+      + ' x=' + r.x.toFixed(0).padStart(5) + ' y=' + r.y.toFixed(0).padStart(5)
+      + ' w=' + r.width.toFixed(0).padStart(5) + ' h=' + r.height.toFixed(0).padStart(5)
+      + ' | scroll ' + c.scrollWidth + 'x' + c.scrollHeight
+      + ' | ovf ' + cs.overflowX + '/' + cs.overflowY
+      + (c.scrollHeight > c.clientHeight + 1 ? '  <-- CONTENT CUT OFF' : ''));
+  });
+  box('.fig-preview', 'preview');
+  const mb = $('.modal.big .mb');
+  say('');
+  say('body can scroll vertically : ' + (mb.scrollHeight > mb.clientHeight + 1));
+  say('body overflows sideways    : ' + (mb.scrollWidth > mb.clientWidth + 1));
+  const lay = $('.fig-layout');
+  say('layout grid columns        : ' + getComputedStyle(lay).gridTemplateColumns);
+  say('layout overflows sideways  : ' + (lay.scrollWidth > lay.clientWidth + 1));
+  say('');
+  say('columns whose content is taller than the box:');
+  cols.forEach((c, i) => {
+    if (c.scrollHeight > c.clientHeight + 1) {
+      say('  col ' + i + ': ' + c.scrollHeight + ' of ' + c.clientHeight
+          + ' px visible  (' + (c.scrollHeight - c.clientHeight) + ' px hidden)');
+    }
+  });
+  // Which child of column 2 is the one that is too wide?
+  const c2 = $$('.fig-col')[2];
+  if (c2) {
+    say('');
+    say('column 2 children wider than 220px:');
+    for (const ch of Array.from(c2.querySelectorAll('*'))) {
+      const r = ch.getBoundingClientRect();
+      if (r.width > 225) {
+        say('  ' + ch.tagName + '.' + (ch.className || '') + '  w='
+            + r.width.toFixed(0) + '  scrollW=' + ch.scrollWidth
+            + '  "' + (ch.textContent || '').trim().slice(0, 40) + '"');
+      }
+    }
+  }
+  document.title = 'fig: done';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack);
+                    document.title = 'fig CRASH'; });
+</script></body></html>

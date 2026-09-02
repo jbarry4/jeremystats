@@ -1,0 +1,103 @@
+================================================================================
+Running the CNO-vs-Baseline CSD / Voltage stats in SPSS
+================================================================================
+Paired / within-subject design: 5 PTEN mice, each measured at Baseline and CNO.
+Everything below uses the CSVs in this folder. Delta always means CNO - Baseline.
+
+Golden rule for this dataset: it is PAIRED (same mice both conditions) and n = 5,
+so use PAIRED / REPEATED-MEASURES / RELATED-SAMPLES procedures, lead with effect
+sizes + 95% CIs, and remember the exact Wilcoxon cannot go below p = 0.0625 at n=5.
+
+
+--------------------------------------------------------------------------------
+0) IMPORT A CSV INTO SPSS
+--------------------------------------------------------------------------------
+File > Import Data > CSV Data...  ->  pick the file  ->  tick "First line contains
+variable names"  ->  Delimiter = Comma  ->  OK. Then Data View shows the rows and
+Variable View lets you set measurement level (Scale for the numeric value columns,
+Nominal for Mouse/Group/Region/TimeFrame).
+
+Tip: SPSS variable names can't contain spaces/parentheses; the column headers here
+are already SPSS-safe (e.g., PeakSink_CSD, Delta_MeanVoltage).
+
+
+--------------------------------------------------------------------------------
+1) HEADLINE PAIRED TEST  (whole-probe summary metric)   file: session_summary_metrics.csv
+--------------------------------------------------------------------------------
+This file is long (Mouse x Group x TimeFrame). SPSS paired tests want the two
+conditions as two COLUMNS, so first restructure to one row per mouse:
+
+  a) Keep one timeframe at a time: Data > Select Cases > If  TimeFrame = 'GZ'
+     (repeat later for 'AS').
+  b) Restructure long->wide so Baseline and CNO become separate columns:
+     Data > Restructure > "Restructure selected cases into variables";
+       Identifier = Mouse ; Index = Group.
+     You now get e.g. PeakSink_CSD.Base and PeakSink_CSD.CNO (one row per mouse).
+     (Or just make a small wide sheet by hand: 5 rows, columns Base_x and CNO_x.)
+  c) Paired t-test:
+     Analyze > Compare Means > Paired-Samples T Test
+       Pair 1: Var1 = <metric>.Base , Var2 = <metric>.CNO.
+     Read: mean difference, t, df (=4), Sig.(2-tailed). Tick "Estimate effect sizes"
+     (SPSS 27+) for Cohen's d.
+  d) Nonparametric equivalent (recommended alongside, given n=5):
+     Analyze > Nonparametric Tests > Related Samples > (Fields: the two columns) >
+     Settings > Customize > Wilcoxon matched-pair signed-rank.
+
+Compare your SPSS output to results_01_session_summary.csv (same numbers).
+
+
+--------------------------------------------------------------------------------
+2) REGION-SPECIFIC PAIRED TEST                          file: region_paired_wide.csv
+--------------------------------------------------------------------------------
+This file is ALREADY wide (Base_MeanCSD, CNO_MeanCSD, Base_MeanVoltage,
+CNO_MeanVoltage per Mouse x Region x TimeFrame).
+
+  a) Data > Select Cases > If  Region = 'DG GCL1' AND TimeFrame = 'GZ'   (for example).
+  b) Analyze > Compare Means > Paired-Samples T Test
+       Pair 1: Base_MeanVoltage , CNO_MeanVoltage
+       Pair 2: Base_MeanCSD ,     CNO_MeanCSD
+  c) Related-Samples Wilcoxon as in 1d.
+  Repeat per region/timeframe of interest. Only regions with >=4 mice are worth
+  testing; treat n<4 as descriptive (see README pitfalls). Correct for the number
+  of regions tested (Bonferroni/FDR).
+
+
+--------------------------------------------------------------------------------
+3) CONDITION x REGION together (repeated-measures / mixed model)
+--------------------------------------------------------------------------------
+Use the long file raw_original_long.csv (or region_means_by_session.csv) and a
+Linear Mixed Model, which handles the paired structure + unequal region coverage:
+
+  Analyze > Mixed Models > Linear...
+    Subjects = Mouse ;  Repeated (if you specify a covariance) or leave for random only.
+    Dependent = Voltage_Val (or CSD_Val, or Mean_Voltage).
+    Fixed effects: Group, Region, Group*Region  (and add TimeFrame if pooling frames).
+    Random effects: Intercept, Subject grouping = Mouse   (mouse as random intercept).
+    EM Means: Group (and Group*Region) with pairwise comparisons for CNO vs Base.
+  Filter to one TimeFrame first (Select Cases: TimeFrame='GZ'), or add TimeFrame as
+  a fixed factor if you want both in one model.
+  This is the most appropriate omnibus test of "does CNO shift the profile, and does
+  the shift depend on layer?" Report the Group main effect and Group*Region interaction.
+
+
+--------------------------------------------------------------------------------
+4) DEPTH-PROFILE (per-channel) view                     file: paired_wide_by_channel.csv
+--------------------------------------------------------------------------------
+For a per-channel paired test: Select Cases TimeFrame='GZ', then Paired-Samples
+T Test on Base_CSD vs CNO_CSD (and Base_Voltage vs CNO_Voltage). Because channel
+index is not guaranteed identical anatomy across mice, prefer this for the PROFILE
+SHAPE (plot Delta_CSD / Delta_Voltage vs Channel) rather than per-channel claims,
+and FDR-correct across channels. results_03_grand_delta_profile.csv already has the
+averaged profile + SEM to plot directly (Graphs > Chart Builder > line, X=Channel,
+Y=MeanDelta_*).
+
+
+--------------------------------------------------------------------------------
+5) WHAT TO REPORT
+--------------------------------------------------------------------------------
+For each effect: Baseline mean+/-SD, CNO mean+/-SD, mean paired difference with 95%
+CI, Cohen's dz (or d), the paired-t p, and the Wilcoxon p. State n=5, that tests are
+paired, and that per-channel/region tests are exploratory / multiplicity-corrected.
+The pure-Python scripts here (results_01/02/03 CSVs) reproduce all of these numbers
+if you want a cross-check against SPSS.
+================================================================================

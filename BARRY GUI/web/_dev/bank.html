@@ -1,0 +1,350 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bank: running</title>
+<style>
+  body { font: 12px/1.6 ui-monospace, Consolas, monospace; background:#0a1310;
+         color:#dfeae4; margin:0; display:flex; }
+  #log { width: 800px; padding: 10px; overflow:auto; height:100vh;
+         white-space: pre-wrap; }
+  iframe { flex:1; height:100vh; border:0; }
+  .ok { color:#5cc98d; } .bad { color:#ff6b5e; } .note { color:#6f8c7d; }
+</style></head>
+<body><div id="log"></div><iframe id="app" src="/"></iframe>
+<script>
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+function say(s, c) {
+  const d = document.createElement('div');
+  d.textContent = s; if (c) d.className = c; L.appendChild(d);
+}
+function check(n, ok, x) {
+  if (ok) { pass++; say('PASS  ' + n, 'ok'); }
+  else { fail++; say('FAIL  ' + n + (x ? '   ' + x : ''), 'bad'); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(100);
+  }
+  return false;
+}
+const post = async (p, b) => (await fetch(p, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b || {}),
+})).json();
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const W = frame.contentWindow;
+  const B = ev('BARRY');
+  const setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const sess = new URLSearchParams(location.search).get('session');
+
+  /* A control that used to sit on the strip and now lives behind one of its
+     menu buttons. Opens the menu, then finds the control inside it. Each use
+     closes the popover, so this has to be called fresh every time. */
+  async function fromMenu(menuName, match) {
+    const btn = $$('.pane-ctl .ctl-menu').find(
+      (b) => b.textContent.startsWith(menuName));
+    if (!btn) return null;
+    btn.click();
+    await sleep(450);
+    return $$('.ctl-pop button').find(match) || null;
+  }
+
+
+  /* ---------------- the view ---------------- */
+  say('--- the Event Bank view ---', 'note');
+  // Seeded, so this tests the view and not whatever happens to be banked.
+  const seed = await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 1,
+    session_label: 'harness seed', type: 'ied', name: 'seeded entry',
+    pipeline: 'harness: seed', added_by: 'harness@test',
+    events: [{ start: 1.5 }, { start: 2.5, channel: 4 }],
+  });
+  const seedId = (seed.entry || {}).id;
+  check('an entry can be seeded through the API', !!seedId, seed.error || '');
+  setView('eventbank');
+  await until(() => $('#bankBody .bank-tree') || $('#bankBody .empty-state'), 12000);
+  check('the view renders', !!$('#bankBody'));
+  check('it is reachable from the rail',
+        $$('.nav-item').some((b) => b.dataset.view === 'eventbank'));
+  const rows = $$('.bank-row');
+  check('entries are listed', rows.length > 0, rows.length + ' rows');
+  check('they are grouped by project', $$('.bank-tree .grp-head').length > 0,
+        $$('.bank-tree .grp-head').map((n) => n.textContent).join(' | '));
+  check('mice are shown under a project', $$('.bank-mouse').length > 0);
+  check('sessions are shown under a mouse', $$('.bank-sess').length > 0);
+
+  if (rows.length) {
+    rows[0].click();
+    await sleep(700);
+    const kv = $$('.bank-detail dt').map((n) => n.textContent);
+    check('the detail shows where it came from',
+          kv.indexOf('Produced by') >= 0, kv.join(', '));
+    check('it shows who added it', kv.indexOf('Added by') >= 0);
+    check('it shows when', kv.indexOf('Added at') >= 0);
+    await until(() => $('#bankEvents .preview-table'), 8000);
+    check('the event times are listed', !!$('#bankEvents .preview-table tbody tr'));
+    check('a load-onto-a-recording action is offered',
+          $$('.bank-detail button').some((b) => /Load onto/.test(b.textContent)));
+  }
+
+  /* ---------------- banking from the viewer ---------------- */
+  say('--- import / export choosers ---', 'note');
+  setView('xplore');
+  const S = await B.views.xplore.open(sess);
+  await until(() => $('.pane-canvas-host canvas'), 25000);
+  await sleep(1200);
+  check('the recording has events to work with', S.events.length > 0,
+        S.events.length + ' events');
+
+  // Import and export live in the More menu now; still exactly one of each.
+  const moreBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('More'));
+  check('there is a More button on the strip', !!moreBtn,
+        $$('.pane-ctl .ctl-menu').map((b) => b.textContent).join(' | '));
+  if (moreBtn) moreBtn.click();
+  await sleep(450);
+  const imps = $$('.ctl-pop button').filter((b) => /^Import/.test(b.textContent));
+  const exps = $$('.ctl-pop button').filter((b) => /^Export/.test(b.textContent));
+  check('there is one import button', imps.length === 1, imps.length + ' found');
+  check('there is one export button', exps.length === 1, exps.length + ' found');
+  const impBtn = imps[0];
+
+  if (impBtn) {
+    impBtn.click();
+    await sleep(500);
+    const choices = $$('.choice strong').map((n) => n.textContent);
+    check('import asks bank or file', choices.length === 2
+          && choices.some((t) => /Event Bank/.test(t))
+          && choices.some((t) => /file/i.test(t)), choices.join(' | '));
+    W.eval('closeModal')();
+    await sleep(300);
+  }
+
+  // Clicking Import closed the popover it lived in, so Export has to be
+  // reached the same way a person would: open the menu again.
+  if (moreBtn) moreBtn.click();
+  await sleep(450);
+  const expBtn2 = $$('.ctl-pop button').find((b) => /^Export/.test(b.textContent));
+  check('export is still there on a second open', !!expBtn2);
+  if (expBtn2) {
+    expBtn2.click();
+    await sleep(500);
+    const choices = $$('.choice strong').map((n) => n.textContent);
+    check('export asks bank or file', choices.length === 2
+          && choices.some((t) => /Event Bank/.test(t))
+          && choices.some((t) => /file/i.test(t)), choices.join(' | '));
+
+    // Go to the bank branch, which shows the keep/remove tree.
+    const toBank = $$('.choice').find((b) => /Event Bank/.test(b.textContent));
+    toBank.click();
+    await until(() => $('.ev-tree'), 6000);
+    await sleep(400);
+
+    check('export reviews the events first', !!$('.ev-tree'));
+    const groups = $$('.ev-node.group');
+    check('the tree has kind-level branches', groups.length > 0,
+          groups.map((n) => (n.querySelector('.ev-label') || {}).textContent)
+            .join(' | '));
+    const sets = $$('.ev-node.set');
+    check('sets sit under their kind', sets.length > 0, sets.length + ' sets');
+    check('everything starts selected',
+          $$('.ev-tree input[type=checkbox]').every((b) => b.checked));
+    check('there are select-all controls',
+          ['All', 'None', 'Only this window', 'Expand all', 'Collapse']
+            .every((t) => $$('.mb .res-toolbar button')
+              .some((b) => b.textContent === t)));
+
+    // Expand everything so individual events are reachable.
+    $$('.mb .res-toolbar button').find((b) => b.textContent === 'Expand all').click();
+    await sleep(400);
+    const leaves = $$('.ev-node.leaf input[type=checkbox]');
+    check('individual events are reachable', leaves.length > 0,
+          leaves.length + ' leaves');
+
+    // The tree redraws on every change, so nodes have to be re-queried --
+    // anything captured before a redraw is detached and clicking it is a
+    // no-op.
+    const checkedLeaves = () =>
+      $$('.ev-node.leaf input[type=checkbox]').filter((b) => b.checked).length;
+    const beforeUntick = checkedLeaves();
+    $$('.ev-node.set')[0].querySelector('input[type=checkbox]').click();
+    await sleep(400);
+    check('unticking a set unticks its events',
+          checkedLeaves() < beforeUntick,
+          beforeUntick + ' -> ' + checkedLeaves());
+    const grpBox = $$('.ev-node.group')[0].querySelector('input[type=checkbox]');
+    check('the kind above it goes indeterminate, not off',
+          grpBox.indeterminate || !grpBox.checked,
+          'checked=' + grpBox.checked + ' indeterminate=' + grpBox.indeterminate);
+    $$('.ev-node.set')[0].querySelector('input[type=checkbox]').click();
+    await sleep(400);
+    check('re-ticking it restores them', checkedLeaves() === beforeUntick,
+          checkedLeaves() + ' of ' + beforeUntick);
+
+    // Drop exactly one event, if there is more than one to choose from.
+    let dropped = 0;
+    const all = $$('.ev-node.leaf input[type=checkbox]');
+    if (all.length > 1) {
+      all[0].click();
+      dropped = 1;
+      await sleep(350);
+    } else {
+      say('  (only one event available; nothing to drop)', 'note');
+    }
+    const summary = $('.mb .stat-chip.good').textContent;
+    check('the count follows the selection',
+          /(\d+) of (\d+) selected/.test(summary), summary);
+    const nSelected = Number((summary.match(/^(\d+)/) || [0, 0])[1]);
+
+    $$('.mf button').find((b) => /Continue/.test(b.textContent)).click();
+    const opened = await until(() => $$('.mb .field label').some(
+      (n) => n.textContent === 'Produced by'), 9000);
+    if (!opened) {
+      say('  labels: ' + $$('.mb .field label').map((n) => n.textContent).join(' | '),
+          'note');
+    }
+    check('banking asks what produced it',
+          $$('.mb .field label').some((n) => n.textContent === 'Produced by'));
+    check('banking asks who is adding it',
+          $$('.mb .field label').some((n) => n.textContent === 'Added by'));
+    check('one row per set is offered', $$('.bank-entry-row').length > 0,
+          $$('.bank-entry-row').length + ' rows');
+
+    const fieldFor = (label, root) => {
+      const f = $$((root || '.mb') + ' .field').find(
+        (d) => (d.querySelector('label') || {}).textContent === label);
+      return f ? f.querySelector('input, select') : null;
+    };
+    const proj = fieldFor('Project');
+    check('it pre-fills the project from the session identity',
+          !!proj && proj.value.length > 0, proj ? proj.value : '');
+
+    // Refuse before it will accept: leave "Produced by" empty.
+    const pipeIn = $$('.bank-entry-row .field').find(
+      (d) => (d.querySelector('label') || {}).textContent === 'Produced by')
+      .querySelector('input');
+    pipeIn.value = '';
+    const nBefore = (await (await fetch('/api/bank')).json()).entries.length;
+    $$('.mf button').find((b) => /^Bank/.test(b.textContent)).click();
+    await sleep(700);
+    const nAfter = (await (await fetch('/api/bank')).json()).entries.length;
+    check('it refuses an entry with no source', nAfter === nBefore,
+          nBefore + ' -> ' + nAfter);
+    check('the dialog stays open so it can be fixed',
+          !!$$('.bank-entry-row').length);
+
+    // Now fill it in properly.
+    pipeIn.value = 'harness: BARRY threshold detector';
+    fieldFor('Added by').value = 'harness@test';
+    $$('.mf button').find((b) => /^Bank/.test(b.textContent)).click();
+    await sleep(1600);
+    const after = await (await fetch('/api/bank')).json();
+    check('the entry is banked', after.entries.length === nBefore + 1,
+          nBefore + ' -> ' + after.entries.length);
+    const made = after.entries.find((e) => (e.source || {}).pipeline
+      === 'harness: BARRY threshold detector');
+    check('it records what produced it', !!made);
+    check('it records who added it',
+          !!(made && made.added && made.added.by === 'harness@test'),
+          made ? made.added.by : '');
+    check('it records when', !!(made && made.added.at));
+    check('it banked exactly what was selected',
+          !!made && made.n === nSelected,
+          made ? made.n + ' banked, ' + nSelected + ' selected' : '');
+
+    /* ---------------- importing it back ---------------- */
+    say('--- importing from the bank ---', 'note');
+    const eventsBefore = S.events.length;
+    // Import lives in the More menu, and each use closes the menu -- so open
+    // it again, exactly as a person would.
+    $$('.pane-ctl .ctl-menu').find(
+      (b) => b.textContent.startsWith('More')).click();
+    await sleep(450);
+    const imp2 = $$('.ctl-pop button').find((b) => /^Import/.test(b.textContent));
+    check('import can be reached again', !!imp2,
+          $$('.ctl-pop button').map((b) => b.textContent).join(' | '));
+    imp2.click();
+    await sleep(400);
+    $$('.choice').find((b) => /Event Bank/.test(b.textContent)).click();
+    await until(() => $('.bm-list.tall .bm-row'), 8000);
+    const bankRows = $$('.bm-list.tall .bm-row');
+    check('it lists what is banked for this recording', bankRows.length > 0,
+          bankRows.length + ' entries');
+    check('each is tagged with how well it matches',
+          $$('.bm-list.tall .flagchip').length === bankRows.length,
+          $$('.bm-list.tall .flagchip').map((n) => n.textContent).join(','));
+    bankRows[0].click();
+    await sleep(1500);
+    check('the events load onto the recording',
+          B.views.xplore.state.sessions[S.id].events.length > eventsBefore,
+          eventsBefore + ' -> '
+            + B.views.xplore.state.sessions[S.id].events.length);
+
+    if (made) await post('/api/bank/' + made.id + '/delete');
+  }
+
+  /* ---------------- refusing an empty selection ---------------- */
+  say('--- refusals ---', 'note');
+  const exp3 = await fromMenu('More', (b) => /^Export/.test(b.textContent));
+  if (exp3) {
+    exp3.click();
+    await sleep(350);
+    $$('.choice').find((b) => /a file/i.test(b.textContent)).click();
+    await until(() => $('.bm-list.tall'), 6000);
+    await until(() => $('.ev-tree'), 6000);
+    $$('.mb .res-toolbar button').find((b) => b.textContent === 'None').click();
+    await sleep(250);
+    $$('.mf button').find(
+      (b) => /Download CSV|Continue/.test(b.textContent)).click();
+    await sleep(400);
+    check('exporting nothing is refused, not silently done',
+          !!$('.ev-tree'), 'the review closed');
+    W.eval('closeModal')();
+    await sleep(250);
+  }
+
+  /* ---------------- delete button colors ---------------- */
+  say('--- danger button contrast ---', 'note');
+  const probe = D().createElement('button');
+  probe.className = 'btn ghost sm danger';
+  probe.textContent = 'Delete';
+  D().body.appendChild(probe);
+  const cs = W.getComputedStyle(probe);
+  check('a ghost delete button is red', /rgb/.test(cs.color)
+        && cs.color !== W.getComputedStyle(D().body).color, cs.color);
+  const solid = D().createElement('button');
+  solid.className = 'btn danger';
+  D().body.appendChild(solid);
+  const cs2 = W.getComputedStyle(solid);
+  const rgb = (t) => (t.match(/\d+/g) || []).slice(0, 3).map(Number);
+  const lum = (c) => {
+    const f = c.map((v) => { v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const la = lum(rgb(cs2.color)), lb = lum(rgb(cs2.backgroundColor));
+  const contrast = (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  check('a solid delete button passes 4.5:1 contrast', contrast >= 4.5,
+        contrast.toFixed(2) + ':1  ' + cs2.color + ' on ' + cs2.backgroundColor);
+  probe.remove(); solid.remove();
+
+  if (seedId) await post('/api/bank/' + seedId + '/delete');
+
+  say('');
+  say(pass + ' passed, ' + fail + ' failed', fail ? 'bad' : 'ok');
+  document.title = 'bank: ' + pass + ' pass ' + fail + ' fail';
+})().catch((e) => {
+  say('CRASH ' + e.message, 'bad'); say(String(e.stack || ''), 'note');
+  document.title = 'bank CRASH';
+});
+</script></body></html>

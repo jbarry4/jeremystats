@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BARRY GUI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23154734'/%3E%3Cpath d='M4 18h3l3-9 4 15 4-12 3 7 2-3h5' fill='none' stroke='%23FFB81C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================= LEFT RAIL ================= -->
+  <nav id="rail">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div class="brand-text">
+        <strong>BARRY</strong>
+        <span id="repoName">repo</span>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <button class="nav-item active" data-view="pipeline">
+        <svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>
+        <span>Pipeline</span><kbd>1</kbd>
+      </button>
+      <button class="nav-item" data-view="explorer">
+        <svg viewBox="0 0 20 20"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h4l1.5 2h7.5A1.5 1.5 0 0 1 18 7.5v8A1.5 1.5 0 0 1 16.5 17h-13A1.5 1.5 0 0 1 2 15.5z"/></svg>
+        <span>Explorer</span><kbd>2</kbd>
+      </button>
+      <button class="nav-item" data-view="xplore">
+        <svg viewBox="0 0 20 20"><path d="M1 10h3l2-6 3 12 3-9 2 5 2-2h3"/></svg>
+        <span>Xplorefinder</span><kbd>3</kbd>
+      </button>
+      <button class="nav-item" data-view="sessions">
+        <svg viewBox="0 0 20 20"><rect x="2.5" y="3" width="15" height="4" rx="1"/><rect x="2.5" y="8.5" width="15" height="4" rx="1"/><rect x="2.5" y="14" width="15" height="3.5" rx="1"/></svg>
+        <span>Sessions</span><kbd>4</kbd>
+      </button>
+      <button class="nav-item" data-view="history">
+        <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/></svg>
+        <span>History</span><kbd>5</kbd>
+      </button>
+      <button class="nav-item" data-view="errors">
+        <svg viewBox="0 0 20 20"><path d="M10 2.5 18 17H2z"/><path d="M10 8v3.5M10 14v.01"/></svg>
+        <span>Errors</span><kbd>6</kbd>
+        <span class="nav-badge hidden" id="errBadge">0</span>
+      </button>
+      <button class="nav-item" data-view="results">
+        <svg viewBox="0 0 20 20"><rect x="2.5" y="3.5" width="15" height="13" rx="1.5"/><path d="M2.5 12l4-4 3 3 3.5-4.5 4.5 5.5"/><circle cx="7" cy="7.5" r="1.2"/></svg>
+        <span>Results</span><kbd>7</kbd>
+      </button>
+      <button class="nav-item" data-view="eventbank">
+        <svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><path d="M2.5 8h15M7 4v12M12 4v12"/></svg>
+        <span>Event Bank</span><kbd>8</kbd>
+      </button>
+      <button class="nav-item" data-view="storyboard">
+        <svg viewBox="0 0 20 20"><rect x="2.5" y="3" width="11" height="8" rx="1"/><rect x="5" y="13" width="12.5" height="4" rx="1"/></svg>
+        <span>Storyboard</span><kbd>9</kbd>
+      </button>
+      <button class="nav-item" data-view="toolkit">
+        <svg viewBox="0 0 20 20"><path d="M2.5 6.5h6M2.5 13.5h11"/><circle cx="12" cy="6.5" r="2.4"/><circle cx="16.5" cy="13.5" r="2.4"/></svg>
+        <span>ToolKit</span><kbd>T</kbd>
+      </button>
+      <button class="nav-item" data-view="misc">
+        <svg viewBox="0 0 20 20"><circle cx="5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15" cy="10" r="1.6"/></svg>
+        <span>Misc</span><kbd>0</kbd>
+      </button>
+    </div>
+
+    <div class="rail-spacer"></div>
+
+    <div class="rail-foot">
+      <button class="chip-btn" id="syncBtn" title="GUI_logs sync status">
+        <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
+        <span id="syncLabel">Sync</span>
+      </button>
+      <button class="chip-btn" id="themeToggle" title="Toggle light / dark">
+        <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
+        <span>Theme</span>
+      </button>
+      <div class="env" id="envInfo"></div>
+    </div>
+  </nav>
+
+  <!-- ================= MAIN ================= -->
+  <main id="main">
+
+    <!-- ---------- PIPELINE ---------- -->
+    <section class="view active" id="view-pipeline">
+      <header class="view-head">
+        <div>
+          <h1>IED Pipeline</h1>
+          <p class="sub">Point it at a folder and walk the stages in order.</p>
+        </div>
+        <div class="track-switch" id="trackSwitch">
+          <button class="active" data-track="session">Session</button>
+          <button data-track="cohort">Cohort</button>
+        </div>
+      </header>
+
+      <div class="pad">
+        <div class="dropzone" id="pipeDrop">
+          <div class="dz-inner">
+            <svg viewBox="0 0 24 24" class="dz-icon"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            <div class="dz-text">
+              <strong id="pipeDropTitle">Drop a recording folder here</strong>
+              <span id="pipeDropHint">the session directory that holds CSC*.ncs</span>
+            </div>
+            <div class="dz-actions">
+              <button class="btn" id="pipeBrowse">Browse…</button>
+              <button class="btn ghost" id="pipePaste">Paste path</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="folder-bar hidden" id="pipeFolderBar">
+          <div class="fb-path">
+            <span class="fb-label">Folder</span>
+            <code id="pipeFolderPath"></code>
+          </div>
+          <div class="fb-stats" id="pipeFolderStats"></div>
+          <div class="fb-actions">
+            <button class="btn ghost sm" id="pipeReveal">Open in Explorer</button>
+            <button class="btn ghost sm" id="pipeRecheck">Re-check</button>
+            <button class="btn ghost sm" id="pipeClear">Clear</button>
+          </div>
+        </div>
+
+        <div class="stage-list" id="stageList"></div>
+      </div>
+    </section>
+
+    <!-- ---------- EXPLORER ---------- -->
+    <section class="view" id="view-explorer">
+      <header class="view-head">
+        <div>
+          <h1>Explorer</h1>
+          <p class="sub" id="explorerSub">One-off runs across the whole repo.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm" id="reindex">Re-index</button>
+        </div>
+      </header>
+
+      <div class="split">
+        <aside class="split-left">
+          <div class="search-wrap">
+            <svg viewBox="0 0 20 20" class="search-icon"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg>
+            <input type="search" id="scriptSearch" placeholder="Search 400+ scripts…" autocomplete="off">
+          </div>
+          <div class="filter-row" id="langFilter">
+            <button class="pill active" data-lang="all">All</button>
+            <button class="pill" data-lang="python">Python</button>
+            <button class="pill" data-lang="matlab">MATLAB</button>
+            <button class="pill" data-lang="notebook">Notebooks</button>
+          </div>
+          <div class="tree" id="scriptTree"></div>
+        </aside>
+
+        <div class="split-right" id="scriptDetail">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m-6-8h6M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>
+            <p>Pick a script to see what it does, adjust its settings, and run it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- XPLOREFINDER 2.0 ---------- -->
+    <section class="view" id="view-xplore">
+      <header class="view-head compact">
+        <div class="xf-head">
+          <h1>Xplorefinder <span class="ver">2.0</span></h1>
+          <div class="xf-tabs" id="xfTabs"></div>
+        </div>
+        <div class="head-actions">
+          <div class="seg" id="xfLayoutSeg" title="Pane layout">
+            <button class="active" data-panes="1">1</button>
+            <button data-panes="2">2</button>
+            <button data-panes="4">4</button>
+          </div>
+          <div class="ctl" id="xfLinkWrap" title="How far a time change should propagate">
+            <label>Link time</label>
+            <select id="xfLinkMode">
+              <option value="none">Independent panes</option>
+              <option value="session" selected>Within session</option>
+              <option value="all">Across sessions + windows</option>
+            </select>
+          </div>
+          <button class="btn ghost sm" id="xfAddSession">Open session…</button>
+          <button class="btn sm" id="xfFigure">Figure builder</button>
+        </div>
+      </header>
+
+      <div class="xf-body" id="xfBody">
+        <div class="dropzone tall" id="xfDrop">
+          <div class="dz-inner">
+            <svg viewBox="0 0 24 24" class="dz-icon"><path d="M2 12h3l2-7 3 14 3-11 2 6 2-2h5"/></svg>
+            <div class="dz-text">
+              <strong>Drop a CSC session here</strong>
+              <span>a folder of CSC*.ncs, a single .ncs, or a converted .mat</span>
+            </div>
+            <div class="dz-actions">
+              <button class="btn" id="xfPickFolder">Browse folder…</button>
+              <button class="btn ghost" id="xfPickFile">Open file…</button>
+              <button class="btn ghost" id="xfGoSessions">Browse all sessions</button>
+            </div>
+          </div>
+        </div>
+        <div class="pane-grid hidden" id="paneGrid"></div>
+      </div>
+    </section>
+
+    <!-- ---------- SESSIONS ---------- -->
+    <section class="view" id="view-sessions">
+      <header class="view-head">
+        <div>
+          <h1>Sessions</h1>
+          <p class="sub" id="sessSub">Scan a data root and open any recording.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
+          <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
+          <button class="btn ghost sm" id="sessReveal">Open root</button>
+          <button class="btn sm" id="sessScan">Scan a root…</button>
+        </div>
+      </header>
+
+      <div class="pad">
+        <div class="root-bar" id="rootBar">
+          <div class="rb-main">
+            <input type="text" id="rootPath" placeholder="D:\PTEN\PTEN   or   \\netfiles03.uvm.edu\bigdata_jbarry\..." spellcheck="false">
+            <button class="btn" id="rootGo">Scan</button>
+            <button class="btn ghost" id="rootBrowse">Browse…</button>
+          </div>
+          <div class="rb-opts">
+            <label class="toggle sm"><input type="checkbox" id="rootHeaders" checked><span>Read headers (exact IDs)</span></label>
+            <label class="mini-field">Depth <input type="number" id="rootDepth" value="6" min="1" max="12"></label>
+            <span class="recent-label">Recent:</span>
+            <span id="rootRecent" class="recent-list"></span>
+          </div>
+        </div>
+
+        <div class="scan-status hidden" id="scanStatus"></div>
+
+        <div class="sess-filters hidden" id="sessFilters">
+          <div class="search-wrap inline">
+            <svg viewBox="0 0 20 20" class="search-icon"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg>
+            <input type="search" id="sessSearch" placeholder="Filter by mouse, session, cohort or path…">
+          </div>
+          <div class="filter-row" id="sessGroupFilter"></div>
+          <div class="filter-row">
+            <button class="pill" data-flag="video">Has video</button>
+            <button class="pill" data-flag="converted">Converted (.mat)</button>
+            <button class="pill" data-flag="bad">Has bad channels</button>
+            <button class="pill" data-flag="good" title="Flagged good for analysis">Marked good</button>
+            <button class="pill" data-flag="exclude" title="Hide anything flagged exclude">Hide excluded</button>
+            <button class="pill" data-flag="unhealthy" title="Only sessions the health check flagged">Health notes</button>
+          </div>
+        </div>
+
+        <div id="sessTree"></div>
+      </div>
+    </section>
+
+    <!-- ---------- HISTORY ---------- -->
+    <section class="view" id="view-history">
+      <header class="view-head">
+        <div>
+          <h1>History</h1>
+          <p class="sub" id="histSub">Every run, with its parameters and session — pooled from GUI_logs.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm active" id="histTimelineToggle" title="Show the activity timeline">Timeline</button>
+          <button class="btn ghost sm" id="histExport" title="Export what is listed as CSV">Export CSV</button>
+          <button class="btn ghost sm" id="histReveal">Open GUI_logs</button>
+          <button class="btn ghost sm" id="histRefresh">Refresh</button>
+        </div>
+      </header>
+      <div class="pad" style="padding-bottom:0"><div class="tl-wrap" id="histTimeline"></div></div>
+      <div class="split">
+        <aside class="split-left">
+          <div class="search-wrap">
+            <svg viewBox="0 0 20 20" class="search-icon"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg>
+            <input type="search" id="histSearch" placeholder="Filter runs…">
+          </div>
+          <div class="filter-row" id="histStatusFilter">
+            <button class="pill active" data-status="">All</button>
+            <button class="pill" data-status="done">Done</button>
+            <button class="pill" data-status="failed">Failed</button>
+            <button class="pill" data-status="figure">Figures</button>
+            <button class="pill" data-mode="activity" title="Every logged action">Activity</button>
+          </div>
+          <div class="tree" id="histList"></div>
+        </aside>
+        <div class="split-right" id="histDetail">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <p>Pick a run to see exactly what was executed, with which parameters, against which session.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ERRORS ---------- -->
+    <section class="view" id="view-errors">
+      <header class="view-head">
+        <div>
+          <h1>Errors</h1>
+          <p class="sub" id="errSub">Everything that failed, with full context — saved to GUI_logs/errors.</p>
+        </div>
+        <div class="head-actions">
+          <select id="errDay" class="mini-select"></select>
+          <button class="btn ghost sm" id="errRefresh">Refresh</button>
+          <button class="btn ghost sm" id="errTest">Write test entry</button>
+        </div>
+      </header>
+      <div class="pad" id="errBody"></div>
+    </section>
+
+    <!-- ---------- RESULTS ---------- -->
+    <section class="view" id="view-results">
+      <header class="view-head">
+        <div>
+          <h1>Results</h1>
+          <p class="sub" id="resultsSub">Everything the GUI has saved, in the repo's Results folder.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Manifest CSV</button>
+          <button class="btn ghost sm" id="resOpenDir">Open Results folder</button>
+          <button class="btn ghost sm" id="resGithub">View on GitHub</button>
+          <button class="btn ghost sm" id="resRefresh">Rescan</button>
+        </div>
+      </header>
+      <div class="pad" id="resultsBody"></div>
+    </section>
+
+    <!-- ---------- EVENT BANK ---------- -->
+    <section class="view" id="view-eventbank">
+      <header class="view-head">
+        <div>
+          <h1>Event Bank</h1>
+          <p class="sub" id="bankSub">Detected events, filed by project, mouse, session and type.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm" id="bankReveal">Open folder</button>
+          <button class="btn ghost sm" id="bankExport">Export CSV</button>
+          <button class="btn ghost sm" id="bankRefresh">Refresh</button>
+        </div>
+      </header>
+      <div class="pad" id="bankBody"></div>
+    </section>
+
+    <!-- ---------- STORYBOARD ---------- -->
+    <section class="view" id="view-storyboard">
+      <header class="view-head compact">
+        <div>
+          <h1>Storyboard</h1>
+          <p class="sub">Build a narrated deck from your results.</p>
+        </div>
+        <div class="head-actions" id="sbBar"></div>
+      </header>
+      <div class="sb-body" id="sbBody"></div>
+    </section>
+
+    <!-- ---------- TOOLKIT ---------- -->
+    <section class="view" id="view-toolkit">
+      <header class="view-head">
+        <div>
+          <h1>ToolKit</h1>
+          <p class="sub">Jobs that run across many recordings at once.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost sm" id="tkRefresh">Refresh</button>
+        </div>
+      </header>
+      <div class="pad" id="tkBody"></div>
+    </section>
+
+    <!-- ---------- MISC ---------- -->
+    <section class="view" id="view-misc">
+      <header class="view-head">
+        <div>
+          <h1>Misc</h1>
+          <p class="sub">Loose scripts, scratch work, and workbench utilities.</p>
+        </div>
+      </header>
+      <div class="pad" id="miscBody"></div>
+    </section>
+
+  </main>
+
+  <!-- ================= LOG DOCK ================= -->
+  <div id="logDock" class="collapsed">
+    <div class="log-head" id="logHead">
+      <button class="log-toggle" id="logToggle" title="Show / hide output">
+        <svg viewBox="0 0 20 20"><path d="m5 8 5 5 5-5"/></svg>
+      </button>
+      <strong>Output</strong>
+      <span class="job-pill" id="jobPill">idle</span>
+      <div class="log-spacer"></div>
+      <select id="jobSelect" title="Recent runs"></select>
+      <button class="btn ghost sm" id="jobCancel" disabled>Stop</button>
+      <button class="btn ghost sm" id="logCopy">Copy</button>
+      <button class="btn ghost sm" id="logClear">Clear</button>
+    </div>
+    <pre class="log-body" id="logBody"></pre>
+  </div>
+
+</div>
+
+<div id="bootError" class="boot-error hidden"></div>
+<div id="toasts"></div>
+
+<!-- modal: paste a path -->
+<div class="modal-backdrop hidden" id="pathModal">
+  <div class="modal">
+    <h3 id="pathModalTitle">Paste a path</h3>
+    <input type="text" id="pathModalInput" placeholder="C:\data\Animal\2023-08-01_12-11-26" spellcheck="false">
+    <div class="modal-actions">
+      <button class="btn ghost" id="pathModalCancel">Cancel</button>
+      <button class="btn" id="pathModalOk">Use it</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal host: event import wizard, figure builder, preset editors -->
+<div class="modal-backdrop hidden" id="bigModal">
+  <div class="modal big" id="bigModalBox"></div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/features.js"></script>
+<script src="js/activity.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/explorer.js"></script>
+<script src="js/xplore.js"></script>
+<script src="js/eventimport.js"></script>
+<script src="js/figure.js"></script>
+<script src="js/figrebuild.js"></script>
+<script src="js/sessions.js"></script>
+<script src="js/logs.js"></script>
+<script src="js/results.js"></script>
+<script src="js/eventbank.js"></script>
+<script src="js/storyboard.js"></script>
+<script src="js/toolkit.js"></script>
+<script src="js/misc.js"></script>
+<script>BARRY.init();</script>
+</body>
+</html>
