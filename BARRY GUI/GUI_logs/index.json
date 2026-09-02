@@ -1,10 +1,10 @@
 {
   "counts": {
     "errors": 11,
-    "runs": 3,
-    "sessions": 6
+    "runs": 5,
+    "sessions": 7
   },
-  "generated": "2026-09-02T16:51:33-04:00",
+  "generated": "2026-09-02T17:06:23-04:00",
   "recent_runs": [
     {
       "at": "2026-09-02T16:51:33-04:00",
@@ -18,6 +18,20 @@
       "id": "5ea1a0f3211a",
       "script": "Xplorefinder figure",
       "session": "PTEN m7 s2 2023-08-22",
+      "status": "done"
+    },
+    {
+      "at": "2026-09-02T17:01:16-04:00",
+      "id": "4f2ee7cdc47c",
+      "script": "Xplorefinder figure",
+      "session": "m34 s5 2024-06-10",
+      "status": "done"
+    },
+    {
+      "at": "2026-09-02T17:06:23-04:00",
+      "id": "267cf7f4c5a8",
+      "script": "Xplorefinder figure",
+      "session": "m34 s5 2024-06-10",
       "status": "done"
     },
     {
@@ -103,6 +117,20 @@
       "runs": 0,
       "session": 4,
       "start": "2024-07-23T15:31:49"
+    },
+    {
+      "bad_channels": [],
+      "group": null,
+      "key": "m034_s005_2024-06-10_14-45-34",
+      "label": "m34 s5 2024-06-10",
+      "loose_key": "m034_s005",
+      "mouse": 34,
+      "paths": [
+        "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34"
+      ],
+      "runs": 2,
+      "session": 5,
+      "start": "2024-06-10T14:45:34"
     },
     {
       "bad_channels": [

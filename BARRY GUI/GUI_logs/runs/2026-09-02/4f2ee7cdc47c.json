@@ -1,0 +1,193 @@
+{
+  "format": "png",
+  "id": "4f2ee7cdc47c",
+  "kind": "figure",
+  "label": "m34 s5 2024-06-10",
+  "output": {
+    "github": null,
+    "path": "C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Results\\m34 s5 2024-06-10\\m34 s5 2024-06-10_20260902_170116.png",
+    "rel": "m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170116.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "scalogram",
+      "row": 0,
+      "title": "Scalogram"
+    },
+    {
+      "col": 0,
+      "panel": "voltage",
+      "row": 1,
+      "title": "Voltage raster"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [],
+    "cmap": "jet",
+    "cols": 1,
+    "highpass": 5,
+    "lowpass": 100,
+    "notch": 60,
+    "page": "letter_landscape",
+    "rows": 2,
+    "t0": 70,
+    "t1": 80
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-02T17:01:16-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "recipe": {
+    "bad_channels": [],
+    "channels": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "cmap": "jet",
+    "cols": 1,
+    "dpi": 300,
+    "event_count": 2,
+    "events": [
+      {
+        "event_id": 19,
+        "label": "Starting Recording",
+        "source": "nev",
+        "start": -0.000762,
+        "ttl": 0
+      },
+      {
+        "event_id": 19,
+        "label": "Stopping Recording",
+        "source": "nev",
+        "start": 1295.954771,
+        "ttl": 0
+      }
+    ],
+    "events_truncated": false,
+    "gain": 1,
+    "height_in": 8.5,
+    "highpass": 5,
+    "identity": {
+      "confidence": "high",
+      "group": null,
+      "key": "m034_s005_2024-06-10_14-45-34",
+      "label": "m34 s5 2024-06-10",
+      "loose_key": "m034_s005",
+      "mouse": 34,
+      "mouse_folder": "Data",
+      "mouse_source": "session_folder:m<n>s<n>",
+      "path": "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34",
+      "rec_folder": "2024-06-10_14-45-34",
+      "session": 5,
+      "session_folder": "m34s5jun10",
+      "start": "2024-06-10T14:45:34",
+      "time_source": "header"
+    },
+    "lowpass": 100,
+    "metadata": {
+      "author": "barry",
+      "date": "9/2/2026, 5:00:22 PM",
+      "machine": "BarryLab",
+      "notes": "",
+      "source_path": "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34"
+    },
+    "notch": 60,
+    "page": "letter_landscape",
+    "panels": [
+      {
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 1,
+        "panel": "scalogram",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "s1",
+        "title": "Scalogram"
+      },
+      {
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 1,
+        "panel": "voltage",
+        "row": 1,
+        "rowspan": 1,
+        "session_id": "s1",
+        "title": "Voltage raster"
+      }
+    ],
+    "rows": 2,
+    "schema": 1,
+    "session_label": "m34 s5 2024-06-10",
+    "sessions": {
+      "default": {
+        "even_only": true,
+        "invert": true,
+        "path": "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34"
+      },
+      "s1": {
+        "even_only": true,
+        "invert": true,
+        "path": "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34"
+      }
+    },
+    "show_metadata": true,
+    "spacing_um": 50,
+    "subtitle": "",
+    "t0": 70,
+    "t1": 80,
+    "title": "m34 s5 2024-06-10",
+    "width_in": 11
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {
+    "confidence": "high",
+    "group": null,
+    "key": "m034_s005_2024-06-10_14-45-34",
+    "label": "m34 s5 2024-06-10",
+    "loose_key": "m034_s005",
+    "mouse": 34,
+    "mouse_folder": "Data",
+    "mouse_source": "session_folder:m<n>s<n>",
+    "path": "E:\\Data\\m34s5jun10\\2024-06-10_14-45-34",
+    "rec_folder": "2024-06-10_14-45-34",
+    "session": 5,
+    "session_folder": "m34s5jun10",
+    "start": "2024-06-10T14:45:34",
+    "time_source": "header"
+  },
+  "status": "done"
+}
