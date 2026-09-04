@@ -2020,49 +2020,171 @@ def api_curation_bank(gid, kind):
     if not sess:
         return jsonify({"ok": False, "error": "No such recording."}), 404
 
-    groups = CURATE.bank_entries(rec, only_specified=not body.get("include_left"))
-    if not groups:
+    bundle = CURATE.bank_one(rec, only_specified=not body.get("include_left"))
+    if not bundle["n"]:
         return jsonify({"ok": False,
                         "error": "Nothing has been curated yet, so there is "
                                  "nothing to bank."}), 400
 
-    made = []
-    for g in groups:
-        try:
-            entry = BANK.add({
-                "project": sess.get("project") or sess.get("group"),
-                "mouse": sess.get("mouse"),
-                "session": sess.get("session"),
-                "session_key": sess.get("key"),
-                "session_loose_key": sess.get("loose_key"),
-                "session_label": sess.get("label"),
-                "recording_start": sess.get("start"),
-                "name": rec.get("name") + " — " + g["label_name"],
-                "type": kind,
-                "events": g["events"],
-                "pipeline": (body.get("pipeline")
-                             or "BARRY curation (" + kind + ")"),
-                "added_by": body.get("added_by"),
-                # What the bank needs to tell a guess from a decision.
-                "curated": True,
-                "curation_label": g["label"],
-                "gid": gid,
-            })
-            made.append({"id": entry["id"], "label": g["label"],
-                         "n": g["n"]})
-        except eventbank.BankError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 400
+    # One entry for the whole set. `prior` is everything this set has ever
+    # banked -- including the per-category entries it used to be split into,
+    # which get folded into this one and then removed, because every event
+    # in them came from this set and is being written again right now.
+    prior = BANK.curated_entries(gid, kind)
+    whole = [p for p in prior if p.get("curation_label") == "*"]
+    keep = whole[0]["id"] if whole else None
+    removed = []
+    try:
+        entry = BANK.add({
+            "id": keep,
+            "project": sess.get("project") or sess.get("group"),
+            "mouse": sess.get("mouse"),
+            "session": sess.get("session"),
+            "session_key": sess.get("key"),
+            "session_loose_key": sess.get("loose_key"),
+            "session_label": sess.get("label"),
+            "recording_start": sess.get("start"),
+            "name": rec.get("name"),
+            "type": kind,
+            "events": bundle["events"],
+            "by_label": bundle["by_label"],
+            "label_names": bundle["label_names"],
+            "pipeline": (body.get("pipeline")
+                         or "BARRY curation (" + kind + ")"),
+            "added_by": body.get("added_by"),
+            "version_note": body.get("note"),
+            # What the bank needs to tell a guess from a decision.
+            "curated": True,
+            # "*" means the whole set rather than one of its categories.
+            "curation_label": "*",
+            "gid": gid,
+        })
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    made = [{"id": entry["id"], "n": bundle["n"],
+             "by_label": bundle["by_label"],
+             "label_names": bundle["label_names"],
+             "version": entry.get("version"),
+             "new_version": bool(entry.get("new_version")),
+             "replaced": bool(entry.get("replaced"))}]
+
+    for old_entry in prior:
+        if old_entry["id"] == entry["id"]:
+            continue
+        if old_entry.get("curation_label") == "*":
+            continue
+        if BANK.delete(old_entry["id"]):
+            removed.append({"id": old_entry["id"],
+                            "name": old_entry.get("name"),
+                            "n": old_entry.get("n"),
+                            "why": "folded into one entry for the set"})
 
     STORE.record_activity([{
         "action": "curation.bank",
         "detail": {"gid": gid, "kind": kind,
-                   "entries": len(made),
-                   "n": sum(m["n"] for m in made)},
+                   "entry": entry["id"],
+                   "version": entry.get("version"),
+                   "note": (body.get("note") or "")[:200],
+                   "by_label": bundle["by_label"],
+                   "folded": len(removed),
+                   "n": bundle["n"]},
         "session": {"key": sess.get("key"), "label": sess.get("label")},
     }])
     mirror_bank_soon()
 
-    return jsonify({"ok": True, "entries": made})
+    return jsonify({"ok": True, "entries": made, "removed": removed})
+
+
+def _slug_for_file(text):
+    """Something safe to put in a download's filename."""
+    keep = [c if (c.isalnum() or c in "-_") else "-"
+            for c in str(text or "").strip()]
+    out = "".join(keep).strip("-")
+    while "--" in out:
+        out = out.replace("--", "-")
+    return (out[:48] or "barry").lower()
+
+
+@app.route("/api/curation/handoff")
+def api_curation_handoff():
+    """Save decisions to one file that can travel by any means at all.
+
+    Because the two automatic paths both have a way of not happening: git
+    needs somebody to commit, and the cloud sync stops itself when the
+    machine's clock is off. Somebody who has just been through four hundred
+    candidates should not have to find out afterwards that neither ran.
+    """
+    gid = (request.args.get("gid") or "").strip()
+    kind = (request.args.get("kind") or "").strip()
+    if gid and kind:
+        rec = CURATE.get(gid, kind)
+        if not rec:
+            return jsonify({"ok": False, "error": "No such curation set."}), 404
+        sets = [rec]
+        stem = gid + "-" + kind
+    else:
+        sets = CURATE.with_decisions()
+        if not sets:
+            return jsonify({
+                "ok": False,
+                "error": "Nothing has been curated on this machine yet, so "
+                         "there is nothing to hand off."}), 400
+        stem = "all"
+
+    bundle = CURATE.handoff(sets)
+    who = (bundle.get("from") or {}).get("who") or "someone"
+    n = sum(len(s["events"]) for s in bundle["sets"])
+    decided = sum(1 for s in bundle["sets"] for e in s["events"]
+                  if e.get("label"))
+    STORE.record_activity([{
+        "action": "curation.handoff",
+        "detail": {"sets": len(bundle["sets"]), "events": n,
+                   "decided": decided, "who": who},
+    }])
+    name = "barry-curation-%s-%s.json" % (
+        _slug_for_file(who), _slug_for_file(stem))
+    body = json.dumps(bundle, indent=1)
+    return app.response_class(
+        body, mimetype="application/json",
+        headers={"Content-Disposition": 'attachment; filename="%s"' % name})
+
+
+@app.route("/api/curation/absorb", methods=["POST"])
+def api_curation_absorb():
+    """Bring another machine's decisions in, saying exactly what happened."""
+    body = request.get_json(force=True, silent=True) or {}
+    bundle = body.get("bundle")
+    if bundle is None and body.get("path"):
+        try:
+            with open(body["path"], "r", encoding="utf-8") as fh:
+                bundle = json.load(fh)
+        except (OSError, ValueError) as exc:
+            return jsonify({"ok": False,
+                            "error": "Could not read that file: %s" % exc}), 400
+    if bundle is None:
+        # A file dropped straight in, rather than wrapped.
+        bundle = body if "sets" in body else None
+    if bundle is None:
+        return jsonify({"ok": False,
+                        "error": "Send the handoff file's contents as "
+                                 "`bundle`, or a `path` to it."}), 400
+    try:
+        report = CURATE.absorb(bundle, prefer=body.get("prefer"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    STORE.record_activity([{
+        "action": "curation.absorb",
+        "detail": {"from": report.get("from"),
+                   "sets": len(report["sets"]),
+                   "added": sum(s.get("added", 0) for s in report["sets"]),
+                   "taken": sum(s.get("taken", 0) for s in report["sets"]),
+                   "agreed": sum(s.get("agreed", 0) for s in report["sets"]),
+                   "disagreed": sum(len(s.get("disagreed") or [])
+                                    for s in report["sets"])},
+    }])
+    return jsonify({"ok": True, "report": report})
 
 
 @app.route("/api/curation/<gid>/<kind>/export")

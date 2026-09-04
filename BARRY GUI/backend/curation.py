@@ -30,8 +30,10 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import time
 import uuid
+from datetime import datetime, timezone
 
 from . import shards
 
@@ -113,6 +115,69 @@ def vocabulary(kind):
 
 def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def _eid():
+    return "e" + uuid.uuid4().hex[:10]
+
+
+def _when(stamp):
+    """A stamp as something comparable, whatever timezone wrote it.
+
+    These are local times with an offset -- "2026-09-04T13:51:40-0400" -- so
+    comparing them as strings gets the wrong answer between two machines in
+    different timezones, and "the newer decision wins" would quietly mean
+    "the one further east wins". Parsed, with anything unreadable sorting
+    oldest so a decision with a real stamp always beats one without.
+    """
+    if not stamp:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        got = datetime.fromisoformat(str(stamp))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if got.tzinfo is None:
+        got = got.replace(tzinfo=timezone.utc)
+    return got
+
+
+def _own_review(ev):
+    """Make sure the decision already on a candidate is one of its reviews.
+
+    Decisions made before candidates kept a review list -- and any that
+    arrived through an import -- carry only `label`, `by` and `at`. Without
+    backfilling that as a review, absorbing somebody else's call leaves the
+    candidate looking like she is the only person who ever saw it, and "two
+    people agreed" can never be true of anything.
+    """
+    lab = ev.get("label")
+    if not lab:
+        return
+    who = (ev.get("by") or "").strip() or "unknown"
+    for r in (ev.get("reviews") or []):
+        if (r.get("by") or "") == who:
+            return
+    ev["reviews"] = sorted(
+        (ev.get("reviews") or []) + [
+            {"by": who, "label": lab, "at": ev.get("at") or _now()}],
+        key=lambda r: _when(r.get("at")))
+
+
+def _remember_review(ev, who, label, at):
+    """Note that somebody said what this candidate is.
+
+    Several people looking the same candidate over is the normal case -- one
+    person goes through a session and another spot-checks it -- and "two
+    people agreed" is worth more than one person's call. One row per person,
+    holding their latest call, so a reviewer changing their own mind does not
+    look like two reviewers.
+    """
+    who = (who or "").strip() or "unknown"
+    rows = [r for r in (ev.get("reviews") or [])
+            if (r.get("by") or "") != who]
+    rows.append({"by": who, "label": label, "at": at or _now()})
+    rows.sort(key=lambda r: _when(r.get("at")))
+    ev["reviews"] = rows
 
 
 class Curation:
@@ -277,6 +342,204 @@ class Curation:
         }
         return self._write(rec), len(clean)
 
+    HANDOFF_SCHEMA = 1
+
+    def handoff(self, sets):
+        """One file carrying everything needed to move decisions.
+
+        The whole set rather than only the decided candidates, because the
+        candidates nobody has reached yet are what tells the other side how
+        much is left -- and because a set that arrives missing half its
+        candidates looks finished when it is not.
+        """
+        prov = self.store.provenance() if self.store else {}
+        out = []
+        for rec in sets:
+            out.append({
+                "gid": rec.get("gid"),
+                "kind": rec.get("kind"),
+                "name": rec.get("name"),
+                "session_label": rec.get("session_label"),
+                "labels": rec.get("labels"),
+                "source": rec.get("source"),
+                "created": rec.get("created"),
+                "updated": rec.get("updated"),
+                "events": [
+                    {k: v for k, v in e.items() if not k.startswith("_")}
+                    for e in (rec.get("events") or [])
+                ],
+            })
+        return {
+            "schema": self.HANDOFF_SCHEMA,
+            "what": "BARRY curation handoff",
+            "from": {
+                "who": prov.get("user"),
+                "machine": prov.get("machine") or platform.node(),
+                "at": _now(),
+            },
+            "sets": out,
+        }
+
+    def absorb(self, bundle, prefer=None):
+        """Take another machine's decisions into the local sets.
+
+        `prefer` of "theirs" or "mine" settles a straight disagreement;
+        the default settles it by which decision was made later, which is
+        what you want when the two machines have simply been worked on at
+        different times.
+        """
+        if not isinstance(bundle, dict) or "sets" not in bundle:
+            raise CurationError(
+                "That is not a curation handoff file -- it has no `sets`. "
+                "Use the file saved by Hand off, not an export CSV.")
+        schema = bundle.get("schema")
+        if schema and int(schema) > self.HANDOFF_SCHEMA:
+            raise CurationError(
+                "That handoff was written by a newer BARRY (schema %s, this "
+                "one reads %s). Update this copy first rather than importing "
+                "it half-understood." % (schema, self.HANDOFF_SCHEMA))
+
+        who_from = (bundle.get("from") or {}).get("who") or "another machine"
+        report = {"from": bundle.get("from") or {}, "sets": []}
+        for incoming in bundle.get("sets") or []:
+            report["sets"].append(
+                self._absorb_one(incoming, who_from, prefer))
+        return report
+
+    def _absorb_one(self, incoming, who_from, prefer):
+        gid = incoming.get("gid")
+        kind = incoming.get("kind")
+        # Four different things happen to a decision and rolling them into
+        # one count is how "8 taken" comes out of 1 blank filled, 5
+        # disagreements and 2 new candidates.
+        line = {"gid": gid, "kind": kind,
+                "name": incoming.get("name"),
+                "session_label": incoming.get("session_label"),
+                "created_set": False,
+                "added": 0,        # candidates we did not have
+                "taken": 0,        # ours was undecided, so hers now stands
+                "agreed": 0,       # we had both said the same thing
+                "overruled": 0,    # we disagreed and hers is newer
+                "kept": 0,         # we disagreed and ours stands
+                "disagreed": [], "unchanged": 0}
+        if not gid or kind not in KINDS:
+            line["error"] = "That set says it is a %r set, which this BARRY " \
+                            "does not know about." % (kind,)
+            return line
+
+        theirs = incoming.get("events") or []
+        rec = self._read(gid, kind)
+        if not rec:
+            # Nothing here to merge into: take the set wholesale. Their
+            # decisions come with it, which is the point.
+            rec = {
+                "schema": SCHEMA, "gid": gid, "kind": kind,
+                "name": incoming.get("name")
+                        or (KINDS[kind]["name"] + " candidates"),
+                "session_label": incoming.get("session_label"),
+                "labels": incoming.get("labels") or vocabulary(kind),
+                "source": incoming.get("source") or {},
+                "events": sorted(
+                    [dict(e) for e in theirs],
+                    key=lambda e: e.get("start") or 0),
+                "created": incoming.get("created")
+                           or (self.store.provenance() if self.store
+                               else {"at": _now()}),
+                "imports": [],
+            }
+            for e in rec["events"]:
+                _own_review(e)
+            line["created_set"] = True
+            line["added"] = len(rec["events"])
+            line["taken"] = sum(1 for e in rec["events"] if e.get("label"))
+        else:
+            mine = rec.get("events") or []
+            by_id = {e.get("id"): e for e in mine if e.get("id")}
+            # Falling back to the time, because a set built independently on
+            # the other machine has its own ids for the same candidates.
+            # Four decimals is a tenth of a millisecond -- tight enough that
+            # two real candidates are never confused, loose enough to
+            # survive a float round trip through JSON.
+            by_t = {}
+            for e in mine:
+                try:
+                    by_t.setdefault(round(float(e["start"]), 4), e)
+                except (TypeError, ValueError, KeyError):
+                    continue
+
+            for ev in theirs:
+                hit = by_id.get(ev.get("id"))
+                if hit is None:
+                    try:
+                        hit = by_t.get(round(float(ev["start"]), 4))
+                    except (TypeError, ValueError, KeyError):
+                        hit = None
+                if hit is None:
+                    fresh = dict(ev)
+                    fresh.setdefault("id", _eid())
+                    _own_review(fresh)
+                    mine.append(fresh)
+                    by_id[fresh["id"]] = fresh
+                    line["added"] += 1
+                    continue
+
+                their_label = ev.get("label")
+                if their_label is None:
+                    line["unchanged"] += 1
+                    continue
+                # Ours first, so a candidate two people have looked at can
+                # actually say both of their names.
+                _own_review(hit)
+                _remember_review(hit, ev.get("by") or who_from, their_label,
+                                 ev.get("at"))
+                if not hit.get("label"):
+                    hit["label"] = their_label
+                    hit["by"] = ev.get("by") or who_from
+                    hit["at"] = ev.get("at") or _now()
+                    line["taken"] += 1
+                elif hit["label"] == their_label:
+                    line["agreed"] += 1
+                else:
+                    take = (prefer == "theirs" or
+                            (prefer != "mine"
+                             and _when(ev.get("at")) > _when(hit.get("at"))))
+                    line["disagreed"].append({
+                        "id": hit.get("id"), "start": hit.get("start"),
+                        "mine": hit["label"], "mine_by": hit.get("by"),
+                        "theirs": their_label,
+                        "theirs_by": ev.get("by") or who_from,
+                        "took": "theirs" if take else "mine",
+                    })
+                    if take:
+                        hit["label"] = their_label
+                        hit["by"] = ev.get("by") or who_from
+                        hit["at"] = ev.get("at") or _now()
+                        line["overruled"] += 1
+                    else:
+                        line["kept"] += 1
+
+            rec["events"] = sorted(mine, key=lambda e: e.get("start") or 0)
+
+        rec.setdefault("imports", []).append({
+            "at": _now(), "n": line["added"], "skipped": 0,
+            "source": {"kind": "handoff", "from": who_from,
+                       "taken": line["taken"], "agreed": line["agreed"],
+                       "overruled": line["overruled"],
+                       "kept": line["kept"],
+                       "disagreed": len(line["disagreed"])},
+        })
+        self._write(rec)
+        line["progress"] = self.progress(rec)
+        return line
+
+    def with_decisions(self):
+        """Every set anybody has actually decided something in."""
+        out = []
+        for rec in self.all():
+            if any(e.get("label") for e in (rec.get("events") or [])):
+                out.append(rec)
+        return out
+
     def _label_ids(self, kind):
         return {l["id"] for l in KINDS[kind]["labels"]}
 
@@ -303,6 +566,9 @@ class Curation:
         hit["label"] = label
         if note is not None:
             hit["note"] = note
+        if label is not None:
+            _own_review(hit)
+            _remember_review(hit, who, label, _now())
         if label is None:
             hit.pop("by", None)
             hit.pop("at", None)
@@ -352,12 +618,13 @@ class Curation:
     # Out
     # ------------------------------------------------------------------
     def bank_entries(self, rec, only_specified=True):
-        """One Event Bank entry per category.
+        """The set grouped by category.
 
-        Split by category rather than banked as one lump: the reason to curate
-        was to separate them, and a bank entry called "candidates" with a
-        label field buried in each event is not separated in any way anyone
-        can filter on.
+        No longer how banking works -- `bank_one` writes one entry for the
+        set and every event carries its label, because four entries per
+        session whose names differed only in the last word could not show a
+        decision moving between two of them. Kept for the per-category CSV,
+        where a group per file is what is wanted.
         """
         by = {}
         for e in rec.get("events") or []:
@@ -381,6 +648,46 @@ class Curation:
             })
         out.sort(key=lambda x: -x["n"])
         return out
+
+    def bank_one(self, rec, only_specified=True):
+        """The whole set as one bankable list, every event carrying its label.
+
+        Not split by category. A category is a property of an event, and
+        splitting on it produced four entries per session with near-identical
+        names -- while making it impossible to see a decision move from one
+        category to another, which is what re-curating a set mostly does.
+        """
+        names = {l["id"]: l["name"] for l in (rec.get("labels") or [])}
+        out = []
+        counts = {}
+        for e in rec.get("events") or []:
+            lab = e.get("label")
+            if lab is None and only_specified:
+                continue
+            item = {"start": e["start"]}
+            if e.get("end") is not None:
+                item["end"] = e["end"]
+            if e.get("channel") is not None:
+                item["channel"] = e["channel"]
+            item["label"] = names.get(lab, lab) if lab else "unspecified"
+            item["label_id"] = lab or "unspecified"
+            if e.get("by"):
+                item["by"] = e["by"]
+            # Who has looked this one over, so a spot-check that agreed is
+            # not indistinguishable from nobody having checked.
+            revs = e.get("reviews") or []
+            if len(revs) > 1:
+                item["reviewers"] = [r.get("by") for r in revs if r.get("by")]
+            out.append(item)
+            key = lab or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+        out.sort(key=lambda x: x["start"])
+        return {
+            "n": len(out),
+            "events": out,
+            "by_label": counts,
+            "label_names": names,
+        }
 
     def rows(self, rec):
         """Flat rows, for a CSV."""

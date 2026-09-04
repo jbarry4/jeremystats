@@ -555,6 +555,50 @@ function loader(label, sub) {
 }
 
 /* ---------- toasts ---------- */
+/* Re-render without throwing the typist out of the box.
+
+   A panel that rebuilds itself on input destroys the input being typed
+   into. The replacement looks identical and carries the same value, but it
+   is a different element and it does not have focus, so the next keystroke
+   is lost -- which from the outside is "it kicks me out of the text box".
+
+   The honest fix is for a panel to repaint only its list. Where that has
+   not been done, this finds the input's replacement by the things that
+   identify it and hands focus and the caret back. Cheap, and it also
+   covers whatever search box gets added next. */
+function keepFocus(render) {
+  const was = document.activeElement;
+  const tag = was && was.tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA') return render();
+  const mark = {
+    tag: tag.toLowerCase(), id: was.id || '',
+    type: was.type || '', ph: was.placeholder || '',
+    cls: was.className || '', value: was.value,
+    start: was.selectionStart, end: was.selectionEnd,
+  };
+  const out = render();
+  let now = mark.id ? document.getElementById(mark.id) : null;
+  if (!now) {
+    for (const n of document.querySelectorAll(mark.tag)) {
+      if ((n.placeholder || '') === mark.ph
+          && (n.className || '') === mark.cls
+          && (n.type || '') === mark.type) { now = n; break; }
+    }
+  }
+  if (now && now !== was) {
+    try {
+      now.focus({ preventScroll: true });
+      // Only if the text is still what it was -- putting a stale caret
+      // position into different text is worse than leaving it at the end.
+      if (now.value === mark.value && mark.start != null) {
+        now.setSelectionRange(mark.start, mark.end);
+      }
+    } catch (e) { /* a type that has no selection; focus is the part that
+                     matters */ }
+  }
+  return out;
+}
+
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);

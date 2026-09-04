@@ -182,6 +182,11 @@ class EventBank:
         if not who:
             raise BankError("Say who is adding these events.")
 
+        # Writing over an entry that already exists, rather than beside it.
+        # The id decides the filename, so passing one back replaces that
+        # entry in place and everything pointing at it keeps pointing at it.
+        prior = self.get(entry["id"]) if entry.get("id") else None
+
         etype = (entry.get("type") or "").strip() or "other"
         clean = []
         for ev in events:
@@ -232,7 +237,10 @@ class EventBank:
                 "parameters": entry.get("parameters") or {},
                 "detector": entry.get("detector"),
             },
-            "added": {
+            # Who first filed this, not who last touched it -- an entry that
+            # forgets where it came from every time it is refreshed is not
+            # provenance. The refreshes go in `history` below.
+            "added": (prior.get("added") if prior else None) or {
                 "by": who,
                 "at": _now(),
                 "machine": entry.get("machine") or platform.node(),
@@ -249,12 +257,119 @@ class EventBank:
             "gid": entry.get("gid"),
         }
 
+        # Versions. Each bank of the same entry is a numbered version
+        # holding what was in it and a note, so "how has the labelling
+        # shifted" is answerable from the record rather than from memory.
+        counts = entry.get("by_label")
+        if counts is None:
+            counts = {}
+            for ev in clean:
+                key = ev.get("label") or "unspecified"
+                counts[key] = counts.get(key, 0) + 1
+        rec["by_label"] = counts
+        # Carried so the history can be read without the curation set --
+        # a bank entry has to make sense on its own.
+        rec["label_names"] = (entry.get("label_names")
+                              or (prior.get("label_names") if prior else None)
+                              or {})
+        versions = list((prior.get("versions") if prior else None) or [])
+        # What actually moved, candidate by candidate.
+        #
+        # The counts alone cannot see it: two calls going one way and two
+        # coming back leaves every total identical, and the history then
+        # reads "nothing moved" about a pass in which four decisions
+        # changed. So the comparison is per candidate, matched on time, and
+        # what it reports is which category each one came from and went to.
+        moves, changed, gained, lost = {}, 0, 0, 0
+        if prior:
+            was = {}
+            for ev in prior.get("events") or []:
+                try:
+                    was[round(float(ev["start"]), 4)] = ev.get("label")
+                except (TypeError, ValueError, KeyError):
+                    continue
+            for ev in clean:
+                try:
+                    key = round(float(ev["start"]), 4)
+                except (TypeError, ValueError):
+                    continue
+                if key not in was:
+                    gained += 1
+                    continue
+                before, after = was.pop(key), ev.get("label")
+                if before != after:
+                    changed += 1
+                    step = "%s → %s" % (before or "undecided",
+                                             after or "undecided")
+                    moves[step] = moves.get(step, 0) + 1
+            lost = len(was)
+
+        moved = ((not prior) or changed or gained or lost
+                 or prior.get("n") != rec["n"]
+                 or (prior.get("by_label") or {}) != counts)
+        if moved:
+            versions.append({
+                "v": len(versions) + 1,
+                "at": _now(),
+                "by": who,
+                "note": (entry.get("version_note") or "").strip(),
+                "n": rec["n"],
+                "by_label": dict(counts),
+                "changed": changed,
+                "gained": gained,
+                "lost": lost,
+                "moves": moves,
+                "machine": entry.get("machine") or platform.node(),
+            })
+        elif versions:
+            # Nothing changed, so no new version -- but say it was checked,
+            # because "banked again and it was identical" is information.
+            versions[-1].setdefault("confirmed", [])
+            versions[-1]["confirmed"].append({"at": _now(), "by": who})
+        rec["versions"] = versions
+        rec["version"] = versions[-1]["v"] if versions else 1
+
+        if prior:
+            rec["history"] = list(prior.get("history") or [])
+            if prior.get("n") != rec["n"] or prior.get("events") != clean:
+                rec["history"].append({
+                    "at": _now(), "by": who, "changed": ["events"],
+                    "was_n": prior.get("n"), "now_n": rec["n"],
+                    "why": "re-banked from the curation set",
+                })
+
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
             self._cache = None
         rec["path"] = self.book.mine(base)
+        rec["replaced"] = bool(prior)
+        rec["new_version"] = bool(moved) and bool(prior)
         return rec
+
+    def curated_entries(self, gid, kind=None, label=None):
+        """The entries a curation set has already written, newest first.
+
+        Identity is the triple the curation route stamps on everything it
+        banks: which recording, which kind of set, which category. Entries
+        that came from anywhere else have no `curation_label` and are never
+        matched, so re-banking a set cannot touch an imported list that
+        happens to sit beside it.
+        """
+        out = []
+        for rec in self.all():
+            if rec.get("gid") != gid:
+                continue
+            if rec.get("curation_label") is None:
+                continue
+            if kind is not None and (rec.get("type") or "") != kind:
+                continue
+            if label is not None and rec.get("curation_label") != label:
+                continue
+            out.append(rec)
+        out.sort(key=lambda r: (r.get("added") or {}).get("at") or "",
+                 reverse=True)
+        return out
 
     def _base_of(self, rec):
         """The filename stem. The entry id is last so _base_for_id can find

@@ -121,6 +121,8 @@ BARRY.strata = (function () {
     if (bar) bar.remove();
     const body = $('#xfBody');
     if (body) body.classList.remove('strata-on');
+    document.documentElement.style.removeProperty('--rail-w');
+    document.documentElement.style.removeProperty('--bottom-bar');
     window.removeEventListener('resize', alignRail);
     document.removeEventListener('keydown', keys, true);
     if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
@@ -164,6 +166,14 @@ BARRY.strata = (function () {
   /* ==================================================================
      The rail
      ================================================================== */
+  /* Held out here rather than inside rail(), because painting a channel
+     re-renders the rail -- so a flag scoped to the render was thrown away by
+     the first stroke of the drag it was meant to be tracking, and the
+     mouseup that cleared it was clearing a closure nobody was reading. One
+     flag, one listener, both outliving the rows. */
+  let painting = false;
+  window.addEventListener('mouseup', () => { painting = false; });
+
   const channels = () => (sess && sess.info.channels) || [];
   const labelOf = (num) => (sheet && sheet.labels[String(num)]) || null;
   const regionOf = (id) => regions.find((r) => r.id === id) || null;
@@ -185,8 +195,14 @@ BARRY.strata = (function () {
     }
     b.innerHTML = '';
 
+    /* Two rows. Everything but the brushes on the first, so thirteen layers
+       wrapping cannot push Leave off the bottom of the window -- which is
+       what it was doing on anything narrower than about 1200px. */
+    const top = el('div', { class: 'strata-bar-top' });
+    b.appendChild(top);
+
     const pr = sheet.progress || {};
-    b.appendChild(el('div', { class: 'cur-where' }, [
+    top.appendChild(el('div', { class: 'cur-where' }, [
       el('strong', { text: 'StrataScope' }),
       el('span', { class: 'cur-sub',
                    text: sheet.session_label || gid }),
@@ -194,7 +210,7 @@ BARRY.strata = (function () {
                    text: pr.labelled + ' / ' + pr.total + ' channels' }),
     ]));
 
-    b.appendChild(el('div', { class: 'cur-prog' }, [
+    top.appendChild(el('div', { class: 'cur-prog' }, [
       el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
       el('span', { text: (pr.left || 0) + ' left' }),
     ]));
@@ -222,7 +238,7 @@ BARRY.strata = (function () {
     });
     b.appendChild(brushes);
 
-    b.appendChild(el('div', { class: 'cur-nav' }, [
+    top.appendChild(el('div', { class: 'cur-nav' }, [
       el('button', {
         class: 'mini', text: '⤓ Fill down',
         title: 'Give every unlabelled channel the label of the one above it',
@@ -262,13 +278,22 @@ BARRY.strata = (function () {
     }
     r.innerHTML = '';
 
+    /* Which channel the cursor is on, said out loud. At 64 channels three
+       quarters of the rows have no number of their own, and "which one am I
+       about to paint" is the question the rail has to be able to answer. */
     r.appendChild(el('div', { class: 'strata-head' }, [
       el('span', { text: 'Layer' }),
+      el('span', { class: 'strata-at', id: 'strataAt', text: '' }),
       el('span', { class: 'strata-n', text: channels().length + ' ch' }),
     ]));
+    const idle = brush ? 'drag to paint' : 'pick a layer below';
+    const readout = (t) => {
+      const at = $('#strataAt');
+      if (at) at.textContent = t || idle;
+    };
+    readout(null);
 
     const list = el('div', { class: 'strata-rows' });
-    let painting = false;
     channels().forEach((c, i) => {
       const id = labelOf(c.number);
       const reg = regionOf(id);
@@ -280,6 +305,7 @@ BARRY.strata = (function () {
         title: c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled'),
         onmouseenter: () => {
           hover = i;
+          readout(c.label + (reg ? '  \u2014  ' + reg.name : ''));
           if (painting && brush) paint(c.number, brush);
         },
         onmousedown: (e) => {
@@ -304,10 +330,47 @@ BARRY.strata = (function () {
       ]);
       list.appendChild(row);
     });
-    window.addEventListener('mouseup', () => { painting = false; },
-                            { once: true });
+    list.addEventListener('mouseleave', () => readout(null));
+
+    /* The runs. Appended last on purpose: the packed rules thin the numbers
+       with :nth-child, so anything inserted before the rows would shift
+       which ones show. */
+    list.appendChild(runLabels());
     r.appendChild(list);
     alignRail();
+  }
+
+  /* One label per contiguous stretch of the same layer.
+
+     Positioned in lane units so alignRail's --lane keeps it honest without
+     this having to know any pixels. A run too short for a word simply shows
+     nothing -- the colour band is still there saying where the boundary
+     is. */
+  function runLabels() {
+    const box = el('div', { class: 'strata-spans' });
+    const chans = channels();
+    let i = 0;
+    while (i < chans.length) {
+      const id = labelOf(chans[i].number);
+      let j = i + 1;
+      while (j < chans.length && labelOf(chans[j].number) === id) j += 1;
+      const reg = regionOf(id);
+      const n = j - i;
+      box.appendChild(el('div', {
+        class: 'strata-span' + (reg ? '' : ' none'),
+        style: 'top: calc(var(--lane, 14px) * ' + i + ');'
+             + 'height: calc(var(--lane, 14px) * ' + n + ');'
+             + (reg ? '--cat:' + reg.color + ';' : ''),
+        title: (reg ? reg.name : 'unlabelled')
+             + '  \u2014  ' + n + ' channel' + (n === 1 ? '' : 's') + ', '
+             + chans[i].label + ' to ' + chans[j - 1].label,
+      }, [
+        el('b', { text: reg ? reg.name : 'unlabelled' }),
+        n > 1 ? el('i', { text: '\u00d7' + n }) : null,
+      ].filter(Boolean)));
+      i = j;
+    }
+    return box;
   }
 
   /* Put the rail's rows on the raster's lanes.
@@ -322,6 +385,18 @@ BARRY.strata = (function () {
     if (!r || !canvas) return;
     const rows = r.querySelector('.strata-rows');
     if (!rows) return;
+    /* Stop the rail above the bar. Both are in #xfBody, the rail absolutely
+       positioned and the bar a flex child at the bottom -- a rail running to
+       bottom:0 covers the bar's left edge, which is where the brushes live.
+       Measured rather than assumed, because the bar wraps to two rows on a
+       narrow window. */
+    const barEl = $('#strataBar');
+    const barH = barEl ? Math.ceil(barEl.getBoundingClientRect().height) : 0;
+    r.style.bottom = barH + 'px';
+    /* Toasts sit bottom-right at z-index 60; without this one covers Export
+       CSV whenever anything is saved. */
+    document.documentElement.style.setProperty('--bottom-bar', barH + 'px');
+
     const box = canvas.getBoundingClientRect();
     const railBox = r.getBoundingClientRect();
     // The raster's plot area, as drawPane lays it out.
@@ -351,6 +426,19 @@ BARRY.strata = (function () {
     rows.classList.toggle('tight', lane < 17);
     rows.classList.toggle('packed', lane < 12);
     rows.classList.toggle('very-packed', lane < 8.5);
+
+    /* Wider once the rows stop carrying their own names, because that is
+       when the run labels appear and they need somewhere to be. The panes
+       track the same variable, so nothing overlaps. */
+    document.documentElement.style.setProperty(
+      '--rail-w', lane < 17 ? '158px' : '122px');
+
+    /* A run shorter than a line of text drops its text. Half a clipped word
+       reads as damage; the colour band is still saying where the boundary
+       is, and the head readout names whatever the cursor is on. */
+    rows.querySelectorAll('.strata-span').forEach((s) => {
+      s.classList.toggle('tiny', s.getBoundingClientRect().height < 11);
+    });
   }
 
   /* ==================================================================
@@ -479,7 +567,7 @@ BARRY.strata = (function () {
     },
     get active() { return !!sheet; },
     get state() {
-      return sheet ? { gid, labels: sheet.labels,
+      return sheet ? { gid, labels: sheet.labels, channels: channels(),
                        progress: sheet.progress, brush } : null;
     },
   };

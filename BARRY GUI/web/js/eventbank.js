@@ -99,7 +99,8 @@ BARRY.views.eventbank = (function () {
       el('input', {
         type: 'search', value: query,
         placeholder: 'Search project, mouse, session, type, pipeline, who…',
-        oninput: debounceInput((e) => { query = e.target.value; render(); }, 140),
+        oninput: debounceInput(
+          (e) => { query = e.target.value; keepFocus(render); }, 140),
       }),
     ]));
 
@@ -190,6 +191,109 @@ BARRY.views.eventbank = (function () {
   }
 
   /* ---------- right: one entry in full ---------- */
+  /* How the decisions have moved, version by version.
+
+     A re-curation is mostly a decision changing category -- fifty flags
+     resolved into spikes, a handful of spikes turning out to be noise -- and
+     that movement is the difference between two versions' counts. Shown as
+     the difference rather than only the totals, because "-6 flag, +6 spike"
+     is the sentence somebody is looking for and two columns of totals make
+     you do the subtraction yourself. */
+  function versionHistory(box, e) {
+    const vs = (e.versions || []).slice();
+    if (!vs.length) return;
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+
+    box.appendChild(el('div', { class: 'section-label',
+      text: 'History  \u00b7  ' + vs.length + ' version'
+          + (vs.length === 1 ? '' : 's') }));
+
+    const list = el('div', { class: 'ver-list' });
+    for (let i = vs.length - 1; i >= 0; i--) {
+      const v = vs[i], was = i > 0 ? vs[i - 1] : null;
+      const counts = v.by_label || {};
+      const wasCounts = (was && was.by_label) || {};
+      const keys = Array.from(new Set(
+        Object.keys(counts).concat(Object.keys(wasCounts))));
+      keys.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+
+      const shifts = [];
+      for (const k of keys) {
+        const d = (counts[k] || 0) - (wasCounts[k] || 0);
+        if (was && d !== 0) {
+          shifts.push(el('span', {
+            class: 'ver-shift ' + (d > 0 ? 'up' : 'down'),
+            text: (d > 0 ? '+' : '\u2212') + Math.abs(d) + ' ' + nameOf(k),
+          }));
+        }
+      }
+      const dn = was ? (v.n || 0) - (was.n || 0) : 0;
+      if (was && dn !== 0) {
+        shifts.push(el('span', {
+          class: 'ver-shift ' + (dn > 0 ? 'up' : 'down'),
+          text: (dn > 0 ? '+' : '\u2212') + Math.abs(dn) + ' in total',
+        }));
+      }
+
+      list.appendChild(el('div', {
+        class: 'ver-row' + (i === vs.length - 1 ? ' latest' : ''),
+      }, [
+        el('div', { class: 'ver-top' }, [
+          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-when',
+                       text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+          el('span', { class: 'ver-who', text: v.by || 'unknown' }),
+          el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
+          i === vs.length - 1
+            ? el('span', { class: 'pill sm', text: 'current' }) : null,
+        ].filter(Boolean)),
+        v.note
+          ? el('div', { class: 'ver-note', text: v.note })
+          : el('div', { class: 'ver-note none', text: 'no note' }),
+        el('div', { class: 'ver-mix' }, keys.filter((k) => counts[k]).map(
+          (k) => el('span', { class: 'ver-chip',
+                              text: nameOf(k) + ' ' + counts[k] }))),
+        /* Which decisions changed, and to what. The totals cannot show
+           this: two calls going one way and two coming back leaves every
+           count identical while four decisions moved. */
+        (was && v.moves && Object.keys(v.moves).length)
+          ? el('div', { class: 'ver-shifts' },
+               [el('span', { class: 'ver-since',
+                             text: 'since v' + was.v + ':' })].concat(
+                 Object.keys(v.moves)
+                   .sort((a, b) => v.moves[b] - v.moves[a])
+                   .map((k) => el('span', { class: 'ver-move',
+                                            text: k + '  ×' + v.moves[k] }))
+               ).concat(v.gained ? [el('span', { class: 'ver-shift up',
+                          text: '+' + v.gained + ' new' })] : [])
+                .concat(v.lost ? [el('span', { class: 'ver-shift down',
+                          text: '−' + v.lost + ' gone' })] : []))
+          : null,
+        (was && shifts.length)
+          ? el('div', { class: 'ver-shifts' },
+               [el('span', { class: 'ver-since', text: 'totals:' })]
+                 .concat(shifts))
+          : null,
+        (was && !shifts.length && !(v.moves
+                                    && Object.keys(v.moves).length))
+          ? el('div', { class: 'ver-shifts' }, [
+              el('span', { class: 'ver-since none',
+                           text: 'nothing moved since v' + was.v })])
+          : null,
+        (v.confirmed || []).length
+          ? el('div', { class: 'ver-conf',
+              text: 'banked again with no change '
+                  + v.confirmed.length + ' time'
+                  + (v.confirmed.length === 1 ? '' : 's')
+                  + ' \u2014 last by ' + (v.confirmed[
+                      v.confirmed.length - 1].by || 'someone') })
+          : null,
+      ].filter(Boolean)));
+    }
+    box.appendChild(list);
+  }
+
   function detail() {
     const box = el('div', { class: 'bank-detail' });
     const e = entries.find((x) => x.id === selected);
@@ -247,10 +351,14 @@ BARRY.views.eventbank = (function () {
     add('Added by', added.by);
     add('Added at', (added.at || '').replace('T', ' '));
     add('On machine', added.machine);
+    add('Version', e.version
+        ? ('v' + e.version + ' of ' + (e.versions || []).length)
+        : null);
     add('Times are', e.units);
     add('Session path', e.session_path);
     add('Entry id', e.id);
     box.appendChild(kv);
+    versionHistory(box, e);
 
     if ((e.history || []).length) {
       box.appendChild(el('div', { class: 'section-label', text: 'Edited' }));

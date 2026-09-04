@@ -465,6 +465,33 @@ BARRY.views.xplore = (function () {
     const X = (t) => x0 + ((t - t0) / span) * plotW;
 
     ctx.save();
+    ctx.lineCap = 'butt';
+
+    /* A line that survives whatever is under it.
+
+       On the traces a coloured stroke is enough. On a CSD or a raster it is
+       not: jet runs blue to red, so amber vanishes into the warm end and
+       green into the midband. A dark line and a light line laid side by side
+       always leave one of the two with contrast -- the same trick the time
+       gridlines use -- and the label colour rides on top of that pair, so
+       the decision is still readable. */
+    const stroke = (x, top, bottom, colour, wide, dashed) => {
+      ctx.setLineDash(dashed ? [4, 3] : []);
+      ctx.lineWidth = wide ? 1.5 : 1;
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath(); ctx.moveTo(x + 1, top); ctx.lineTo(x + 1, bottom);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = wide ? 2.5 : 1.6;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+      ctx.stroke();
+    };
+
     const evs = marks.events;
     for (let i = 0; i < evs.length; i++) {
       const e = evs[i];
@@ -472,22 +499,31 @@ BARRY.views.xplore = (function () {
       if (e.start < t0 || e.start > t1) continue;
       const x = Math.round(X(e.start)) + 0.5;
       const c = curationColor(marks, e.label, P);
-      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.5 : 0.35);
-      ctx.strokeStyle = isNow ? c : c;
-      ctx.lineWidth = isNow ? 2 : 1;
-      ctx.setLineDash(!isNow && !e.label ? [3, 3] : []);
-      ctx.beginPath();
-      const top = isNow ? y0 : y0 + plotH * (small ? 0.55 : 0.8);
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, y0 + plotH);
-      ctx.stroke();
-      if (isNow && !small) {
+      // The neighbours are ticks from the bottom; the one being decided runs
+      // the full height so it cannot be confused with them.
+      const top = isNow ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
+      if (!isNow) ctx.globalAlpha = e.label ? 0.85 : 0.6;
+      stroke(x, top, y0 + plotH, c, isNow, !isNow && !e.label);
+      ctx.globalAlpha = 1;
+
+      if (isNow) {
+        /* Carets at both ends, outlined. On a busy raster the line alone can
+           still be read as part of the data; a marker on the frame cannot. */
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = c;
-        ctx.beginPath();
-        ctx.arc(x, y0 + 6, 4, 0, Math.PI * 2);
-        ctx.fill();
+        const caret = (yTip, dir) => {
+          ctx.beginPath();
+          ctx.moveTo(x, yTip);
+          ctx.lineTo(x - 5, yTip + dir * 7);
+          ctx.lineTo(x + 5, yTip + dir * 7);
+          ctx.closePath();
+          ctx.fillStyle = c;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+          ctx.stroke();
+        };
+        caret(y0 + 1, 1);
+        caret(y0 + plotH - 1, -1);
       }
     }
 

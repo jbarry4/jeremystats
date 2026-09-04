@@ -500,19 +500,44 @@ BARRY.curate = (function () {
   }
 
   async function bank() {
-    const who = await askPath('Who is banking these?',
-                              'your name or email',
-                              BARRY.profile && BARRY.profile.who());
+    /* Who is in the profile. Asking again every time was a field to retype
+       and a chance to type it differently. */
+    const who = (BARRY.profile && BARRY.profile.who())
+      || await askPath('Who is banking these?', 'your name or email', '');
     if (!who) return;
+    /* The one thing it cannot know. Blank is allowed -- a required note is
+       a note that says "update". */
+    const pr = set_._progress || {};
+    const note = await askPath(
+      'Bank this as a new version',
+      'what changed in this pass? (optional)',
+      '');
+    if (note === null) return;
     try {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(set_.gid) + '/'
         + encodeURIComponent(set_.kind) + '/bank',
-        { added_by: who });
-      toast('Banked ' + res.entries.length + ' entr'
-            + (res.entries.length === 1 ? 'y' : 'ies') + ': '
-            + res.entries.map((x) => x.label + ' (' + x.n + ')').join(', '),
-            'ok', 8000);
+        { added_by: who, note: note });
+      /* One entry, one version. Says which version, and what is in it, so
+         the toast confirms the thing that was written rather than a count
+         of records. */
+      const it = res.entries[0] || {};
+      const names = it.label_names || {};
+      const mix = Object.keys(it.by_label || {})
+        .sort((a, b) => it.by_label[b] - it.by_label[a])
+        .map((k) => (names[k] || k) + ' ' + it.by_label[k])
+        .join(' \u00b7 ');
+      const gone = (res.removed || []).length;
+      toast((it.replaced ? (it.new_version
+                              ? 'Saved as version ' + it.version
+                              : 'Unchanged \u2014 still version '
+                                + it.version)
+                         : 'Banked as version 1')
+            + ': ' + it.n + ' events \u2014 ' + mix
+            + (gone ? '. Folded in ' + gone + ' older entr'
+                      + (gone === 1 ? 'y' : 'ies')
+                      + ' this set had been split into.' : '.'),
+            'ok', 9000);
       BARRY.refreshSync();
     } catch (e) { toast(e.message, 'err', 8000); }
   }

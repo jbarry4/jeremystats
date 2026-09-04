@@ -371,7 +371,8 @@ BARRY.views.housekeeping = (function () {
       type: 'search', class: 'hk-search',
       placeholder: 'Filter by mouse, project, date, id or path…',
       value: query,
-      oninput: debounceInput((e) => { query = e.target.value; render(); }, 140),
+      oninput: debounceInput(
+        (e) => { query = e.target.value; keepFocus(render); }, 140),
     }));
     bar.appendChild(el('label', { class: 'toggle' + (onlyHere ? ' on' : '') }, [
       el('input', {

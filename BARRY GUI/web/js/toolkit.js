@@ -351,6 +351,65 @@ BARRY.views.toolkit = (function () {
     renderCuration();
   }
 
+  /* How the curation list is being looked at. Held here rather than read
+     off the DOM so a re-render cannot lose a half-typed search. */
+  const curQ = { text: '', sort: 'left', show: 'all' };
+
+  const CUR_SORTS = [
+    ['left', 'Most left to do'],
+    ['flag', 'Most flagged'],
+    ['name', 'Name'],
+    ['mouse', 'Mouse and session'],
+    ['size', 'Biggest'],
+    ['recent', 'Recently touched'],
+  ];
+
+  /* The sets that match what is being asked for, in the order asked for. */
+  function curationRows() {
+    const all = (cur && cur.sets) || [];
+    const q = curQ.text.trim().toLowerCase();
+    const words = q ? q.split(/\s+/) : [];
+    const by = (st) => (st.progress || {}).by_label || {};
+
+    let rows = all.filter((st) => {
+      const pr = st.progress || {};
+      if (curQ.show === 'left' && !(pr.left > 0)) return false;
+      if (curQ.show === 'flagged' && !(by(st).flag > 0)) return false;
+      if (curQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) return false;
+      if (curQ.show === 'demo' && !String(st.gid || '').startsWith('demo-')) {
+        return false;
+      }
+      if (!words.length) return true;
+      const hay = [st.name, st.kind_name, st.kind, st.gid,
+                   st.session && st.session.label,
+                   st.session && st.session.project,
+                   st.session && ('m' + st.session.mouse),
+                   st.session && ('s' + st.session.session)]
+        .filter(Boolean).join(' ').toLowerCase();
+      return words.every((w) => hay.indexOf(w) >= 0);
+    });
+
+    const num = (v) => (isFinite(v) ? Number(v) : -1);
+    const cmp = {
+      left: (a, b) => ((b.progress || {}).left || 0)
+                    - ((a.progress || {}).left || 0),
+      flag: (a, b) => (by(b).flag || 0) - (by(a).flag || 0),
+      name: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
+      size: (a, b) => ((b.progress || {}).total || 0)
+                    - ((a.progress || {}).total || 0),
+      recent: (a, b) => String((b.updated || {}).at || '')
+        .localeCompare(String((a.updated || {}).at || '')),
+      mouse: (a, b) => {
+        const sa = a.session || {}, sb = b.session || {};
+        return (num(sa.mouse) - num(sb.mouse))
+            || (num(sa.session) - num(sb.session))
+            || String(a.name || '').localeCompare(String(b.name || ''));
+      },
+    }[curQ.sort] || (() => 0);
+    rows = rows.slice().sort(cmp);
+    return rows;
+  }
+
   function renderCuration() {
     const host = $('#tkResult');
     if (!host) return;
@@ -384,8 +443,76 @@ BARRY.views.toolkit = (function () {
       return;
     }
 
-    const list = el('div', { class: 'cur-sets' });
-    for (const st of sets) {
+    /* Searching and sorting. Forty-one sets came in from the snapshot
+       folders alone, and "which of these still has flagged items" was not
+       answerable without reading every card. */
+    const nLeft = sets.filter((s) => ((s.progress || {}).left || 0) > 0).length;
+    const nFlag = sets.filter(
+      (s) => (((s.progress || {}).by_label) || {}).flag > 0).length;
+    const nDone = sets.filter((s) => {
+      const p = s.progress || {};
+      return p.left === 0 && p.total > 0;
+    }).length;
+    const nDemo = sets.filter(
+      (s) => String(s.gid || '').startsWith('demo-')).length;
+
+    const search = el('input', {
+      type: 'text', class: 'cur-search', value: curQ.text,
+      placeholder: 'Search a name, a mouse, a session\u2026',
+      oninput: (e) => { curQ.text = e.target.value; paintCurList(); },
+    });
+
+    const chip = (id, label, n) => el('button', {
+      class: 'pill' + (curQ.show === id ? ' active' : ''),
+      disabled: (n === 0 && id !== 'all') ? 'disabled' : null,
+      text: label + (id === 'all' ? ' (' + sets.length + ')'
+                                  : ' (' + n + ')'),
+      onclick: () => { curQ.show = id; renderCuration(); },
+    });
+
+    host.appendChild(el('div', { class: 'cur-filter' }, [
+      search,
+      el('select', {
+        title: 'Order',
+        onchange: (e) => { curQ.sort = e.target.value; paintCurList(); },
+      }, CUR_SORTS.map(([v, t]) => el('option', {
+        value: v, text: t, selected: curQ.sort === v ? 'selected' : null }))),
+    ]));
+    host.appendChild(el('div', { class: 'res-toolbar cur-chips' }, [
+      chip('all', 'All', sets.length),
+      chip('left', 'Unfinished', nLeft),
+      chip('flagged', 'Has flagged', nFlag),
+      chip('done', 'Done', nDone),
+      nDemo ? chip('demo', 'Demo', nDemo) : null,
+      el('div', { class: 'spacer', style: 'flex:1' }),
+      el('span', { class: 'hint', id: 'curCount' }),
+    ].filter(Boolean)));
+
+    const list = el('div', { class: 'cur-sets', id: 'curSets' });
+    host.appendChild(list);
+    paintCurList();
+    return;
+  }
+
+  /* Only the list, so typing in the search box does not rebuild the box
+     being typed into and lose the caret. */
+  function paintCurList() {
+    const list = document.getElementById('curSets');
+    if (!list) return;
+    list.innerHTML = '';
+    const rows = curationRows();
+    const count = document.getElementById('curCount');
+    if (count) {
+      count.textContent = rows.length === ((cur && cur.sets) || []).length
+        ? rows.length + ' set(s)'
+        : rows.length + ' of ' + ((cur && cur.sets) || []).length;
+    }
+    if (!rows.length) {
+      list.appendChild(el('div', { class: 'hint',
+        text: 'Nothing matches that. Clear the search, or pick All.' }));
+      return;
+    }
+    for (const st of rows) {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
       const reach = st.session && st.session.reachable;
@@ -444,7 +571,6 @@ BARRY.views.toolkit = (function () {
         ]),
       ]));
     }
-    host.appendChild(list);
   }
 
   /* Browse the bank and pick something, rather than being handed
