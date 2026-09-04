@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — banking as a version, and reading the lineage</title>
+<style>
+ body{font:12px/1.55 ui-monospace,monospace;margin:0;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw}
+ iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+ .ok::before{content:'ok    ';color:#7fe3b0}.bad::before{content:'FAIL  ';color:#ff8a7a}
+ .bad{color:#ffb0a5}.note{color:#7593a2}h2{font-size:12px;margin:14px 0 5px;color:#ffb81c}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Banking through the actual button, not the API, because the thing being
+   added is a dialog and a dialog that never opens passes every API test.
+
+   Then: does the entry show a lineage you can move around in, and does
+   opening a version say what differs between it and another one -- any
+   other one, not just the neighbour. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => W.BARRY);
+
+  const G = 'demo-ds-tutorial';
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b) }).then((r) => r.json());
+
+  /* Start from nothing banked, so version numbers mean what they say. */
+  const bankRows = async () => (await W.fetch('/api/bank')
+    .then((r) => r.json())).entries.filter((e) => e.gid === G);
+  for (const e of await bankRows()) await post('/api/bank/' + e.id + '/delete', {});
+  say('note', '  starting with ' + (await bankRows()).length
+      + ' bank entries for the demo set');
+
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.curate.enter(' + JSON.stringify(G) + ', "ds")');
+  await untilN(() => W.eval('!!BARRY.curate.active'));
+  await sleep(1800);
+
+  const bankBtn = () => Array.from(D.querySelectorAll('button'))
+    .find((b) => /Bank the results/.test(b.textContent));
+
+  async function bankThrough(note) {
+    bankBtn().click();
+    const got = await untilN(() => D.querySelector('.bank-dialog'), 120);
+    if (got < 0) return null;
+    await sleep(500);
+    const dlg = D.querySelector('.bank-dialog');
+    const box = dlg.querySelector('.ver-note-input');
+    box.value = note;
+    box.dispatchEvent(new W.Event('input', { bubbles: true }));
+    const go = Array.from(dlg.querySelectorAll('.modal-foot button'))
+      .find((b) => /^Bank/.test(b.textContent));
+    const title = dlg.querySelector('h2').textContent;
+    go.click();
+    await sleep(2200);
+    return title;
+  }
+
+  head('Banking opens a dialog, not a one-line prompt');
+  const t1 = await bankThrough('first pass through the session');
+  check('a bank dialog appeared', !!t1, 'no .bank-dialog');
+  say('note', '  it was headed: "' + t1 + '"');
+  check('and it said this is the first bank', /Bank this set/.test(t1 || ''),
+        t1);
+
+  head('Change a decision, then bank again');
+  const evs = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.events())'));
+  let i = evs().findIndex((e) => e.label === 'flag');
+  if (i < 0) i = evs().findIndex((e) => e.label);
+  await W.eval('BARRY.curate.goTo(' + i + ')');
+  await sleep(500);
+  const was = evs()[i].label;
+  await W.eval('BARRY.curate.assign("garbage")');
+  await sleep(1200);
+  say('note', '  candidate #' + (i + 1) + ': ' + was + ' -> garbage');
+
+  const t2 = await bankThrough('second look: one call changed');
+  check('the second bank offers a version number',
+        /version 2/i.test(t2 || ''), t2);
+  const shown = D.querySelectorAll('.bank-dialog').length;
+  check('and the dialog closed after banking', shown === 0,
+        shown + ' still open');
+
+  head('The entry, in the Event Bank');
+  W.eval("setView('eventbank')");
+  await untilN(() => D.querySelector('.bank-row'), 200);
+  await sleep(800);
+  const rows = Array.from(D.querySelectorAll('.bank-row'));
+  const mine = rows.filter((r) => /dentate spikes/i.test(r.textContent));
+  say('note', '  ' + mine.length + ' entr(ies) in the bank for this set');
+  check('one entry, not one per category', mine.length === 1,
+        mine.length + ' entries');
+  mine[0].click();
+  await untilN(() => D.querySelector('.ver-strip'), 120);
+  await sleep(700);
+
+  const pips = () => Array.from(D.querySelectorAll('.ver-pip'));
+  say('note', '  lineage: ' + pips().map((p) => p.textContent).join(' '));
+  check('there is a lineage strip with a pip per version',
+        pips().length === 2, pips().length + ' pips');
+
+  const notes = Array.from(D.querySelectorAll('.ver-note'))
+    .map((n) => n.textContent);
+  say('note', '  notes on the versions: ' + JSON.stringify(notes));
+  check('both notes were kept',
+        notes.some((t) => /first pass/.test(t))
+        && notes.some((t) => /second look/.test(t)), JSON.stringify(notes));
+
+  head('Opening a version shows what differs');
+  pips()[1].click();
+  await untilN(() => D.querySelector('.ver-open'), 120);
+  await sleep(800);
+  const open = D.querySelector('.ver-open');
+  check('the version opened', !!open, 'nothing opened');
+  const diffs = Array.from(D.querySelectorAll('.vd-row'));
+  say('note', '  ' + diffs.length + ' differing candidate(s): '
+      + diffs.slice(0, 3).map((r) => r.textContent.replace(/\s+/g, ' ')).join(' | '));
+  check('the one decision that changed is listed', diffs.length === 1,
+        diffs.length + ' rows');
+  if (diffs.length) {
+    const txt = diffs[0].textContent;
+    check('and it says what it went from and to',
+          /Garbage/.test(txt) && txt.length > 8, txt);
+  }
+  const picker = open && open.querySelector('select');
+  check('there is a compare-with picker', !!picker,
+        'no select in the open version');
+  if (picker) {
+    say('note', '  can compare against: '
+        + Array.from(picker.options).map((o) => o.value).join(', '));
+  }
+
+  /* Clicking the pip again closes it, and the list on the left must not
+     have been destroyed by the repaint. */
+  pips()[1].click();
+  await sleep(600);
+  check('clicking it again closes it', !D.querySelector('.ver-open'),
+        'still open');
+  check('and the entry list survived the repaint',
+        D.querySelectorAll('.bank-row').length === rows.length,
+        D.querySelectorAll('.bank-row').length + ' vs ' + rows.length);
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'lineage: ' + bad + ' FAILED' : 'lineage: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'lineage: harness CRASH';
+} })();
+</script>

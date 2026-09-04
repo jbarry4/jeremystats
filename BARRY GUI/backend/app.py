@@ -776,6 +776,10 @@ def api_sync_status():
     return jsonify({"ok": True, "git": STORE.git_status(),
                     "root": LOGS_DIR, "index": idx,
                     "auto_stage": STORE.auto_stage,
+                    # Carried on a poll that already happens, so noticing
+                    # that BARRY needs restarting costs no extra request.
+                    "code_changed": _code_changed(),
+                    "started_at": _STARTED_AT,
                     "conflicts": conflict_audit()})
 
 
@@ -1309,12 +1313,50 @@ def api_reveal():
     return jsonify({"ok": True})
 
 
+# What this process actually loaded.
+#
+# Captured at import, so it is the state of the source when this server
+# started rather than whatever is on disk now. Anything newer than these is
+# a change the running process has not got.
+def _source_stamps():
+    out = {}
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name in sorted(os.listdir(here)):
+        if not name.endswith(".py"):
+            continue
+        path = os.path.join(here, name)
+        try:
+            out[name] = os.path.getmtime(path)
+        except OSError:
+            continue
+    return out
+
+
+_LOADED_AT = _source_stamps()
+_STARTED_AT = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def _code_changed():
+    """Source files written since this server started."""
+    now = _source_stamps()
+    out = []
+    for name, when in sorted(now.items()):
+        was = _LOADED_AT.get(name)
+        # A file that appeared after start counts too: it is code this
+        # process has never imported.
+        if was is None or when > was + 1.0:
+            out.append(name)
+    return out
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({"ok": True, "repo": REPO_ROOT,
                     "matlab": runner.MATLAB_EXE,
                     "ffmpeg": sysinfo.find_ffmpeg(),
                     "python": sys.executable, "scipy": csc.HAVE_SCIPY,
+                    "started_at": _STARTED_AT,
+                    "code_changed": _code_changed(),
                     "logs": LOGS_DIR, "system": sysinfo.describe()})
 
 
@@ -2104,6 +2146,40 @@ def _slug_for_file(text):
     while "--" in out:
         out = out.replace("--", "-")
     return (out[:48] or "barry").lower()
+
+
+@app.route("/api/curation/<gid>/<kind>/banked")
+def api_curation_banked(gid, kind):
+    """What this set has already been banked as.
+
+    Read before banking so the dialog can show what it is adding to -- a
+    version note written without seeing the previous ones tends to say
+    "update". Events are left out: this is the history, not the payload.
+    """
+    found = BANK.curated_entries(gid, kind)
+    whole = [e for e in found if e.get("curation_label") == "*"]
+    if not whole:
+        return jsonify({"ok": True, "entry": None,
+                        "split": [{"id": e["id"], "name": e.get("name"),
+                                   "n": e.get("n"),
+                                   "label": e.get("curation_label")}
+                                  for e in found]})
+    ent = whole[0]
+    return jsonify({
+        "ok": True,
+        "entry": {
+            "id": ent["id"], "name": ent.get("name"), "n": ent.get("n"),
+            "version": ent.get("version"),
+            "by_label": ent.get("by_label") or {},
+            "label_names": ent.get("label_names") or {},
+            "added": ent.get("added") or {},
+            "versions": [{k: v for k, v in ver.items() if k != "snap"}
+                         for ver in (ent.get("versions") or [])],
+        },
+        "split": [{"id": e["id"], "name": e.get("name"), "n": e.get("n"),
+                   "label": e.get("curation_label")}
+                  for e in found if e.get("curation_label") != "*"],
+    })
 
 
 @app.route("/api/curation/handoff")

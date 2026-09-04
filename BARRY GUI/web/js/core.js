@@ -459,6 +459,41 @@ function staleServer(path) {
   showStaleBanner();
 }
 
+/* BARRY is running code older than what is on disk.
+
+   Distinct from the 404 case below: nothing is missing, so nothing fails
+   loudly. The old code simply does the old thing, which is worse -- you
+   change a decision, press Bank, and the entry you get is the one from
+   before, with no error anywhere to say why. */
+let codeStaleShown = false;
+
+function showCodeStaleBanner(files, startedAt) {
+  if (codeStaleShown) return;
+  codeStaleShown = true;
+  const when = (startedAt || '').replace('T', ' ').slice(0, 16);
+  const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
+    el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
+    el('span', { text: files.length + ' file(s) have been changed since this '
+                     + 'server started' + (when ? ' at ' + when : '')
+                     + '. Nothing will error; it will just keep doing the '
+                     + 'old thing \u2014 so a fix you are expecting may '
+                     + 'appear not to work.' }),
+    el('div', { class: 'spacer', style: 'flex:1' }),
+    el('button', {
+      class: 'btn sm', text: 'Which files?',
+      onclick: () => toast('Changed since start: ' + files.join(', '),
+                           'err', 25000),
+    }),
+    el('button', {
+      class: 'btn ghost sm', text: 'Dismiss',
+      title: 'The problem does not go away, but the banner will',
+      onclick: () => bar.remove(),
+    }),
+  ]);
+  const app = document.getElementById('app') || document.body;
+  app.insertBefore(bar, app.firstChild);
+}
+
 /* A banner, not just a toast.
 
    A toast goes away; a stale server does not. Everything added since it
@@ -809,6 +844,13 @@ BARRY.refreshSync = async function refreshSync() {
   let data;
   try { data = await api('/api/sync/status'); } catch (e) { return; }
   BARRY.sync = data;
+  /* Source files written since this server started. The 404-based check
+     cannot see this case: the route is still there, it just does something
+     older than what the page expects. Banking was the example -- it wrote
+     a second entry instead of a new version, and nothing failed. */
+  if ((data.code_changed || []).length) {
+    showCodeStaleBanner(data.code_changed, data.started_at);
+  }
   const git = data.git || {};
   const btn = $('#syncBtn');
   const label = $('#syncLabel');

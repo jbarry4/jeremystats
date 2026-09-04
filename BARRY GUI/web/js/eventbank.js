@@ -202,12 +202,39 @@ BARRY.views.eventbank = (function () {
   function versionHistory(box, e) {
     const vs = (e.versions || []).slice();
     if (!vs.length) return;
+    /* Which version is open, if any. Held outside so it survives the
+       repaint that opening one causes. */
+    if (openVersion && !vs.some((v) => v.v === openVersion)) {
+      openVersion = null;
+    }
     const names = e.label_names || {};
     const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
 
     box.appendChild(el('div', { class: 'section-label',
       text: 'History  \u00b7  ' + vs.length + ' version'
           + (vs.length === 1 ? '' : 's') }));
+
+    /* The lineage: every version at a glance, and a way into any of them.
+       Reading a history means moving around in it. */
+    const strip = el('div', { class: 'ver-strip' });
+    vs.forEach((v) => {
+      strip.appendChild(el('button', {
+        class: 'ver-pip' + (openVersion === v.v ? ' on' : '')
+             + (v.v === vs.length ? ' last' : ''),
+        title: 'v' + v.v + '  ' + (v.by || '') + '  '
+             + (v.note || 'no note'),
+        text: 'v' + v.v,
+        onclick: () => {
+          openVersion = openVersion === v.v ? null : v.v;
+          const host = box.parentNode;
+          // Repaint just the entry, so the list on the left does not
+          // scroll back to the top.
+          const fresh = detail();
+          if (host) host.replaceChild(fresh, box);
+        },
+      }));
+    });
+    box.appendChild(strip);
 
     const list = el('div', { class: 'ver-list' });
     for (let i = vs.length - 1; i >= 0; i--) {
@@ -281,6 +308,11 @@ BARRY.views.eventbank = (function () {
               el('span', { class: 'ver-since none',
                            text: 'nothing moved since v' + was.v })])
           : null,
+        /* Opening a version: what it held, and how it differs from
+           whichever other version you pick -- not only the one before it,
+           because "what has changed since the first pass" is the question
+           three versions later. */
+        openVersion === v.v ? versionDetail(e, vs, v) : null,
         (v.confirmed || []).length
           ? el('div', { class: 'ver-conf',
               text: 'banked again with no change '
@@ -292,6 +324,102 @@ BARRY.views.eventbank = (function () {
       ].filter(Boolean)));
     }
     box.appendChild(list);
+  }
+
+  /* The version being looked at, if the reader has opened one. */
+  let openVersion = null;
+
+  /* One version, opened: its contents and a comparison with another. */
+  function versionDetail(e, vs, v) {
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+    const host = el('div', { class: 'ver-open' });
+
+    if (!v.snap) {
+      host.appendChild(el('p', { class: 'hint',
+        text: 'This version is old enough that the candidate-by-candidate '
+            + 'snapshot has been dropped \u2014 its counts and its note are '
+            + 'kept, but it can no longer be compared candidate by '
+            + 'candidate.' }));
+      return host;
+    }
+
+    const others = vs.filter((o) => o.v !== v.v && o.snap);
+    if (!others.length) {
+      host.appendChild(el('p', { class: 'hint',
+        text: 'Nothing else to compare it against yet.' }));
+      return host;
+    }
+    /* Default to the version before, which is the usual question. */
+    let against = others.filter((o) => o.v < v.v).pop() || others[0];
+
+    const rows = el('div', { class: 'ver-diff' });
+    const paint = () => {
+      rows.innerHTML = '';
+      const was = new Map((against.snap || []).map((p) => [
+        Math.round(p[0] * 1e4), p[1]]));
+      const out = [];
+      for (const p of v.snap) {
+        const key = Math.round(p[0] * 1e4);
+        if (!was.has(key)) {
+          out.push({ t: p[0], from: null, to: p[1] });
+          continue;
+        }
+        const before = was.get(key);
+        was.delete(key);
+        if (before !== p[1]) out.push({ t: p[0], from: before, to: p[1] });
+      }
+      for (const [key, lab] of was) {
+        out.push({ t: key / 1e4, from: lab, to: null });
+      }
+      out.sort((a, b) => a.t - b.t);
+
+      rows.appendChild(el('div', { class: 'hint',
+        text: out.length
+          ? out.length + ' candidate' + (out.length === 1 ? '' : 's')
+            + ' differ between v' + against.v + ' and v' + v.v
+          : 'Nothing differs between v' + against.v + ' and v' + v.v + '.' }));
+      const clock = (t) => {
+        const m = Math.floor(t / 60), s = t - m * 60;
+        return m + ':' + (s < 10 ? '0' : '') + s.toFixed(3);
+      };
+      for (const d of out.slice(0, 400)) {
+        rows.appendChild(el('div', { class: 'vd-row' }, [
+          el('span', { class: 'vd-t', text: clock(d.t) }),
+          el('span', { class: 'vd-from',
+                       text: d.from === null ? 'not in v' + against.v
+                                             : nameOf(d.from) }),
+          el('span', { class: 'vd-arrow', text: '\u2192' }),
+          el('span', { class: 'vd-to',
+                       text: d.to === null ? 'gone' : nameOf(d.to) }),
+        ]));
+      }
+      if (out.length > 400) {
+        rows.appendChild(el('div', { class: 'hint',
+          text: 'and ' + (out.length - 400) + ' more. Export the CSV for '
+              + 'the full list.' }));
+      }
+    };
+
+    host.appendChild(el('div', { class: 'ver-open-bar' }, [
+      el('strong', { text: 'v' + v.v }),
+      el('span', { class: 'hint', text: 'compared with' }),
+      el('select', {
+        onchange: (ev) => {
+          against = others.find((o) => String(o.v) === ev.target.value)
+                 || against;
+          paint();
+        },
+      }, others.map((o) => el('option', {
+        value: String(o.v),
+        text: 'v' + o.v + '  ' + (o.by || '') + '  '
+            + (o.at || '').replace('T', ' ').slice(0, 16),
+        selected: o.v === against.v ? 'selected' : null,
+      }))),
+    ]));
+    host.appendChild(rows);
+    paint();
+    return host;
   }
 
   function detail() {

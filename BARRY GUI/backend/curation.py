@@ -65,10 +65,13 @@ KINDS = {
              "color": "#2f9e6e", "good": True},
             {"id": "garbage", "name": "Garbage", "keys": ["2", "g"],
              "color": "#dc2626"},
+            # `flagged` means "this one still needs another look", which is
+            # what the Flagged pass is for. Both of these do, and the second
+            # pass was only picking up the first of them.
             {"id": "flag", "name": "Flag", "keys": ["3", "f"],
-             "color": "#E5A823"},
+             "color": "#E5A823", "flagged": True},
             {"id": "review", "name": "Flag for Deep Review",
-             "keys": ["4", "r"], "color": "#8b5cf6"},
+             "keys": ["4", "r"], "color": "#8b5cf6", "flagged": True},
         ],
     },
     "ied": {
@@ -85,7 +88,7 @@ KINDS = {
             {"id": "garbage", "name": "Garbage", "keys": ["3", "g"],
              "color": "#dc2626"},
             {"id": "flag", "name": "Flag", "keys": ["4", "f"],
-             "color": "#E5A823"},
+             "color": "#E5A823", "flagged": True},
         ],
     },
 }

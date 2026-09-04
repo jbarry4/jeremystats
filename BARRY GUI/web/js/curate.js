@@ -102,7 +102,8 @@ BARRY.curate = (function () {
     sess.curation = { kind: set_.kind, set: set_, index: 0 };
     publishMarks();
     if (!events().some((e) => !e.label)) {
-      review = events().some((e) => e.label === 'flag') ? 'flag' : 'all';
+      review = events().some((e) => e.label && flagIds().has(e.label))
+      ? 'flag' : 'all';
     }
     goTo(firstWanted(), true);
     render();
@@ -174,10 +175,24 @@ BARRY.curate = (function () {
      ================================================================== */
   const events = () => (set_ && set_.events) || [];
   /* Does this candidate belong to the pass being made? */
+  /* Which labels mean "come back to this one".
+
+     Read off the set's own vocabulary rather than hard-coded, because a set
+     copies its vocabulary when it is created and older ones do not carry
+     the marker yet -- and because DS has two of them. The Flagged pass was
+     matching only `flag`, so every candidate marked Flag for Deep Review
+     was invisible in the pass that exists to find them. */
+  const flagIds = () => {
+    const out = new Set();
+    for (const l of (kind && kind.labels) || []) {
+      if (l.flagged || l.id === 'flag' || l.id === 'review') out.add(l.id);
+    }
+    return out;
+  };
   const wanted = (ev) => {
     if (!ev) return false;
     if (review === 'all') return true;
-    if (review === 'flag') return ev.label === 'flag';
+    if (review === 'flag') return !!ev.label && flagIds().has(ev.label);
     return !ev.label;
   };
   const nWanted = () => events().filter(wanted).length;
@@ -408,8 +423,9 @@ BARRY.curate = (function () {
         el('label', { text: 'Review' }),
         el('div', { class: 'seg sm', id: 'curReview' }, [
           ['left', 'Undecided', 'The ones with no decision yet'],
-          ['flag', 'Flagged', 'Only the ones marked Flag \u2014 the second '
-                            + 'pass over the ones that needed a longer look'],
+          ['flag', 'Flagged', 'The ones marked Flag or Flag for Deep '
+                            + 'Review \u2014 the second pass over '
+                            + 'everything that needed a longer look'],
           ['all', 'All', 'Everything, including the ones already decided'],
         ].map(([id, label, tip]) => el('button', {
           class: review === id ? 'active' : '',
@@ -422,8 +438,8 @@ BARRY.curate = (function () {
             if (!n2) {
               review = before;
               toast(id === 'flag'
-                ? 'Nothing is flagged yet \u2014 press f on a candidate that '
-                  + 'needs another look.'
+                ? 'Nothing is flagged yet \u2014 press f, or r for a deeper '
+                  + 'look, on a candidate you want to come back to.'
                 : 'Nothing left in that pass.', null, 5000);
               render();
               return;
@@ -437,8 +453,11 @@ BARRY.curate = (function () {
             }
             render();
           },
+          // Counted the same way the pass selects, or the button
+          // advertises three and the pass holds four.
           text: label + (id === 'flag'
-            ? ' (' + events().filter((e) => e.label === 'flag').length + ')'
+            ? ' (' + events().filter(
+                (e) => e.label && flagIds().has(e.label)).length + ')'
             : ''),
         }))),
       ]),
@@ -455,6 +474,10 @@ BARRY.curate = (function () {
       ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
       el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost sm', text: 'List all\u2026',
+                     title: 'Every candidate in this set, by time or by '
+                          + 'category. Click one to go to it.',
+                     onclick: listAll }),
       el('button', { class: 'btn ghost sm', text: 'Bank the results…',
                      onclick: bank }),
       el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
@@ -499,19 +522,301 @@ BARRY.curate = (function () {
     }
   }
 
+  /* Asking for a version note, with the previous versions in front of you.
+
+     Resolves to the note, or to null if it is called off. */
+  function bankDialog(entry, who) {
+    return new Promise((resolve) => {
+      const labs = (kind && kind.labels) || [];
+      const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
+                          || (id === 'unspecified' ? 'undecided' : id);
+      const tally = {};
+      for (const e of events()) {
+        if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
+      }
+      const vs = (entry && entry.versions) || [];
+      const next = vs.length + 1;
+
+      const wrap = el('div', { class: 'modal bank-dialog' });
+      wrap.appendChild(el('div', { class: 'modal-head' }, [
+        el('h2', { text: vs.length ? 'Bank this as version ' + next
+                                   : 'Bank this set' }),
+        el('p', { class: 'sub', text: set_.name || '' }),
+      ]));
+
+      /* What is about to be written. */
+      wrap.appendChild(el('div', { class: 'section-label',
+                                   text: 'What this version will hold' }));
+      wrap.appendChild(el('div', { class: 'ver-mix' },
+        Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(
+          (k) => el('span', { class: 'ver-chip',
+                              text: nameOf(k) + ' ' + tally[k] }))
+        .concat(left()
+          ? [el('span', { class: 'ver-chip',
+                          text: left() + ' still undecided, not banked' })]
+          : [])));
+
+      if (vs.length) {
+        wrap.appendChild(el('div', { class: 'section-label',
+          text: 'Already banked as ' + vs.length + ' version'
+              + (vs.length === 1 ? '' : 's') }));
+        const list = el('div', { class: 'ver-list compact' });
+        for (let i = vs.length - 1; i >= 0; i--) {
+          const v = vs[i];
+          list.appendChild(el('div', { class: 'ver-row' }, [
+            el('div', { class: 'ver-top' }, [
+              el('span', { class: 'ver-n', text: 'v' + v.v }),
+              el('span', { class: 'ver-when',
+                           text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+              el('span', { class: 'ver-who', text: v.by || 'unknown' }),
+              el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
+            ]),
+            v.note ? el('div', { class: 'ver-note', text: v.note })
+                   : el('div', { class: 'ver-note none', text: 'no note' }),
+            v.changed
+              ? el('div', { class: 'ver-shifts' }, [
+                  el('span', { class: 'ver-since',
+                               text: v.changed + ' decision'
+                                   + (v.changed === 1 ? '' : 's')
+                                   + ' changed' })])
+              : null,
+          ].filter(Boolean)));
+        }
+        wrap.appendChild(list);
+      } else {
+        wrap.appendChild(el('p', { class: 'hint',
+          text: 'This set has not been banked before. From now on each bank '
+              + 'writes a version onto the same entry, so the entry keeps '
+              + 'its whole history rather than the bank filling up with '
+              + 'copies.' }));
+      }
+
+      const box = el('textarea', {
+        class: 'ver-note-input', rows: '3',
+        placeholder: 'What changed in this pass? (optional)',
+      });
+      wrap.appendChild(el('div', { class: 'section-label',
+                                   text: 'Note for version ' + next }));
+      wrap.appendChild(box);
+      wrap.appendChild(el('p', { class: 'hint',
+        text: 'Banking as ' + who + '.' }));
+
+      let settled = false;
+      const done = (val) => {
+        if (settled) return;
+        settled = true;
+        closeModal();
+        resolve(val);
+      };
+      wrap.appendChild(el('div', { class: 'modal-foot' }, [
+        el('div', { style: 'flex:1' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: () => done(null) }),
+        el('button', { class: 'btn', text: vs.length
+                         ? 'Bank as v' + next : 'Bank',
+                       onclick: () => done(box.value || '') }),
+      ]));
+      showModal(wrap);
+      setTimeout(() => { try { box.focus(); } catch (e) {} }, 30);
+    });
+  }
+
+  /* How the list was last looked at, kept across openings so a person who
+     prefers the tally does not have to ask for it every time. */
+  const listQ = { by: 'time', text: '', only: 'all' };
+
+  function listAll() {
+    const wrap = el('div', { class: 'modal cur-list-modal' });
+    const labs = (kind && kind.labels) || [];
+    const labOf = (id) => labs.find((l) => l.id === id) || null;
+    const nameOf = (id) => (labOf(id) || {}).name || 'undecided';
+    const colorOf = (id) => (labOf(id) || {}).color || null;
+    const flags = flagIds();
+
+    const tally = {};
+    for (const e of events()) {
+      const k = e.label || '';
+      tally[k] = (tally[k] || 0) + 1;
+    }
+
+    wrap.appendChild(el('div', { class: 'modal-head' }, [
+      el('h2', { text: 'Everything in this set' }),
+      el('p', { class: 'sub',
+                text: events().length + ' candidates  \u00b7  '
+                    + left() + ' still undecided  \u00b7  '
+                    + (set_.name || '') }),
+    ]));
+
+    const rowsHost = el('div', { class: 'cur-list' });
+
+    const controls = el('div', { class: 'cur-list-bar' }, [
+      el('div', { class: 'seg sm' }, [
+        ['time', 'By time'],
+        ['type', 'By category'],
+      ].map(([id, label]) => el('button', {
+        class: listQ.by === id ? 'active' : '', text: label,
+        onclick: (ev) => {
+          listQ.by = id;
+          Array.from(ev.target.parentNode.children).forEach(
+            (b) => b.classList.toggle('active', b === ev.target));
+          paint();
+        },
+      }))),
+      el('input', {
+        type: 'search', class: 'cur-list-search', value: listQ.text,
+        placeholder: 'Find a time, a category, a name\u2026',
+        oninput: (e) => { listQ.text = e.target.value; paint(); },
+      }),
+      el('span', { class: 'hint', id: 'curListCount' }),
+    ]);
+
+    const chips = el('div', { class: 'res-toolbar cur-list-chips' });
+    const chip = (id, label, n) => el('button', {
+      class: 'pill' + (listQ.only === id ? ' active' : ''),
+      disabled: (!n && id !== 'all') ? 'disabled' : null,
+      text: label + ' (' + n + ')',
+      onclick: () => {
+        listQ.only = id;
+        Array.from(chips.children).forEach(
+          (b) => b.classList && b.classList.toggle(
+            'active', b.textContent.indexOf(label + ' (') === 0));
+        paint();
+      },
+    });
+    chips.appendChild(chip('all', 'All', events().length));
+    chips.appendChild(chip('left', 'Undecided', tally[''] || 0));
+    chips.appendChild(chip('flagged', 'Flagged',
+      events().filter((e) => e.label && flags.has(e.label)).length));
+    for (const l of labs) {
+      chips.appendChild(chip(l.id, l.name, tally[l.id] || 0));
+    }
+
+    /* Times read as mm:ss.mmm rather than seconds-since-start: nobody
+       scrubbing a recording thinks in 1483.2 seconds. */
+    const clock = (t) => {
+      const m = Math.floor(t / 60);
+      const s = t - m * 60;
+      return m + ':' + (s < 10 ? '0' : '') + s.toFixed(3);
+    };
+
+    function matching() {
+      const q = listQ.text.trim().toLowerCase();
+      const out = [];
+      events().forEach((e, i) => {
+        if (listQ.only === 'left' && e.label) return;
+        if (listQ.only === 'flagged'
+            && !(e.label && flags.has(e.label))) return;
+        if (listQ.only !== 'all' && listQ.only !== 'left'
+            && listQ.only !== 'flagged' && e.label !== listQ.only) return;
+        if (q) {
+          const hay = [clock(e.start), e.start.toFixed(3), nameOf(e.label),
+                       e.by, (e.reviews || []).map((r) => r.by).join(' ')]
+            .filter(Boolean).join(' ').toLowerCase();
+          if (hay.indexOf(q) < 0) return;
+        }
+        out.push({ e: e, i: i });
+      });
+      return out;
+    }
+
+    function rowFor(rec) {
+      const e = rec.e;
+      const revs = (e.reviews || []).filter((r) => r.by);
+      return el('div', {
+        class: 'cur-list-row' + (rec.i === index ? ' here' : '')
+             + (e.label ? '' : ' undecided'),
+        style: e.label ? '--cat:' + (colorOf(e.label) || 'var(--line)') : '',
+        title: revs.length > 1
+          ? 'Looked at by ' + revs.map((r) => r.by).join(', ')
+          : (e.by ? 'Decided by ' + e.by : 'Nobody has decided this one'),
+        onclick: () => { closeModal(); goTo(rec.i); },
+      }, [
+        el('span', { class: 'cl-n', text: '#' + (rec.i + 1) }),
+        el('span', { class: 'cl-t', text: clock(e.start) }),
+        el('span', { class: 'cl-lab',
+                     text: e.label ? nameOf(e.label) : 'undecided' }),
+        el('span', { class: 'cl-who', text: e.by || '' }),
+        revs.length > 1
+          ? el('span', { class: 'cl-revs', text: revs.length + ' reviewers' })
+          : null,
+        rec.i === index ? el('span', { class: 'pill sm', text: 'here' }) : null,
+      ].filter(Boolean));
+    }
+
+    function paint() {
+      rowsHost.innerHTML = '';
+      const rows = matching();
+      const count = document.getElementById('curListCount');
+      if (count) {
+        count.textContent = rows.length === events().length
+          ? rows.length + ' candidates'
+          : rows.length + ' of ' + events().length;
+      }
+      if (!rows.length) {
+        rowsHost.appendChild(el('div', { class: 'hint',
+          text: 'Nothing matches that.' }));
+        return;
+      }
+      if (listQ.by === 'type') {
+        // Undecided last: it is the work remaining, not a result.
+        const order = labs.map((l) => l.id).concat(['']);
+        for (const id of order) {
+          const mine = rows.filter((r) => (r.e.label || '') === id);
+          if (!mine.length) continue;
+          rowsHost.appendChild(el('div', { class: 'cl-head' }, [
+            el('span', { class: 'cl-dot',
+              style: 'background:' + (colorOf(id) || 'var(--text-3)') }),
+            el('strong', { text: id ? nameOf(id) : 'Undecided' }),
+            el('span', { class: 'count', text: mine.length + '' }),
+          ]));
+          mine.forEach((r) => rowsHost.appendChild(rowFor(r)));
+        }
+        return;
+      }
+      /* By time, with a marker wherever the candidates thin out -- a
+         half-minute with nothing in it is a fact about the recording. */
+      let last = null;
+      for (const r of rows) {
+        if (last !== null && r.e.start - last > 30) {
+          rowsHost.appendChild(el('div', { class: 'cl-gap',
+            text: '\u2026 ' + Math.round(r.e.start - last)
+                + 's with no candidates \u2026' }));
+        }
+        rowsHost.appendChild(rowFor(r));
+        last = r.e.start;
+      }
+    }
+
+    wrap.appendChild(controls);
+    wrap.appendChild(chips);
+    wrap.appendChild(rowsHost);
+    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+    ]));
+    showModal(wrap);
+    paint();
+    // Land on where you actually are, rather than at the top of six hundred.
+    const here = rowsHost.querySelector('.cur-list-row.here');
+    if (here && here.scrollIntoView) {
+      here.scrollIntoView({ block: 'center' });
+    }
+  }
+
   async function bank() {
     /* Who is in the profile. Asking again every time was a field to retype
        and a chance to type it differently. */
     const who = (BARRY.profile && BARRY.profile.who())
       || await askPath('Who is banking these?', 'your name or email', '');
     if (!who) return;
-    /* The one thing it cannot know. Blank is allowed -- a required note is
-       a note that says "update". */
-    const pr = set_._progress || {};
-    const note = await askPath(
-      'Bank this as a new version',
-      'what changed in this pass? (optional)',
-      '');
+    /* What it has been banked as before, so the note is written knowing
+       what it follows rather than into a blank box. */
+    let known = null;
+    try {
+      known = await api('/api/curation/' + encodeURIComponent(set_.gid) + '/'
+                        + encodeURIComponent(set_.kind) + '/banked');
+    } catch (e) { /* never banked, or an older server; the dialog copes */ }
+    const note = await bankDialog(known && known.entry, who);
     if (note === null) return;
     try {
       const res = await apiPost(
@@ -645,6 +950,12 @@ BARRY.curate = (function () {
     goTo: (i) => goTo(i),
     assign: (labelId) => assign(labelId),
     events: () => events().map((e) => ({ start: e.start, label: e.label })),
+    /* Which candidates the pass currently on actually holds. "The Flagged
+       pass skips the deep-review ones" is then measurable rather than a
+       thing to argue about. */
+    inPass: () => events().filter(wanted)
+      .map((e) => ({ start: e.start, label: e.label })),
+    get review() { return review; },
     /* Point at a different session object for the same recording.
 
        Toggling even-only reopens the recording, which replaces the session

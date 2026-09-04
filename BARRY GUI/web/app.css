@@ -2595,6 +2595,53 @@ select {
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
+/* The lineage, as something to move around in. */
+.ver-strip {
+  display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px;
+}
+.ver-pip {
+  font: inherit; font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  background: var(--bg); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.ver-pip:hover { background: var(--bg-hover); color: var(--text); }
+.ver-pip.last { border-color: var(--accent); color: var(--accent); }
+.ver-pip.on {
+  background: var(--accent); border-color: var(--accent); color: var(--bg);
+}
+.ver-open {
+  margin-top: 7px; padding: 7px 9px; border-radius: var(--radius-sm);
+  background: var(--bg-3); border: 1px solid var(--line-soft);
+}
+.ver-open-bar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+  font-size: 11px;
+}
+.ver-open-bar select {
+  font: inherit; font-size: 11px; padding: 2px 5px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); color: var(--text);
+}
+.ver-diff { max-height: 240px; overflow-y: auto; }
+.vd-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 2px 0;
+  font-size: 11px;
+}
+.vd-t {
+  font-family: var(--mono); font-size: 10.5px; width: 78px; flex: none;
+  color: var(--text-3);
+}
+.vd-from { color: var(--text-3); }
+.vd-arrow { color: var(--text-3); }
+.vd-to { color: var(--text); }
+.ver-list.compact { max-height: 210px; overflow-y: auto; }
+.bank-dialog { width: min(620px, 94vw); }
+.ver-note-input {
+  width: 100%; font: inherit; font-size: 12.5px; padding: 7px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); resize: vertical;
+}
 .ver-conf { margin-top: 5px; font-size: 10px; color: var(--text-3); }
 
 .bank-detail {
@@ -4755,6 +4802,60 @@ body.aid-window .xf-tabs { display: none !important; }
    The snapshot import alone brought in forty-one, one tall card each, in
    store order. "Which of these still has flagged items" was not answerable
    without reading all of them. */
+/* ---- Every candidate in a set, at once -----------------------------------
+   Curation is one at a time, which answers no question about the set as a
+   whole. This is the other view of the same thing. */
+.cur-list-modal { width: min(860px, 94vw); }
+.cur-list-bar {
+  display: flex; align-items: center; gap: 10px; margin: 6px 0 4px;
+}
+.cur-list-search {
+  flex: 1; min-width: 0; padding: 5px 9px; font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text);
+}
+.cur-list-chips { margin-bottom: 6px; }
+.cur-list {
+  max-height: 58vh; overflow-y: auto;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.cl-head {
+  display: flex; align-items: baseline; gap: 7px;
+  padding: 7px 10px 4px; font-size: 11px; color: var(--text-2);
+  border-bottom: 1px solid var(--line-soft);
+  position: sticky; top: 0; background: var(--bg-2); z-index: 1;
+}
+.cl-head .count {
+  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  color: var(--text-3);
+}
+.cl-dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.cl-gap {
+  padding: 3px 10px; font-size: 10px; color: var(--text-3);
+  font-style: italic; text-align: center;
+}
+.cur-list-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 4px 10px; cursor: pointer; font-size: 12px;
+  border-left: 3px solid var(--cat, transparent);
+}
+.cur-list-row:hover { background: var(--bg-hover); }
+.cur-list-row.here {
+  background: var(--accent-soft); color: var(--accent);
+  border-left-color: var(--accent);
+}
+.cur-list-row.undecided .cl-lab { color: var(--text-3); font-style: italic; }
+.cl-n {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  width: 46px; flex: none; text-align: right;
+}
+.cl-t {
+  font-family: var(--mono); font-size: 11px; width: 76px; flex: none;
+}
+.cl-lab { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cl-who, .cl-revs { font-size: 10px; color: var(--text-3); flex: none; }
+
 .cur-filter {
   display: flex; align-items: center; gap: 8px; margin: 10px 0 8px;
 }
