@@ -26,7 +26,7 @@
     "type_name": "2026-09-04T20:38:08.745408+00:00",
     "units": "2026-09-04T20:38:08.745408+00:00",
     "version": "2026-09-04T20:38:08.745408+00:00",
-    "versions": "2026-09-04T20:38:08.745408+00:00"
+    "versions": "2026-09-04T20:52:55.011567+00:00"
   },
   "_keys": {
     "history": {
@@ -41,7 +41,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-04T20:38:08.745408+00:00",
+    "at": "2026-09-04T20:52:55.011567+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -54,7 +54,6 @@
     "garbage": 416
   },
   "curation_label": "*",
-  "duration_s": null,
   "events": [
     {
       "label": "Garbage",
@@ -1762,7 +1761,6 @@
   "session_key": "m033_s008_2024-06-14_14-16-58",
   "session_label": "PTEN m33 s8 2024-06-14",
   "session_loose_key": "m033_s008",
-  "session_path": null,
   "source": {
     "detector": null,
     "file": null,
@@ -1777,12 +1775,22 @@
   "version": 3,
   "versions": [
     {
+      "archived": true,
       "at": "2026-09-02T19:00:02-04:00",
       "by": "theexaminedexistence@gmail.com",
       "by_label": {
         "unspecified": 416
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-09-04T16:52:48-04:00",
+          "by": "Shahriar",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_entry": "d3ea804b1743",
       "gained": 0,
       "imported": true,
@@ -1794,6 +1802,7 @@
       "v": 0
     },
     {
+      "archived": true,
       "at": "2026-09-04T16:10:54-04:00",
       "by": "Shahriar",
       "by_label": {
@@ -1803,6 +1812,15 @@
         "spike": 52
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-09-04T16:52:55-04:00",
+          "by": "Shahriar",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
@@ -3478,6 +3496,7 @@
       "v": 1
     },
     {
+      "archived": true,
       "at": "2026-09-04T16:17:31-04:00",
       "by": "Shahriar",
       "by_label": {
@@ -3495,6 +3514,15 @@
         {
           "at": "2026-09-04T16:29:08-04:00",
           "by": "Shahriar"
+        }
+      ],
+      "edits": [
+        {
+          "at": "2026-09-04T16:52:46-04:00",
+          "by": "Shahriar",
+          "changed": [
+            "archived"
+          ]
         }
       ],
       "gained": 0,
@@ -5177,12 +5205,22 @@
       "v": 2
     },
     {
+      "archived": true,
       "at": "2026-09-04T16:38:08-04:00",
       "by": "Shahriar",
       "by_label": {
         "garbage": 416
       },
       "changed": 92,
+      "edits": [
+        {
+          "at": "2026-09-04T16:52:44-04:00",
+          "by": "Shahriar",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
