@@ -95,6 +95,7 @@ class MouseBook:
         return self.book.write(self.base(rec.get("project"),
                                          rec.get("mouse")), rec)
 
+    @shards.atomic
     def set(self, project, mouse, attrs, note=None, replace=False):
         """Attach attributes to a mouse. Merges unless `replace`.
 

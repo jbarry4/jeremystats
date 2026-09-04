@@ -2642,6 +2642,28 @@ select {
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: var(--bg); color: var(--text); resize: vertical;
 }
+.ver-head { display: flex; align-items: baseline; gap: 10px; }
+.ver-head .linkish { margin-left: auto; }
+.ver-ops { display: flex; gap: 8px; margin-left: 8px; }
+.ver-row .ver-ops { opacity: 0; transition: opacity .12s; }
+.ver-row:hover .ver-ops, .ver-row:focus-within .ver-ops { opacity: 1; }
+.linkish {
+  font: inherit; font-size: 10px; padding: 0; border: 0; background: none;
+  color: var(--text-3); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.linkish:hover { color: var(--text); }
+.linkish.danger:hover { color: var(--err); }
+/* Folded away, not gone: still legible, obviously set aside. */
+.ver-row.archived { opacity: .55; border-left-style: dashed; }
+.ver-title { margin-top: 2px; font-size: 12px; font-weight: 600; }
+.ver-edited { margin-top: 3px; font-size: 9.5px; color: var(--text-3); }
+.ver-edit { width: min(560px, 94vw); }
+.ver-edit input[type=text] {
+  width: 100%; font: inherit; font-size: 12.5px; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text);
+}
 .ver-conf { margin-top: 5px; font-size: 10px; color: var(--text-3); }
 
 .bank-detail {

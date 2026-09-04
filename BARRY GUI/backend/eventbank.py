@@ -109,9 +109,23 @@ class EventBank:
         return out
 
     def summaries(self):
-        """Every entry without its event list, for browsing."""
-        return [{k: v for k, v in rec.items() if k != "events"}
-                for rec in self.all()]
+        """Every entry without its event list, for browsing.
+
+        And without the per-version snapshots. Each is a line per candidate,
+        so a set of four hundred costs about ten kilobytes a version -- fine
+        on one entry, and several megabytes across a bank once everything
+        has a history. The listing does not need them; opening an entry
+        fetches the whole record, which does.
+        """
+        out = []
+        for rec in self.all():
+            row = {k: v for k, v in rec.items() if k != "events"}
+            if row.get("versions"):
+                row["versions"] = [
+                    {k: v for k, v in ver.items() if k != "snap"}
+                    for ver in row["versions"]]
+            out.append(row)
+        return out
 
     def get(self, entry_id):
         for rec in self.all():
@@ -159,6 +173,7 @@ class EventBank:
     # ------------------------------------------------------------------
     # Writing
     # ------------------------------------------------------------------
+    @shards.atomic
     def add(self, entry):
         """File a set of events. Refuses anything it could not explain later.
 
@@ -230,7 +245,13 @@ class EventBank:
             "units": "seconds relative to the start of the recording",
             "n": len(clean),
             "events": clean,
-            "source": {
+            # The detector that produced the times stays the source.
+            # Curation said what they are; it did not find them, and
+            # overwriting this with "BARRY curation" would lose the only
+            # record of where the candidates came from.
+            "source": ((entry.get("import_from") or {}).get("source")
+                       or (prior.get("source") if prior else None)
+                       if entry.get("import_from") else None) or {
                 "pipeline": pipeline,
                 "run_id": entry.get("run_id"),
                 "file": entry.get("source_file"),
@@ -273,6 +294,31 @@ class EventBank:
                               or (prior.get("label_names") if prior else None)
                               or {})
         versions = list((prior.get("versions") if prior else None) or [])
+
+        # Where the lineage starts: the detector's export, before anyone
+        # had looked at any of it. Numbered zero, because it is the thing
+        # curation was done *to* rather than a round of curation -- and
+        # because numbering it one would push every real version up by one
+        # on an entry that already has a history.
+        came_from = entry.get("import_from")
+        if came_from and not any(v.get("imported") for v in versions):
+            was = came_from.get("added") or {}
+            n0 = came_from.get("n") or len(came_from.get("events") or [])
+            versions.insert(0, {
+                "v": 0,
+                "at": was.get("at") or _now(),
+                "by": was.get("by") or "unknown",
+                "note": "Imported from "
+                        + ((came_from.get("source") or {}).get("pipeline")
+                           or "a detector")
+                        + ". " + str(n0) + " candidates, none decided yet.",
+                "n": n0,
+                "by_label": {"unspecified": n0},
+                "changed": 0, "gained": 0, "lost": 0, "moves": {},
+                "machine": was.get("machine"),
+                "imported": True,
+                "from_entry": came_from.get("id"),
+            })
         # What actually moved, candidate by candidate.
         #
         # The counts alone cannot see it: two calls going one way and two
@@ -309,7 +355,9 @@ class EventBank:
                  or (prior.get("by_label") or {}) != counts)
         if moved:
             fresh = {
-                "v": len(versions) + 1,
+                # Highest so far plus one, not the count -- the import sits
+                # at zero and would otherwise make the numbering skip.
+                "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -364,6 +412,46 @@ class EventBank:
     SNAP_VERSIONS = 12
     SNAP_MAX_EVENTS = 6000
 
+    def source_entry_for(self, gid, kind, events):
+        """The detector import these curated events came from, if it is here.
+
+        Every curated time has to be one of the import's times. A list that
+        merely overlaps is a different list, and adopting it would fold two
+        unrelated records together -- which is worse than the duplicate this
+        is trying to avoid.
+        """
+        want = set()
+        for ev in events or []:
+            try:
+                want.add(round(float(ev["start"]), 4))
+            except (TypeError, ValueError, KeyError):
+                continue
+        if not want:
+            return None
+        best = None
+        for rec in self.all():
+            if rec.get("gid") != gid:
+                continue
+            if (rec.get("type") or "") != kind:
+                continue
+            # Something already curated is not the thing it came from.
+            if rec.get("curation_label") is not None:
+                continue
+            got = set()
+            for ev in rec.get("events") or []:
+                try:
+                    got.add(round(float(ev["start"]), 4))
+                except (TypeError, ValueError, KeyError):
+                    continue
+            if not got or not want.issubset(got):
+                continue
+            # The most complete list wins, then the oldest -- the import is
+            # the thing that came first.
+            key = (len(got), (rec.get("added") or {}).get("at") or "")
+            if best is None or key > best[0]:
+                best = (key, rec)
+        return best[1] if best else None
+
     def curated_entries(self, gid, kind=None, label=None):
         """The entries a curation set has already written, newest first.
 
@@ -399,6 +487,7 @@ class EventBank:
                   else "s", "s"),
             rec["id"]))
 
+    @shards.atomic
     def update(self, entry_id, patch):
         """Edit the describable parts. Provenance is not one of them."""
         rec = self.get(entry_id)
@@ -419,6 +508,89 @@ class EventBank:
             rec = self.book.write(base, rec) if base else rec
             self._cache = None
         return rec
+
+    @shards.atomic
+    def edit_version(self, entry_id, v, patch):
+        """Change what a version says about itself, not what it holds."""
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No such entry.")
+        hit = None
+        for ver in rec.get("versions") or []:
+            if ver.get("v") == v:
+                hit = ver
+                break
+        if hit is None:
+            raise BankError("That entry has no version %s." % v)
+
+        who = (self.store.provenance().get("user") if self.store else None)
+        changed = []
+        if "note" in patch:
+            new = (patch.get("note") or "").strip()
+            if new != (hit.get("note") or ""):
+                hit["note"] = new
+                changed.append("note")
+        if "title" in patch:
+            new = (patch.get("title") or "").strip()
+            if new != (hit.get("title") or ""):
+                if new:
+                    hit["title"] = new
+                else:
+                    hit.pop("title", None)
+                changed.append("title")
+        if "archived" in patch:
+            want = bool(patch.get("archived"))
+            if want != bool(hit.get("archived")):
+                hit["archived"] = want
+                if not want:
+                    hit.pop("archived", None)
+                changed.append("archived" if want else "unarchived")
+        if not changed:
+            return rec, []
+        # An edited note says so. The point of a note is that somebody
+        # wrote it at the time; one quietly rewritten later is worth less,
+        # and pretending otherwise is the kind of thing this store exists
+        # not to do.
+        hit.setdefault("edits", []).append(
+            {"at": _now(), "by": who, "changed": changed})
+        self._save(rec)
+        return rec, changed
+
+    @shards.atomic
+    def delete_version(self, entry_id, v):
+        """Remove one version from the history. The events stay put."""
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No such entry.")
+        vs = rec.get("versions") or []
+        keep = [x for x in vs if x.get("v") != v]
+        if len(keep) == len(vs):
+            raise BankError("That entry has no version %s." % v)
+        if not keep:
+            raise BankError(
+                "That is the only version this entry has. Delete the whole "
+                "entry instead, or archive the version.")
+        rec["versions"] = keep
+        # Numbers are never reused and never shifted: the next bank counts
+        # from the highest that has ever existed, so a deleted v2 does not
+        # come back as a different v2.
+        rec["version"] = max(x.get("v") or 0 for x in keep)
+        rec.setdefault("history", []).append({
+            "at": _now(),
+            "by": (self.store.provenance().get("user") if self.store else None),
+            "changed": ["versions"],
+            "why": "deleted version %s" % v,
+        })
+        self._save(rec)
+        return rec
+
+    @shards.atomic
+    def _save(self, rec):
+        """Write a record back under the id it already has."""
+        base = self._base_for_id(rec["id"]) or self._base_of(rec)
+        out = self.book.write(base, rec)
+        self._cache = None
+        return out
 
     def delete(self, entry_id):
         base = self._base_for_id(entry_id)

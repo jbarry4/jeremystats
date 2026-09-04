@@ -79,6 +79,7 @@ directory git ignores.
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -126,6 +127,26 @@ def _now():
             now = base.isoformat(timespec="microseconds")
         _LAST_STAMP = now
         return now
+
+
+def atomic(fn):
+    """Hold the store lock across a whole read-modify-write.
+
+    write() has always been atomic on its own, which protects the file from
+    being torn but not the record from being clobbered: read, change, write
+    is three steps, and two of them running at once means the second writes
+    back a copy of the record in which the first one's change never
+    happened. Marking the method makes the three steps one.
+
+    The lock is an RLock, so the write inside can still take it, and it is
+    the same lock the write already uses -- there is only one, and it is
+    only ever held for the length of one record's update.
+    """
+    @functools.wraps(fn)
+    def go(*args, **kwargs):
+        with _LOCK:
+            return fn(*args, **kwargs)
+    return go
 
 
 def _slug(text):
@@ -232,7 +253,11 @@ def merge(shards, spec=None):
             out[field] = (dict(pairs) if kind == MAPLWW
                           else [v for _k, v in pairs])
             kstamps[field] = stamps
-            snap[field] = dict(pairs)
+            # Fingerprints, not the values. The values in `pairs` are the
+            # same objects that go out in the record, so keeping them here
+            # means a caller editing one edits the "before" picture of it
+            # too, and write() can no longer see that anything happened.
+            snap[field] = {k: _fingerprint(v) for k, v in pairs}
         else:
             cands = [(_stamp_of(s, field), m, s[field])
                      for m, s in live if field in s]
@@ -456,16 +481,17 @@ class Book:
     def _stamp_keys(self, table, field, kind, value, snap, inherited, at):
         """Per-item stamps for the set-like kinds, including tombstones.
 
-        `snap` is what read() handed out, so "changed" means changed by this
-        caller -- not merely different from what some other machine has since
-        written.
+        `snap` is what read() handed out -- as fingerprints, so that editing an
+        item in place cannot quietly rewrite the record of what it used to
+        be. "Changed" means changed by this caller, not merely different
+        from what some other machine has since written.
         """
         now = ({str(k): v for k, v in (value or {}).items()}
                if kind == MAPLWW and isinstance(value, dict)
                else {_item_key(i): i for i in (value or [])})
 
         for key, val in now.items():
-            if key in snap and snap[key] == val:
+            if key in snap and snap[key] == _fingerprint(val):
                 # Carried through untouched: keep whoever's stamp won.
                 got = inherited.get(key)
                 table[key] = list(got) if got else table.get(key, ["set", at])
@@ -655,6 +681,16 @@ def _read_json(path):
             return json.load(fh)
     except (OSError, json.JSONDecodeError, ValueError):
         return None
+
+
+def write_json_atomic(path, data):
+    """The store's atomic write, for callers outside this module.
+
+    Anything repairing a shard in place needs the same private-temp-file
+    and replace dance as a normal write, or a crash mid-repair leaves a
+    half-written record where a whole one used to be.
+    """
+    return _write_json(path, data)
 
 
 def _write_json(path, data):

@@ -2075,6 +2075,17 @@ def api_curation_bank(gid, kind):
     prior = BANK.curated_entries(gid, kind)
     whole = [p for p in prior if p.get("curation_label") == "*"]
     keep = whole[0]["id"] if whole else None
+    # Nothing curated here yet: continue the detector's export these
+    # candidates came from, rather than filing a second record of the same
+    # four hundred times.
+    # The detector's export these candidates came from, whether or not
+    # anything has been curated yet. If nothing has, the curated result
+    # continues that entry in place -- same id, same link. If something has,
+    # the import is folded into its history as version zero and the second
+    # record of the same four hundred times goes away.
+    adopt = BANK.source_entry_for(gid, kind, bundle["events"])
+    if not keep and adopt:
+        keep = adopt["id"]
     removed = []
     try:
         entry = BANK.add({
@@ -2097,6 +2108,7 @@ def api_curation_bank(gid, kind):
             "version_note": body.get("note"),
             # What the bank needs to tell a guess from a decision.
             "curated": True,
+            "import_from": adopt,
             # "*" means the whole set rather than one of its categories.
             "curation_label": "*",
             "gid": gid,
@@ -2109,6 +2121,7 @@ def api_curation_bank(gid, kind):
              "label_names": bundle["label_names"],
              "version": entry.get("version"),
              "new_version": bool(entry.get("new_version")),
+             "adopted": (adopt or {}).get("name") if adopt else None,
              "replaced": bool(entry.get("replaced"))}]
 
     for old_entry in prior:
@@ -2121,6 +2134,15 @@ def api_curation_bank(gid, kind):
                             "name": old_entry.get("name"),
                             "n": old_entry.get("n"),
                             "why": "folded into one entry for the set"})
+
+    # The import, now that it is version zero of this entry's history. Its
+    # times and its provenance are both carried over, so nothing is lost by
+    # it no longer being a record of its own.
+    if adopt and adopt["id"] != entry["id"]:
+        if BANK.delete(adopt["id"]):
+            removed.append({"id": adopt["id"], "name": adopt.get("name"),
+                            "n": adopt.get("n"),
+                            "why": "now version 0 of this entry"})
 
     STORE.record_activity([{
         "action": "curation.bank",
@@ -2180,6 +2202,105 @@ def api_curation_banked(gid, kind):
                    "label": e.get("curation_label")}
                   for e in found if e.get("curation_label") != "*"],
     })
+
+
+@app.route("/api/curation/<gid>/<kind>/restore", methods=["POST"])
+def api_curation_restore(gid, kind):
+    """Put a banked version's labels back onto the live set."""
+    body = request.get_json(force=True, silent=True) or {}
+    entry_id = body.get("entry")
+    try:
+        want_v = int(body.get("version"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Which version?"}), 400
+
+    ent = BANK.get(entry_id) if entry_id else None
+    if not ent:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    ver = None
+    for v in ent.get("versions") or []:
+        if v.get("v") == want_v:
+            ver = v
+            break
+    if not ver:
+        return jsonify({"ok": False,
+                        "error": "That entry has no version %s." % want_v}), 404
+    snap = ver.get("snap")
+    if not snap:
+        return jsonify({
+            "ok": False,
+            "error": "Version %s no longer carries a candidate-by-candidate "
+                     "snapshot, so it cannot be put back -- only the recent "
+                     "versions keep one. Its counts and its note are still "
+                     "in the history." % want_v}), 400
+
+    rec = CURATE.get(gid, kind)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+
+    # The snapshot holds display names; the set works in ids.
+    to_id = {}
+    for lab in rec.get("labels") or []:
+        to_id[lab["name"]] = lab["id"]
+        to_id[lab["id"]] = lab["id"]
+    by_t = {}
+    for e in rec.get("events") or []:
+        try:
+            by_t[round(float(e["start"]), 4)] = e
+        except (TypeError, ValueError, KeyError):
+            continue
+
+    pairs, missing, unchanged = {}, 0, 0
+    for pair in snap:
+        try:
+            when, lab = float(pair[0]), pair[1]
+        except (TypeError, ValueError, IndexError):
+            continue
+        hit = by_t.get(round(when, 4))
+        if hit is None:
+            missing += 1
+            continue
+        want = None if lab in (None, "unspecified") else to_id.get(lab, lab)
+        if hit.get("label") == want:
+            unchanged += 1
+            continue
+        pairs[hit["id"]] = want
+
+    if not pairs:
+        return jsonify({"ok": True, "changed": 0, "unchanged": unchanged,
+                        "missing": missing, "version": want_v,
+                        "progress": CURATE.progress(rec)})
+    try:
+        n, prog = CURATE.label_many(gid, kind, pairs)
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    STORE.record_activity([{
+        "action": "curation.restore",
+        "detail": {"gid": gid, "kind": kind, "entry": entry_id,
+                   "version": want_v, "changed": n, "unchanged": unchanged,
+                   "missing": missing},
+    }])
+    return jsonify({"ok": True, "changed": n, "unchanged": unchanged,
+                    "missing": missing, "version": want_v, "progress": prog})
+
+
+@app.route("/api/curation/restamp", methods=["POST"])
+def api_curation_restamp():
+    """One-time repair for decisions written while the stamper was broken.
+
+    Set `dry_run` to see what it would do without doing it.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    rows = CURATE.restamp(dry_run=bool(body.get("dry_run")))
+    n = sum(r["restamped"] for r in rows)
+    if not body.get("dry_run") and n:
+        STORE.record_activity([{
+            "action": "curation.restamp",
+            "detail": {"sets": len(rows), "decisions": n},
+        }])
+    return jsonify({"ok": True, "sets": rows, "decisions": n,
+                    "dry_run": bool(body.get("dry_run"))})
 
 
 @app.route("/api/curation/handoff")
@@ -3941,6 +4062,42 @@ def api_bank_update(entry_id):
 
     return jsonify({"ok": True, "entry": {k: v for k, v in rec.items()
                                           if k != "events"}})
+
+
+@app.route("/api/bank/<entry_id>/version/<int:v>", methods=["POST"])
+def api_bank_version(entry_id, v):
+    """Edit, archive or delete one version of an entry's history."""
+    body = request.get_json(force=True, silent=True) or {}
+    action = (body.get("action") or "edit").strip()
+    try:
+        if action == "delete":
+            rec = BANK.delete_version(entry_id, v)
+            changed = ["deleted"]
+        elif action in ("archive", "unarchive"):
+            rec, changed = BANK.edit_version(
+                entry_id, v, {"archived": action == "archive"})
+        else:
+            patch = {}
+            if "note" in body:
+                patch["note"] = body.get("note")
+            if "title" in body:
+                patch["title"] = body.get("title")
+            if not patch:
+                return jsonify({"ok": False,
+                                "error": "Nothing to change."}), 400
+            rec, changed = BANK.edit_version(entry_id, v, patch)
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    STORE.record_activity([{
+        "action": "bank.version." + action,
+        "detail": {"entry": entry_id, "version": v, "changed": changed},
+    }])
+    mirror_bank_soon()
+    return jsonify({"ok": True, "changed": changed,
+                    "versions": [{k: val for k, val in x.items()
+                                  if k != "snap"}
+                                 for x in (rec.get("versions") or [])]})
 
 
 @app.route("/api/bank/<entry_id>/delete", methods=["POST"])
