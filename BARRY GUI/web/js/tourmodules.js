@@ -33,9 +33,25 @@
      the tour still runs on a fresh machine with nothing scanned. */
   let cachedPath;
 
+  /* A recording for the tour to point at.
+
+     The demo one, deliberately, and in preference to real data. The Guide is
+     the first thing anybody opens: on a laptop with no drive mounted there
+     used to be nothing for it to demonstrate, and on the rig it would open
+     somebody's actual session and start moving their window around. The demo
+     is generated, always present, identical on every machine, and nobody
+     minds what happens to it -- see backend/demo.py.
+
+     Real data is the fallback, for the case where the demo is somehow
+     unavailable. */
   async function anyRecording() {
     if (cachedPath !== undefined) return cachedPath;
     cachedPath = null;
+    try {
+      const reg = await api('/api/registry');
+      const demos = reg.demo_paths || [];
+      if (demos.length) { cachedPath = demos[0]; return cachedPath; }
+    } catch (e) { /* fall through to whatever is stored */ }
     try {
       const d = await api('/api/sessions');
       for (const rec of (d.sessions || [])) {
@@ -120,8 +136,10 @@
         target: () => document.querySelector('.pane-canvas-host')
                    || document.querySelector('#xfDrop'),
         placement: 'top',
-        note: 'BARRY has opened one for you, so the rest of the tour has '
-            + 'something real to point at.',
+        note: 'BARRY has opened a made-up recording for the tour, so this '
+            + 'works on a laptop with no drive mounted — and so the '
+            + 'tour is not moving the window around on somebody’s real '
+            + 'session while they are using it. Nothing in it is real data.',
       },
       {
         title: 'What you touch most',

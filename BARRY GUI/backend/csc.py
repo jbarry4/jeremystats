@@ -20,7 +20,7 @@ import os
 import warnings
 import numpy as np
 
-from . import nlx
+from . import demo, nlx
 
 try:
     from scipy.signal import butter, sosfiltfilt, iirnotch, tf2sos
@@ -61,12 +61,19 @@ def describe_path(path):
 def open_session(path, even_only=None, invert=True):
     """Open a session and return its channel inventory + timing metadata.
 
+    A "demo:" path is a recording that is not on disk -- see demo.py. It
+    exists so the Guide works on a laptop with nothing mounted, and it goes
+    through the same code as everything else from here on.
+
     `even_only=None` means "work it out", which is the default because
     neither answer is right for both rigs. See nlx.channel_scheme: the old
     32-channel probe left its odd AD channels empty, the 64-channel probe
     fills all of them, and assuming either one silently halves or doubles
     what anybody looks at. True or False still forces it.
     """
+    if demo.is_demo(path):
+        return demo.open_session(path, even_only, invert)
+
     info = describe_path(path)
     if not info.get("ok"):
         return info
@@ -110,6 +117,34 @@ def _open_ncs_folder(folder, even_only, invert):
     size = os.path.getsize(files[0][1])
     n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
     duration = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+
+    # A file with a header and no data is not a recording.
+    #
+    # An aborted acquisition leaves CSC*.ncs files of exactly 16384 bytes, and
+    # a zero-byte placeholder does the same thing. Those used to open
+    # perfectly happily with duration 0.0 -- and then every panel, every pan
+    # and every poll failed with "No samples in 0.000-4.000 s", four times a
+    # refresh, for as long as the session stayed open. That is the error spam:
+    # one bad folder, hundreds of failures, none of which says what is
+    # actually wrong.
+    #
+    # Refusing here means one clear message instead.
+    if n_rec <= 0:
+        empties = sum(
+            1 for _num, fp in files
+            if os.path.getsize(fp) <= nlx.HEADER_BYTES)
+        return {
+            "ok": False,
+            "error": (
+                "That folder has %d CSC file(s) but no data in them -- %d of "
+                "them are header-only or empty. It looks like an acquisition "
+                "that was started and stopped, or a partial copy. There is "
+                "nothing to plot."
+                % (len(files), empties)),
+            "path": folder,
+            "empty": True,
+            "n_csc_files": len(files),
+        }
 
     channels = []
     for i, (num, p) in enumerate(files):
@@ -317,6 +352,8 @@ def _open_mat(path):
 # --------------------------------------------------------------------------
 def _read_channel_window(session, ch, t0, t1):
     """Return (samples, actual_t0, fs) for one channel over [t0, t1) seconds."""
+    if session["source"] == "demo":
+        return demo.read_window(session, ch, t0, t1)
     if session["source"] == "ncs":
         return nlx.read_ncs_range(ch["file"], t0, t1, invert=session.get("invert", True))
 

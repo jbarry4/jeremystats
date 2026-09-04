@@ -1,0 +1,73 @@
+{
+  "_at": {
+    "created": "2026-09-04T15:52:21.901056+00:00",
+    "first_seen_by": "2026-09-04T15:52:21.901056+00:00",
+    "gid": "2026-09-04T15:52:21.901056+00:00",
+    "group": "2026-09-04T15:52:21.901056+00:00",
+    "key": "2026-09-04T15:52:21.901056+00:00",
+    "label": "2026-09-04T15:52:21.901056+00:00",
+    "loose_key": "2026-09-04T15:52:21.901056+00:00",
+    "mouse": "2026-09-04T15:52:21.901056+00:00",
+    "project": "2026-09-04T15:52:21.901056+00:00",
+    "project_source": "2026-09-04T15:52:21.901056+00:00",
+    "schema": "2026-09-04T15:52:21.901056+00:00",
+    "session": "2026-09-04T15:52:21.901056+00:00",
+    "start": "2026-09-04T15:52:21.901056+00:00",
+    "updated": "2026-09-04T15:52:21.901056+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "demo:ds-tutorial": [
+        "set",
+        "2026-09-04T15:52:21.901056+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T15:52:21.901056+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T15:52:21.901056+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:52:21-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "first_seen_by": "opened",
+  "gid": "sc6a9f4358ab4",
+  "group": null,
+  "key": null,
+  "label": "unidentified",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [
+    "demo:ds-tutorial"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T11:52:21-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "demo:ds-tutorial",
+      "root": null,
+      "scan": null
+    }
+  },
+  "session": null,
+  "start": null,
+  "updated": {
+    "at": "2026-09-04T11:52:21-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

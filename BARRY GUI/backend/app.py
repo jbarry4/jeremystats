@@ -23,8 +23,10 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 
 from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                curation, discovery, eventbank, events, export, extras, ids,
+               demo as demomod,
                dsimport,
                feedback as feedbackmod,
+               profile as profilemod,
                layers, live, mice as micebook, nlx, pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, store,
@@ -43,6 +45,12 @@ STORE = store.Store(LOGS_DIR, auto_stage=False)
 # rule as everything else that gets edited, so two people never write the
 # same file.
 FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
+# Who you are, said once. Everything attributed -- curation, banking, layer
+# sheets, figures, runs -- goes through STORE.provenance(), which prefers
+# this over the git identity. Wired after the Store exists because it needs
+# one, and back onto it so provenance() can see it.
+PROFILE = profilemod.Profile(LOGS_DIR, STORE)
+STORE.profile = PROFILE
 
 _CATALOG = {"items": [], "sections": [], "scanned": 0}
 _SESSIONS = {}          # cache key -> opened session
@@ -482,12 +490,34 @@ def api_csc_open():
     if err:
         return jsonify(err), 400
 
-    identity = ids.identify(
-        sess["path"], header_time=_header_time(sess))
+    if sess.get("source") == "demo":
+        # A demo path has no mouse or session in it to parse, so the
+        # identity comes from its definition. Without this the tab reads
+        # "unidentified" and every attachment keyed on the recording -- the
+        # curation set most of all -- has nothing to hang off.
+        spec = demomod.get(sess["path"]) or {}
+        identity = {
+            "key": "demo_%s" % spec.get("id"),
+            "loose_key": "demo_%s" % spec.get("id"),
+            "label": spec.get("label"),
+            "project": spec.get("project"),
+            "mouse": spec.get("mouse"),
+            "session": spec.get("session"),
+            "start": spec.get("date", "") + "T00:00:00",
+            "gid": spec.get("gid"),
+            "confidence": "exact",
+            "demo": True,
+        }
+    else:
+        identity = ids.identify(
+            sess["path"], header_time=_header_time(sess))
     # Opening a recording is also laying eyes on it: make sure it has a
     # permanent id and a project before anything else reads the record.
+    # Not for a demo: it is not a discovery, and writing it in would leave
+    # two fake sessions in every clone's registry for good.
     try:
-        REG.ensure(identity)
+        if sess.get("source") != "demo":
+            REG.ensure(identity)
     except Exception as exc:                               # noqa: BLE001
         STORE.record_error("registry/ensure", str(exc), None, {"path": path})
     stored, how = STORE.get_session(identity)
@@ -510,7 +540,9 @@ def api_csc_open():
                 sess = again
 
     out = {k: v for k, v in sess.items() if k != "channels"}
-    out["gid"] = (stored or {}).get("gid")
+    # A demo has no stored record, so its gid comes off the identity. Every
+    # attachment -- the curation set most of all -- is keyed on this.
+    out["gid"] = (stored or {}).get("gid") or identity.get("gid")
     # Carried on the identity too, so two windows that opened the same
     # recording by different paths agree on what to call it -- which is what
     # the cross-window channels are keyed on.
@@ -1771,16 +1803,15 @@ def api_layers_get(gid):
     rec = LAYERS.get(gid)
     if not rec:
         return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
-    sess = REG.by_gid(gid)
     return jsonify({"ok": True, "sheet": LAYERS.summary(rec),
-                    "session": REG.summary(sess) if sess else None})
+                    "session": _session_by_gid(gid)})
 
 
 @app.route("/api/layers/<gid>/start", methods=["POST"])
 def api_layers_start(gid):
     """Open (or make) the sheet for a recording, with its channel order."""
     body = request.get_json(force=True) or {}
-    sess = REG.by_gid(gid)
+    sess = _session_by_gid(gid)
     if not sess:
         return jsonify({"ok": False,
                         "error": "No recording with the id " + gid}), 404
@@ -1910,10 +1941,9 @@ def api_curation_get(gid, kind):
     rec = CURATE.get(gid, kind)
     if not rec:
         return jsonify({"ok": False, "error": "No such curation set."}), 404
-    sess = REG.by_gid(gid)
     return jsonify({"ok": True, "set": rec,
                     "progress": CURATE.progress(rec),
-                    "session": REG.summary(sess) if sess else None})
+                    "session": _session_by_gid(gid)})
 
 
 @app.route("/api/curation/create", methods=["POST"])
@@ -1986,7 +2016,7 @@ def api_curation_bank(gid, kind):
     rec = CURATE.get(gid, kind)
     if not rec:
         return jsonify({"ok": False, "error": "No such curation set."}), 404
-    sess = REG.by_gid(gid)
+    sess = _session_by_gid(gid)
     if not sess:
         return jsonify({"ok": False, "error": "No such recording."}), 404
 
@@ -2115,16 +2145,60 @@ def _attachments(rec):
     }
 
 
+def _session_by_gid(gid):
+    """A recording summary for a gid, demo or real.
+
+    The demo recordings are not in the registry -- on purpose -- so every
+    route that looks a gid up has to know about them or they open as
+    "unidentified" with nowhere to read from. One place, rather than the
+    same three lines in five routes.
+    """
+    for row in demomod.registry_rows():
+        if row["gid"] == gid:
+            return row
+    rec = REG.by_gid(gid)
+    return REG.summary(rec) if rec else None
+
+
+def _demo_project():
+    """The made-up recordings, as one project in the tree.
+
+    Not stored in the registry: they are not discoveries, they exist
+    unconditionally, and writing them to disk would mean every clone had two
+    fake sessions in its records for ever. Added at the edge instead, so
+    everything downstream treats them as ordinary.
+    """
+    rows = demomod.registry_rows()
+    by_mouse = {}
+    for r in rows:
+        by_mouse.setdefault(r["mouse"], []).append(r)
+    return {
+        "project": "DEMO",
+        "demo": True,
+        "n": len(rows),
+        "mice": [{"mouse": "m%s" % m, "n": len(v), "demo": True,
+                  "sessions": v}
+                 for m, v in sorted(by_mouse.items())],
+    }
+
+
 @app.route("/api/registry")
 def api_registry():
     """Every recording BARRY has met, as a project / mouse / session tree."""
     if request.args.get("backfill"):
         REG.backfill()
+    tree = REG.tree(_attachments)
+    if not request.args.get("no_demo"):
+        # Last, so real data is what you see first -- but always there, so
+        # a machine with nothing mounted is not an empty application.
+        tree = list(tree) + [_demo_project()]
     return jsonify({
         "ok": True,
         "projects": REG.projects(),
         "known_projects": list(sessreg.KNOWN_PROJECTS),
-        "tree": REG.tree(_attachments),
+        "tree": tree,
+        "demo_paths": [demomod.path_for(s)
+                       for s in demomod.SESSIONS.values()],
         "total": len([r for r in REG.all() if not r.get("retired")]),
         # So the tree can branch on any of them without a second round trip.
         "mice": MICE.index(),
@@ -2134,6 +2208,11 @@ def api_registry():
 
 @app.route("/api/registry/<gid>")
 def api_registry_one(gid):
+    # A demo gid resolves without being in the registry, so curation and
+    # StrataScope can open one the same way they open anything else.
+    for row in demomod.registry_rows():
+        if row["gid"] == gid:
+            return jsonify({"ok": True, "session": row, "attachments": {}})
     rec = REG.by_gid(gid)
     if not rec:
         return jsonify({"ok": False, "error": "No session " + gid}), 404
@@ -2898,6 +2977,54 @@ def api_errors_resolve():
     return jsonify({"ok": True, "resolved": STORE.resolved_errors()})
 
 
+# How much of the run goes into a report when nobody says otherwise. Ten
+# minutes is the window in which somebody notices something and files it;
+# longer stops being context and starts being a log dump.
+REPORT_WINDOW_S = 600
+
+
+def _recent_window(seconds=REPORT_WINDOW_S):
+    """What happened in the last `seconds`, for attaching to a report.
+
+    The person filing cannot know which lines matter, so this is gathered
+    for them rather than asked for: the actions they took, the errors that
+    were recorded, and the requests the server actually served.
+    """
+    import datetime as _dt
+    cutoff = _dt.datetime.now().astimezone() - _dt.timedelta(seconds=seconds)
+
+    def recent(rows, key="at"):
+        out = []
+        for r in rows or []:
+            stamp = str(r.get(key) or "")
+            try:
+                when = _dt.datetime.fromisoformat(stamp)
+            except ValueError:
+                continue
+            if when.tzinfo is None:
+                when = when.astimezone()
+            if when >= cutoff:
+                out.append(r)
+        return out
+
+    try:
+        acts = recent(STORE.list_activity(limit=400))
+    except Exception:                                     # noqa: BLE001
+        acts = []
+    try:
+        errs = recent(STORE.list_errors(limit=200))
+    except Exception:                                     # noqa: BLE001
+        errs = []
+    reqs = []
+    try:
+        # The server's own view of what it served.
+        reqs = (extras.TRACE.recent(limit=120) or [])
+    except Exception:                                     # noqa: BLE001
+        reqs = []
+    return {"window_s": seconds, "actions": acts, "errors": errs,
+            "requests": reqs}
+
+
 @app.route("/api/errors/bundle", methods=["POST"])
 def api_errors_bundle():
     """One block of text with everything a bug report needs."""
@@ -3425,6 +3552,30 @@ def api_mice_forget():
     return jsonify({"ok": bool(ok), "attributes": MICE.attributes()})
 
 
+@app.route("/api/profile", methods=["GET", "POST"])
+def api_profile():
+    """Who you are. Everything attributed is tagged from this.
+
+    Before it existed, attribution came from `git config user.name` falling
+    back to the Windows account -- so on a shared rig every curation
+    decision was credited to a computer, and two people on one machine were
+    indistinguishable.
+    """
+    if request.method == "GET":
+        return jsonify({"ok": True, "profile": PROFILE.get(),
+                        "fields": list(profilemod.FIELDS),
+                        "provenance": STORE.provenance()})
+    body = request.get_json(force=True) or {}
+    try:
+        prof = PROFILE.save(body)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                              # noqa: BLE001
+        return fail("profile/save", exc, 400)
+    return jsonify({"ok": True, "profile": prof,
+                    "provenance": STORE.provenance()})
+
+
 @app.route("/api/feedback", methods=["GET", "POST"])
 def api_feedback():
     """Bug reports, feature requests and suggestions.
@@ -3441,6 +3592,14 @@ def api_feedback():
                         "counts": FEEDBACK.counts(),
                         "user": STORE.provenance().get("user")})
     body = request.get_json(force=True) or {}
+    # The last ten minutes go in whether or not the form asked for them:
+    # the person filing cannot know which lines matter, and a report without
+    # them usually cannot be acted on.
+    if body.get("recent") is None and not body.get("no_recent"):
+        try:
+            body["recent"] = _recent_window()
+        except Exception:                                 # noqa: BLE001
+            body["recent"] = None
     try:
         rec = FEEDBACK.add(body, user=STORE.provenance().get("user"))
     except ValueError as exc:
@@ -3902,6 +4061,9 @@ def cloud_sync_once(push=True, pull=True, files=False):
         out["mirrored"] = CLOUD.mirror_bank(APP_DIR).get("written", 0)
         _cloud_last.update({"at": cloudmod.now(), "ok": True,
                             "error": None, "failures": 0, **out})
+        # Whatever was blocking it evidently is not any more.
+        _cloud_last.pop("blocked", None)
+        _cloud_last.pop("blocked_note", None)
     except Exception as exc:                       # noqa: BLE001
         # Log the first failure of a run, not every one. The commonest reason
         # to fail is "the schema is not applied yet", which does not fix
@@ -3911,6 +4073,19 @@ def cloud_sync_once(push=True, pull=True, files=False):
         _cloud_last.update({"at": cloudmod.now(), "ok": False,
                             "error": str(exc)[:400]})
         _cloud_last["failures"] = _cloud_last.get("failures", 0) + 1
+        # A clock that is ahead of the server's is not something retrying
+        # fixes. Every attempt fails identically and logs the same line, so
+        # the automatic sync stands down until BARRY is restarted -- by which
+        # time the clock has either been set or it has not. Syncing by hand
+        # still works, so there is a way to test the fix without a restart.
+        msg = str(exc)
+        if "PGRST303" in msg or "issued at future" in msg:
+            _cloud_last["blocked"] = "clock"
+            _cloud_last["blocked_note"] = (
+                "This machine's clock is ahead of Supabase's, so every "
+                "request is rejected. Automatic syncing is paused. Set the "
+                "clock (Settings > Time & language > Date & time > Sync "
+                "now), then press Sync now here.")
         if first:
             STORE.record_error("cloud.sync", exc)
     finally:
@@ -3927,7 +4102,11 @@ def _cloud_loop():
     while True:
         cfg = CLOUD.cloud.reload()
         base = max(30, int(cfg.get("interval") or 120))
-        if cfg.get("enabled") and cfg.get("auto"):
+        # Held off entirely while something is wrong that retrying cannot
+        # fix -- see the clock case in cloud_sync_once. A manual sync clears
+        # the flag by succeeding.
+        if (cfg.get("enabled") and cfg.get("auto")
+                and not _cloud_last.get("blocked")):
             cloud_sync_once(files=cfg.get("upload_results", True))
         # Back off while it is failing, up to half an hour. Something that is
         # down stays down; retrying every two minutes for a day is just noise
@@ -3963,6 +4142,31 @@ def mirror_bank_soon():
 
 # Once at startup, so the folder is there and correct before anyone looks.
 mirror_bank_soon()
+
+
+def _seed_demo():
+    """Give the demo recordings something to curate and something banked.
+
+    Created once, if it is not already there, so the Guide can walk the
+    curation exercise instead of describing it. Written to disk like any
+    other set -- a person's decisions during the Guide should persist, and
+    twenty-four events is nothing -- but excluded from the cloud sync, since
+    nobody wants two fake recordings arriving in a shared database.
+    """
+    for spec in demomod.SESSIONS.values():
+        gid = spec["gid"]
+        try:
+            if CURATE.get(gid, "ds"):
+                continue
+            CURATE.create(gid, "ds", demomod.curation_events(spec["id"]),
+                          name=spec["label"] + " (demo set)",
+                          source={"kind": "demo", "note": spec["note"]},
+                          session_label=spec["label"], replace=True)
+        except Exception as exc:                          # noqa: BLE001
+            STORE.record_error("demo/seed", exc, None, {"gid": gid})
+
+
+threading.Thread(target=_seed_demo, daemon=True, name="barry-demo-seed").start()
 
 
 @app.route("/api/cloud/mirror", methods=["POST"])

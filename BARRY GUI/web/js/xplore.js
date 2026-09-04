@@ -5009,6 +5009,10 @@ BARRY.views.xplore = (function () {
   let linkPoll = null;      // the pending timer between held polls
   let linkRun = 0;          // bumped to abandon an in-flight chain
   let linkFails = 0;
+  /* Whether the server holds a poll open. Assumed until it demonstrably
+     does not -- see pollLink. */
+  let holdWorks = true;
+  let holdMisses = 0;
 
   /* How long the server may hold a poll open, in seconds. Zero means the
      old behaviour: ask, get an answer straight away, wait, ask again.
@@ -5074,7 +5078,8 @@ BARRY.views.xplore = (function () {
          exists to stop a tight loop. With it off there is nothing else
          pacing the chain, so it has to do the pacing. */
       const gap = linkFails ? Math.min(500 * linkFails, 10000)
-        : (linkHold() ? 60 : (XF.linkMode === 'none' ? 900 : 400));
+        : ((holdWorks && linkHold())
+             ? 60 : (XF.linkMode === 'none' ? 900 : 400));
       linkPoll = setTimeout(step, gap);
     };
     step();
@@ -5215,8 +5220,26 @@ BARRY.views.xplore = (function () {
     }
   }
 
+  /* The newest position, held while a publish is in flight.
+
+     This used to simply drop a publish that arrived while another was
+     running, on the grounds that a drag emits one per frame and only the
+     last matters. That is true of a drag and false of a pair: changing the
+     span during curation fires twice in a row -- once for the move, once for
+     the re-centre onto the candidate -- and the second, which is the one
+     that centres it, was the one thrown away. The main window re-centred
+     because it does that locally; the aid window only ever heard the first.
+
+     So the latest is kept and sent when the current one finishes. Still one
+     request in flight, still only the last value, but nothing is lost. */
+  let linkPending = null;
+
   async function publishLink(t0, span, sess) {
-    if (XF.linkMode === 'none' || linkSending) return;
+    if (XF.linkMode === 'none') return;
+    if (linkSending) {
+      linkPending = { t0, span, sess };
+      return;
+    }
     linkSending = true;
     try {
       const res = await apiPost('/api/link', {
@@ -5237,6 +5260,12 @@ BARRY.views.xplore = (function () {
       /* linking is best-effort */
     } finally {
       linkSending = false;
+      const next = linkPending;
+      linkPending = null;
+      // Send whatever arrived while this was going out. Not awaited: this
+      // is the tail of a best-effort publish, and awaiting it here would
+      // hold the flag it just released.
+      if (next) publishLink(next.t0, next.span, next.sess);
     }
   }
 
@@ -5276,9 +5305,30 @@ BARRY.views.xplore = (function () {
       // Held open by the server for up to 25s. An idle window costs one
       // request every 25s rather than two and a half a second, and a move
       // in another window arrives at once instead of within 400ms.
-      const hold = linkHold();
+      /* Only ask for a hold while the server is actually honouring one.
+
+         A server that predates long-polling ignores `wait`, answers
+         instantly, and the short gap below then becomes a tight loop -- a
+         peer running older code was making sixteen requests a second. So
+         the reply is checked: it should either say it was held, or have
+         taken long enough that it plainly was. Three instant empty replies
+         and this stops asking. */
+      const hold = holdWorks ? linkHold() : 0;
+      const t0 = performance.now();
       data = await api('/api/link?since=' + linkSeen
                        + (hold ? '&wait=' + hold : ''));
+      if (hold) {
+        const took = performance.now() - t0;
+        const gotSomething = data.channels
+          && Object.keys(data.channels).length > 0;
+        if (data.held === true || took > 400 || gotSomething) {
+          holdMisses = 0;
+        } else if ((holdMisses += 1) >= 3) {
+          holdWorks = false;
+          BARRY.activity.log('link.hold.off',
+                             { reason: 'the server is not holding the poll' });
+        }
+      }
     } catch (e) { linkFails += 1; return; }
     linkFails = 0;
     /* Assigned, not max()'d. The version counter lives in the server's

@@ -1,0 +1,303 @@
+{
+  "_at": {
+    "created": "2026-09-04T15:49:30.596246+00:00",
+    "gid": "2026-09-04T15:49:30.596246+00:00",
+    "imports": "2026-09-04T15:49:30.596246+00:00",
+    "kind": "2026-09-04T15:49:30.596246+00:00",
+    "labels": "2026-09-04T15:49:30.596246+00:00",
+    "name": "2026-09-04T15:49:30.596246+00:00",
+    "schema": "2026-09-04T15:49:30.596246+00:00",
+    "session_label": "2026-09-04T15:49:30.596246+00:00",
+    "source": "2026-09-04T15:49:30.596246+00:00",
+    "updated": "2026-09-04T15:49:30.596246+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e026dddf481": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e0f975891a3": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e484a648966": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e4977afd0af": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e556705f3ef": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e591521415c": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e745b2d7548": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e74976643e7": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e752b087c48": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e7ead731517": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e8216561d27": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e828b7a0bee": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e96286fbac3": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e9e1cd8403d": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "e9f6a1dd995": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "eb40e494b76": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "ebf7f449cb7": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "ed134c0ea2b": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "edd1260b081": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "ee34cfd4e1c": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "ee7e8d6a5ee": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "ee7f56a28df": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ],
+      "eec9a2f006a": [
+        "set",
+        "2026-09-04T15:49:30.596246+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T15:49:30.596246+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:49:30-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "events": [
+    {
+      "id": "e8216561d27",
+      "label": "spike",
+      "start": 11.3
+    },
+    {
+      "id": "e7ead731517",
+      "label": "garbage",
+      "start": 49.0
+    },
+    {
+      "id": "e96286fbac3",
+      "label": "spike",
+      "start": 86.7
+    },
+    {
+      "id": "e9f6a1dd995",
+      "label": "flag",
+      "start": 124.4
+    },
+    {
+      "id": "e74976643e7",
+      "label": null,
+      "start": 162.1
+    },
+    {
+      "id": "e026dddf481",
+      "label": "garbage",
+      "start": 199.8
+    },
+    {
+      "id": "ee7e8d6a5ee",
+      "label": "spike",
+      "start": 237.5
+    },
+    {
+      "id": "edd1260b081",
+      "label": "garbage",
+      "start": 275.2
+    },
+    {
+      "id": "e484a648966",
+      "label": "spike",
+      "start": 312.9
+    },
+    {
+      "id": "e4977afd0af",
+      "label": null,
+      "start": 350.6
+    },
+    {
+      "id": "e9e1cd8403d",
+      "label": "flag",
+      "start": 388.3
+    },
+    {
+      "id": "e745b2d7548",
+      "label": "garbage",
+      "start": 426.0
+    },
+    {
+      "id": "e828b7a0bee",
+      "label": "spike",
+      "start": 463.7
+    },
+    {
+      "id": "eec9a2f006a",
+      "label": "garbage",
+      "start": 501.4
+    },
+    {
+      "id": "ee34cfd4e1c",
+      "label": null,
+      "start": 539.1
+    },
+    {
+      "id": "ebf7f449cb7",
+      "label": "garbage",
+      "start": 576.8
+    },
+    {
+      "id": "ee7f56a28df",
+      "label": "spike",
+      "start": 614.5
+    },
+    {
+      "id": "e556705f3ef",
+      "label": "flag",
+      "start": 652.2
+    },
+    {
+      "id": "e752b087c48",
+      "label": "spike",
+      "start": 689.9
+    },
+    {
+      "id": "e0f975891a3",
+      "label": null,
+      "start": 727.6
+    },
+    {
+      "id": "e591521415c",
+      "label": "spike",
+      "start": 765.3
+    },
+    {
+      "id": "eb40e494b76",
+      "label": "garbage",
+      "start": 803.0
+    },
+    {
+      "id": "ed134c0ea2b",
+      "label": "spike",
+      "start": 840.7
+    }
+  ],
+  "gid": "demo-long-session",
+  "imports": [
+    {
+      "at": "2026-09-04T11:49:30-0400",
+      "n": 23,
+      "skipped": 0,
+      "source": {
+        "kind": "demo",
+        "note": "Made up, and long enough that panning and the overview strip have something to do."
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "DEMO m2 s3 (a longer one) (demo set)",
+  "schema": 1,
+  "session_label": "DEMO m2 s3 (a longer one)",
+  "source": {
+    "kind": "demo",
+    "note": "Made up, and long enough that panning and the overview strip have something to do."
+  },
+  "updated": {
+    "at": "2026-09-04T11:49:30-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

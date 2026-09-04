@@ -40,6 +40,9 @@ BARRY.tour = (function () {
   let nodes = null;            // the overlay elements
   let watching = null;         // ResizeObserver / interval keeping the hole put
   let onTargetClick = null;
+  /* True while Next is performing a step, so a double press cannot fire the
+     same click twice or race the animation. */
+  let advancing = false;
 
   /* ==================================================================
      Registration
@@ -99,6 +102,60 @@ BARRY.tour = (function () {
       BARRY.activity.log('tour.stop',
                          { module: module.id, at: index + 1,
                            of: module.steps.length });
+    }
+  }
+
+  /* Move a cursor to the target and press it, visibly.
+
+     Without this, Next just makes the screen change -- and on a step that
+     opens a whole view that reads as the tour losing its place. The pointer
+     is the explanation: it travels to the thing, presses it, and the change
+     becomes something you watched happen.
+
+     Clicks immediately instead if the element is off screen or the reader
+     has asked for reduced motion; an animation nobody sees is not worth
+     waiting for. */
+  async function pressIt(target) {
+    const done = () => {
+      try { target.click(); } catch (e) { /* it may have gone */ }
+    };
+    const box = target.getBoundingClientRect();
+    const still = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still || !box.width || !box.height) { done(); return; }
+
+    const cur = el('div', { class: 'tour-cursor' }, [
+      el('svg', {
+        viewBox: '0 0 24 24',
+        html: '<path d="M5 2l14 9-6 1.5L16 20l-3 1-3-7.5-5 3z"/>',
+      }),
+    ]);
+    // Starts at the Guide box, so it reads as the tour reaching out.
+    const panel = document.getElementById('tourBox');
+    const from = panel ? panel.getBoundingClientRect()
+      : { left: window.innerWidth / 2, top: window.innerHeight / 2,
+          width: 0, height: 0 };
+    cur.style.left = (from.left + from.width / 2) + 'px';
+    cur.style.top = (from.top + 24) + 'px';
+    document.body.appendChild(cur);
+
+    /* The click has to happen even if the animation does not.
+
+       This waited on requestAnimationFrame, which does not fire in a
+       background tab or under a fast-forwarded clock -- so Next appended a
+       cursor and then hung for ever, which is a worse bug than the one it
+       was added to fix. A plain timer cannot stall, and the finally means
+       the step happens whatever goes wrong in between. */
+    try {
+      await new Promise((r) => setTimeout(r, 20));
+      cur.style.left = (box.left + box.width / 2) + 'px';
+      cur.style.top = (box.top + box.height / 2) + 'px';
+      await new Promise((r) => setTimeout(r, 520));
+      cur.classList.add('press');
+      await new Promise((r) => setTimeout(r, 170));
+    } finally {
+      done();
+      setTimeout(() => cur.remove(), 220);
     }
   }
 
@@ -283,9 +340,54 @@ BARRY.tour = (function () {
       box.appendChild(el('p', { class: 'tour-problem', text: problem }));
     }
     if (clickToGo) {
+      /* No longer an instruction -- Next does it. Kept as a description of
+         what is about to happen, so the screen changing is expected. */
       box.appendChild(el('p', { class: 'tour-do',
-        text: st.doText || 'Go ahead and click it — the tour will follow.' }));
+        text: (st.doText
+          ? st.doText.replace(/^Click /, 'Next will click ')
+                     .replace(/^Open /, 'Next will open ')
+          : 'Next will click it for you.') }));
     }
+
+    /* One way forward.
+
+       There used to be three -- "Skip this", "Next anyway", and clicking the
+       thing yourself -- and two of them left the tour pointing at a screen
+       that had not changed. Now Next performs the step if it has one, and
+       there is nothing to get out of step with. */
+    const nextBtn = el('button', {
+      class: 'btn primary sm',
+      text: last ? 'Finish' : 'Next',
+      onclick: async () => {
+        if (advancing) return;
+        if (clickToGo && target) {
+          advancing = true;
+          nextBtn.disabled = 'disabled';
+          try {
+            await pressIt(target);
+          } finally {
+            advancing = false;
+          }
+          // The click may well have advanced the tour by itself, via the
+          // listener that watches for it. Only move on if it did not.
+          if (active && active.index === i) step(1);
+          return;
+        }
+        /* Guarded on the plain path too. Two quick presses used to advance
+           two steps and skip one, which is easy to do with a trackpad and
+           impossible to notice you have done. The button is rebuilt on the
+           next render, so disabling it here costs nothing. */
+        advancing = true;
+        nextBtn.disabled = 'disabled';
+        try {
+          step(1);
+        } finally {
+          // Cleared on a timer rather than immediately: the render that
+          // replaces this button happens inside step().
+          setTimeout(() => { advancing = false; }, 250);
+        }
+      },
+    });
 
     box.appendChild(el('div', { class: 'tour-foot' }, [
       el('button', {
@@ -294,19 +396,8 @@ BARRY.tour = (function () {
         onclick: () => step(-1),
       }),
       el('div', { style: 'flex:1' }),
-      clickToGo
-        ? el('button', {
-            class: 'btn ghost sm', text: 'Skip this',
-            title: 'Move on without clicking it',
-            onclick: () => step(1),
-          })
-        : null,
-      el('button', {
-        class: 'btn primary sm',
-        text: last ? 'Finish' : (clickToGo ? 'Next anyway' : 'Next'),
-        onclick: () => step(1),
-      }),
-    ].filter(Boolean)));
+      nextBtn,
+    ]));
 
     // ---- geometry -------------------------------------------------------
     const pad = st.pad === undefined ? 6 : st.pad;

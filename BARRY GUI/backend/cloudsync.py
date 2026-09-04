@@ -98,9 +98,20 @@ class Sync:
             "updated_at": cloud.now(),
         }]
 
+    # The made-up recordings exist on every machine unconditionally, so
+    # pushing them would put two fake sessions -- and their curation -- into
+    # a database the whole lab reads. They are excluded everywhere by gid.
+    DEMO_PREFIX = "demo-"
+
+    def _is_demo(self, rec):
+        gid = str((rec or {}).get("gid") or "")
+        return gid.startswith(self.DEMO_PREFIX)
+
     def rows_sessions(self):
         sessions, paths, sightings = [], [], []
         for rec in self.store.all_sessions():
+            if self._is_demo(rec):
+                continue
             gid = rec.get("gid")
             if not gid:
                 continue          # nothing to hang it off yet
@@ -179,6 +190,8 @@ class Sync:
     def rows_bank(self):
         out = []
         for rec in (self.bank.all() if self.bank else []):
+            if self._is_demo(rec):
+                continue
             added = rec.get("added") or {}
             out.append({
                 "id": rec.get("id"),
@@ -216,6 +229,8 @@ class Sync:
             gid, kind = rec.get("gid"), rec.get("kind")
             if not gid or not kind:
                 continue
+            if self._is_demo(rec):
+                continue
             set_id = "%s__%s" % (gid, kind)
             up, cr = _prov(rec, "updated"), _prov(rec, "created")
             sets.append({
@@ -251,6 +266,8 @@ class Sync:
     def rows_layers(self):
         sheets, labels = [], []
         for rec in (self.layers.all() if self.layers else []):
+            if self._is_demo(rec):
+                continue
             gid = rec.get("gid")
             if not gid:
                 continue

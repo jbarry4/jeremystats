@@ -6,17 +6,33 @@
   },
   "_keys": {
     "marks": {
+      "cloud.sync||GET /rest/vN/results?updated_at=gt.<time>%NBN:N&select=*&limit=N&offset=N -> HTTP N Internal server error.": [
+        "set",
+        "2026-09-04T15:51:31.995773+00:00"
+      ],
       "cloud.sync||GET /rest/vN/sessions?select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"Could not find the table 'public.sessions' in the schema cache\"}": [
         "set",
         "2026-09-04T13:13:36.917240+00:00"
       ],
+      "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n\nThis machine's c": [
+        "set",
+        "2026-09-04T15:51:27.203511+00:00"
+      ],
       "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}": [
         "set",
-        "2026-09-04T13:13:15.246972+00:00"
+        "2026-09-04T15:40:24.053323+00:00"
       ],
       "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N+N:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"N\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type timestamp with ": [
         "set",
         "2026-09-04T13:13:33.204737+00:00"
+      ],
+      "cloud.sync||[Errno N] Permission denied: '<path> GUI<path>'": [
+        "set",
+        "2026-09-04T15:40:19.357028+00:00"
+      ],
+      "cloud.sync||[WinError N] Access is denied: '<path> GUI<path>' -> '<path> GUI<path>'": [
+        "set",
+        "2026-09-04T15:40:21.545848+00:00"
       ],
       "results/folders/rename||There is no folder called 'HarnessFolder'.": [
         "set",
@@ -30,13 +46,17 @@
         "set",
         "2026-09-04T13:13:39.700826+00:00"
       ],
+      "run:pip install phy||Run failed with exit code N": [
+        "set",
+        "2026-09-04T15:51:34.308571+00:00"
+      ],
       "run:pip install torch||Run failed with exit code N": [
         "set",
-        "2026-09-04T13:13:12.601457+00:00"
+        "2026-09-04T15:51:20.667703+00:00"
       ],
       "selftest||Test error from the Errors panel": [
         "set",
-        "2026-09-04T13:13:28.981900+00:00"
+        "2026-09-04T15:51:36.654865+00:00"
       ],
       "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": [
         "set",
@@ -49,25 +69,49 @@
     }
   },
   "_shard": {
-    "at": "2026-09-04T13:13:39.700826+00:00",
+    "at": "2026-09-04T15:51:36.654865+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "marks": {
+    "cloud.sync||GET /rest/vN/results?updated_at=gt.<time>%NBN:N&select=*&limit=N&offset=N -> HTTP N Internal server error.": {
+      "at": "2026-09-04T11:51:31-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
     "cloud.sync||GET /rest/vN/sessions?select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"Could not find the table 'public.sessions' in the schema cache\"}": {
       "at": "2026-09-04T09:13:36-04:00",
       "by": "theexaminedexistence@gmail.com",
       "machine": "desktop-4h65ai7-d565",
       "note": ""
     },
+    "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n\nThis machine's c": {
+      "at": "2026-09-04T11:51:27-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
     "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}": {
-      "at": "2026-09-04T09:13:15-04:00",
+      "at": "2026-09-04T11:40:24-04:00",
       "by": "theexaminedexistence@gmail.com",
       "machine": "desktop-4h65ai7-d565",
       "note": ""
     },
     "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N+N:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"N\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type timestamp with ": {
       "at": "2026-09-04T09:13:33-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "cloud.sync||[Errno N] Permission denied: '<path> GUI<path>'": {
+      "at": "2026-09-04T11:40:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "cloud.sync||[WinError N] Access is denied: '<path> GUI<path>' -> '<path> GUI<path>'": {
+      "at": "2026-09-04T11:40:21-04:00",
       "by": "theexaminedexistence@gmail.com",
       "machine": "desktop-4h65ai7-d565",
       "note": ""
@@ -90,14 +134,20 @@
       "machine": "desktop-4h65ai7-d565",
       "note": ""
     },
+    "run:pip install phy||Run failed with exit code N": {
+      "at": "2026-09-04T11:51:34-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
     "run:pip install torch||Run failed with exit code N": {
-      "at": "2026-09-04T09:13:12-04:00",
+      "at": "2026-09-04T11:51:20-04:00",
       "by": "theexaminedexistence@gmail.com",
       "machine": "desktop-4h65ai7-d565",
       "note": ""
     },
     "selftest||Test error from the Errors panel": {
-      "at": "2026-09-04T09:13:28-04:00",
+      "at": "2026-09-04T11:51:36-04:00",
       "by": "theexaminedexistence@gmail.com",
       "machine": "desktop-4h65ai7-d565",
       "note": ""

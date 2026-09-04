@@ -91,6 +91,10 @@ class Store:
     def __init__(self, root, auto_stage=False):
         self.root = os.path.abspath(root)
         self.auto_stage = auto_stage
+        # Set by whoever constructs the Profile -- it needs a Store, so the
+        # two cannot both be built first. None means "no profile", which
+        # provenance() handles by falling back to the git identity.
+        self.profile = None
         self.dirs = {
             "runs": os.path.join(self.root, "runs"),
             "sessions": os.path.join(self.root, "sessions"),
@@ -212,12 +216,40 @@ class Store:
     # Provenance -- who/what/where, stamped on every record
     # ------------------------------------------------------------------
     def provenance(self):
-        return {
-            "user": _git_user() or _os_user(),
-            "machine": platform.node(),
+        """Who did this, and where.
+
+        The profile wins when there is one. Before it existed this was the
+        git identity falling back to the Windows account, which on a shared
+        rig attributed every curation decision to a computer called
+        "BarryLab" -- and there was no way to tell two people apart.
+
+        Falls back to the old behaviour untouched, so a machine with no
+        profile set behaves exactly as it did.
+        """
+        who = None
+        email = None
+        device = None
+        if self.profile is not None:
+            try:
+                eff = self.profile.effective()
+                who = eff.get("user")
+                email = eff.get("email")
+                device = eff.get("device")
+            except Exception:                        # noqa: BLE001
+                who = None
+        out = {
+            "user": who or _git_user() or _os_user(),
+            "machine": device or platform.node(),
             "os": platform.system(),
             "at": _now(),
         }
+        if email:
+            out["email"] = email
+        # The real hostname stays available: "which computer was this on" is
+        # a different question from "what does the lab call it".
+        if device and device != platform.node():
+            out["host"] = platform.node()
+        return out
 
     # ------------------------------------------------------------------
     # Runs
@@ -483,9 +515,12 @@ class Store:
             "message": str(message),
             "detail": detail,
             "context": context or {},
-            "machine": platform.node(),
+            # Through provenance(), not straight to the git identity: the
+            # profile is what says who this is, and an error credited to a
+            # computer is no use when two people share a rig.
+            "machine": self.provenance().get("machine") or platform.node(),
             "shard": shards.machine_id(),
-            "user": _git_user() or _os_user(),
+            "user": self.provenance().get("user"),
         }
         try:
             self.error_log.append([rec])
@@ -1008,7 +1043,8 @@ def resolve_error(self, signature, resolved=True, note=None):
         rec = self.triage.read(TRIAGE_BASE) or {"marks": {}}
         marks = rec.setdefault("marks", {})
         if resolved:
-            marks[signature] = {"at": _now(), "by": _git_user() or _os_user(),
+            marks[signature] = {"at": _now(),
+                                "by": self.provenance().get("user"),
                                 "machine": shards.machine_id(),
                                 "note": note or ""}
         else:

@@ -654,7 +654,8 @@ BARRY.views.toolkit = (function () {
   }
 
   async function bankSet(st) {
-    const who = await askPath('Who is banking these?', 'your name or email');
+    const who = await askPath('Who is banking these?', 'your name or email',
+                              BARRY.profile && BARRY.profile.who());
     if (!who) return;
     try {
       const res = await apiPost(

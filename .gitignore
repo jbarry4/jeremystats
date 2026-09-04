@@ -1,0 +1,8 @@
+
+# PyInstaller output. Regenerable from App.spec (`pyinstaller App.spec`), and
+# App.pkg alone was 93 MB -- over the 50 MB house limit and close enough to
+# GitHub's 100 MB hard ceiling to break a push one day.
+HOF Scripts/Python Visualizer/**/build/
+HOF Scripts/Python Visualizer/**/dist/
+*.pkg
+*.pyz

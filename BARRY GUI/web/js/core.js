@@ -400,19 +400,30 @@ async function api(path, opts) {
     throw new Error('Could not reach the server: ' + e.message);
   }
 
-  /* A 404 on an /api/ route means the route is not there -- which almost
-     always means the server is running older code than the page that just
-     asked for it. That happens whenever BARRY is left running while the repo
-     is updated, and the only symptom is a feature quietly doing nothing.
-     Say it once, plainly, rather than letting it look like a bug. */
-  if (res.status === 404 && path.startsWith('/api/')) {
-    staleServer(path);
-  }
+  /* 404 or 405 on an /api/ route means the route is not there -- which
+     almost always means the server is running older code than the page that
+     just asked for it. That happens whenever BARRY is left running while the
+     repo is updated, and the only symptom is a feature quietly doing
+     nothing.
+
+     405 counts as well as 404: a route that only exists for POST answers 405
+     when the server has an older version of it, and a route the server has
+     never heard of answers 404 to a GET and 405 to a POST depending on what
+     else is registered. Treating only 404 as stale is why a failed bug
+     report said "non-JSON response (405)" and nothing else. */
+  const missing = (res.status === 404 || res.status === 405)
+                  && path.startsWith('/api/');
+  if (missing) staleServer(path);
 
   let data;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    if (missing) {
+      throw new Error('This BARRY is running older code than the files on '
+                      + 'disk, so it has no ' + path.split('?')[0]
+                      + '. Restart it and try again.');
+    }
     throw new Error('Server returned a non-JSON response (' + res.status + ').');
   }
   if (!res.ok || data.ok === false) {
@@ -427,18 +438,62 @@ async function api(path, opts) {
 const apiPost = (path, body) =>
   api(path, { method: 'POST', body: JSON.stringify(body || {}) });
 
-/* Told once per session, not once per request: a stale server produces a
-   burst of these, and twenty identical toasts is worse than none. */
-let staleTold = false;
+/* Once per route, not once per session.
+
+   It used to be one warning for the whole session, so an early miss on one
+   route silenced every later one -- including the one that mattered, when
+   somebody tried to file a bug report and the report route was the missing
+   one. Twenty identical toasts is still worse than none, hence per route
+   rather than per request. */
+const staleSeen = new Set();
 function staleServer(path) {
-  BARRY.debug.note('warn', 'stale server: no route ' + path);
-  if (staleTold) return;
-  staleTold = true;
-  toast('This page asked the server for ' + path.split('?')[0]
-        + ' and it does not have it — BARRY is running older code than '
+  const route = path.split('?')[0];
+  BARRY.debug.note('warn', 'stale server: no route ' + route);
+  if (staleSeen.has(route)) return;
+  staleSeen.add(route);
+  toast('This page asked the server for ' + route
+        + ' and it does not have it \u2014 BARRY is running older code than '
         + 'the files on disk. Restart it (close the window and run '
         + '"Start BARRY GUI" again) to pick up the new version.',
         'err', 20000);
+  showStaleBanner();
+}
+
+/* A banner, not just a toast.
+
+   A toast goes away; a stale server does not. Everything added since it
+   started will fail, some of it silently, so this stays on screen until
+   BARRY is restarted -- which is the only thing that fixes it. */
+function showStaleBanner() {
+  if (document.getElementById('staleBanner')) {
+    const n = document.getElementById('staleCount');
+    if (n) n.textContent = String(staleSeen.size);
+    return;
+  }
+  const bar = el('div', { class: 'stale-banner', id: 'staleBanner' }, [
+    el('strong', { text: 'BARRY is running older code than the files on disk' }),
+    el('span', {}, [
+      document.createTextNode('  '),
+      el('span', { id: 'staleCount', text: String(staleSeen.size) }),
+      document.createTextNode(' feature(s) this page expects are missing from '
+                              + 'the running server. Restart BARRY to pick '
+                              + 'them up \u2014 until then some things will '
+                              + 'fail, and saving may not work.'),
+    ]),
+    el('div', { class: 'spacer', style: 'flex:1' }),
+    el('button', {
+      class: 'btn sm', text: 'Which ones?',
+      onclick: () => toast('Missing: ' + Array.from(staleSeen).join(', '),
+                           'err', 25000),
+    }),
+    el('button', {
+      class: 'btn ghost sm', text: 'Dismiss',
+      title: 'The problem does not go away, but the banner will',
+      onclick: () => bar.remove(),
+    }),
+  ]);
+  const app = document.getElementById('app') || document.body;
+  app.insertBefore(bar, app.firstChild);
 }
 
 /* ---------- loading state ----------
@@ -511,13 +566,16 @@ function toast(msg, kind, ms) {
 }
 
 /* ---------- path prompt modal ---------- */
-function askPath(title, placeholder) {
+function askPath(title, placeholder, value) {
   return new Promise((resolve) => {
     const back = $('#pathModal');
     const input = $('#pathModalInput');
     $('#pathModalTitle').textContent = title || 'Paste a path';
     input.placeholder = placeholder || '';
-    input.value = '';
+    // Prefilled when the caller knows the answer -- "who is banking these"
+    // is already in the profile, and retyping it every time is how a field
+    // ends up with three spellings of the same person in it.
+    input.value = value || '';
     back.classList.remove('hidden');
     setTimeout(() => input.focus(), 30);
 
@@ -1067,6 +1125,146 @@ function wireMode() {
 }
 
 
+/* ==========================================================================
+   Profile -- who the work is credited to
+   ==========================================================================
+   Everything BARRY writes down carries a name: curation decisions, banked
+   event sets, layer sheets, exported figures, runs. That name used to come
+   from `git config user.name`, falling back to the Windows account -- so on
+   a shared rig every decision was credited to a computer, and two people on
+   one machine were indistinguishable.
+
+   Set once here and the server tags everything from it. Nothing else has to
+   ask, which is why there is no "who is curating?" prompt.
+   ========================================================================== */
+BARRY.profile = (function () {
+  let prof = null;
+
+  async function load() {
+    try {
+      const res = await api('/api/profile');
+      prof = res.profile || null;
+      paintChip();
+    } catch (e) { /* an older server has no route; the chip stays as it is */ }
+    return prof;
+  }
+
+  function get() { return prof; }
+
+  /* The name to put in a "who did this" field, for the few places that ask
+     out loud (banking, for one). Empty when unset, so the caller can decide
+     whether to insist. */
+  function who() {
+    const e = (prof && prof.effective) || {};
+    return e.user || '';
+  }
+
+  function paintChip() {
+    const chip = document.getElementById('whoChip');
+    if (!chip) return;
+    const name = who();
+    const nameEl = chip.querySelector('.who-name');
+    const dot = chip.querySelector('.who-dot');
+    if (name) {
+      nameEl.textContent = name;
+      chip.title = 'Credited to ' + name
+                 + ((prof.effective || {}).device
+                     ? '  on ' + prof.effective.device : '')
+                 + '  \u2014 click to change';
+      chip.classList.remove('unset');
+      if (dot) dot.classList.remove('warn');
+    } else {
+      nameEl.textContent = 'Set who you are';
+      chip.title = 'Curation, figures and runs are being credited to this '
+                 + 'machine rather than to a person. Click to fix that.';
+      chip.classList.add('unset');
+      if (dot) dot.classList.add('warn');
+    }
+  }
+
+  function open() {
+    const cur = prof || {};
+    const f = {};
+    const field = (key, label, placeholder, hint) => {
+      f[key] = el('input', {
+        type: 'text', value: cur[key] || '', placeholder: placeholder || '',
+      });
+      return el('div', { class: 'field' }, [
+        el('label', { text: label }),
+        f[key],
+        hint ? el('span', { class: 'hint', text: hint }) : null,
+      ]);
+    };
+
+    const body = el('div', { class: 'prof-form' }, [
+      el('p', { class: 'confirm-msg',
+        text: 'Everything BARRY records is credited to this: curation '
+            + 'decisions, banked events, layer sheets, exported figures and '
+            + 'every run. Set it once.' }),
+      field('name', 'Your name', 'e.g. Rain Alvarez',
+            'What appears under a figure and against every decision.'),
+      field('email', 'Email', 'you@uvm.edu',
+            'So a decision can be asked about later.'),
+      field('device', 'What the lab calls this machine',
+            (cur.machine || 'this computer'),
+            'The real hostname (' + (cur.machine || '?') + ') is kept as '
+            + 'well, so "which computer" is still answerable.'),
+      field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
+      field('initials', 'Initials', 'e.g. RA',
+            'Used where there is no room for a full name.'),
+    ]);
+
+    const save = el('button', {
+      class: 'btn', text: 'Save',
+      onclick: async () => {
+        save.disabled = 'disabled';
+        try {
+          const patch = {};
+          for (const k of Object.keys(f)) patch[k] = f[k].value;
+          const res = await apiPost('/api/profile', patch);
+          prof = res.profile || prof;
+          paintChip();
+          closeModal();
+          toast(who()
+            ? 'Everything new will be credited to ' + who() + '.'
+            : 'Saved.', 'ok', 6000);
+          BARRY.activity.log('profile.save', { set: !!who() });
+        } catch (e) {
+          toast(e.message, 'err', 9000);
+          save.disabled = null;
+        }
+      },
+    });
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Profile' }),
+        el('span', { class: 'sub', text: 'who this work is credited to' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        save,
+      ]),
+    ]));
+    setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
+  }
+
+  function wire() {
+    const chip = document.getElementById('whoChip');
+    if (chip) chip.addEventListener('click', open);
+    load();
+  }
+
+  return { load, get, who, open, wire, paintChip };
+})();
+
+
 function setView(name) {
   if (!VIEWS.includes(name)) name = 'pipeline';
   BARRY.state.view = name;
@@ -1230,6 +1428,7 @@ BARRY.init = async function init() {
   // The rail's own collapse, and the handle that brings it back.
   wireRail();
   wireMode();
+  BARRY.profile.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
 

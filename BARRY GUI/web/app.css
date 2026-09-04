@@ -428,7 +428,45 @@ code { font-family: var(--mono); }
 /* position:relative so the theme picker can sit above the chip that
    opens it. */
 .rail-foot { display: flex; flex-direction: column; gap: 8px;
-             position: relative; }
+             position: relative; flex: none; }
+
+/* ==========================================================================
+   Short screens
+   ==========================================================================
+   Measured, not guessed (web/_dev/overflow.html): at 1024x640 the rail's
+   footer ran off the bottom -- Guide 15px past it, the theme chip 53px --
+   so on a cheap laptop the Guide button was the thing you could not reach.
+   1366x768 and 1280x720 were already fine, so this is about height alone.
+
+   The nav scrolls and the footer stays put, rather than the whole column
+   overflowing. Below 700px the padding and the gaps tighten, and the
+   environment block -- MATLAB and Python versions, useful once a month --
+   gives up its space first.
+   ========================================================================== */
+#rail { overflow: hidden; }
+.rail-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+               display: flex; flex-direction: column; gap: 18px; }
+
+@media (max-height: 700px) {
+  #rail { padding: 8px 10px; gap: 10px; }
+  .rail-scroll { gap: 10px; }
+  .brand { padding-top: 0; }
+  .brand-mark { width: 24px; height: 24px; }
+  .nav-item { padding: 5px 10px; }
+  .chip-btn { padding: 4px 10px; font-size: 11.5px; }
+  .rail-foot { gap: 5px; }
+  /* Version strings are a once-a-month need; the Guide button is not. */
+  .env { display: none; }
+  .who-chip { margin-bottom: 5px; padding: 4px 9px; }
+}
+@media (max-height: 600px) {
+  /* Tighter still: the section labels above the nav groups go, since the
+     icons and names are self-explanatory. */
+  #rail { gap: 6px; }
+  .rail-scroll { gap: 6px; }
+  .nav-group > .section-label { display: none; }
+  .nav-item kbd { display: none; }
+}
 .chip-btn {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; border-radius: var(--radius-sm);
@@ -4492,3 +4530,82 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .vrec-cursor { background: var(--accent); }
 
+
+
+/* A running server older than the files on disk.
+   ------------------------------------------------------------------------
+   Stays until BARRY is restarted, because that is the only thing that fixes
+   it and everything added since it started will otherwise fail -- some of it
+   silently. A peer lost a bug report to exactly this: the report route was
+   one of the missing ones. */
+.stale-banner {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 14px;
+  background: var(--err-soft); color: var(--text);
+  border-bottom: 2px solid var(--err);
+  font-size: 12px; line-height: 1.4;
+}
+.stale-banner strong { color: var(--err); flex: none; }
+
+
+/* ==========================================================================
+   Who the work is credited to
+   ==========================================================================
+   In the rail, under the brand, because it is the first thing worth getting
+   right and it is wrong by default: without a profile every curation
+   decision is credited to whatever the computer is called.
+   ========================================================================== */
+.who-chip {
+  display: flex; align-items: center; gap: 8px;
+  margin: 2px 10px 8px; padding: 5px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-3); color: var(--text-2);
+  font: inherit; font-size: 11.5px; cursor: pointer; text-align: left;
+  min-width: 0;
+}
+.who-chip:hover { border-color: var(--accent-line); color: var(--text); }
+.who-chip .who-name { overflow: hidden; white-space: nowrap; min-width: 0; }
+.who-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--ok);
+}
+.who-dot.warn { background: var(--warn); }
+.who-chip.unset { border-color: var(--warn); color: var(--warn); }
+#app.rail-icons .who-chip { justify-content: center; padding: 5px 4px; }
+#app.rail-icons .who-chip .who-name { display: none; }
+
+.prof-form { display: flex; flex-direction: column; gap: 11px;
+             max-width: 520px; }
+.prof-form .field { display: flex; flex-direction: column; gap: 4px; }
+.prof-form .field > label { font-size: 11px; color: var(--text-2); }
+.prof-form .hint { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
+
+
+/* The Guide's cursor.
+   ------------------------------------------------------------------------
+   Next performs the step rather than telling you to. Without a visible
+   pointer the screen simply changes, which on a step that opens a whole
+   view reads as the tour losing its place -- so the click is shown being
+   made. */
+.tour-cursor {
+  position: fixed; z-index: 100000; pointer-events: none;
+  width: 22px; height: 22px; margin: -3px 0 0 -3px;
+  transition: left .5s cubic-bezier(.32, .72, .3, 1),
+              top .5s cubic-bezier(.32, .72, .3, 1);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .55));
+}
+.tour-cursor svg { width: 100%; height: 100%;
+                   fill: #fff; stroke: #111; stroke-width: 1.1; }
+/* The press: a ring that snaps out from under the pointer. */
+.tour-cursor.press::after {
+  content: ''; position: absolute; left: -9px; top: -9px;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: tour-press .34s ease-out forwards;
+}
+@keyframes tour-press {
+  from { transform: scale(.35); opacity: .95; }
+  to   { transform: scale(1.25); opacity: 0; }
+}
+.tour-cursor.press svg { transform: scale(.86); }

@@ -1,0 +1,161 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — one Next, which does the thing</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Have it auto click for you when you press next but have cursors showing
+   that that's happening. It's a lil buggy right now with next or skip this
+   not working properly... so get rid of that and have simple next for
+   everything."
+
+   So the checks are: exactly one way forward, never "Skip this" or "Next
+   anyway", and pressing Next on a step that has something to click actually
+   clicks it -- with a cursor visible while it does.
+
+   And the whole point of the demo recording: this runs with no scan, so the
+   tour must find something to point at on its own. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.BARRY);
+
+  head('The tour starts, with no scan and nothing mounted');
+  W.eval("BARRY.tour.start('start')");
+  await untilN(() => D.getElementById('tourBox')
+                  && D.getElementById('tourBox').textContent.length > 20);
+  await sleep(900);
+  const boxText = () => (D.getElementById('tourBox') || {}).textContent || '';
+  check('the Guide is up', boxText().length > 20, boxText().slice(0, 60));
+
+  const foot = () => Array.from(
+    D.querySelectorAll('#tourBox .tour-foot button'));
+  const labels = () => foot().map((b) => b.textContent.trim());
+  say('note', '  buttons: ' + JSON.stringify(labels()));
+
+  head('There is one way forward');
+  check('no "Skip this"', !labels().some((t) => /Skip/i.test(t)),
+        JSON.stringify(labels()));
+  check('no "Next anyway"', !labels().some((t) => /anyway/i.test(t)),
+        JSON.stringify(labels()));
+  const fwd = () => foot().filter((b) => /^(Next|Finish)$/.test(
+    b.textContent.trim()));
+  check('exactly one Next or Finish', fwd().length === 1,
+        JSON.stringify(labels()));
+  check('and a Back', labels().some((t) => /^Back$/.test(t)),
+        JSON.stringify(labels()));
+
+  head('Next performs the step, with a cursor');
+  /* Walk until a step that has something to click -- those are the ones
+     that used to need "Next anyway". */
+  let clickStep = -1;
+  for (let k = 0; k < 12; k++) {
+    if (/Next will/i.test(boxText())) { clickStep = k; break; }
+    const n = fwd()[0];
+    if (!n) break;
+    n.click();
+    await sleep(900);
+  }
+  check('the Guide reached a step it can perform for you', clickStep >= 0,
+        'walked 12 steps without finding one');
+  if (clickStep >= 0) {
+    say('note', '  ' + boxText().replace(/\s+/g, ' ')
+        .match(/Next will[^.]{0,70}/)[0]);
+    const viewBefore = W.eval('BARRY.state.view');
+    const before = boxText().slice(0, 40);
+    fwd()[0].click();
+    /* The cursor exists only during the animation, so catch it mid-flight. */
+    let sawCursor = false;
+    for (let i = 0; i < 30; i++) {
+      if (D.querySelector('.tour-cursor')) { sawCursor = true; break; }
+      await sleep(30);
+    }
+    check('a cursor appears', sawCursor);
+    if (sawCursor) {
+      let pressed = false;
+      for (let i = 0; i < 40; i++) {
+        const c = D.querySelector('.tour-cursor.press');
+        if (c) { pressed = true; break; }
+        await sleep(40);
+      }
+      check('and it shows the press', pressed);
+    }
+    await untilN(() => !D.querySelector('.tour-cursor'), 60);
+    check('the cursor is cleaned up afterwards',
+          !D.querySelector('.tour-cursor'));
+    await sleep(1400);
+    const viewAfter = W.eval('BARRY.state.view');
+    say('note', '  view ' + viewBefore + ' -> ' + viewAfter);
+    check('the step actually happened',
+          viewAfter !== viewBefore || boxText().slice(0, 40) !== before,
+          'nothing changed');
+    check('and the Guide moved on', boxText().slice(0, 40) !== before,
+          boxText().slice(0, 50));
+  }
+
+  head('It found the demo recording to point at');
+  const open = W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'return S.order.map(function(id){ return S.sessions[id].path; })'
+    + '.join(","); })()');
+  say('note', '  open: ' + (open || '(nothing)'));
+  check('it opened a recording without a scan', !!open, 'nothing open');
+  check('and it used the demo, not real data',
+        /^demo:/.test(open || ''), open);
+
+  head('Pressing Next twice quickly does not double-fire');
+  const idxBefore = W.eval('(BARRY.tour.state && BARRY.tour.state.index)'+ ' !== undefined ? BARRY.tour.state.index : -1');
+  const n2 = fwd()[0];
+  if (n2) { n2.click(); n2.click(); }
+  await sleep(2200);
+  const idxAfter = W.eval('(BARRY.tour.state && BARRY.tour.state.index)'+ ' !== undefined ? BARRY.tour.state.index : -1');
+  if (idxBefore >= 0) {
+    say('note', '  step ' + idxBefore + ' -> ' + idxAfter);
+    check('it advanced by one, not two', idxAfter - idxBefore <= 1,
+          idxBefore + ' -> ' + idxAfter);
+  } else {
+    say('note', '  no step index exported; skipped');
+  }
+
+  W.eval('BARRY.tour.stop && BARRY.tour.stop()');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'tournext: ' + bad + ' FAILED' : 'tournext: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'tournext: harness CRASH';
+} })();
+</script>
