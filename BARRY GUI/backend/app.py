@@ -4064,6 +4064,42 @@ def api_bank_update(entry_id):
                                           if k != "events"}})
 
 
+@app.route("/api/bank/<entry_id>/version/<int:v>", methods=["POST"])
+def api_bank_version(entry_id, v):
+    """Edit, archive or delete one version of an entry's history."""
+    body = request.get_json(force=True, silent=True) or {}
+    action = (body.get("action") or "edit").strip()
+    try:
+        if action == "delete":
+            rec = BANK.delete_version(entry_id, v)
+            changed = ["deleted"]
+        elif action in ("archive", "unarchive"):
+            rec, changed = BANK.edit_version(
+                entry_id, v, {"archived": action == "archive"})
+        else:
+            patch = {}
+            if "note" in body:
+                patch["note"] = body.get("note")
+            if "title" in body:
+                patch["title"] = body.get("title")
+            if not patch:
+                return jsonify({"ok": False,
+                                "error": "Nothing to change."}), 400
+            rec, changed = BANK.edit_version(entry_id, v, patch)
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    STORE.record_activity([{
+        "action": "bank.version." + action,
+        "detail": {"entry": entry_id, "version": v, "changed": changed},
+    }])
+    mirror_bank_soon()
+    return jsonify({"ok": True, "changed": changed,
+                    "versions": [{k: val for k, val in x.items()
+                                  if k != "snap"}
+                                 for x in (rec.get("versions") or [])]})
+
+
 @app.route("/api/bank/<entry_id>/delete", methods=["POST"])
 def api_bank_delete(entry_id):
     ok = BANK.delete(entry_id)

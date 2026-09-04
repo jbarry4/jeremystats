@@ -210,14 +210,27 @@ BARRY.views.eventbank = (function () {
     const names = e.label_names || {};
     const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
 
-    box.appendChild(el('div', { class: 'section-label',
-      text: 'History  \u00b7  ' + vs.length + ' version'
-          + (vs.length === 1 ? '' : 's') }));
+    const hidden = vs.filter((v) => v.archived);
+    const shown = showArchived ? vs : vs.filter((v) => !v.archived);
+
+    box.appendChild(el('div', { class: 'section-label ver-head' }, [
+      el('span', { text: 'History  \u00b7  ' + shown.length + ' version'
+                       + (shown.length === 1 ? '' : 's') }),
+      hidden.length
+        ? el('button', {
+            class: 'linkish',
+            text: showArchived
+              ? 'hide ' + hidden.length + ' archived'
+              : hidden.length + ' archived \u2014 show',
+            onclick: () => { showArchived = !showArchived; repaint(); },
+          })
+        : null,
+    ].filter(Boolean)));
 
     /* The lineage: every version at a glance, and a way into any of them.
        Reading a history means moving around in it. */
     const strip = el('div', { class: 'ver-strip' });
-    vs.forEach((v) => {
+    shown.forEach((v) => {
       strip.appendChild(el('button', {
         class: 'ver-pip' + (openVersion === v.v ? ' on' : '')
              + (v.v === vs.length ? ' last' : ''),
@@ -237,8 +250,8 @@ BARRY.views.eventbank = (function () {
     box.appendChild(strip);
 
     const list = el('div', { class: 'ver-list' });
-    for (let i = vs.length - 1; i >= 0; i--) {
-      const v = vs[i], was = i > 0 ? vs[i - 1] : null;
+    for (let i = shown.length - 1; i >= 0; i--) {
+      const v = shown[i], was = i > 0 ? shown[i - 1] : null;
       const counts = v.by_label || {};
       const wasCounts = (was && was.by_label) || {};
       const keys = Array.from(new Set(
@@ -264,7 +277,8 @@ BARRY.views.eventbank = (function () {
       }
 
       list.appendChild(el('div', {
-        class: 'ver-row' + (i === vs.length - 1 ? ' latest' : ''),
+        class: 'ver-row' + (i === shown.length - 1 ? ' latest' : '')
+             + (v.archived ? ' archived' : ''),
       }, [
         el('div', { class: 'ver-top' }, [
           el('span', { class: 'ver-n', text: 'v' + v.v }),
@@ -272,12 +286,40 @@ BARRY.views.eventbank = (function () {
                        text: (v.at || '').replace('T', ' ').slice(0, 16) }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
           el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
-          i === vs.length - 1
+          i === shown.length - 1 && !v.archived
             ? el('span', { class: 'pill sm', text: 'current' }) : null,
+          v.archived ? el('span', { class: 'pill sm', text: 'archived' })
+                     : null,
+          el('span', { class: 'ver-ops' }, [
+            el('button', { class: 'linkish', text: 'Edit',
+                           title: 'Change this version\u2019s note or give '
+                                + 'it a name',
+                           onclick: () => editVersion(e, v) }),
+            el('button', {
+              class: 'linkish',
+              text: v.archived ? 'Unarchive' : 'Archive',
+              title: v.archived
+                ? 'Show it in the history again'
+                : 'Fold it away. Nothing is lost and it can come back.',
+              onclick: () => versionOp(e, v,
+                                       v.archived ? 'unarchive' : 'archive'),
+            }),
+            el('button', { class: 'linkish danger', text: 'Delete',
+                           title: 'Remove this version from the history',
+                           onclick: () => deleteVersion(e, v) }),
+          ]),
         ].filter(Boolean)),
+        v.title ? el('div', { class: 'ver-title', text: v.title }) : null,
         v.note
           ? el('div', { class: 'ver-note', text: v.note })
           : el('div', { class: 'ver-note none', text: 'no note' }),
+        (v.edits || []).length
+          ? el('div', { class: 'ver-edited',
+              text: 'note edited '
+                  + (v.edits[v.edits.length - 1].at || '')
+                      .replace('T', ' ').slice(0, 16)
+                  + ' by ' + (v.edits[v.edits.length - 1].by || 'someone') })
+          : null,
         el('div', { class: 'ver-mix' }, keys.filter((k) => counts[k]).map(
           (k) => el('span', { class: 'ver-chip',
                               text: nameOf(k) + ' ' + counts[k] }))),
@@ -328,6 +370,100 @@ BARRY.views.eventbank = (function () {
 
   /* The version being looked at, if the reader has opened one. */
   let openVersion = null;
+  /* Archived versions fold away rather than disappearing: a pass somebody
+     would rather not look at is not the same as one that never happened. */
+  let showArchived = false;
+
+  /* Repaint just the entry, so the list on the left keeps its place. */
+  function repaint() {
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return; }
+    box.parentNode.replaceChild(detail(), box);
+  }
+
+  async function versionOp(e, v, action, body) {
+    try {
+      const res = await apiPost(
+        '/api/bank/' + encodeURIComponent(e.id) + '/version/' + v.v,
+        Object.assign({ action: action }, body || {}));
+      /* In place rather than refetching everything, so the panel does not
+         jump -- but the route answers without the snapshots, and dropping
+         them would break the comparison until the next reload. */
+      const snaps = {};
+      (e.versions || []).forEach((x) => {
+        if (x.snap) snaps[x.v] = x.snap;
+      });
+      e.versions = (res.versions || []).map(
+        (x) => (snaps[x.v] ? Object.assign({}, x, { snap: snaps[x.v] }) : x));
+      repaint();
+      return res;
+    } catch (err) { toast(err.message, 'err', 9000); return null; }
+  }
+
+  async function deleteVersion(e, v) {
+    const isCurrent = v.v === Math.max.apply(
+      null, (e.versions || []).map((x) => x.v || 0));
+    const go = await BARRY.confirm(
+      'Delete version ' + v.v + '?',
+      'It goes from the history for good. The entry keeps its '
+      + (e.n || 0) + ' events exactly as they are'
+      + (isCurrent
+          ? ' \u2014 and since this is the version that describes them, '
+            + 'nothing left in the history will explain what the entry '
+            + 'currently holds.'
+          : '.')
+      + ' Archive it instead if you only want it out of the way.',
+      'Delete v' + v.v, true);
+    if (!go) return;
+    const res = await versionOp(e, v, 'delete');
+    if (res) toast('Version ' + v.v + ' deleted.', 'ok');
+  }
+
+  function editVersion(e, v) {
+    const wrap = el('div', { class: 'modal ver-edit' });
+    wrap.appendChild(el('div', { class: 'modal-head' }, [
+      el('h2', { text: 'Version ' + v.v }),
+      el('p', { class: 'sub',
+                text: (v.at || '').replace('T', ' ').slice(0, 16)
+                    + '  \u00b7  ' + (v.by || 'unknown')
+                    + '  \u00b7  ' + (v.n || 0) + ' events' }),
+    ]));
+    const title = el('input', {
+      type: 'text', value: v.title || '',
+      placeholder: 'A name for this pass (optional)',
+    });
+    const note = el('textarea', {
+      class: 'ver-note-input', rows: '4', value: v.note || '',
+      placeholder: 'What changed in this pass?',
+    });
+    wrap.appendChild(el('div', { class: 'section-label', text: 'Name' }));
+    wrap.appendChild(title);
+    wrap.appendChild(el('div', { class: 'section-label', text: 'Note' }));
+    wrap.appendChild(note);
+    wrap.appendChild(el('p', { class: 'hint',
+      text: 'The counts are not editable \u2014 they are what was banked. '
+          + 'An edited note records that it was edited.' }));
+    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost', text: 'Cancel',
+                     onclick: closeModal }),
+      el('button', {
+        class: 'btn', text: 'Save',
+        onclick: async () => {
+          closeModal();
+          const res = await versionOp(e, v, 'edit',
+                                      { note: note.value, title: title.value });
+          if (res) {
+            toast(res.changed.length
+              ? 'Version ' + v.v + ' updated.'
+              : 'Nothing changed.', 'ok');
+          }
+        },
+      }),
+    ]));
+    showModal(wrap);
+    setTimeout(() => { try { note.focus(); } catch (err) {} }, 30);
+  }
 
   async function restoreVersion(e, v) {
     const names = e.label_names || {};
@@ -513,8 +649,12 @@ BARRY.views.eventbank = (function () {
     add('Added by', added.by);
     add('Added at', (added.at || '').replace('T', ' '));
     add('On machine', added.machine);
+    /* Not "v3 of 2": numbers are never reused, so once a version has been
+       deleted the highest number and the count are different things and
+       saying "of" makes one of them look wrong. */
     add('Version', e.version
-        ? ('v' + e.version + ' of ' + (e.versions || []).length)
+        ? ('v' + e.version + '  ·  ' + (e.versions || []).length
+           + ' in the history')
         : null);
     add('Times are', e.units);
     add('Session path', e.session_path);
@@ -550,6 +690,12 @@ BARRY.views.eventbank = (function () {
     let full;
     try { full = await api('/api/bank/' + encodeURIComponent(id)); }
     catch (err) { return; }
+    /* The listing leaves the per-version snapshots out because they are
+       large; this is the fetch that has them, so the history gets them
+       here rather than making a second request for the same record. */
+    const whole = (full && full.entry) || full;
+    const row = entries.find((x) => x.id === id);
+    if (row && whole && whole.versions) row.versions = whole.versions;
     const host = $('#bankEvents');
     if (!host || selected !== id) return;
     const evs = (full.entry || {}).events || [];

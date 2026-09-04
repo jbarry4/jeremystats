@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8"><title>verops shot</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+<iframe id="f" src="/"></iframe>
+<script>
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const f=document.getElementById('f');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=f.contentWindow, D=f.contentDocument;
+ for(let i=0;i<300&&!W.BARRY;i++) await sleep(100);
+ W.eval("setView('eventbank')");
+ for(let i=0;i<200;i++){ if(D.querySelector('.bank-row')) break; await sleep(100);}
+ await sleep(700);
+ const row=Array.from(D.querySelectorAll('.bank-row'))
+   .find(r=>/dentate spikes/i.test(r.textContent));
+ if(row) row.click();
+ for(let i=0;i<150;i++){ if(D.querySelector('.ver-row')) break; await sleep(100);}
+ await sleep(900);
+ // hover state so the controls are visible in the capture
+ D.querySelectorAll('.ver-ops').forEach(n=>n.style.opacity='1');
+ const pip=Array.from(D.querySelectorAll('.ver-pip')).slice(-1)[0];
+ if(pip) pip.click();
+ await sleep(1200);
+ D.querySelectorAll('.ver-ops').forEach(n=>n.style.opacity='1');
+ document.title='ready';
+})();
+</script>

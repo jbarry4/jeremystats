@@ -1,0 +1,222 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — editing, archiving and deleting versions</title>
+<style>
+ body{font:12px/1.55 ui-monospace,monospace;margin:0;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw}
+ iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+ .ok::before{content:'ok    ';color:#7fe3b0}.bad::before{content:'FAIL  ';color:#ff8a7a}
+ .bad{color:#ffb0a5}.note{color:#7593a2}h2{font-size:12px;margin:14px 0 5px;color:#ffb81c}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Allow us to edit/archive/delete different versions of the event banks."
+
+   Driven through the buttons rather than the routes, because the routes
+   were the easy half. What has to hold:
+
+     an edited note is kept, and says it was edited
+     archiving hides it from the list without losing it, and comes back
+     deleting removes it and does not renumber the others
+     the events, and the entry, are untouched by any of it
+     and the comparison still works afterwards -- the snapshots are not in
+     the listing any more, so this is where dropping them would show */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => W.BARRY);
+
+  const G = 'demo-ds-tutorial';
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b) }).then((r) => r.json());
+  const bankRows = async () => (await W.fetch('/api/bank')
+    .then((r) => r.json())).entries.filter((e) => e.gid === G);
+
+  /* Three versions to work with, from a clean start. */
+  for (const e of await bankRows()) await post('/api/bank/' + e.id + '/delete', {});
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.curate.enter(' + JSON.stringify(G) + ', "ds")');
+  await untilN(() => W.eval('!!BARRY.curate.active'));
+  await sleep(1600);
+  const evs = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.events())'));
+  /* A known baseline first. Without it a rerun starts from whatever the
+     last one left behind, the passes change nothing, and the banks
+     correctly decline to make versions -- which looks like a bug in
+     versioning and is a bug in the test. */
+  const all = evs();
+  for (let i = 0; i < all.length; i++) {
+    await W.eval('BARRY.curate.goTo(' + i + ')');
+    await sleep(60);
+    await W.eval('BARRY.curate.assign("spike")');
+    await sleep(150);
+  }
+  await sleep(600);
+  for (const [n, note] of [[0, 'first pass'], [3, 'second pass'],
+                           [6, 'third pass']]) {
+    if (n) {
+      for (let i = 0; i < 3; i++) {
+        await W.eval('BARRY.curate.goTo(' + (n + i) + ')');
+        await sleep(120);
+        await W.eval('BARRY.curate.assign("garbage")');
+        await sleep(260);
+      }
+      await sleep(500);
+    }
+    const r = await post('/api/curation/' + G + '/ds/bank',
+                         { added_by: 'Shahriar', note: note });
+    say('note', '  banked "' + note + '" -> v'
+        + ((r.entries || [{}])[0] || {}).version);
+    await sleep(700);
+  }
+  W.eval('BARRY.curate.exit()');
+  await sleep(400);
+
+  W.eval("setView('eventbank')");
+  await untilN(() => D.querySelector('.bank-row'), 200);
+  await sleep(700);
+  const row = Array.from(D.querySelectorAll('.bank-row'))
+    .find((r) => /dentate spikes/i.test(r.textContent));
+  row.click();
+  await untilN(() => D.querySelector('.ver-row'), 150);
+  await sleep(900);
+
+  const rows = () => Array.from(D.querySelectorAll('.ver-row'));
+  const nums = () => rows().map(
+    (r) => (r.querySelector('.ver-n') || {}).textContent);
+  const rowFor = (v) => rows().find(
+    (r) => (r.querySelector('.ver-n') || {}).textContent === 'v' + v);
+  say('note', '  versions listed: ' + nums().join(' '));
+  check('three versions are listed', rows().length >= 3,
+        rows().length + ' rows');
+
+  head('Edit a note');
+  const r2 = rowFor(2);
+  Array.from(r2.querySelectorAll('.ver-ops button'))
+    .find((b) => /Edit/.test(b.textContent)).click();
+  await untilN(() => D.querySelector('.ver-edit'), 100);
+  await sleep(400);
+  const dlg = D.querySelector('.ver-edit');
+  check('an edit dialog opened', !!dlg);
+  dlg.querySelector('input[type=text]').value = 'The good pass';
+  dlg.querySelector('.ver-note-input').value =
+    'rewritten: this is the one we used in the figure';
+  Array.from(dlg.querySelectorAll('.modal-foot button'))
+    .find((b) => /Save/.test(b.textContent)).click();
+  await sleep(1400);
+  const after2 = rowFor(2);
+  const txt = after2 ? after2.textContent : '';
+  say('note', '  v2 now reads: ' + txt.replace(/\s+/g, ' ').slice(0, 110));
+  check('the new note is there', /rewritten: this is the one/.test(txt), txt.slice(0, 80));
+  check('the name is there', /The good pass/.test(txt), txt.slice(0, 80));
+  check('and it says the note was edited', /note edited/.test(txt),
+        'no edited marker');
+
+  head('Archive one');
+  const r1 = rowFor(1);
+  Array.from(r1.querySelectorAll('.ver-ops button'))
+    .find((b) => /Archive/.test(b.textContent)).click();
+  await sleep(1300);
+  say('note', '  now listed: ' + nums().join(' '));
+  check('the archived one is out of the list', !rowFor(1), 'v1 still listed');
+  check('the others are untouched', !!rowFor(2) && !!rowFor(3),
+        nums().join(' '));
+  const toggle = Array.from(D.querySelectorAll('.ver-head .linkish'))[0];
+  check('the header offers to show it', !!toggle && /archived/.test(toggle.textContent),
+        toggle ? toggle.textContent : 'no toggle');
+  toggle.click();
+  await sleep(800);
+  say('note', '  with archived shown: ' + nums().join(' '));
+  check('showing archived brings it back', !!rowFor(1), nums().join(' '));
+  check('and it is marked as archived',
+        rowFor(1).classList.contains('archived'), rowFor(1).className);
+  Array.from(rowFor(1).querySelectorAll('.ver-ops button'))
+    .find((b) => /Unarchive/.test(b.textContent)).click();
+  await sleep(1200);
+  check('unarchiving puts it back for good',
+        !!rowFor(1) && !rowFor(1).classList.contains('archived'),
+        rowFor(1) ? rowFor(1).className : 'gone');
+
+  head('Delete one');
+  const before = JSON.parse(W.eval(
+    'JSON.stringify((function(){var e=BARRY.views.eventbank; return null;})())'
+  ) || 'null');
+  const entBefore = await W.fetch('/api/bank').then((r) => r.json());
+  const mine = entBefore.entries.find((e) => e.gid === G);
+  const nEvents = mine.n;
+  W.confirm = () => true;
+  const del = Array.from(rowFor(2).querySelectorAll('.ver-ops button'))
+    .find((b) => /Delete/.test(b.textContent));
+  del.click();
+  /* BARRY.confirm is a dialog, not window.confirm. */
+  const okBtn = await (async () => {
+    for (let i = 0; i < 100; i++) {
+      const b = Array.from(D.querySelectorAll('.modal-foot button, .modal button'))
+        .find((x) => /^Delete v2$/.test(x.textContent.trim()));
+      if (b) return b;
+      await sleep(100);
+    }
+    return null;
+  })();
+  check('deleting asks first', !!okBtn, 'no confirmation appeared');
+  if (okBtn) okBtn.click();
+  await sleep(1600);
+  say('note', '  after deleting v2: ' + nums().join(' '));
+  check('v2 is gone', !rowFor(2), 'still there');
+  check('and the others keep their numbers', !!rowFor(1) && !!rowFor(3),
+        nums().join(' '));
+
+  const entAfter = await W.fetch('/api/bank').then((r) => r.json());
+  const mine2 = entAfter.entries.find((e) => e.gid === G);
+  say('note', '  the entry still holds ' + mine2.n + ' events (was '
+      + nEvents + ')');
+  check('the entry and its events are untouched', mine2.n === nEvents,
+        mine2.n + ' vs ' + nEvents);
+
+  head('And the comparison still works');
+  const pip = Array.from(D.querySelectorAll('.ver-pip'))
+    .find((p) => p.textContent === 'v3');
+  pip.click();
+  await untilN(() => D.querySelector('.ver-open'), 120);
+  await sleep(900);
+  const open = D.querySelector('.ver-open');
+  check('a version still opens', !!open);
+  const diffs = D.querySelectorAll('.vd-row').length;
+  const hint = open ? open.textContent : '';
+  say('note', '  ' + diffs + ' differing candidates, panel says: '
+      + hint.replace(/\s+/g, ' ').slice(0, 90));
+  check('the snapshots survived the listing change',
+        diffs > 0 || /differ/.test(hint), hint.slice(0, 90));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'verops: ' + bad + ' FAILED' : 'verops: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'verops: harness CRASH';
+} })();
+</script>

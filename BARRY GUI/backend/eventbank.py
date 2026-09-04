@@ -109,9 +109,23 @@ class EventBank:
         return out
 
     def summaries(self):
-        """Every entry without its event list, for browsing."""
-        return [{k: v for k, v in rec.items() if k != "events"}
-                for rec in self.all()]
+        """Every entry without its event list, for browsing.
+
+        And without the per-version snapshots. Each is a line per candidate,
+        so a set of four hundred costs about ten kilobytes a version -- fine
+        on one entry, and several megabytes across a bank once everything
+        has a history. The listing does not need them; opening an entry
+        fetches the whole record, which does.
+        """
+        out = []
+        for rec in self.all():
+            row = {k: v for k, v in rec.items() if k != "events"}
+            if row.get("versions"):
+                row["versions"] = [
+                    {k: v for k, v in ver.items() if k != "snap"}
+                    for ver in row["versions"]]
+            out.append(row)
+        return out
 
     def get(self, entry_id):
         for rec in self.all():
@@ -494,6 +508,89 @@ class EventBank:
             rec = self.book.write(base, rec) if base else rec
             self._cache = None
         return rec
+
+    @shards.atomic
+    def edit_version(self, entry_id, v, patch):
+        """Change what a version says about itself, not what it holds."""
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No such entry.")
+        hit = None
+        for ver in rec.get("versions") or []:
+            if ver.get("v") == v:
+                hit = ver
+                break
+        if hit is None:
+            raise BankError("That entry has no version %s." % v)
+
+        who = (self.store.provenance().get("user") if self.store else None)
+        changed = []
+        if "note" in patch:
+            new = (patch.get("note") or "").strip()
+            if new != (hit.get("note") or ""):
+                hit["note"] = new
+                changed.append("note")
+        if "title" in patch:
+            new = (patch.get("title") or "").strip()
+            if new != (hit.get("title") or ""):
+                if new:
+                    hit["title"] = new
+                else:
+                    hit.pop("title", None)
+                changed.append("title")
+        if "archived" in patch:
+            want = bool(patch.get("archived"))
+            if want != bool(hit.get("archived")):
+                hit["archived"] = want
+                if not want:
+                    hit.pop("archived", None)
+                changed.append("archived" if want else "unarchived")
+        if not changed:
+            return rec, []
+        # An edited note says so. The point of a note is that somebody
+        # wrote it at the time; one quietly rewritten later is worth less,
+        # and pretending otherwise is the kind of thing this store exists
+        # not to do.
+        hit.setdefault("edits", []).append(
+            {"at": _now(), "by": who, "changed": changed})
+        self._save(rec)
+        return rec, changed
+
+    @shards.atomic
+    def delete_version(self, entry_id, v):
+        """Remove one version from the history. The events stay put."""
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No such entry.")
+        vs = rec.get("versions") or []
+        keep = [x for x in vs if x.get("v") != v]
+        if len(keep) == len(vs):
+            raise BankError("That entry has no version %s." % v)
+        if not keep:
+            raise BankError(
+                "That is the only version this entry has. Delete the whole "
+                "entry instead, or archive the version.")
+        rec["versions"] = keep
+        # Numbers are never reused and never shifted: the next bank counts
+        # from the highest that has ever existed, so a deleted v2 does not
+        # come back as a different v2.
+        rec["version"] = max(x.get("v") or 0 for x in keep)
+        rec.setdefault("history", []).append({
+            "at": _now(),
+            "by": (self.store.provenance().get("user") if self.store else None),
+            "changed": ["versions"],
+            "why": "deleted version %s" % v,
+        })
+        self._save(rec)
+        return rec
+
+    @shards.atomic
+    def _save(self, rec):
+        """Write a record back under the id it already has."""
+        base = self._base_for_id(rec["id"]) or self._base_of(rec)
+        out = self.book.write(base, rec)
+        self._cache = None
+        return out
 
     def delete(self, entry_id):
         base = self._base_for_id(entry_id)
