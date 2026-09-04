@@ -329,6 +329,32 @@ BARRY.views.eventbank = (function () {
   /* The version being looked at, if the reader has opened one. */
   let openVersion = null;
 
+  async function restoreVersion(e, v) {
+    const names = e.label_names || {};
+    const mix = Object.keys(v.by_label || {})
+      .sort((a, b) => v.by_label[b] - v.by_label[a])
+      .map((k) => (names[k] || k) + ' ' + v.by_label[k]).join(', ');
+    const go = await BARRY.confirm(
+      'Put version ' + v.v + ' back?',
+      'The live curation set becomes what it was at version ' + v.v
+      + ': ' + mix + '. Nothing is deleted \u2014 whatever is there now '
+      + 'stays in the history, and coming back to it is the same one '
+      + 'click.',
+      'Put v' + v.v + ' back', false);
+    if (!go) return;
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(e.gid) + '/'
+        + encodeURIComponent(e.type) + '/restore',
+        { entry: e.id, version: v.v });
+      toast(res.changed
+        ? 'Put version ' + v.v + ' back: ' + res.changed
+          + ' decision(s) changed, ' + res.unchanged + ' already matched.'
+        : 'The set already matches version ' + v.v + '.', 'ok', 8000);
+      load();
+    } catch (err) { toast(err.message, 'err', 9000); }
+  }
+
   /* One version, opened: its contents and a comparison with another. */
   function versionDetail(e, vs, v) {
     const names = e.label_names || {};
@@ -403,6 +429,14 @@ BARRY.views.eventbank = (function () {
 
     host.appendChild(el('div', { class: 'ver-open-bar' }, [
       el('strong', { text: 'v' + v.v }),
+      /* A history you can read but not act on is half a history. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Put this version back',
+        title: 'Write these labels onto the live curation set. Nothing in '
+             + 'the history is removed \u2014 the version you are on now '
+             + 'stays, and going back to it is the same one click.',
+        onclick: () => restoreVersion(e, v),
+      }),
       el('span', { class: 'hint', text: 'compared with' }),
       el('select', {
         onchange: (ev) => {

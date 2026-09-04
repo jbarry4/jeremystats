@@ -839,6 +839,11 @@ BARRY.curate = (function () {
                                 + it.version)
                          : 'Banked as version 1')
             + ': ' + it.n + ' events \u2014 ' + mix
+            /* When the first bank continued the detector's export
+               instead of filing beside it, say so -- otherwise the
+               entry looks like it has a version 1 nobody wrote. */
+            + (it.adopted ? '. Carried on from \"' + it.adopted
+                            + '\", now version 1' : '')
             + (gone ? '. Folded in ' + gone + ' older entr'
                       + (gone === 1 ? 'y' : 'ies')
                       + ' this set had been split into.' : '.'),

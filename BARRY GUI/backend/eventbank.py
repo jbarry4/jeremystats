@@ -159,6 +159,7 @@ class EventBank:
     # ------------------------------------------------------------------
     # Writing
     # ------------------------------------------------------------------
+    @shards.atomic
     def add(self, entry):
         """File a set of events. Refuses anything it could not explain later.
 
@@ -230,7 +231,13 @@ class EventBank:
             "units": "seconds relative to the start of the recording",
             "n": len(clean),
             "events": clean,
-            "source": {
+            # The detector that produced the times stays the source.
+            # Curation said what they are; it did not find them, and
+            # overwriting this with "BARRY curation" would lose the only
+            # record of where the candidates came from.
+            "source": ((entry.get("import_from") or {}).get("source")
+                       or (prior.get("source") if prior else None)
+                       if entry.get("import_from") else None) or {
                 "pipeline": pipeline,
                 "run_id": entry.get("run_id"),
                 "file": entry.get("source_file"),
@@ -273,6 +280,31 @@ class EventBank:
                               or (prior.get("label_names") if prior else None)
                               or {})
         versions = list((prior.get("versions") if prior else None) or [])
+
+        # Where the lineage starts: the detector's export, before anyone
+        # had looked at any of it. Numbered zero, because it is the thing
+        # curation was done *to* rather than a round of curation -- and
+        # because numbering it one would push every real version up by one
+        # on an entry that already has a history.
+        came_from = entry.get("import_from")
+        if came_from and not any(v.get("imported") for v in versions):
+            was = came_from.get("added") or {}
+            n0 = came_from.get("n") or len(came_from.get("events") or [])
+            versions.insert(0, {
+                "v": 0,
+                "at": was.get("at") or _now(),
+                "by": was.get("by") or "unknown",
+                "note": "Imported from "
+                        + ((came_from.get("source") or {}).get("pipeline")
+                           or "a detector")
+                        + ". " + str(n0) + " candidates, none decided yet.",
+                "n": n0,
+                "by_label": {"unspecified": n0},
+                "changed": 0, "gained": 0, "lost": 0, "moves": {},
+                "machine": was.get("machine"),
+                "imported": True,
+                "from_entry": came_from.get("id"),
+            })
         # What actually moved, candidate by candidate.
         #
         # The counts alone cannot see it: two calls going one way and two
@@ -309,7 +341,9 @@ class EventBank:
                  or (prior.get("by_label") or {}) != counts)
         if moved:
             fresh = {
-                "v": len(versions) + 1,
+                # Highest so far plus one, not the count -- the import sits
+                # at zero and would otherwise make the numbering skip.
+                "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -364,6 +398,46 @@ class EventBank:
     SNAP_VERSIONS = 12
     SNAP_MAX_EVENTS = 6000
 
+    def source_entry_for(self, gid, kind, events):
+        """The detector import these curated events came from, if it is here.
+
+        Every curated time has to be one of the import's times. A list that
+        merely overlaps is a different list, and adopting it would fold two
+        unrelated records together -- which is worse than the duplicate this
+        is trying to avoid.
+        """
+        want = set()
+        for ev in events or []:
+            try:
+                want.add(round(float(ev["start"]), 4))
+            except (TypeError, ValueError, KeyError):
+                continue
+        if not want:
+            return None
+        best = None
+        for rec in self.all():
+            if rec.get("gid") != gid:
+                continue
+            if (rec.get("type") or "") != kind:
+                continue
+            # Something already curated is not the thing it came from.
+            if rec.get("curation_label") is not None:
+                continue
+            got = set()
+            for ev in rec.get("events") or []:
+                try:
+                    got.add(round(float(ev["start"]), 4))
+                except (TypeError, ValueError, KeyError):
+                    continue
+            if not got or not want.issubset(got):
+                continue
+            # The most complete list wins, then the oldest -- the import is
+            # the thing that came first.
+            key = (len(got), (rec.get("added") or {}).get("at") or "")
+            if best is None or key > best[0]:
+                best = (key, rec)
+        return best[1] if best else None
+
     def curated_entries(self, gid, kind=None, label=None):
         """The entries a curation set has already written, newest first.
 
@@ -399,6 +473,7 @@ class EventBank:
                   else "s", "s"),
             rec["id"]))
 
+    @shards.atomic
     def update(self, entry_id, patch):
         """Edit the describable parts. Provenance is not one of them."""
         rec = self.get(entry_id)

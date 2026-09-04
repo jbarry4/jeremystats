@@ -105,6 +105,7 @@ class Layers:
         rec["updated"] = self.store.provenance() if self.store else {"at": _now()}
         return self.book.write(self.base(rec["gid"]), rec)
 
+    @shards.atomic
     def ensure(self, gid, session_label=None, channels=None):
         rec = self.get(gid)
         if rec:
@@ -125,6 +126,7 @@ class Layers:
         }
         return self._write(rec)
 
+    @shards.atomic
     def set(self, gid, channel, region):
         rec = self.get(gid)
         if not rec:
@@ -138,6 +140,7 @@ class Layers:
             rec["labels"][ch] = region
         return self._write(rec)
 
+    @shards.atomic
     def set_many(self, gid, mapping):
         rec = self.get(gid)
         if not rec:
@@ -150,6 +153,7 @@ class Layers:
                 rec["labels"][key] = region
         return self._write(rec)
 
+    @shards.atomic
     def fill_down(self, gid, channels):
         """Give every unlabelled channel the label of the one above it.
 
@@ -175,6 +179,7 @@ class Layers:
         self._write(rec)
         return rec, n
 
+    @shards.atomic
     def clear(self, gid):
         rec = self.get(gid)
         if not rec:

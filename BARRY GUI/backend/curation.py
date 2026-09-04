@@ -273,6 +273,7 @@ class Curation:
     # ------------------------------------------------------------------
     # Writing
     # ------------------------------------------------------------------
+    @shards.atomic
     def create(self, gid, kind, events, name=None, source=None,
                session_label=None, replace=False):
         """Start a curation set from a list of candidate times.
@@ -383,6 +384,7 @@ class Curation:
             "sets": out,
         }
 
+    @shards.atomic
     def absorb(self, bundle, prefer=None):
         """Take another machine's decisions into the local sets.
 
@@ -535,6 +537,54 @@ class Curation:
         line["progress"] = self.progress(rec)
         return line
 
+    def restamp(self, dry_run=False):
+        """Give each decision the merge stamp its own record already implies.
+
+        Returns what it did, per set, so it can be read before it is run.
+        """
+        out = []
+        for base in self.book.bases():
+            path = self.book.mine(base)
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    shard = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            keys = (shard.get("_keys") or {}).get("events") or {}
+            moved = []
+            for ev in shard.get("events") or []:
+                eid, at = ev.get("id"), ev.get("at")
+                if not eid or not at or not ev.get("label"):
+                    continue
+                want = _when(at)
+                if want.year < 2000:
+                    continue
+                stamp = want.astimezone(timezone.utc).isoformat(
+                    timespec="microseconds")
+                entry = keys.get(eid)
+                # Only forward, and only past a stamp that is genuinely
+                # older -- a decision already stamped correctly is left
+                # exactly as it is.
+                if isinstance(entry, list) and len(entry) == 2:
+                    if entry[0] != "set" or entry[1] >= stamp:
+                        continue
+                    keys[eid] = ["set", stamp]
+                else:
+                    keys[eid] = ["set", stamp]
+                moved.append(eid)
+            if not moved:
+                continue
+            out.append({"base": base, "name": shard.get("name"),
+                        "gid": shard.get("gid"), "kind": shard.get("kind"),
+                        "restamped": len(moved)})
+            if dry_run:
+                continue
+            shard.setdefault("_keys", {})["events"] = keys
+            shards.write_json_atomic(path, shard)
+            if self.store:
+                self.store._stage(path)
+        return out
+
     def with_decisions(self):
         """Every set anybody has actually decided something in."""
         out = []
@@ -546,6 +596,7 @@ class Curation:
     def _label_ids(self, kind):
         return {l["id"] for l in KINDS[kind]["labels"]}
 
+    @shards.atomic
     def label(self, gid, kind, event_id, label, note=None):
         """Say what one candidate is. `label` of None puts it back."""
         rec = self._read(gid, kind)
@@ -566,11 +617,15 @@ class Curation:
         if not hit:
             raise CurationError("No candidate %r in this set." % event_id)
 
+        # Whoever decided this before goes on the record first: _own_review
+        # reads the label and the decider off the candidate, and a moment
+        # later both are the new ones. Called after, it credited the
+        # previous person with the new decision.
+        _own_review(hit)
         hit["label"] = label
         if note is not None:
             hit["note"] = note
         if label is not None:
-            _own_review(hit)
             _remember_review(hit, who, label, _now())
         if label is None:
             hit.pop("by", None)
@@ -581,6 +636,7 @@ class Curation:
         self._write(rec)
         return hit, self.progress(rec)
 
+    @shards.atomic
     def label_many(self, gid, kind, pairs):
         """Several at once, for a sweep like 'everything left is garbage'."""
         rec = self._read(gid, kind)
@@ -607,6 +663,7 @@ class Curation:
         self._write(rec)
         return n, self.progress(rec)
 
+    @shards.atomic
     def rename(self, gid, kind, name):
         rec = self._read(gid, kind)
         if not rec:
