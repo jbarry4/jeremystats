@@ -1,0 +1,187 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — searching and sorting the curation sets</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Go ahead and add a sorting/searching section to this part -- Event
+   curation."
+
+   Forty-one sets came in from the snapshot folders, one tall card each, in
+   whatever order the store handed them over. So the things to check are the
+   ones a person actually wants: find one by mouse, see only the ones with
+   flagged items left, and have the order mean something.
+
+   Plus one that is easy to get wrong: typing in the search box must not
+   rebuild the box being typed into, or the caret jumps to the end after
+   every keystroke. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.BARRY);
+
+  W.eval("setView('toolkit')");
+  await untilN(() => D.querySelector('.tk-tool'), 200);
+  const tool = Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(b.textContent));
+  tool.click();
+  await untilN(() => D.querySelector('#curSets .cur-set'), 300);
+  await sleep(900);
+
+  const cards = () => Array.from(D.querySelectorAll('#curSets .cur-set'));
+  const titles = () => cards().map(
+    (c) => (c.querySelector('strong') || {}).textContent || '');
+  const total = cards().length;
+  say('note', '  ' + total + ' sets listed');
+
+  head('The controls are there');
+  const search = D.querySelector('.cur-filter .cur-search');
+  const sort = D.querySelector('.cur-filter select');
+  check('a search box', !!search);
+  check('a sort', !!sort, 'no select');
+  const chips = Array.from(D.querySelectorAll('.cur-chips .pill'))
+    .map((b) => b.textContent.trim());
+  say('note', '  filters: ' + JSON.stringify(chips));
+  check('filters for the states worth asking about',
+        chips.some((t) => /^All/.test(t))
+        && chips.some((t) => /Unfinished/.test(t))
+        && chips.some((t) => /Has flagged/.test(t)), JSON.stringify(chips));
+  check('and they carry counts', chips.every((t) => /\(\d+\)/.test(t)),
+        JSON.stringify(chips));
+
+  head('Searching narrows it');
+  const type = async (text) => {
+    search.value = text;
+    search.dispatchEvent(new W.Event('input', { bubbles: true }));
+    await sleep(400);
+  };
+  await type('m34');
+  say('note', '  "m34" -> ' + cards().length + ': '
+      + titles().slice(0, 4).join(', '));
+  check('fewer than everything', cards().length < total,
+        cards().length + ' of ' + total);
+  check('and every one of them matches',
+        cards().length > 0 && titles().every((t) => /m34/i.test(t)),
+        titles().join(' | ').slice(0, 90));
+
+  await type('demo');
+  say('note', '  "demo" -> ' + cards().length + ': ' + titles().join(', '));
+  check('it searches the label, not just the name', cards().length >= 2,
+        String(cards().length));
+
+  await type('zzzz-nothing');
+  check('no matches says so, rather than showing an empty box',
+        cards().length === 0
+        && /Nothing matches/.test((D.getElementById('curSets') || {}).textContent || ''),
+        (D.getElementById('curSets') || {}).textContent.slice(0, 60));
+  await type('');
+  check('clearing brings them all back', cards().length === total,
+        cards().length + ' of ' + total);
+
+  head('The caret does not jump while typing');
+  /* The list repaints on every keystroke; if that rebuilds the input, the
+     caret goes to the end and typing in the middle is impossible. */
+  search.value = 'm3';
+  search.dispatchEvent(new W.Event('input', { bubbles: true }));
+  await sleep(300);
+  const same = D.querySelector('.cur-filter .cur-search') === search;
+  check('the search box is the same element after a repaint', same,
+        'it was replaced');
+  search.setSelectionRange(1, 1);
+  search.value = 'm34';
+  search.dispatchEvent(new W.Event('input', { bubbles: true }));
+  await sleep(300);
+  check('and it kept its value', D.querySelector('.cur-filter .cur-search')
+        .value === 'm34',
+        D.querySelector('.cur-filter .cur-search').value);
+  await type('');
+
+  head('Sorting changes the order');
+  const orderFor = async (v) => {
+    sort.value = v;
+    sort.dispatchEvent(new W.Event('change', { bubbles: true }));
+    await sleep(400);
+    return titles();
+  };
+  const byName = await orderFor('name');
+  say('note', '  by name: ' + byName.slice(0, 3).join(', '));
+  const sortedCopy = byName.slice().sort((a, b) => a.localeCompare(b));
+  check('by name really is alphabetical',
+        JSON.stringify(byName) === JSON.stringify(sortedCopy),
+        byName.slice(0, 3).join(' | '));
+
+  const byFlag = await orderFor('flag');
+  say('note', '  most flagged first: ' + byFlag.slice(0, 3).join(', '));
+  const flagOf = (t) => {
+    const card = cards().find(
+      (c) => ((c.querySelector('strong') || {}).textContent || '') === t);
+    const m = (card ? card.textContent : '').match(/Flag\s+(\d+)/);
+    return m ? +m[1] : 0;
+  };
+  const flags = byFlag.map(flagOf);
+  let descending = true;
+  for (let i = 1; i < flags.length; i++) {
+    if (flags[i] > flags[i - 1]) { descending = false; break; }
+  }
+  say('note', '  flag counts in order: ' + flags.slice(0, 8).join(', '));
+  check('most flagged really is first', descending,
+        flags.slice(0, 8).join(', '));
+  check('and the order actually changed',
+        JSON.stringify(byFlag) !== JSON.stringify(byName));
+
+  head('The "has flagged" filter');
+  const flagChip = Array.from(D.querySelectorAll('.cur-chips .pill'))
+    .find((b) => /Has flagged/.test(b.textContent));
+  flagChip.click();
+  await sleep(500);
+  const shown = cards().length;
+  say('note', '  ' + shown + ' sets have flagged items');
+  check('it showed some', shown > 0, String(shown));
+  check('and every one really has a flag',
+        cards().every((c) => {
+          const m = c.textContent.match(/Flag\s+(\d+)/);
+          return m && +m[1] > 0;
+        }), 'one of them has none');
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'cursearch: ' + bad + ' FAILED' : 'cursearch: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'cursearch: harness CRASH';
+} })();
+</script>

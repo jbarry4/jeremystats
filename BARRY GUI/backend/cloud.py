@@ -60,6 +60,13 @@ from . import shards
 TIMEOUT = 60
 
 
+def _quiet_rm(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _explain(method, path, code, detail):
     """Turn a PostgREST failure into something worth reading.
 
@@ -86,12 +93,20 @@ def _explain(method, path, code, detail):
     elif code == 401 or code == 403:
         hint = ("The key was refused. Check it in the Cloud panel -- a "
                 "publishable key cannot write, so this needs the secret one.")
+    elif code and int(code) >= 500:
+        hint = ("The database itself returned an error, not a refusal -- "
+                "nothing is wrong with the request or the key. These are "
+                "usually brief; the next sync will pick up where this one "
+                "stopped. If it keeps happening, check the Supabase project "
+                "status page.")
     elif "22007" in d or "invalid input syntax for type timestamp" in d:
         hint = ("A timestamp reached the database malformed -- usually a '+' "
                 "in a query string that was read as a space. This is a bug "
                 "here, not a configuration problem; please report it.")
     base = "%s %s -> HTTP %s %s" % (method, path, code, d)
     return base + (chr(10) + chr(10) + hint if hint else "")
+
+
 PAGE = 1000            # PostgREST's own default ceiling
 BATCH = 200            # rows per upsert; keeps request bodies sane
 
@@ -492,10 +507,33 @@ class Cloud:
             return {}
 
     def save_state(self, patch):
+        """Remember where the sync got to.
+
+        This is a cache, not data: it can be rebuilt by syncing again. So a
+        failure to write it must not be reported as a sync failure, which is
+        what was happening -- two BARRYs against the same GUI_logs contended
+        for a shared "cloud_state.json.tmp" and the "Permission denied" that
+        came back was logged as though the whole sync had broken.
+        """
+        import uuid as _uuid
         st = self.state()
         st.update(patch or {})
-        tmp = self._state_path() + ".tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(st, fh, indent=2, sort_keys=True)
-        os.replace(tmp, self._state_path())
+        target = self._state_path()
+        # Private per process and attempt, so two BARRYs cannot collide.
+        tmp = "%s.%d.%s.tmp" % (target, os.getpid(), _uuid.uuid4().hex[:6])
+        try:
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(st, fh, indent=2, sort_keys=True)
+        except OSError:
+            _quiet_rm(tmp)
+            return st                       # a cache; nothing is lost
+        # The rename can be refused for a moment by an indexer or a backup
+        # agent. Retried, then given up on quietly.
+        for attempt in range(5):
+            try:
+                os.replace(tmp, target)
+                return st
+            except OSError:
+                time.sleep(0.05 * (attempt + 1))
+        _quiet_rm(tmp)
         return st

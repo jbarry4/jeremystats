@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — what is cut off on a small screen</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 10px 14px; }
+  iframe { position: fixed; right: 0; bottom: 0; border: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'CUT   '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 12px 0 4px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0" style="width:1px;height:1px"></iframe>
+<script>
+/* "Work on scaling the UI for different screens, some things are cut off on
+   my undergrad's laptop."
+
+   Rather than guess which laptop, measure: at each of several common sizes,
+   walk the DOM and report every element whose content is wider or taller
+   than the box it is in, or that sticks out past the window. That is what
+   "cut off" is, and it names the element instead of describing a feeling.
+
+   1366x768 is the one that matters -- it is still the commonest cheap laptop
+   panel, and 768px of height with browser chrome leaves about 620. */
+const SIZES = [[1366, 768], [1280, 720], [1024, 640], [1512, 900]];
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(100);
+
+  const VIEWS = ['pipeline', 'sessions', 'results', 'toolkit', 'eventbank',
+                 'history', 'errors', 'storyboard', 'misc', 'explorer'];
+
+  /* Anything whose content does not fit its own box, or that runs past the
+     right or bottom edge of the window. Scrollable containers are exempt --
+     a list that scrolls is not cut off. */
+  const findCut = () => W.eval('(function(){'
+    + 'var out = [], seen = 0;'
+    + 'var vw = document.documentElement.clientWidth;'
+    + 'var vh = document.documentElement.clientHeight;'
+    /* Anything inside something that scrolls is not cut off -- it is below
+       the fold, which is what a list is for. An earlier version of this
+       missed that and reported fourteen hundred "cut off" elements in the
+       Sessions view, all of them simply further down. */
+    + 'function inScroller(n){'
+    + '  for (var p = n.parentElement; p; p = p.parentElement) {'
+    + '    var s = getComputedStyle(p);'
+    + '    if (/auto|scroll/.test(s.overflowY + s.overflowX)) return true;'
+    + '    if (p.id === "app") break; }'
+    + '  return false; }'
+    + 'var all = document.querySelectorAll('
+    + '  "#app button, #app label, #app .ctl, #app .btn, #app h1, #app h2,'
+    + '   #app .stat-chip, #app .flagchip, #app .tk-tool, #app .nav-item,'
+    + '   #app .view.active .view-head, #app .seg, #app select, #app input");'
+    + 'all.forEach(function(n){'
+    + '  var st = getComputedStyle(n);'
+    + '  if (st.display === "none" || st.visibility === "hidden") return;'
+    + '  var r = n.getBoundingClientRect();'
+    + '  if (!r.width || !r.height) return;'
+    + '  seen++;'
+    + '  var why = null, extra = "";'
+    + '  var scrolls = /auto|scroll/.test(st.overflowX + st.overflowY);'
+    + '  var clipped = st.overflow !== "visible" || st.textOverflow === "ellipsis";'
+    /* Truncation only counts when the box actually hides it: overflow
+       visible spills, which looks untidy but is readable. */
+    + '  if (!scrolls && clipped && n.scrollWidth > n.clientWidth + 2) {'
+    + '    why = "truncated"; extra = n.scrollWidth + " needs " + n.clientWidth; }'
+    + '  else if (r.right > vw + 1) {'
+    + '    why = "past the right edge"; extra = Math.round(r.right - vw) + "px over"; }'
+    + '  else if (!inScroller(n) && r.bottom > vh + 1) {'
+    + '    why = "below the window, and nothing scrolls";'
+    + '    extra = Math.round(r.bottom - vh) + "px over"; }'
+    + '  if (!why) return;'
+    + '  var id = (n.id ? "#" + n.id : "") + "." + (n.className || "").toString().split(" ")[0];'
+    + '  out.push({ el: id, text: (n.textContent || "").trim().slice(0, 34),'
+    + '             why: why, detail: extra });'
+    + '});'
+    + 'return { n: seen, cut: out.slice(0, 8), total: out.length }; })()');
+
+  for (const [w, h] of SIZES) {
+    f.style.width = w + 'px';
+    f.style.height = h + 'px';
+    await sleep(500);
+    head(w + ' x ' + h);
+    for (const v of VIEWS) {
+      W.eval("setView('" + v + "')");
+      await sleep(420);
+      const r = findCut();
+      if (!r.total) {
+        say('ok', v + '  (' + r.n + ' elements checked)');
+        continue;
+      }
+      say('bad', v + '  ' + r.total + ' cut off of ' + r.n);
+      for (const c of r.cut) {
+        say('note', '      ' + c.el + '  "' + c.text + '"  ' + c.why
+            + (c.detail ? '  (' + c.detail + ')' : ''));
+      }
+    }
+  }
+
+  head(bad ? bad + ' view(s) with something cut off' : 'Nothing cut off.');
+  document.title = bad ? 'overflow: ' + bad + ' CUT' : 'overflow: clean';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'overflow: harness CRASH';
+} })();
+</script>

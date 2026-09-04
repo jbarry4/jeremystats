@@ -9,7 +9,7 @@
     "schema": "2026-09-03T21:07:03.205703+00:00",
     "session_label": "2026-09-03T21:07:03.205703+00:00",
     "source": "2026-09-03T21:07:03.205703+00:00",
-    "updated": "2026-09-03T21:07:03.205703+00:00"
+    "updated": "2026-09-04T16:18:52.132394+00:00"
   },
   "_keys": {
     "events": {
@@ -2000,7 +2000,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-03T21:07:03.205703+00:00",
+    "at": "2026-09-04T16:18:52.132394+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -2012,14 +2012,18 @@
   },
   "events": [
     {
+      "at": "2026-09-04T12:18:21-0400",
+      "by": "Shahriar",
       "id": "ed2cc347034",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "start": 6.172
     },
     {
+      "at": "2026-09-04T12:18:21-0400",
+      "by": "Shahriar",
       "id": "e3f37c23783",
-      "label": "flag",
+      "label": "review",
       "note": "Filed under flag and garbage when sorted, so it needs deciding.",
       "start": 9.092
     },
@@ -2039,6 +2043,8 @@
       "start": 21.958
     },
     {
+      "at": "2026-09-04T12:18:28-0400",
+      "by": "Shahriar",
       "id": "ec5c4b39da5",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
@@ -2060,6 +2066,8 @@
       "start": 63.235
     },
     {
+      "at": "2026-09-04T12:18:49-0400",
+      "by": "Shahriar",
       "id": "ebedf3a8afb",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
@@ -2091,12 +2099,16 @@
       "start": 104.945
     },
     {
+      "at": "2026-09-04T12:18:51-0400",
+      "by": "Shahriar",
       "id": "e584ee0a6e9",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "start": 105.505
     },
     {
+      "at": "2026-09-04T12:18:52-0400",
+      "by": "Shahriar",
       "id": "e83624fcb2a",
       "label": "flag",
       "note": "Filed under flag and garbage when sorted, so it needs deciding.",
@@ -4624,9 +4636,10 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-03T17:07:03-04:00",
+    "at": "2026-09-04T12:18:52-04:00",
+    "email": "sakhava1@uvm.edu",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar"
   }
 }

@@ -428,7 +428,45 @@ code { font-family: var(--mono); }
 /* position:relative so the theme picker can sit above the chip that
    opens it. */
 .rail-foot { display: flex; flex-direction: column; gap: 8px;
-             position: relative; }
+             position: relative; flex: none; }
+
+/* ==========================================================================
+   Short screens
+   ==========================================================================
+   Measured, not guessed (web/_dev/overflow.html): at 1024x640 the rail's
+   footer ran off the bottom -- Guide 15px past it, the theme chip 53px --
+   so on a cheap laptop the Guide button was the thing you could not reach.
+   1366x768 and 1280x720 were already fine, so this is about height alone.
+
+   The nav scrolls and the footer stays put, rather than the whole column
+   overflowing. Below 700px the padding and the gaps tighten, and the
+   environment block -- MATLAB and Python versions, useful once a month --
+   gives up its space first.
+   ========================================================================== */
+#rail { overflow: hidden; }
+.rail-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+               display: flex; flex-direction: column; gap: 18px; }
+
+@media (max-height: 700px) {
+  #rail { padding: 8px 10px; gap: 10px; }
+  .rail-scroll { gap: 10px; }
+  .brand { padding-top: 0; }
+  .brand-mark { width: 24px; height: 24px; }
+  .nav-item { padding: 5px 10px; }
+  .chip-btn { padding: 4px 10px; font-size: 11.5px; }
+  .rail-foot { gap: 5px; }
+  /* Version strings are a once-a-month need; the Guide button is not. */
+  .env { display: none; }
+  .who-chip { margin-bottom: 5px; padding: 4px 9px; }
+}
+@media (max-height: 600px) {
+  /* Tighter still: the section labels above the nav groups go, since the
+     icons and names are self-explanatory. */
+  #rail { gap: 6px; }
+  .rail-scroll { gap: 6px; }
+  .nav-group > .section-label { display: none; }
+  .nav-item kbd { display: none; }
+}
 .chip-btn {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; border-radius: var(--radius-sm);
@@ -890,10 +928,18 @@ code { font-family: var(--mono); }
 
 /* ---------- toasts + modal ---------- */
 #toasts {
-  position: fixed; bottom: 16px; right: 16px; z-index: 60;
+  /* Clear of whatever action bar is up -- curation and StrataScope both put
+     one along the bottom, and a toast sat on top of Export CSV. */
+  position: fixed; bottom: calc(16px + var(--bottom-bar, 0px)); right: 16px;
+  z-index: 60;
   display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+  /* And never intercepting a click. A toast is something to read; it carries
+     no controls, and for six seconds it was swallowing presses meant for the
+     buttons behind it. */
+  pointer-events: none;
 }
 .toast {
+  pointer-events: none;
   padding: 10px 14px; border-radius: var(--radius-sm);
   background: var(--bg-3); border: 1px solid var(--line);
   box-shadow: var(--shadow); font-size: 12.5px; max-width: 400px;
@@ -2460,29 +2506,97 @@ select {
   display: flex; gap: 8px; align-items: baseline; padding: 2px 10px 2px 22px;
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
 }
-.bank-sess .slab { overflow: hidden; text-overflow: ellipsis;
-                   white-space: nowrap; }
+.bank-sess .slab { min-width: 0; overflow-wrap: anywhere; }
+/* Two lines, because four entries of one session differ only in the tail
+   of their names -- "... Dentate Spike", "... Garbage", "... Flag" -- and
+   a single row cut those to "Denta..." and "Garba...", losing exactly the
+   part that told them apart. The name gets the width it needs and the
+   detail sits underneath it. */
 .bank-row {
-  display: grid; grid-template-columns: 62px minmax(0, 1fr) 34px 74px;
-  gap: 8px; align-items: baseline;
-  margin: 1px 6px 1px 22px; padding: 4px 8px; border-radius: 5px;
+  display: grid; column-gap: 8px; row-gap: 1px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name  n"
+                       "type  src";
+  align-items: baseline;
+  margin: 1px 6px 1px 22px; padding: 5px 8px; border-radius: 5px;
   cursor: pointer; font-size: 11.5px; color: var(--text-2);
 }
 .bank-row:hover { background: var(--bg-3); color: var(--text); }
 .bank-row.active { background: var(--accent-soft); color: var(--accent); }
 .bank-type {
-  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--text-3);
+  grid-area: type; font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--text-3);
 }
 .bank-row.active .bank-type { color: var(--accent); }
-.bank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bank-n { font-family: var(--mono); font-size: 10px; text-align: right;
-          color: var(--text-3); }
-.bank-src {
-  font-family: var(--mono); font-size: 9.5px; color: var(--text-3);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  direction: rtl; text-align: left;
+.bank-name {
+  grid-area: name; min-width: 0;
+  /* Wraps rather than clips. A name is what distinguishes one entry from
+     the next; there is nothing in it that can be spared. */
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.25;
 }
+.bank-n { grid-area: n; font-family: var(--mono); font-size: 10px;
+          text-align: right; color: var(--text-3); }
+.bank-src {
+  grid-area: src; justify-self: end; max-width: 100%;
+  font-family: var(--mono); font-size: 9.5px; color: var(--text-3);
+  overflow-wrap: anywhere; text-align: right;
+}
+/* ---- A bank entry's version history ------------------------------------- */
+.ver-list { display: flex; flex-direction: column; gap: 7px; margin: 6px 0 4px; }
+.ver-row {
+  border: 1px solid var(--line-soft); border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm); padding: 7px 10px 8px;
+  background: var(--bg);
+}
+.ver-row.latest { border-left-color: var(--accent); background: var(--bg-2); }
+.ver-top {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-3);
+}
+.ver-n {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--accent);
+}
+.ver-who { color: var(--text-2); }
+.ver-count { margin-left: auto; font-family: var(--mono); font-size: 10px; }
+.ver-note {
+  margin-top: 3px; font-size: 12px; color: var(--text);
+  overflow-wrap: anywhere;
+}
+.ver-note.none { color: var(--text-3); font-style: italic; font-size: 11px; }
+.ver-mix, .ver-shifts {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
+}
+.ver-chip {
+  font-family: var(--mono); font-size: 9.5px; padding: 1px 6px;
+  border-radius: 999px; background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line-soft);
+}
+.ver-since { font-size: 10px; color: var(--text-3); margin-right: 2px; }
+.ver-since.none { font-style: italic; }
+/* The movement, which is what the history is read for. */
+.ver-shift {
+  font-family: var(--mono); font-size: 9.5px; padding: 1px 6px;
+  border-radius: 999px; border: 1px solid transparent;
+}
+.ver-shift.up {
+  color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.ver-shift.down {
+  color: var(--warn, #e8a33d);
+  border-color: color-mix(in srgb, var(--warn, #e8a33d) 40%, transparent);
+  background: color-mix(in srgb, var(--warn, #e8a33d) 12%, transparent);
+}
+/* "Garbage -> Dentate Spike  x2" -- the sentence somebody is looking for. */
+.ver-move {
+  font-family: var(--mono); font-size: 9.5px; padding: 1px 7px;
+  border-radius: 999px; color: var(--text);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.ver-conf { margin-top: 5px; font-size: 10px; color: var(--text-3); }
+
 .bank-detail {
   border: 1px solid var(--line-soft); border-radius: var(--radius);
   padding: 14px 16px 18px; background: var(--bg-2);
@@ -3548,16 +3662,29 @@ body.splitting .pane-split { pointer-events: auto !important; }
    break every bit of code that reaches for its parent. The grid is given a
    matching left margin instead, so nothing overlaps. */
 .strata-rail {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 122px; z-index: 6;
+  /* bottom is set from the bar's height in alignRail: the bar is a flex
+     child of the same box, and a rail running to bottom:0 covers its left
+     edge -- which is where the brushes are. */
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: var(--rail-w, 122px); z-index: 6;
   border-right: 1px solid var(--line); background: var(--bg-2);
   overflow: hidden;
 }
 .strata-head {
-  display: flex; align-items: baseline; gap: 6px; padding: 6px 8px;
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--line-soft); font-size: 10px;
   text-transform: uppercase; letter-spacing: .06em; color: var(--text-3);
 }
-.strata-n { margin-left: auto; }
+/* The hovered channel, in the one place that always has room for it. */
+/* Its own line, because sharing one with LAYER and 64 CH left it about
+   sixty pixels and "pick a layer below" came out as "pick a layer belo". A
+   readout that has to be cut to fit is not a readout. */
+.strata-at {
+  flex: 0 0 100%; text-transform: none; letter-spacing: 0;
+  color: var(--text-2); font-size: 9.5px; white-space: nowrap; min-width: 0;
+}
+.strata-n { margin-left: auto; flex: none; }
 .strata-rows {
   position: absolute; left: 0; right: 0;
   display: flex; flex-direction: column;
@@ -3609,10 +3736,43 @@ body.splitting .pane-split { pointer-events: auto !important; }
 /* A band rather than a chip: at this size the continuous run of colour is
    what makes a layer boundary visible at a glance. */
 .strata-rows.tight .strata-sw {
-  width: 16px; height: 100%; border-radius: 0; border: 0;
+  width: 18px; height: 100%; border-radius: 0; border: 0;
   border-top: 1px solid rgba(0, 0, 0, .10);
 }
 .strata-rows.tight .strata-num { width: 20px; }
+
+/* ---- One name per run ----------------------------------------------------
+   A layer is a stretch of the shank, not a property of a single channel, so
+   at six pixels a lane the run is what carries the name: written once, on
+   the middle of the stretch it belongs to. Reads at any density, and drops
+   out only when a run is too short for a word -- where the colour band is
+   still saying where the boundary is. */
+.strata-spans {
+  position: absolute; left: 42px; right: 3px; top: 0; bottom: 0;
+  pointer-events: none;
+}
+.strata-rows:not(.tight) .strata-spans { display: none; }
+.strata-span {
+  position: absolute; left: 0; right: 0;
+  display: flex; align-items: center;
+  font-size: 10px; line-height: 1.1; color: var(--text);
+  padding-left: 4px; overflow: hidden;
+  border-left: 2px solid var(--cat, var(--line));
+  border-top: 1px solid color-mix(in srgb, var(--cat) 45%, transparent);
+}
+.strata-span b {
+  font-weight: 600; white-space: nowrap;
+  text-shadow: 0 0 3px var(--bg-2), 0 0 2px var(--bg-2);
+}
+.strata-span i {
+  font-style: normal; color: var(--text-3); margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* An unlabelled stretch is worth seeing too -- it is the work that is left --
+   but quietly. */
+.strata-span.tiny > * { display: none; }
+.strata-span.none { border-left-color: var(--line); }
+.strata-span.none b { color: var(--text-3); font-weight: 400; }
 
 .strata-rows.packed .strata-row { font-size: 8.5px; padding: 0 3px; }
 .strata-rows.packed .strata-num { width: 18px; }
@@ -3641,11 +3801,28 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 
 .strata-bar {
-  flex: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  flex: none; display: flex; flex-direction: column; align-items: stretch;
+  gap: 7px;
   padding: 9px 14px; border-top: 2px solid var(--accent);
   background: var(--bg-2);
+  /* A backstop. On a narrow window this used to wrap to nearly half the
+     screen, and everything it was supposed to be controlling -- the rail's
+     lanes, the panes -- got what was left. */
+  max-height: 26vh; overflow-y: auto;
+  /* Above the rail, whatever height the rail thinks it has. The rail is
+     absolute inside the same box; without this it lies over the left 122px
+     of this bar and the first five buttons are dead. */
+  position: relative; z-index: 8;
 }
+/* The title, the progress and the actions, on one line that never wraps
+   into the brushes. */
+.strata-bar-top {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+/* Thirteen layers wrap onto a second line, which is fine -- what is not
+   fine is scrolling them out of sight, which is what nowrap did. */
 .strata-brushes { display: flex; gap: 4px; flex-wrap: wrap; }
+.strata-brush { flex: none; }
 .strata-brush {
   display: flex; align-items: center; gap: 5px; cursor: pointer; font: inherit;
   padding: 3px 8px 3px 5px; border-radius: var(--radius-sm);
@@ -3666,7 +3843,7 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .strata-legend { display: flex; flex-wrap: wrap; gap: 5px; }
 
 #xfBody.strata-on { position: relative; }
-#xfBody.strata-on .pane-grid { margin-left: 122px; }
+#xfBody.strata-on .pane-grid { margin-left: var(--rail-w, 122px); }
 
 /* ---- Remembered vs found -------------------------------------------------
    A recording BARRY remembers and one it has just laid eyes on are different
@@ -4492,3 +4669,102 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .vrec-cursor { background: var(--accent); }
 
+
+
+/* A running server older than the files on disk.
+   ------------------------------------------------------------------------
+   Stays until BARRY is restarted, because that is the only thing that fixes
+   it and everything added since it started will otherwise fail -- some of it
+   silently. A peer lost a bug report to exactly this: the report route was
+   one of the missing ones. */
+.stale-banner {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 14px;
+  background: var(--err-soft); color: var(--text);
+  border-bottom: 2px solid var(--err);
+  font-size: 12px; line-height: 1.4;
+}
+.stale-banner strong { color: var(--err); flex: none; }
+
+
+/* ==========================================================================
+   Who the work is credited to
+   ==========================================================================
+   In the rail, under the brand, because it is the first thing worth getting
+   right and it is wrong by default: without a profile every curation
+   decision is credited to whatever the computer is called.
+   ========================================================================== */
+.who-chip {
+  display: flex; align-items: center; gap: 8px;
+  margin: 2px 10px 8px; padding: 5px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-3); color: var(--text-2);
+  font: inherit; font-size: 11.5px; cursor: pointer; text-align: left;
+  min-width: 0;
+}
+.who-chip:hover { border-color: var(--accent-line); color: var(--text); }
+.who-chip .who-name { overflow: hidden; white-space: nowrap; min-width: 0; }
+.who-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--ok);
+}
+.who-dot.warn { background: var(--warn); }
+.who-chip.unset { border-color: var(--warn); color: var(--warn); }
+#app.rail-icons .who-chip { justify-content: center; padding: 5px 4px; }
+#app.rail-icons .who-chip .who-name { display: none; }
+
+.prof-form { display: flex; flex-direction: column; gap: 11px;
+             max-width: 520px; }
+.prof-form .field { display: flex; flex-direction: column; gap: 4px; }
+.prof-form .field > label { font-size: 11px; color: var(--text-2); }
+.prof-form .hint { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
+
+
+/* The Guide's cursor.
+   ------------------------------------------------------------------------
+   Next performs the step rather than telling you to. Without a visible
+   pointer the screen simply changes, which on a step that opens a whole
+   view reads as the tour losing its place -- so the click is shown being
+   made. */
+.tour-cursor {
+  position: fixed; z-index: 100000; pointer-events: none;
+  width: 22px; height: 22px; margin: -3px 0 0 -3px;
+  transition: left .5s cubic-bezier(.32, .72, .3, 1),
+              top .5s cubic-bezier(.32, .72, .3, 1);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .55));
+}
+.tour-cursor svg { width: 100%; height: 100%;
+                   fill: #fff; stroke: #111; stroke-width: 1.1; }
+/* The press: a ring that snaps out from under the pointer. */
+.tour-cursor.press::after {
+  content: ''; position: absolute; left: -9px; top: -9px;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: tour-press .34s ease-out forwards;
+}
+@keyframes tour-press {
+  from { transform: scale(.35); opacity: .95; }
+  to   { transform: scale(1.25); opacity: 0; }
+}
+.tour-cursor.press svg { transform: scale(.86); }
+
+
+/* Finding one curation set among forty.
+   ------------------------------------------------------------------------
+   The snapshot import alone brought in forty-one, one tall card each, in
+   store order. "Which of these still has flagged items" was not answerable
+   without reading all of them. */
+.cur-filter {
+  display: flex; align-items: center; gap: 8px; margin: 10px 0 8px;
+}
+.cur-filter .cur-search {
+  flex: 1; min-width: 0;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  font: inherit; font-size: 12.5px;
+}
+.cur-filter .cur-search:focus { outline: none; border-color: var(--accent-line); }
+.cur-filter select { flex: none; }
+.cur-chips { margin-bottom: 10px; }
+.cur-chips .pill:disabled { opacity: .35; cursor: default; }

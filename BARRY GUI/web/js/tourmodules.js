@@ -33,9 +33,25 @@
      the tour still runs on a fresh machine with nothing scanned. */
   let cachedPath;
 
+  /* A recording for the tour to point at.
+
+     The demo one, deliberately, and in preference to real data. The Guide is
+     the first thing anybody opens: on a laptop with no drive mounted there
+     used to be nothing for it to demonstrate, and on the rig it would open
+     somebody's actual session and start moving their window around. The demo
+     is generated, always present, identical on every machine, and nobody
+     minds what happens to it -- see backend/demo.py.
+
+     Real data is the fallback, for the case where the demo is somehow
+     unavailable. */
   async function anyRecording() {
     if (cachedPath !== undefined) return cachedPath;
     cachedPath = null;
+    try {
+      const reg = await api('/api/registry');
+      const demos = reg.demo_paths || [];
+      if (demos.length) { cachedPath = demos[0]; return cachedPath; }
+    } catch (e) { /* fall through to whatever is stored */ }
     try {
       const d = await api('/api/sessions');
       for (const rec of (d.sessions || [])) {
@@ -120,8 +136,10 @@
         target: () => document.querySelector('.pane-canvas-host')
                    || document.querySelector('#xfDrop'),
         placement: 'top',
-        note: 'BARRY has opened one for you, so the rest of the tour has '
-            + 'something real to point at.',
+        note: 'BARRY has opened a made-up recording for the tour, so this '
+            + 'works on a laptop with no drive mounted — and so the '
+            + 'tour is not moving the window around on somebody’s real '
+            + 'session while they are using it. Nothing in it is real data.',
       },
       {
         title: 'What you touch most',
@@ -925,12 +943,54 @@
       },
       {
         title: 'And the answers go somewhere useful',
-        body: 'Banking a curated set writes one Event Bank entry per '
-            + 'category \u2014 solid separately from sputter \u2014 '
-            + 'because separating them was the point. The CSV keeps the '
-            + 'unspecified ones too, so the denominator survives.',
+        body: 'Banking a curated set writes one Event Bank entry for '
+            + 'the set, every event carrying its category. Not one '
+            + 'entry per category: a session came out as four entries '
+            + 'whose names differed only in the last word, and a '
+            + 'decision moving from one category to another \u2014 '
+            + 'which is most of what a second pass does \u2014 could '
+            + 'not be seen at all. The CSV keeps the unspecified ones '
+            + 'too, so the denominator survives.',
         target: railItem('eventbank'),
         placement: 'right',
+      },
+      {
+        title: 'Every bank is a version',
+        body: 'Banking asks what changed in this pass and keeps the '
+            + 'answer. The entry then holds its whole history: who '
+            + 'banked each version, the note they wrote, the count in '
+            + 'every category, and which decisions moved between two '
+            + 'versions \u2014 "Garbage \u2192 Dentate Spike \u00d72". '
+            + 'That last part is worked out candidate by candidate '
+            + 'rather than by subtracting totals, so a pass where two '
+            + 'calls went one way and two came back still reads as '
+            + 'four decisions changing rather than as nothing '
+            + 'happening.',
+        view: 'eventbank',
+        placement: 'top',
+        required: false,
+        note: 'Re-banking a set nothing has changed in does not invent '
+            + 'a version. It notes that somebody checked, which is '
+            + 'worth knowing and is not the same as a change.',
+      },
+      {
+        title: 'If the work is on somebody else\'s machine',
+        body: 'Decisions are written the moment they are made, and each '
+            + 'machine writes its own file, so two people can work the '
+            + 'same set and neither can overwrite the other. Getting '
+            + 'it all onto one machine normally happens by itself \u2014 '
+            + 'through the repo, or the cloud sync. Hand off is for '
+            + 'when it has not: it saves every decision to one file '
+            + 'that can travel by any means at all, and bringing it in '
+            + 'merges per candidate.',
+        view: 'toolkit',
+        placement: 'top',
+        required: false,
+        note: 'The merge never overwrites quietly. A candidate nobody '
+            + 'here had decided takes theirs; one you both called the '
+            + 'same way is recorded as two people agreeing; and a real '
+            + 'disagreement keeps both names on the candidate and says '
+            + 'that it happened.',
       },
     ],
   });

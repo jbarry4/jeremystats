@@ -1,0 +1,323 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — is StrataScope usable at 64 channels?</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Stratascope is still cooked. Its cramped, you can't pick anything, none
+   of the buttons work."
+
+   Three separate claims, so three separate measurements rather than one
+   impression:
+
+     cramped        how tall is a row, how wide is the rail, and is any of
+                    it readable
+     cannot pick    is a row actually hit-testable -- does the thing at that
+                    point belong to the row, or is something covering it
+     buttons dead   does clicking a brush then a row change the label
+
+   The last one is the real test: not "is there a button" but "does pressing
+   it do the thing". */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.BARRY);
+
+  /* A 64-channel recording, which is the case being complained about. The
+     built-in one by preference: this test paints channels, and it has no
+     business writing layer labels into somebody's real session. */
+  let gid = null, label = '';
+  const reg = await (await fetch('/api/registry')).json();
+  const wide = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) wide.push(s);
+      }
+    }
+  }
+  const pick = wide.find((s) => String(s.gid || '').startsWith('demo-'))
+            || wide[0];
+  if (pick) { gid = pick.gid; label = pick.label; }
+  if (!gid) { say('bad', 'no 64-channel recording reachable'); return; }
+  say('note', '  ' + label);
+
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  await untilN(() => W.eval('!!BARRY.strata.active'));
+  check('StrataScope opened', !!W.eval('BARRY.strata.active'));
+  await untilN(() => D.querySelector('.strata-rows .strata-row'), 300);
+  await sleep(2500);
+
+  head('1. Cramped: the numbers');
+  const rail = D.querySelector('.strata-rail');
+  const rows = Array.from(D.querySelectorAll('.strata-rows .strata-row'));
+  const rowsBox = D.querySelector('.strata-rows');
+  const rw = rail ? rail.getBoundingClientRect() : { width: 0 };
+  const mid = rows[Math.floor(rows.length / 2)];
+  const rh = mid ? mid.getBoundingClientRect() : { height: 0, width: 0 };
+  say('note', '  rail ' + Math.round(rw.width) + 'px wide, '
+      + rows.length + ' rows, each ' + rh.height.toFixed(1) + 'px tall');
+  say('note', '  classes: ' + (rowsBox ? rowsBox.className : '?'));
+  check('there is a row per channel', rows.length === 64, rows.length + ' rows');
+  check('the rows have height', rh.height > 3, rh.height.toFixed(1) + 'px');
+  check('and width', rh.width > 40, rh.width.toFixed(1) + 'px');
+
+  head('2. Can a row be hit?');
+  /* elementFromPoint is the honest test: it says what would receive the
+     click, which is not always the thing that looks like it is there. */
+  const hitReport = W.eval('(function(){'
+    + 'var rows = Array.prototype.slice.call('
+    + '  document.querySelectorAll(".strata-rows .strata-row"));'
+    + 'var hit = 0, covered = {}, tested = 0;'
+    + 'rows.forEach(function(r){'
+    + '  var b = r.getBoundingClientRect();'
+    + '  if (b.height < 1) return;'
+    + '  tested++;'
+    + '  var el = document.elementFromPoint(b.left + b.width * 0.5,'
+    + '                                     b.top + b.height / 2);'
+    + '  if (!el) { covered["nothing"] = (covered["nothing"]||0)+1; return; }'
+    + '  if (r.contains(el) || el === r) { hit++; return; }'
+    + '  var k = (el.className || el.tagName || "?").toString().split(" ")[0];'
+    + '  covered[k] = (covered[k] || 0) + 1;'
+    + '});'
+    + 'return { tested: tested, hit: hit, covered: covered }; })()');
+  say('note', '  ' + hitReport.hit + ' of ' + hitReport.tested
+      + ' rows are clickable');
+  if (Object.keys(hitReport.covered).length) {
+    say('note', '  covered by: ' + JSON.stringify(hitReport.covered));
+  }
+  check('every row can actually be clicked',
+        hitReport.hit === hitReport.tested,
+        hitReport.hit + '/' + hitReport.tested);
+
+  head('3. The brushes');
+  const brushes = Array.from(D.querySelectorAll('.strata-brush'));
+  say('note', '  ' + brushes.length + ' brushes: '
+      + brushes.slice(0, 4).map((b) => b.textContent.trim()).join(' | '));
+  check('there are brushes to pick', brushes.length > 2, String(brushes.length));
+  const brushHit = W.eval('(function(){'
+    + 'var bs = Array.prototype.slice.call('
+    + '  document.querySelectorAll(".strata-brush"));'
+    + 'var ok = 0, by = {}, sample = {};'
+    + 'bs.forEach(function(b){'
+    + '  var r = b.getBoundingClientRect();'
+    + '  if (r.width < 2 || r.height < 2) return;'
+    + '  var el = document.elementFromPoint(r.left + r.width/2,'
+    + '                                     r.top + r.height/2);'
+    + '  if (el && (b.contains(el) || el === b)) { ok++; return; }'
+    + '  var who = el ? ((el.id ? "#" + el.id : "") + "."'
+    + '    + (el.className || el.tagName).toString().split(" ")[0]) : "nothing";'
+    + '  by[who] = (by[who] || 0) + 1;'
+    + '  if (!sample[who]) sample[who] = b.textContent.trim().slice(0, 18)'
+    + '    + " at y=" + Math.round(r.top);'
+    + '});'
+    + 'return { n: bs.length, ok: ok, by: by, sample: sample }; })()');
+  if (brushHit.by && Object.keys(brushHit.by).length) {
+    say('note', '  covered by: ' + JSON.stringify(brushHit.by));
+    say('note', '  e.g. ' + JSON.stringify(brushHit.sample));
+  }
+  check('and they are clickable, not covered',
+        brushHit.ok === brushHit.n, brushHit.ok + '/' + brushHit.n);
+
+  head('4. Does picking actually label a channel?');
+  const labelled = () => W.eval('(function(){'
+    + 'var s = BARRY.strata.state;'
+    + 'return s ? Object.keys(s.labels || {}).length : -1; })()');
+  const before = labelled();
+  say('note', '  labelled to start with: ' + before);
+  /* Pick a brush the way a person does, then click a row. */
+  const brush = brushes.find((b) => !/^Pick/.test(b.textContent.trim()))
+             || brushes[1] || brushes[0];
+  say('note', '  using brush: ' + brush.textContent.trim());
+  brush.click();
+  await sleep(300);
+  check('the brush became active',
+        /on/.test(brush.className) || W.eval(
+          '!!(BARRY.strata.state && BARRY.strata.state.brush)'),
+        brush.className);
+
+  /* A row that has no label yet, so a no-op cannot be mistaken for a pass. */
+  const unl = W.eval('(function(){'
+    + 'var s = BARRY.strata.state, L = (s && s.labels) || {};'
+    + 'var cs = s.channels || [];'
+    + 'for (var i = 0; i < cs.length - 6; i++) {'
+    + '  if (!L[String(cs[i].number)]) return i;'
+    + '} return 0; })()');
+  say('note', '  painting from row ' + (unl + 1));
+  const down = (r) => {
+    const b = r.getBoundingClientRect();
+    r.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true,
+      clientX: b.left + b.width * 0.5, clientY: b.top + b.height / 2 }));
+  };
+  const over = (r) => r.dispatchEvent(
+    new W.MouseEvent('mouseenter', { bubbles: false }));
+
+  down(rows[unl]);
+  await untilN(() => labelled() > before, 60);
+  say('note', '  labelled after one click: ' + labelled());
+  check('clicking a row labels a channel', labelled() > before,
+        before + ' -> ' + labelled());
+
+  head('4b. And does dragging paint a run?');
+  /* The whole point of a brush. paint() re-renders the rail on every stroke,
+     so a drag flag scoped to the render was thrown away by the first
+     channel it painted. */
+  const midDrag = labelled();
+  for (const k of [1, 2, 3]) {
+    over(D.querySelectorAll('.strata-rows .strata-row')[unl + k]);
+    await sleep(120);
+  }
+  await sleep(400);
+  say('note', '  after dragging over three more: ' + labelled());
+  check('dragging paints the channels it passes over',
+        labelled() >= midDrag + 3, midDrag + ' -> ' + labelled());
+
+  W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
+  await sleep(200);
+  const afterUp = labelled();
+  over(D.querySelectorAll('.strata-rows .strata-row')[unl + 4]);
+  await sleep(400);
+  check('and letting go stops it', labelled() === afterUp,
+        'kept painting: ' + afterUp + ' -> ' + labelled());
+
+  head('5. The buttons along the bottom');
+  const bar = D.querySelector('.strata-bar');
+  const btns = bar ? Array.from(bar.querySelectorAll('button')) : [];
+  say('note', '  ' + btns.length + ' buttons in the bar');
+  const barHit = W.eval('(function(){'
+    + 'var bar = document.querySelector(".strata-bar");'
+    + 'if (!bar) return { n: 0, ok: 0, off: 0 };'
+    + 'var bs = Array.prototype.slice.call(bar.querySelectorAll("button"));'
+    + 'var ok = 0, off = 0, by = {}, sample = {};'
+    + 'var vw = document.documentElement.clientWidth;'
+    + 'var vh = document.documentElement.clientHeight;'
+    + 'bs.forEach(function(b){'
+    + '  var r = b.getBoundingClientRect();'
+    + '  if (r.right > vw + 1 || r.bottom > vh + 1) { off++; return; }'
+    + '  var el = document.elementFromPoint(r.left + r.width/2,'
+    + '                                     r.top + r.height/2);'
+    + '  if (el && (b.contains(el) || el === b)) { ok++; return; }'
+    + '  var who = el ? ((el.id ? "#" + el.id : "") + "."'
+    + '    + (el.className || el.tagName).toString().split(" ")[0]) : "nothing";'
+    + '  by[who] = (by[who] || 0) + 1;'
+    + '  if (!sample[who]) sample[who] = b.textContent.trim().slice(0, 18)'
+    + '    + " at y=" + Math.round(r.top) + " h=" + Math.round(r.height);'
+    + '});'
+    + 'return { n: bs.length, ok: ok, off: off, by: by, sample: sample }; })()');
+  say('note', '  ' + barHit.ok + ' clickable, ' + barHit.off
+      + ' off the edge of the window');
+  check('none of the bar buttons is off screen', barHit.off === 0,
+        barHit.off + ' off screen');
+  if (barHit.by && Object.keys(barHit.by).length) {
+    say('note', '  covered by: ' + JSON.stringify(barHit.by));
+    say('note', '  e.g. ' + JSON.stringify(barHit.sample));
+  }
+  check('and all of them are clickable', barHit.ok === barHit.n,
+        barHit.ok + '/' + barHit.n);
+
+  head('6. The rail does not lie on top of the bar');
+  const geom = W.eval('(function(){'
+    + 'var r = document.getElementById("strataRail");'
+    + 'var b = document.querySelector(".strata-bar");'
+    + 'if (!r || !b) return null;'
+    + 'var rb = r.getBoundingClientRect(), bb = b.getBoundingClientRect();'
+    + 'return { railBottom: Math.round(rb.bottom), barTop: Math.round(bb.top),'
+    + '         railW: Math.round(rb.width),'
+    + '         gridLeft: Math.round(document.getElementById("paneGrid")'
+    + '           .getBoundingClientRect().left) }; })()');
+  const vh = W.innerHeight;
+  const barH = vh - geom.barTop;
+  say('note', '  rail ends at y=' + geom.railBottom + ', bar starts at y='
+      + geom.barTop + ' (' + barH + 'px tall of ' + vh + '), rail '
+      + geom.railW + 'px wide');
+  /* The bar wrapping to half the screen is what starved the rail to
+     one-pixel lanes and pushed four buttons off the bottom. */
+  check('the bar leaves the panes most of the window', barH < vh * 0.32,
+        barH + 'px of ' + vh);
+  check('the rail stops above the bar', geom.railBottom <= geom.barTop + 1,
+        'overlaps by ' + (geom.railBottom - geom.barTop) + 'px');
+  check('and the panes start clear of the rail',
+        geom.gridLeft >= geom.railW - 2,
+        'grid at ' + geom.gridLeft + ' vs rail ' + geom.railW);
+
+  head('7. At six-pixel lanes, is anything readable?');
+  const spans = Array.from(D.querySelectorAll('.strata-span'));
+  const covered = spans.reduce((n, s) => {
+    const m = s.textContent.match(/×(\d+)/);
+    return n + (m ? +m[1] : 1);
+  }, 0);
+  say('note', '  ' + spans.length + ' run label(s) covering ' + covered
+      + ' channels: '
+      + spans.slice(0, 3).map((s) => s.textContent.trim()).join(' / '));
+  check('every channel is inside a named run', covered === rows.length,
+        covered + ' of ' + rows.length);
+  const shown = spans.filter((s) => {
+    const b = s.getBoundingClientRect();
+    return b.height >= 10 && b.width > 20;
+  });
+  check('and at least one run is tall enough to read', shown.length > 0,
+        '0 of ' + spans.length + ' are legible');
+  say('note', '  ' + shown.length + ' of ' + spans.length
+      + ' run labels are tall enough to read');
+
+  head('8. The rail says which channel the cursor is on');
+  const at = D.getElementById('strataAt');
+  const idle = at ? at.textContent : '';
+  rows[30].dispatchEvent(new W.MouseEvent('mouseenter', { bubbles: false }));
+  await sleep(200);
+  say('note', '  idle: "' + idle + '"   on row 31: "'
+      + (at ? at.textContent : '') + '"');
+  check('it names the channel under the cursor',
+        !!at && at.textContent !== idle && /\d/.test(at.textContent),
+        at ? at.textContent : 'no readout');
+
+  W.eval('BARRY.strata.exit()');
+  check('and it cleans up after itself',
+        !document.documentElement.style.getPropertyValue('--rail-w')
+        && !W.eval('document.documentElement.style.getPropertyValue("--rail-w")'),
+        'left --rail-w behind');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'stratacheck: ' + bad + ' FAILED'
+                       : 'stratacheck: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'stratacheck: harness CRASH';
+} })();
+</script>

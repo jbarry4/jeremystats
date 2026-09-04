@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8"><title>load clean</title>
+<style>body{font:12px ui-monospace,monospace;background:#0c0f14;color:#dfe6ee;margin:0;padding:12px}
+.bad{color:#ff8a7a}.ok{color:#7fe3b0}iframe{position:fixed;right:0;top:0;width:55vw;height:100vh;border:0}</style>
+<div id="o"></div><iframe id="f" src="/"></iframe>
+<script>
+const o=document.getElementById('o'), sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+let bad=0;
+const say=(c,m)=>{const d=document.createElement('div');d.className=c;d.textContent=m;
+                  o.appendChild(d); if(c==='bad')bad++;};
+(async()=>{
+ const f=document.getElementById('f');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=f.contentWindow, D=f.contentDocument;
+ const errs=[];
+ W.addEventListener('error',e=>errs.push(e.message+' @'+(e.filename||'').split('/').pop()+':'+e.lineno));
+ W.addEventListener('unhandledrejection',e=>errs.push('rejected: '+e.reason));
+ for(let i=0;i<300&&!W.BARRY;i++) await sleep(100);
+ // Walk every view, since a module only runs when its view is opened.
+ for (const v of ['pipeline','explorer','xplore','sessions','history','errors',
+                  'results','eventbank','storyboard','toolkit','misc']) {
+   try { W.eval("setView('"+v+"')"); } catch(e){ errs.push(v+': '+e.message); }
+   await sleep(420);
+ }
+ // And the Guide's modules, which is where the bug was.
+ let mods=[], steps=0;
+ try {
+   mods = W.eval('BARRY.tour.list().map(function(m){return m.id})');
+   steps = W.eval('BARRY.tour.list().reduce(function(n,m){return n+m.steps.length},0)');
+ } catch(e){ errs.push('tour: '+e.message); }
+ say(mods.length?'ok':'bad','tour modules: '+mods.join(', '));
+ say(steps>40?'ok':'bad', steps+' steps in total');
+ let cur=[];
+ try {
+   cur = W.eval('(BARRY.tour.list().filter(function(m){return m.id==="curation"})[0]'
+                +'||{steps:[]}).steps.map(function(s){return s.title})');
+ } catch(e){ errs.push('curation module: '+e.message); }
+ say('ok','curation module now ends with:');
+ cur.slice(-3).forEach(t=>say('ok','    '+t));
+ say(cur.some(t=>/version/i.test(t))?'ok':'bad','a step about versions exists');
+ say(cur.some(t=>/machine/i.test(t))?'ok':'bad','a step about the handoff exists');
+ if (errs.length) { errs.forEach(m=>say('bad',m)); }
+ else say('ok','no errors thrown across every view');
+ document.title = bad ? ('loadclean: '+bad+' FAILED') : 'loadclean: passed';
+})();
+</script>

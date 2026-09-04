@@ -671,9 +671,42 @@ def _write_json(path, data):
     against is losing an afternoon of it.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-        json.dump(data, fh, indent=2, sort_keys=True, default=str)
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(tmp, path)
+    # A private scratch name per process and per attempt. A shared
+    # "<name>.tmp" is contended: two BARRYs against the same GUI_logs -- one
+    # per person, or a stale one still running -- fight over it and one gets
+    # "Permission denied" on a file it is perfectly entitled to write. Seen
+    # in the wild on cloud_state.json.tmp.
+    tmp = "%s.%d.%s.tmp" % (path, os.getpid(), uuid.uuid4().hex[:6])
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(data, fh, indent=2, sort_keys=True, default=str)
+            fh.flush()
+            os.fsync(fh.fileno())
+    except Exception:
+        # The write itself failed, so the scratch file holds nothing worth
+        # keeping.
+        _quiet_remove(tmp)
+        raise
+
+    # Windows refuses the rename if anything has the target open even for a
+    # moment -- an indexer, a backup agent, OneDrive, another BARRY. That is
+    # transient, so it is retried rather than lost.
+    last = None
+    for attempt in range(6):
+        try:
+            os.replace(tmp, path)
+            return
+        except OSError as exc:
+            last = exc
+            time.sleep(0.05 * (attempt + 1))
+    # Out of tries. The scratch file is deliberately left behind: it holds
+    # the newest content, and losing it silently would be worse than a
+    # stray file somebody can recover from.
+    raise last
+
+
+def _quiet_remove(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass

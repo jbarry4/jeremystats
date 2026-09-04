@@ -155,7 +155,11 @@ BARRY.views.sessions = (function () {
       });
       scanId = res.job.id;
       remember(root);
-      poll = setInterval(tick, 400);
+      /* Paced by a chained timeout rather than an interval, so the gap can
+         grow. See tick(). */
+      scanSeen = { scanned: -1, at: Date.now() };
+      scanGap = 400;
+      schedule();
       tick();
     } catch (e) {
       $('#scanStatus').innerHTML = '';
@@ -163,7 +167,21 @@ BARRY.views.sessions = (function () {
     }
   }
 
-  function stopPoll() { if (poll) clearInterval(poll); poll = null; }
+  /* How the scan poll paces itself, and how it notices a stall. */
+  let scanSeen = null;      // {scanned, at} the last time the count moved
+  let scanGap = 400;
+
+  function schedule() {
+    if (poll) clearTimeout(poll);
+    poll = setTimeout(tick, scanGap);
+  }
+
+  function stopPoll() {
+    if (poll) clearTimeout(poll);
+    poll = null;
+    scanSeen = null;
+    scanGap = 400;
+  }
 
   async function tick() {
     if (!scanId) return;
@@ -172,15 +190,52 @@ BARRY.views.sessions = (function () {
     catch (e) { stopPoll(); return; }
     const j = data.job;
 
+    /* Back off while it runs. Two and a half polls a second for a scan that
+       takes minutes is thousands of requests for a number nobody can read
+       that fast. */
+    if (j.status === 'running') {
+      scanGap = Math.min(2000, Math.round(scanGap * 1.25));
+      schedule();
+    }
+
+    /* Has it actually got anywhere? A network drive that is not reachable
+       leaves the walking thread blocked, the job "running" and the counter
+       still -- which looks exactly like a slow scan and is not one. */
+    let stalledFor = 0;
+    if (j.status === 'running') {
+      if (!scanSeen || j.scanned !== scanSeen.scanned) {
+        scanSeen = { scanned: j.scanned, at: Date.now() };
+      } else {
+        stalledFor = Math.round((Date.now() - scanSeen.at) / 1000);
+      }
+    }
+
     const box = $('#scanStatus');
     box.innerHTML = '';
     if (j.status === 'running') {
       box.appendChild(el('span', { class: 'spin' }));
-      box.appendChild(el('span', { text: j.found + ' session(s) · ' + j.scanned + ' folders scanned' }));
+      box.appendChild(el('span', { text: j.found + ' session(s) \u00b7 '
+                                      + j.scanned + ' folders scanned' }));
       box.appendChild(el('code', { text: j.current || '' }));
+      if (stalledFor >= 15) {
+        /* Say what it is stuck on. On a mapped drive this is almost always
+           the drive being unreachable, and it will not resolve by waiting --
+           so the useful thing is the path and a way out. */
+        box.appendChild(el('span', { class: 'stat-chip warn',
+          title: 'The folder count has not moved. If this is a mapped drive, '
+               + 'check it is still connected -- Windows leaves a dead mount '
+               + 'looking normal until something reads from it.',
+          text: 'no progress for ' + stalledFor + 's' }));
+      }
       box.appendChild(el('button', {
         class: 'btn ghost sm', text: 'Stop',
-        onclick: () => apiPost('/api/discover/' + scanId + '/cancel').catch(() => {}),
+        onclick: () => {
+          apiPost('/api/discover/' + scanId + '/cancel').catch(() => {});
+          stopPoll();
+          box.innerHTML = '';
+          box.appendChild(el('span', { class: 'stat-chip',
+                                       text: 'Scan stopped.' }));
+        },
       }));
       return;
     }

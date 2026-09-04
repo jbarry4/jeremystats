@@ -465,6 +465,33 @@ BARRY.views.xplore = (function () {
     const X = (t) => x0 + ((t - t0) / span) * plotW;
 
     ctx.save();
+    ctx.lineCap = 'butt';
+
+    /* A line that survives whatever is under it.
+
+       On the traces a coloured stroke is enough. On a CSD or a raster it is
+       not: jet runs blue to red, so amber vanishes into the warm end and
+       green into the midband. A dark line and a light line laid side by side
+       always leave one of the two with contrast -- the same trick the time
+       gridlines use -- and the label colour rides on top of that pair, so
+       the decision is still readable. */
+    const stroke = (x, top, bottom, colour, wide, dashed) => {
+      ctx.setLineDash(dashed ? [4, 3] : []);
+      ctx.lineWidth = wide ? 1.5 : 1;
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath(); ctx.moveTo(x + 1, top); ctx.lineTo(x + 1, bottom);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = wide ? 2.5 : 1.6;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+      ctx.stroke();
+    };
+
     const evs = marks.events;
     for (let i = 0; i < evs.length; i++) {
       const e = evs[i];
@@ -472,22 +499,31 @@ BARRY.views.xplore = (function () {
       if (e.start < t0 || e.start > t1) continue;
       const x = Math.round(X(e.start)) + 0.5;
       const c = curationColor(marks, e.label, P);
-      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.5 : 0.35);
-      ctx.strokeStyle = isNow ? c : c;
-      ctx.lineWidth = isNow ? 2 : 1;
-      ctx.setLineDash(!isNow && !e.label ? [3, 3] : []);
-      ctx.beginPath();
-      const top = isNow ? y0 : y0 + plotH * (small ? 0.55 : 0.8);
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, y0 + plotH);
-      ctx.stroke();
-      if (isNow && !small) {
+      // The neighbours are ticks from the bottom; the one being decided runs
+      // the full height so it cannot be confused with them.
+      const top = isNow ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
+      if (!isNow) ctx.globalAlpha = e.label ? 0.85 : 0.6;
+      stroke(x, top, y0 + plotH, c, isNow, !isNow && !e.label);
+      ctx.globalAlpha = 1;
+
+      if (isNow) {
+        /* Carets at both ends, outlined. On a busy raster the line alone can
+           still be read as part of the data; a marker on the frame cannot. */
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = c;
-        ctx.beginPath();
-        ctx.arc(x, y0 + 6, 4, 0, Math.PI * 2);
-        ctx.fill();
+        const caret = (yTip, dir) => {
+          ctx.beginPath();
+          ctx.moveTo(x, yTip);
+          ctx.lineTo(x - 5, yTip + dir * 7);
+          ctx.lineTo(x + 5, yTip + dir * 7);
+          ctx.closePath();
+          ctx.fillStyle = c;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+          ctx.stroke();
+        };
+        caret(y0 + 1, 1);
+        caret(y0 + plotH - 1, -1);
       }
     }
 
@@ -5009,6 +5045,10 @@ BARRY.views.xplore = (function () {
   let linkPoll = null;      // the pending timer between held polls
   let linkRun = 0;          // bumped to abandon an in-flight chain
   let linkFails = 0;
+  /* Whether the server holds a poll open. Assumed until it demonstrably
+     does not -- see pollLink. */
+  let holdWorks = true;
+  let holdMisses = 0;
 
   /* How long the server may hold a poll open, in seconds. Zero means the
      old behaviour: ask, get an answer straight away, wait, ask again.
@@ -5074,7 +5114,8 @@ BARRY.views.xplore = (function () {
          exists to stop a tight loop. With it off there is nothing else
          pacing the chain, so it has to do the pacing. */
       const gap = linkFails ? Math.min(500 * linkFails, 10000)
-        : (linkHold() ? 60 : (XF.linkMode === 'none' ? 900 : 400));
+        : ((holdWorks && linkHold())
+             ? 60 : (XF.linkMode === 'none' ? 900 : 400));
       linkPoll = setTimeout(step, gap);
     };
     step();
@@ -5215,8 +5256,26 @@ BARRY.views.xplore = (function () {
     }
   }
 
+  /* The newest position, held while a publish is in flight.
+
+     This used to simply drop a publish that arrived while another was
+     running, on the grounds that a drag emits one per frame and only the
+     last matters. That is true of a drag and false of a pair: changing the
+     span during curation fires twice in a row -- once for the move, once for
+     the re-centre onto the candidate -- and the second, which is the one
+     that centres it, was the one thrown away. The main window re-centred
+     because it does that locally; the aid window only ever heard the first.
+
+     So the latest is kept and sent when the current one finishes. Still one
+     request in flight, still only the last value, but nothing is lost. */
+  let linkPending = null;
+
   async function publishLink(t0, span, sess) {
-    if (XF.linkMode === 'none' || linkSending) return;
+    if (XF.linkMode === 'none') return;
+    if (linkSending) {
+      linkPending = { t0, span, sess };
+      return;
+    }
     linkSending = true;
     try {
       const res = await apiPost('/api/link', {
@@ -5237,6 +5296,12 @@ BARRY.views.xplore = (function () {
       /* linking is best-effort */
     } finally {
       linkSending = false;
+      const next = linkPending;
+      linkPending = null;
+      // Send whatever arrived while this was going out. Not awaited: this
+      // is the tail of a best-effort publish, and awaiting it here would
+      // hold the flag it just released.
+      if (next) publishLink(next.t0, next.span, next.sess);
     }
   }
 
@@ -5276,9 +5341,30 @@ BARRY.views.xplore = (function () {
       // Held open by the server for up to 25s. An idle window costs one
       // request every 25s rather than two and a half a second, and a move
       // in another window arrives at once instead of within 400ms.
-      const hold = linkHold();
+      /* Only ask for a hold while the server is actually honouring one.
+
+         A server that predates long-polling ignores `wait`, answers
+         instantly, and the short gap below then becomes a tight loop -- a
+         peer running older code was making sixteen requests a second. So
+         the reply is checked: it should either say it was held, or have
+         taken long enough that it plainly was. Three instant empty replies
+         and this stops asking. */
+      const hold = holdWorks ? linkHold() : 0;
+      const t0 = performance.now();
       data = await api('/api/link?since=' + linkSeen
                        + (hold ? '&wait=' + hold : ''));
+      if (hold) {
+        const took = performance.now() - t0;
+        const gotSomething = data.channels
+          && Object.keys(data.channels).length > 0;
+        if (data.held === true || took > 400 || gotSomething) {
+          holdMisses = 0;
+        } else if ((holdMisses += 1) >= 3) {
+          holdWorks = false;
+          BARRY.activity.log('link.hold.off',
+                             { reason: 'the server is not holding the poll' });
+        }
+      }
     } catch (e) { linkFails += 1; return; }
     linkFails = 0;
     /* Assigned, not max()'d. The version counter lives in the server's

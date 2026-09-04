@@ -1,0 +1,73 @@
+{
+  "_at": {
+    "created": "2026-09-04T16:05:03.912563+00:00",
+    "first_seen_by": "2026-09-04T16:05:03.912563+00:00",
+    "gid": "2026-09-04T16:05:03.912563+00:00",
+    "group": "2026-09-04T16:05:03.912563+00:00",
+    "key": "2026-09-04T16:05:03.912563+00:00",
+    "label": "2026-09-04T16:05:03.912563+00:00",
+    "loose_key": "2026-09-04T16:05:03.912563+00:00",
+    "mouse": "2026-09-04T16:05:03.912563+00:00",
+    "project": "2026-09-04T16:05:03.912563+00:00",
+    "project_source": "2026-09-04T16:05:03.912563+00:00",
+    "schema": "2026-09-04T16:05:03.912563+00:00",
+    "session": "2026-09-04T16:05:03.912563+00:00",
+    "start": "2026-09-04T16:05:03.912563+00:00",
+    "updated": "2026-09-04T16:05:03.912563+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder": [
+        "set",
+        "2026-09-04T16:05:03.912563+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T16:05:03.912563+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T16:05:03.912563+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T12:05:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "first_seen_by": "opened",
+  "gid": "s541f5c5f3f4b",
+  "group": null,
+  "key": null,
+  "label": "unidentified",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T12:05:03-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder",
+      "root": null,
+      "scan": null
+    }
+  },
+  "session": null,
+  "start": null,
+  "updated": {
+    "at": "2026-09-04T12:05:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

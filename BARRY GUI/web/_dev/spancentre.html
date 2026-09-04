@@ -1,0 +1,154 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the aid panels centre too</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; }
+  .frames { display: flex; gap: 6px; padding: 0 12px 12px; }
+  .frames iframe { width: 49%; height: 44vh; border: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<div class="frames">
+  <iframe id="a" src="/"></iframe>
+  <iframe id="b" src="/"></iframe>
+</div>
+<script>
+/* "When you change the time span it only centers the bookmark on the main
+   voltage raster, and the other (4 ones) are not centered."
+
+   The main window re-centres locally; the aid window only ever hears about
+   it through the link channel. publishLink dropped a publish while another
+   was in flight -- fine for a drag, wrong for a pair, and a span change
+   fires exactly a pair: the move, then the re-centre onto the candidate.
+   The second one, the one that centres it, was the one thrown away.
+
+   A curates. B is the aid window. After a span change, both must have the
+   candidate in the middle. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const fa = document.getElementById('a'), fb = document.getElementById('b');
+  await Promise.all([fa, fb].map((f) =>
+    new Promise((r) => f.addEventListener('load', r, { once: true }))));
+  const A = fa.contentWindow, B = fb.contentWindow, DB = fb.contentDocument;
+  const errs = [];
+  for (const W of [A, B]) {
+    W.addEventListener('error', (e) => errs.push(e.message));
+    W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  }
+  await untilN(() => A.BARRY && B.BARRY);
+
+  /* The demo recording, so this needs nothing mounted. */
+  const PATH = 'demo:ds-tutorial';
+  const GID = 'demo-ds-tutorial';
+
+  head('B is the aid window: four panels on the same recording');
+  B.eval("setView('xplore')");
+  await sleep(250);
+  await B.eval('BARRY.views.xplore.open(' + JSON.stringify(PATH) + ')');
+  await untilN(() => B.eval('BARRY.views.xplore.state.order.length') > 0);
+  B.eval("BARRY.views.xplore.setPanes([{panel:'csd'},{panel:'theta'},"
+       + "{panel:'voltage'},{panel:'spectrogram'}], {col:0.5,row:0.5})");
+  const linkSel = DB.getElementById('xfLinkMode');
+  if (linkSel) {
+    linkSel.value = 'session';
+    linkSel.dispatchEvent(new B.Event('change', { bubbles: true }));
+  }
+  await untilN(() => Array.from(DB.querySelectorAll('.pane-img-host img'))
+    .filter((n) => n.naturalWidth > 0).length >= 3, 400);
+  check('the aid panels are up',
+        Array.from(DB.querySelectorAll('.pane-img-host img'))
+          .filter((n) => n.naturalWidth > 0).length >= 3);
+
+  head('A curates the same recording');
+  A.eval("setView('toolkit')");
+  await sleep(250);
+  await A.eval('BARRY.curate.enter(' + JSON.stringify(GID) + ', "ds")');
+  await untilN(() => A.eval('!!BARRY.curate.active'));
+  check('curation is running', !!A.eval('BARRY.curate.active'));
+  await sleep(2500);
+
+  const winOf = (W) => JSON.parse(W.eval(
+    'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];'
+    + 'return s ? { t0: s.t0, span: s.span } : null; })())'));
+  const candidate = () => A.eval('(function(){var d=BARRY.curate.lastDraw();'
+    + 'return d && d.current != null ? d.current : -1; })()');
+  const offCentre = (W) => {
+    const w = winOf(W), c = candidate();
+    if (!w || c < 0) return 999;
+    return Math.abs((w.t0 + w.span / 2) - c);
+  };
+
+  head('Both are centred to start with');
+  await untilN(() => Math.abs(winOf(B).span - winOf(A).span) < 0.01, 200);
+  await sleep(1200);
+  say('note', '  candidate at t=' + candidate().toFixed(3));
+  say('note', '  A ' + JSON.stringify(winOf(A)) + '  off by '
+      + offCentre(A).toFixed(4));
+  say('note', '  B ' + JSON.stringify(winOf(B)) + '  off by '
+      + offCentre(B).toFixed(4));
+  check('A is centred', offCentre(A) < 0.06, offCentre(A).toFixed(4));
+  check('B is centred', offCentre(B) < 0.06, offCentre(B).toFixed(4));
+
+  head('Now change the span, the way the reported bug does');
+  for (const newSpan of [4, 0.5, 2]) {
+    const before = winOf(B).span;
+    /* Through the pane's own window control, which is what fires the pair:
+       the move, and then curation's re-centre. */
+    A.eval('BARRY.views.xplore.setWindow(0, '
+           + winOf(A).t0 + ', ' + newSpan + ')');
+    await untilN(() => Math.abs(winOf(B).span - newSpan) < 0.01, 250);
+    await sleep(1400);
+    const a = offCentre(A), b = offCentre(B);
+    say('note', '  span ' + before + ' -> ' + newSpan
+        + '   A off ' + a.toFixed(4) + '   B off ' + b.toFixed(4));
+    check('at span ' + newSpan + ', the main window is centred', a < 0.06,
+          a.toFixed(4));
+    check('at span ' + newSpan + ', the aid window is centred too', b < 0.06,
+          b.toFixed(4));
+    check('and both are on the same span',
+          Math.abs(winOf(A).span - winOf(B).span) < 0.01,
+          winOf(A).span + ' vs ' + winOf(B).span);
+  }
+
+  head('Stepping still works after all that');
+  const was = candidate();
+  A.eval('BARRY.curate.step(1)');
+  await untilN(() => candidate() !== was, 200);
+  await sleep(1400);
+  check('the candidate moved', candidate() !== was);
+  check('and the aid window followed it', offCentre(B) < 0.06,
+        offCentre(B).toFixed(4));
+
+  A.eval('BARRY.curate.exit()');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'spancentre: ' + bad + ' FAILED' : 'spancentre: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'spancentre: harness CRASH';
+} })();
+</script>

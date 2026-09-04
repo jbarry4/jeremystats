@@ -21,6 +21,14 @@
       </div>
     </div>
 
+    <!-- Who the work gets attributed to. Under the brand rather than in a
+         settings page: it is the first thing worth getting right, and it
+         says so until it has been. -->
+    <button id="whoChip" class="who-chip" title="Who this work is credited to">
+      <span class="who-dot"></span>
+      <span class="who-name">Set who you are</span>
+    </button>
+
     <button id="railToggle" class="rail-toggle" title="Collapse the menu">
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <path d="M3 6h14M3 10h14M3 14h14"/>
@@ -28,6 +36,10 @@
       <span>Menu</span>
     </button>
 
+    <!-- The nav scrolls; the footer below does not. On a 640px-tall screen
+         the whole column used to overflow and the Guide button ended up
+         past the bottom edge, unreachable. -->
+    <div class="rail-scroll">
     <div class="nav-group">
       <button class="nav-item active" data-view="pipeline">
         <svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>
@@ -77,6 +89,8 @@
     </div>
 
     <div class="rail-spacer"></div>
+
+    </div><!-- /.rail-scroll -->
 
     <div class="rail-foot">
       <button class="chip-btn" id="syncBtn" title="GUI_logs sync status">

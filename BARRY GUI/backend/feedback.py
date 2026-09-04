@@ -122,6 +122,11 @@ class Feedback:
             "machine": os.environ.get("COMPUTERNAME") or "",
             "shard": self.machine,
             "screenshots": shots,
+            # The ten minutes before the report was filed: what was clicked,
+            # what failed, and what the server served. Attached by the route
+            # rather than by the form, because the person filing cannot know
+            # which lines matter.
+            "recent": body.get("recent") or None,
             "notes": [],
         }
         os.makedirs(self.dir, exist_ok=True)

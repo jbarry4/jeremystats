@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — can you actually type in the search boxes?</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Every time I type here it kicks me out of the text box."
+
+   The panels re-render on input and the render starts by emptying its host,
+   which destroys the input being typed into. So this types the way a person
+   does -- one character at a time, with the debounce given time to fire
+   between them -- and after every single keystroke asks the only question
+   that matters: is the thing with focus still the search box?
+
+   Setting .value and firing one input event, which is what a lazier test
+   does, would never catch this: the failure is in what happens after the
+   re-render, not in whether the filter worked. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.BARRY);
+
+  /* Typing one character at a time, the debounce given room to fire and
+     re-render between each, checking focus after every one. */
+  async function typeInto(find, word, label) {
+    const box = find();
+    if (!box) { say('bad', label + ': no search box found'); return; }
+    box.focus();
+    check(label + ': the box takes focus', D.activeElement === box,
+          D.activeElement ? D.activeElement.tagName
+            + '.' + D.activeElement.className : 'nothing');
+    let lost = 0, lostAt = [];
+    for (const ch of word) {
+      const live = find();
+      if (!live) { say('bad', label + ': the box disappeared'); return; }
+      if (D.activeElement !== live) live.focus();
+      live.value += ch;
+      live.dispatchEvent(new W.Event('input', { bubbles: true }));
+      // Long enough for the 140ms debounce and the re-render behind it.
+      await sleep(260);
+      const after = find();
+      if (!after || D.activeElement !== after) {
+        lost += 1;
+        lostAt.push(ch + '(' + (D.activeElement
+          ? D.activeElement.tagName : 'none') + ')');
+      }
+    }
+    const final = find();
+    say('note', '  typed "' + word + '", box now holds "'
+        + (final ? final.value : '?') + '"');
+    check(label + ': focus survived every keystroke', lost === 0,
+          'lost after ' + lost + ': ' + lostAt.join(' '));
+    check(label + ': and the whole word arrived',
+          !!final && final.value === word,
+          final ? '"' + final.value + '"' : 'gone');
+    /* And the caret must be usable: put it in the middle, type, and the
+       character has to land there rather than at the end. */
+    if (final && final.value === word) {
+      final.focus();
+      final.setSelectionRange(2, 2);
+      final.value = word.slice(0, 2) + 'X' + word.slice(2);
+      final.setSelectionRange(3, 3);
+      final.dispatchEvent(new W.Event('input', { bubbles: true }));
+      await sleep(300);
+      const back = find();
+      check(label + ': the caret stays where you put it',
+            !!back && back.selectionStart === 3,
+            back ? 'caret at ' + back.selectionStart + ' of "'
+                   + back.value + '"' : 'gone');
+      back.value = '';
+      back.dispatchEvent(new W.Event('input', { bubbles: true }));
+      await sleep(300);
+    }
+  }
+
+  head('The Event Bank');
+  W.eval("setView('eventbank')");
+  await untilN(() => D.querySelector('#bankBody .search-wrap input'), 250);
+  await sleep(700);
+  await typeInto(() => D.querySelector('#bankBody .search-wrap input'),
+                 'Shah', 'Event Bank');
+
+  head('Results');
+  W.eval("setView('results')");
+  await untilN(() => D.querySelector('#resultsBody .search-wrap input')
+                  || D.querySelector('#resultsBody input[type=search]'), 200);
+  await sleep(700);
+  await typeInto(() => D.querySelector('#resultsBody .search-wrap input')
+                    || D.querySelector('#resultsBody input[type=search]'),
+                 'csd', 'Results');
+
+  head('Housekeeping');
+  W.eval("setView('misc')");
+  await sleep(600);
+  const hk = () => D.querySelector('#hkBody .search-wrap input')
+                || D.querySelector('#miscBody .search-wrap input')
+                || D.querySelector('.hk-body .search-wrap input');
+  if (await untilN(hk, 60) >= 0) {
+    await typeInto(hk, 'log', 'Housekeeping');
+  } else {
+    say('note', '  no search box on that panel from here; skipped');
+  }
+
+  head('And nothing in the bank list is cut off');
+  W.eval("setView('eventbank')");
+  await untilN(() => D.querySelector('.bank-row'), 200);
+  await sleep(900);
+  /* scrollWidth > clientWidth is the DOM saying "there is text here you
+     cannot see". Which is exactly what an ellipsis is. */
+  const cut = W.eval('(function(){'
+    + 'var out = [];'
+    + 'document.querySelectorAll(".bank-name, .bank-sess .slab, .bank-src")'
+    + '  .forEach(function(n){'
+    + '    if (n.scrollWidth > n.clientWidth + 1) {'
+    + '      out.push((n.className || "?") + ": " + n.textContent.trim()'
+    + '        .slice(0, 34) + " (" + n.scrollWidth + ">" + n.clientWidth'
+    + '        + ")");'
+    + '    }'
+    + '  });'
+    + 'return out; })()');
+  const rows = D.querySelectorAll('.bank-row').length;
+  say('note', '  ' + rows + ' entries listed, ' + cut.length + ' clipped');
+  cut.slice(0, 5).forEach((c) => say('note', '     ' + c));
+  check('no entry name is cut short', cut.length === 0,
+        cut.length + ' clipped');
+  const ell = W.eval('(function(){'
+    + 'var n = 0;'
+    + 'document.querySelectorAll(".bank-name").forEach(function(e){'
+    + '  if (getComputedStyle(e).textOverflow === "ellipsis") n++;'
+    + '});'
+    + 'return n; })()');
+  check('and no name is set up to be cut short later', ell === 0,
+        ell + ' still have text-overflow: ellipsis');
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'typing: ' + bad + ' FAILED' : 'typing: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'typing: harness CRASH';
+} })();
+</script>

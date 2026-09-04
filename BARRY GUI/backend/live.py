@@ -87,6 +87,11 @@ def wait(since=0, timeout=25.0):
                 break
             _CHANGED.wait(left)
         return {"version": _VERSION["n"],
+                # Says plainly that this request was held. A client talking to
+                # an older server gets no such marker, sees an instant reply,
+                # and would otherwise re-ask on a 60ms timer for ever -- which
+                # is sixteen requests a second and exactly what happened.
+                "held": True,
                 "channels": {k: dict(v) for k, v in _STATE.items()
                              if v["version"] > since}}
 

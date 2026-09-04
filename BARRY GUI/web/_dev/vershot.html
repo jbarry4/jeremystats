@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8"><title>version history shot</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+<iframe id="f" src="/"></iframe>
+<script>
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const f=document.getElementById('f');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=f.contentWindow, D=f.contentDocument;
+ for(let i=0;i<300&&!W.BARRY;i++) await sleep(100);
+ // Bank the demo set three times with real changes between, then look at it.
+ const G='demo-ds-tutorial', K='ds';
+ const post=(u,b)=>W.fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},
+                             body:JSON.stringify(b)}).then(r=>r.json());
+ await post('/api/curation/'+G+'/'+K+'/bank',
+            {added_by:'Shahriar', note:'first pass through the session'});
+ const set1=await W.fetch('/api/curation/'+G+'/'+K).then(r=>r.json());
+ const evs=((set1.set||set1).events||[]).filter(e=>e.label);
+ for (const e of evs.slice(0,6)) {
+   await post('/api/curation/'+G+'/'+K+'/label',
+              {event:e.id, label: e.label==='flag' ? 'spike'
+                                 : (e.label==='spike' ? 'garbage' : 'spike')});
+ }
+ await post('/api/curation/'+G+'/'+K+'/bank',
+            {added_by:'Fatima', note:'second look with Jeremy: six calls changed, flags cleared'});
+ await post('/api/curation/'+G+'/'+K+'/label', {event: evs[8].id, label:'flag'});
+ await post('/api/curation/'+G+'/'+K+'/bank',
+            {added_by:'Fatima', note:'one more flagged for deep review'});
+ W.eval("setView('eventbank')");
+ for(let i=0;i<200;i++){ if(D.querySelector('.bank-row')) break; await sleep(100); }
+ await sleep(600);
+ const row=Array.from(D.querySelectorAll('.bank-row'))
+   .find(r=>/dentate spikes/i.test(r.textContent));
+ if (row) row.click();
+ await sleep(1400);
+ document.title='ready';
+})();
+</script>

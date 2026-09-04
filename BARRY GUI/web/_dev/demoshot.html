@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>demo</title>
+<iframe id="app" src="/?linkhold=0" style="position:fixed;inset:0;width:100vw;height:100vh;border:0"></iframe>
+<script>
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(100);
+  W.eval("setView('xplore')");
+  await sleep(300);
+  await W.eval("BARRY.views.xplore.open('demo:ds-tutorial')");
+  for (let i = 0; i < 300; i++) {
+    if (W.eval('BARRY.views.xplore.state.order.length')) break;
+    await sleep(100);
+  }
+  W.eval("BARRY.views.xplore.setPanes([{panel:'traces'},{panel:'csd'},"
+       + "{panel:'theta'},{panel:'voltage'}], {col:0.5,row:0.5})");
+  W.eval("BARRY.views.xplore.setWindow(0, 3.0, 1.2)");
+  await sleep(6000);
+  document.title = 'shot';
+})();
+</script>

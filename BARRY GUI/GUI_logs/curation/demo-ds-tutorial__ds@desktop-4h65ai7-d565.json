@@ -1,0 +1,314 @@
+{
+  "_at": {
+    "created": "2026-09-04T18:12:17.355388+00:00",
+    "gid": "2026-09-04T18:12:17.355388+00:00",
+    "imports": "2026-09-04T18:12:17.355388+00:00",
+    "kind": "2026-09-04T18:12:17.355388+00:00",
+    "labels": "2026-09-04T18:12:17.355388+00:00",
+    "name": "2026-09-04T18:12:17.355388+00:00",
+    "schema": "2026-09-04T18:12:17.355388+00:00",
+    "session_label": "2026-09-04T18:12:17.355388+00:00",
+    "source": "2026-09-04T18:12:17.355388+00:00",
+    "updated": "2026-09-04T18:12:17.355388+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e0a44b9d282": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e0b0ebde407": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e0b2f18ac54": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e2a7bf491bd": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e2e1e9f8d6f": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e2f82fefc07": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e5073e79e30": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e59484ccb50": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e5da9bf28cc": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e6b9dafc638": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e6cd2352ef0": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e77351c371b": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e84cfe8795e": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "e9e4ffb9719": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ea29912cf7e": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ea596e7f0cb": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "eac035e1952": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ead1ebfabb8": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "eb6b074825a": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "eb9da1700c1": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ec4243f3111": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ecebb1254e3": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "eea4a1437bf": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ],
+      "ef2b862f925": [
+        "set",
+        "2026-09-04T18:12:17.355388+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T18:12:17.355388+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T14:12:17-04:00",
+    "email": "sakhava1@uvm.edu",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "Shahriar"
+  },
+  "events": [
+    {
+      "id": "e59484ccb50",
+      "label": "spike",
+      "start": 3.4
+    },
+    {
+      "id": "eac035e1952",
+      "label": "spike",
+      "start": 7.9
+    },
+    {
+      "id": "e84cfe8795e",
+      "label": "garbage",
+      "start": 8.2
+    },
+    {
+      "id": "ec4243f3111",
+      "label": "flag",
+      "start": 14.6
+    },
+    {
+      "id": "eb9da1700c1",
+      "label": null,
+      "start": 21.05
+    },
+    {
+      "id": "e5da9bf28cc",
+      "label": "garbage",
+      "start": 21.4
+    },
+    {
+      "id": "e0b0ebde407",
+      "label": "spike",
+      "start": 27.8
+    },
+    {
+      "id": "e2a7bf491bd",
+      "label": "spike",
+      "start": 33.2
+    },
+    {
+      "id": "e6cd2352ef0",
+      "label": "garbage",
+      "start": 33.9
+    },
+    {
+      "id": "ea29912cf7e",
+      "label": null,
+      "start": 41.5
+    },
+    {
+      "id": "ead1ebfabb8",
+      "label": "flag",
+      "start": 48.0
+    },
+    {
+      "id": "e2e1e9f8d6f",
+      "label": "garbage",
+      "start": 55.7
+    },
+    {
+      "id": "e0b2f18ac54",
+      "label": "spike",
+      "start": 56.1
+    },
+    {
+      "id": "e77351c371b",
+      "label": "spike",
+      "start": 62.4
+    },
+    {
+      "id": "e9e4ffb9719",
+      "label": null,
+      "start": 69.9
+    },
+    {
+      "id": "e5073e79e30",
+      "label": "spike",
+      "start": 70.3
+    },
+    {
+      "id": "e6b9dafc638",
+      "label": "spike",
+      "start": 77.2
+    },
+    {
+      "id": "eea4a1437bf",
+      "label": "flag",
+      "start": 84.6
+    },
+    {
+      "id": "ef2b862f925",
+      "label": "spike",
+      "start": 91.1
+    },
+    {
+      "id": "e0a44b9d282",
+      "label": null,
+      "start": 91.8
+    },
+    {
+      "id": "ecebb1254e3",
+      "label": "spike",
+      "start": 98.3
+    },
+    {
+      "id": "e2f82fefc07",
+      "label": "garbage",
+      "start": 105.0
+    },
+    {
+      "id": "ea596e7f0cb",
+      "label": "spike",
+      "start": 112.7
+    },
+    {
+      "id": "eb6b074825a",
+      "label": "garbage",
+      "start": 118.2
+    }
+  ],
+  "gid": "demo-ds-tutorial",
+  "imports": [
+    {
+      "at": "2026-09-04T14:12:17-0400",
+      "n": 24,
+      "skipped": 0,
+      "source": {
+        "kind": "demo",
+        "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "DEMO m1 s1 (dentate spikes) (demo set)",
+  "schema": 1,
+  "session_label": "DEMO m1 s1 (dentate spikes)",
+  "source": {
+    "kind": "demo",
+    "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
+  },
+  "updated": {
+    "at": "2026-09-04T14:12:17-04:00",
+    "email": "sakhava1@uvm.edu",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "Shahriar"
+  }
+}

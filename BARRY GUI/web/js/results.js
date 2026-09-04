@@ -537,7 +537,8 @@ BARRY.views.results = (function () {
       el('input', {
         type: 'search', value: query,
         placeholder: 'Search titles, tags, sessions, notes…',
-        oninput: debounceInput((e) => { query = e.target.value; render(); }, 140),
+        oninput: debounceInput(
+          (e) => { query = e.target.value; keepFocus(render); }, 140),
       }),
     ]));
 
