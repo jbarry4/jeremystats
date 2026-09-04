@@ -295,7 +295,7 @@ def apply(rows, bank, curation, kind="ds", replace=True, who=None):
                 item["note"] = note
             events.append(item)
 
-        rec, n = curation.create(
+        rec, n, _extra = curation.create(
             row["gid"], kind, events,
             name=row.get("folder"),
             source={"kind": "snapshot folders", "folder": row.get("folder"),

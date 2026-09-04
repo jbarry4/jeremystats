@@ -4878,6 +4878,9 @@ body.aid-window .xf-tabs { display: none !important; }
 .cl-lab { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cl-who, .cl-revs { font-size: 10px; color: var(--text-3); flex: none; }
 
+/* An archived session is still legible, obviously set aside. */
+.cur-set.archived { opacity: .6; border-style: dashed; }
+
 .cur-filter {
   display: flex; align-items: center; gap: 8px; margin: 10px 0 8px;
 }

@@ -264,6 +264,7 @@ class Curation:
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
             "labels": rec.get("labels") or kind.get("labels") or [],
+            "archived": bool(rec.get("archived")),
             "progress": self.progress(rec),
         }
 
@@ -318,16 +319,50 @@ class Curation:
         if existing and not replace:
             # Adding to a set in progress: keep the decisions already made,
             # and only take candidates at times not already covered.
-            seen = {round(e["start"], 3) for e in (existing.get("events") or [])}
-            fresh = [e for e in clean if round(e["start"], 3) not in seen]
+            have = {}
+            for e in (existing.get("events") or []):
+                have.setdefault(round(e["start"], 3), e)
+            fresh = [e for e in clean if round(e["start"], 3) not in have]
+
+            # What the import actually had to offer, when every time in it
+            # was already here: the labels. Taken where nobody has decided,
+            # reported where somebody has decided otherwise, and never
+            # written over a decision -- that is what absorb is for, and it
+            # asks first.
+            who = (self.store.provenance() if self.store else {}).get("user")
+            valid = {l["id"] for l in (existing.get("labels") or [])}
+            applied, differ = 0, []
+            for e in clean:
+                lab = e.get("label")
+                if not lab or lab not in valid:
+                    continue
+                hit = have.get(round(e["start"], 3))
+                if hit is None:
+                    continue
+                if not hit.get("label"):
+                    _own_review(hit)
+                    hit["label"] = lab
+                    hit["by"] = e.get("by") or who
+                    hit["at"] = e.get("at") or _now()
+                    _remember_review(hit, hit["by"], lab, hit["at"])
+                    applied += 1
+                elif hit["label"] != lab:
+                    _remember_review(hit, e.get("by") or "the import", lab,
+                                     e.get("at"))
+                    differ.append({"start": hit["start"], "mine": hit["label"],
+                                   "theirs": lab})
+
             existing["events"] = sorted(
                 (existing.get("events") or []) + fresh,
                 key=lambda e: e["start"])
             existing.setdefault("imports", []).append({
-                "at": _now(), "n": len(fresh), "skipped": len(clean) - len(fresh),
+                "at": _now(), "n": len(fresh),
+                "skipped": len(clean) - len(fresh),
+                "labelled": applied, "disagreed": len(differ),
                 "source": source or {},
             })
-            return self._write(existing), len(fresh)
+            return (self._write(existing), len(fresh),
+                    {"labelled": applied, "disagreed": differ})
 
         rec = {
             "schema": SCHEMA,
@@ -344,7 +379,7 @@ class Curation:
             "imports": [{"at": _now(), "n": len(clean), "skipped": 0,
                          "source": source or {}}],
         }
-        return self._write(rec), len(clean)
+        return self._write(rec), len(clean), {"labelled": 0, "disagreed": []}
 
     HANDOFF_SCHEMA = 1
 
@@ -595,6 +630,31 @@ class Curation:
 
     def _label_ids(self, kind):
         return {l["id"] for l in KINDS[kind]["labels"]}
+
+    @shards.atomic
+    def archive(self, gid, kind, on=True):
+        """Put a session out of the way, or bring it back.
+
+        Nothing is removed and nothing stops working: an archived set can
+        still be opened, curated and banked. It is a statement about
+        attention, not about the data, which is exactly why it is offered
+        beside a Delete that cannot be undone.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        if bool(rec.get("archived")) == bool(on):
+            return rec
+        if on:
+            rec["archived"] = True
+            rec["archived_at"] = _now()
+            who = (self.store.provenance() if self.store else {}).get("user")
+            rec["archived_by"] = who
+        else:
+            rec.pop("archived", None)
+            rec.pop("archived_at", None)
+            rec.pop("archived_by", None)
+        return self._write(rec)
 
     @shards.atomic
     def label(self, gid, kind, event_id, label, note=None):

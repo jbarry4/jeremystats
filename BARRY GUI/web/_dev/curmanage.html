@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — managing curation sessions</title>
+<style>
+ body{font:12px/1.55 ui-monospace,monospace;margin:0;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw}
+ iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+ .ok::before{content:'ok    ';color:#7fe3b0}.bad::before{content:'FAIL  ';color:#ff8a7a}
+ .bad{color:#ffb0a5}.note{color:#7593a2}h2{font-size:12px;margin:14px 0 5px;color:#ffb81c}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Four complaints about the Event curation list:
+
+     it is slow to load
+     Delete removes the set but the list does not change
+     there is Review but no Archive
+     loading a bank entry that already carries labels imports 0 candidates
+
+   The first three turned out to be one thing plus two: the list was
+   refetching after a delete all along, and the refetch took nineteen
+   seconds. So the timing is measured here as well as the behaviour -- a
+   list that updates eventually is what this looked like when it was
+   broken. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => W.BARRY);
+
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}) }).then((r) => r.json());
+  const get = (u) => W.fetch(u).then((r) => r.json());
+
+  head('1. How long the list takes');
+  const times = [];
+  for (let i = 0; i < 3; i++) {
+    const t = Date.now();
+    await get('/api/curation');
+    times.push(Date.now() - t);
+  }
+  say('note', '  /api/curation: ' + times.join(' ms, ') + ' ms');
+  /* It was 19-37 seconds. Anything near that is the bug back. */
+  check('the list answers in about a second, not twenty',
+        Math.min.apply(null, times) < 4000, times.join(', ') + ' ms');
+
+  W.eval("setView('toolkit')");
+  await untilN(() => D.querySelector('.tk-tool'), 200);
+  Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(b.textContent)).click();
+  await untilN(() => D.querySelector('#curSets .cur-set'), 300);
+  await sleep(900);
+  const cards = () => Array.from(D.querySelectorAll('#curSets .cur-set'));
+  const titleOf = (c) => ((c.querySelector('strong') || {}).textContent || '');
+  const cardFor = (name) => cards().find((c) => titleOf(c).indexOf(name) >= 0);
+  say('note', '  ' + cards().length + ' sessions listed');
+
+  head('2. Archive');
+  const demo = cards().find((c) => /demo/i.test(titleOf(c)));
+  check('there is a session to work with', !!demo, 'none found');
+  const demoName = titleOf(demo);
+  say('note', '  using "' + demoName + '"');
+  const arch = Array.from(demo.querySelectorAll('button'))
+    .find((b) => /^Archive$/.test(b.textContent.trim()));
+  check('every session offers Archive', !!arch, 'no Archive button');
+  const wasN = cards().length;
+  arch.click();
+  await sleep(1200);
+  say('note', '  now ' + cards().length + ' listed (was ' + wasN + ')');
+  check('archiving takes it out of the list straight away',
+        !cardFor(demoName), 'still listed');
+  const chips = () => Array.from(D.querySelectorAll('.cur-chips .pill'));
+  say('note', '  filters: ' + chips().map((c) => c.textContent.trim()).join(' | '));
+  const ac = chips().find((c) => /^Archived/.test(c.textContent));
+  check('an Archived filter appears with a count', !!ac,
+        chips().map((c) => c.textContent).join(','));
+  /* The other chips must not count what they no longer show. */
+  const allChip = chips().find((c) => /^All/.test(c.textContent));
+  const allN = +(allChip.textContent.match(/\((\d+)\)/) || [0, 0])[1];
+  check('the All count matches the rows', allN === cards().length,
+        allN + ' vs ' + cards().length);
+  ac.click();
+  await sleep(900);
+  check('the Archived filter shows it', !!cardFor(demoName),
+        'not in the archived list');
+  check('and it is marked as archived',
+        cardFor(demoName).classList.contains('archived'),
+        cardFor(demoName).className);
+  Array.from(cardFor(demoName).querySelectorAll('button'))
+    .find((b) => /Unarchive/.test(b.textContent)).click();
+  await sleep(1200);
+  chips().find((c) => /^All/.test(c.textContent)).click();
+  await sleep(800);
+  check('unarchiving puts it back', !!cardFor(demoName), 'gone');
+
+  head('3. Delete asks first, then updates the list');
+  /* A throwaway set, so nothing real is at risk. */
+  const reg = await get('/api/registry');
+  await post('/api/curation/create', {
+    gid: 'demo-long-session', kind: 'ied',
+    name: 'THROWAWAY for the harness',
+    events: [{ start: 1.5 }, { start: 2.5 }, { start: 3.5 }],
+    source: { from: 'harness' },
+  });
+  await sleep(600);
+  /* Re-enter the tool, which is what a person does. */
+  Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(b.textContent)).click();
+  await untilN(() => D.querySelector('#curSets .cur-set'), 200);
+  await sleep(1500);
+  chips().find((c) => /^All/.test(c.textContent)).click();
+  await sleep(700);
+  const junk = cardFor('THROWAWAY');
+  check('the new set shows up without a reload', !!junk,
+        'not listed after import');
+  if (junk) {
+    const before = cards().length;
+    Array.from(junk.querySelectorAll('button'))
+      .find((b) => /^Delete$/.test(b.textContent.trim())).click();
+    const ask = await (async () => {
+      for (let i = 0; i < 80; i++) {
+        const b = Array.from(D.querySelectorAll('.modal button'))
+          .find((x) => /^Delete \d+ decision/.test(x.textContent.trim()));
+        if (b) return b;
+        await sleep(100);
+      }
+      return null;
+    })();
+    check('Delete asks before destroying anything', !!ask,
+          'it deleted with no confirmation');
+    if (ask) {
+      const dlg = ask.closest('.modal') || D.querySelector('.modal');
+      const words = dlg ? dlg.textContent : '';
+      check('and says it affects every machine', /every machine/.test(words),
+            words.slice(0, 90));
+      check('and offers archiving instead', /Archive it instead/.test(words),
+            words.slice(0, 90));
+      ask.click();
+      await sleep(1500);
+      say('note', '  ' + cards().length + ' listed (was ' + before + ')');
+      check('the list updates immediately after deleting',
+            !cardFor('THROWAWAY'), 'still listed');
+    }
+  }
+
+  head('4. Importing an entry that already carries labels');
+  /* Bank a labelled set, then load it back onto the same recording: every
+     time is already there, and what the entry has to offer is the labels. */
+  const G = 'demo-ds-tutorial';
+  const set0 = await get('/api/curation/' + G + '/ds');
+  const evs = ((set0.set || set0).events) || [];
+  const target = evs.filter((e) => !e.label).slice(0, 3);
+  say('note', '  ' + target.length + ' undecided candidates to feed labels to');
+  const payload = evs.map((e) => ({
+    start: e.start,
+    label: e.label || (target.some((t) => t.id === e.id) ? 'spike' : null),
+  })).filter((e) => e.label);
+  const res = await post('/api/curation/create', {
+    gid: G, kind: 'ds', events: payload, source: { from: 'harness bank' },
+  });
+  say('note', '  added ' + res.added + ', labelled ' + res.labelled
+      + ', left alone ' + (res.disagreed || []).length);
+  check('it no longer reports importing nothing',
+        (res.added + res.labelled) > 0,
+        'added ' + res.added + ', labelled ' + res.labelled);
+  check('the decisions it carried were taken', res.labelled >= target.length,
+        res.labelled + ' vs ' + target.length + ' expected');
+  const set1 = await get('/api/curation/' + G + '/ds');
+  const now = ((set1.set || set1).events) || [];
+  const stillBlank = now.filter((e) => !e.label).length;
+  say('note', '  undecided before ' + evs.filter((e) => !e.label).length
+      + ', after ' + stillBlank);
+  check('the set really has fewer undecided candidates now',
+        stillBlank < evs.filter((e) => !e.label).length,
+        stillBlank + ' left');
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'curmanage: ' + bad + ' FAILED' : 'curmanage: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'curmanage: harness CRASH';
+} })();
+</script>

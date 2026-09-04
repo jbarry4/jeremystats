@@ -1943,8 +1943,14 @@ def api_layers_export(gid):
 # ==========================================================================
 
 def _cur_session(gid):
-    """The registry record a curation set belongs to."""
-    rec = REG.by_gid(gid)
+    """The registry record a curation set belongs to.
+
+    Demo recordings are deliberately not in the registry, so this went
+    through _session_by_gid, which knows about both -- otherwise importing
+    candidates onto a built-in recording fails, and that is the first thing
+    the Guide asks a newcomer to do.
+    """
+    rec = _session_by_gid(gid)
     if not rec:
         raise curation.CurationError(
             "No recording with the id %s. Open it once so it is registered."
@@ -1996,7 +2002,7 @@ def api_curation_create():
     kind = body.get("kind")
     try:
         sess = _cur_session(gid)
-        rec, n = CURATE.create(
+        rec, n, extra = CURATE.create(
             gid, kind, body.get("events") or [],
             name=body.get("name"),
             source=body.get("source") or {},
@@ -2010,11 +2016,16 @@ def api_curation_create():
     STORE.record_activity([{
         "action": "curation.import",
         "detail": {"gid": gid, "kind": kind, "added": n,
+                   "labelled": extra.get("labelled", 0),
+                   "disagreed": len(extra.get("disagreed") or []),
                    "total": len(rec.get("events") or []),
                    "source": (body.get("source") or {}).get("from")},
         "session": {"key": sess.get("key"), "label": sess.get("label")},
     }])
-    return jsonify({"ok": True, "added": n, "set": CURATE.summary(rec)})
+    return jsonify({"ok": True, "added": n,
+                    "labelled": extra.get("labelled", 0),
+                    "disagreed": extra.get("disagreed") or [],
+                    "set": CURATE.summary(rec)})
 
 
 @app.route("/api/curation/<gid>/<kind>/label", methods=["POST"])
@@ -2040,6 +2051,23 @@ def api_curation_rename(gid, kind):
         rec = CURATE.rename(gid, kind, body.get("name"))
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/curation/<gid>/<kind>/archive", methods=["POST"])
+def api_curation_archive(gid, kind):
+    """Put a curation session out of the way, or bring it back."""
+    body = request.get_json(force=True, silent=True) or {}
+    on = body.get("archived")
+    on = True if on is None else bool(on)
+    try:
+        rec = CURATE.archive(gid, kind, on)
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    STORE.record_activity([{
+        "action": "curation.archive" if on else "curation.unarchive",
+        "detail": {"gid": gid, "kind": kind},
+    }])
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
 
 

@@ -379,6 +379,13 @@ BARRY.views.toolkit = (function () {
       if (curQ.show === 'demo' && !String(st.gid || '').startsWith('demo-')) {
         return false;
       }
+      /* Archived sessions are out of the way unless asked for -- being
+         done with a session is the commonest reason a list gets long. */
+      if (curQ.show === 'archived') {
+        if (!st.archived) return false;
+      } else if (st.archived) {
+        return false;
+      }
       if (!words.length) return true;
       const hay = [st.name, st.kind_name, st.kind, st.gid,
                    st.session && st.session.label,
@@ -446,15 +453,19 @@ BARRY.views.toolkit = (function () {
     /* Searching and sorting. Forty-one sets came in from the snapshot
        folders alone, and "which of these still has flagged items" was not
        answerable without reading every card. */
-    const nLeft = sets.filter((s) => ((s.progress || {}).left || 0) > 0).length;
-    const nFlag = sets.filter(
+    /* Counted over what the list can actually show, so the numbers on the
+       chips add up to the rows underneath them. */
+    const live = sets.filter((s) => !s.archived);
+    const nLeft = live.filter((s) => ((s.progress || {}).left || 0) > 0).length;
+    const nFlag = live.filter(
       (s) => (((s.progress || {}).by_label) || {}).flag > 0).length;
-    const nDone = sets.filter((s) => {
+    const nDone = live.filter((s) => {
       const p = s.progress || {};
       return p.left === 0 && p.total > 0;
     }).length;
     const nDemo = sets.filter(
       (s) => String(s.gid || '').startsWith('demo-')).length;
+    const nArch = sets.filter((s) => s.archived).length;
 
     const search = el('input', {
       type: 'text', class: 'cur-search', value: curQ.text,
@@ -465,8 +476,10 @@ BARRY.views.toolkit = (function () {
     const chip = (id, label, n) => el('button', {
       class: 'pill' + (curQ.show === id ? ' active' : ''),
       disabled: (n === 0 && id !== 'all') ? 'disabled' : null,
-      text: label + (id === 'all' ? ' (' + sets.length + ')'
-                                  : ' (' + n + ')'),
+      // Every chip shows the count it was given. All used to reach past
+      // it for sets.length, which counts the archived ones the list is no
+      // longer showing.
+      text: label + ' (' + n + ')',
       onclick: () => { curQ.show = id; renderCuration(); },
     });
 
@@ -479,10 +492,11 @@ BARRY.views.toolkit = (function () {
         value: v, text: t, selected: curQ.sort === v ? 'selected' : null }))),
     ]));
     host.appendChild(el('div', { class: 'res-toolbar cur-chips' }, [
-      chip('all', 'All', sets.length),
+      chip('all', 'All', live.length),
       chip('left', 'Unfinished', nLeft),
       chip('flagged', 'Has flagged', nFlag),
       chip('done', 'Done', nDone),
+      nArch ? chip('archived', 'Archived', nArch) : null,
       nDemo ? chip('demo', 'Demo', nDemo) : null,
       el('div', { class: 'spacer', style: 'flex:1' }),
       el('span', { class: 'hint', id: 'curCount' }),
@@ -516,7 +530,10 @@ BARRY.views.toolkit = (function () {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
       const reach = st.session && st.session.reachable;
-      list.appendChild(el('div', { class: 'cur-set' + (done ? ' done' : '') }, [
+      list.appendChild(el('div', {
+        class: 'cur-set' + (done ? ' done' : '')
+             + (st.archived ? ' archived' : ''),
+      }, [
         el('div', { class: 'cur-set-top' }, [
           el('strong', { text: st.name }),
           el('span', { class: 'hk-chip', text: st.kind_name }),
@@ -560,17 +577,67 @@ BARRY.views.toolkit = (function () {
               + encodeURIComponent(st.kind) + '/export', '_blank'),
           }),
           el('button', {
+            class: 'btn ghost sm',
+            text: st.archived ? 'Unarchive' : 'Archive',
+            title: st.archived
+              ? 'Put it back in the list'
+              : 'Out of the way, still there. It can still be opened, '
+                + 'curated and banked.',
+            onclick: () => archiveSet(st, !st.archived),
+          }),
+          el('button', {
             class: 'btn ghost sm danger', text: 'Delete',
-            onclick: async () => {
-              await apiPost('/api/curation/' + encodeURIComponent(st.gid)
-                            + '/' + encodeURIComponent(st.kind) + '/delete',
-                            {});
-              loadCuration();
-            },
+            onclick: () => deleteSet(st),
           }),
         ]),
       ]));
     }
+  }
+
+  async function archiveSet(st, on) {
+    try {
+      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                    + encodeURIComponent(st.kind) + '/archive',
+                    { archived: on });
+      // Change the list now rather than after a round trip.
+      st.archived = on;
+      // The whole panel, not just the list: the filter chips carry counts,
+      // and archiving changes what those counts are counting.
+      renderCuration();
+      toast(on ? 'Archived. It is still there \u2014 the Archived filter '
+                 + 'brings it back.'
+               : 'Back in the list.', 'ok', 5000);
+      loadCuration();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  async function deleteSet(st) {
+    /* This calls erase, which removes every machine's shard of the set --
+       not just this one's. It used to ask nothing at all. */
+    const pr = st.progress || {};
+    const decided = (pr.total || 0) - (pr.left || 0);
+    const who = (st.updated || {}).user;
+    const ok = await BARRY.confirm(
+      'Delete "' + (st.name || st.gid) + '"?',
+      'This destroys ' + (pr.total || 0) + ' candidate(s) and '
+      + decided + ' decision(s)'
+      + (who ? ', last touched by ' + who : '') + '. It removes the set on '
+      + 'every machine that shares these logs, not only this one, and it '
+      + 'cannot be undone. Archive it instead if you only want it out of '
+      + 'the list.',
+      'Delete ' + decided + ' decision(s)', true);
+    if (!ok) return;
+    try {
+      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                    + encodeURIComponent(st.kind) + '/delete', {});
+      if (cur && cur.sets) {
+        cur.sets = cur.sets.filter(
+          (x) => !(x.gid === st.gid && x.kind === st.kind));
+      }
+      renderCuration();
+      toast('Deleted.', 'ok');
+      loadCuration();
+    } catch (e) { toast(e.message, 'err', 8000); }
   }
 
   /* Browse the bank and pick something, rather than being handed
@@ -897,7 +964,29 @@ BARRY.views.toolkit = (function () {
               source: { from },
             });
             closeModal();
-            toast('Imported ' + res.added + ' candidate(s).', 'ok', 6000);
+            /* "Imported 0 candidates" was what you got for loading a set
+               whose times were all already here -- true, and silent about
+               the labels, which were the whole reason for loading it. */
+            const bits = [];
+            if (res.added) bits.push(res.added + ' new candidate(s)');
+            if (res.labelled) bits.push(res.labelled + ' decision(s) taken');
+            const clash = (res.disagreed || []).length;
+            if (clash) {
+              bits.push(clash + ' left alone \u2014 already decided '
+                        + 'differently here');
+            }
+            toast(bits.length
+              ? 'Imported: ' + bits.join(', ') + '.'
+              : 'Nothing to import \u2014 every time in there is already '
+                + 'in this set, with the same decision.', 'ok', 8000);
+            /* Show it straight away; the refetch confirms it. */
+            if (res.set && cur && cur.sets) {
+              const at = cur.sets.findIndex(
+                (x) => x.gid === res.set.gid && x.kind === res.set.kind);
+              if (at >= 0) cur.sets[at] = res.set;
+              else cur.sets.unshift(res.set);
+              renderCuration();
+            }
             loadCuration();
             BARRY.refreshSync();
           } catch (e) { toast(e.message, 'err', 8000); }

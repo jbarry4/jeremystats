@@ -1,0 +1,250 @@
+BARRY GUI debug report
+generated  2026-09-04 17:07:00
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     C:\Users\Z390\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    KCNT1 m1609 s1 2026-07-15
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+Fighting with DS curation
+
+UI ACTIONS, oldest first (3)
+------------------------------------------------------------------
+:51.957Z  link.scope                 {"scope": "session"}
+:53.589Z  session.open               {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "channels": 64,
+:53.621Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+
+REQUESTS AS THE BROWSER SAW THEM (65)
+------------------------------------------------------------------
+16:54:51  GET  /api/profile                         200       43 ms
+16:54:51  GET  /api/catalog                         200      101 ms
+16:54:51  GET  /api/prefs                           200        6 ms
+16:54:51  GET  /api/pipeline                        200        7 ms
+16:54:51  GET  /api/probes                          200       11 ms
+16:54:51  GET  /api/presets/filters                 200       11 ms
+16:54:51  GET  /api/panels                          200       18 ms
+16:54:51  GET  /api/jobs                            200       18 ms
+16:54:51  GET  /api/presets/layouts                 200       23 ms
+16:54:52  POST /api/pipeline/check                  200      418 ms
+16:54:53  POST /api/prefs                           200     1079 ms
+16:54:53  GET  /api/sync/status                     200     1446 ms
+16:54:53  GET  /api/toolkit/scopes                  200     1499 ms
+16:54:53  POST /api/csc/open                        200     1378 ms
+16:54:53  POST /api/csc/overview                    200       14 ms
+16:54:53  POST /api/events/nev                      200       28 ms
+16:54:55  POST /api/csc/window                      200     1440 ms
+16:54:55  GET  /api/toolkit/bad-channels            200     1574 ms
+16:54:55  GET  /api/bank                            200       37 ms
+16:54:56  GET  /api/decks                           200       36 ms
+16:54:57  GET  /api/results                         200       17 ms
+16:54:57  GET  /api/results/folders                 200        6 ms
+16:55:00  GET  /api/scratch/saved                   200       22 ms
+16:55:00  GET  /api/outputs                         200       27 ms
+16:55:02  GET  /api/toolkit/bad-channels            200     1050 ms
+16:55:18  GET  /api/link                            200    25011 ms
+16:55:35  GET  /api/curation                        200    32143 ms
+16:55:38  GET  /api/registry                        200     3327 ms
+16:55:44  GET  /api/link                            200    25016 ms
+16:55:57  POST /api/curation/s37c7c8edfe10/ds/delet 200        8 ms
+16:56:09  GET  /api/link                            200    25013 ms
+16:56:16  GET  /api/curation                        200    19076 ms
+16:56:19  GET  /api/registry                        200     3100 ms
+16:56:34  GET  /api/link                            200    25020 ms
+16:56:59  GET  /api/link                            200    25026 ms
+16:57:24  GET  /api/link                            200    25021 ms
+16:57:49  GET  /api/link                            200    25060 ms
+16:58:14  GET  /api/link                            200    25021 ms
+16:58:39  GET  /api/link                            200    25014 ms
+16:59:04  GET  /api/link                            200    25024 ms
+16:59:29  GET  /api/link                            200    25018 ms
+16:59:55  GET  /api/link                            200    25028 ms
+17:00:20  GET  /api/link                            200    25022 ms
+17:00:45  GET  /api/link                            200    25017 ms
+17:01:10  GET  /api/link                            200    25019 ms
+17:01:35  GET  /api/link                            200    25013 ms
+17:02:00  GET  /api/link                            200    25025 ms
+17:02:25  GET  /api/link                            200    25026 ms
+17:02:50  GET  /api/link                            200    25010 ms
+17:03:15  GET  /api/link                            200    25019 ms
+17:03:40  GET  /api/link                            200    25016 ms
+17:04:05  GET  /api/link                            200    25024 ms
+17:04:31  GET  /api/link                            200    25024 ms
+17:04:56  GET  /api/link                            200    25020 ms
+17:05:21  GET  /api/link                            200    25027 ms
+17:05:46  GET  /api/link                            200    25014 ms
+17:06:11  GET  /api/link                            200    25018 ms
+17:06:36  GET  /api/link                            200    25019 ms
+17:06:39  GET  /api/history                         200       21 ms
+17:06:39  GET  /api/activity                        200       23 ms
+17:06:40  GET  /api/errors                          200       22 ms
+17:06:40  GET  /api/feedback                        200       25 ms
+17:06:40  GET  /api/errors/grouped                  200       23 ms
+17:06:40  GET  /api/debug/trace                     200       11 ms
+17:06:42  GET  /api/feedback                        200       16 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (95)
+------------------------------------------------------------------
+17:06:42  GET  /api/feedback                    200      2.8 ms  
+17:06:40  GET  /api/errors/grouped              200      6.8 ms  limit=600
+17:06:40  GET  /api/feedback                    200      8.9 ms  
+17:06:40  GET  /api/errors                      200      7.4 ms  limit=300
+17:06:39  GET  /api/history                     200      1.4 ms  limit=400
+16:56:19  GET  /api/registry                    200   3092.6 ms  
+16:56:16  GET  /api/curation                    200  19069.8 ms  
+16:55:57  POST /api/curation/s37c7c8edfe10/ds/d 200      1.1 ms  
+16:55:38  GET  /api/registry                    200   3319.0 ms  
+16:55:35  GET  /api/curation                    200  32137.2 ms  
+16:55:29  GET  /api/curation                    200  37446.6 ms  
+16:55:20  GET  /api/curation                    200  35088.1 ms  
+16:55:02  GET  /api/toolkit/bad-channels        200   1043.4 ms  scope=all&form=long
+16:55:00  GET  /api/outputs                     200      6.6 ms  
+16:55:00  GET  /api/scratch/saved               200      2.4 ms  
+16:54:57  GET  /api/results/folders             200      0.8 ms  
+16:54:57  GET  /api/results                     200      1.6 ms  
+16:54:56  GET  /api/decks                       200     11.5 ms  
+16:54:55  GET  /api/bank                        200      7.3 ms  
+16:54:55  GET  /api/toolkit/bad-channels        200   1568.5 ms  scope=all&form=long
+16:54:55  POST /api/csc/window                  200   1420.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "even_only": false, "invert": true,
+16:54:53  POST /api/events/nev                  200     16.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58\\Events.nev", "session_path": "\\\\ne
+16:54:53  POST /api/csc/overview                200      1.6 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "even_only": false, "invert": true,
+16:54:53  POST /api/csc/open                    200   1373.5 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "invert": true}
+16:54:53  GET  /api/toolkit/scopes              200   1481.6 ms  
+16:54:53  GET  /api/sync/status                 200   1432.4 ms  
+16:54:53  POST /api/prefs                       200   1069.8 ms  {"patch": "{themes}"}
+16:54:52  POST /api/pipeline/check              200    410.3 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+16:54:51  GET  /api/presets/layouts             200      2.5 ms  
+16:54:51  GET  /api/jobs                        200      0.1 ms  
+16:54:51  GET  /api/panels                      200      8.0 ms  
+16:54:51  GET  /api/presets/filters             200      1.8 ms  
+16:54:51  GET  /api/probes                      200      0.1 ms  
+16:54:51  GET  /api/pipeline                    200      0.1 ms  
+16:54:51  GET  /api/prefs                       200      0.8 ms  
+16:54:51  GET  /api/catalog                     200     68.4 ms  
+16:54:51  GET  /api/profile                     200      3.3 ms  
+16:54:48  POST /api/curation/demo-long-session/ 200      2.0 ms  
+16:54:47  POST /api/curation/demo-ds-tutorial/d 200      0.9 ms  
+16:54:45  POST /api/curation/demo-ds-tutorial/d 200      1.2 ms  
+16:54:27  GET  /api/registry                    200   3552.6 ms  
+16:54:23  GET  /api/curation                    200  22343.0 ms  
+16:54:01  GET  /api/toolkit/bad-channels        200    535.0 ms  scope=all&form=long
+16:53:59  GET  /api/toolkit/bad-channels        200    552.9 ms  scope=all&form=long
+16:53:59  GET  /api/decks                       200      9.2 ms  
+16:53:58  GET  /api/bank/dbb5be193d7a           200      1.9 ms  
+16:53:58  GET  /api/bank                        200      7.6 ms  
+16:53:57  GET  /api/toolkit/bad-channels        200    519.8 ms  scope=all&form=long
+16:53:55  GET  /api/outputs                     200      3.0 ms  
+16:53:55  GET  /api/scratch/saved               200      0.8 ms  
+16:53:55  GET  /api/toolkit/bad-channels        200    510.8 ms  scope=all&form=long
+16:53:54  GET  /api/toolkit/scopes              200    557.1 ms  
+16:53:53  GET  /api/decks                       200      9.2 ms  
+16:53:02  GET  /api/bank/dbb5be193d7a           200     89.9 ms  
+16:53:02  POST /api/bank/dbb5be193d7a/version/1 200     18.8 ms  {"action": "archive"}
+16:53:01  GET  /api/bank/dbb5be193d7a           200      1.2 ms  
+16:53:00  GET  /api/bank/c3427e0cba12           200      2.0 ms  
+16:52:58  GET  /api/bank/dbb5be193d7a           200      1.3 ms  
+16:52:55  GET  /api/bank/c3427e0cba12           200     92.6 ms  
+16:52:55  POST /api/bank/c3427e0cba12/version/1 200     26.7 ms  {"action": "archive"}
+16:52:48  GET  /api/bank/c3427e0cba12           200     89.7 ms  
+16:52:48  POST /api/bank/c3427e0cba12/version/0 200     28.1 ms  {"action": "archive"}
+16:52:46  GET  /api/bank/c3427e0cba12           200     98.5 ms  
+16:52:46  POST /api/bank/c3427e0cba12/version/2 200     25.9 ms  {"action": "archive"}
+16:52:45  GET  /api/bank/c3427e0cba12           200    111.7 ms  
+16:52:44  POST /api/bank/c3427e0cba12/version/3 200     24.7 ms  {"action": "archive"}
+16:52:37  GET  /api/bank/c3427e0cba12           200      1.7 ms  
+16:52:28  GET  /api/bank                        200      7.6 ms  
+16:52:27  GET  /api/results/folders             200      0.8 ms  
+16:52:27  GET  /api/results                     200     61.5 ms  
+16:52:26  GET  /api/errors/grouped              200      6.1 ms  limit=600
+16:52:26  GET  /api/feedback                    200      5.1 ms  
+16:52:26  GET  /api/errors                      200      5.2 ms  limit=300
+16:52:22  GET  /api/bank                        200      6.9 ms  
+16:52:21  POST /api/csc/window                  200    508.5 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "even_only": false, "invert": true,
+16:52:21  GET  /api/decks                       200      2.2 ms  
+16:52:20  POST /api/csc/overview                200   4120.1 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "even_only": false, "invert": true,
+16:52:19  GET  /api/bank                        200      5.4 ms  
+16:52:18  GET  /api/decks                       200      8.9 ms  
+16:52:17  POST /api/csc/window                  200   1241.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "even_only": false, "invert": true,
+16:52:17  GET  /api/bank                        200      9.8 ms  
+16:52:16  POST /api/events/nev                  200     16.9 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58\\Events.nev", "session_path": "\\\\ne
+16:52:16  POST /api/csc/open                    200    526.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58", "invert": true}
+16:52:16  GET  /api/sync/status                 200    595.8 ms  
+16:52:16  POST /api/prefs                       200    239.3 ms  {"patch": "{themes}"}
+16:52:15  POST /api/pipeline/check              200    303.8 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+16:52:15  GET  /api/presets/layouts             200      0.6 ms  
+16:52:15  GET  /api/panels                      200      9.6 ms  
+16:52:15  GET  /api/jobs                        200      0.1 ms  
+16:52:15  GET  /api/probes                      200      0.3 ms  
+16:52:15  GET  /api/presets/filters             200      0.6 ms  
+16:52:15  GET  /api/pipeline                    200      0.3 ms  
+16:52:15  GET  /api/prefs                       200      0.7 ms  
+16:52:15  GET  /api/catalog                     200     53.7 ms  
+16:52:15  GET  /api/profile                     200      3.4 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-04T13:52:35-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json.tmp' -> 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json'
+[2026-09-04T11:56:01-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:37-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:34-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:44:01-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-04T11:43:20-04:00] run:pip install phy: Run failed with exit code 1
+Requirement already satisfied: prompt-toolkit<3.1.0,>=3.0.41 in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (3.0.43)
+Requirement already satisfied: stack-data in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (0.2.0)
+Requirement already satisfied: platformdirs>=2.5 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (4.3.7)
+Requirement already satisfied: pywin32>=300 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (308)
+Requirement already satisfied: six>=1.5 in c:\users\z390\miniconda3\lib\site-packages (from python-dateutil>=2.7->matplotlib->phy) (1.17.0)
+Requirement already satisfied: cloudpickle>=3.0.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (3.0.0)
+Requirement already satisfied: fsspec>=2021.09.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (2026.7.0)
+Collecting partd>=1.4.0 (from dask->phylib<3,>=2.7.0->phy)
+  Downloading partd-1.4.2-py3-none-any.whl.metadata (4.6 kB)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in c:\users\z390\min
+[2026-09-04T11:43:06-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-04T11:41:49-04:00] run:pip install torch: Run failed with exit code 1
+$ C:\Users\Z390\miniconda3\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+  cwd: C:\Users\Z390\Desktop\jeremystats
+Looking in indexes: https://download.pytorch.org/whl/cu121
+ERROR: Could not find a version that satisfies the requirement torch (from versions: none)
+ERROR: No matching distribution found for torch
+-- exited with code 1 after 2.8s --
+[2026-09-04T11:40:02-04:00] cloud.sync: GET /rest/v1/results?updated_at=gt.2026-09-04T15:33:55%2B00:00&select=*&limit=1000&offset=0 -> HTTP 555 Internal server error.
+[2026-09-04T11:38:54-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-04T15:33:55%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+
+This machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.
+[2026-09-04T10:58:48-04:00] cloud.sync: [Errno 13] Permission denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json.tmp'
+[2026-09-04T10:32:06-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json'

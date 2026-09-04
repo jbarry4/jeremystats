@@ -391,6 +391,24 @@ class Book:
                 out.append((m, os.path.join(self.dir, name)))
         return out
 
+    def signature(self):
+        """A cheap value that changes whenever any shard here does.
+
+        One directory listing and a stat per file. Enough to cache a derived
+        answer against, and correct across two BARRYs sharing one GUI_logs --
+        which a timer or an invalidate-on-my-own-writes flag would not be.
+        """
+        out = []
+        for name in sorted(_listdir(self.dir)):
+            if not name.endswith(self.ext):
+                continue
+            try:
+                st = os.stat(os.path.join(self.dir, name))
+            except OSError:
+                continue
+            out.append((name, st.st_mtime_ns, st.st_size))
+        return tuple(out)
+
     def bases(self):
         seen = []
         for name in sorted(_listdir(self.dir)):

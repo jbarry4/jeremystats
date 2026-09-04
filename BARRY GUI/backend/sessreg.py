@@ -126,11 +126,32 @@ class Registry:
     def all(self):
         return self.store.all_sessions()
 
+    # gid -> record, rebuilt only when the session files change.
+    _gid_sig = None
+    _gid_map = None
+
     def by_gid(self, gid):
-        for rec in self.all():
-            if rec.get("gid") == gid:
-                return rec
-        return None
+        """The session with this gid.
+
+        Indexed rather than scanned: this used to walk -- and re-read from
+        disk, and re-merge -- every session in the store on every call, which
+        is half a second each and was being done once per curation set every
+        time the Event curation list was opened.
+        """
+        if not gid:
+            return None
+        try:
+            sig = self.store.sessions.signature()
+        except Exception:                                  # noqa: BLE001
+            sig = None
+        if sig is None or sig != self._gid_sig or self._gid_map is None:
+            self._gid_map = {r.get("gid"): r
+                             for r in self.all() if r.get("gid")}
+            self._gid_sig = sig
+        rec = self._gid_map.get(gid)
+        # A copy, because the index holds these between calls and a caller
+        # that edits what it was handed would be editing the cache.
+        return dict(rec) if rec else None
 
     def resolve(self, identity):
         """The record for this identity, and how sure we are.
