@@ -10,7 +10,7 @@
     "label_names": "2026-09-04T19:04:09.461295+00:00",
     "mouse": "2026-09-04T19:04:09.461295+00:00",
     "n": "2026-09-04T19:04:09.461295+00:00",
-    "name": "2026-09-04T19:04:09.461295+00:00",
+    "name": "2026-09-04T21:05:54.153363+00:00",
     "note": "2026-09-04T19:04:09.461295+00:00",
     "project": "2026-09-04T19:04:09.461295+00:00",
     "recording_start": "2026-09-04T19:04:09.461295+00:00",
@@ -23,13 +23,21 @@
     "source": "2026-09-04T19:04:09.461295+00:00",
     "specified": "2026-09-04T19:04:09.461295+00:00",
     "type": "2026-09-04T19:04:09.461295+00:00",
-    "type_name": "2026-09-04T19:04:09.461295+00:00",
+    "type_name": "2026-09-04T21:05:54.153363+00:00",
     "units": "2026-09-04T19:04:09.461295+00:00",
     "version": "2026-09-04T19:04:09.461295+00:00",
     "versions": "2026-09-04T19:04:09.461295+00:00"
   },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-09-04T17:05:54-04:00\", \"by\": \"Rain\", \"changed\": [\"mouse\", \"name\", \"note\", \"project\", \"session\", \"type\", \"type_name\"]}": [
+        "set",
+        "2026-09-04T21:05:54.153363+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-04T19:04:09.461295+00:00",
+    "at": "2026-09-04T21:05:54.153363+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -45,7 +53,6 @@
     "spike": 52
   },
   "curation_label": "*",
-  "duration_s": null,
   "events": [
     {
       "label": "Garbage",
@@ -1713,6 +1720,21 @@
     }
   ],
   "gid": "s0a1cd99454b9",
+  "history": [
+    {
+      "at": "2026-09-04T17:05:54-04:00",
+      "by": "Rain",
+      "changed": [
+        "mouse",
+        "name",
+        "note",
+        "project",
+        "session",
+        "type",
+        "type_name"
+      ]
+    }
+  ],
   "id": "8fc4e2c68124",
   "label_names": {
     "flag": "Flag",
@@ -1722,7 +1744,7 @@
   },
   "mouse": 33,
   "n": 416,
-  "name": "m33s8jun14",
+  "name": "m33s8jun14_fr_fr_fr",
   "note": "",
   "project": "PTEN",
   "recording_start": "2024-06-14T14:16:58",
@@ -1731,7 +1753,6 @@
   "session_key": "m033_s008_2024-06-14_14-16-58",
   "session_label": "PTEN m33 s8 2024-06-14",
   "session_loose_key": "m033_s008",
-  "session_path": null,
   "source": {
     "detector": null,
     "file": null,
@@ -1741,7 +1762,7 @@
   },
   "specified": true,
   "type": "ds",
-  "type_name": "ds",
+  "type_name": "Dentate spike",
   "units": "seconds relative to the start of the recording",
   "version": 1,
   "versions": [
