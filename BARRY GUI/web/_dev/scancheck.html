@@ -1,0 +1,161 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — scan sanity checks</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* A folder full of CSC files is not necessarily a recording.
+
+   Seven folders on the lab drives hold 64 files of 16384 bytes each -- a
+   Neuralynx header and no data records at all -- and they had been sitting in
+   the registry as ordinary 64-channel sessions.
+
+   So: the assessment must catch those without flagging the 173 real ones, the
+   audit must find the ones already registered, retiring must keep the record
+   and touch nothing on the drive, and there must be a way to say "no, keep
+   it" -- because that is a judgement about data, not about file sizes. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const post = (u, b) => fetch(u, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b),
+}).then((r) => r.json());
+async function until(fn, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  head('The audit');
+  const audit = await fetch('/api/registry/audit').then((r) => r.json());
+  say('note', '  ' + audit.checked + ' reachable checked, '
+      + audit.unreachable + ' on drives this machine cannot reach');
+  check('the audit answers', audit.ok === true);
+  check('it found the header-only recordings', (audit.rows || []).length > 0,
+        (audit.rows || []).length + ' flagged');
+  const empties = (audit.rows || []).filter(
+    (r) => r.quality.verdict === 'empty');
+  check('and calls them empty rather than merely odd',
+        empties.length === (audit.rows || []).length,
+        (audit.rows || []).map((r) => r.quality.verdict).join(', '));
+  check('each one says why, in words',
+        (audit.rows || []).every((r) => (r.quality.reasons || []).length
+                                        && r.quality.reasons[0].length > 20),
+        JSON.stringify(((audit.rows || [])[0] || {}).quality));
+  check('and names the byte count that gave it away',
+        (audit.rows || []).every(
+          (r) => /16384|header-only/.test(r.quality.reasons.join(' '))));
+  const real = audit.checked - (audit.rows || []).length;
+  check('the real recordings are not flagged', real > 100,
+        real + ' passed the check');
+  ((audit.rows || []).slice(0, 3)).forEach((r) => say('note',
+    '  ' + r.quality.verdict + '  ' + (r.label || r.gid) + '  \u2014  '
+    + r.quality.reasons[0].slice(0, 62)));
+
+  head('Retiring one keeps the record and the data');
+  const victim = empties[0];
+  if (!victim) { say('bad', 'nothing to retire'); }
+  else {
+    const before = await fetch('/api/registry/' + victim.gid)
+      .then((r) => r.json());
+    check('the record is there beforehand', before.ok === true);
+    // Count the files, so we can prove none of them went anywhere.
+    const filesBefore = victim.quality.n_loadable;
+
+    const res = await post('/api/registry/retire', { gids: [victim.gid] });
+    check('retiring answers', res.ok === true, JSON.stringify(res).slice(0, 80));
+    check('and reports which one', (res.retired || []).includes(victim.gid));
+
+    const after = await fetch('/api/registry/' + victim.gid)
+      .then((r) => r.json());
+    check('the record still resolves by its permanent id',
+          after.ok === true, JSON.stringify(after).slice(0, 70));
+    check('and is marked retired rather than deleted',
+          !!(after.record || {}).retired,
+          JSON.stringify((after.record || {}).retired));
+    check('with the reason recorded',
+          !!(after.record || {}).retired_reason,
+          (after.record || {}).retired_reason);
+
+    const tree = await fetch('/api/registry').then((r) => r.json());
+    const inTree = [];
+    for (const p of (tree.tree || [])) {
+      for (const m of p.mice) {
+        for (const s of m.sessions) if (s.gid === victim.gid) inTree.push(s);
+      }
+    }
+    check('it is out of the tree', inTree.length === 0, inTree.length + '');
+
+    // Nothing on the drive should have moved.
+    const stillThere = await post('/api/discover/accept',
+                                  { path: victim.path });
+    check('the recording folder is untouched -- it can be added back',
+          stillThere.ok === true,
+          JSON.stringify(stillThere).slice(0, 90));
+    check('and it still has all its channels',
+          ((stillThere.session || {}).quality || {}).n_loadable
+            === filesBefore,
+          ((stillThere.session || {}).quality || {}).n_loadable
+            + ' vs ' + filesBefore);
+
+    // Put it back the way it was: retired, since that is what the audit says.
+    await post('/api/registry/retire', { gids: [victim.gid] });
+    say('note', '  (left retired, which is what the audit recommends)');
+  }
+
+  head('The check offers an override');
+  check('there is a route to accept a held-back folder',
+        (await post('/api/discover/accept', { path: 'Z:/nope' })).ok === false,
+        'a bad path is refused, which means the route exists');
+
+  head('The button is in Housekeeping');
+  W.eval("setView('sessions')");
+  await sleep(300);
+  W.eval("BARRY.views.sessions.setMode('housekeeping')");
+  await until(() => D.querySelector('#hkBody .hk-bar'));
+  const btn = [...D.querySelectorAll('#hkBody .hk-bar button')]
+    .find((b) => /Check the recordings/.test(b.textContent));
+  check('Housekeeping offers to re-check', !!btn,
+        [...D.querySelectorAll('#hkBody .hk-bar button')]
+          .map((b) => b.textContent).join(' | '));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'scancheck: ' + bad + ' FAILED' : 'scancheck: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'scancheck: harness CRASH';
+} })();
+</script>

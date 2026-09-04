@@ -1,0 +1,170 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — bad channels across windows</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  .frames { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh; }
+  .frames iframe { width: 100%; height: 50%; border: 0;
+                   border-left: 1px solid #243; border-top: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<div class="frames">
+  <iframe id="a" src="/"></iframe>
+  <iframe id="b" src="/"></iframe>
+</div>
+<script>
+/* "Bad channel, and removing channel does not sync across separate windows."
+
+   Two BARRY windows, the same recording open in both. Mark a channel bad in
+   one and the other must agree -- and it must agree whether or not the
+   windows are following each other, because a broken channel is a fact about
+   the recording rather than somebody's view of it.
+
+   Two iframes is the same situation as two browser windows: separate
+   documents, separate JS, talking only through the server. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const A = document.getElementById('a'), B = document.getElementById('b');
+  await Promise.all([A, B].map((f) => new Promise(
+    (r) => f.addEventListener('load', r, { once: true }))));
+  const wa = A.contentWindow, wb = B.contentWindow;
+  const errs = [];
+  [wa, wb].forEach((w, i) => {
+    w.addEventListener('error', (e) => errs.push('win' + i + ': ' + e.message));
+    w.addEventListener('unhandledrejection',
+                       (e) => errs.push('win' + i + ': ' + e.reason));
+  });
+  await until(() => wa.eval('BARRY') && wb.eval('BARRY'));
+
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+  say('note', '  ' + path.slice(-50));
+
+  head('The same recording, open in two windows');
+  for (const w of [wa, wb]) {
+    w.eval("setView('xplore')");
+  }
+  await sleep(300);
+  await Promise.all([wa, wb].map(
+    (w) => w.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')')));
+  await until(() => wa.eval(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0
+    && wb.eval('Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  await sleep(2000);
+
+  const BADS = '(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];'
+    + 'return s?Array.from(s.bad).sort(function(a,b){return a-b;}).join(","):"?";'
+    + '})()';
+  const MODE = 'BARRY.views.xplore.state.linkMode';
+  const NUM = '(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];return s.info.channels[3].number;})()';
+
+  say('note', '  link mode: ' + wa.eval(MODE) + ' / ' + wb.eval(MODE));
+  const startA = wa.eval(BADS), startB = wb.eval(BADS);
+  say('note', '  bad at the start: [' + startA + '] / [' + startB + ']');
+
+  /* Unlinked on purpose: this is the case that was broken, and the one where
+     a fact still has to travel. */
+  head('Unlinked, which is the case that was broken');
+  // setLink is internal; drive the control a person would use.
+  for (const [w, f] of [[wa, A], [wb, B]]) {
+    const sel = f.contentDocument.getElementById('xfLinkMode');
+    if (sel) { sel.value = 'none'; sel.dispatchEvent(new w.Event('change')); }
+  }
+  await sleep(600);
+  check('both windows are unlinked',
+        wa.eval(MODE) === 'none' && wb.eval(MODE) === 'none',
+        wa.eval(MODE) + ' / ' + wb.eval(MODE));
+
+  const num = wa.eval(NUM);
+  say('note', '  marking CSC' + num + ' bad in the top window');
+  /* The BAD buttons live in the on-canvas channel overlay, not the side
+     rail -- the rail is hidden at this pane width. Click the real one, so
+     this exercises the path a person uses. */
+  /* Prefer the real button. It lives in the on-canvas channel overlay,
+     which only renders when the pane is tall enough -- so fall back to the
+     exported call rather than making this test about pane geometry. */
+  let how = null;
+  const btns = [...A.contentDocument.querySelectorAll('.badbtn')];
+  if (btns.length > 3) { btns[3].click(); how = 'the BAD button'; }
+  else {
+    wa.eval('BARRY.views.xplore.toggleBad(' + num + ')');
+    how = 'the exported call (no BAD button at this pane size)';
+  }
+  say('note', '  marked via ' + how);
+  check('there is a way to mark it', !!how);
+
+  const gotA = await until(() => wa.eval(BADS).includes(String(num))
+    ? wa.eval(BADS) : null, 15000);
+  check('the window it was clicked in marks it', !!gotA, wa.eval(BADS));
+
+  const gotB = await until(() => wb.eval(BADS).includes(String(num))
+    ? wb.eval(BADS) : null, 20000);
+  check('and the OTHER window picks it up', !!gotB,
+        'other window has [' + wb.eval(BADS) + ']');
+  say('note', '  after marking: [' + wa.eval(BADS) + '] / ['
+      + wb.eval(BADS) + ']');
+
+  head('And clearing it travels too');
+  const btns2 = [...A.contentDocument.querySelectorAll('.badbtn')];
+  if (btns2.length > 3) btns2[3].click();
+  else wa.eval('BARRY.views.xplore.toggleBad(' + num + ')');
+  const clearedA = await until(() => !wa.eval(BADS).split(',')
+    .includes(String(num)) ? true : null, 15000);
+  check('cleared where it was clicked', !!clearedA, wa.eval(BADS));
+  const clearedB = await until(() => !wb.eval(BADS).split(',')
+    .includes(String(num)) ? true : null, 20000);
+  check('and cleared in the other window', !!clearedB,
+        'other window has [' + wb.eval(BADS) + ']');
+
+  head('And it is still saved, not just broadcast');
+  const stored = await fetch('/api/csc/open', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  }).then((r) => r.json());
+  check('the store agrees it is clear',
+        !(stored.bad_channels || []).includes(num),
+        JSON.stringify(stored.bad_channels));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'badsync: ' + bad + ' FAILED' : 'badsync: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'badsync: harness CRASH';
+} })();
+</script>

@@ -445,6 +445,46 @@ function staleServer(path) {
    A themed placeholder, used everywhere something is being fetched or
    rendered. The browser's own broken-image glyph used to show through while a
    panel image had no src yet, which looked like a failure rather than a wait. */
+/* A loader that says which step it is on.
+
+   "Reading…" for three seconds tells you nothing, and every ToolKit pane
+   waits on two or three requests -- the recording registry is over a second
+   on its own. Naming the step is both more use and more interesting to look
+   at than a spinner, and when it stalls you know what it stalled on.
+
+   The trace is a dentate spike sweeping past, which is what this whole
+   application is for. Returns a node with a .step(text) on it so the caller
+   can tick it along. */
+function stepLoader(label, steps) {
+  const line = el('span', { class: 'sl-step' });
+  const dots = el('div', { class: 'sl-dots' },
+    (steps || []).map(() => el('i')));
+  const node = el('div', { class: 'loader step-loader' }, [
+    el('svg', {
+      class: 'loader-wave sl-wave', viewBox: '0 0 120 28',
+      preserveAspectRatio: 'none',
+      html: '<path class="sl-base" d="M0 14 H120"/>'
+          + '<path class="sl-spike" d="M0 14 L36 14 L44 5 L50 25 L57 10'
+          + ' L63 15 L70 14 L120 14"/>',
+    }),
+    el('div', { class: 'loader-text' }, [
+      el('strong', { text: label || 'Working' }),
+      line,
+    ]),
+    dots,
+  ]);
+  let at = -1;
+  node.step = (text) => {
+    at += 1;
+    line.textContent = text || '';
+    Array.from(dots.children).forEach((d, i) => {
+      d.className = i < at ? 'done' : (i === at ? 'now' : '');
+    });
+  };
+  if ((steps || []).length) node.step(steps[0]);
+  return node;
+}
+
 function loader(label, sub) {
   return el('div', { class: 'loader' }, [
     el('svg', {
@@ -691,6 +731,134 @@ BARRY.refreshSync = async function refreshSync() {
    the one property of the store that quietly stops being true: somebody adds
    a new kind of record next year, writes it to one shared file, and nobody
    finds out until two people push in the same afternoon. */
+/* Where the shared copy stands.
+
+   Rendered empty and filled in when the answer arrives, because the sync
+   panel should open instantly whether or not the network is up -- the whole
+   point of writing locally first is that nothing waits on Supabase. */
+/* The one thing a clone cannot carry.
+
+   The repo says which project to sync to; the key deliberately is not in it,
+   so each machine has to be told once. BARRY asks on startup in the terminal
+   and here, because whichever one somebody is looking at should be enough. */
+function askForKey(c) {
+  const input = el('input', {
+    type: 'password', class: 'cloud-key',
+    placeholder: 'sb_secret_\u2026',
+    autocomplete: 'off', spellcheck: 'false',
+  });
+  const msg = el('div', { class: 'hint' });
+  const save = async () => {
+    msg.className = 'hint';
+    msg.textContent = 'Checking\u2026';
+    try {
+      const r = await apiPost('/api/cloud/key', { key: input.value });
+      if (r.ok) {
+        toast('Connected to ' + (c.project || 'Supabase') + '.', 'ok');
+        showSync();
+      } else {
+        msg.className = 'hint bad';
+        msg.textContent = r.error || 'That did not work.';
+      }
+    } catch (e) {
+      msg.className = 'hint bad';
+      msg.textContent = e.message;
+    }
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+
+  return el('div', { class: 'cloud-ask' }, [
+    el('strong', { text: 'Connect this machine to ' + (c.project || 'Supabase') }),
+    el('p', { class: 'hint',
+      text: 'The repo knows which project to sync to. It does not carry the '
+          + 'key \u2014 that would put it in git \u2014 so this machine '
+          + 'needs it once. Project Settings \u2192 API Keys \u2192 the '
+          + 'secret / service_role key.' }),
+    el('div', { class: 'row' }, [
+      input,
+      el('button', { class: 'btn', text: 'Connect', onclick: save }),
+    ]),
+    msg,
+    el('p', { class: 'hint',
+      text: 'Kept in GUI_logs/.cloud.json, which git ignores. BARRY works '
+          + 'perfectly well without it \u2014 the sync is an addition, not a '
+          + 'requirement.' }),
+  ]);
+}
+
+
+function cloudNote() {
+  const box = el('div', { class: 'cloud-note' }, [
+    el('div', { class: 'hint', text: 'Checking the shared copy…' }),
+  ]);
+  api('/api/cloud/status').then((c) => {
+    box.innerHTML = '';
+    if (c.key_in_repo) {
+      box.appendChild(el('div', { class: 'cloud-err',
+        text: 'cloud.json in the repo contains a key. That file is tracked '
+            + 'by git, so treat the key as public: rotate it in the Supabase '
+            + 'dashboard and paste the new one below. BARRY is ignoring the '
+            + 'one in the file.' }));
+    }
+    if (c.needs_key) { box.appendChild(askForKey(c)); return; }
+    if (!c.configured) {
+      box.appendChild(el('p', { class: 'hint' }, [
+        el('span', { text: 'Not syncing to Supabase. Set it up with ' }),
+        el('code', { text: 'python tools/cloud_setup.py --url <project>' }),
+      ]));
+      return;
+    }
+    const last = c.last || {};
+    const when = last.at ? new Date(last.at).toLocaleTimeString() : 'not yet';
+    box.appendChild(el('div', { class: 'cloud-line' }, [
+      el('span', { class: 'dot' + (last.ok === false ? ' bad'
+                                   : (last.ok ? ' ok' : '')) }),
+      el('strong', { text: c.project || 'Supabase' }),
+      el('span', { class: 'hint',
+        text: c.auto ? 'syncing every ' + c.interval + 's' : 'automatic sync '
+            + 'is off' }),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm', text: last.running ? 'Syncing…' : 'Sync now',
+        disabled: last.running ? 'disabled' : null,
+        onclick: async (e) => {
+          e.target.disabled = true;
+          e.target.textContent = 'Syncing…';
+          try {
+            const r = await apiPost('/api/cloud/sync', {});
+            const l = r.last || {};
+            toast('Sent ' + (l.pushed || 0) + ', brought back '
+                  + (l.pulled || 0)
+                  + (l.downloaded ? ', downloaded ' + l.downloaded + ' file(s)'
+                     : '') + '.', l.ok === false ? 'err' : 'ok', 7000);
+          } catch (err) { toast(err.message, 'err', 8000); }
+          showSync();
+        },
+      }),
+    ]));
+    box.appendChild(el('p', { class: 'hint',
+      text: 'Last sync ' + when
+          + (last.ok === false ? '  —  failed' : '')
+          + (last.pushed != null ? '  ·  sent ' + last.pushed : '')
+          + (last.pulled ? '  ·  brought back ' + last.pulled : '')
+          + (last.downloaded ? '  ·  ' + last.downloaded + ' file(s) down'
+             : '') }));
+    if (last.error) {
+      box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
+    }
+    box.appendChild(el('p', { class: 'hint',
+      text: 'BARRY writes here first and syncs in the background, so none of '
+          + 'this is in the way if the network is down.' }));
+  }).catch(() => {
+    box.innerHTML = '';
+    box.appendChild(el('p', { class: 'hint',
+      text: 'This BARRY does not have the Supabase sync — restart it to '
+          + 'pick up the new version.' }));
+  });
+  return box;
+}
+
+
 function conflictNote(c) {
   if (!c) return null;
   if (c.ok) {
@@ -751,6 +919,7 @@ function showSync() {
         + 'plain JSON — one file per run and per session, so git merges them without '
         + 'conflict. It never commits or pushes on its own.' }),
       el('div', { class: 'source-box' }, [
+        cloudNote(),
         conflictNote(d.conflicts),
         el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
                           + '# to pick up everyone else\'s work:\ngit pull' }),
@@ -786,6 +955,117 @@ BARRY.setErrorCount = function setErrorCount(n) {
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
                'toolkit'];
+
+/* ==========================================================================
+   The rail: full, icons, away
+   ==========================================================================
+   Cycled by one button rather than configured in a settings panel, because
+   this is a thing people do twenty times a day and once a year respectively.
+   Remembered per machine -- it describes the monitor, not the project.
+   ========================================================================== */
+const RAIL_STATES = ['full', 'icons', 'away'];
+
+function railState() {
+  try {
+    const v = localStorage.getItem('barry.rail');
+    return RAIL_STATES.includes(v) ? v : 'full';
+  } catch (e) { return 'full'; }
+}
+
+function setRail(state, remember) {
+  const app = document.getElementById('app');
+  if (!app) return;
+  const s = RAIL_STATES.includes(state) ? state : 'full';
+  app.classList.toggle('rail-icons', s === 'icons');
+  app.classList.toggle('rail-away', s === 'away');
+  const btn = document.getElementById('railToggle');
+  if (btn) {
+    btn.title = s === 'full' ? 'Collapse the menu to icons'
+      : s === 'icons' ? 'Hide the menu' : 'Show the menu';
+  }
+  if (remember !== false) {
+    try { localStorage.setItem('barry.rail', s); } catch (e) { /* ignore */ }
+  }
+  // Every canvas in the workspace just changed width.
+  window.dispatchEvent(new Event('resize'));
+}
+
+function cycleRail() {
+  const at = RAIL_STATES.indexOf(railState());
+  setRail(RAIL_STATES[(at + 1) % RAIL_STATES.length]);
+}
+
+function wireRail() {
+  const btn = document.getElementById('railToggle');
+  if (btn) btn.addEventListener('click', cycleRail);
+
+  // The handle that brings it back. Built here rather than in the markup so
+  // it cannot exist without the code that makes it work.
+  const peek = el('button', {
+    id: 'railPeek', title: 'Show the menu',
+    onclick: () => setRail('full'),
+    html: '<svg viewBox="0 0 20 20" style="width:12px;height:12px;fill:none;'
+        + 'stroke:currentColor;stroke-width:2"><path d="M7 4l6 6-6 6"/></svg>',
+  });
+  // Inside #app, because that is where the rail-away class lands and the
+  // rule that shows this is a descendant selector. On body it was styled by
+  // nothing and stayed invisible -- a way back that cannot be seen is not
+  // one.
+  (document.getElementById('app') || document.body).appendChild(peek);
+  setRail(railState(), false);
+}
+
+
+/* ==========================================================================
+   Modes
+   ==========================================================================
+   StrataScope and DS curation take over the window: different panes,
+   different keys, dragging means something else. Announced here rather than
+   in each mode, so the two cannot drift apart, and so leaving is always the
+   same button in the same place.
+   ========================================================================== */
+const MODES = {
+  strata: {
+    name: 'StrataScope',
+    what: 'Labelling layers · drag on the rail to set a boundary '
+        + '· the aids are in the second window',
+  },
+  curate: {
+    name: 'DS curation',
+    what: 'Judging candidates · Y keeps, N rejects, ←/→ move '
+        + '· the aids are in the second window',
+  },
+};
+
+let modeLeaveFn = null;
+
+/* Turn a mode on or off. `leave` is what the Leave button calls; without one
+   the button is hidden, because a way out that does nothing is worse than
+   none. */
+function setMode(kind, leave) {
+  const app = document.getElementById('app');
+  if (!app) return;
+  for (const k of Object.keys(MODES)) app.classList.toggle('mode-' + k, k === kind);
+  modeLeaveFn = kind ? (leave || null) : null;
+  const m = MODES[kind];
+  const name = document.getElementById('modeName');
+  const what = document.getElementById('modeWhat');
+  const out = document.getElementById('modeLeave');
+  if (name) name.textContent = m ? m.name : '';
+  if (what) what.textContent = m ? m.what : '';
+  if (out) out.style.display = (m && modeLeaveFn) ? '' : 'none';
+  // Every canvas just changed height by the banner's worth.
+  window.dispatchEvent(new Event('resize'));
+}
+
+function wireMode() {
+  const out = document.getElementById('modeLeave');
+  if (out) out.addEventListener('click', () => {
+    const fn = modeLeaveFn;
+    if (fn) fn();
+  });
+}
+
 
 function setView(name) {
   if (!VIEWS.includes(name)) name = 'pipeline';
@@ -946,6 +1226,10 @@ BARRY.init = async function init() {
 
   $$('.nav-item').forEach((b) =>
     b.addEventListener('click', () => setView(b.dataset.view)));
+
+  // The rail's own collapse, and the handle that brings it back.
+  wireRail();
+  wireMode();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
 

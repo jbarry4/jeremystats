@@ -1,0 +1,179 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the bad-channel control at 64 channels</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* "When we have all 64 channels present and the UI gets compressed the
+   ok/bad channel icon disappears."
+
+   It did, and on purpose: the lane dropped the button once a lane was under
+   15px, on the grounds that there was no room for it. There is no room for a
+   button with a word on it. There is room for the button.
+
+   So what this measures is not "is the element in the DOM" -- the old code
+   would have failed that honestly -- but whether the control is actually
+   there to be hit: laid out, non-zero, inside the pane, and still marking
+   the channel when clicked. At 64 channels, which is where it broke. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 60000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  /* A recording that really has 64 channels -- the registry knows, so there
+     is no need to open sessions until one turns up. */
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) {
+          path = s.here[0]; say('note', '  using ' + s.label
+            + ' (' + s.n_channels + ' channels)'); break outer;
+        }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no 64-channel recording is reachable'); return; }
+
+  W.eval("setView('xplore')");
+  await sleep(250);
+  const sess = await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await until(() => D.querySelector('.pane-canvas-host canvas'));
+  W.eval("BARRY.views.xplore.setPanes([{panel:'traces'}], {col:0.5,row:0.5})");
+  // Every channel on screen at once, which is the state being complained
+  // about.
+  W.eval('(function(){var s=BARRY.views.xplore.state;'
+       + 'var o=s.sessions[s.active];o.info.channels.forEach(function(c){'
+       + 'o.sel.add(c.index);});})()');
+  W.eval('BARRY.views.xplore.render(); BARRY.views.xplore.refreshAll();');
+  await sleep(2500);
+  await until(() => D.querySelectorAll('.ch-overlay .ch-lane').length >= 60);
+  await sleep(600);
+
+  head('Sixty-four lanes, and a bad control on every one');
+  const n = W.eval('(function(){var s=BARRY.views.xplore.state;'
+                 + 'return s.sessions[s.active].info.channels.length;})()');
+  check('the recording really has 64 channels', n === 64, n + ' channels');
+  const lanes = Array.from(D.querySelectorAll('.ch-overlay .ch-lane'));
+  check('there is a lane per channel', lanes.length === n,
+        lanes.length + ' lanes for ' + n + ' channels');
+
+  const laneH = lanes.length
+    ? lanes[Math.floor(lanes.length / 2)].getBoundingClientRect().height : 0;
+  say('note', '  lane height: ' + laneH.toFixed(1) + 'px'
+      + (laneH < 15 ? '  (compact, which is where it used to vanish)'
+                    : '  (not compact -- the pane is too tall to reproduce it)'));
+
+  const btns = lanes.map((l) => l.querySelector('.badbtn'));
+  const missing = btns.filter((b) => !b).length;
+  check('every lane has one in the DOM', missing === 0,
+        missing + ' of ' + lanes.length + ' lanes have no control');
+
+  /* In the DOM is not the same as on the screen. */
+  const host = D.querySelector('.pane-canvas-host').getBoundingClientRect();
+  let unhittable = 0, clipped = 0, smallest = 1e9;
+  for (const b of btns) {
+    if (!b) continue;
+    const r = b.getBoundingClientRect();
+    const area = r.width * r.height;
+    smallest = Math.min(smallest, area);
+    if (r.width < 4 || r.height < 4) unhittable += 1;
+    if (r.left < host.left - 1 || r.right > host.right + 1) clipped += 1;
+  }
+  check('all of them have a hittable size', unhittable === 0,
+        unhittable + ' are under 4px; smallest is '
+        + (smallest === 1e9 ? 'n/a' : smallest.toFixed(0) + 'px2'));
+  check('and none is pushed outside the pane', clipped === 0,
+        clipped + ' fall outside');
+
+  head('And it still marks the channel');
+  const mid = Math.floor(lanes.length / 2);
+  const num = W.eval('(function(){var s=BARRY.views.xplore.state;'
+                   + 'return s.sessions[s.active].info.channels[' + mid
+                   + '].number;})()');
+  const wasBad = () => W.eval('(function(){var s=BARRY.views.xplore.state;'
+                            + 'return s.sessions[s.active].bad.has('
+                            + num + ');})()');
+  const before = wasBad();
+  btns[mid].click();
+  await until(() => wasBad() !== before, 15000);
+  check('clicking one marks it', wasBad() !== before,
+        'CSC' + num + ' was ' + before + ', now ' + wasBad());
+  await sleep(800);
+  const laneNow = D.querySelectorAll('.ch-overlay .ch-lane')[mid];
+  check('and the lane shows it', !!laneNow
+        && laneNow.classList.contains('marked-bad') === !before,
+        laneNow ? laneNow.className : 'lane gone');
+  /* Put it back, so a harness run does not leave a mark on real data. */
+  const b2 = laneNow && laneNow.querySelector('.badbtn');
+  if (b2) { b2.click(); await until(() => wasBad() === before, 15000); }
+  check('and it can be cleared again', wasBad() === before);
+
+  head('The rail, at the same channel count');
+  /* The side rail belongs to the raster panels; a traces pane carries its
+     channels as lanes on the plot instead. So this has to switch panel to
+     see it at all -- an earlier version of this harness reported it as
+     "not rendered at this pane width", which was simply wrong. */
+  W.eval("BARRY.views.xplore.setPanes([{panel:'voltage'}], {col:0.5,row:0.5})");
+  await sleep(1600);
+  await until(() => D.querySelectorAll('.pane-chans .ch-row').length >= 60, 30000);
+  const rows = Array.from(D.querySelectorAll('.pane-chans .ch-row'));
+  if (!rows.length) {
+    say('bad', 'the rail did not render on a voltage pane');
+  } else {
+    say('note', '  ' + rows.length + ' rows in the rail');
+    const noBtn = rows.filter((r) => !r.querySelector('.badbtn')).length;
+    check('every row in the rail has one', noBtn === 0, noBtn + ' without');
+    const tiny = rows.filter((r) => {
+      const b = r.querySelector('.badbtn');
+      if (!b) return true;
+      const q = b.getBoundingClientRect();
+      return q.width < 4 || q.height < 4;
+    }).length;
+    check('none of them is squeezed to nothing', tiny === 0, tiny + ' squeezed');
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'chan64: ' + bad + ' FAILED' : 'chan64: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'chan64: harness CRASH';
+} })();
+</script>

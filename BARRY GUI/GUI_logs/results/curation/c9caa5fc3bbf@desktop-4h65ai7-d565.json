@@ -1,0 +1,23 @@
+{
+  "_at": {
+    "key": "2026-09-03T14:57:24.087171+00:00",
+    "rel": "2026-09-03T14:57:24.087171+00:00",
+    "starred": "2026-09-03T14:57:24.087171+00:00",
+    "updated": "2026-09-03T14:57:24.087171+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-03T14:57:24.087171+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "test figures/m34 s5 2024-06-10_20260902_170116.png",
+  "rel": "Test Figures/m34 s5 2024-06-10_20260902_170116.png",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-03T10:57:24-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

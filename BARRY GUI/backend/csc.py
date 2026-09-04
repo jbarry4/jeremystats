@@ -58,8 +58,15 @@ def describe_path(path):
     return {"ok": False, "error": "Unsupported file type: " + ext}
 
 
-def open_session(path, even_only=True, invert=True):
-    """Open a session and return its channel inventory + timing metadata."""
+def open_session(path, even_only=None, invert=True):
+    """Open a session and return its channel inventory + timing metadata.
+
+    `even_only=None` means "work it out", which is the default because
+    neither answer is right for both rigs. See nlx.channel_scheme: the old
+    32-channel probe left its odd AD channels empty, the 64-channel probe
+    fills all of them, and assuming either one silently halves or doubles
+    what anybody looks at. True or False still forces it.
+    """
     info = describe_path(path)
     if not info.get("ok"):
         return info
@@ -85,6 +92,10 @@ def open_session(path, even_only=True, invert=True):
 
 
 def _open_ncs_folder(folder, even_only, invert):
+    scheme = None
+    if even_only is None:
+        scheme = nlx.channel_scheme(folder)
+        even_only = (scheme["scheme"] == "even")
     files = nlx.list_csc_files(folder, even_only=even_only)
     if not files:
         files = nlx.list_csc_files(folder, even_only=False)
@@ -110,6 +121,10 @@ def _open_ncs_folder(folder, even_only, invert):
         "name": os.path.basename(folder.rstrip("\\/")) or folder,
         "fs": float(fs), "adbitvolts": float(adbv), "duration_s": float(duration),
         "even_only": bool(even_only), "invert": bool(invert),
+        # How the channel list was arrived at, so it is visible rather than
+        # assumed. `decided` is None when the caller forced it.
+        "channel_scheme": scheme,
+        "n_csc_files": len(nlx.list_csc_files(folder, even_only=False)),
         "channels": channels, "units": "microvolts",
     }
 

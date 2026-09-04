@@ -233,7 +233,7 @@ class Curation:
                 "label": UNSPECIFIED,
             }
             if isinstance(ev, dict):
-                for k in ("end", "channel", "amplitude"):
+                for k in ("end", "channel", "amplitude", "note"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
                 if ev.get("label") and ev["label"] in self._label_ids(kind):

@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8"><title>probe</title>
+<pre id="o" style="font:11px monospace;white-space:pre-wrap"></pre>
+<iframe id="app" src="/" style="width:1200px;height:700px;border:1px solid #333"></iframe>
+<script>
+(async () => {
+  const o = document.getElementById('o');
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(120);
+  const reg = await (await fetch('/api/registry')).json();
+  const paths = [];
+  for (const p of reg.tree) for (const m of p.mice) for (const s of m.sessions)
+    if ((s.here || []).length && paths.length < 3) paths.push(s.here[0]);
+  W.eval("setView('xplore')"); await sleep(300);
+  for (const p of paths) { await W.eval('BARRY.views.xplore.open(' + JSON.stringify(p) + ')'); await sleep(500); }
+  for (let i = 0; i < 300; i++) {
+    if (W.eval('BARRY.views.xplore.state.order.length') >= paths.length) break;
+    await sleep(150);
+  }
+  o.textContent += 'open recordings: ' + W.eval('BARRY.views.xplore.state.order.length') + '\n';
+  W.eval("setView('eventbank')"); await sleep(1200);
+  W.eval('BARRY.views.eventbank.debugImportDialog({name:"DS candidates (ETS)",'
+    + ' n:4, type:"ds", session_label:"PTEN m11 s10 2023-07-25", mouse:11,'
+    + ' session:10, session_key:"m011_s010_2023-07-25", session_path:null})');
+  await sleep(1200);
+  const list = D.querySelector('.bm-list');
+  o.textContent += 'list class: ' + (list ? list.className : 'NONE') + '\n';
+  if (list) {
+    const cs = W.getComputedStyle(list);
+    o.textContent += 'list display=' + cs.display + ' height=' + Math.round(list.getBoundingClientRect().height) + '\n';
+    o.textContent += 'children: ' + list.children.length + '\n';
+    Array.from(list.children).forEach((c, i) => {
+      const r = c.getBoundingClientRect();
+      const s2 = W.getComputedStyle(c);
+      o.textContent += '  [' + i + '] ' + c.className + ' display=' + s2.display
+        + ' h=' + Math.round(r.height) + ' w=' + Math.round(r.width)
+        + ' text="' + (c.textContent||'').trim().slice(0,40) + '"\n';
+      Array.from(c.children).forEach((g) => {
+        const gr = g.getBoundingClientRect();
+        o.textContent += '        <' + g.tagName.toLowerCase() + ' .' + g.className
+          + '> w=' + Math.round(gr.width) + ' "' + (g.textContent||'').trim().slice(0,30) + '"\n';
+      });
+    });
+  }
+  document.title = 'done';
+})();
+</script>

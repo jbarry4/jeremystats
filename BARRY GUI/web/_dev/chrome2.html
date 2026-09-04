@@ -1,0 +1,203 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — folding the chrome away</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* "For every UI bar, channels, etc, in explore finder have a little collapse
+   arrow to hide it (instead of the view option)" -- and a burger for the rail.
+
+   The thing that makes or breaks this is not the hiding, it is the coming
+   back. A bar that vanishes with no visible way back is one people conclude
+   is broken, so every fold must leave something to click, and clicking it
+   must actually restore the bar. That is what this checks, one bar at a
+   time. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  head('The rail collapses');
+  /* Start from full, whatever the last run left behind. The rail state is
+     remembered per machine in localStorage, so a previous harness (or a
+     previous you) leaving it collapsed made every step here off by one. */
+  W.eval("setRail('full')");
+  await sleep(250);
+  const app = D.getElementById('app');
+  const burger = D.getElementById('railToggle');
+  check('there is a burger', !!burger);
+  const railW = () => Math.round(D.getElementById('rail')
+    ? D.getElementById('rail').getBoundingClientRect().width : 0);
+  const wFull = railW();
+  say('note', '  full: ' + wFull + 'px');
+  burger.click();
+  await sleep(300);
+  const wIcons = railW();
+  check('one click gives icons only',
+        app.classList.contains('rail-icons') && wIcons < wFull && wIcons > 0,
+        wFull + ' -> ' + wIcons + 'px');
+  check('the nav is still clickable',
+        D.querySelectorAll('#rail .nav-item').length > 5,
+        D.querySelectorAll('#rail .nav-item').length + ' items');
+  burger.click();
+  await sleep(300);
+  check('a second click hides it', app.classList.contains('rail-away')
+        && railW() === 0, railW() + 'px');
+  /* And the rest of the app is still there.
+
+     This is the check that was missing. Hiding the rail took it out of the
+     grid flow, so #main auto-placed into the first track -- which the
+     away rule had set to zero width. The rail was correctly gone and the
+     whole interface went with it, and a test that only looked at the rail
+     called that a pass. */
+  const mainW = () => {
+    const m = D.getElementById('main');
+    return m ? Math.round(m.getBoundingClientRect().width) : 0;
+  };
+  check('and the rest of the app fills the window',
+        mainW() > D.documentElement.clientWidth * 0.9,
+        'main is ' + mainW() + 'px of ' + D.documentElement.clientWidth);
+  const activeView = D.querySelector('.view.active');
+  check('the active view still has size', !!activeView
+        && activeView.getBoundingClientRect().width > 200,
+        activeView ? Math.round(activeView.getBoundingClientRect().width) + 'px'
+                   : 'no active view');
+  const peek = D.getElementById('railPeek');
+  check('and leaves a handle to bring it back', !!peek
+        && W.getComputedStyle(peek).display !== 'none',
+        peek ? W.getComputedStyle(peek).display : 'no handle');
+  peek.click();
+  await sleep(300);
+  check('the handle restores it', railW() === wFull, railW() + 'px');
+
+  head('Every bar in Xplorefinder folds');
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+  W.eval("setView('xplore')");
+  await sleep(300);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await until(() => D.querySelector('.pane-canvas-host canvas'), 40000);
+  await sleep(1200);
+
+  const BARS = [
+    ['heads', '.pane-head', 'the pane header'],
+    ['strip', '.pane-ctl', 'the control strip'],
+    ['channels', '.pane-chans', 'the channel list'],
+    ['tabs', '.xf-tabs', 'the session tabs'],
+  ];
+  const shown = (sel) => {
+    const n = D.querySelector(sel);
+    return !!n && W.getComputedStyle(n).display !== 'none'
+        && n.getBoundingClientRect().height > 0;
+  };
+
+  /* One bar at a time, with everything back on in between -- a fallback
+     selector across bars had the channels test clicking the tabs' arrow,
+     which then made the tabs test fail for a reason that was the harness's
+     fault rather than the code's. */
+  const resetChrome = async () => {
+    W.eval('(function(){var c=BARRY.views.xplore.state.chrome;'
+      + 'Object.keys(c).forEach(function(k){c[k]=true;});})()');
+    W.eval('BARRY.views.xplore.render()');
+    await sleep(400);
+  };
+
+  for (const [key, sel, name] of BARS) {
+    await resetChrome();
+    /* A bar that is not rendered at this pane size has nothing to fold --
+       the channel rail is dropped on a narrow pane and its buttons move to
+       the on-canvas overlay. Say so and move on rather than testing the
+       window width. */
+    if (!shown(sel)) {
+      say('note', '  ' + name + ' is not rendered at this pane size, skipped');
+      continue;
+    }
+    const arrow = D.querySelector(sel + ' .fold-btn');
+    check(name + ' has a fold arrow on it', !!arrow, 'looked in ' + sel);
+    if (!arrow) continue;
+    arrow.click();
+    await sleep(450);
+    check('  clicking it hides ' + name, !shown(sel));
+    const back = D.querySelector('.unfold-' + key);
+    check('  and leaves a way back', !!back
+          && W.getComputedStyle(back).display !== 'none',
+          back ? 'present' : 'no sliver for ' + key);
+    if (back) {
+      back.click();
+      await sleep(450);
+      check('  which restores it', shown(sel));
+    }
+  }
+  await resetChrome();
+
+  head('The View menu still puts everything back at once');
+  const st = () => JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.chrome)'));
+  W.eval('(function(){var c=BARRY.views.xplore.state.chrome;'
+    + 'Object.keys(c).forEach(function(k){c[k]=false;});})()');
+  W.eval('BARRY.views.xplore.render()');
+  await sleep(400);
+  const allOff = st();
+  check('all four can be off at once',
+        Object.values(allOff).every((v) => v === false),
+        JSON.stringify(allOff));
+  const rows = D.querySelectorAll('.unfold-row .unfold').length;
+  check('and each one still has a sliver', rows >= 3, rows + ' slivers');
+  W.eval('(function(){var c=BARRY.views.xplore.state.chrome;'
+    + 'Object.keys(c).forEach(function(k){c[k]=true;});})()');
+  W.eval('BARRY.views.xplore.render()');
+  await sleep(400);
+  check('and back on', Object.values(st()).every((v) => v === true),
+        JSON.stringify(st()));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'chrome2: ' + bad + ' FAILED' : 'chrome2: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'chrome2: harness CRASH';
+} })();
+</script>

@@ -35,6 +35,24 @@ NATIVE_CODECS = {"h264", "vp8", "vp9", "av1", "theora"}
 
 _CACHE_LOCK = threading.Lock()
 _CLIP_CACHE = {}
+
+# ==========================================================================
+# Whole-file conversion
+# ==========================================================================
+# A converted copy is an ordinary MP4 the browser seeks by itself, which is
+# the whole point: no server round trip per scrub, no clip boundaries.
+#
+# Kept outside the repository. These are hundreds of megabytes and they are
+# derived data -- anybody can make them again from the .mpg, and a git
+# repository with a 100 MB file limit is emphatically not where they belong.
+_CONVERT_LOCK = threading.Lock()
+_CONVERTS = {}          # abspath -> {state, pct, error, out, started, ...}
+
+# 480p is what these cameras give and what the pane shows; going higher
+# would spend disk on detail nobody sees. CRF 26 is visually fine for a
+# behaviour video and roughly halves the file against 23.
+CONVERT_HEIGHT = 480
+CONVERT_CRF = 26
 MAX_CACHED_CLIPS = 24
 MAX_CLIP_SECONDS = 120
 
@@ -76,6 +94,10 @@ def find_media(folder):
                 "name": name, "path": full, "ext": ext, "bytes": size,
                 "native": ext in NATIVE_EXTS,
                 "needs_ffmpeg": ext in TRANSCODE_EXTS,
+                # If a converted copy is already on disk the client can play
+                # it natively and skip the clip machinery entirely.
+                "converted": (convert_state(full).get("state") == "ready"
+                              if ext in TRANSCODE_EXTS else False),
             })
         elif ext == ".nvt":
             tracking.append({"name": name, "path": full, "bytes": size})
@@ -279,6 +301,164 @@ def frame(path, t, offset=0.0, width=480):
         raise VideoError("No frame at %.2f s. The video may be shorter than the "
                          "recording, or the offset may be wrong." % start)
     return res.stdout
+
+
+def converted_dir():
+    """Where converted copies live -- outside the repo, and stable."""
+    import tempfile
+    d = os.path.join(tempfile.gettempdir(), "barrygui_video")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def converted_path(src):
+    """The name a converted copy of `src` would have.
+
+    Keyed on the full path, its size and its mtime, so re-recording to the
+    same filename does not silently serve the old conversion.
+    """
+    import hashlib
+    ap = os.path.abspath(src)
+    try:
+        st = os.stat(ap)
+        stamp = "%d-%d" % (st.st_size, int(st.st_mtime))
+    except OSError:
+        stamp = "0-0"
+    key = hashlib.sha1((ap + "|" + stamp).encode("utf-8")).hexdigest()[:16]
+    base = os.path.splitext(os.path.basename(ap))[0][:40]
+    return os.path.join(converted_dir(), "%s-%s.mp4" % (base, key))
+
+
+def convert_state(src):
+    """What we know about converting `src`, including an existing copy."""
+    ap = os.path.abspath(src)
+    out = converted_path(ap)
+    with _CONVERT_LOCK:
+        job = dict(_CONVERTS.get(ap) or {})
+    if os.path.isfile(out) and os.path.getsize(out) > 1024:
+        return {"state": "ready", "pct": 100, "out": out,
+                "bytes": os.path.getsize(out)}
+    if job.get("state") in ("running", "queued"):
+        return job
+    if job.get("state") == "error":
+        return job
+    return {"state": "none", "pct": 0}
+
+
+def convert_start(src, force=False):
+    """Transcode the whole file to MP4 in the background.
+
+    Returns immediately with the current state. Progress is parsed from
+    ffmpeg's own -progress output, so the number means something rather than
+    being a guess at elapsed time.
+    """
+    ap = os.path.abspath(src)
+    if not os.path.isfile(ap):
+        raise VideoError("Video not found: " + ap)
+    ffmpeg = sysinfo.find_ffmpeg()
+    if not ffmpeg:
+        raise VideoError(
+            "Converting needs ffmpeg, and ffmpeg was not found.\n\n"
+            + sysinfo.ffmpeg_install_hint())
+
+    out = converted_path(ap)
+    if os.path.isfile(out) and os.path.getsize(out) > 1024 and not force:
+        return convert_state(ap)
+
+    with _CONVERT_LOCK:
+        cur = _CONVERTS.get(ap) or {}
+        if cur.get("state") in ("running", "queued"):
+            return dict(cur)
+        _CONVERTS[ap] = {"state": "queued", "pct": 0, "out": out,
+                         "started": time.time()}
+
+    total = 0.0
+    try:
+        total = float((probe(ap) or {}).get("duration") or 0)
+    except Exception:                                    # noqa: BLE001
+        total = 0.0
+
+    def run():
+        tmp = out + ".part"
+        cmd = [
+            ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
+            "-i", ap,
+            "-vf", "scale=-2:%d" % CONVERT_HEIGHT,
+            "-c:v", "libx264", "-preset", "veryfast",
+            "-crf", str(CONVERT_CRF),
+            "-pix_fmt", "yuv420p",
+            # faststart puts the index at the front, which is what lets the
+            # browser seek before the whole file has been fetched.
+            "-movflags", "+faststart",
+            "-an",                       # these have no useful audio
+            "-progress", "pipe:1", "-nostats",
+            tmp,
+        ]
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    universal_newlines=True)
+            with _CONVERT_LOCK:
+                _CONVERTS[ap].update(state="running", pid=proc.pid)
+            for line in proc.stdout:
+                line = line.strip()
+                if line.startswith("out_time_ms=") and total > 0:
+                    try:
+                        done = int(line.split("=", 1)[1]) / 1e6
+                    except ValueError:
+                        continue
+                    pct = max(0, min(99, int(done / total * 100)))
+                    with _CONVERT_LOCK:
+                        _CONVERTS[ap]["pct"] = pct
+                        _CONVERTS[ap]["seconds_done"] = round(done, 1)
+            proc.wait()
+            err = (proc.stderr.read() or "")[:600]
+            if proc.returncode != 0 or not os.path.isfile(tmp):
+                raise VideoError("ffmpeg failed: " + (err or "no output"))
+            os.replace(tmp, out)
+            with _CONVERT_LOCK:
+                _CONVERTS[ap] = {"state": "ready", "pct": 100, "out": out,
+                                 "bytes": os.path.getsize(out)}
+        except Exception as exc:                          # noqa: BLE001
+            try:
+                if os.path.isfile(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
+            with _CONVERT_LOCK:
+                _CONVERTS[ap] = {"state": "error", "pct": 0,
+                                 "error": str(exc)[:600]}
+
+    threading.Thread(target=run, daemon=True,
+                     name="barry-video-convert").start()
+    return convert_state(ap)
+
+
+def converted_size_on_disk():
+    """What the conversions are costing, so it can be shown and cleared."""
+    total, files = 0, 0
+    d = converted_dir()
+    for name in os.listdir(d):
+        try:
+            total += os.path.getsize(os.path.join(d, name))
+            files += 1
+        except OSError:
+            pass
+    return {"bytes": total, "files": files, "dir": d}
+
+
+def clear_converted():
+    d = converted_dir()
+    gone = 0
+    for name in os.listdir(d):
+        try:
+            os.remove(os.path.join(d, name))
+            gone += 1
+        except OSError:
+            pass
+    with _CONVERT_LOCK:
+        _CONVERTS.clear()
+    return gone
 
 
 def cleanup_clips():

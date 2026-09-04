@@ -64,7 +64,14 @@ BARRY.views.xplore = (function () {
     let info;
     try {
       info = await apiPost('/api/csc/open', {
-        path, even_only: opts.evenOnly !== false, invert: opts.invert !== false,
+        path,
+        /* Deliberately absent unless somebody chose. `!== false` meant
+           "true unless told otherwise", which forced even-only on every
+           recording -- so half of every 64-channel probe never loaded and
+           a channel list of 32 looked entirely plausible. Absent lets the
+           recording answer for itself. */
+        even_only: opts.evenOnly === undefined ? undefined : !!opts.evenOnly,
+        invert: opts.invert !== false,
       });
     } catch (e) {
       toast(e.message, 'err', 8000);
@@ -84,7 +91,11 @@ BARRY.views.xplore = (function () {
       t0: 0, span: Math.min(10, Math.max(0.05, dur)),
       gain: 1, hp: 0, lp: 0, notch: 0,
       normalize: 'shared',
-      evenOnly: opts.evenOnly !== false,
+      // What the server actually settled on, not what we guessed.
+      evenOnly: info.even_only !== undefined ? !!info.even_only
+                                             : !!opts.evenOnly,
+      channelScheme: info.channel_scheme || null,
+      nCscFiles: info.n_csc_files || null,
       invert: opts.invert !== false,
       spacing: 50,
       win: null, reqId: 0,
@@ -106,6 +117,10 @@ BARRY.views.xplore = (function () {
                      'ylim', 'clim', 't0', 'span']) {
       if (vs[k] !== undefined && vs[k] !== null) sess[k] = vs[k];
     }
+    if (vs.probe) sess.probe = vs.probe;
+    if (vs.fdefault) sess.fdefault = vs.fdefault;
+    if (vs.flock !== undefined && vs.flock !== null) sess.flock = !!vs.flock;
+    if (vs.stft_mode) sess.stftMode = vs.stft_mode;
     if (Array.isArray(vs.channels) && vs.channels.length) {
       sess.sel = new Set(vs.channels.filter((i) => i < info.channels.length));
     }
@@ -202,7 +217,41 @@ BARRY.views.xplore = (function () {
       walk a cycle -- so the moment a recording had any events loaded, saving
       a figure layout and previewing a figure both died with "Converting
       circular structure to JSON". Every caller already knows the session. */
+  /* The decision, if this event is one of the candidates being curated.
+
+     The imported events and the curation candidates are the same times --
+     the set was made from the detections -- so while a set is open every
+     tick has a decision, and showing it in the detector's red says nothing
+     about the work that has been done to it. Matched on time, within a
+     millisecond, which is far tighter than the gap between two candidates.
+
+     Returns null when nothing is being curated or this time is not one of
+     them, so the ordinary colour applies. */
+  function curationLabelAt(sess, t) {
+    const m = curationMarks(sess);
+    if (!m || !isFinite(t)) return null;
+    const evs = m.events || [];
+    // Binary search: this runs per tick, and a set can hold twelve hundred.
+    let lo = 0, hi = evs.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const d = evs[mid].start - t;
+      if (Math.abs(d) <= 0.001) return evs[mid].label || 'unspecified';
+      if (d < 0) lo = mid + 1; else hi = mid - 1;
+    }
+    return null;
+  }
+
   function eventColor(sess, ev, P) {
+    /* A curated decision wins over the class colour. Otherwise a whole
+       recording of sorted candidates still shows as undifferentiated red
+       ticks, which is the opposite of what the sorting was for. */
+    const lab = curationLabelAt(sess, ev && ev.start);
+    if (lab) {
+      const m = curationMarks(sess);
+      if (lab === 'unspecified') return (P && P.text3) || '#7593a2';
+      return curationColor(m, lab, P);
+    }
     const cls = sess ? eventClasses(sess)[classKeyOf(ev)] : null;
     return (cls && cls.color) || (P ? P.event : '#FF6B6B');
   }
@@ -228,6 +277,245 @@ BARRY.views.xplore = (function () {
       $('#paneGrid').classList.add('hidden');
     }
     render();
+  }
+
+  /* The frequency band a pane is analysing.
+     ------------------------------------------------------------------------
+     Three places it can come from, in order: the pane, the recording, and
+     the built-in default. The middle one is what makes the setting stick --
+     it is saved with the rest of the session state, so it survives a reopen,
+     a layout change and a different recording being dropped into the pane.
+
+     With the lock on, the pane level is skipped entirely and every panel on
+     the recording reads the same band. */
+  const F_DEFAULT = { fmin: 20, fmax: 1000 };
+
+  /* Which channels a pane is showing.
+
+     Normally the recording's selection, so ticking a channel off affects
+     every pane at once -- which is what you want when the panes are four
+     views of one array. A pane with `channels` of its own overrides that,
+     which is what H10 mode uses to put one probe column in each pane.
+
+     Intersected with the selection, so unticking a bad channel still takes
+     it out of every column rather than only the ones without an override. */
+  /* ==================================================================
+     Probe geometry
+     ==================================================================
+     An H3 is a single line of contacts: channel order is depth order, so a
+     CSD runs straight down the selection and one pane shows the whole array.
+
+     An H10-D is two shanks of three interleaved columns. CSC 1, 2 and 3 are
+     three different columns at the same depth, so a CSD over the channel
+     order is a second spatial derivative across contacts that are not
+     neighbours -- it produces numbers, and they mean nothing. In H10 mode
+     each column gets its own pane and its own CSD.
+
+     The map is served from backend/probes.py, which was read off
+     Probes/probe_config_H10D_journey.png. ================================== */
+  XF.probes = [];
+
+  function probeDef(id) {
+    return XF.probes.find((p) => p.id === (id || 'h3')) || null;
+  }
+
+  /* The column split for a recording, as channel indices into its own
+     channel list -- a recording that does not have all 64 simply has shorter
+     columns rather than a wrong mapping. */
+  function probeColumns(sess) {
+    const def = probeDef(sess && sess.probe);
+    if (!def || !def.columns) return null;
+    const byNumber = new Map();
+    (sess.info.channels || []).forEach((c, i) => byNumber.set(Number(c.number), i));
+    return def.columns.map((col) => {
+      const indices = [];
+      const csc = [];
+      col.csc.forEach((num) => {
+        const i = byNumber.get(Number(num));
+        if (i !== undefined) { indices.push(i); csc.push(num); }
+      });
+      return Object.assign({}, col, {
+        indices, csc_present: csc, missing: col.csc.length - indices.length,
+      });
+    });
+  }
+
+  /* Six panes, one per column, in the order the probe figure draws them:
+     back shank across the top, front shank across the bottom. */
+  function layoutProbe(sess, panel) {
+    const cols = probeColumns(sess);
+    if (!cols || cols.length !== 6) {
+      toast('That probe has no column map to lay out.', 'err');
+      return false;
+    }
+    const short = cols.filter((c) => !c.indices.length);
+    if (short.length === cols.length) {
+      toast('None of the H10 channel numbers are in this recording. Is it '
+            + 'really an H10-D?', 'err', 8000);
+      return false;
+    }
+    BARRY.views.xplore.setPanes(cols.map((c) => ({
+      panel: panel || 'csd',
+      channels: c.indices,
+      colTag: c.id,
+      colShank: c.shank,
+      colLabel: c.label,
+    })), { col: 0.5, row: 0.5 });
+    if (short.length) {
+      toast(short.length + ' of the six columns have no channels in this '
+            + 'recording.', null, 6000);
+    }
+    BARRY.activity.log('probe.layout', {
+      probe: sess.probe, panel: panel || 'csd',
+      columns: cols.map((c) => c.indices.length),
+    }, sess);
+    return true;
+  }
+
+  function paneChans(pane, sess) {
+    if (!sess) return [];
+    const all = Array.from(sess.sel).sort((a, b) => a - b);
+    if (!pane || !pane.channels || !pane.channels.length) return all;
+    const want = new Set(pane.channels);
+    const keep = all.filter((i) => want.has(i));
+    // If the override and the selection have nothing in common the pane
+    // would go blank with no explanation, so fall back to the override and
+    // let the usual "not in this recording" path speak.
+    return keep.length ? keep : pane.channels.slice();
+  }
+
+  function fLocked(sess) {
+    return !sess || sess.flock !== false;      // on unless turned off
+  }
+
+  function fBand(pane, sess) {
+    const d = (sess && sess.fdefault) || {};
+    if (fLocked(sess)) {
+      return {
+        fmin: d.fmin != null ? d.fmin : F_DEFAULT.fmin,
+        fmax: d.fmax != null ? d.fmax : F_DEFAULT.fmax,
+        fviewMin: d.fviewMin, fviewMax: d.fviewMax,
+      };
+    }
+    return {
+      fmin: pane && pane.fmin != null ? pane.fmin
+            : (d.fmin != null ? d.fmin : F_DEFAULT.fmin),
+      fmax: pane && pane.fmax != null ? pane.fmax
+            : (d.fmax != null ? d.fmax : F_DEFAULT.fmax),
+      fviewMin: pane && pane.fviewMin != null ? pane.fviewMin : d.fviewMin,
+      fviewMax: pane && pane.fviewMax != null ? pane.fviewMax : d.fviewMax,
+    };
+  }
+
+  /* Write a band value. Locked, it goes on the recording and every panel
+     follows; unlocked, on the pane and the recording's default both -- the
+     default so the next pane opened starts where you left off rather than
+     at 20, which is the whole complaint. */
+  function setBand(pane, sess, key, value) {
+    if (!sess) return;
+    sess.fdefault = Object.assign({}, sess.fdefault || {});
+    sess.fdefault[key] = value;
+    if (!fLocked(sess) && pane) pane[key] = value;
+    queueSaveState(sess);
+  }
+
+  /* Repaint every panel that reads the band. Locked, that is all of them on
+     this recording; unlocked, only the one that changed. */
+  function refreshBand(index, sess) {
+    if (fLocked(sess)) refreshSession(sess);
+    else refreshPane(index);
+  }
+
+  /* ==================================================================
+     Curation marks
+     ==================================================================
+     The candidate being decided, and its neighbours, drawn on every panel
+     that has a time axis -- traces, the image panels, and the overview
+     strip. They used to exist only on the traces, and only in the window
+     that was running the curation.
+
+     `sess.curationMarks` is the shared form: {kind, index, at, labels,
+     events:[{start,label}]}. The window doing the curating fills it in
+     directly; any other window fills it from the server when the live
+     channel says curation is running. Everything that draws reads this and
+     does not care which. ================================================= */
+  function curationMarks(sess) {
+    return (sess && sess.curationMarks) || null;
+  }
+
+  function curationColor(marks, labelId, P) {
+    if (!labelId) return (P && P.accent) || '#FFB81C';
+    const l = ((marks && marks.labels) || []).find((x) => x.id === labelId);
+    return (l && l.color) || (P && P.text3) || '#7593a2';
+  }
+
+  /* Draw the candidates over a time axis.
+
+     `edge` is what makes the mark unloseable: when the current candidate is
+     outside the span being drawn -- a stale frame, or a window someone has
+     panned away from -- it is drawn as an arrow on the edge it lies beyond
+     rather than not at all. You always know where it is. */
+  function drawCurationMarks(ctx, sess, t0, t1, x0, plotW, y0, plotH, P,
+                             opts) {
+    const marks = curationMarks(sess);
+    if (!marks || !(marks.events || []).length) return;
+    const span = t1 - t0;
+    if (!(span > 0)) return;
+    const small = (opts && opts.small) || false;
+    const X = (t) => x0 + ((t - t0) / span) * plotW;
+
+    ctx.save();
+    const evs = marks.events;
+    for (let i = 0; i < evs.length; i++) {
+      const e = evs[i];
+      const isNow = i === marks.index;
+      if (e.start < t0 || e.start > t1) continue;
+      const x = Math.round(X(e.start)) + 0.5;
+      const c = curationColor(marks, e.label, P);
+      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.5 : 0.35);
+      ctx.strokeStyle = isNow ? c : c;
+      ctx.lineWidth = isNow ? 2 : 1;
+      ctx.setLineDash(!isNow && !e.label ? [3, 3] : []);
+      ctx.beginPath();
+      const top = isNow ? y0 : y0 + plotH * (small ? 0.55 : 0.8);
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, y0 + plotH);
+      ctx.stroke();
+      if (isNow && !small) {
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(x, y0 + 6, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // The current candidate, if it is not on screen at all.
+    const cur = evs[marks.index];
+    if (cur && (cur.start < t0 || cur.start > t1)) {
+      const before = cur.start < t0;
+      const c = curationColor(marks, cur.label, P);
+      const x = before ? x0 + 9 : x0 + plotW - 9;
+      const y = y0 + plotH / 2;
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(before ? x - 7 : x + 7, y);
+      ctx.lineTo(before ? x + 5 : x - 5, y - 7);
+      ctx.lineTo(before ? x + 5 : x - 5, y + 7);
+      ctx.closePath();
+      ctx.fill();
+      if (!small) {
+        ctx.font = '9px ' + MONO;
+        ctx.textAlign = before ? 'left' : 'right';
+        ctx.fillText(Math.abs(cur.start - (before ? t0 : t1)).toFixed(2)
+                     + ' s ' + (before ? 'back' : 'on'),
+                     before ? x + 10 : x - 10, y + 3);
+      }
+    }
+    ctx.restore();
   }
 
   const active = () => XF.sessions[XF.active] || null;
@@ -293,11 +581,26 @@ BARRY.views.xplore = (function () {
   function render() {
     renderTabs();
     renderPanes();
+    syncProbeControl();
+  }
+
+  /* The probe belongs to the recording, so the control has to follow which
+     recording is active rather than staying wherever it was last set. */
+  function syncProbeControl() {
+    const sel = document.getElementById('xfProbe');
+    if (!sel) return;
+    const sess = active();
+    const want = (sess && sess.probe) || 'h3';
+    if (sel.value !== want) sel.value = want;
+    sel.disabled = !sess;
   }
 
   function renderTabs() {
     const host = $('#xfTabs');
     host.innerHTML = '';
+    // The tabs fold too, and the arrow sits with them rather than in a
+    // menu -- same rule as every other bar.
+    if (XF.order.length) host.appendChild(collapseArrow('tabs'));
     for (const id of XF.order) {
       const s = XF.sessions[id];
       host.appendChild(el('div', {
@@ -440,6 +743,13 @@ BARRY.views.xplore = (function () {
     if (XF.nPanes === 4) {
       grid.style.gridTemplateRows = r ? pct(r) + ' ' + pct(1 - r) : '';
     }
+    if (XF.nPanes > 4) {
+      // Fixed 3x2 for six. The split handles are for comparing two or four
+      // views of the same thing; six probe columns are peers and dragging
+      // one boundary would just make the others lie about the geometry.
+      grid.style.gridTemplateColumns = '';
+      grid.style.gridTemplateRows = '';
+    }
     // The divider has to follow the split it controls. Written as custom
     // properties so the CSS owns the hit-area geometry and this owns only
     // where the line is.
@@ -453,7 +763,8 @@ BARRY.views.xplore = (function () {
      would have to be woven into the pane order, and every index in this file
      assumes grid.children[i] is pane i. */
   function addSplitters(grid) {
-    if (XF.nPanes < 2) return;
+    // Nothing to drag on the six-up: see applySplit.
+    if (XF.nPanes < 2 || XF.nPanes > 4) return;
     const drag = (kind) => (e) => {
       e.preventDefault();
       const r = grid.getBoundingClientRect();
@@ -503,6 +814,37 @@ BARRY.views.xplore = (function () {
     refreshAll();
   }
 
+  /* The arrow that puts one bar away.
+
+     Deliberately tiny and unlabelled: it sits on a bar that is already busy,
+     and the only thing it has to communicate is "this folds". The tooltip
+     carries the rest. */
+  function collapseArrow(what, where) {
+    const bits = CHROME_BITS.find((b) => b[0] === what) || [];
+    return el('button', {
+      class: 'fold-btn fold-' + (where || 'up'),
+      title: 'Hide the ' + (bits[1] || what).toLowerCase()
+           + '. A sliver stays, to bring it back.',
+      'aria-label': 'Hide the ' + (bits[1] || what),
+      onclick: (e) => { e.preventDefault(); e.stopPropagation();
+                        toggleChrome(what); },
+      html: '<svg viewBox="0 0 12 12"><path d="M2 7.5L6 3.5l4 4"/></svg>',
+    });
+  }
+
+  /* And the way back. One per hidden bar, inside the pane it belongs to, so
+     it is obvious what it will restore. */
+  function unfoldStrip(what) {
+    const bits = CHROME_BITS.find((b) => b[0] === what) || [];
+    return el('button', {
+      class: 'unfold unfold-' + what,
+      title: 'Show the ' + (bits[1] || what).toLowerCase() + ' again',
+      onclick: (e) => { e.preventDefault(); e.stopPropagation();
+                        toggleChrome(what); },
+      html: '<svg viewBox="0 0 12 12"><path d="M2 4.5L6 8.5l4-4"/></svg>',
+    });
+  }
+
   /* Put a piece of chrome away, or bring it back. */
   function toggleChrome(what) {
     XF.chrome[what] = !XF.chrome[what];
@@ -520,6 +862,19 @@ BARRY.views.xplore = (function () {
     if (!v) return;
     for (const k of ['channels', 'strip', 'heads', 'tabs']) {
       v.classList.toggle('hide-' + k, !XF.chrome[k]);
+    }
+    /* The tabs' own arrow goes away with the tabs, so the way back has to
+       live somewhere that stays -- the view header. Built once and shown
+       only when it is needed. */
+    const head = v.querySelector('.xf-head');
+    if (head) {
+      let back = head.querySelector('.unfold-tabs');
+      if (!XF.chrome.tabs && !back) {
+        back = unfoldStrip('tabs');
+        head.appendChild(back);
+      } else if (XF.chrome.tabs && back) {
+        back.remove();
+      }
     }
   }
 
@@ -542,6 +897,40 @@ BARRY.views.xplore = (function () {
       return false;
     }
   }
+
+  /* Full screen with several panes up should leave the panes, and nothing
+     else. Asking for the whole monitor and then getting three rows of
+     buttons on it is not what anybody meant.
+
+     Saved and restored rather than just cleared: coming out of full screen
+     and finding your channel list gone would be its own small betrayal. */
+  let chromeBeforeFullscreen = null;
+
+  function onFullscreenChange() {
+    const inside = !!document.fullscreenElement;
+    if (inside && !chromeBeforeFullscreen) {
+      chromeBeforeFullscreen = Object.assign({}, XF.chrome);
+      const rail = (typeof railState === 'function') ? railState() : 'full';
+      chromeBeforeFullscreen._rail = rail;
+      for (const [k] of CHROME_BITS) XF.chrome[k] = false;
+      if (typeof setRail === 'function') setRail('away', false);
+    } else if (!inside && chromeBeforeFullscreen) {
+      const rail = chromeBeforeFullscreen._rail;
+      delete chromeBeforeFullscreen._rail;
+      Object.assign(XF.chrome, chromeBeforeFullscreen);
+      chromeBeforeFullscreen = null;
+      if (typeof setRail === 'function') setRail(rail || 'full', false);
+    } else {
+      return;
+    }
+    applyChrome();
+    render();
+    requestAnimationFrame(() => {
+      for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+    });
+  }
+
+  document.addEventListener('fullscreenchange', onFullscreenChange);
 
   /* What can be put away, and how to say it. */
   const CHROME_BITS = [
@@ -633,11 +1022,22 @@ BARRY.views.xplore = (function () {
     }
 
     return el('div', { class: 'pane-head' }, [
+      collapseArrow('heads'),
       el('span', { class: 'dot', style: 'width:7px;height:7px;border-radius:50%;background:' + sess.color }),
       el('span', { class: 'pane-name', text: sess.identity.label || sess.info.name,
                    title: sess.path }),
       el('span', { class: 'pane-meta',
                    text: Math.round(sess.info.fs) + ' Hz · ' + sess.info.channels.length + ' ch' }),
+      // Which probe column this pane is. Six near-identical rasters are
+      // indistinguishable without it, and the CSD in each one is computed
+      // over that column alone.
+      pane.colTag ? el('span', {
+        class: 'pane-col-tag shank-' + (pane.colShank || 'back'),
+        text: pane.colTag,
+        title: (pane.colLabel || pane.colTag) + ' · '
+             + (pane.channels || []).length + ' contacts · the CSD here is '
+             + 'run on this column alone',
+      }) : null,
       el('div', { class: 'spacer' }),
       el('select', {
         title: 'What this pane shows',
@@ -747,7 +1147,25 @@ BARRY.views.xplore = (function () {
   }
 
   function eventNav(index, pane, sess) {
-    const n = navEvents(sess).length;
+    const list = navEvents(sess);
+    const n = list.length;
+    /* Where in the list this pane is sitting, not just how many there are.
+
+       It used to show the total on its own, which never changes however many
+       times you press next -- so it read as a position counter stuck on the
+       same number. Now it says which one you are on, and an en dash when the
+       window is not centred on any of them. */
+    const evw = winOf(pane, sess);
+    const centre = evw.t0 + evw.span / 2;
+    let at = -1;
+    let best = Math.max(evw.span * 0.25, 1e-3);
+    list.forEach((e, i) => {
+      const d = Math.abs(e.t - centre);
+      if (d < best) { best = d; at = i; }
+    });
+    const cntText = n
+      ? ((at >= 0 ? String(at + 1) : '–') + '/' + n)
+      : '0';
     return el('div', { class: 'ev-nav' }, [
       el('button', {
         class: 'mini', text: '\u2039',
@@ -755,8 +1173,12 @@ BARRY.views.xplore = (function () {
         disabled: n ? null : 'disabled',
         onclick: (e) => { e.stopPropagation(); stepEvent(index, -1); },
       }),
-      el('span', { class: 'cnt', text: String(n),
-                   title: n + ' navigable mark(s) in this session' }),
+      el('span', { class: 'cnt', text: cntText,
+                   title: n
+                     ? (at >= 0 ? ('On mark ' + (at + 1) + ' of ' + n)
+                                : (n + ' navigable marks in this recording; '
+                                   + 'the window is not centred on one'))
+                     : 'No events, spikes or bookmarks yet' }),
       el('button', {
         class: 'mini', text: '\u203a',
         title: 'Next event / spike / bookmark (n)',
@@ -1126,7 +1548,7 @@ BARRY.views.xplore = (function () {
     const stacked = tfN > 1 && mode === 'stack';
 
     const computed = res.freqs_computed
-      || [pane.fmin != null ? pane.fmin : 20, pane.fmax != null ? pane.fmax : 1000];
+      || [fBand(pane, sess).fmin, fBand(pane, sess).fmax];
 
     // Rebuilding the strip here would replace the inputs while they are being
     // used: tabbing from one to the other fired the new field's onchange as
@@ -1134,33 +1556,38 @@ BARRY.views.xplore = (function () {
     // one edit turning into a burst of identical requests. Only the panel is
     // refreshed; the control updates its own bits in place.
     const set = (lo, hi) => {
-      if (pane.fviewMin === lo && pane.fviewMax === hi) return;
-      pane.fviewMin = lo;
-      pane.fviewMax = hi;
+      const cur = fBand(pane, sess);
+      if (cur.fviewMin === lo && cur.fviewMax === hi) return;
+      // Through setBand, so the view crop is remembered and follows the lock
+      // exactly as the analysed band does.
+      setBand(pane, sess, 'fviewMin', lo);
+      setBand(pane, sess, 'fviewMax', hi);
       BARRY.activity.log('freq.view',
                          { fmin: lo, fmax: hi, panel: pane.panel }, sess);
-      refreshPane(index);
+      refreshBand(index, sess);
       syncFullButton();
     };
 
     const lo = el('input', {
       type: 'number', step: 'any', style: 'width:54px',
-      value: pane.fviewMin != null ? String(pane.fviewMin) : '',
+      value: fBand(pane, sess).fviewMin != null
+        ? String(fBand(pane, sess).fviewMin) : '',
       placeholder: String(round(computed[0], 2)),
       title: 'Show from this frequency. Blank = from the bottom.',
       onchange: (e) => {
         const v = parseFloat(e.target.value);
-        set(isFinite(v) ? v : null, pane.fviewMax);
+        set(isFinite(v) ? v : null, fBand(pane, sess).fviewMax);
       },
     });
     const hi = el('input', {
       type: 'number', step: 'any', style: 'width:58px',
-      value: pane.fviewMax != null ? String(pane.fviewMax) : '',
+      value: fBand(pane, sess).fviewMax != null
+        ? String(fBand(pane, sess).fviewMax) : '',
       placeholder: String(round(computed[1], 2)),
       title: 'Show up to this frequency. Blank = to the top.',
       onchange: (e) => {
         const v = parseFloat(e.target.value);
-        set(pane.fviewMin, isFinite(v) ? v : null);
+        set(fBand(pane, sess).fviewMin, isFinite(v) ? v : null);
       },
     });
 
@@ -1170,7 +1597,8 @@ BARRY.views.xplore = (function () {
       onclick: () => { lo.value = ''; hi.value = ''; set(null, null); },
     });
     const syncFullButton = () => {
-      const on = pane.fviewMin != null || pane.fviewMax != null;
+      const vb = fBand(pane, sess);
+      const on = vb.fviewMin != null || vb.fviewMax != null;
       fullBtn.classList.toggle('hidden', !on);
     };
     syncFullButton();
@@ -1200,7 +1628,8 @@ BARRY.views.xplore = (function () {
           FREQ_BANDS.map(([name, a, b]) => el('option', {
             value: name,
             text: name + (a ? '  ' + a + '\u2013' + b : ''),
-            selected: (pane.fviewMin === a && pane.fviewMax === b)
+            selected: (fBand(pane, sess).fviewMin === a
+                       && fBand(pane, sess).fviewMax === b)
               ? 'selected' : null,
           })))),
         fullBtn,
@@ -1304,6 +1733,41 @@ BARRY.views.xplore = (function () {
 
     host.style.position = 'relative';
     host.appendChild(pop);
+  }
+
+  /* A pop-out carrying a whole layout rather than one pane.
+
+     Used by StrataScope and DS curation for their aid window. The pane list
+     goes over as JSON in the query string: it is a handful of short objects,
+     it never needs to be read by anything but the window it opens, and the
+     alternative was inventing a shorthand for it. */
+  function popOutPanes(sess, specs, opts) {
+    const o = opts || {};
+    const q = new URLSearchParams({
+      csc: sess.path, t0: sess.t0.toFixed(4), span: sess.span.toFixed(4),
+      hp: sess.hp, lp: sess.lp, notch: sess.notch,
+      theme: BARRY.state.theme,
+      // Both windows have to be listening or they will not stay in step --
+      // and this window is the whole point of the arrangement.
+      link: 'session',
+      panes: JSON.stringify(specs),
+      // No tab bar and no headers: every pane here is the same recording,
+      // and the labels would cost more room than they are worth on panels
+      // this short.
+      chrome: o.chrome || 'notabs,noheads',
+      role: o.role || 'aids',
+    });
+    const feat = 'width=' + (o.width || 760) + ',height=' + (o.height || 980)
+               + ',menubar=no,toolbar=no';
+    const w = window.open(location.origin + '/?' + q.toString() + '#xplore',
+                          o.name || 'barry-aids', feat);
+    if (!w) {
+      toast('The second window was blocked. Allow pop-ups for 127.0.0.1, '
+            + 'then leave and re-enter this mode.', 'err', 9000);
+      return null;
+    }
+    try { w.focus(); } catch (e) { /* not important */ }
+    return w;
   }
 
   function popOut(pane, sess, opts) {
@@ -1467,6 +1931,8 @@ BARRY.views.xplore = (function () {
   /* ---------- per-pane controls ---------- */
   function paneControls(index, pane, sess) {
     const host = el('div', { class: 'pane-ctl' });
+    // Prepended after everything else is built -- see the end of this
+    // function -- so it lands at the right-hand end of the strip.
     const dur = sess.info.duration_s || 0;
     const num = ctlNum;
     const W = winOf(pane, sess);
@@ -1555,6 +2021,10 @@ BARRY.views.xplore = (function () {
       'Events, spikes, read options, and this recording on disk',
       () => morePop(index, pane, sess)));
 
+    // Last, so it sits at the right-hand end of the strip rather than in
+    // among the controls.
+    host.appendChild(el('div', { class: 'ctl-spacer' }));
+    host.appendChild(collapseArrow('strip'));
     return host;
   }
 
@@ -1628,8 +2098,8 @@ BARRY.views.xplore = (function () {
   function panelWord(pane, sess) {
     if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
       const n = (pane.tfChannels && pane.tfChannels.length) || 1;
-      const band = trimNum(pane.fmin != null ? pane.fmin : 20) + '–'
-                 + trimNum(pane.fmax != null ? pane.fmax : 1000);
+      const fb = fBand(pane, sess);
+      const band = trimNum(fb.fmin) + '–' + trimNum(fb.fmax);
       return n > 1 ? n + ' ch  ' + band : band;
     }
     if (pane.panel === 'csd') return trimNum(sess.spacing) + ' µm';
@@ -1701,20 +2171,79 @@ BARRY.views.xplore = (function () {
         ]),
       ]));
 
+      const band = fBand(pane, sess);
       rows.push(popRow('Analyzed frequency range, Hz', [
-        ctlNum('f min', pane.fmin != null ? pane.fmin : 20, 5, (v) => {
-          pane.fmin = Math.max(0.1, v || 20);
-          refreshPane(index);
+        ctlNum('f min', band.fmin, 5, (v) => {
+          // isFinite, not `v || 20`: typing 0 used to mean "give me 20".
+          setBand(pane, sess, 'fmin',
+                  Math.max(0.1, isFinite(v) ? v : band.fmin));
+          refreshBand(index, sess);
           relabelMenu(index, 'Panel', panelWord(pane, sess));
         }, 'Lowest frequency the transform is COMPUTED over, Hz. '
          + 'Changing this changes the analysis.', '64px'),
-        ctlNum('f max', pane.fmax != null ? pane.fmax : 1000, 50, (v) => {
-          pane.fmax = Math.max(1, v || 1000);
-          refreshPane(index);
+        ctlNum('f max', band.fmax, 50, (v) => {
+          setBand(pane, sess, 'fmax',
+                  Math.max(1, isFinite(v) ? v : band.fmax));
+          refreshBand(index, sess);
           relabelMenu(index, 'Panel', panelWord(pane, sess));
         }, 'Highest frequency the transform is COMPUTED over, Hz. '
          + 'Changing this changes the analysis.', '64px'),
+        el('label', {
+          class: 'ctl-check',
+          title: fLocked(sess)
+            ? 'Locked: every spectrogram and scalogram on this recording '
+              + 'uses this band, and switching a pane between them keeps it.'
+            : 'Unlocked: this pane has its own band. Others are unaffected.',
+        }, [
+          el('input', {
+            type: 'checkbox',
+            checked: fLocked(sess) ? 'checked' : null,
+            onchange: (e) => {
+              sess.flock = !!e.target.checked;
+              if (sess.flock) {
+                // Adopt what this pane was showing, so ticking the box does
+                // not silently move the panel you are looking at.
+                sess.fdefault = Object.assign({}, sess.fdefault || {}, {
+                  fmin: band.fmin, fmax: band.fmax,
+                  fviewMin: band.fviewMin, fviewMax: band.fviewMax,
+                });
+              }
+              queueSaveState(sess);
+              BARRY.activity.log('freq.lock', { on: sess.flock }, sess);
+              render(); refreshSession(sess);
+            },
+          }),
+          el('span', { text: 'Lock to recording' }),
+        ]),
       ]));
+
+      if (pane.panel === 'spectrogram') {
+        rows.push(popRow('Transform', [
+          el('select', {
+            title: 'Which spectrogram to compute.',
+            onchange: (e) => {
+              sess.stftMode = e.target.value;
+              queueSaveState(sess);
+              BARRY.activity.log('stft.mode', { mode: sess.stftMode }, sess);
+              refreshSession(sess);
+            },
+          }, [
+            el('option', {
+              value: 'legacy', text: 'Xplorefinder (as the old tool drew it)',
+              title: 'Hamming STFT with the frame set to a tenth of the '
+                   + 'window and 98% overlap, scaled 30*log10 of the raw '
+                   + 'FFT, full-range colour. This is the old MATLAB output.',
+              selected: (sess.stftMode || 'legacy') === 'legacy'
+                ? 'selected' : null }),
+            el('option', {
+              value: 'hires', text: 'High resolution',
+              title: 'Frame sized to put many FFT bins inside the band, '
+                   + 'power spectral density, colour clipped 40 dB below the '
+                   + '99.5th percentile. Better for reading a narrow band.',
+              selected: sess.stftMode === 'hires' ? 'selected' : null }),
+          ]),
+        ]));
+      }
 
       rows.push(popRow(null, [freqViewControl(index, pane, sess)]));
     }
@@ -1839,6 +2368,10 @@ BARRY.views.xplore = (function () {
               sess.invert = e.target.checked;
               BARRY.activity.log('read.invert', { invert: sess.invert }, sess);
               closeMenu();
+              // Same as even-only below: this decides what the samples mean,
+              // so every window reading this file needs it.
+              publishFacts(sess);
+              queueSaveState(sess);
               reopenSameView(sess);
             },
           }),
@@ -1855,6 +2388,10 @@ BARRY.views.xplore = (function () {
               BARRY.activity.log('read.evenOnly',
                                  { evenOnly: sess.evenOnly }, sess);
               closeMenu();
+              // Every other window is reading the same file and has to be
+              // told, and it has to outlive the session being closed.
+              publishFacts(sess);
+              queueSaveState(sess);
               reopenSameView(sess);
             },
           }),
@@ -3524,22 +4061,50 @@ BARRY.views.xplore = (function () {
      Invert and even-only change how the file is decoded, so the session has to
      be reopened -- but throwing away the window, gain and filters every time
      someone toggles polarity would be unusable. */
+  /* What a reopen has to work out again, because it describes the file or
+     depends on the channel list. Everything else is carried across.
+
+     This used to be the other way round -- a list of things to keep -- and
+     it had drifted: curation and StrataScope state were not on it, so
+     toggling even-only in the middle of labelling silently threw away the
+     dentate spike marks you were making. A deny-list cannot drift the same
+     way, because a field added later is carried over by default, which is
+     the safe direction to be wrong in. */
+  const REDERIVED_ON_REOPEN = new Set([
+    'id',        // its handle in XF.sessions; the new one owns the slot
+    'info',      // channels, duration, fs -- the reason for reopening
+    'sel',       // channel INDICES, and the indices shift with even-only
+    'win',       // samples already fetched, for the old channel set
+    'evenOnly',  // the thing being changed
+  ]);
+
   async function reopenSameView(sess) {
-    const keep = {
-      t0: sess.t0, span: sess.span, gain: sess.gain,
-      hp: sess.hp, lp: sess.lp, notch: sess.notch,
-      ylim: sess.ylim, normalize: sess.normalize,
-      events: sess.events, eventsMeta: sess.eventsMeta,
-      bookmarks: sess.bookmarks, spikeSets: sess.spikeSets,
-      spikeDraft: sess.spikeDraft,
-    };
     const panes = XF.panes.map((p) => (p && p.sessionId === sess.id) ? p : null);
+    const wasCurating = !!(BARRY.curate && BARRY.curate.active);
+    const wasStrata = !!(BARRY.strata && BARRY.strata.active);
+
     const reopened = await openSession(sess.path, {
       evenOnly: sess.evenOnly, invert: sess.invert, replace: sess.id,
     });
     if (!reopened) return;
-    Object.assign(reopened, keep);
+    for (const k of Object.keys(sess)) {
+      if (REDERIVED_ON_REOPEN.has(k)) continue;
+      reopened[k] = sess[k];
+    }
     panes.forEach((p, i) => { if (p) XF.panes[i] = { ...p, sessionId: reopened.id }; });
+
+    /* The modes hold their own reference to the session object. Without
+       this they keep drawing onto the one that was just replaced, which
+       looks exactly like the labels having been lost. */
+    if (wasCurating && BARRY.curate.rebind) BARRY.curate.rebind(reopened);
+    if (wasStrata && BARRY.strata.rebind) BARRY.strata.rebind(reopened);
+
+    /* A reopen only ever happens because even-only or invert changed, and
+       both are now part of the saved state. Saving here rather than at each
+       call site means it cannot be forgotten by a new one -- including the
+       path where another window told us to change. */
+    queueSaveState(reopened);
+
     render();
     refreshAll();
   }
@@ -3557,6 +4122,8 @@ BARRY.views.xplore = (function () {
     top.appendChild(el('div', { class: 'ch-head' }, [
       el('strong', { text: 'Channels' }),
       el('span', { text: sess.sel.size + '/' + sess.info.channels.length }),
+      el('div', { class: 'spacer' }),
+      collapseArrow('channels', 'left'),
     ]));
 
     const quick = el('div', { class: 'ch-quick' });
@@ -3625,6 +4192,9 @@ BARRY.views.xplore = (function () {
     if (sess.bad.has(number)) sess.bad.delete(number); else sess.bad.add(number);
     render();
     refreshSession(sess);
+    // Tell the other windows. This was missing entirely, which is why hiding
+    // a channel propagated and marking one bad did not.
+    publishFacts(sess);
 
     if (!sess.identity || sess.identity.mouse == null) {
       toast('Marked locally — this recording has no detectable mouse/session id, '
@@ -3646,6 +4216,16 @@ BARRY.views.xplore = (function () {
   function panePlot(index, pane, sess) {
     const host = el('div', { class: 'pane-plot' });
 
+    /* Slivers for whatever has been folded away. Inside the pane, so it is
+       obvious which bar each one brings back -- and only present when there
+       is something to restore, so an untouched pane has none of them. */
+    const folded = ['heads', 'strip', 'channels'].filter(
+      (k) => !XF.chrome[k]);
+    if (folded.length) {
+      host.appendChild(el('div', { class: 'unfold-row' },
+                          folded.map(unfoldStrip)));
+    }
+
     if (pane.panel === 'video') {
       host.appendChild(buildVideo(sess));
       return host;
@@ -3661,8 +4241,13 @@ BARRY.views.xplore = (function () {
     if (pane.panel === 'traces') {
       const canvas = el('canvas');
       const readout = el('div', { class: 'cursor-readout pane-readout' });
-      const loading = el('div', { class: 'plot-loading' },
-                          [loader('Voltage traces', 'reading channels')]);
+      // Same rule as the image panes: if the samples are still in hand
+      // after a rebuild there is nothing to wait for, and an overlay that
+      // says "reading channels" over a trace that is already drawn is a lie.
+      const loading = el('div', {
+        class: 'plot-loading'
+             + ((pane._win || (sess && sess.win)) ? ' hidden' : ''),
+      }, [loader('Voltage traces', 'reading channels')]);
       const overlay = el('div', { class: 'ch-overlay' });
       const cHost = el('div', { class: 'pane-canvas-host' },
                        [canvas, overlay, readout, loading]);
@@ -3677,6 +4262,17 @@ BARRY.views.xplore = (function () {
       // browser's broken-image glyph, which reads as an error, not a wait.
       const img = el('img', { alt: '', class: 'hidden' });
       const gridCv = el('canvas', { class: 'raster-grid' });
+      /* Whether this pane already has a picture to show.
+
+         renderPanes tears every pane down and builds it again -- which is
+         what happens when you fold a bar away -- and the new <img> starts
+         with no src. Nothing put it back, and the loading overlay below is
+         created visible and only ever hidden by a fetch, so folding a bar
+         left every image panel stuck on "rendering" for good.
+
+         The data survived the rebuild in pane._panelData, so it goes
+         straight back on. No request, no wait. */
+      const have = pane._panelData && pane._panelData.image;
       img.addEventListener('load', () => {
         img.classList.remove('hidden');
         // Draw the rules here, not when the data arrives: until the image is
@@ -3685,13 +4281,24 @@ BARRY.views.xplore = (function () {
         // rebuild, moments when the panel data was usually not there yet.
         drawRasterGrid(pane, pane._panelData);
       });
-      const loading = el('div', { class: 'plot-loading' },
-                          [loader(labelForPanel(pane.panel), 'rendering')]);
+      const loading = el('div', {
+        class: 'plot-loading' + (have ? ' hidden' : ''),
+      }, [loader(labelForPanel(pane.panel), 'rendering')]);
       const readout = el('div', { class: 'cursor-readout pane-readout' });
       const iHost = el('div', { class: 'pane-img-host' }, [img, gridCv, readout, loading]);
       pane._grid = gridCv;
       host.appendChild(iHost);
       pane._img = img; pane._loading = loading; pane._readout = readout;
+      if (have) {
+        img.src = pane._panelData.image;
+        img.classList.remove('hidden');
+        showPanelInfo(pane, pane._panelData);
+        // After layout, or the image has no measured box to be placed in.
+        requestAnimationFrame(() => {
+          placePanelImage(pane, sess, pane._panelData);
+          drawRasterGrid(pane, pane._panelData);
+        });
+      }
       wireImagePane(index, pane, sess, iHost);
       wirePlacement(index, pane, sess, iHost);
       watchResize(iHost, index);
@@ -3726,7 +4333,24 @@ BARRY.views.xplore = (function () {
     }, { passive: false });
   }
 
+  /* Rebuild just this pane's header.
+
+     The event counter lives there and says which mark the window is on, so
+     it has to be redrawn when the window moves. refreshControls only ever
+     touched the control strip, which is why the counter looked frozen. */
+  function refreshHead(index) {
+    const grid = $('#paneGrid');
+    const box = grid && grid.children[index];
+    if (!box || !box.classList.contains('pane')) return;
+    const pane = XF.panes[index], sess = sessionOf(pane);
+    if (!sess) return;
+    const old = box.querySelector('.pane-head');
+    if (!old || !old.isConnected || old.parentNode !== box) return;
+    box.replaceChild(paneHead(index, pane, sess), old);
+  }
+
   function refreshControls(index) {
+    refreshHead(index);
     // A popover is anchored to a button on this strip, so it cannot outlive
     // the rebuild.
     closeMenu();
@@ -3790,6 +4414,9 @@ BARRY.views.xplore = (function () {
 
   async function fetchTraces(index, pane, sess) {
     if (!sess.sel.size) { sess.win = null; drawPane(index); return; }
+    // A column with nothing in it draws nothing, rather than falling through
+    // to the whole array and quietly showing the wrong contacts.
+    if (!paneChans(pane, sess).length) { pane._win = null; drawPane(index); return; }
     // Per-PANE request id. A per-session counter made two panes onto the same
     // recording cancel one another, so whichever asked second was the only one
     // that ever rendered.
@@ -3800,7 +4427,7 @@ BARRY.views.xplore = (function () {
       const win = await apiPost('/api/csc/window', {
         path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
         t0: sess.t0, t1: sess.t0 + sess.span,
-        channels: Array.from(sess.sel).sort((a, b) => a - b),
+        channels: paneChans(pane, sess),
         px, highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
         mode: 'voltage', spacing_um: sess.spacing,
         bad_channels: Array.from(sess.bad),
@@ -3833,39 +4460,87 @@ BARRY.views.xplore = (function () {
     }
   }
 
+  /* Ask the server to render the windows we are probably about to want.
+
+     The expensive panels are the time-frequency ones, and the way they are
+     used is a loop: jump to a candidate, look, decide, jump to the next.
+     Every jump used to pay the full cost, including jumping back to one
+     already seen. The server caches what it renders, so this just tells it
+     which windows to have ready.
+
+     Debounced, and superseding: changing the filters or the band makes every
+     queued window wrong, and it is better to drop them than to render them
+     and cache pictures nobody will ask for. */
+  let warmTimer = null;
+
+  function prewarmAround(index, times) {
+    const pane = XF.panes[index];
+    const sess = sessionOf(pane);
+    if (!pane || !sess || !times || !times.length) return;
+    // Only the panels worth the trouble. Traces come back in a few hundred
+    // milliseconds and are fetched by a different route anyway.
+    if (!isImagePanel(pane.panel)) return;
+    clearTimeout(warmTimer);
+    warmTimer = setTimeout(() => {
+      const spec = panelSpec(index, pane, sess);
+      if (!spec) return;
+      apiPost('/api/panel/prewarm', {
+        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        spec, times: times.slice(0, 48), limit: 12,
+      }).catch(() => { /* speculative: a failure is not worth saying */ });
+    }, 400);
+  }
+
+  /* The request for an image panel.
+
+     Built in one place because the prewarmer sends the same thing with a
+     different window, and the server keys its cache on the whole spec -- so
+     a prewarmed render that differs by one field is a render nobody will
+     ever collect. */
+  function panelSpec(index, pane, sess) {
+    if (!pane || !sess) return null;
+    const spec = {
+      path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+      panel: pane.panel, t0: sess.t0, t1: sess.t0 + sess.span,
+      channels: paneChans(pane, sess),
+      highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
+      cmap: pane.cmap || 'jet', spacing_um: sess.spacing,
+      bad_channels: Array.from(sess.bad),
+      max_cols: 1800,
+      clim: pane.clim || sess.clim || null,
+    };
+    if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
+      // Multi-channel: an explicit list wins, else the pane's single
+      // channel, else whatever is selected in the session.
+      spec.tf_channels = (pane.tfChannels && pane.tfChannels.length)
+        ? pane.tfChannels
+        : [pane.channel != null ? pane.channel : firstSel(sess)];
+      spec.tf_mode = pane.tfMode
+        || (spec.tf_channels.length > 1 ? 'stack' : 'mean');
+      const fb = fBand(pane, sess);
+      spec.fmin = fb.fmin;
+      spec.fmax = fb.fmax;
+      if (sess.stftMode) spec.stft_mode = sess.stftMode;
+      // Display crop, applied after the transform -- see freqViewControl.
+      if (fb.fviewMin != null) spec.fview_min = fb.fviewMin;
+      if (fb.fviewMax != null) spec.fview_max = fb.fviewMax;
+    }
+    return spec;
+  }
+
   async function fetchImagePanel(index, pane, sess) {
     if (!sess.sel.size && isChannelPanel(pane.panel)) return;
     const id = (pane._req = (pane._req || 0) + 1);
     if (pane._loading) pane._loading.classList.remove('hidden');
     try {
-      const spec = {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
-        panel: pane.panel, t0: sess.t0, t1: sess.t0 + sess.span,
-        channels: Array.from(sess.sel).sort((a, b) => a - b),
-        highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
-        cmap: pane.cmap || 'jet', spacing_um: sess.spacing,
-        bad_channels: Array.from(sess.bad),
-        max_cols: 1800,
-        clim: pane.clim || sess.clim || null,
-      };
-      if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
-        // Multi-channel: an explicit list wins, else the pane's single
-        // channel, else whatever is selected in the session.
-        spec.tf_channels = (pane.tfChannels && pane.tfChannels.length)
-          ? pane.tfChannels
-          : [pane.channel != null ? pane.channel : firstSel(sess)];
-        spec.tf_mode = pane.tfMode
-          || (spec.tf_channels.length > 1 ? 'stack' : 'mean');
-        spec.fmin = pane.fmin != null ? pane.fmin : 20;
-        spec.fmax = pane.fmax != null ? pane.fmax : 1000;
-        // Display crop, applied after the transform -- see freqViewControl.
-        if (pane.fviewMin != null) spec.fview_min = pane.fviewMin;
-        if (pane.fviewMax != null) spec.fview_max = pane.fviewMax;
-      }
+      const spec = panelSpec(index, pane, sess);
       const res = await apiPost('/api/panel', spec);
       if (id !== pane._req) return;
       pane._panelData = res;
-      if (pane._img) pane._img.src = res.image;
+      if (pane._img) {
+        pane._img.src = res.image;
+        placePanelImage(pane, sess, res);
+      }
       showPanelInfo(pane, res);
       // The load handler covers the normal path; this covers a cached image
       // whose load event fired before the data was assigned.
@@ -3878,6 +4553,43 @@ BARRY.views.xplore = (function () {
     } finally {
       if (pane._loading) pane._loading.classList.add('hidden');
     }
+  }
+
+  /* Where a panel image actually sits on the pane's time axis.
+
+     The axis belongs to the window, not to the picture. A time-frequency
+     panel cannot see half an analysis window at each edge, so it covers
+     slightly less than was asked for -- and stretching it to fill the pane
+     is what made a spike appear at a different x in the spectrogram than in
+     the traces right next to it. Measured at 0.273 s before the analysis was
+     padded, and the residual is whatever a column's width happens to be.
+
+     So: inset the image by the fraction of the window it is missing. When it
+     covers the whole window -- every panel except the transforms -- the
+     insets are zero and nothing changes. */
+  function placePanelImage(pane, sess, res) {
+    const img = pane._img;
+    if (!img) return;
+    const w = winOf(pane, sess);
+    const ext = res && res.extent;
+    if (!w || !(w.span > 0) || !ext || ext.length < 2
+        || !isFinite(ext[0]) || !isFinite(ext[1]) || !(ext[1] > ext[0])) {
+      img.style.left = '0';
+      img.style.width = '100%';
+      return;
+    }
+    const left = (ext[0] - w.t0) / w.span;
+    const width = (ext[1] - ext[0]) / w.span;
+    // A panel that claims to be wildly outside the window is a bug
+    // somewhere else; filling the pane is the least confusing fallback.
+    if (!isFinite(left) || !isFinite(width) || width <= 0
+        || left < -0.5 || left + width > 1.5) {
+      img.style.left = '0';
+      img.style.width = '100%';
+      return;
+    }
+    img.style.left = (left * 100).toFixed(4) + '%';
+    img.style.width = (width * 100).toFixed(4) + '%';
   }
 
   /* Thin time and channel rules over a raster.
@@ -3896,7 +4608,13 @@ BARRY.views.xplore = (function () {
     ctx.clearRect(0, 0, w, h);
     if (pane.grid === false) return;
 
-    const t0 = res.extent[0], t1 = res.extent[1];
+    /* Ticks come from the window, not from what the panel managed to
+       cover -- otherwise two panes side by side carry rulers that disagree,
+       which is the same misalignment one level up. */
+    const gsess = sessionOf(pane);
+    const gwin = gsess ? winOf(pane, gsess) : null;
+    const t0 = gwin && gwin.span > 0 ? gwin.t0 : res.extent[0];
+    const t1 = gwin && gwin.span > 0 ? gwin.t0 + gwin.span : res.extent[1];
     const span = t1 - t0;
     if (!(span > 0)) return;
 
@@ -3966,41 +4684,106 @@ BARRY.views.xplore = (function () {
         ctx.fillText(text, 5, ty);
       }
     } else if (res.log_freq || (res.freqs && res.freqs.length === 2)) {
-      // A single time-frequency panel: mark decades / a few frequencies.
+      /* The frequency axis of a single time-frequency panel.
+
+         Chosen by measurement rather than by an every-nth rule: a candidate
+         gets a number only if it clears the last one, and the ones that do
+         not still get a short tick. That way a tall pane is finely ruled and
+         a short one degrades to something still readable, instead of a stack
+         of overlapping digits. */
       const [f0, f1] = res.freqs;
       if (f0 > 0 && f1 > f0) {
-        ctx.textAlign = 'left';
-        const marks = niceLogTicks(f0, f1);
-        for (const f of marks) {
+        const yOf = (f) => {
           const frac = res.log_freq
             ? (Math.log10(f / f0) / Math.log10(f1 / f0))
             : ((f - f0) / (f1 - f0));
-          const y = Math.round((1 - frac) * h) + 0.5;
-          ctx.lineWidth = 1;
-          rule(0, y, w, y, 0.20, 0.28);
-          const lbl = f >= 1000 ? (f / 1000) + 'k' : String(f);
-          const tw = ctx.measureText(lbl).width;
-          ctx.fillStyle = 'rgba(0,0,0,0.6)';
-          ctx.fillRect(2, y - 10, tw + 6, 11);
-          ctx.fillStyle = '#fff';
-          ctx.fillText(lbl, 5, y - 1);
+          return (1 - frac) * h;
+        };
+        const fmtHz = (f) => (f >= 1000
+          ? (Math.round(f / 100) / 10) + 'k'
+          : String(Math.round(f * 10) / 10));
+
+        ctx.save();
+        ctx.font = '10.5px ' + MONO;
+        ctx.textBaseline = 'alphabetic';
+        // Both edges once there is room. The part of a scalogram you are
+        // looking at is rarely against the left margin, and tracking a band
+        // across to a number on the far side is how you misread one.
+        const twoSided = w > 300;
+
+        const cands = freqTickCandidates(f0, f1);
+        let lastLabelY = Infinity;
+        const drawn = [];
+        for (const f of cands) {
+          const y = yOf(f);
+          if (y < 7 || y > h - 5) continue;
+          // 15px apart: the label is 10.5px tall, so this is one clear line
+          // of separation and no more.
+          if (lastLabelY - y >= 15) { drawn.push([f, y]); lastLabelY = y; }
+          else {
+            // A minor tick. Short, on the edges only, so it says "the axis
+            // continues" without ruling a line across the data.
+            const my = Math.round(y) + 0.5;
+            rule(0, my, 5, my, 0.24, 0.32);
+            if (twoSided) rule(w - 5, my, w, my, 0.24, 0.32);
+          }
         }
+
+        ctx.lineWidth = 1;
+        for (let i = 0; i < drawn.length; i++) {
+          const [f, yRaw] = drawn[i];
+          const y = Math.round(yRaw) + 0.5;
+          rule(0, y, w, y, 0.20, 0.28);
+          // The unit goes on the first label only. Candidates are walked
+          // low to high, so that is the one at the bottom of the axis --
+          // where a y-axis unit belongs anyway. Once is enough to say which
+          // axis this is; on every label it is noise.
+          const lbl = fmtHz(f) + (i === 0 ? ' Hz' : '');
+          const tw = ctx.measureText(lbl).width;
+          const put = (x, align) => {
+            ctx.textAlign = align;
+            ctx.fillStyle = 'rgba(0,0,0,0.66)';
+            ctx.fillRect(align === 'left' ? x - 3 : x - tw - 3, y - 11,
+                         tw + 6, 13);
+            ctx.fillStyle = 'rgba(255,255,255,0.96)';
+            ctx.fillText(lbl, x, y - 1.5);
+          };
+          put(5, 'left');
+          if (twoSided) put(w - 5, 'right');
+        }
+        ctx.restore();
       }
     }
 
     drawOverlayMarks(ctx, pane, res, w, h, t0, span, P);
   }
 
-  /* 1-2-5 ticks on a log frequency axis. */
-  function niceLogTicks(f0, f1) {
+  /* Candidate frequencies for a y axis, finest first in each decade.
+
+     Offered, not used: the caller labels the ones that fit and puts a short
+     tick where a number would collide. 1-2-5 per decade was the whole set
+     before, which on a 1-250 Hz panel is eight numbers however tall the pane
+     is -- and the useful part of an LFP axis is 4-12 Hz, where 1-2-5 has
+     nothing to say between 2 and 5.
+
+     The list stays 1-2-5 friendly: those come first within a decade, so when
+     only a few survive the spacing test they are the round ones. */
+  const FREQ_STEPS = [1, 2, 5, 3, 7, 1.5, 4, 6, 8];
+
+  function freqTickCandidates(f0, f1) {
     const out = [];
     for (let d = Math.floor(Math.log10(f0)); d <= Math.ceil(Math.log10(f1)); d++) {
-      for (const m of [1, 2, 5]) {
-        const f = m * Math.pow(10, d);
+      const p = Math.pow(10, d);
+      for (const m of FREQ_STEPS) {
+        const f = m * p;
         if (f >= f0 && f <= f1) out.push(f);
       }
     }
-    return out;
+    /* Ascending, so the caller walks from the bottom of the axis upward and
+       "the last label" is always the one below. Ties cannot happen -- the
+       steps are distinct within a decade -- but a decade boundary can
+       duplicate 10 x 1 and 1 x 10, so they are unique-d. */
+    return Array.from(new Set(out)).sort((a, b) => a - b);
   }
 
   /* Events, bookmarks and spike marks over a raster, so an image panel carries
@@ -4009,6 +4792,13 @@ BARRY.views.xplore = (function () {
     const sess = sessionOf(pane);
     if (!sess) return;
     const X = (t) => Math.round(((t - t0) / span) * w) + 0.5;
+    /* The candidate being curated, on the CSD and the rasters too. These
+       panels are half of why the aid window exists -- deciding whether a
+       deflection is a dentate spike is done by looking at the CSD next to
+       the trace -- and they were the panels that never showed which
+       candidate was in question. Drawn first so the trace marks and
+       bookmarks sit over it. */
+    drawCurationMarks(ctx, sess, t0, t0 + span, 0, w, 0, h, P, {});
 
     ctx.save();
     for (const ev of (sess.events || [])) {
@@ -4139,10 +4929,15 @@ BARRY.views.xplore = (function () {
     return { t0: sess.t0, span: sess.span };
   }
 
+  /* True while a re-centre is in flight, so the re-centre below cannot
+     trigger another one. */
+  let recentring = false;
+
   function setWindow(index, t0, span, fromRemote) {
     const pane = typeof index === 'number' ? XF.panes[index] : null;
     const sess = pane ? sessionOf(pane) : index;   // allow a session directly
     if (!sess) return;
+    const spanWas = sess.span;
 
     if (XF.linkMode === 'none' && pane) {
       [pane.t0, pane.span] = clampWin(sess, t0, span);
@@ -4174,6 +4969,20 @@ BARRY.views.xplore = (function () {
     BARRY.activity.log('window.change',
       { t0: round(t0, 4), span: round(span, 4), scope: XF.linkMode }, sess);
     queueSaveState(sess);
+
+    /* Zooming while curating keeps the candidate in the middle.
+
+       goTo centres it when it moves you there, but every other way of
+       changing the span -- the pane's own zoom buttons, the wheel, the span
+       field, Fit -- went through here and left the candidate wherever the
+       arithmetic put it, which on a big zoom is off the edge. A pan is left
+       alone: looking around deliberately is a different act, and the marker
+       draws an edge arrow when the candidate is off screen. */
+    if (!recentring && Math.abs((sess.span || 0) - (spanWas || 0)) > 1e-9
+        && BARRY.curate && BARRY.curate.active && BARRY.curate.recentre) {
+      recentring = true;
+      try { BARRY.curate.recentre(); } finally { recentring = false; }
+    }
   }
 
   function pan(index, frac) {
@@ -4197,7 +5006,85 @@ BARRY.views.xplore = (function () {
   /* ---------- cross-window "Link time" ---------- */
   const LINK_ID = 'w' + Math.random().toString(36).slice(2, 9);
   let linkSeen = 0;
-  let linkPoll = null;
+  let linkPoll = null;      // the pending timer between held polls
+  let linkRun = 0;          // bumped to abandon an in-flight chain
+  let linkFails = 0;
+
+  /* How long the server may hold a poll open, in seconds. Zero means the
+     old behaviour: ask, get an answer straight away, wait, ask again.
+
+     Zero is for harnesses. Headless Chrome's --virtual-time-budget pauses
+     the virtual clock while a fetch is outstanding, so a held request stops
+     the clock and the run never finishes. Harnesses are served from /_dev/
+     and are same-origin, so a framed or popped-open app can just look at
+     who opened it. */
+  function linkHold() {
+    try {
+      const drivers = [window.parent !== window ? window.parent : null,
+                       window.opener];
+      for (const d of drivers) {
+        if (d && d.location
+            && String(d.location.pathname).startsWith('/_dev/')) return 0;
+      }
+    } catch (e) { /* cross-origin, so not one of ours */ }
+    /* ?linkhold=0 turns it off for one page load. Needed for anything
+       driving the app under headless Chrome's --virtual-time-budget, which
+       stops the virtual clock while a fetch is outstanding -- a screenshot
+       of a page holding a 25s poll never gets taken. */
+    try {
+      const q = new URLSearchParams(location.search).get('linkhold');
+      if (q != null && isFinite(+q) && +q >= 0 && +q <= 60) return +q;
+    } catch (e) { /* ignore */ }
+    try {
+      const v = localStorage.getItem('barry.linkHold');
+      if (v != null && isFinite(+v) && +v >= 0 && +v <= 60) return +v;
+    } catch (e) { /* ignore */ }
+    return 25;
+  }
+
+  /* The poll is a chain rather than an interval: each request can be held
+     open for 25 seconds, and setInterval would have stacked a new one on top
+     every 400ms. One outstanding request at a time, and the next is only
+     scheduled once the last has come back. */
+  function linkStop() {
+    linkRun += 1;
+    clearTimeout(linkPoll);
+    linkPoll = null;
+  }
+
+  function linkStart() {
+    linkStop();
+    const mine = linkRun;
+    const step = async () => {
+      if (mine !== linkRun) return;               // superseded
+      // A hidden window has nothing to redraw, so let it idle rather than
+      // holding a connection open for a tab nobody is looking at.
+      // Nothing open means pollLink returns without waiting on anything,
+      // so the short gap below would spin. Idle instead.
+      if (document.hidden || !XF.order.length) {
+        linkPoll = setTimeout(step, 2000);
+        return;
+      }
+      try { await pollLink(); } catch (e) { linkFails += 1; }
+      if (mine !== linkRun) return;
+      // A held poll returns when it has something or after its timeout, so
+      // the gap between them is only there to stop a tight loop if the
+      // server is refusing -- backed off, capped at ten seconds.
+      /* With the hold on, the request itself is the wait, so this gap only
+         exists to stop a tight loop. With it off there is nothing else
+         pacing the chain, so it has to do the pacing. */
+      const gap = linkFails ? Math.min(500 * linkFails, 10000)
+        : (linkHold() ? 60 : (XF.linkMode === 'none' ? 900 : 400));
+      linkPoll = setTimeout(step, gap);
+    };
+    step();
+  }
+
+  /* Coming back to a window that was in the background should not mean
+     waiting out an idle gap before it catches up. */
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && linkPoll) linkStart();
+  });
   let linkSending = false;
 
   /* Which shared slot a session's time window travels on.
@@ -4206,8 +5093,126 @@ BARRY.views.xplore = (function () {
      opened from a different mount still lands on the same channel. */
   function linkChannel(sess) {
     if (XF.linkMode === 'all') return 'time';
-    const id = sess && sess.identity ? sess.identity : {};
-    return 'time:' + (id.key || id.loose_key || (sess && sess.path) || 'unknown');
+    return 'time:' + sessKey(sess);
+  }
+
+  /* One name for a recording, across windows. The gid when there is one,
+     because it survives a re-read header; the derived key or the path
+     otherwise. */
+  function sessKey(sess) {
+    const id = (sess && sess.identity) || {};
+    return id.gid || id.key || id.loose_key || (sess && sess.path) || 'unknown';
+  }
+
+  /* Facts about the recording, as opposed to somebody's view of it. Its own
+     channel, and never gated on the link mode: a channel is broken or it is
+     not, and that does not depend on whether the second window happens to be
+     following the first. */
+  function factsChannel(sess) {
+    return 'facts:' + sessKey(sess);
+  }
+
+  /* Announce that curation is running on this recording, or has stopped.
+
+     A pointer only: which set, and where in it. Windows that care fetch the
+     rest. Sent on its own channel rather than with the facts so that moving
+     between candidates -- which happens constantly -- cannot make a window
+     rebuild its bad-channel state. */
+  function curationChannel(sess) {
+    return 'curation:' + sessKey(sess);
+  }
+
+  async function publishCuration(sess, pointer) {
+    if (!sess) return;
+    try {
+      const res = await apiPost('/api/link', {
+        channel: curationChannel(sess), origin: LINK_ID,
+        value: pointer || { off: true },
+      });
+      if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
+    } catch (e) { /* best effort, like the rest of the linking */ }
+  }
+
+  /* The receiving side. Fetch the set once, then follow the index.
+
+     Guarded against re-fetching on every move: the set only changes when a
+     decision is made, and the pointer's `n` and `stamp` are enough to tell
+     that from a plain move. */
+  async function adoptCuration(sess, pointer) {
+    if (!sess) return false;
+    if (!pointer || pointer.off) {
+      if (sess.curationMarks) { delete sess.curationMarks; return true; }
+      return false;
+    }
+    const have = sess.curationMarks;
+    const sameSet = have && have.kind === pointer.kind
+                 && (have.events || []).length === pointer.n;
+    if (sameSet) {
+      const revJump = (pointer.rev || 0) - (have.rev || 0);
+      /* A decision was made. Apply it from the pointer rather than
+         re-reading the set -- one keystroke should not cost a request in
+         every other window. */
+      if (revJump === 1 && pointer.changed
+          && have.events[pointer.changed.index]) {
+        have.events[pointer.changed.index].label = pointer.changed.label;
+        have.rev = pointer.rev;
+        have.index = pointer.index;
+        have.at = pointer.at;
+        return true;
+      }
+      if (revJump > 1 || revJump < 0) {
+        // More changed than we were told about: the live slot only holds the
+        // latest value, so a fast burst coalesces. Re-read rather than drift.
+      } else {
+        if (have.index === pointer.index && have.at === pointer.at) return false;
+        have.index = pointer.index;
+        have.at = pointer.at;
+        have.rev = pointer.rev;
+        return true;
+      }
+    }
+    if (sess._curFetching) return false;
+    sess._curFetching = true;
+    try {
+      const res = await api('/api/curation/' + encodeURIComponent(pointer.gid)
+                            + '/' + encodeURIComponent(pointer.kind));
+      const set = res.set || {};
+      const labels = (set.labels || []).map(
+        (l) => ({ id: l.id, color: l.color, name: l.name }));
+      sess.curationMarks = {
+        kind: pointer.kind, index: pointer.index, at: pointer.at,
+        rev: pointer.rev || 0,
+        labels,
+        events: (set.events || []).map(
+          (e) => ({ start: e.start, label: e.label || null })),
+        gid: pointer.gid,
+      };
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      sess._curFetching = false;
+    }
+  }
+
+  async function publishFacts(sess) {
+    if (!sess) return;
+    try {
+      const res = await apiPost('/api/link', {
+        channel: factsChannel(sess), origin: LINK_ID,
+        value: {
+          bad: Array.from(sess.bad).sort((a, b) => a - b),
+          // How the file has to be read, not how you want to look at it.
+          // A window reading 32 channels while another reads 64 is two
+          // windows disagreeing about what the recording is.
+          evenOnly: !!sess.evenOnly,
+          invert: !!sess.invert,
+        },
+      });
+      if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
+    } catch (e) {
+      /* best effort, like the rest of the linking */
+    }
   }
 
   async function publishLink(t0, span, sess) {
@@ -4262,13 +5267,94 @@ BARRY.views.xplore = (function () {
   }
 
   async function pollLink() {
-    if (XF.linkMode === 'none' || !XF.order.length) return;
+    // Note what is NOT gated on the link mode: the facts poll below. A window
+    // that is not following another window still needs to know that CSC41 is
+    // broken.
+    if (!XF.order.length) return;
     let data;
-    try { data = await api('/api/link?since=' + linkSeen); } catch (e) { return; }
-    linkSeen = Math.max(linkSeen, data.version || 0);
+    try {
+      // Held open by the server for up to 25s. An idle window costs one
+      // request every 25s rather than two and a half a second, and a move
+      // in another window arrives at once instead of within 400ms.
+      const hold = linkHold();
+      data = await api('/api/link?since=' + linkSeen
+                       + (hold ? '&wait=' + hold : ''));
+    } catch (e) { linkFails += 1; return; }
+    linkFails = 0;
+    /* Assigned, not max()'d. The version counter lives in the server's
+       memory, so a restart puts it back below what this tab has already
+       seen -- and max() would keep the stale high number and quietly ignore
+       every update from then on, for the life of the tab. */
+    const seen = data.version || 0;
+    if (data.reset || seen < linkSeen) linkSeen = seen;
+    else linkSeen = Math.max(linkSeen, seen);
     const channels = data.channels || {};
 
     let touched = false;
+
+    // ---- facts, always ------------------------------------------------
+    for (const id of XF.order) {
+      const sess = XF.sessions[id];
+      const slot = channels[factsChannel(sess)];
+      if (!slot || slot.origin === LINK_ID || !slot.value) continue;
+      const v = slot.value;
+
+      const bad = v.bad;
+      if (Array.isArray(bad)) {
+        const want = bad.map(Number).sort((a, b) => a - b).join(',');
+        const have = Array.from(sess.bad).sort((a, b) => a - b).join(',');
+        if (want !== have) {
+          sess.bad = new Set(bad.map(Number));
+          touched = true;
+        }
+      }
+
+      /* Even-only and invert change which samples are read, so applying one
+         means reopening the recording rather than redrawing it.
+
+         Compared before acting, and only ever acted on when it differs --
+         that is what stops two windows reopening each other in a loop. The
+         reopen deliberately does not publish; the window that was clicked
+         already did. */
+      const wantEven = !!v.evenOnly, wantInv = !!v.invert;
+      if (v.evenOnly !== undefined
+          && (wantEven !== !!sess.evenOnly || wantInv !== !!sess.invert)) {
+        sess.evenOnly = wantEven;
+        sess.invert = wantInv;
+        // Fire and forget: pollLink is not the place to wait on a reopen.
+        reopenSameView(sess);
+      }
+    }
+
+    /* Curation, always -- like the facts above, and for the same reason.
+       Which candidate is being decided is a fact about what is going on,
+       not one window's opinion about how to look at the data, and the aid
+       window has no other way to learn it. */
+    for (const id of XF.order) {
+      const sess = XF.sessions[id];
+      const slot = channels[curationChannel(sess)];
+      if (!slot || slot.origin === LINK_ID) continue;
+      // Skipped in the window running the curation: it owns the marks and
+      // would otherwise fetch back what it just published.
+      if (sess.curation) continue;
+      if (await adoptCuration(sess, slot.value)) {
+        // Repaint rather than refetch: only the overlay changed.
+        for (let i = 0; i < XF.nPanes; i++) {
+          const p2 = XF.panes[i];
+          if (p2 && p2.sessionId === sess.id) {
+            drawPane(i);
+            if (p2._panelData) drawRasterGrid(p2, p2._panelData);
+            if (p2._mini) drawMini(i, p2, sess);
+          }
+        }
+      }
+    }
+
+    if (XF.linkMode === 'none') {
+      if (touched) { render(); XF.order.forEach(
+        (id) => refreshSession(XF.sessions[id])); }
+      return;
+    }
 
     if (XF.linkMode === 'all') {
       const slot = channels.time;
@@ -4308,8 +5394,7 @@ BARRY.views.xplore = (function () {
     const sel = $('#xfLinkMode');
     if (sel && sel.value !== XF.linkMode) sel.value = XF.linkMode;
 
-    clearInterval(linkPoll);
-    linkPoll = null;
+    linkStop();
 
     if (XF.linkMode === 'none') {
       // Seed each pane from its session so nothing jumps on the switch.
@@ -4318,10 +5403,15 @@ BARRY.views.xplore = (function () {
         if (p && o) { p.t0 = o.t0; p.span = o.span; }
       });
       render();
-    } else {
-      // Both linked scopes need the poll: a popped-out window is the only way
-      // the other half of a "within session" pair can hear about a change.
-      linkPoll = setInterval(pollLink, 400);
+    }
+    /* The poll runs whatever the mode is. Both linked scopes need it -- a
+       popped-out window is the only way the other half of a "within session"
+       pair hears about a change -- and unlinked windows still need to hear
+       that a channel has been marked bad, which is a fact about the
+       recording rather than somebody's view of it. Slower when unlinked,
+       because nothing there is latency-critical. */
+    linkStart();
+    if (XF.linkMode !== 'none') {
       const s = active();
       if (s) setWindow(XF.focused, s.t0, s.span);
     }
@@ -4346,6 +5436,18 @@ BARRY.views.xplore = (function () {
           hp: sess.hp, lp: sess.lp, notch: sess.notch,
           normalize: sess.normalize, spacing: sess.spacing,
           ylim: sess.ylim, clim: sess.clim,
+          // The frequency band and whether it is locked. Without these the
+          // band was remembered by nothing and every reopen went back to
+          // the built-in 20.
+          // How the file is read. Not a view preference: getting either
+          // wrong makes every panel wrong, and they were being forgotten
+          // the moment a recording was closed.
+          even_only: !!sess.evenOnly,
+          invert: !!sess.invert,
+          probe: sess.probe || null,
+          fdefault: sess.fdefault || null,
+          flock: sess.flock !== false,
+          stft_mode: sess.stftMode || null,
           channels: Array.from(sess.sel).sort((a, b) => a - b),
         },
       });
@@ -4511,8 +5613,16 @@ BARRY.views.xplore = (function () {
     drawEventMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
     drawSpikeMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
     drawBookmarkMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
-    // Curation draws last, over everything, because while you are curating
-    // it is the only thing you are looking at.
+    /* Curation draws last, over everything, because while you are curating
+       it is the only thing you are looking at.
+
+       Through sess.curationMarks rather than by asking BARRY.curate, so the
+       aid window -- a separate page, with no curate module in it -- draws
+       the same marks from the same data. The curate module still gets a
+       turn afterwards for the label text, which only makes sense in the
+       window doing the deciding. */
+    drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
+                      P, {});
     if (BARRY.curate && BARRY.curate.draw) {
       BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
@@ -4658,9 +5768,18 @@ BARRY.views.xplore = (function () {
           },
         }),
         el('span', { class: 'nm', text: c.label }),
-        compact ? null : el('button', {
-          class: 'badbtn', text: isBad ? 'BAD' : 'ok',
-          title: isBad ? 'Marked bad -- click to clear' : 'Mark this channel bad',
+        /* Always present. At 64 channels the lane is under 15px and this
+           used to be dropped, which took the bad-channel control away on
+           precisely the recordings that have the most wires to go wrong.
+           It shrinks to a dot instead -- hollow for ok, filled for bad --
+           which fits in any lane the traces themselves fit in. */
+        el('button', {
+          class: 'badbtn' + (compact ? ' dot' : ''),
+          text: compact ? '' : (isBad ? 'BAD' : 'ok'),
+          'aria-label': (isBad ? 'Clear the bad mark on ' : 'Mark bad: ')
+                        + c.label,
+          title: isBad ? c.label + ' is marked bad -- click to clear'
+                       : 'Mark ' + c.label + ' bad',
           onclick: (e) => {
             e.preventDefault(); e.stopPropagation();
             toggleBad(sess, c.number);
@@ -4763,16 +5882,25 @@ BARRY.views.xplore = (function () {
           const b = (ov.lo[i] / peak) * halfH;
           ctx.fillRect(i * bw, mid - a, Math.max(1, bw), Math.max(1, a - b));
         }
-        // RMS on top, so loud stretches read even at this size.
+        /* The average line on top, so loud stretches read even at this
+           size. Mean |amplitude| rather than RMS: squaring makes a bin's
+           value follow its loudest few samples, so one spike lifted a whole
+           minute of the strip and the quiet stretches all looked the same.
+           The mean of the absolute value is what "how big is the signal
+           around here" actually asks for.
+
+           RMS is still sent, and is used if an older cached overview comes
+           back without the new series. */
+        const avg = (ov.mabs && ov.mabs.length === ov.bins) ? ov.mabs : ov.rms;
         let rpeak = 0;
-        for (const v of ov.rms) rpeak = Math.max(rpeak, v);
+        for (const v of avg) rpeak = Math.max(rpeak, v);
         if (rpeak > 0) {
           ctx.globalAlpha = .8;
           ctx.strokeStyle = P.dim;
           ctx.lineWidth = 1;
           ctx.beginPath();
           for (let i = 0; i < ov.bins; i++) {
-            const y = bot - (ov.rms[i] / rpeak) * (bot - top) * .92;
+            const y = bot - (avg[i] / rpeak) * (bot - top) * .92;
             if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(i * bw, y);
           }
           ctx.stroke();
@@ -4781,6 +5909,28 @@ BARRY.views.xplore = (function () {
       }
     } else {
       loadOverview(sess);
+    }
+
+    /* Curation candidates along the whole recording, so the strip shows
+       how far through you are and where the flagged ones bunch up. Small,
+       because at this size the point is the distribution rather than any
+       one of them. */
+    const cm = curationMarks(sess);
+    if (cm && (cm.events || []).length) {
+      ctx.save();
+      const bw2 = Math.max(1, w / Math.max(1, cm.events.length));
+      for (let i = 0; i < cm.events.length; i++) {
+        const e = cm.events[i];
+        const x = (e.start / dur) * w;
+        const isNow = i === cm.index;
+        ctx.globalAlpha = isNow ? 1 : (e.label ? 0.55 : 0.3);
+        ctx.fillStyle = curationColor(cm, e.label, P);
+        ctx.fillRect(x, isNow ? 2 : h - 20,
+                     isNow ? 2 : Math.max(1, Math.min(2, bw2)),
+                     isNow ? h - 13 : 6);
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     if (sess.events.length) {
@@ -4993,7 +6143,13 @@ BARRY.views.xplore = (function () {
       return box;
     }
 
-    const v = el('video', { controls: 'controls', preload: 'metadata' });
+    /* No native controls: they draw a third timeline, in video seconds,
+       right above two of ours -- and on an unconverted file it spans the
+       clip, so it disagreed with the recording bar by ten minutes with
+       nothing to explain why. Play, seek and position are all below;
+       fullscreen and volume are on the right-click menu the browser still
+       provides. */
+    const v = el('video', { preload: 'metadata', playsinline: 'playsinline' });
     const status = el('div', { class: 'video-status hidden' });
     sess._videoEl = v;
     sess._videoStatus = status;
@@ -5041,9 +6197,322 @@ BARRY.views.xplore = (function () {
 
     box.appendChild(v);
     box.appendChild(status);
+    // Two bars, different units, each labelled: where in the video, and
+    // where in the recording.
+    box.appendChild(videoSlider(sess));
+    box.appendChild(recordingBar(sess));
     box.appendChild(bar);
+    if (!sess._video.native) box.appendChild(convertRow(sess));
     syncVideoNow(sess, true);
     return box;
+  }
+
+  /* A scrub bar in recording seconds.
+
+     Deliberately not the browser's own control, which scrubs in video time.
+     Everything else in this pane -- the traces, the CSD, the events, the
+     curation marks -- is on recording time, and on some rigs the camera and
+     the acquisition did not start together, which is what the offset field
+     is for. A bar in video time would disagree with every other panel by
+     that offset and there would be nothing on screen to say so.
+
+     So: the track is the whole recording, the filled part is where you are,
+     the pale band is the window the traces are showing, and dragging moves
+     the recording window -- which moves the video, the traces and everything
+     else together. */
+  /* ------------------------------------------------------------------
+     The video slider: where in this video.
+     ------------------------------------------------------------------
+     Drawn here rather than left to the browser so it can say what it is
+     spanning. On a converted or native file that is the whole recording; on
+     an unconverted one it is the few-second clip that was transcoded around
+     the cursor, which is a different thing and has to be labelled as one.
+     ------------------------------------------------------------------ */
+  function videoSlider(sess) {
+    const track = el('div', { class: 'vs-track' });
+    const played = el('div', { class: 'vs-played' });
+    const knob = el('div', { class: 'vs-knob' });
+    const time = el('span', { class: 'vs-time' });
+    const scope = el('span', { class: 'vs-scope' });
+    track.appendChild(played);
+    track.appendChild(knob);
+
+    const play = el('button', {
+      class: 'mini vs-play', title: 'Play or pause',
+      onclick: () => {
+        const v = sess._videoEl;
+        if (!v) return;
+        if (v.paused) v.play().catch(() => {}); else v.pause();
+      },
+    }, [el('span', { text: '\u25b6' })]);
+
+    const row = el('div', { class: 'vs' }, [
+      play, track, time, scope,
+    ]);
+
+    const paint = () => {
+      const v = sess._videoEl;
+      const len = v && isFinite(v.duration) ? v.duration : 0;
+      const at = v && isFinite(v.currentTime) ? v.currentTime : 0;
+      const pct = len > 0 ? Math.max(0, Math.min(1, at / len)) * 100 : 0;
+      played.style.width = pct + '%';
+      knob.style.left = pct + '%';
+      time.textContent = fmtTime(at) + ' / ' + (len ? fmtTime(len) : '–');
+      const whole = sess._video && (sess._video.native
+                                    || sess._video.converted);
+      scope.textContent = whole ? 'whole file' : 'clip';
+      scope.title = whole
+        ? 'This is the whole video, so it seeks anywhere instantly.'
+        : 'This is a few seconds transcoded around the cursor. Convert the '
+          + 'file to scrub the whole thing.';
+      scope.className = 'vs-scope' + (whole ? '' : ' partial');
+      const g = play.querySelector('span');
+      if (g) g.textContent = (v && !v.paused) ? '\u23f8' : '\u25b6';
+    };
+
+    const seek = (clientX) => {
+      const v = sess._videoEl;
+      if (!v || !isFinite(v.duration) || !(v.duration > 0)) return;
+      const r = track.getBoundingClientRect();
+      const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      try { v.currentTime = f * v.duration; } catch (e) { /* not ready */ }
+      paint();
+    };
+    track.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      seek(e.clientX);
+      const move = (ev) => seek(ev.clientX);
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+    });
+
+    const v0 = sess._videoEl;
+    if (v0) {
+      for (const ev of ['timeupdate', 'seeked', 'play', 'pause',
+                        'durationchange', 'loadedmetadata']) {
+        v0.addEventListener(ev, paint);
+      }
+    }
+    sess._vsPaint = paint;
+    paint();
+    return row;
+  }
+
+  /* ------------------------------------------------------------------
+     The recording bar: the whole session, end to end.
+     ------------------------------------------------------------------
+     This is the pan. The band is the window the traces are showing; the
+     paler stretch is what the video currently covers, which on an
+     unconverted file is only a few seconds and is worth being able to see.
+     Dragging moves the recording window, so the traces, the panels and the
+     video all follow.
+     ------------------------------------------------------------------ */
+  function recordingBar(sess) {
+    const dur = sess.info.duration_s || 0;
+    const track = el('div', { class: 'vrec-track' });
+    const covered = el('div', { class: 'vrec-covered' });
+    const band = el('div', { class: 'vrec-band' });
+    const cursor = el('div', { class: 'vrec-cursor' });
+    const time = el('span', { class: 'vrec-time' });
+    track.appendChild(covered);
+    track.appendChild(band);
+    track.appendChild(cursor);
+
+    const row = el('div', { class: 'vrec' }, [
+      el('span', { class: 'vrec-label', text: 'Recording' }),
+      track, time,
+    ]);
+
+    /* Where the video is, in recording seconds -- the one piece of
+       arithmetic both bars need and the one that was wrong before. A whole
+       file's currentTime is recording time (bar the camera offset); a clip's
+       is relative to wherever that clip starts. */
+    const recTime = () => {
+      const v = sess._videoEl;
+      if (!v || !isFinite(v.currentTime)) return sess.t0;
+      const off = sess._videoOffset || 0;
+      const clip = sess._videoClip;
+      const whole = sess._video && (sess._video.native
+                                    || sess._video.converted);
+      if (!whole && clip) return clip.start + v.currentTime - off;
+      return v.currentTime - off;
+    };
+
+    const paint = () => {
+      if (!(dur > 0)) return;
+      const pc = (t) => Math.max(0, Math.min(1, t / dur)) * 100;
+      // The trace window.
+      const w0 = pc(sess.t0 || 0);
+      const w1 = pc((sess.t0 || 0) + (sess.span || 0));
+      band.style.left = w0 + '%';
+      band.style.width = Math.max(0.5, w1 - w0) + '%';
+      // What the video covers.
+      const whole = sess._video && (sess._video.native
+                                    || sess._video.converted);
+      const clip = sess._videoClip;
+      if (whole) {
+        covered.style.left = '0%';
+        covered.style.width = '100%';
+      } else if (clip) {
+        covered.style.left = pc(clip.start) + '%';
+        covered.style.width = Math.max(0.4, pc(clip.end) - pc(clip.start)) + '%';
+      } else {
+        covered.style.width = '0%';
+      }
+      // Where the video actually is.
+      cursor.style.left = pc(recTime()) + '%';
+      time.textContent = fmtTime(sess.t0 || 0) + ' / ' + fmtTime(dur);
+    };
+
+    const goThere = (clientX) => {
+      const r = track.getBoundingClientRect();
+      const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      const t = f * dur;
+      const idx = XF.panes.findIndex((p) => p && p.sessionId === sess.id);
+      setWindow(idx < 0 ? 0 : idx,
+                Math.max(0, t - (sess.span || 1) / 2), sess.span || 1);
+      paint();
+    };
+    track.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      goThere(e.clientX);
+      const move = (ev) => goThere(ev.clientX);
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+    });
+
+    const v0 = sess._videoEl;
+    if (v0) {
+      for (const ev of ['timeupdate', 'seeked', 'loadedmetadata']) {
+        v0.addEventListener(ev, paint);
+      }
+    }
+    sess._videoPaint = paint;
+    paint();
+    return row;
+  }
+
+  /* Offer to convert the whole file, and show how it is going.
+
+     Without it, an MPEG is transcoded a few seconds at a time around the
+     cursor: every jump is an ffmpeg run and there is a seam at every clip
+     boundary. Converted once, the browser seeks it like any other video.
+     The cost is disk and a few minutes, so it is offered rather than done
+     -- and the clip player keeps working while it runs. */
+  function convertRow(sess) {
+    const f = sess._video;
+    const row = el('div', { class: 'vconv' });
+    const label = el('span', { class: 'vconv-text' });
+    /* Every video beside this recording, with the one being shown marked --
+       so converting is not limited to whichever file the pane happened to
+       open with. */
+    const others = (sess.media.videos || []).filter((x) => !x.native);
+    const barOuter = el('div', { class: 'vconv-bar hidden' });
+    const barFill = el('div', { class: 'vconv-fill' });
+    barOuter.appendChild(barFill);
+    const btn = el('button', { class: 'btn sm' });
+    row.appendChild(label);
+    row.appendChild(barOuter);
+    row.appendChild(el('div', { class: 'spacer', style: 'flex:1' }));
+    if (others.length > 1) {
+      row.appendChild(el('select', {
+        title: 'Which file to convert',
+        onchange: (e) => {
+          sess._video = (sess.media.videos || [])
+            .find((x) => x.path === e.target.value) || sess._video;
+          render();
+        },
+      }, others.map((x) => el('option', {
+        value: x.path,
+        text: x.name + (x.converted ? '  \u2713' : ''),
+        selected: x.path === f.path ? 'selected' : null,
+      }))));
+    }
+    row.appendChild(btn);
+
+    let timer = null;
+    const stopPolling = () => { clearInterval(timer); timer = null; };
+    // The pane can be rebuilt underneath us; do not leave a timer behind.
+    const pane = XF.panes[XF.focused];
+    if (pane) (pane._teardown = pane._teardown || []).push(stopPolling);
+
+    const paint = (st) => {
+      const state = (st && st.state) || 'none';
+      if (state === 'ready') {
+        stopPolling();
+        barOuter.classList.add('hidden');
+        label.textContent = 'Converted \u2014 scrubbing is native now'
+          + (st.bytes ? '  \u00b7  ' + (st.bytes / 1048576).toFixed(0) + ' MB'
+                      : '');
+        btn.textContent = 'Reconvert';
+        btn.className = 'btn ghost sm';
+        btn.onclick = () => start(true);
+        if (!f.converted) {
+          // Switch the player over to it without rebuilding the pane.
+          f.converted = true;
+          syncVideoNow(sess, true);
+        }
+      } else if (state === 'running' || state === 'queued') {
+        barOuter.classList.remove('hidden');
+        barFill.style.width = (st.pct || 0) + '%';
+        label.textContent = 'Converting to MP4\u2026 ' + (st.pct || 0) + '%'
+          + (st.seconds_done ? '  \u00b7  ' + fmtTime(st.seconds_done)
+                               + ' done' : '');
+        btn.textContent = 'Converting\u2026';
+        btn.disabled = 'disabled';
+        if (!timer) timer = setInterval(poll, 1200);
+      } else if (state === 'error') {
+        stopPolling();
+        barOuter.classList.add('hidden');
+        label.textContent = 'Conversion failed: ' + (st.error || '');
+        btn.textContent = 'Try again';
+        btn.disabled = null;
+        btn.onclick = () => start(true);
+      } else {
+        stopPolling();
+        barOuter.classList.add('hidden');
+        label.textContent = 'This is MPEG, so each jump is transcoded on the '
+          + 'fly. Convert it once for instant scrubbing.';
+        btn.textContent = 'Convert to MP4';
+        btn.disabled = null;
+        btn.onclick = () => start(false);
+      }
+    };
+
+    const poll = async () => {
+      try {
+        paint(await api('/api/video/convert/status?path='
+                        + encodeURIComponent(f.path)));
+      } catch (e) { stopPolling(); }
+    };
+
+    const start = async (force) => {
+      btn.disabled = 'disabled';
+      btn.textContent = 'Starting\u2026';
+      try {
+        const st = await apiPost('/api/video/convert',
+                                 { path: f.path, force: !!force });
+        BARRY.activity.log('video.convert', { path: f.path }, sess);
+        paint(st);
+        if (!timer) timer = setInterval(poll, 1200);
+      } catch (e) {
+        toast(e.message, 'err', 9000);
+        btn.disabled = null;
+        btn.textContent = 'Convert to MP4';
+      }
+    };
+
+    paint(f.converted ? { state: 'ready' } : { state: 'none' });
+    poll();
+    return row;
   }
 
   function videoStatus(sess, text, kind) {
@@ -5053,7 +6522,13 @@ BARRY.views.xplore = (function () {
     n.className = 'video-status' + (text ? '' : ' hidden') + (kind ? ' ' + kind : '');
   }
 
-  function syncVideo(pane, sess) { syncVideoNow(sess, false); }
+  function syncVideo(pane, sess) {
+    syncVideoNow(sess, false);
+    // Both bars show the trace window or the clip's extent, so a move has to
+    // repaint them.
+    if (sess._videoPaint) sess._videoPaint();
+    if (sess._vsPaint) sess._vsPaint();
+  }
 
   /* Fetching a transcoded clip costs an ffmpeg run, so it is worth only doing
      when it is actually needed. */
@@ -5061,9 +6536,13 @@ BARRY.views.xplore = (function () {
     const v = sess._videoEl, f = sess._video;
     if (!v || !f) return;
 
-    if (f.native) {
-      // Playable directly: load once and just seek.
-      const url = '/api/video/clip?path=' + encodeURIComponent(f.path);
+    /* A converted copy is an ordinary MP4, so it behaves exactly like a file
+       that was native to begin with: loaded once, seeked by the browser, no
+       server in the loop. That is the whole reason for converting. */
+    if (f.native || f.converted) {
+      const url = f.converted && !f.native
+        ? '/api/video/converted?path=' + encodeURIComponent(f.path)
+        : '/api/video/clip?path=' + encodeURIComponent(f.path);
       if (v.dataset.src !== url) { v.dataset.src = url; v.src = url; }
       const seek = () => {
         try { v.currentTime = Math.max(0, sess.t0 + sess._videoOffset); }
@@ -5288,8 +6767,40 @@ BARRY.views.xplore = (function () {
       BARRY.figure.open(XF, active());
     });
 
+    /* Switching probe is not a label change: an H10-D is six independent
+       columns and a CSD is only meaningful down one of them, so picking it
+       lays the panes out that way. Going back to H3 restores a single pane
+       over the whole array. */
+    const probeSel = $('#xfProbe');
+    if (probeSel) probeSel.addEventListener('change', (e) => {
+      const sess = active();
+      if (!sess) { toast('Open a recording first.', 'err');
+                   e.target.value = 'h3'; return; }
+      sess.probe = e.target.value;
+      queueSaveState(sess);
+      BARRY.activity.log('probe.change', { probe: sess.probe }, sess);
+      if (sess.probe === 'h3') {
+        BARRY.views.xplore.setPanes([{ panel: 'csd' }], { col: 0.5, row: 0.5 });
+      } else if (!layoutProbe(sess, 'csd')) {
+        // The layout refused -- say so by putting the control back rather
+        // than leaving it claiming a mode that is not on.
+        sess.probe = 'h3';
+        e.target.value = 'h3';
+      }
+    });
+
     $$('#xfLayoutSeg button').forEach((b) =>
       b.addEventListener('click', () => {
+        // Leaving the six-up by hand means leaving H10 mode: the per-pane
+        // column overrides would otherwise survive into a layout that has
+        // nowhere to show them.
+        const s0 = active();
+        if (s0 && s0.probe === 'h10d') {
+          s0.probe = 'h3';
+          if (probeSel) probeSel.value = 'h3';
+          XF.panes.forEach((pp) => { if (pp) { delete pp.channels;
+                                               delete pp.colTag; } });
+        }
         XF.nPanes = +b.dataset.panes;
         $$('#xfLayoutSeg button').forEach((x) => x.classList.toggle('active', x === b));
         // Fill new panes with the sessions already open.
@@ -5358,6 +6869,31 @@ BARRY.views.xplore = (function () {
        back of a gesture, so it waits for the first click rather than being
        refused on load. */
     const params = new URLSearchParams(location.search);
+
+    /* A window opened with a whole layout in it. Applied after the session
+       is open, so the panes have something to draw. */
+    const wantPanes = params.get('panes');
+    if (wantPanes) {
+      try {
+        const specs = JSON.parse(wantPanes);
+        if (Array.isArray(specs) && specs.length) {
+          // Deferred: openSession is still in flight when this runs on a
+          // cold load, and setPanes needs XF.active to exist.
+          const apply = () => {
+            if (!XF.order.length) { setTimeout(apply, 120); return; }
+            BARRY.views.xplore.setPanes(specs, { col: 0.5, row: 0.5 });
+          };
+          apply();
+        }
+      } catch (e) {
+        toast('That window was opened with a layout it could not read.',
+              'err', 6000);
+      }
+      // The aid window is a second screen for one recording; say so, so it
+      // is never mistaken for the window you are supposed to be reading.
+      if (params.get('role') === 'aids') document.body.classList.add('aid-window');
+    }
+
     const chrome = params.get('chrome');
     if (chrome) {
       const off = chrome === 'none'
@@ -5378,6 +6914,8 @@ BARRY.views.xplore = (function () {
     }
 
     loadPresets();
+    api('/api/probes').then((d) => { XF.probes = d.probes || []; })
+      .catch(() => {});
     api('/api/panels').then((d) => {
       XF.panelDefs = d.panels || [];
       XF.colormaps = d.colormaps || [];
@@ -5408,12 +6946,26 @@ BARRY.views.xplore = (function () {
   return {
     init,
     open: openSession,
+    popOutPanes,
     addBankedEvents,
     fillPanes,
     state: XF,
     refreshAll,
     render,
     setWindow,
+    /* Marking a channel bad, from outside. Exposed because it is a fact
+       about the recording rather than a view action -- curation and
+       StrataScope both have reason to set it, and it is the one thing a
+       cross-window test has to be able to trigger without hunting for a
+       button that moves depending on the pane's height. */
+    toggleBad: (number, sess) => toggleBad(sess || active(), number),
+    /* Even-only and invert change what is read off disk, so a harness that
+       wants to test them syncing between windows has to be able to set them
+       the way the toggle does -- publish, then reopen. Exposed for
+       web/_dev/evensync.html. */
+    publishFacts: (sess) => publishFacts(sess || active()),
+    publishCuration: (sess, pointer) => publishCuration(sess, pointer),
+    reopenSameView: (sess) => reopenSameView(sess || active()),
     // Repaint what is already loaded. Curation redraws its overlay on every
     // keystroke; going back to the server for the same samples would make
     // the fastest part of the job the slowest.
@@ -5422,11 +6974,25 @@ BARRY.views.xplore = (function () {
         for (let i = 0; i < XF.nPanes; i++) drawPane(i);
       } else drawPane(index);
     },
+    /* Curation knows which candidates are coming next; this view knows what
+       a panel request looks like. Neither can prewarm without the other. */
+    prewarm: (times, index) => {
+      const i = (index == null) ? XF.focused : index;
+      for (let k = 0; k < XF.nPanes; k++) {
+        // Every image pane, not just the focused one: in curation the
+        // scalogram beside the traces is the slow one.
+        if (XF.panes[k] && isImagePanel(XF.panes[k].panel)) prewarmAround(k, times);
+      }
+      return i;
+    },
     // Curation mode needs to arrange the panes for its own job, and to move
     // the window to each candidate. Exposed rather than reimplemented, so
     // there is one function that knows how a pane is built.
     setPanes: (specs, split) => {
-      XF.nPanes = Math.max(1, Math.min(4, specs.length));
+      // Six, not four: an H10-D has six probe columns and each one needs a
+      // pane of its own, because a CSD across columns is arithmetic over
+      // contacts that are not neighbours.
+      XF.nPanes = Math.max(1, Math.min(6, specs.length));
       XF.panes = specs.slice(0, XF.nPanes).map((p) => Object.assign(
         { sessionId: XF.active }, p));
       // Applied before the render that reads it, or the first paint uses the

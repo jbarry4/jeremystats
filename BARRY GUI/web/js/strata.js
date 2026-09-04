@@ -34,6 +34,15 @@ BARRY.strata = (function () {
      Entering and leaving
      ================================================================== */
   async function enter(gidIn) {
+    /* One mode at a time.
+
+       Both modes take over the panes, the keyboard and the aid window, and
+       both leave a toolbar behind. Entering one on top of the other left two
+       toolbars stacked, two sets of key handlers fighting over the same
+       presses, and an aid window belonging to whichever got there first. */
+    // `active` is a getter, not a method -- calling it throws.
+    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
+    if (sheet) exit();                 // re-entering: start clean
     gid = gidIn;
     let info;
     try {
@@ -78,6 +87,9 @@ BARRY.strata = (function () {
     sheet = started.sheet;
     regions = sheet.regions || [];
 
+    // Said in the shell, not just in a toolbar: a mode you can be in
+    // without noticing is one you make mistakes in.
+    setMode('strata', exit);
     layout();
     sess.strata = { gid, labels: sheet.labels, regions };
     render();
@@ -99,6 +111,9 @@ BARRY.strata = (function () {
       gid, labelled: (sheet.progress || {}).labelled,
     }, sess);
     if (sess) delete sess.strata;
+    if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
+    aidWin = null;
+    setMode(null);
     sheet = null; sess = null; gid = null; brush = null;
     const rail = $('#strataRail');
     if (rail) rail.remove();
@@ -111,15 +126,39 @@ BARRY.strata = (function () {
     if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
   }
 
-  /* The four views the standalone version made you export and upload. Live,
-     and already aligned. */
+  /* The traces get the window; the aids get a window of their own.
+
+     They used to share a 2x2, which meant the squiggles -- the thing a layer
+     boundary is actually read off -- had a quarter of the screen and the
+     channel rail had to compress to match. So: this window is traces, and
+     the four aids move to a second window that follows it. Two monitors and
+     you have the layout everyone was building by hand; one monitor and you
+     alt-tab, which is still better than four squares. */
+  let aidWin = null;
+
   function layout() {
-    BARRY.views.xplore.setPanes([
-      { panel: 'voltage' },
+    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    openAids();
+  }
+
+  function openAids() {
+    // Reuse the window if it is still up: re-entering the mode should focus
+    // the aids, not litter the desktop with copies.
+    if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
+    const every8 = (sess.info.channels || [])
+      .filter((c, i) => i % 8 === 0).map((c) => c.index);
+    aidWin = BARRY.views.xplore.popOutPanes(sess, [
       { panel: 'csd' },
       { panel: 'theta' },
-      { panel: 'traces' },
-    ], { col: 0.5, row: 0.5 });
+      { panel: 'voltage' },
+      { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
+        fmin: 1, fmax: 250 },
+    ], { role: 'aids', name: 'barry-strata-aids', width: 720, height: 1000,
+         // Folded on arrival. These four are for glancing at: the headers,
+         // control strips and channel lists cost more of a short pane than
+         // they are worth, and every one of them has a sliver to bring it
+         // back if you want it.
+         chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
   /* ==================================================================
@@ -236,6 +275,9 @@ BARRY.strata = (function () {
       const row = el('div', {
         class: 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : ''),
         style: reg ? '--cat:' + reg.color : '',
+        // The row shrinks with the lane, so at 64 channels the tooltip is
+        // where the layer name actually lives.
+        title: c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled'),
         onmouseenter: () => {
           hover = i;
           if (painting && brush) paint(c.number, brush);
@@ -289,7 +331,26 @@ BARRY.strata = (function () {
     rows.style.top = top + 'px';
     rows.style.height = height + 'px';
     const n = channels().length || 1;
-    rows.style.setProperty('--lane', (height / n) + 'px');
+    const lane = height / n;
+    rows.style.setProperty('--lane', lane + 'px');
+
+    /* How much room each row actually got, said out loud so the CSS can
+       react to it.
+
+       At 32 channels a lane is around 18px and a row can carry a number, a
+       swatch and a dropdown. At 64 it is nine, and all three were still
+       being drawn -- 64 dropdowns six pixels tall, numbers overlapping
+       their neighbours. The rail became unreadable exactly when the shank
+       had the most to say.
+
+       tight   the dropdown goes; painting with a brush is the way to
+               label anyway, and the swatch widens into a band so the
+               layers read as continuous colour
+       packed  the numbers thin to every fourth, keeping their space so
+               nothing shifts */
+    rows.classList.toggle('tight', lane < 17);
+    rows.classList.toggle('packed', lane < 12);
+    rows.classList.toggle('very-packed', lane < 8.5);
   }
 
   /* ==================================================================
@@ -408,6 +469,14 @@ BARRY.strata = (function () {
 
   return {
     enter, exit, draw, alignRail,
+    // Same reason as curate.js: a reopen replaces the session object.
+    rebind: (next) => {
+      if (!next || !sheet) return;
+      sess = next;
+      sess.strata = { gid, labels: sheet.labels, regions };
+      render();
+      requestAnimationFrame(() => setTimeout(alignRail, 200));
+    },
     get active() { return !!sheet; },
     get state() {
       return sheet ? { gid, labels: sheet.labels,

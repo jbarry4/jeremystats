@@ -1,0 +1,136 @@
+{
+  "_at": {
+    "created": "2026-09-03T21:07:03.081193+00:00",
+    "gid": "2026-09-03T21:07:03.081193+00:00",
+    "imports": "2026-09-03T21:07:03.081193+00:00",
+    "kind": "2026-09-03T21:07:03.081193+00:00",
+    "labels": "2026-09-03T21:07:03.081193+00:00",
+    "name": "2026-09-03T21:07:03.081193+00:00",
+    "schema": "2026-09-03T21:07:03.081193+00:00",
+    "session_label": "2026-09-03T21:07:03.081193+00:00",
+    "source": "2026-09-03T21:07:03.081193+00:00",
+    "updated": "2026-09-03T21:07:03.081193+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e6168265b0a": [
+        "set",
+        "2026-09-03T21:07:03.081193+00:00"
+      ],
+      "e735ef43b7d": [
+        "set",
+        "2026-09-03T21:07:03.081193+00:00"
+      ],
+      "ec72d16e29b": [
+        "set",
+        "2026-09-03T21:07:03.081193+00:00"
+      ],
+      "ef3b27952de": [
+        "set",
+        "2026-09-03T21:07:03.081193+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-03T21:07:03.081193+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-03T17:07:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "events": [
+    {
+      "id": "ef3b27952de",
+      "label": "garbage",
+      "start": 531.35
+    },
+    {
+      "id": "ec72d16e29b",
+      "label": "garbage",
+      "start": 547.079
+    },
+    {
+      "id": "e735ef43b7d",
+      "label": "garbage",
+      "start": 625.815
+    },
+    {
+      "id": "e6168265b0a",
+      "label": "garbage",
+      "start": 1548.814
+    }
+  ],
+  "gid": "s72df5edc7210",
+  "imports": [
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "n": 4,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "340307eba315",
+        "by": "snapshot import",
+        "folder": "M11_HF2_s10jul25",
+        "kind": "snapshot folders"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "M11_HF2_s10jul25",
+  "schema": 1,
+  "session_label": "PTEN m11 s10 2023-07-25",
+  "source": {
+    "bank_entry": "340307eba315",
+    "by": "snapshot import",
+    "folder": "M11_HF2_s10jul25",
+    "kind": "snapshot folders"
+  },
+  "updated": {
+    "at": "2026-09-03T17:07:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

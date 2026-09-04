@@ -1028,21 +1028,64 @@ BARRY.views.storyboard = (function () {
   }
 
   /* A tiny static preview for the rail, so slides are recognizable. */
+  /* The thumbnail in the slide rail.
+
+     It used to draw everything that was not a result image as a filled
+     rectangle, so an arrow, a line, a highlight and a text box were four
+     identical coloured squares -- and the rail is what you navigate a deck
+     by, which it cannot do if every slide looks the same.
+
+     The shapes are drawn with the same two functions the slide itself uses,
+     shapeSvg and inkSvg, which scale to their box through a 100x100 viewBox
+     and so need nothing doing to them to work at thumbnail size. What is NOT
+     shared is itemNode: that carries the drag handlers, the resize handles
+     and a contenteditable text body, none of which belong in a thumbnail. */
   function miniature(sl) {
     const box = el('div', { class: 'sb-mini-inner' });
-    for (const it of (sl.items || []).slice(0, 12)) {
-      const s = 'left:' + (it.x * 100) + '%;top:' + (it.y * 100) + '%;width:'
-              + (it.w * 100) + '%;height:' + (it.h * 100) + '%;';
-      if (it.type === 'result' && it.result_id) {
-        box.appendChild(el('img', {
-          class: 'sb-mini-item', style: s, src: resultSrc(it), alt: '',
+    // In z order, so the thumbnail stacks the way the slide does.
+    const items = (sl.items || []).slice()
+      .sort((a, b) => (a.z || 1) - (b.z || 1)).slice(0, 24);
+    for (const it of items) {
+      if (it.color === undefined && it.colour !== undefined) it.color = it.colour;
+      const rot = Number(it.rot) || 0;
+      const style = 'left:' + (it.x * 100) + '%;top:' + (it.y * 100) + '%;'
+                  + 'width:' + (it.w * 100) + '%;height:' + (it.h * 100) + '%;'
+                  + (rot ? 'transform:rotate(' + rot + 'deg);' : '');
+      const cell = el('div', {
+        class: 'sb-mini-item sb-mini-' + it.type, style,
+      });
+
+      if (it.type === 'result' && (it.result_id || it.rel || it.name)) {
+        cell.appendChild(el('img', {
+          src: resultSrc(it), alt: '', draggable: 'false',
+          // A missing result leaves the cell empty rather than showing a
+          // broken-image glyph at 60px, where it reads as a bug.
+          onerror: (e) => e.target.remove(),
         }));
+      } else if (it.type === 'image' && it.src) {
+        cell.appendChild(el('img', { src: it.src, alt: '', draggable: 'false' }));
+      } else if (it.type === 'text') {
+        // Not contenteditable, and the size is relative: a 14px slide font
+        // would fill a thumbnail. The point is to show there is text here
+        // and roughly where, not to be readable.
+        cell.appendChild(el('div', {
+          // Not 'sb-mini-text': the cell already carries that, because its
+          // class is built from the item type. Two elements answering to one
+          // selector is how a rule ends up applying where it was not meant to.
+          class: 'sb-mini-label',
+          style: 'color:' + (it.color || '#12211b')
+               + ';text-align:' + (it.align || 'left')
+               + ';font-weight:' + (it.bold ? '700' : '400') + ';',
+          text: it.text || '',
+        }));
+      } else if (it.type === 'shape' || it.type === 'highlight') {
+        cell.appendChild(shapeSvg(it));
+      } else if (it.type === 'ink') {
+        cell.appendChild(inkSvg(it));
       } else {
-        box.appendChild(el('div', {
-          class: 'sb-mini-item sb-mini-' + it.type,
-          style: s + 'background:' + (it.color || 'var(--text-3)') + ';',
-        }));
+        cell.style.background = it.color || 'var(--text-3)';
       }
+      box.appendChild(cell);
     }
     return box;
   }
@@ -1824,6 +1867,19 @@ BARRY.views.storyboard = (function () {
       render();
     },
     present: () => { if (deck) present(slideIndex); },
+    /* Put a known set of items on the current slide, without going through
+       the toolbar. Only used by web/_dev/sbthumb.html, which checks that the
+       rail thumbnails draw shapes rather than coloured squares -- building
+       an arrow by hand through the drawing tools would be testing the tools,
+       not the thumbnail. Nothing in the app calls this. */
+    debugSetSlide: (items) => {
+      if (!deck) { deck = newDeck('Harness deck'); slideIndex = 0; }
+      const sl = deck.slides[slideIndex];
+      if (!sl) return 'no slide';
+      sl.items = (items || []).map((it, i) => Object.assign({ z: i + 1 }, it));
+      render();
+      return sl.items.length;
+    },
     onShow: async () => { await loadDecks(); render(); },
   };
 })();

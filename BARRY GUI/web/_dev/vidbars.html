@@ -1,0 +1,164 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the two video bars</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Have a slider for the video and one pan for the entire recording."
+
+   Two controls, two jobs, and the point is that they are NOT the same:
+
+     the video slider   moves the video only. The trace window must not
+                        move -- otherwise it is a second recording bar.
+     the recording bar  moves the recording window, so the traces and every
+                        panel follow. This is the pan.
+
+   They are also in different units on an unconverted file, and each has to
+   say which -- the first version of this pane read 0:03 while the recording
+   was at ten minutes, with nothing on screen to explain it. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  const reg = await (await fetch('/api/registry')).json();
+  let path = null, label = '';
+  outer: for (const p of reg.tree) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.has_video && (s.here || []).length) {
+          path = s.here[0]; label = s.label; break outer;
+        }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no recording with video'); return; }
+  say('note', '  ' + label);
+
+  W.eval("setView('xplore')");
+  await sleep(300);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => W.eval('BARRY.views.xplore.state.order.length') > 0);
+  W.eval("BARRY.views.xplore.setPanes([{panel:'video'}], {col:0.5,row:0.5})");
+  await untilN(() => D.querySelector('.vs-track')
+                  && D.querySelector('.vrec-track'), 300);
+  await sleep(3200);
+
+  head('Both bars exist, and only ours');
+  check('there is a video slider', !!D.querySelector('.vs-track'));
+  check('there is a recording bar', !!D.querySelector('.vrec-track'));
+  const vid = D.querySelector('.video-box video');
+  check('the browser is not drawing a third one',
+        !!vid && !vid.hasAttribute('controls'),
+        vid ? 'the controls attribute is still on' : 'no video element');
+
+  head('Each says what it is measuring');
+  const scope = (D.querySelector('.vs-scope') || {}).textContent || '';
+  const vsTime = (D.querySelector('.vs-time') || {}).textContent || '';
+  const rbTime = (D.querySelector('.vrec-time') || {}).textContent || '';
+  say('note', '  slider: ' + vsTime + '   [' + scope + ']');
+  say('note', '  recording: ' + rbTime);
+  check('the slider says whether it is the whole file or a clip',
+        /clip|whole file/.test(scope), scope);
+  check('the recording bar is labelled',
+        /RECORDING/i.test(
+          (D.querySelector('.vrec-label') || {}).textContent || ''));
+  const totOf = (s) => (s.split('/')[1] || '').trim();
+  check('the two show different totals on a clip',
+        scope === 'whole file' || totOf(vsTime) !== totOf(rbTime),
+        totOf(vsTime) + ' vs ' + totOf(rbTime));
+
+  const winT0 = () => W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'return S.sessions[S.active].t0; })()');
+  const winSpan = () => W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'return S.sessions[S.active].span; })()');
+  const vidAt = () => W.eval('(function(){'
+    + 'var v = document.querySelector(".video-box video");'
+    + 'return v && isFinite(v.currentTime) ? v.currentTime : -1; })()');
+  const drag = (node, frac) => {
+    const r = node.getBoundingClientRect();
+    const x = r.left + r.width * frac;
+    for (const type of ['mousedown', 'mousemove', 'mouseup']) {
+      node.dispatchEvent(new W.MouseEvent(type,
+        { clientX: x, clientY: r.top + r.height / 2, bubbles: true }));
+    }
+  };
+
+  head('The video slider moves the video, not the window');
+  const w0 = winT0(), a0 = vidAt();
+  drag(D.querySelector('.vs-track'), 0.8);
+  await sleep(1400);
+  say('note', '  video ' + a0.toFixed(2) + ' -> ' + vidAt().toFixed(2)
+      + ',  window ' + w0.toFixed(2) + ' -> ' + winT0().toFixed(2));
+  check('the video moved', Math.abs(vidAt() - a0) > 0.5,
+        a0.toFixed(2) + ' -> ' + vidAt().toFixed(2));
+  check('the trace window did not', Math.abs(winT0() - w0) < 0.01,
+        w0.toFixed(3) + ' -> ' + winT0().toFixed(3));
+
+  head('The recording bar moves the window');
+  const w1 = winT0();
+  const dur = W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'return S.sessions[S.active].info.duration_s; })()');
+  drag(D.querySelector('.vrec-track'), 0.7);
+  await sleep(2200);
+  say('note', '  window ' + w1.toFixed(1) + ' -> ' + winT0().toFixed(1)
+      + ' of ' + dur.toFixed(0) + ' s');
+  check('the window moved a long way', Math.abs(winT0() - w1) > 60,
+        w1.toFixed(1) + ' -> ' + winT0().toFixed(1));
+  const centre = winT0() + winSpan() / 2;
+  check('and landed near where it was clicked',
+        Math.abs(centre - dur * 0.7) < dur * 0.03,
+        centre.toFixed(0) + ' s, wanted about ' + (dur * 0.7).toFixed(0));
+
+  head('The recording bar shows what the video covers');
+  const cov = D.querySelector('.vrec-covered');
+  const covW = cov ? cov.getBoundingClientRect().width : 0;
+  const trkW = D.querySelector('.vrec-track').getBoundingClientRect().width;
+  say('note', '  covered ' + covW.toFixed(0) + ' of ' + trkW.toFixed(0) + ' px');
+  check('the covered stretch is drawn', covW > 1, covW.toFixed(1) + ' px');
+  check('and on a clip it is only a small part of the recording',
+        scope === 'whole file' ? covW > trkW * 0.9 : covW < trkW * 0.5,
+        covW.toFixed(0) + ' / ' + trkW.toFixed(0));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'vidbars: ' + bad + ' FAILED' : 'vidbars: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'vidbars: harness CRASH';
+} })();
+</script>

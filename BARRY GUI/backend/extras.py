@@ -332,7 +332,9 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     idx = max(0, min(int(idx), len(chans) - 1))
     ch = chans[idx]
 
-    key = (session.get("path"), ch.get("number"), int(bins))
+    # "v2" because the shape of the response changed: a cache entry written
+    # before mabs existed would come back without it.
+    key = (session.get("path"), ch.get("number"), int(bins), "v2")
     hit = _OVERVIEW_CACHE.get(key)
     if hit:
         return hit
@@ -346,6 +348,11 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     lo = np.zeros(bins, dtype=np.float32)
     hi = np.zeros(bins, dtype=np.float32)
     amp = np.zeros(bins, dtype=np.float32)
+    # Mean |amplitude| per bin. RMS is dominated by the loudest few samples
+    # in a bin, so a single spike lifts the whole bin; the mean of the
+    # absolute value tracks how big the signal typically is, which is what
+    # you want from a strip you are using to find the busy stretches.
+    mabs = np.zeros(bins, dtype=np.float32)
 
     # A bin can be minutes long, so read a short probe from the head of each
     # rather than the whole span -- keeps the strip quick on network storage.
@@ -361,6 +368,7 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
         lo[i] = float(np.min(seg))
         hi[i] = float(np.max(seg))
         amp[i] = float(np.sqrt(np.mean(np.square(seg, dtype=np.float64))))
+        mabs[i] = float(np.mean(np.abs(seg, dtype=np.float64)))
 
     res = {
         "ok": True, "bins": bins, "duration_s": dur,
@@ -369,6 +377,7 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
         "lo": [round(float(v), 1) for v in lo],
         "hi": [round(float(v), 1) for v in hi],
         "rms": [round(float(v), 1) for v in amp],
+        "mabs": [round(float(v), 1) for v in mabs],
         "probe_s": probe,
     }
     if len(_OVERVIEW_CACHE) > 24:

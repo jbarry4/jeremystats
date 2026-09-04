@@ -1,0 +1,164 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — do four panes converge?</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* Companion to panesync.html, and deliberately narrower.
+
+   panesync measures how long four panes take to agree, in milliseconds.
+   Under headless Chrome's --virtual-time-budget -- which is how these are
+   run -- that number is not measuring anything: virtual time fast-forwards
+   through timers while the server is still really rendering three panel
+   images, so the clock can advance two minutes between two samples and
+   every pane looks "stuck" for "135 seconds". The timing half of that
+   harness is only meaningful in a real browser.
+
+   The half that matters either way is whether a pane ends up on the window
+   it was asked for. A lost update is a bug at any speed. So this waits on
+   events rather than on elapsed time, and asks one question: after a move,
+   and after a burst of moves, is every pane on the target window?
+
+   Written while checking whether replacing the 400ms link poll with a held
+   one had broken propagation. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Bounded by attempts, not by a deadline: virtual time makes a deadline
+   meaningless, but "I sampled 400 times and it never got there" is a real
+   statement either way. */
+async function untilN(fn, tries = 400, gap = 80) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+
+  W.eval("setView('xplore')");
+  await sleep(200);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => D.querySelector('.pane-canvas-host canvas'));
+  W.eval("BARRY.views.xplore.setPanes(["
+       + "{panel:'traces'},{panel:'spectrogram'},"
+       + "{panel:'csd'},{panel:'voltage'}], {col:0.5,row:0.5})");
+  /* Link scope is set through its control, not through the module: setLink
+     is not exported, so `BARRY.views.xplore.setLink && ...` quietly did
+     nothing and left the panes independent -- at which point pane 0 moving
+     is *supposed* not to move the others, and the harness was reporting
+     correct behaviour as a failure. */
+  const linkSel = D.getElementById('xfLinkMode');
+  if (!linkSel) { say('bad', 'no link-scope control to drive'); return; }
+  linkSel.value = 'session';
+  linkSel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(500);
+  check('the panes are linked within the session',
+        W.eval('BARRY.views.xplore.state.linkMode') === 'session',
+        W.eval('BARRY.views.xplore.state.linkMode'));
+
+  /* A known starting point. View state is remembered per recording, so
+     without this the window is wherever the last run left it -- and a
+     "move" to somewhere it already is proves nothing. */
+  W.eval('BARRY.views.xplore.setWindow(0, 20, 12.8)');
+  await sleep(1200);
+
+  /* What each pane believes it is showing, from the data it last drew --
+     not from the request it sent. */
+  /* An image pane records what it drew in _panelData.extent. A traces pane
+     has no panel image -- it draws from fetched samples -- and keeps its
+     drawn window in _win, falling back to the session's. Reading only the
+     first of those reported the traces pane as null, which looked like a
+     stuck pane and was the harness not knowing where to look. */
+  const windows = () => JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes.map(function(p){'
+    + 'if (!p) return null;'
+    + 'var S = BARRY.views.xplore.state.sessions[p.sessionId];'
+    + 'if (p.panel === "traces") {'
+    + '  var w = p._win || (S && S.win);'
+    + '  return w && isFinite(w.t0) ? Math.round(w.t0*1000)/1000 : null; }'
+    + 'var d = p._panelData;'
+    + 'return d && d.extent ? Math.round(d.extent[0]*1000)/1000 : null; }))'));
+
+  const nPanes = W.eval('BARRY.views.xplore.state.nPanes');
+  check('four panes are up', nPanes === 4, 'nPanes=' + nPanes);
+  const settled0 = await untilN(() => windows().every((v) => v !== null));
+  check('all four have drawn something', settled0 >= 0,
+        JSON.stringify(windows()));
+  say('note', '  start: ' + JSON.stringify(windows()));
+
+  head('One move, and everybody follows');
+  const target = 86.767;
+  W.eval('BARRY.views.xplore.setWindow(0, ' + target + ', 12.8)');
+  const near = (v) => v !== null && Math.abs(v - target) < 0.6;
+  const n1 = await untilN(() => windows().every(near));
+  check('every pane reached the window it was asked for', n1 >= 0,
+        JSON.stringify(windows()) + ' wanted ' + target);
+  if (n1 >= 0) say('note', '  converged after ' + (n1 + 1) + ' samples');
+
+  head('A burst of moves, which is what panning is');
+  const seq = [90, 95, 100, 105, 108, 110.783];
+  for (const t of seq) {
+    W.eval('BARRY.views.xplore.setWindow(0, ' + t + ', 12.8)');
+    await sleep(40);
+  }
+  const last = seq[seq.length - 1];
+  const near2 = (v) => v !== null && Math.abs(v - last) < 0.6;
+  const n2 = await untilN(() => windows().every(near2));
+  check('a burst ends on the last move, everywhere', n2 >= 0,
+        JSON.stringify(windows()) + ' wanted ' + last);
+  if (n2 >= 0) say('note', '  converged after ' + (n2 + 1) + ' samples');
+
+  head('And nothing is left disagreeing');
+  const w = windows();
+  const spread = Math.max.apply(null, w) - Math.min.apply(null, w);
+  check('all four agree with each other', spread < 0.6,
+        JSON.stringify(w) + ' spread ' + spread.toFixed(3) + ' s');
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'panesync3: ' + bad + ' FAILED' : 'panesync3: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'panesync3: harness CRASH';
+} })();
+</script>

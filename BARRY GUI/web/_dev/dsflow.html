@@ -1,0 +1,256 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the whole DS curation workflow</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Go through the entire workflow and all the possibilities of DS curation
+   and make sure everything is crisp."
+
+   So: the whole thing, in the order a person does it, with the awkward
+   cases rather than the happy path. What this deliberately checks:
+
+     - entering a set that is fully sorted lands on a pass with work in it,
+       not on an empty one
+     - the marker is centred, and STAYS centred through a zoom
+     - every label key works, and shows in the tally
+     - undo goes back a decision AND back a candidate
+     - the review filter actually filters, and refuses an empty pass
+     - the first and last candidates do not break stepping
+     - a decision survives a reload from the server
+     - leaving and re-entering resumes rather than restarting
+*/
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  const sets = (await (await fetch('/api/curation')).json()).sets || [];
+  const target = sets.filter(
+    (s) => ((s.progress || {}).by_label || {}).flag > 8)[0];
+  if (!target) { say('bad', 'no imported set with enough flags'); return; }
+  const gid = target.gid;
+  say('note', '  ' + target.session_label + '  '
+      + JSON.stringify((target.progress || {}).by_label));
+
+  const st = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.state)'));
+  const marks = () => JSON.parse(W.eval(
+    'JSON.stringify(BARRY.curate.lastDraw())'));
+  const sess = () => JSON.parse(W.eval(
+    'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];'
+    + 'return s ? { t0: s.t0, span: s.span } : null; })())'));
+  const evAt = (i) => JSON.parse(W.eval(
+    'JSON.stringify(BARRY.curate.events()[' + i + '] || null)'));
+  const centreOff = () => {
+    const s = sess(), m = marks();
+    if (!s || !m || m.current == null) return 999;
+    return Math.abs((s.t0 + s.span / 2) - m.current);
+  };
+
+  head('1. Opening a fully sorted set');
+  W.eval("setView('toolkit')");
+  await sleep(250);
+  await W.eval('BARRY.curate.enter(' + JSON.stringify(gid) + ', "ds")');
+  await untilN(() => W.eval('!!BARRY.curate.active'));
+  check('it opened', !!W.eval('BARRY.curate.active'));
+  await untilN(() => D.querySelector('.pane-canvas-host canvas'), 250);
+  await sleep(2200);
+  const s0 = st();
+  say('note', '  ' + JSON.stringify(s0));
+  check('nothing is left undecided in this set', s0.left === 0,
+        s0.left + ' undecided');
+  const review0 = W.eval('(function(){'
+    + 'var b = document.querySelector("#curReview .active");'
+    + 'return b ? b.textContent : "?"; })()');
+  say('note', '  review pass: ' + review0);
+  check('it did not open on an empty pass', /Flagged|All/.test(review0),
+        review0);
+  check('and it landed on a flagged candidate',
+        (evAt(s0.index) || {}).label === 'flag',
+        JSON.stringify(evAt(s0.index)));
+
+  head('2. The candidate is centred, and stays centred through a zoom');
+  check('centred to begin with', centreOff() < 0.06,
+        centreOff().toFixed(4) + ' s off centre');
+  const spanWas = sess().span;
+  /* Zoom the way the pane does, not through the curation field. */
+  W.eval('BARRY.views.xplore.setWindow(0, ' + (sess().t0)
+       + ', ' + (spanWas * 4) + ')');
+  await sleep(1400);
+  say('note', '  span ' + spanWas + ' -> ' + sess().span
+      + ', off centre by ' + centreOff().toFixed(4) + ' s');
+  check('still centred after zooming out', centreOff() < 0.12,
+        centreOff().toFixed(4) + ' s off centre');
+  W.eval('BARRY.views.xplore.setWindow(0, ' + (sess().t0)
+       + ', ' + (spanWas / 4) + ')');
+  await sleep(1400);
+  check('still centred after zooming in', centreOff() < 0.05,
+        centreOff().toFixed(4) + ' s off centre');
+  check('the marker is drawn there', marks().drewCurrent === true,
+        JSON.stringify(marks()));
+  W.eval('BARRY.views.xplore.setWindow(0, ' + sess().t0 + ', 1)');
+  await sleep(1000);
+
+  head('3. Every label, by its key');
+  const vocab = JSON.parse(W.eval(
+    'JSON.stringify((BARRY.curate.state && []) || [])'));
+  const labels = ['spike', 'garbage', 'flag', 'review'];
+  const keyFor = { spike: 'd', garbage: 'g', flag: 'f', review: 'r' };
+  const startIdx = st().index;
+  const touched = [];
+  for (const lab of labels) {
+    const i = st().index;
+    const was = (evAt(i) || {}).label;
+    const ev = new W.KeyboardEvent('keydown',
+      { key: keyFor[lab], bubbles: true });
+    W.document.dispatchEvent(ev);
+    await untilN(() => (evAt(i) || {}).label === lab, 60);
+    const got = (evAt(i) || {}).label;
+    check('pressing ' + keyFor[lab] + ' sets ' + lab, got === lab,
+          'candidate ' + i + ' was ' + was + ', now ' + got);
+    touched.push([i, was]);
+    await sleep(250);
+  }
+  check('and it moved on each time', st().index !== startIdx,
+        'still on ' + st().index);
+
+  head('4. Undo goes back a decision and back a candidate');
+  const beforeUndo = st().index;
+  const lastPair = touched[touched.length - 1];
+  W.document.dispatchEvent(new W.KeyboardEvent('keydown',
+    { key: 'u', bubbles: true }));
+  await untilN(() => st().index === lastPair[0], 60);
+  check('it went back to the candidate', st().index === lastPair[0],
+        'expected ' + lastPair[0] + ', on ' + st().index);
+  await untilN(() => (evAt(lastPair[0]) || {}).label === lastPair[1], 60);
+  check('and put the old decision back',
+        (evAt(lastPair[0]) || {}).label === lastPair[1],
+        'expected ' + lastPair[1] + ', got '
+        + (evAt(lastPair[0]) || {}).label);
+
+  head('5. The review filter');
+  const pickPass = (name) => W.eval('(function(){'
+    + 'var b = Array.from(document.querySelectorAll("#curReview button"))'
+    + '.find(function(x){ return /' + name + '/.test(x.textContent); });'
+    + 'if (b) b.click(); return !!b; })()');
+  check('there is a Flagged pass', pickPass('Flagged'));
+  await sleep(700);
+  const onFlag = (evAt(st().index) || {}).label;
+  check('it lands on a flagged one', onFlag === 'flag', String(onFlag));
+  /* Stepping in that pass must only visit flagged ones. */
+  let allFlag = true;
+  for (let k = 0; k < 4; k++) {
+    W.eval('BARRY.curate.step(1)');
+    await sleep(500);
+    const l = (evAt(st().index) || {}).label;
+    if (l !== 'flag') { allFlag = false;
+      say('bad', 'stepping in the flagged pass reached a ' + l); }
+  }
+  check('stepping in the flagged pass stays on flagged ones', allFlag);
+  check('there is an All pass', pickPass('All'));
+  await sleep(600);
+
+  head('6. The ends of the set');
+  W.eval('BARRY.curate.goTo(0)');
+  await sleep(700);
+  check('it can go to the first', st().index === 0, String(st().index));
+  W.eval('BARRY.curate.step(-1)');
+  await sleep(500);
+  check('stepping back from the first stays put', st().index === 0,
+        String(st().index));
+  const last = st().total - 1;
+  W.eval('BARRY.curate.goTo(' + last + ')');
+  await sleep(700);
+  check('it can go to the last', st().index === last, String(st().index));
+  W.eval('BARRY.curate.step(1)');
+  await sleep(500);
+  check('stepping past the last stays put', st().index === last,
+        String(st().index));
+  check('and the marker is still drawn at the end',
+        marks().drewCurrent === true, JSON.stringify(marks()));
+
+  head('7. The decisions are on the server, not just on screen');
+  const fresh = await (await fetch('/api/curation/'
+    + encodeURIComponent(gid) + '/ds')).json();
+  const server = (fresh.set || {}).events || [];
+  let agree = 0, disagree = [];
+  for (const [i, was] of touched) {
+    const mine = evAt(i), theirs = server[i];
+    if (mine && theirs && mine.label === theirs.label) agree += 1;
+    else disagree.push(i + ': screen=' + (mine || {}).label
+                       + ' server=' + (theirs || {}).label);
+  }
+  check('every decision made here is on the server',
+        !disagree.length, disagree.join('; '));
+  say('note', '  ' + agree + ' of ' + touched.length + ' checked');
+
+  head('8. Leaving and coming back resumes');
+  const whereWas = st().index;
+  W.eval('BARRY.curate.exit()');
+  await sleep(500);
+  check('it left', !W.eval('!!BARRY.curate.active'));
+  check('and cleared the marks from the session',
+        !W.eval('!!(function(){var S=BARRY.views.xplore.state;'
+              + 'var s=S.sessions[S.active]; return s && s.curationMarks;})()'));
+  await W.eval('BARRY.curate.enter(' + JSON.stringify(gid) + ', "ds")');
+  await untilN(() => W.eval('!!BARRY.curate.active'));
+  await sleep(1800);
+  check('it came back', !!W.eval('BARRY.curate.active'));
+  const back = st();
+  say('note', '  resumed at index ' + back.index + ' (was ' + whereWas + ')');
+  check('with the decisions intact', back.total === s0.total,
+        back.total + ' vs ' + s0.total);
+  check('and the marker drawn', marks().drewCurrent === true,
+        JSON.stringify(marks()));
+
+  head('9. Banking is offered and says what it will do');
+  const bankBtn = W.eval('(function(){'
+    + 'var b = Array.from(document.querySelectorAll("#curBar button"))'
+    + '.find(function(x){ return /Bank/.test(x.textContent); });'
+    + 'return b ? b.textContent : null; })()');
+  check('there is a bank button', !!bankBtn, String(bankBtn));
+
+  W.eval('BARRY.curate.exit()');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'dsflow: ' + bad + ' FAILED' : 'dsflow: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'dsflow: harness CRASH';
+} })();
+</script>

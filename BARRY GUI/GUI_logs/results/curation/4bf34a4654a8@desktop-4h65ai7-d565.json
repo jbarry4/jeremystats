@@ -1,0 +1,23 @@
+{
+  "_at": {
+    "key": "2026-09-03T13:21:15.973649+00:00",
+    "rel": "2026-09-03T13:21:15.973649+00:00",
+    "starred": "2026-09-03T13:21:15.973649+00:00",
+    "updated": "2026-09-03T13:21:15.973649+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-03T13:21:15.973649+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "test figures/pten m7 s2 2023-08-22_20260902_152927.png",
+  "rel": "Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-03T09:21:15-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

@@ -21,6 +21,13 @@
       </div>
     </div>
 
+    <button id="railToggle" class="rail-toggle" title="Collapse the menu">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M3 6h14M3 10h14M3 14h14"/>
+      </svg>
+      <span>Menu</span>
+    </button>
+
     <div class="nav-group">
       <button class="nav-item active" data-view="pipeline">
         <svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>
@@ -94,7 +101,7 @@
     <!-- ---------- PIPELINE ---------- -->
     <section class="view active" id="view-pipeline">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>IED Pipeline</h1>
           <p class="sub">Point it at a folder and walk the stages in order.</p>
         </div>
@@ -139,7 +146,7 @@
     <!-- ---------- EXPLORER ---------- -->
     <section class="view" id="view-explorer">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Explorer</h1>
           <p class="sub" id="explorerSub">One-off runs across the whole repo.</p>
         </div>
@@ -185,6 +192,16 @@
             <button data-panes="2">2</button>
             <button data-panes="4">4</button>
           </div>
+          <!-- Probe geometry. An H10-D is six independent columns, and a CSD
+               is only meaningful down one of them, so switching to it lays
+               out six panes rather than changing a label. -->
+          <div class="ctl" id="xfProbeWrap" title="Which probe this recording was made with">
+            <label>Probe</label>
+            <select id="xfProbe">
+              <option value="h3" selected>H3 · one linear array</option>
+              <option value="h10d">H10-D · 6 columns</option>
+            </select>
+          </div>
           <div class="ctl" id="xfLinkWrap" title="How far a time change should propagate">
             <label>Link time</label>
             <select id="xfLinkMode">
@@ -198,6 +215,15 @@
           <button class="btn sm" id="xfFigure">Figure builder</button>
         </div>
       </header>
+
+      <!-- Named across the top whenever a mode is on. Hidden otherwise;
+           see .mode-banner in app.css. -->
+      <div class="mode-banner" id="modeBanner">
+        <b id="modeName"></b>
+        <span class="mode-what" id="modeWhat"></span>
+        <div class="spacer"></div>
+        <button id="modeLeave">Leave this mode</button>
+      </div>
 
       <div class="xf-body" id="xfBody">
         <div class="dropzone tall" id="xfDrop">
@@ -221,7 +247,7 @@
     <!-- ---------- SESSIONS ---------- -->
     <section class="view" id="view-sessions">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Sessions</h1>
           <p class="sub" id="sessSub">Scan a data root and open any recording.</p>
         </div>
@@ -279,7 +305,7 @@
     <!-- ---------- HISTORY ---------- -->
     <section class="view" id="view-history">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>History</h1>
           <p class="sub" id="histSub">Every run, with its parameters and session — pooled from GUI_logs.</p>
         </div>
@@ -318,7 +344,7 @@
     <!-- ---------- ERRORS ---------- -->
     <section class="view" id="view-errors">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Errors</h1>
           <p class="sub" id="errSub">Everything that failed, with full context — saved to GUI_logs/errors.</p>
         </div>
@@ -334,7 +360,7 @@
     <!-- ---------- RESULTS ---------- -->
     <section class="view" id="view-results">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Results</h1>
           <p class="sub" id="resultsSub">Everything the GUI has saved, in the repo's Results folder.</p>
         </div>
@@ -351,7 +377,7 @@
     <!-- ---------- EVENT BANK ---------- -->
     <section class="view" id="view-eventbank">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Event Bank</h1>
           <p class="sub" id="bankSub">Detected events, filed by project, mouse, session and type.</p>
         </div>
@@ -367,7 +393,7 @@
     <!-- ---------- STORYBOARD ---------- -->
     <section class="view" id="view-storyboard">
       <header class="view-head compact">
-        <div>
+        <div class="head-titles">
           <h1>Storyboard</h1>
           <p class="sub">Build a narrated deck from your results.</p>
         </div>
@@ -379,7 +405,7 @@
     <!-- ---------- TOOLKIT ---------- -->
     <section class="view" id="view-toolkit">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>ToolKit</h1>
           <p class="sub">Jobs that run across many recordings at once.</p>
         </div>
@@ -393,7 +419,7 @@
     <!-- ---------- MISC ---------- -->
     <section class="view" id="view-misc">
       <header class="view-head">
-        <div>
+        <div class="head-titles">
           <h1>Misc</h1>
           <p class="sub">Loose scripts, scratch work, and workbench utilities.</p>
         </div>
@@ -458,6 +484,7 @@
 <script src="js/storyboard.js"></script>
 <script src="js/hk_views.js"></script>
 <script src="js/housekeeping.js"></script>
+<script src="js/kilosort.js"></script>
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/strata.js"></script>

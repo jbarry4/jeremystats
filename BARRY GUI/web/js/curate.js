@@ -34,12 +34,30 @@ BARRY.curate = (function () {
   let span = 1.0;         // seconds of recording shown around it
   let history = [];       // {id, from} so undo means something
   let saving = 0;
-  let onlyLeft = true;    // step past the ones already decided
+  /* Which candidates the arrows visit.
+
+       left   the ones with no decision yet -- the first pass
+       flag   the ones marked Flag, which is the second pass over the ones
+              that needed a longer look
+       all    everything, for checking work
+
+     `onlyLeft` was a boolean here, and a flagged candidate counts as
+     decided, so there was no way to come back to them short of stepping
+     through the whole set again. */
+  let review = 'left';
+  /* Bumped whenever a decision changes, so another window can tell a move
+     (cheap, nothing to re-read) from a relabel (its copy is now stale). */
+  let markRev = 0;
 
   /* ==================================================================
      Entering and leaving
      ================================================================== */
   async function enter(gid, kindId, opts) {
+    // See the same note in strata.js: one mode at a time, or the two stack
+    // their toolbars and their key handlers on top of each other.
+    // `active` is a getter, not a method -- calling it throws.
+    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    if (set_) exit();
     let data;
     try {
       data = await api('/api/curation/' + encodeURIComponent(gid) + '/'
@@ -63,15 +81,30 @@ BARRY.curate = (function () {
     sess = await BARRY.views.xplore.open(path);
     if (!sess) return false;
 
-    span = (opts && opts.span) || (set_.kind === 'ds' ? 0.6 : 2.0);
+    // One second either way. A dentate spike is a few tens of
+    // milliseconds and what you need around it is enough context to tell it
+    // from an artifact -- 0.6 s was tight enough that a spike near the edge
+    // of the window had nothing on one side of it.
+    span = (opts && opts.span) || 1.0;
     index = 0;
     history = [];
-    onlyLeft = true;
+    /* Open on a pass that has something in it.
 
+       An imported sort arrives with every candidate already decided, so the
+       undecided pass is empty and the mode would open on a blank screen --
+       which is exactly the case this was built for: "a lot of them have been
+       sorted and we just need to review the flagged items". */
+    review = 'left';
+
+    setMode('curate', exit);
     layout();
     // Hand the candidates to the session so the trace can draw them.
     sess.curation = { kind: set_.kind, set: set_, index: 0 };
-    goTo(firstUndecided(), true);
+    publishMarks();
+    if (!events().some((e) => !e.label)) {
+      review = events().some((e) => e.label === 'flag') ? 'flag' : 'all';
+    }
+    goTo(firstWanted(), true);
     render();
 
     BARRY.activity.log('curation.enter', {
@@ -86,7 +119,15 @@ BARRY.curate = (function () {
     BARRY.activity.log('curation.leave', {
       gid: set_.gid, kind: set_.kind, left: left(),
     }, sess);
-    if (sess) delete sess.curation;
+    if (sess) { delete sess.curation; delete sess.curationMarks; }
+    // Tell the other windows the mode is over, or they keep drawing marks
+    // for a set nobody is deciding any more.
+    if (sess && BARRY.views.xplore.publishCuration) {
+      BARRY.views.xplore.publishCuration(sess, null);
+    }
+    if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
+    aidWin = null;
+    setMode(null);
     set_ = null; kind = null; sess = null; history = [];
     const bar = $('#curBar');
     if (bar) bar.remove();
@@ -100,23 +141,46 @@ BARRY.curate = (function () {
      thing you are looking for or an artifact on one wire, so they are up
      from the start rather than something you go and enable. Everything is
      still an ordinary pane, so it can be rearranged like any other. */
+  let aidWin = null;
+
   function layout() {
-    const every8 = sess.info.channels
+    // Same reasoning as StrataScope: what you are deciding -- is this
+    // deflection a dentate spike or one bad wire -- is read off the traces,
+    // so they get the window and the aids get their own.
+    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    openAids();
+  }
+
+  function openAids() {
+    if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
+    const every8 = (sess.info.channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    BARRY.views.xplore.setPanes([
-      { panel: 'traces' },
+    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+      { panel: 'csd' },
+      { panel: 'theta' },
+      { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-      { panel: 'csd' },
-      { panel: 'voltage' },
-    // The traces get the bigger share; the rest are for glancing at.
-    ], { col: 0.62, row: 0.55 });
+    ], { role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
+         // Folded on arrival. These four are for glancing at: the headers,
+         // control strips and channel lists cost more of a short pane than
+         // they are worth, and every one of them has a sliver to bring it
+         // back if you want it.
+         chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
   /* ==================================================================
      Moving
      ================================================================== */
   const events = () => (set_ && set_.events) || [];
+  /* Does this candidate belong to the pass being made? */
+  const wanted = (ev) => {
+    if (!ev) return false;
+    if (review === 'all') return true;
+    if (review === 'flag') return ev.label === 'flag';
+    return !ev.label;
+  };
+  const nWanted = () => events().filter(wanted).length;
   const current = () => events()[index] || null;
   const left = () => events().filter((e) => !e.label).length;
 
@@ -125,15 +189,75 @@ BARRY.curate = (function () {
     return i < 0 ? 0 : i;
   }
 
+  /* The first candidate in whichever pass is on. */
+  function firstWanted() {
+    const i = events().findIndex(wanted);
+    return i < 0 ? 0 : i;
+  }
+
+  /* Put the marks where everything that draws can find them.
+
+     The image panels and the overview strip read sess.curationMarks, and so
+     does the aid window -- a separate page with no curate module in it. This
+     is the only path by which any of them learn about a candidate. */
+  let lastChange = null;
+
+  function publishMarks() {
+    if (!sess || !set_) return;
+    sess.curationMarks = {
+      kind: set_.kind,
+      index,
+      at: (current() || {}).start,
+      labels: (kind.labels || []).map((l) => ({ id: l.id, color: l.color,
+                                                name: l.name })),
+      events: events().map((e) => ({ start: e.start, label: e.label || null })),
+      gid: set_.gid,
+    };
+    if (BARRY.views.xplore.publishCuration) {
+      BARRY.views.xplore.publishCuration(sess, {
+        gid: set_.gid, kind: set_.kind, index,
+        at: (current() || {}).start, n: events().length,
+        rev: markRev,
+        /* The decision that was just made, so the other window can apply it
+           without re-reading five hundred events. It refetches only if the
+           revision has jumped by more than one, which means it missed
+           something -- the live slot holds the latest value, so a burst of
+           fast keystrokes can coalesce. */
+        changed: lastChange,
+      });
+    }
+  }
+
   function goTo(i, quiet) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (sess.curation) sess.curation.index = index;
+    publishMarks();
     // Centred, so the thing is where the eye already is.
     BARRY.views.xplore.setWindow(0, Math.max(0, ev.start - span / 2), span);
     if (!quiet) render();
+    warmAhead();
+  }
+
+  /* Have the next few candidates rendered before they are asked for.
+
+     This is the loop the whole mode is: jump, look, press a key, jump. The
+     scalogram is a couple of seconds of work and it was paid on every jump,
+     including jumping back to one already seen. Both directions are warmed
+     because u and p go backwards, and going back used to cost exactly as
+     much as going forward for no reason at all. */
+  function warmAhead() {
+    if (!BARRY.views.xplore.prewarm) return;
+    const all = events();
+    if (!all.length) return;
+    const want = [];
+    for (let d = 1; d <= 8; d++) {
+      if (all[index + d]) want.push(all[index + d].start);
+      if (d <= 3 && all[index - d]) want.push(all[index - d].start);
+    }
+    if (want.length) BARRY.views.xplore.prewarm(want);
   }
 
   function step(d) {
@@ -147,7 +271,7 @@ BARRY.curate = (function () {
               null, 2500);
         return;
       }
-      if (!onlyLeft || !events()[i].label) break;
+      if (wanted(events()[i])) break;
     }
     goTo(i);
   }
@@ -164,6 +288,9 @@ BARRY.curate = (function () {
     // a failure puts it back and says so rather than pretending.
     ev.label = labelId;
     history.push({ id: ev.id, from: was });
+    markRev += 1;
+    lastChange = { index, label: labelId };
+    publishMarks();          // that mark's colour just changed
     if (history.length > 500) history.shift();
     render();
     // Move on before the round trip, which is the whole point of the mode.
@@ -179,6 +306,17 @@ BARRY.curate = (function () {
       if (res.progress) set_._progress = res.progress;
     } catch (e) {
       ev.label = was;
+      /* The set has been deleted out from under us -- from the ToolKit, or
+         on another machine. Every further keystroke would fail the same way
+         and put another red toast on screen, which is how a trace ends up
+         full of identical 400s. Say it once and leave the mode, because
+         there is nothing left to curate. */
+      if (/no curation set/i.test(e.message || '')) {
+        toast('That curation set has been deleted, so there is nothing to '
+              + 'save into. Leaving curation.', 'err', 9000);
+        exit();
+        return;
+      }
       toast('That did not save: ' + e.message, 'err', 8000);
       render();
     } finally {
@@ -193,6 +331,10 @@ BARRY.curate = (function () {
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
     events()[at].label = last.from;
+    // Same as a decision as far as the other windows are concerned: a mark
+    // just changed colour, and goTo below is what tells them.
+    markRev += 1;
+    lastChange = { index: at, label: last.from };
     // Back to the one that was got wrong, which is what undo has to mean
     // once you have already moved on.
     goTo(at);
@@ -259,13 +401,46 @@ BARRY.curate = (function () {
       el('button', { class: 'mini', text: '↶', title: 'Undo  (u)',
                      disabled: history.length ? null : 'disabled',
                      onclick: undo }),
-      el('label', { class: 'toggle sm' + (onlyLeft ? ' on' : ''),
-                    title: 'Step past the ones already decided' }, [
-        el('input', {
-          type: 'checkbox', checked: onlyLeft ? 'checked' : null,
-          onchange: (e) => { onlyLeft = e.target.checked; render(); },
-        }),
-        el('span', { text: 'Skip decided' }),
+      /* Which pass you are making. Flagged is the one that was missing:
+         Flag is already a label in both vocabularies, and marking one used
+         to mean never finding it again without walking the whole set. */
+      el('div', { class: 'ctl' }, [
+        el('label', { text: 'Review' }),
+        el('div', { class: 'seg sm', id: 'curReview' }, [
+          ['left', 'Undecided', 'The ones with no decision yet'],
+          ['flag', 'Flagged', 'Only the ones marked Flag \u2014 the second '
+                            + 'pass over the ones that needed a longer look'],
+          ['all', 'All', 'Everything, including the ones already decided'],
+        ].map(([id, label, tip]) => el('button', {
+          class: review === id ? 'active' : '',
+          title: tip,
+          onclick: () => {
+            if (review === id) return;
+            const before = review;
+            review = id;
+            const n2 = nWanted();
+            if (!n2) {
+              review = before;
+              toast(id === 'flag'
+                ? 'Nothing is flagged yet \u2014 press f on a candidate that '
+                  + 'needs another look.'
+                : 'Nothing left in that pass.', null, 5000);
+              render();
+              return;
+            }
+            BARRY.activity.log('curation.review', { mode: id, n: n2 }, sess);
+            // Land on the first one in the new pass rather than staying on
+            // a candidate that is not part of it.
+            if (!wanted(current())) {
+              const i = events().findIndex(wanted);
+              if (i >= 0) { goTo(i); return; }
+            }
+            render();
+          },
+          text: label + (id === 'flag'
+            ? ' (' + events().filter((e) => e.label === 'flag').length + ')'
+            : ''),
+        }))),
       ]),
       el('div', { class: 'ctl' }, [
         el('label', { text: 'Window s' }),
@@ -344,9 +519,29 @@ BARRY.curate = (function () {
   /* ==================================================================
      What the trace shows
      ================================================================== */
+  /* What the last paint actually did, so "the marker vanished" can be
+     measured instead of argued about. Read by web/_dev/curmarks.html. */
+  let lastDraw = null;
+
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
-    if (!s || !s.curation || !set_) return;
+    if (!s || !s.curation || !set_) {
+      lastDraw = { ok: false, why: !s ? 'no session'
+                   : (!s.curation ? 'session has no curation'
+                                  : 'no set loaded') };
+      return;
+    }
     const evs = events();
+    const cur = evs[index];
+    lastDraw = {
+      ok: true, index, n: evs.length,
+      t0: win.t0, t1: win.t1,
+      current: cur ? cur.start : null,
+      label: cur ? (cur.label || null) : null,
+      // The one thing that matters: was the candidate being decided inside
+      // the window that got painted?
+      inWindow: !!(cur && cur.start >= win.t0 && cur.start <= win.t1),
+      drew: 0,
+    };
     const dur = win.t1 - win.t0;
     const colorOf = (id) => {
       const l = (kind.labels || []).find((x) => x.id === id);
@@ -371,6 +566,8 @@ BARRY.curate = (function () {
       ctx.moveTo(x, isNow ? y0 : y0 + plotH - 18);
       ctx.lineTo(x, y0 + plotH);
       ctx.stroke();
+      lastDraw.drew += 1;
+      if (isNow) lastDraw.drewCurrent = true;
 
       if (isNow) {
         ctx.setLineDash([]);
@@ -398,6 +595,45 @@ BARRY.curate = (function () {
 
   return {
     enter, exit, draw,
+    // Diagnostics for the marker: what the last paint saw and drew.
+    lastDraw: () => lastDraw,
+    at: () => index,
+    /* The colour the current candidate's marker is drawn in, so a harness
+       can look for it on the canvas rather than guess where it should be. */
+    currentColor: () => {
+      const e = events()[index];
+      if (!e) return null;
+      if (!e.label) return BARRY.token('--accent', '#FFB81C');
+      const l = (kind.labels || []).find((x) => x.id === e.label);
+      return (l && l.color) || null;
+    },
+    // So a harness can move the way the keyboard does.
+    /* Put the current candidate back in the middle, at whatever span the
+       window is now on. Called by setWindow after a zoom. */
+    recentre: () => {
+      if (!set_ || !sess) return;
+      span = sess.span || span;
+      goTo(index, true);
+    },
+    step: (d) => step(d),
+    goTo: (i) => goTo(i),
+    assign: (labelId) => assign(labelId),
+    events: () => events().map((e) => ({ start: e.start, label: e.label })),
+    /* Point at a different session object for the same recording.
+
+       Toggling even-only reopens the recording, which replaces the session
+       object. This module keeps its own reference; without being told, it
+       carries on drawing onto the replaced one, and the candidate marks
+       look to you like they have been lost. */
+    rebind: (next) => {
+      if (!next || !set_) return;
+      sess = next;
+      sess.curation = { kind: set_.kind, set: set_, index };
+      // The marks live on the session, and this is a different session
+      // object for the same recording, so they have to be put back on it.
+      publishMarks();
+      render();
+    },
     get active() { return !!set_; },
     get state() {
       return set_ ? { gid: set_.gid, kind: set_.kind, index,

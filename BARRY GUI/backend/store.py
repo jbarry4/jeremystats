@@ -131,6 +131,7 @@ class Store:
         # is exactly the conflict this whole design exists to avoid.
         for book in (self.sessions, self.presets, self.triage):
             book.absorb_legacy()
+        self._rehome_unkeyed()
         self._absorb_legacy_prefs()
         self._absorb_legacy_logs()
         for kind, default in (("filters", _DEFAULT_FILTERS),
@@ -140,6 +141,29 @@ class Store:
             # once still compiles to one set rather than N copies.
             if not self.presets.read(kind):
                 self.presets.write(kind, dict(default))
+
+    def _rehome_unkeyed(self):
+        """Move a record out of the shared `unknown` file, onto its own id.
+
+        Only ever one record can be in there -- that was the bug -- so this
+        rescues whichever one is, and gets out of the way. Anything already
+        keyed on its gid is left alone.
+        """
+        base = self.session_base("unknown")
+        rec = self.sessions.read(base)
+        if not rec:
+            return None
+        gid = rec.get("gid")
+        if not gid:
+            return None          # nothing better to call it
+        target = self.session_base(gid)
+        if self.sessions.read(target):
+            self.sessions.erase(base)
+            return target
+        rec.pop("_sync", None)
+        self.sessions.write(target, rec)
+        self.sessions.erase(base)
+        return target
 
     def _absorb_legacy_prefs(self):
         old = os.path.join(self.root, "preferences.json")
@@ -284,6 +308,11 @@ class Store:
                 rec = _read_json(os.path.join(folder, name))
                 if rec:
                     out.append(rec)
+        # Sorted by when each run actually happened, not by filename. The
+        # names are random ids, so ordering by them put a day's runs in an
+        # arbitrary order -- close enough to look right at a glance and
+        # wrong whenever it mattered.
+        out.sort(key=_run_time, reverse=True)
         self._runs = out
         self._runs_stamp = stamp
         return out
@@ -319,8 +348,25 @@ class Store:
         return self.sessions.mine(self.session_base(key))
 
     def get_session(self, identity):
-        """Look up a stored session record, matching across machines."""
+        """Look up a stored session record, matching across machines.
+
+        The permanent id is tried first when the caller has one. It is the
+        only identifier that is guaranteed to work: a recording whose folder
+        name says neither mouse nor session has no derived key at all, and
+        ids.match cannot recognise it -- so an update would find nothing,
+        build a fresh record from the identity alone, and quietly drop every
+        field the patch did not mention. That is how two recordings lost
+        their project, their id and each other.
+        """
         from . import ids
+        gid = identity.get("gid")
+        if gid:
+            rec = self.sessions.read(self.session_base(gid))
+            if rec and rec.get("gid") in (gid, None):
+                return rec, "gid"
+            for cand in self.all_sessions():
+                if cand.get("gid") == gid:
+                    return cand, "gid"
         key = identity.get("key")
         if key:
             rec = self.sessions.read(self.session_base(key))
@@ -358,8 +404,15 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
+            # The permanent id is the last resort, not the string
+            # "unknown": every recording BARRY cannot derive a key for would
+            # otherwise share one filename and overwrite the one before it.
+            # Three real recordings went through that file before anyone
+            # noticed, and the only reason two survived is that they had
+            # already been pushed to the shared copy.
             base = self.session_base(
-                rec.get("key") or identity.get("loose_key") or "unknown")
+                rec.get("key") or identity.get("loose_key")
+                or rec.get("gid") or identity.get("gid") or "unknown")
             return self.sessions.write(base, rec)
 
     def set_bad_channels(self, identity, bad, note=None):
@@ -577,6 +630,16 @@ def _git_user():
         val = None
     _GIT_USER_CACHE["v"] = val
     return val
+
+
+def _run_time(rec):
+    """When a run happened, from whichever field carries it."""
+    prov = rec.get("provenance") or {}
+    for v in (prov.get("at"), rec.get("started"), rec.get("at"),
+              rec.get("ended")):
+        if v:
+            return str(v)
+    return ""
 
 
 def _listdir(path):

@@ -1,0 +1,41 @@
+{
+  "command": [
+    "C:\\Users\\Z390\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "-m",
+    "pip",
+    "install",
+    "torch",
+    "--index-url",
+    "https://download.pytorch.org/whl/cu121"
+  ],
+  "cwd": "C:\\Users\\Z390\\Desktop\\jeremystats",
+  "duration_s": 1.962,
+  "ended": 1788438673.1108515,
+  "id": "9177383bb808",
+  "kind": "install",
+  "label": "pip install torch",
+  "lang": null,
+  "output_tail": [
+    "$ C:\\Users\\Z390\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121",
+    "  cwd: C:\\Users\\Z390\\Desktop\\jeremystats",
+    "Looking in indexes: https://download.pytorch.org/whl/cu121",
+    "ERROR: Could not find a version that satisfies the requirement torch (from versions: none)",
+    "ERROR: No matching distribution found for torch",
+    "-- exited with code 1 after 2.0s --"
+  ],
+  "overrides": [],
+  "parameters": {},
+  "provenance": {
+    "at": "2026-09-03T08:31:13-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "returncode": 1,
+  "schema": 1,
+  "script": "pip install torch",
+  "session": {},
+  "stage": null,
+  "started": 1788438671.1487951,
+  "status": "failed"
+}

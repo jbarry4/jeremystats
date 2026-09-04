@@ -171,11 +171,34 @@ const post = (u, b) => fetch(u, { method: 'POST',
                                { keep: gid, drop: gid });
   check('a record cannot be merged into itself', selfMerge.ok === false,
         selfMerge.error);
-  const lonelySplit = await post('/api/registry/split',
+  /* Two things must be refused, and they are different refusals.
+
+     Splitting a real path off a real record used to CORRUPT it: the path
+     re-identifies to the same key, so the "new" record matched the old one
+     and overwrote it, permanent id and all. So check that first, and check
+     it against a path that is genuinely part of the recording. */
+  const sameRec = await post('/api/registry/split',
     { gid, path: after.session.paths[0] });
-  check('splitting off the only path is refused',
-        lonelySplit.ok === false && /only knows one path/.test(lonelySplit.error || ''),
-        lonelySplit.error);
+  check('splitting a recording from itself is refused',
+        sameRec.ok === false && /same recording/.test(sameRec.error || ''),
+        sameRec.error);
+  const stillThere = await (await fetch('/api/registry/' + gid)).json();
+  check('...and the record survives being asked', stillThere.ok === true,
+        stillThere.error);
+  check('...with its permanent id intact',
+        (stillThere.session || {}).gid === gid);
+
+  // And a record that really does know only one path has nothing to split.
+  const single = (after.session.paths || []).length === 1;
+  if (single) {
+    const lonely = await post('/api/registry/split',
+      { gid, path: after.session.paths[0] });
+    check('splitting off the only path is refused',
+          lonely.ok === false, lonely.error);
+  } else {
+    say('  (this record knows ' + after.session.paths.length + ' paths, so '
+        + 'the one-path case is checked on the fake path below)', 'note');
+  }
 
   say('');
   say('=== merge and split, for real ===', 'hd');
@@ -191,6 +214,9 @@ const post = (u, b) => fetch(u, { method: 'POST',
         JSON.stringify((withTwo.session || {}).paths));
   const sp = await post('/api/registry/split', { gid, path: fake });
   check('and split off into its own record', sp.ok === true, sp.error || '');
+  check('the original keeps its own permanent id',
+        ((await (await fetch('/api/registry/' + gid)).json())
+          .session || {}).gid === gid);
   const newGid = ((sp.session) || {}).gid;
   check('the new record has its own id', !!newGid && newGid !== gid, newGid);
   if (newGid) {
@@ -203,8 +229,11 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check('the merge is recorded on the survivor',
           (back.session.merged_in || []).includes(newGid),
           JSON.stringify(back.session.merged_in));
-    // Clean up.
+    // Clean up: the path, and the record the split created. A merged record
+    // stays as a pointer by design, which is right for real work and means
+    // a harness has to take its own away or it leaves one behind per run.
     await post('/api/registry/' + gid + '/patch', { forget_path: fake });
+    await post('/api/registry/' + newGid + '/forget', {});
   }
 
   say('');

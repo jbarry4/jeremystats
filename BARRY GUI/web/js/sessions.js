@@ -210,7 +210,82 @@ BARRY.views.sessions = (function () {
       text: sessions.length + ' session(s) in ' + j.elapsed + 's',
     }));
 
-    /* A scan is the one moment BARRY has the whole picture of a drive, so
+    /* Folders the scan would not vouch for.
+
+     Kept visible rather than dropped: seven folders on the lab drives are 64
+     files of header and nothing else -- an acquisition that was started and
+     wrote nothing -- and they had been sitting in the registry looking like
+     ordinary recordings. Holding them back is only defensible if it is also
+     obvious, and reversible: "this looks wrong" is a judgement about data,
+     and whoever made the recording is better placed to make it than a size
+     check. */
+  function heldChip(held) {
+    const chip = el('button', {
+      class: 'stat-chip warn',
+      title: 'Folders that look like recordings but did not pass the check. '
+           + 'Click to see why.',
+      text: held.length + ' held back',
+      onclick: () => showHeld(held),
+    });
+    return chip;
+  }
+
+  function showHeld(held) {
+    const rows = held.map((h) => {
+      const q = h.quality || {};
+      return el('div', { class: 'held-row' }, [
+        el('div', { style: 'min-width:0' }, [
+          el('strong', { text: h.label || h.name || h.path }),
+          el('code', { class: 'held-path', text: h.path }),
+          ...(q.reasons || []).map(
+            (r) => el('p', { class: 'hint', text: r })),
+        ]),
+        el('div', { class: 'held-acts' }, [
+          el('span', { class: 'flagchip bad', text: q.verdict || '?' }),
+          el('button', {
+            class: 'btn sm', text: 'Add anyway',
+            title: 'Register it despite the check. Nothing about the '
+                 + 'recording changes; BARRY just stops leaving it out.',
+            onclick: async (e) => {
+              e.target.disabled = true;
+              try {
+                await apiPost('/api/discover/accept', { path: h.path });
+                toast('Registered ' + (h.label || h.name) + '.', 'ok');
+                loadKnown(true);
+                e.target.textContent = 'Added';
+              } catch (err) {
+                toast(err.message, 'err', 8000);
+                e.target.disabled = false;
+              }
+            },
+          }),
+          el('button', {
+            class: 'btn ghost sm', text: 'Open the folder',
+            onclick: () => apiPost('/api/reveal',
+                                   { path: h.path }).catch(() => {}),
+          }),
+        ]),
+      ]);
+    });
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: held.length + ' folder(s) held back' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/>'
+              + '</svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint',
+          text: 'These look like recordings but did not pass the check, so '
+              + 'they are not in the registry. Nothing on the drive has been '
+              + 'touched \u2014 BARRY does not delete data it did not write.' }),
+        el('div', { class: 'held-list' }, rows),
+      ]),
+    ]));
+  }
+
+  /* A scan is the one moment BARRY has the whole picture of a drive, so
        everything it walked past is now registered -- not just the handful
        anyone opens. The server did the writing; this tells the registry view
        which ones were actually laid eyes on, so they stop being merely
@@ -237,6 +312,7 @@ BARRY.views.sessions = (function () {
     box.appendChild(el('button', {
       class: 'btn ghost sm', text: 'Rescan', onclick: () => start(j.root),
     }));
+    if ((j.held_back || []).length) box.appendChild(heldChip(j.held_back));
 
     $('#sessFilters').classList.remove('hidden');
     renderGroupFilter();
@@ -334,10 +410,16 @@ BARRY.views.sessions = (function () {
         const list = mice.get(mk).slice().sort(
           (a, b) => (a.identity.session || 0) - (b.identity.session || 0));
         const row = el('div', { class: 'mouse-row' }, [
-          el('div', { class: 'mouse-label' }, [
+          /* In a narrow gutter now, so it has to be short. The folder name
+             is the long part and it is the part you rarely need, so it moves
+             to the tooltip. */
+          el('div', {
+            class: 'mouse-label',
+            title: (list[0].identity.mouse_folder || mk)
+                   + '  ·  ' + list.length + ' session(s)',
+          }, [
             el('strong', { text: mk }),
-            el('span', { class: 'folder', text: list[0].identity.mouse_folder || '' }),
-            el('span', { class: 'folder', text: list.length + ' session(s)' }),
+            el('span', { class: 'folder', text: list.length + ' sess' }),
           ]),
         ]);
         const cards = el('div', { class: 'sess-cards' });

@@ -1,0 +1,272 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Kilosort</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* The Kilosort pane is mostly a report about the machine, which means the
+   failure mode is not a crash -- it is a confident answer that is wrong.
+   Torch missing must read as missing; a probe that describes 64 channels
+   against settings that say 32 must be caught before the run, not after it.
+   So: check the report against what the API says, then check the pane says
+   the same thing, then exercise the parts that do not need Kilosort
+   installed (planning, the Phy primer, the script it would run). */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 15000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const D = frame.contentDocument;
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  head('The API');
+  const env = await fetch('/api/kilosort/check').then((r) => r.json());
+  check('the check answers', env.ok === true);
+  say('note', '  python: ' + env.python);
+  say('note', '  ready:  ' + env.ready + '   blocking: '
+      + (env.blocking || []).join(', '));
+  for (const r of env.rows || []) {
+    say('note', '  ' + (r.ok ? '+' : '-') + ' ' + r.name.padEnd(20)
+        + String(r.detail).slice(0, 60));
+  }
+  check('every requirement has a reason', (env.rows || [])
+        .every((r) => r.why && r.why.length > 10));
+  check('every missing thing that can be installed says how',
+        (env.rows || []).filter((r) => !r.ok
+          && ['torch', 'kilosort', 'phy'].includes(r.id))
+          .every((r) => r.fix && /pip install/.test(r.fix)));
+  check('probes were found', (env.probes || []).length > 0,
+        (env.probes || []).map((p) => p.name).join(', '));
+  check('each probe reports a channel count',
+        (env.probes || []).every((p) => p.channels > 0),
+        (env.probes || []).map((p) => p.name + '=' + p.channels).join(' '));
+  check('the H10 probe reads as 64 channels',
+        (env.probes || []).some((p) => /H10D/.test(p.name)
+                                       && p.channels === 64));
+  check('settings were found', (env.settings || []).length > 0);
+
+  head('The Python it runs on');
+  say('note', '  BARRY runs on ' + env.python_version
+      + ', torch-capable: ' + env.python_ok);
+  check('it lists the Pythons on this machine',
+        (env.interpreters || []).length > 0,
+        (env.interpreters || []).map((i) => i.version).join(', '));
+  check('each one says whether torch builds for it',
+        (env.interpreters || []).every((i) => typeof i.usable === 'boolean'));
+  if (env.python_ok === false) {
+    // The failure that started this: pip said "from versions: none", BARRY
+    // said "exit code 1", and neither mentioned the Python version.
+    const row = (env.rows || []).find((r) => r.id === 'python');
+    check('an unusable version is called out by name', row && !row.ok,
+          row ? row.detail : '');
+    check('...and says torch is the reason',
+          /torch has no build/.test((row || {}).detail || ''),
+          (row || {}).detail);
+    check('...and offers one that works', !!env.suggest_python,
+          env.suggest_python || 'none offered');
+    if (env.suggest_python) {
+      const alt = await fetch('/api/kilosort/check?python='
+        + encodeURIComponent(env.suggest_python)).then((r) => r.json());
+      check('and that one passes the Python check', alt.python_ok === true,
+            alt.python_version);
+      check('leaving only the packages to install',
+            (alt.blocking || []).every((b) => b !== 'python'),
+            (alt.blocking || []).join(', '));
+    }
+  } else {
+    check('this Python can run torch', env.python_ok === true);
+  }
+  check('the paste-me command targets a usable Python',
+        !/pythoncore-3\.14/.test(env.install_all || '')
+        || env.python_ok === true,
+        (env.install_all || '').slice(0, 80));
+
+  head('Planning a run, before anything runs');
+  const reg = await fetch('/api/registry').then((r) => r.json());
+  const rows = [];
+  for (const p of reg.tree) for (const m of p.mice) rows.push(...m.sessions);
+  const target = rows.find((s) => s.reachable && (s.here || []).length);
+  check('there is a reachable recording', !!target);
+  if (target) {
+    say('note', '  planning against ' + target.label);
+    const probe = (env.probes.find((p) => /H10D/.test(p.name))
+                   || env.probes[0]).path;
+    const sett = env.settings[0].path;
+    const plan = await fetch('/api/kilosort/plan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_path: target.here[0], probe,
+                             settings: sett }),
+    }).then((r) => r.json());
+    check('the plan answers', plan.ok === true);
+    say('note', '  binary:  ' + (plan.binary || 'none'));
+    say('note', '  results: ' + (plan.results_dir || '-'));
+    say('note', '  problems: ' + (plan.problems || [])
+        .map((p) => p.what).join(' | '));
+
+    // These recordings have no binary yet, so the plan MUST refuse -- and
+    // must say why in a way that names the MATLAB step.
+    check('a recording with no binary is refused', plan.ready === false);
+    check('...and the reason names the conversion step',
+          (plan.problems || []).some((p) => /binary/i.test(p.what)
+                                            && /MATLAB/i.test(p.why)),
+          JSON.stringify((plan.problems || [])[0] || {}).slice(0, 90));
+
+    check('the results folder is named after the settings',
+          /kilosort_tl\d_tu\d_fs/.test(plan.results_dir || ''),
+          plan.results_dir);
+
+    // The off-by-one, which is the whole reason this is worth doing.
+    const withBad = await fetch('/api/kilosort/plan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_path: target.here[0], probe,
+                             settings: sett, bad_csc: [1, 14, 64] }),
+    }).then((r) => r.json());
+    check('CSC numbers become 0-based Kilosort channels',
+          JSON.stringify(withBad.bad_channels) === JSON.stringify([0, 13, 63]),
+          JSON.stringify(withBad.bad_channels));
+
+    check('the script it would run is shown in full',
+          /run_kilosort\(/.test(withBad.script || '')
+          && /BAD_CHANNELS = \[0, 13, 63\]/.test(withBad.script || ''));
+    check('and the script explains the off-by-one',
+          /minus one each/.test(withBad.script || ''));
+
+    // A settings/probe mismatch has to be caught: it does not crash, it
+    // silently sorts the wrong rows.
+    const geo = env.probes.find((p) => p.channels && p.channels !== 64);
+    say('note', '  (mismatch check needs a probe with a different count'
+        + (geo ? ': ' + geo.name : ': none available, skipped') + ')');
+  }
+
+  head('The Phy primer');
+  const guide = await fetch('/api/phy/guide').then((r) => r.json());
+  check('the primer answers', guide.ok === true);
+  check('it lists the views', (guide.views || []).length >= 4);
+  check('it lists the keys', (guide.keys || []).length >= 3);
+  const flat = JSON.stringify(guide.keys || []);
+  check('including the ones that change your mind',
+        /ctrl\+g/.test(flat) && /ctrl\+s/.test(flat));
+  check('Phy on a folder with no params.py is refused',
+        (await fetch('/api/phy/open', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ results_dir: 'Z:/nope' }),
+        })).status === 400);
+
+  head('The pane');
+  /* The pane starts on a Python that can actually run torch, so compare
+     against that answer rather than against the unparameterised one --
+     otherwise the row counts differ for a good reason and look like a bug. */
+  let paneEnv = env;
+  if (env.python_ok === false && env.suggest_python) {
+    paneEnv = await fetch('/api/kilosort/check?python='
+      + encodeURIComponent(env.suggest_python)).then((r) => r.json());
+    say('note', '  the pane will use Python ' + paneEnv.python_version);
+  }
+  W.eval("setView('toolkit')");
+  await sleep(600);
+  const btn = Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Kilosort/.test(b.textContent));
+  check('ToolKit offers Kilosort', !!btn,
+        Array.from(D.querySelectorAll('.tk-tool strong'))
+          .map((n) => n.textContent).join(' | '));
+  if (btn) {
+    btn.click();
+    const verdict = await until(() => D.querySelector('#tkResult .ks-verdict'));
+    check('the set-up pane renders', !!verdict);
+    check('it says whether the machine is ready',
+          !!verdict && /Kilosort|missing/.test(verdict.textContent),
+          verdict ? verdict.textContent.slice(0, 70) : '');
+    const reqs = D.querySelectorAll('#tkResult .ks-req');
+    check('one row per requirement',
+          reqs.length === (paneEnv.rows || []).length,
+          reqs.length + ' vs ' + (paneEnv.rows || []).length);
+    check('the missing ones are marked as such',
+          D.querySelectorAll('#tkResult .ks-req.bad').length
+            === (paneEnv.rows || []).filter(
+              (r) => !r.ok && r.severity !== 'advice').length,
+          D.querySelectorAll('#tkResult .ks-req.bad').length + ' vs '
+          + (paneEnv.rows || []).filter(
+              (r) => !r.ok && r.severity !== 'advice').length);
+    check('and it offers to choose a different Python',
+          !!D.querySelector('#tkResult .ks-pypick select'),
+          (env.interpreters || []).length + ' found');
+    check('a missing package offers a command',
+          !!D.querySelector('#tkResult .ks-fix pre'),
+          (D.querySelector('#tkResult .ks-fix pre') || {}).textContent);
+    check('and offers to run it',
+          Array.from(D.querySelectorAll('#tkResult .ks-fix button'))
+            .some((b) => /Run it/.test(b.textContent)));
+
+    // Run pane
+    const segs = Array.from(D.querySelectorAll('#tkResult .seg button'));
+    check('there are three panes', segs.length === 3,
+          segs.map((b) => b.textContent).join(', '));
+    const runBtn = segs.find((b) => b.textContent === 'Run');
+    if (runBtn) {
+      runBtn.click();
+      await sleep(500);
+      check('the run pane offers a recording search',
+            !!D.querySelector('#tkResult .sp-input'));
+      check('and a probe and settings picker',
+            D.querySelectorAll('#tkResult .ks-choices select').length === 2);
+    }
+
+    const phyBtn = segs.find((b) => b.textContent === 'Phy');
+    if (phyBtn) {
+      phyBtn.click();
+      await until(() => D.querySelector('#tkResult .ks-keys'), 8000);
+      check('the Phy pane shows the primer',
+            !!D.querySelector('#tkResult .ks-keys'));
+      check('with the views to look at',
+            D.querySelectorAll('#tkResult .ks-view').length >= 4);
+      check('and the refractory-gap rule, which is the one that matters',
+            /refractory/.test(D.querySelector('#tkResult').textContent));
+    }
+  }
+
+  if (errors.length) {
+    head('Errors thrown in the page');
+    errors.forEach((m) => say('bad', m));
+  }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'kilosort: ' + bad + ' FAILED' : 'kilosort: passed';
+} catch (e) {
+  /* A harness that throws halfway just stops, with the last line printed
+     looking like the thing that failed. Say what actually happened. */
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'kilosort: harness CRASH';
+} })();
+</script>

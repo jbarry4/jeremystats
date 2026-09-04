@@ -1,48 +1,63 @@
 {
   "_at": {
-    "bad_channels": "2026-09-02T23:40:53.967396+00:00",
-    "created": "2026-09-02T23:21:29.065201+00:00",
-    "duration_s": "2026-09-02T23:21:29.065201+00:00",
-    "first_seen_by": "2026-09-02T23:21:29.065201+00:00",
-    "fs": "2026-09-02T23:21:29.065201+00:00",
-    "gid": "2026-09-02T23:21:29.065201+00:00",
-    "group": "2026-09-02T23:21:29.065201+00:00",
-    "has_video": "2026-09-02T23:21:29.065201+00:00",
-    "key": "2026-09-02T23:21:29.065201+00:00",
-    "label": "2026-09-02T23:21:29.065201+00:00",
-    "loose_key": "2026-09-02T23:21:29.065201+00:00",
-    "merged_in": "2026-09-02T23:45:47.510618+00:00",
-    "mouse": "2026-09-02T23:21:29.065201+00:00",
-    "n_channels": "2026-09-02T23:21:29.065201+00:00",
-    "note": "2026-09-02T23:45:46.052788+00:00",
-    "project": "2026-09-02T23:45:45.806606+00:00",
-    "project_source": "2026-09-02T23:40:51.328668+00:00",
-    "schema": "2026-09-02T23:21:29.065201+00:00",
-    "session": "2026-09-02T23:21:29.065201+00:00",
-    "start": "2026-09-02T23:21:29.065201+00:00",
-    "updated": "2026-09-02T23:46:07.851438+00:00",
-    "view_state": "2026-09-02T23:46:00.689028+00:00"
+    "bad_channels": "2026-09-03T15:34:30.110037+00:00",
+    "bad_channels_note": "2026-09-03T13:20:13.060390+00:00",
+    "cohort": "2026-09-03T13:20:13.060390+00:00",
+    "condition": "2026-09-03T13:20:13.060390+00:00",
+    "created": "2026-09-02T23:51:19.849758+00:00",
+    "duration_s": "2026-09-02T23:51:19.849758+00:00",
+    "event_classes": "2026-09-03T14:59:02.334009+00:00",
+    "first_seen_by": "2026-09-02T23:51:19.849758+00:00",
+    "fs": "2026-09-02T23:51:19.849758+00:00",
+    "gid": "2026-09-03T00:10:40.126938+00:00",
+    "group": "2026-09-02T23:51:19.849758+00:00",
+    "has_video": "2026-09-02T23:51:19.849758+00:00",
+    "key": "2026-09-02T23:51:19.849758+00:00",
+    "label": "2026-09-02T23:51:19.849758+00:00",
+    "loose_key": "2026-09-02T23:51:19.849758+00:00",
+    "merged_in": "2026-09-03T14:57:37.563496+00:00",
+    "mouse": "2026-09-02T23:51:19.849758+00:00",
+    "n_channels": "2026-09-02T23:51:19.849758+00:00",
+    "note": "2026-09-03T14:57:35.578282+00:00",
+    "project": "2026-09-03T14:57:35.270696+00:00",
+    "project_source": "2026-09-03T00:11:31.780571+00:00",
+    "retired": "2026-09-03T13:18:59.961310+00:00",
+    "schema": "2026-09-02T23:51:19.849758+00:00",
+    "session": "2026-09-02T23:51:19.849758+00:00",
+    "spike_labels": "2026-09-03T14:59:05.723578+00:00",
+    "split_from": "2026-09-03T00:10:40.126938+00:00",
+    "start": "2026-09-02T23:51:19.849758+00:00",
+    "updated": "2026-09-04T15:00:26.807698+00:00",
+    "view_state": "2026-09-04T15:00:26.807698+00:00"
   },
   "_keys": {
     "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
+        "set",
+        "2026-09-03T00:04:21.509742+00:00"
+      ],
       "Z:\\harness\\split-me": [
         "gone",
-        "2026-09-02T23:45:47.819070+00:00"
+        "2026-09-03T14:57:37.890213+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
         "set",
-        "2026-09-02T23:21:29.065201+00:00"
+        "2026-09-03T00:08:54.693100+00:00"
       ]
     },
     "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-02T23:51:19.849758+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-02T23:46:07.851438+00:00"
+        "2026-09-04T15:00:25.648808+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-02T23:46:07.851438+00:00",
+    "at": "2026-09-04T15:00:26.807698+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -54,30 +69,83 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1829.2394666666667,
+  "event_classes": {
+    "Starting Recording": {
+      "color": "#FF6B6B",
+      "name": "Starting Recording",
+      "visible": true
+    },
+    "Stopping Recording": {
+      "color": "#8ec5ff",
+      "name": "Stopping Recording",
+      "visible": true
+    },
+    "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0000).": {
+      "color": "#4DD4C4",
+      "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0000).",
+      "visible": true
+    },
+    "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).": {
+      "color": "#FFB81C",
+      "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
+      "visible": true
+    },
+    "flow harness sd": {
+      "color": "#c9a6ff",
+      "name": "flow harness sd",
+      "visible": true
+    },
+    "flow harness uv": {
+      "color": "#f59fb4",
+      "name": "flow harness uv",
+      "visible": true
+    }
+  },
   "first_seen_by": "scan",
   "fs": 30000.0,
-  "gid": "s34d1f0b371d4",
+  "gid": "s61700eac90ec",
   "group": "KCNT1",
   "has_video": true,
   "key": "m022_s004_2026-06-18_17-13-10",
   "label": "KCNT1 m22 s4 2026-06-18",
   "loose_key": "m022_s004",
   "merged_in": [
+    "s06ce2499908c",
+    "s1d50b38086d0",
+    "s2bc226ab01c5",
+    "s314b7d404614",
     "s4cddfdd3aa83",
-    "s9fd89b2bbd5f"
+    "s9fd89b2bbd5f",
+    "sa2bead544933",
+    "sae52d0caf0af",
+    "sc3114d3e7ec1",
+    "sc56f9c905529",
+    "sc5bf4cebe2eb",
+    "sd068b16fbb99",
+    "sd8acfc67bc8c",
+    "sf8ab003d89b8"
   ],
   "mouse": 22,
   "n_channels": 64,
   "note": "",
   "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   ],
   "project": "KCNT1",
   "project_source": "manual",
+  "retired": false,
   "schema": 2,
   "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:40:03-04:00",
+      "by": "barry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-02T19:46:07-04:00",
+      "at": "2026-09-04T11:00:25-04:00",
       "by": "theexaminedexistence@gmail.com",
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
       "root": null,
@@ -85,9 +153,12 @@
     }
   },
   "session": 4,
+  "spike_labels": {
+    "sets": []
+  },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-02T19:46:07-04:00",
+    "at": "2026-09-04T11:00:26-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"
@@ -128,14 +199,20 @@
       31
     ],
     "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
     "gain": 1,
-    "hp": 0,
+    "hp": 7,
+    "invert": true,
     "lp": 0,
     "normalize": "shared",
     "notch": 0,
+    "probe": "h10d",
     "spacing": 50,
-    "span": 2,
-    "t0": 12.8,
-    "ylim": null
+    "span": 4,
+    "stft_mode": null,
+    "t0": 1277.860633208218,
+    "ylim": 2133.0312426885184
   }
 }

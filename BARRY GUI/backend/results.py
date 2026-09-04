@@ -62,6 +62,11 @@ class Results:
         self.tags.absorb_legacy()
         self.decks.absorb_legacy()
         self._absorb_shared_sidecar()
+        # What has been moved or deleted here, so a sync does not put it
+        # back. See tombs.py -- this is the bug that turned six figures into
+        # twelve.
+        from . import tombs
+        self.tombs = tombs.Tombs(store.root, store)
         os.makedirs(self.root, exist_ok=True)
         os.makedirs(self.decks_dir, exist_ok=True)
         self._cache = {"at": 0, "items": []}
@@ -96,6 +101,14 @@ class Results:
             full = os.path.abspath(path)
             if not self._inside(full):
                 continue        # an older record from before the move
+            if not os.path.isfile(full):
+                # The run says it made this and the file is not there any
+                # more -- moved by hand, deleted, or on another machine. The
+                # run record keeps that history; the Results view should not
+                # offer a thumbnail for something nobody can open. This is
+                # also the difference between "what the GUI shows" and "what
+                # is in the folder" being the same sentence or not.
+                continue
             items[full] = self._from_run(rec, out)
 
         # 2. Whatever else is in the folder -- including files pulled from a
@@ -194,15 +207,20 @@ class Results:
         name = os.path.basename(path)
         ext = os.path.splitext(name)[1].lower()
         rel = self.rel_key(path)
+        shown = os.path.relpath(os.path.abspath(path),
+                                self.outputs_dir).replace("\\", "/")
         return {
             "id": self._result_id(path),
             # The repo-relative path, kept on every record rather than only on
             # the scanned ones: it is what makes a deck or a tag portable, so
             # nothing should be able to acquire a record without it.
-            "rel": os.path.relpath(os.path.abspath(path),
-                                   self.outputs_dir).replace("\\", "/"),
+            "rel": shown,
             "key": rel,
-            "folder": os.path.dirname(rel),
+            # From the displayed path, not from the matching key -- the key is
+            # lowercased so two machines agree about the same file, and taking
+            # the folder from it gave every directory twice: once as "Figure 3"
+            # and once as "figure 3".
+            "folder": os.path.dirname(shown),
             "path": path,
             "name": name,
             "title": os.path.splitext(name)[0],
@@ -334,6 +352,231 @@ class Results:
         self._cache["at"] = 0
         return rec
 
+
+    # ------------------------------------------------------------------
+    # Folders
+    #
+    # A folder here is a real directory under Results/, not a label beside
+    # one. That is the whole point: what the Results view shows and what you
+    # see when you open the folder are the same thing, so a figure you filed
+    # under "Figure 3" is at Results/Figure 3/ and can be dragged into a
+    # slide deck, emailed, or found by someone who has never opened BARRY.
+    #
+    # It costs more than a label, because moving a file breaks whatever was
+    # holding its old path -- the run that produced it, a storyboard slide
+    # pointing at its id. So the move fixes those on the way through, rather
+    # than leaving a tidy folder tree and a broken rebuild.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def clean_folder(name):
+        """Normalise a folder path: forward slashes, no empty or sneaky bits."""
+        parts = []
+        for seg in str(name or "").replace("\\", "/").split("/"):
+            seg = seg.strip().strip(".")
+            seg = "".join(c for c in seg if c not in '<>:"|?*')
+            if seg:
+                parts.append(seg)
+        return "/".join(parts[:6])          # six deep is already too deep
+
+    def folder_of(self, rec):
+        return self.clean_folder(rec.get("folder"))
+
+    def folders(self):
+        """Every directory under Results/, with how many results are in it.
+
+        Read off the disk rather than off the records, so a folder someone
+        made in Explorer shows up here, and one that only exists because a
+        record claims it does not.
+        """
+        counts = {}
+        for r in self.catalog():
+            f = self.folder_of(r)
+            if not f:
+                continue
+            counts[f] = counts.get(f, 0) + 1
+            parts = f.split("/")
+            for i in range(1, len(parts)):
+                counts.setdefault("/".join(parts[:i]), 0)
+        # Empty directories count too: you make a folder before you fill it.
+        for root, dirs, _files in os.walk(self.outputs_dir):
+            for d in dirs:
+                rel = os.path.relpath(os.path.join(root, d),
+                                      self.outputs_dir).replace("\\", "/")
+                if rel.startswith("."):
+                    continue
+                counts.setdefault(self.clean_folder(rel), 0)
+        out = []
+        for path in sorted(x for x in counts if x):
+            out.append({
+                "path": path,
+                "name": path.rsplit("/", 1)[-1],
+                "depth": path.count("/"),
+                "n": counts[path],
+            })
+        return out
+
+    def unfiled(self):
+        """Results sitting loose in the top of Results/."""
+        return sum(1 for r in self.catalog() if not self.folder_of(r))
+
+    def make_folder(self, name):
+        folder = self.clean_folder(name)
+        if not folder:
+            raise ValueError("Give the folder a name.")
+        os.makedirs(os.path.join(self.outputs_dir, *folder.split("/")),
+                    exist_ok=True)
+        self._cache["at"] = 0
+        return folder
+
+    def move(self, result_id, folder, store=None):
+        """Move a result into a folder, and fix what pointed at it.
+
+        Returns the new record. The id changes with the path -- it is a hash
+        of the path, which is what makes it the same id on every machine --
+        so anything holding the old one is repointed here rather than being
+        left to fail later.
+        """
+        rec = self.get(result_id)
+        if not rec:
+            raise ValueError("No such result.")
+        src = rec.get("path")
+        if not src or not os.path.isfile(src):
+            raise ValueError("That result is not on this machine.")
+        if not self._inside(src):
+            raise ValueError("That file is not in the Results folder.")
+
+        folder = self.clean_folder(folder)
+        dest_dir = os.path.join(self.outputs_dir, *folder.split("/")) \
+            if folder else self.outputs_dir
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, os.path.basename(src))
+        if os.path.abspath(dest) == os.path.abspath(src):
+            return rec
+        if os.path.exists(dest):
+            # Never overwrite somebody else's figure to tidy a folder.
+            stem, ext = os.path.splitext(os.path.basename(src))
+            n = 2
+            while os.path.exists(dest):
+                dest = os.path.join(dest_dir, "%s_%d%s" % (stem, n, ext))
+                n += 1
+
+        old_rel = rec.get("rel")
+        old_id = rec.get("id")
+        old_key = self.rel_key(src)
+        _move_file(src, dest)
+
+        # The tags and notes were keyed on the old path; carry them over.
+        side = self._sidecars().get(old_key)
+        if side:
+            carried = {k: v for k, v in side.items()
+                       if k in ("title", "tags", "notes", "starred")}
+            if carried:
+                self.curate(dest, carried)
+            try:
+                self.tags.erase(self._sidecar_base(old_key))
+            except Exception:                    # noqa: BLE001
+                pass
+
+        self._cache["at"] = 0
+        new = self._from_file(dest, "moved")
+        self._repoint(store, old_id, old_rel, new["id"], new["rel"], src, dest)
+        # The old path is gone. Say so, or the next sync finds a row whose
+        # file is missing locally and downloads it back into the folder you
+        # just moved it out of.
+        self.tombs.add("result", old_rel, note="moved to " + new["rel"])
+        self.tombs.forget("result", new["rel"])
+        return self.get(new["id"]) or new
+
+    def _repoint(self, store, old_id, old_rel, new_id, new_rel, src, dest):
+        """Follow the file: run outputs, and any deck slide holding its id.
+
+        Without this, filing a figure into a folder is how a storyboard goes
+        blank and a rebuild stops finding what it made -- weeks later, with
+        nothing to connect it to the tidy-up that caused it.
+        """
+        for deck_row in self.list_decks():
+            deck = self.decks.read(self.deck_base(deck_row["id"]))
+            if not deck:
+                continue
+            touched = False
+            for sl in (deck.get("slides") or []):
+                for it in (sl.get("items") or []):
+                    if it.get("type") != "result":
+                        continue
+                    if it.get("id") == old_id or it.get("result") == old_id:
+                        it["id"] = new_id
+                        it["rel"] = new_rel
+                        touched = True
+                    elif it.get("rel") == old_rel:
+                        it["rel"] = new_rel
+                        it["id"] = new_id
+                        touched = True
+            if touched:
+                self.decks.write(self.deck_base(deck["id"]), deck)
+
+        if store is None:
+            return
+        for run in store.all_runs():
+            outs = run.get("outputs") or []
+            if not outs:
+                continue
+            changed, fixed = False, []
+            for o in outs:
+                if isinstance(o, str):
+                    if os.path.abspath(o) == os.path.abspath(src):
+                        fixed.append(dest)
+                        changed = True
+                    else:
+                        fixed.append(o)
+                elif isinstance(o, dict):
+                    if o.get("rel") == old_rel or (
+                            o.get("path")
+                            and os.path.abspath(o["path"])
+                            == os.path.abspath(src)):
+                        o = dict(o, path=dest, rel=new_rel)
+                        changed = True
+                    fixed.append(o)
+                else:
+                    fixed.append(o)
+            if changed:
+                store.update_run(run["id"], {"outputs": fixed})
+
+    def rename_folder(self, src, dst, store=None):
+        """Rename a directory, carrying everything inside it.
+
+        A rename that left the children behind -- "Figure 3" becoming
+        "Figure 4" while "Figure 3/Panels" stayed put -- would be worse than
+        refusing, so this moves the directory itself.
+        """
+        src = self.clean_folder(src)
+        dst = self.clean_folder(dst)
+        if not src:
+            raise ValueError("Which folder?")
+        src_dir = os.path.join(self.outputs_dir, *src.split("/"))
+        if not os.path.isdir(src_dir):
+            raise ValueError("There is no folder called %r." % src)
+
+        moved = []
+        for r in self.catalog():
+            f = self.folder_of(r)
+            if f == src or f.startswith(src + "/"):
+                moved.append((r["id"], (dst + f[len(src):]) if dst else
+                              f[len(src):].lstrip("/")))
+        for rid, folder in moved:
+            try:
+                self.move(rid, folder, store=store)
+            except ValueError:
+                continue
+        # Take the now-empty directory with it.
+        try:
+            for root, dirs, files in os.walk(src_dir, topdown=False):
+                if not os.listdir(root):
+                    os.rmdir(root)
+        except OSError:
+            pass
+        self._cache["at"] = 0
+        return len(moved)
+
     def get(self, result_id):
         for r in self.catalog():
             if r["id"] == result_id:
@@ -458,7 +701,39 @@ class Results:
         return None
 
     def delete_deck(self, deck_id):
-        return bool(self.decks.erase(self.deck_base(deck_id)))
+        gone = bool(self.decks.erase(self.deck_base(deck_id)))
+        if gone:
+            self.tombs.add("deck", deck_id)
+        return gone
+
+
+def _move_file(src, dest, tries=12, wait=0.08):
+    """Rename a file, working around Windows holding it open.
+
+    Serving a figure leaves the handle open for a moment after the response,
+    and Windows refuses to rename a file anybody has open -- so viewing a
+    result and then filing it fails, intermittently, with a permission error
+    that says nothing about why. Everywhere else this is a non-issue, which is
+    exactly why it goes unnoticed until it is in front of a person.
+
+    A short retry is the whole fix: the handle closes within a few tens of
+    milliseconds. If it genuinely will not move, the error says so in words.
+    """
+    last = None
+    for i in range(tries):
+        try:
+            os.replace(src, dest)
+            return dest
+        except PermissionError as exc:
+            last = exc
+            time.sleep(wait * (i + 1))
+        except OSError as exc:
+            last = exc
+            break
+    raise OSError(
+        "Could not move %s -- something still has it open. Close it (or the "
+        "preview showing it) and try again. (%s)"
+        % (os.path.basename(src), last))
 
 
 def _hash(text):

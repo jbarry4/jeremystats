@@ -1,22 +1,122 @@
 {
+  "_at": {
+    "selftest||Test error from the Errors panel": "2026-09-02T23:51:20.013557+00:00",
+    "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": "2026-09-02T23:51:20.013557+00:00",
+    "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": "2026-09-02T23:51:20.013557+00:00"
+  },
+  "_keys": {
+    "marks": {
+      "cloud.sync||GET /rest/vN/sessions?select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"Could not find the table 'public.sessions' in the schema cache\"}": [
+        "set",
+        "2026-09-04T13:13:36.917240+00:00"
+      ],
+      "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}": [
+        "set",
+        "2026-09-04T13:13:15.246972+00:00"
+      ],
+      "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N+N:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"N\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type timestamp with ": [
+        "set",
+        "2026-09-04T13:13:33.204737+00:00"
+      ],
+      "results/folders/rename||There is no folder called 'HarnessFolder'.": [
+        "set",
+        "2026-09-04T13:13:25.629379+00:00"
+      ],
+      "results/folders/rename||There is no folder called 'HarnessFolder/Panels'.": [
+        "set",
+        "2026-09-04T13:13:22.265920+00:00"
+      ],
+      "results/folders/rename||[WinError N] The process cannot access the file because it is being used by another process: '<path> GUI<path> sN N-N-N_N_N.png' -> '<path> GUI<path> sN N-N-N_N_N.png'": [
+        "set",
+        "2026-09-04T13:13:39.700826+00:00"
+      ],
+      "run:pip install torch||Run failed with exit code N": [
+        "set",
+        "2026-09-04T13:13:12.601457+00:00"
+      ],
+      "selftest||Test error from the Errors panel": [
+        "set",
+        "2026-09-04T13:13:28.981900+00:00"
+      ],
+      "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": [
+        "set",
+        "2026-09-03T14:50:49.157623+00:00"
+      ],
+      "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": [
+        "set",
+        "2026-09-03T14:50:45.557748+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-02T23:21:29.291856+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-04T13:13:39.700826+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "marks": {
+    "cloud.sync||GET /rest/vN/sessions?select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"Could not find the table 'public.sessions' in the schema cache\"}": {
+      "at": "2026-09-04T09:13:36-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N%NBN:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"PGRSTN\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}": {
+      "at": "2026-09-04T09:13:15-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "cloud.sync||GET /rest/vN/sessions?updated_at=gt.<time>.N+N:N&select=*&limit=N&offset=N -> HTTP N {\"code\":\"N\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type timestamp with ": {
+      "at": "2026-09-04T09:13:33-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "results/folders/rename||There is no folder called 'HarnessFolder'.": {
+      "at": "2026-09-04T09:13:25-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "results/folders/rename||There is no folder called 'HarnessFolder/Panels'.": {
+      "at": "2026-09-04T09:13:22-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "results/folders/rename||[WinError N] The process cannot access the file because it is being used by another process: '<path> GUI<path> sN N-N-N_N_N.png' -> '<path> GUI<path> sN N-N-N_N_N.png'": {
+      "at": "2026-09-04T09:13:39-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "run:pip install torch||Run failed with exit code N": {
+      "at": "2026-09-04T09:13:12-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "selftest||Test error from the Errors panel": {
+      "at": "2026-09-04T09:13:28-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": {
+      "at": "2026-09-03T10:50:49-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    },
+    "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": {
+      "at": "2026-09-03T10:50:45-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "machine": "desktop-4h65ai7-d565",
+      "note": ""
+    }
+  },
   "selftest||Test error from the Errors panel": {
     "at": "2026-09-02T18:53:42-04:00",
-    "by": "theexaminedexistence@gmail.com",
-    "note": ""
-  },
-  "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": {
-    "at": "2026-09-02T18:08:25-04:00",
-    "by": "theexaminedexistence@gmail.com",
-    "note": ""
-  },
-  "unhandled:/api/toolkit/bad-channels||filename() got multiple values for argument 'scope'": {
-    "at": "2026-09-02T18:08:22-04:00",
     "by": "theexaminedexistence@gmail.com",
     "note": ""
   },

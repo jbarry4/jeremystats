@@ -1,40 +1,45 @@
 {
   "_at": {
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-02T23:21:29.293258+00:00",
+    "pipeline_folders": "2026-09-03T14:08:40.159829+00:00",
     "recent_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "smoke_probe": "2026-09-02T23:45:35.051248+00:00",
+    "smoke_probe": "2026-09-03T14:56:13.588665+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-02T23:47:07.736750+00:00"
+    "updated": "2026-09-04T15:00:25.866546+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-02T23:45:35.303687+00:00"
+        "2026-09-03T14:56:14.080957+00:00"
       ]
     },
     "themes": {
+      "BarryLab": [
+        "set",
+        "2026-09-02T23:51:20.021008+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-02T23:21:29.293258+00:00"
+        "2026-09-03T13:38:52.549565+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-02T23:47:07.736750+00:00",
+    "at": "2026-09-04T15:00:25.866546+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"
+    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   },
   "recent_scripts": [
     "IED/03_IED_Detection/vacc_ied_detect.m"
   ],
   "themes": {
-    "DESKTOP-4H65AI7": "dark"
+    "BarryLab": "light",
+    "DESKTOP-4H65AI7": "horizon-night"
   },
-  "updated": "2026-09-02T19:47:07-04:00"
+  "updated": "2026-09-04T11:00:25-04:00"
 }

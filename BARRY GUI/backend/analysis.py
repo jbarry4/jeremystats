@@ -409,6 +409,41 @@ def _panel_raster(session, spec, mode):
     }
 
 
+def _tf_pad_seconds(session, spec, method, span):
+    """How much extra to read either side of the requested window.
+
+    Half an analysis window is what the transform cannot see at each edge.
+    The segment length is chosen from the frequency band (see _stft), so this
+    reproduces that arithmetic rather than guessing -- and is capped, because
+    a very low fmin on a short window would otherwise ask for more padding
+    than data.
+    """
+    fs = float(session.get("fs") or 30000.0)
+    if method == "stft" and spec.get("stft_mode", "legacy") != "hires":
+        # The legacy frame is a tenth of the window, so the blind edge is a
+        # twentieth of it -- independent of the frequency band, unlike the
+        # bin-counted one below.
+        frame_ms = float(spec.get("frame_ms") or 0) or (span * 100.0)
+        edge = (frame_ms * fs / 1000.0 / 2.0) / fs
+    elif method == "stft":
+        nper = int(spec.get("nperseg", 0) or 0)
+        if nper <= 0:
+            fmin = float(spec.get("fmin", 20) or 20)
+            fmax = min(float(spec.get("fmax", 1000) or 1000), fs * 0.49)
+            band = max(1.0, fmax - fmin)
+            want = fs * TARGET_FREQ_BINS / band
+            want = min(want, max(64.0, span * fs / 4.0))
+            nper = int(2 ** np.round(np.log2(max(64.0, want))))
+        edge = (nper / 2.0) / fs
+    else:
+        # A Morlet at the lowest frequency spreads over a few of its cycles.
+        fmin = max(0.1, float(spec.get("fmin", 20) or 20))
+        edge = 4.0 / fmin
+    # Never more than the window itself: past that the read costs more than
+    # the alignment is worth, and the client can place a partial panel.
+    return float(min(edge, max(0.05, span)))
+
+
 def _panel_tf(session, spec, method):
     """Time-frequency panel.
 
@@ -424,7 +459,20 @@ def _panel_tf(session, spec, method):
     fmin = float(spec.get("fmin", 20) or 20)
     fmax = float(spec.get("fmax", 1000) or 1000)
 
-    stack, sel, t0, fs = _stack(session, spec, channels=ch_list)
+    # Ask for more than the window, so the transform's blind edges fall
+    # outside it and the panel can be cropped back to exactly what was
+    # requested. Without this the picture is inset by half an analysis
+    # window and the client stretches it to fill the pane, which puts every
+    # feature in the wrong place relative to the pane next to it.
+    want_t0 = float(spec.get("t0", 0.0))
+    want_t1 = float(spec.get("t1", want_t0 + 1.0))
+    pad = _tf_pad_seconds(session, spec, method, want_t1 - want_t0)
+    dur = float(session.get("duration_s") or 0.0)
+    padded = dict(spec)
+    padded["t0"] = max(0.0, want_t0 - pad)
+    padded["t1"] = (min(dur, want_t1 + pad) if dur > 0 else want_t1 + pad)
+
+    stack, sel, t0, fs = _stack(session, padded, channels=ch_list)
     nyq = fs / 2.0
     fmax = min(fmax, nyq * 0.98)
     if fmin >= fmax:
@@ -434,7 +482,13 @@ def _panel_tf(session, spec, method):
     powers, freqs, times = [], None, None
     for row, ch in zip(stack, sel):
         y = _fill_gaps(row, ch)
-        p, freqs, times = (_stft if method == "stft" else _cwt)(y, fs, fmin, fmax, spec)
+        if method == "cwt":
+            fn = _cwt
+        elif spec.get("stft_mode", "legacy") == "hires":
+            fn = _stft
+        else:
+            fn = _stft_legacy
+        p, freqs, times = fn(y, fs, fmin, fmax, spec)
         powers.append(p)
 
     if len(powers) == 1:
@@ -452,8 +506,29 @@ def _panel_tf(session, spec, method):
         times = times[:width]
         rows_meta = None
 
+    # Crop back to the window that was asked for, so this panel's time axis
+    # is the same as every other panel's. What is left after the crop is
+    # reported as the extent, which matters at the very start and end of a
+    # recording where there was nothing to pad with.
+    if times is not None and len(times):
+        abs_t = t0 + np.asarray(times, dtype=float)
+        inside = np.flatnonzero((abs_t >= want_t0) & (abs_t <= want_t1))
+        if inside.size:
+            # Take the columns that straddle each edge as well, so the panel
+            # covers the whole window rather than starting up to one column
+            # late -- otherwise the pane opens with an empty sliver where the
+            # first column has not happened yet. One column of overhang is
+            # cheap and the client positions by the reported extent anyway.
+            lo = max(0, int(inside[0]) - 1)
+            hi = min(len(abs_t) - 1, int(inside[-1]) + 1)
+            combined = combined[:, lo:hi + 1]
+            times = np.asarray(times, dtype=float)[lo:hi + 1]
+
+    # 10*log10 of a power density, or the legacy 30*log10 of a raw FFT
+    # magnitude. _stft_legacy sets the multiplier; nothing else touches it.
+    db_mult = float(spec.get("_db_mult", 10.0) or 10.0)
     with np.errstate(divide="ignore", invalid="ignore"):
-        db = 10.0 * np.log10(np.maximum(combined, 1e-20))
+        db = db_mult * np.log10(np.maximum(combined, 1e-20))
 
     # A display-only crop of the frequency axis.
     #
@@ -474,10 +549,18 @@ def _panel_tf(session, spec, method):
     clim = _explicit_clim(spec)
     if clim is None:
         finite = db[np.isfinite(db)]
-        hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5)))) \
-            if finite.size else 0.0
-        dyn = float(spec.get("dyn_range_db", 40) or 40)
-        clim = [hi - dyn, hi]
+        if spec.get("_legacy_stft") and not spec.get("clim_pct"):
+            # MATLAB's imagesc scales to the full range of the data, and that
+            # is part of what the old picture looked like. A percentile clip
+            # is usually the better choice -- one loud artifact cannot wash
+            # the plot out -- but it is not what this is reproducing.
+            clim = ([float(np.min(finite)), float(np.max(finite))]
+                    if finite.size else [0.0, 1.0])
+        else:
+            hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5)))) \
+                if finite.size else 0.0
+            dyn = float(spec.get("dyn_range_db", 40) or 40)
+            clim = [hi - dyn, hi]
 
     cmap = spec.get("cmap", "jet")
     # Low frequency at the bottom, as MATLAB draws it.
@@ -508,7 +591,9 @@ def _panel_tf(session, spec, method):
         "stacked": stacked,
         "shape": list(db.shape),
         "t0": t0 + float(times[0]), "t1": t0 + float(times[-1]), "fs": fs,
-        "method": ("STFT" if method == "stft" else "Morlet CWT")
+        "method": (("STFT (Xplorefinder)"
+                    if spec.get("_legacy_stft") else "STFT (high resolution)")
+                   if method == "stft" else "Morlet CWT")
                   + ("" if n_ch == 1 else "  %d ch %s" % (n_ch, tf_mode)),
     }
 
@@ -618,6 +703,11 @@ def _stft(y, fs, fmin, fmax, spec):
     nover = int(nper * float(spec.get("overlap", 0.85) or 0.85))
     nover = min(max(0, nover), nper - 1)
 
+    # How much of the start this transform cannot see: scipy reports
+    # segment centres, so the first column is half a segment in. Handed back
+    # so the caller can ask for extra data and crop, instead of quietly
+    # returning a narrower window than the one requested.
+    spec["_edge_s"] = (nper / 2.0) / float(fs)
     freqs, times, Sxx = _spec(y, fs=fs, nperseg=nper, noverlap=nover,
                               scaling="density", mode="psd")
     keep = (freqs >= fmin) & (freqs <= fmax)
@@ -627,6 +717,69 @@ def _stft(y, fs, fmin, fmax, spec):
             "this frequency range -- widen the window or raise fmin."
             % (fmin, fmax))
     return Sxx[keep], freqs[keep], times
+
+
+def _stft_legacy(y, fs, fmin, fmax, spec):
+    """xf_spectrogram.m, as it was.
+
+    Returns |S| rather than a power density, and asks the caller for
+    30*log10 -- see the module note above. The frame geometry is
+    xf_frameDefaults: a tenth of the window, overlapped by 1/1.02 of itself.
+    """
+    n = int(y.size)
+    if n < 16:
+        raise PanelError("Window is too short for a spectrogram (%d samples)."
+                         % n)
+
+    # xf_frameDefaults, in samples. frame_length_ms = n/fs*100, and
+    # nsample = round(frame_length_ms * fs / 1000), which is simply n/10 --
+    # written out so it is recognisable against the .m file.
+    frame_ms = (1.0 / fs) * n * 100.0
+    over_ms = float(spec.get("frame_overlap_ms") or 0) or (frame_ms / 1.02)
+    frame_ms = float(spec.get("frame_ms") or 0) or frame_ms
+
+    nsample = int(round(frame_ms * fs / 1000.0))
+    nover = int(round(over_ms * fs / 1000.0))
+    nsample = max(16, min(nsample, n))
+    nover = max(0, min(nover, nsample - 1))
+    hop = nsample - nover
+
+    # spStft steps while pos+nsample <= N, so the last partial frame is
+    # dropped. Same here, and the same one-sided half.
+    half = int(round(nsample / 2.0))
+    starts = np.arange(0, max(0, n - nsample) + 1, hop, dtype=int)
+    if starts.size == 0:
+        raise PanelError("Window is too short for a spectrogram frame.")
+    # A hard cap: at 98% overlap a very long window would ask for tens of
+    # thousands of columns, which is far more than any pane has pixels for
+    # and slow enough to be felt.
+    cap = int(spec.get("max_columns", 1400) or 1400)
+    if starts.size > cap:
+        starts = starts[np.linspace(0, starts.size - 1, cap).astype(int)]
+
+    win = np.hamming(nsample)
+    frames = np.stack([y[i:i + nsample] for i in starts]) * win
+    S = np.fft.fft(frames, n=nsample, axis=1)[:, :half].T
+    mag = np.abs(S)
+
+    freqs = np.arange(half, dtype=float) / nsample * fs
+    # spStft reports frame centres; the caller crops on absolute time, so
+    # this has to be centres too or the panel sits half a frame early.
+    times = (starts + nsample / 2.0) / fs
+    spec["_edge_s"] = (nsample / 2.0) / float(fs)
+    # 30*log10(|S|), not 10*log10(power). See the module note.
+    spec["_db_mult"] = 30.0
+    spec["_legacy_stft"] = True
+
+    keep = (freqs >= fmin) & (freqs <= fmax)
+    if not keep.any():
+        raise PanelError(
+            "No FFT bins between %.3g and %.3g Hz. The old Xplorefinder sized "
+            "its frame at a tenth of the window, so a short window gives "
+            "coarse frequency steps (%.3g Hz here) -- widen the window, or "
+            "switch this panel to High resolution."
+            % (fmin, fmax, fs / float(nsample)))
+    return mag[keep], freqs[keep], times
 
 
 def _cwt(y, fs, fmin, fmax, spec):

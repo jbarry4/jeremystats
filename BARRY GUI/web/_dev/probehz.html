@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — H10 columns and the frequency lock</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* Two of the same batch of requests.
+
+   "Switch from an H3 view mode to an H10 view mode. This should create a 6
+   pane view ... and CSD should be run separately for each column (so 6
+   CSDs)." The thing that matters is not that six panes appear -- it is that
+   each one is a different set of contacts, and that they are the right ones.
+   A six-up of six identical CSDs over all 64 channels would look correct
+   and be exactly the bug this mode exists to prevent.
+
+   "Have the spectrogram and scalograms have a lock ... the min always jumps
+   back to 20." So: does a band set on one panel survive being switched to
+   the other, and does it survive the recording being closed and reopened. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  /* A 64-channel recording: an H10-D has 64 contacts and the column map is
+     defined in those terms. */
+  let path = null, label = '';
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) {
+          path = s.here[0]; label = s.label; break outer;
+        }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no 64-channel recording is reachable'); return; }
+  say('note', '  using ' + label);
+
+  W.eval("setView('xplore')");
+  await sleep(250);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => D.querySelector('.pane-canvas-host canvas'));
+  await untilN(() => W.eval('(BARRY.views.xplore.state.probes||[]).length') > 0);
+
+  head('The probe map arrived');
+  const probes = JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.probes.map(function(p){'
+    + 'return {id:p.id, n:(p.columns||[]).length}; }))'));
+  check('two probes are offered', probes.length === 2, JSON.stringify(probes));
+  const h10 = probes.find((p) => p.id === 'h10d');
+  check('the H10 has six columns', h10 && h10.n === 6, JSON.stringify(h10));
+
+  head('Switching to H10 lays out six columns');
+  const sel = D.getElementById('xfProbe');
+  check('there is a probe control', !!sel);
+  sel.value = 'h10d';
+  sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(900);
+  const n = W.eval('BARRY.views.xplore.state.nPanes');
+  check('six panes', n === 6, 'nPanes=' + n);
+  const panes = JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes.map(function(p){'
+    + 'return p && {panel:p.panel, tag:p.colTag, n:(p.channels||[]).length,'
+    + ' ch:(p.channels||[]).slice(0,3)}; }))'));
+  panes.forEach((p) => say('note', '  ' + (p ? (p.tag + '  ' + p.panel
+    + '  ' + p.n + ' contacts  first indices ' + JSON.stringify(p.ch)) : 'empty')));
+  check('every pane is a CSD', panes.every((p) => p && p.panel === 'csd'));
+  check('the six columns are W1 W3 W4 W2 W6 W5',
+        JSON.stringify(panes.map((p) => p && p.tag))
+        === JSON.stringify(['W1', 'W3', 'W4', 'W2', 'W6', 'W5']),
+        JSON.stringify(panes.map((p) => p && p.tag)));
+  check('the centre columns have 12 contacts and the outer ones 10',
+        JSON.stringify(panes.map((p) => p && p.n))
+        === JSON.stringify([12, 10, 10, 12, 10, 10]),
+        JSON.stringify(panes.map((p) => p && p.n)));
+
+  /* The point of the whole mode. */
+  const sets = panes.map((p) => JSON.stringify(p.ch));
+  check('no two columns are the same contacts',
+        new Set(sets).size === sets.length, JSON.stringify(sets));
+  const total = panes.reduce((a, p) => a + p.n, 0);
+  check('and between them they cover all 64', total === 64, total + ' contacts');
+
+  head('Each pane really asks for its own channels');
+  const seen = JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes.map(function(p,i){'
+    + 'return BARRY.views.xplore.paneSpecFor'
+    + ' ? BARRY.views.xplore.paneSpecFor(i) : null; }))'));
+  if (seen && seen[0]) {
+    const chans = seen.map((sp) => sp && JSON.stringify(sp.channels));
+    check('the six requests carry six different channel lists',
+          new Set(chans).size === 6, JSON.stringify(chans.map(
+            (c) => (c || '').slice(0, 24))));
+  } else {
+    say('note', '  no spec accessor exported; checked via pane.channels above');
+  }
+
+  head('Six CSDs actually rendered');
+  await untilN(() => D.querySelectorAll('.pane-img-host img').length >= 6, 120);
+  const drew = await untilN(() => Array.from(
+    D.querySelectorAll('.pane-img-host img'))
+      .filter((im) => im.naturalWidth > 0).length >= 6, 400);
+  const nDrew = Array.from(D.querySelectorAll('.pane-img-host img'))
+    .filter((im) => im.naturalWidth > 0).length;
+  check('all six drew', drew >= 0, nDrew + ' of 6');
+  check('and each pane is labelled with its column',
+        D.querySelectorAll('.pane-col-tag').length === 6,
+        D.querySelectorAll('.pane-col-tag').length + ' tags');
+
+  head('Back to H3 is one pane again');
+  sel.value = 'h3';
+  sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(700);
+  check('one pane', W.eval('BARRY.views.xplore.state.nPanes') === 1,
+        'nPanes=' + W.eval('BARRY.views.xplore.state.nPanes'));
+  check('with no column override left on it',
+        !W.eval('!!BARRY.views.xplore.state.panes[0].channels'));
+
+  head('The frequency band is kept');
+  W.eval("BARRY.views.xplore.setPanes([{panel:'spectrogram'}],"
+       + " {col:0.5,row:0.5})");
+  await sleep(700);
+  // Set a band the way the control does.
+  W.eval('(function(){var S=BARRY.views.xplore.state;'
+       + 'var s=S.sessions[S.active];'
+       + 's.fdefault={fmin:4, fmax:12}; s.flock=true;})()');
+  W.eval('BARRY.views.xplore.refreshAll()');
+  await sleep(900);
+  const band1 = JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes[0]._panelData.freqs_computed'
+    + ' || BARRY.views.xplore.state.panes[0]._panelData.freqs)'));
+  say('note', '  spectrogram computed over ' + JSON.stringify(band1));
+  check('the spectrogram used 4-12, not 20-1000',
+        band1 && band1[0] < 6 && band1[1] < 20, JSON.stringify(band1));
+
+  W.eval("BARRY.views.xplore.setPanes([{panel:'scalogram'}],"
+       + " {col:0.5,row:0.5})");
+  await untilN(() => {
+    const d = W.eval('BARRY.views.xplore.state.panes[0]._panelData');
+    return d && d.panel === 'scalogram';
+  }, 300);
+  await sleep(600);
+  const band2 = JSON.parse(W.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes[0]._panelData.freqs_computed'
+    + ' || BARRY.views.xplore.state.panes[0]._panelData.freqs)'));
+  say('note', '  scalogram computed over ' + JSON.stringify(band2));
+  check('switching to the scalogram kept the band',
+        band2 && band2[0] < 6 && band2[1] < 20, JSON.stringify(band2));
+
+  head('And it survives closing the recording');
+  // The state is written on a timer, so give it time to land.
+  await sleep(1800);
+  W.eval('(function(){var S=BARRY.views.xplore.state;'
+       + 'BARRY.views.xplore.close && BARRY.views.xplore.close(S.active);})()');
+  await sleep(400);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => W.eval('!!BARRY.views.xplore.state.sessions['
+                          + 'BARRY.views.xplore.state.active]'));
+  const kept = JSON.parse(W.eval(
+    'JSON.stringify((BARRY.views.xplore.state.sessions['
+    + 'BARRY.views.xplore.state.active]||{}).fdefault || null)'));
+  check('the band came back with the recording',
+        kept && kept.fmin === 4 && kept.fmax === 12, JSON.stringify(kept));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'probehz: ' + bad + ' FAILED' : 'probehz: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'probehz: harness CRASH';
+} })();
+</script>

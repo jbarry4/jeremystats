@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the ToolKit loader</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Make this reading... more of a fun loading in the toolkit areas."
+   Caught while it is still loading, which is the only moment it exists. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(100);
+  W.eval("setView('toolkit')");
+  await sleep(400);
+  const seen = {};
+  for (const [re, name] of [[/Event curation/, 'curate'],
+                            [/StrataScope/, 'strata'],
+                            [/Bad channels/, 'bad']]) {
+    const b = Array.from(D.querySelectorAll('.tk-tool'))
+      .find((t) => re.test(t.textContent));
+    if (!b) continue;
+    /* Clear whatever is cached for that pane, or a second visit has nothing
+       to load and shows no loader -- which is right, and made this report a
+       working pane as broken. */
+    W.eval('(function(){ var v = BARRY.views.toolkit;'
+         + ' if (v && v.debugForget) v.debugForget(); })()');
+    b.click();
+    /* Sample fast: the loader only exists until the requests land. */
+    for (let i = 0; i < 60; i++) {
+      const l = D.querySelector('#tkResult .step-loader');
+      if (l) {
+        seen[name] = {
+          label: (l.querySelector('strong') || {}).textContent || '',
+          step: (l.querySelector('.sl-step') || {}).textContent || '',
+          dots: l.querySelectorAll('.sl-dots i').length,
+          spike: !!l.querySelector('.sl-spike'),
+          centred: !!D.querySelector('#tkResult .tk-loading'),
+        };
+        break;
+      }
+      await sleep(40);
+    }
+    await sleep(1500);
+  }
+  for (const k of ['curate', 'strata', 'bad']) {
+    const s = seen[k];
+    if (!s) { say('bad', k + ': never showed a loader'); continue; }
+    say('note', '  ' + k + ': ' + JSON.stringify(s));
+    check(k + ' has a named loader', s.label.length > 3, s.label);
+    check(k + ' says which step', s.step.length > 5, s.step);
+    check(k + ' has the sweeping spike', s.spike);
+    check(k + ' is centred in the pane', s.centred);
+  }
+  check('no bare "Reading..." left anywhere',
+        !/Reading\u2026/.test(D.body.textContent));
+  say(bad ? 'bad' : 'ok', bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'tkload: ' + bad + ' FAILED' : 'tkload: passed';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'tkload: harness CRASH';
+} })();
+</script>

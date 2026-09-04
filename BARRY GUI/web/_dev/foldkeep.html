@@ -1,0 +1,255 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — folding keeps the panels, and one mode at a time</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* Three of the reported faults.
+
+   "Collapsing the panes for some reason puts everything back into rendering
+   and it doesnt load back." Folding a bar rebuilds every pane; the new <img>
+   had no src and the loading overlay was created visible, so an image panel
+   went blank and stayed blank saying "rendering". The data was still in
+   pane._panelData the whole time.
+
+   "The numbering of which event I am is stuck in 12." It was the total
+   count, which cannot move however many times you press next.
+
+   "The Stratascope and DS curation can bundle up on each other." Entering
+   one on top of the other left two toolbars and two sets of key handlers. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+
+  W.eval("setView('xplore')");
+  await sleep(250);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => D.querySelector('.pane-canvas-host canvas'));
+  W.eval("BARRY.views.xplore.setPanes([{panel:'traces'},{panel:'csd'}],"
+       + " {col:0.5,row:0.5})");
+
+  const imgOk = () => Array.from(D.querySelectorAll('.pane-img-host img'))
+    .filter((n) => n.naturalWidth > 0).length;
+  const spinning = () => Array.from(D.querySelectorAll('.plot-loading'))
+    .filter((n) => W.getComputedStyle(n).display !== 'none'
+                && !n.classList.contains('hidden')).length;
+
+  head('A CSD is on screen to begin with');
+  await untilN(() => imgOk() >= 1, 400);
+  check('the CSD rendered', imgOk() >= 1, imgOk() + ' images');
+  await untilN(() => spinning() === 0, 200);
+  check('and nothing is still spinning', spinning() === 0,
+        spinning() + ' overlays up');
+
+  head('Folding a bar keeps it');
+  /* Through the arrow, the way a person does it. */
+  const arrow = D.querySelector('.pane-ctl .fold-btn');
+  check('the control strip has a fold arrow', !!arrow);
+  if (arrow) {
+    arrow.click();
+    // Immediately after: no network round trip should be needed.
+    await sleep(500);
+    check('the CSD is still on screen right after folding', imgOk() >= 1,
+          imgOk() + ' images');
+    check('and it is not claiming to be rendering', spinning() === 0,
+          spinning() + ' overlays up');
+    // And a moment later, in case something async blanked it.
+    await sleep(1500);
+    check('still there a second and a half later', imgOk() >= 1,
+          imgOk() + ' images');
+
+    const back = D.querySelector('.unfold-strip');
+    check('there is a way back', !!back);
+    if (back) {
+      back.click();
+      await sleep(700);
+      check('unfolding keeps it too', imgOk() >= 1, imgOk() + ' images');
+      check('and still no spinner', spinning() === 0, spinning() + ' up');
+    }
+  }
+
+  head('The event counter is a position, not a total');
+  /* Bookmarks on top of whatever the recording already carries. This one has
+     twelve real events -- which is the "12" that was being read as a stuck
+     position -- so the harness works out the expected numbers from the
+     merged list rather than assuming it starts empty. */
+  W.eval('(function(){var S=BARRY.views.xplore.state;'
+       + 'var s=S.sessions[S.active];'
+       + 's.bookmarks=(s.bookmarks||[]).concat('
+       + '[{t:1234.5,name:"h1"},{t:1301.25,name:"h2"}]);'
+       + 'BARRY.views.xplore.render();})()');
+  await sleep(500);
+  const cnt = () => {
+    const n = D.querySelector('.ev-nav .cnt');
+    return n ? n.textContent.trim() : '';
+  };
+  const marks = JSON.parse(W.eval(
+    'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];var out=[];'
+    + '(s.events||[]).forEach(function(e){out.push(e.start);});'
+    + '(s.spikeSets||[]).forEach(function(st){(st.events||[])'
+    + '.forEach(function(e){out.push(e.start);});});'
+    + '(s.bookmarks||[]).forEach(function(b){out.push(b.t);});'
+    + 'return out.sort(function(a,b){return a-b;});})())'));
+  const total = marks.length;
+  say('note', '  ' + total + ' navigable marks in this recording');
+  check('the counter shows a position out of the total',
+        new RegExp('/\\s*' + total + '$').test(cnt()), cnt());
+
+  const want = (t) => marks.findIndex((x) => Math.abs(x - t) < 1e-6) + 1;
+  /* Marks far enough from the start to be centred. A mark at t=0.001 cannot
+     be: the window clamps to 0 and its centre lands two seconds away, so the
+     counter correctly says "not on one" and the harness would be testing the
+     clamp rather than the counter. */
+  const usable = marks.filter((t) => t > 3);
+  if (usable.length < 2) { say('note', '  too few marks away from the start'); }
+  const t1 = usable[0], t2 = usable[1];
+  W.eval('BARRY.views.xplore.setWindow(0, ' + (t1 - 2) + ', 4)');
+  await sleep(900);
+  const c1 = cnt();
+  say('note', '  centred on mark 1 (t=' + t1.toFixed(3) + '): ' + c1);
+  W.eval('BARRY.views.xplore.setWindow(0, ' + (t2 - 2) + ', 4)');
+  await sleep(900);
+  const c2 = cnt();
+  say('note', '  centred on mark 2 (t=' + t2.toFixed(3) + '): ' + c2);
+  check('the number changes as you move', c1 !== c2, c1 + ' then ' + c2);
+  check('and it names the mark you are on',
+        c1 === want(t1) + '/' + total && c2 === want(t2) + '/' + total,
+        c1 + ' / ' + c2 + ' wanted ' + want(t1) + '/' + total
+        + ' and ' + want(t2) + '/' + total);
+
+  head('Only one mode at a time');
+  const gid = W.eval('(function(){var S=BARRY.views.xplore.state;'
+                   + 'return (S.sessions[S.active].identity||{}).gid||"";})()');
+  if (!gid) {
+    say('note', '  this recording has no gid, cannot enter a mode');
+  } else {
+    const inStrata = await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+    await sleep(1200);
+    check('StrataScope opened', !!W.eval('BARRY.strata.active'),
+          String(inStrata));
+    if (W.eval('BARRY.strata.active')) {
+      check('the shell says strata',
+            D.getElementById('app').classList.contains('mode-strata'));
+      check('one toolbar', D.querySelectorAll('.strata-bar').length === 1,
+            D.querySelectorAll('.strata-bar').length + ' strata bars');
+      /* Now ask for curation on top. Whether it opens depends on there being
+         a set; what must not happen is both being live at once. */
+      try { await W.eval('BARRY.curate.enter(' + JSON.stringify(gid) + ', "ds")'); }
+      catch (e) { /* no set is fine */ }
+      await sleep(1200);
+      const bothLive = W.eval('!!(BARRY.strata.active && BARRY.curate.active)');
+      check('the two are never both live', !bothLive,
+            'strata=' + W.eval('!!BARRY.strata.active')
+            + ' curate=' + W.eval('!!BARRY.curate.active'));
+      const bars = D.querySelectorAll('.strata-bar').length
+                 + D.querySelectorAll('.cur-bar').length;
+      check('and there is at most one mode toolbar', bars <= 1,
+            bars + ' toolbars');
+      const cls = D.getElementById('app').className;
+      check('and at most one mode class on the shell',
+            !(/mode-strata/.test(cls) && /mode-curate/.test(cls)), cls);
+    }
+
+    head('The layer rail is readable at this channel count');
+    /* Re-entered: the section above deliberately ends with neither mode
+       live, which is the correct outcome there and leaves nothing here to
+       look at. */
+    if (!W.eval('BARRY.strata.active')) {
+      try { await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')'); }
+      catch (e) { /* reported below */ }
+      await sleep(1400);
+    }
+    if (W.eval('BARRY.strata.active')) {
+      await sleep(600);
+      const rows = D.querySelectorAll('.strata-rows .strata-row');
+      const nch = W.eval('(function(){var S=BARRY.views.xplore.state;'
+                       + 'return S.sessions[S.active].info.channels.length;})()');
+      say('note', '  ' + rows.length + ' rows for ' + nch + ' channels');
+      const rowsBox = D.querySelector('.strata-rows');
+      const laneH = rows.length
+        ? rows[Math.floor(rows.length / 2)].getBoundingClientRect().height : 0;
+      say('note', '  lane ' + laneH.toFixed(1) + 'px, classes: '
+          + (rowsBox ? rowsBox.className : '?'));
+      if (laneH < 17) {
+        check('a short lane drops the 64 tiny dropdowns',
+              D.querySelectorAll('.strata-rows .strata-row select').length === 0
+              || W.getComputedStyle(
+                   D.querySelector('.strata-rows .strata-row select')
+                 ).display === 'none',
+              'selects still shown');
+        check('and it is marked as tight',
+              rowsBox && rowsBox.classList.contains('tight'),
+              rowsBox ? rowsBox.className : '?');
+      } else {
+        say('note', '  lanes are roomy here, nothing to degrade');
+      }
+      /* Whatever the spacing, the numbers must not overlap each other. */
+      const nums = Array.from(D.querySelectorAll('.strata-num'))
+        .filter((el2) => W.getComputedStyle(el2).visibility !== 'hidden');
+      let overlap = 0;
+      for (let i = 1; i < nums.length; i++) {
+        const a = nums[i - 1].getBoundingClientRect();
+        const b = nums[i].getBoundingClientRect();
+        if (b.top < a.bottom - 1) overlap += 1;
+      }
+      check('no two visible channel numbers overlap', overlap === 0,
+            overlap + ' overlapping of ' + nums.length + ' shown');
+      W.eval('BARRY.strata.exit()');
+    }
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'foldkeep: ' + bad + ' FAILED' : 'foldkeep: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'foldkeep: harness CRASH';
+} })();
+</script>

@@ -328,9 +328,25 @@ BARRY.views.eventbank = (function () {
                    'different recording': 3 };
     open.sort((a, b) => rank[matchOf(a)] - rank[matchOf(b)]);
 
-    let chosen = open.length ? open[0].id : null;
+    /* Pick the recording this belongs to, not whichever happens to be first.
 
-    const list = el('div', { class: 'bm-list tall' });
+       The dialog used to preselect open[0] no matter what it was, so with
+       three unrelated recordings open it arrived pre-armed to drop dentate
+       spikes from m11 s10 onto m1 s2 -- one click from silently wrong data.
+       Nothing is chosen unless it actually matches by mouse and session. */
+    const good = (m) => m === 'exact' || m === 'same session';
+    const first = open.find((o) => good(matchOf(o)));
+    let chosen = first ? first.id : null;
+
+    /* Its own class, not 'bm-list tall'.
+
+       That one lays a row out as a seven-column grid -- dot, time, name,
+       detail, kind, kind, close -- because it is the marks table. These rows
+       have three children, so the name was landing in a 74px column and
+       being cut to "PTEN m1 s2 ...", while the four unused columns sat
+       there as a long empty bar. Nothing needed truncating; the row was
+       being measured against the wrong shape. */
+    const list = el('div', { class: 'bm-list tall bank-targets' });
     const paint = () => {
       list.innerHTML = '';
       if (!open.length) {
@@ -356,6 +372,29 @@ BARRY.views.eventbank = (function () {
                        : (m === 'different recording' ? ' bad' : '')), text: m }),
         ]));
       }
+      const warn = document.getElementById('bankWarn');
+      if (warn) {
+        const sess = open.find((o) => o.id === chosen);
+        const m = sess ? matchOf(sess) : null;
+        if (!chosen) {
+          warn.textContent = open.length
+            ? 'None of the open recordings is the one these were banked '
+              + 'against. Open that one, or pick a recording below on '
+              + 'purpose — the times are seconds from the start of the '
+              + 'banked recording and will land somewhere arbitrary on any '
+              + 'other.'
+            : '';
+          warn.className = 'confirm-sub warn';
+        } else if (!good(m)) {
+          warn.textContent = 'That is ' + m + '. The times are seconds from '
+            + 'the start of the banked recording, so on this one they will '
+            + 'land somewhere arbitrary.';
+          warn.className = 'confirm-sub warn';
+        } else {
+          warn.textContent = '';
+          warn.className = 'confirm-sub';
+        }
+      }
     };
     paint();
 
@@ -369,11 +408,22 @@ BARRY.views.eventbank = (function () {
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
+        /* Which recording this belongs to, said by name.
+
+           This used to lead with "these times are seconds from the start
+           of X", which is true and is not the question being asked. What
+           you need to know is which of the open recordings is the right
+           one, and the answer is a name and a mouse, not a clock. */
         el('p', { class: 'confirm-msg',
-          text: 'These times are seconds from the start of '
-              + (e.session_label || 'the recording they were banked against')
-              + ', so they only line up on that recording.' }),
+          text: 'Banked against ' + (e.session_label
+              || 'an unnamed recording')
+              + (e.mouse != null
+                  ? '  ·  mouse ' + e.mouse
+                    + (e.session != null ? ', session ' + e.session : '')
+                  : '') + '.' }),
         list,
+        // Only when it needs saying, and only about the thing chosen.
+        el('p', { class: 'confirm-sub', id: 'bankWarn' }),
       ]),
       el('div', { class: 'mf' }, [
         e.session_path ? el('button', {
@@ -402,6 +452,9 @@ BARRY.views.eventbank = (function () {
         }),
       ]),
     ]));
+    // paint() ran before the modal was in the document, so the
+    // warning line it writes into did not exist yet.
+    paint();
   }
 
   async function applyTo(entry, sess) {
@@ -515,5 +568,9 @@ BARRY.views.eventbank = (function () {
     types: () => types,
     /* Used by Xplorefinder's "Bank…" dialog so it offers the same list. */
     typeList: () => types,
+    /* Open the "load onto a recording" chooser for a made-up entry. Only
+       web/_dev/bankshot.html uses this, to photograph the dialog with
+       recordings open that deliberately do not match. */
+    debugImportDialog: (e) => importDialog(e),
   };
 })();

@@ -26,6 +26,18 @@ BARRY.views.results = (function () {
   let sortBy = 'created';     // 'created' | 'title' | 'session' | 'bytes'
   let collections = [];       // saved searches, synced through preferences
 
+  /* Folders, which are not the same thing as tags and not the same thing as
+     collections. A tag is something a result is about and it can have five;
+     a collection is a saved search, so its contents change when the results
+     do; a folder is where a result lives, and it lives in one.
+
+     Filing is BARRY's, not the disk's: the files stay where the run wrote
+     them, because a run record points at a path and moving the file behind
+     it would break the rebuild of every figure made before the move. */
+  let folders = [];
+  let unfiled = 0;
+  let folderFilter = '';      // '' = everything, '~unfiled' = never filed
+
   async function load(refresh) {
     const q = new URLSearchParams();
     if (refresh) q.set('refresh', '1');
@@ -34,6 +46,9 @@ BARRY.views.results = (function () {
       items = res.results || [];
       facets = { tags: res.tags || [], sessions: res.sessions || [] };
       meta = res;
+      const tree = await api('/api/results/folders');
+      folders = tree.folders || [];
+      unfiled = tree.unfiled || 0;
     } catch (e) {
       toast('Could not read the catalog: ' + e.message, 'err');
       items = [];
@@ -48,6 +63,20 @@ BARRY.views.results = (function () {
     return items.filter((r) => {
       if (typeFilter && r.type !== typeFilter) return false;
       if (tagFilter && !(r.tags || []).includes(tagFilter)) return false;
+      if (folderFilter) {
+        // The real directory under Results/. Filing moves the file, so what
+        // this filters on is what you would see in Explorer.
+        const f = (r.folder || '').trim();
+        if (folderFilter === '~unfiled') {
+          if (f) return false;
+        } else if (!(f === folderFilter
+                     || f.startsWith(folderFilter + '/'))) {
+          // A folder means it and everything under it. Clicking "Figure 3"
+          // and seeing nothing because it all sits in "Figure 3/Panels" is
+          // not an answer.
+          return false;
+        }
+      }
       if (sessionFilter && r.session_key !== sessionFilter) return false;
       if (starredOnly && !r.starred) return false;
       if (!q) return true;
@@ -86,7 +115,9 @@ BARRY.views.results = (function () {
       + ' result(s)' + (meta.outputs_dir ? '  ·  ' + meta.outputs_dir : '');
 
     host.appendChild(toolbar(list));
-    host.appendChild(collectionRow());
+    host.appendChild(folderRow());
+    const coll = collectionRow();
+    if (coll) host.appendChild(coll);
     if (selected.size) host.appendChild(bulkBar(list));
 
     if (!items.length) {
@@ -168,6 +199,7 @@ BARRY.views.results = (function () {
         class: 'btn ghost sm', text: 'Tag all…',
         onclick: bulkTag,
       }),
+      moveMenu(),
       el('button', {
         class: 'btn ghost sm', text: 'Star all',
         onclick: () => bulk({ starred: true }),
@@ -249,6 +281,130 @@ BARRY.views.results = (function () {
         }),
       ]),
     ]));
+  }
+
+
+  /* ==================================================================
+     Folders
+
+     These are real directories under Results/, not labels. Moving a result
+     into one moves the file, so what this shows and what you see when you
+     open the folder are the same thing -- which is the point, because most
+     of the time people are looking for a figure outside BARRY.
+
+     Shown as a row of chips rather than a side tree: the depth is rarely
+     more than two and a permanent rail would cost width the thumbnails
+     want. Nesting reads from the indent marker rather than from position.
+     ================================================================== */
+  function folderRow() {
+    const bar = el('div', { class: 'res-folders' });
+    const chip = (id, label, n, extra) => el('button', {
+      class: 'folder-chip' + (folderFilter === id ? ' on' : '')
+           + (extra || ''),
+      onclick: () => {
+        folderFilter = folderFilter === id ? '' : id;
+        render();
+      },
+    }, [
+      el('span', { text: label }),
+      n != null ? el('span', { class: 'n', text: String(n) }) : null,
+    ].filter(Boolean));
+
+    bar.appendChild(el('span', { class: 'res-folders-label', text: 'Folders' }));
+    bar.appendChild(chip('', 'All', items.length));
+    for (const f of folders) {
+      bar.appendChild(chip(
+        f.path,
+        (f.depth ? '\u00b7 '.repeat(f.depth) : '') + f.name,
+        f.n || 0));
+    }
+    if (unfiled) bar.appendChild(chip('~unfiled', 'Unfiled', unfiled, ' dim'));
+
+    bar.appendChild(el('div', { class: 'spacer' }));
+    if (folderFilter && folderFilter !== '~unfiled') {
+      bar.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Rename\u2026',
+        title: 'Renames this folder and everything under it',
+        onclick: () => renameFolder(folderFilter),
+      }));
+    }
+    bar.appendChild(el('button', {
+      class: 'btn ghost sm', text: 'New folder\u2026',
+      title: 'Make a folder by filing something into it',
+      onclick: () => newFolder(),
+    }));
+    return bar;
+  }
+
+  async function newFolder() {
+    const name = await askPath('Name the folder',
+                               'Figure 3, or Figure 3/Panels for a subfolder');
+    if (!name) return;
+    try {
+      // A real directory, made whether or not anything goes in it yet --
+      // which is how people work: you make "Figure 3", then decide.
+      const res = await apiPost('/api/results/folders/new', { name });
+      folders = res.folders || folders;
+      if (selected.size) await moveTo(res.folder);
+      else { toast('Made Results/' + res.folder + '.', 'ok'); await load(); }
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  async function moveTo(folder) {
+    const ids = [...selected];
+    try {
+      const res = await apiPost('/api/results/bulk', { ids, folder });
+      folders = res.folders || folders;
+      const n = res.moved != null ? res.moved : res.touched;
+      toast('Moved ' + n + ' file' + (n === 1 ? '' : 's')
+            + (folder ? ' into Results/' + folder : ' back to the top of '
+               + 'Results') + '.', 'ok');
+      for (const f of (res.failed || [])) toast(f, 'err', 8000);
+      BARRY.activity.log('result.folder.move', { n: res.touched, folder });
+      selected.clear();
+      await load();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  async function renameFolder(from) {
+    const to = await askPath('Rename "' + from + '" to', from);
+    if (!to || to === from) return;
+    try {
+      const res = await apiPost('/api/results/folders/rename', { from, to });
+      toast('Renamed, and moved ' + res.touched + ' result'
+            + (res.touched === 1 ? '' : 's') + '.', 'ok');
+      folderFilter = to;
+      await load();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  /* The move menu in the bulk bar: existing folders, plus somewhere new. */
+  function moveMenu() {
+    const sel = el('select', {
+      class: 'res-move',
+      onchange: async (e) => {
+        const v = e.target.value;
+        e.target.selectedIndex = 0;
+        if (v === '__new') {
+          const name = await askPath('Name the folder',
+                                     'Figure 3, or Figure 3/Panels');
+          if (name) await moveTo(name);
+        } else if (v === '__none') {
+          await moveTo('');
+        } else if (v) {
+          await moveTo(v);
+        }
+      },
+    }, [
+      el('option', { value: '', text: 'Move to\u2026' }),
+      ...folders.map((f) => el('option', {
+        value: f.path,
+        text: (f.depth ? '\u00a0\u00a0'.repeat(f.depth) : '') + f.name,
+      })),
+      el('option', { value: '__new', text: 'A new folder\u2026' }),
+      el('option', { value: '__none', text: 'Out of any folder' }),
+    ]);
+    return sel;
   }
 
   async function bulkDelete() {
@@ -342,7 +498,12 @@ BARRY.views.results = (function () {
         },
       }));
     }
-    return el('div', { class: 'coll-row', style: 'margin-bottom:11px' }, chips);
+    /* With no saved collections and no filters set, this row held one
+       disabled button and 11px of margin -- a whole bar of chrome above the
+       figures that could not be used for anything. It appears when there is
+       something in it. */
+    if (!collections.length && !dirty) return null;
+    return el('div', { class: 'coll-row', style: 'margin-bottom:7px' }, chips);
   }
 
   function applyCollection(c) {

@@ -14,16 +14,21 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import traceback
 import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
-from . import (analysis, compose, csc, curation, discovery, eventbank,
-               events, export, extras, ids, layers, live, mice as micebook,
-               nlx, pipeline, rebuild, registry, results, runner, sessreg,
-               shards, store, storyboard, sysinfo, toolkit, video)
+from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
+               curation, discovery, eventbank, events, export, extras, ids,
+               dsimport,
+               feedback as feedbackmod,
+               layers, live, mice as micebook, nlx, pipeline, prewarm,
+               probes as probebook, rebuild,
+               registry, results, runner, sessreg, shards, spikesort, store,
+               storyboard, sysinfo, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -34,6 +39,10 @@ LOGS_DIR = os.path.join(APP_DIR, "GUI_logs")
 app = Flask(__name__, static_folder=None)
 
 STORE = store.Store(LOGS_DIR, auto_stage=False)
+# Reports live beside the logs, one file each, sharded by machine -- same
+# rule as everything else that gets edited, so two people never write the
+# same file.
+FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 
 _CATALOG = {"items": [], "sections": [], "scanned": 0}
 _SESSIONS = {}          # cache key -> opened session
@@ -380,8 +389,24 @@ def api_discover_status(job_id):
         if not getattr(job, "_registered", False):
             job._registered = True
             try:
+                found = data.get("sessions") or []
+                # Anything the assessment cannot vouch for is held back
+                # rather than registered. Seven folders on the lab drives
+                # are 64 files of header and no data -- an aborted
+                # acquisition is indistinguishable from a real recording in
+                # a tree, and once registered nothing questions it again.
+                usable = [x for x in found
+                          if (x.get("quality") or {}).get("usable", True)
+                          or x.get("path") in ACCEPTED_FOLDERS]
+                job.held_back = [{
+                    "path": x.get("path"),
+                    "name": x.get("name"),
+                    "label": (x.get("identity") or {}).get("label"),
+                    "channels": x.get("channels"),
+                    "quality": x.get("quality"),
+                } for x in found if x not in usable]
                 job.reg_new, job.reg_seen = REG.ingest(
-                    data.get("sessions") or [], scan_id=job.id, root=job.root)
+                    usable, scan_id=job.id, root=job.root)
                 STORE.record_activity([{
                     "action": "registry.scan",
                     "detail": {"root": job.root, "found": job.reg_seen,
@@ -390,6 +415,7 @@ def api_discover_status(job_id):
             except Exception as exc:                       # noqa: BLE001
                 STORE.record_error("registry/ingest", str(exc), None,
                                    {"root": job.root})
+        data["held_back"] = getattr(job, "held_back", [])
         data["registered"] = {"new": getattr(job, "reg_new", 0),
                               "seen": getattr(job, "reg_seen", 0)}
 
@@ -418,7 +444,18 @@ def api_discover_cancel(job_id):
 # ==========================================================================
 # CSC / Xplorefinder sessions
 # ==========================================================================
-def _session_for(path, even_only=True, invert=True):
+def _even_only_arg(body):
+    """None when the caller did not say, so the recording decides.
+
+    `bool(body.get("even_only", True))` turned "not specified" into "yes,
+    skip the odd channels", which is how half of every 64-channel recording
+    went unlooked-at. Absent now means absent.
+    """
+    v = (body or {}).get("even_only")
+    return None if v is None else bool(v)
+
+
+def _session_for(path, even_only=None, invert=True):
     key = "%s|%s|%s" % (os.path.abspath(path), even_only, invert)
     if key not in _SESSIONS:
         sess = csc.open_session(path, even_only=even_only, invert=invert)
@@ -432,7 +469,7 @@ def _session_for(path, even_only=True, invert=True):
 
 def _body_session(body):
     return _session_for(body.get("path", ""),
-                        bool(body.get("even_only", True)),
+                        _even_only_arg(body),
                         bool(body.get("invert", True)))
 
 
@@ -440,7 +477,7 @@ def _body_session(body):
 def api_csc_open():
     body = request.get_json(force=True) or {}
     path = body.get("path", "")
-    sess, err = _session_for(path, bool(body.get("even_only", True)),
+    sess, err = _session_for(path, _even_only_arg(body),
                              bool(body.get("invert", True)))
     if err:
         return jsonify(err), 400
@@ -455,8 +492,30 @@ def api_csc_open():
         STORE.record_error("registry/ensure", str(exc), None, {"path": path})
     stored, how = STORE.get_session(identity)
 
+    # Honour a remembered even-only, when the caller did not say.
+    #
+    # Which channels a probe is on is a fact about the recording, not a view
+    # preference, so it is stored with the session -- but the identity that
+    # finds that record needs the file open first, and by then it has been
+    # opened with the measured default. So: if nothing was asked for and the
+    # record remembers something different, open it again the right way.
+    # _session_for caches, so this costs one extra header read the first
+    # time a recording is opened in a process and nothing after that.
+    if _even_only_arg(body) is None and stored:
+        want = (stored.get("view_state") or {}).get("even_only")
+        if want is not None and bool(want) != bool(sess.get("even_only")):
+            again, err2 = _session_for(path, bool(want),
+                                       bool(body.get("invert", True)))
+            if not err2 and again:
+                sess = again
+
     out = {k: v for k, v in sess.items() if k != "channels"}
     out["gid"] = (stored or {}).get("gid")
+    # Carried on the identity too, so two windows that opened the same
+    # recording by different paths agree on what to call it -- which is what
+    # the cross-window channels are keyed on.
+    if out["gid"]:
+        identity = dict(identity, gid=out["gid"])
     out["channels"] = [{kk: vv for kk, vv in c.items() if kk != "file"}
                        for c in sess["channels"]]
     out["identity"] = identity
@@ -698,8 +757,12 @@ def conflict_audit():
     """
     shared, machines, n = [], set(), 0
     for folder, dirs, files in os.walk(LOGS_DIR):
-        dirs[:] = [d for d in dirs if d not in (".cache", "__pycache__")]
+        dirs[:] = [d for d in dirs
+                   if d not in (".cache", "__pycache__")
+                   and not d.startswith(".")]
         for name in files:
+            if name.startswith("."):
+                continue          # configuration, not a record
             rel = os.path.relpath(os.path.join(folder, name),
                                   LOGS_DIR).replace("\\", "/")
             n += 1
@@ -808,13 +871,69 @@ def api_panel():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    # Everything that changes the picture is in the spec, so a repeat of the
+    # same request is answered from memory -- which is most of curation,
+    # where you go back and forth over the same candidates.
+    hit = prewarm.get(sess, body)
+    if hit is not None:
+        return jsonify(dict(hit, cached=True))
     try:
-        return jsonify(analysis.render_panel(sess, body))
+        with prewarm.Busy():
+            out = analysis.render_panel(sess, body)
+        prewarm.put(sess, body, out)
+        return jsonify(out)
     except analysis.PanelError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
         return fail("panel:" + str(body.get("panel")), exc, 400,
                     {"panel": body.get("panel")})
+
+
+@app.route("/api/panel/prewarm", methods=["POST"])
+def api_panel_prewarm():
+    """Render the windows we are probably about to be asked for.
+
+    The client sends the spec it is currently drawing plus the times it
+    expects to visit -- the events in the recording, or the undecided
+    candidates in a curation set. Each becomes a window centred on that
+    time, rendered in the background and only while nothing on screen is
+    waiting.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    spec = dict(body.get("spec") or {})
+    times = body.get("times") or []
+    if not spec or not times:
+        return jsonify({"ok": True, "queued": 0, "reason": "nothing to warm"})
+    try:
+        span = float(spec.get("t1", 0)) - float(spec.get("t0", 0))
+    except (TypeError, ValueError):
+        span = 0.0
+    if not (span > 0):
+        return jsonify({"ok": False, "error": "That spec has no time span."}), 400
+
+    limit = int(body.get("limit") or 16)
+    starts = prewarm.windows_around(times, span, limit=max(1, min(limit, 64)),
+                                    t_end=sess.get("duration_s"))
+    specs = []
+    for t0 in starts:
+        one = dict(spec)
+        one["t0"] = t0
+        one["t1"] = t0 + span
+        specs.append(one)
+    queued = prewarm.request(sess, specs,
+                             supersede=bool(body.get("supersede", True)))
+    return jsonify({"ok": True, "queued": queued, "considered": len(specs)})
+
+
+@app.route("/api/panel/cache")
+def api_panel_cache():
+    """What the panel cache is holding. Diagnostic; ?clear=1 empties it."""
+    if request.args.get("clear"):
+        prewarm.clear()
+    return jsonify({"ok": True, "cache": prewarm.stats()})
 
 
 @app.route("/api/figure/recipe/<run_id>")
@@ -867,7 +986,7 @@ def api_figure_export():
     sessions, problems = {}, []
     for sid, spec in (body.get("sessions") or {}).items():
         sess, err = _session_for(spec.get("path", ""),
-                                 bool(spec.get("even_only", True)),
+                                 _even_only_arg(spec),
                                  bool(spec.get("invert", True)))
         if err:
             problems.append("%s: %s" % (sid, err.get("error")))
@@ -939,7 +1058,7 @@ def api_figure_preview():
     sessions = {}
     for sid, spec in (body.get("sessions") or {}).items():
         sess, err = _session_for(spec.get("path", ""),
-                                 bool(spec.get("even_only", True)),
+                                 _even_only_arg(spec),
                                  bool(spec.get("invert", True)))
         if not err:
             sessions[sid] = sess
@@ -985,6 +1104,49 @@ def api_video_list():
             out.append(dict(v, error=str(exc)))
     return jsonify({"ok": True, "videos": out, "tracking": media["tracking"],
                     **video.status()})
+
+
+@app.route("/api/video/convert", methods=["POST"])
+def api_video_convert():
+    """Transcode a whole video to MP4 so the browser can seek it itself.
+
+    Runs in the background; poll /api/video/convert/status. The clip player
+    keeps working the whole time, so this never blocks looking at the video.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path", "")
+    if body.get("clear"):
+        return jsonify({"ok": True, "removed": video.clear_converted(),
+                        "disk": video.converted_size_on_disk()})
+    try:
+        st = video.convert_start(path, force=bool(body.get("force")))
+    except video.VideoError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                              # noqa: BLE001
+        return fail("video/convert", exc, 400, {"path": path})
+    return jsonify({"ok": True, **st, "disk": video.converted_size_on_disk()})
+
+
+@app.route("/api/video/convert/status")
+def api_video_convert_status():
+    path = request.args.get("path", "")
+    st = video.convert_state(path) if path else {"state": "none"}
+    return jsonify({"ok": True, **st, "disk": video.converted_size_on_disk()})
+
+
+@app.route("/api/video/converted")
+def api_video_converted():
+    """Serve the converted MP4 itself, with range support so it seeks.
+
+    send_file handles Range requests when conditional=True, which is what
+    makes scrubbing work without any of the clip machinery.
+    """
+    path = request.args.get("path", "")
+    st = video.convert_state(path)
+    if st.get("state") != "ready" or not st.get("out"):
+        return jsonify({"ok": False,
+                        "error": "That video has not been converted."}), 404
+    return send_file(st["out"], mimetype="video/mp4", conditional=True)
 
 
 @app.route("/api/video/clip")
@@ -1134,11 +1296,27 @@ def api_cleanup():
 # ==========================================================================
 # Shared state across windows (Link time)
 # ==========================================================================
+@app.route("/api/probes")
+def api_probes():
+    """Which physical column each channel sits in, per probe.
+
+    The client needs this to lay out an H10 -- six columns, six panes -- and
+    to keep a CSD from running across contacts that are not neighbours.
+    """
+    return jsonify({"ok": True, "probes": probebook.listing()})
+
+
 @app.route("/api/link", methods=["GET", "POST"])
 def api_link():
     if request.method == "GET":
-        return jsonify({"ok": True,
-                        **live.snapshot(request.args.get("since", 0))})
+        # `wait` turns this into a long poll. Held open server-side, so an
+        # idle window asks once every 25s instead of twice a second, and a
+        # linked window hears about a move immediately.
+        held = request.args.get("wait")
+        since = request.args.get("since", 0)
+        if held:
+            return jsonify({"ok": True, **live.wait(since, held)})
+        return jsonify({"ok": True, **live.snapshot(since)})
     body = request.get_json(force=True) or {}
     slot = live.publish(body.get("channel", "time"), body.get("value"),
                         body.get("origin"))
@@ -1463,12 +1641,23 @@ def api_results():
     q = (request.args.get("q") or "").strip().lower()
     kind = request.args.get("kind") or ""
     session = request.args.get("session") or ""
-    if q or kind or session:
+    folder = request.args.get("folder") or ""
+    if q or kind or session or folder:
         def keep(r):
             if kind and r.get("type") != kind:
                 return False
             if session and r.get("session_key") != session:
                 return False
+            if folder:
+                got = RESULTS.clean_folder(r.get("folder"))
+                if folder == "~unfiled":
+                    if got:
+                        return False
+                # A folder means the folder and everything under it: asking
+                # for "Figure 3" and being shown nothing because it all sits
+                # in "Figure 3/Panels" is not an answer.
+                elif not (got == folder or got.startswith(folder + "/")):
+                    return False
             if not q:
                 return True
             hay = " ".join(str(r.get(k) or "") for k in
@@ -1841,6 +2030,8 @@ def api_curation_bank(gid, kind):
                    "n": sum(m["n"] for m in made)},
         "session": {"key": sess.get("key"), "label": sess.get("label")},
     }])
+    mirror_bank_soon()
+
     return jsonify({"ok": True, "entries": made})
 
 
@@ -1903,6 +2094,7 @@ def _attachments(rec):
     banked = 0
     try:
         banked = len(BANK.for_session({
+            "gid": rec.get("gid"),
             "key": key, "loose_key": loose,
             "mouse": rec.get("mouse"), "session": rec.get("session"),
             "start": rec.get("start"),
@@ -1984,6 +2176,114 @@ def api_registry_patch(gid):
     return jsonify({"ok": True, "session": REG.summary(rec, _attachments)})
 
 
+# ==========================================================================
+# Folders a scan would not vouch for
+# ==========================================================================
+# A scan assesses each folder before registering it (see discovery.assess).
+# Anything it holds back is listed rather than dropped, and can be accepted
+# here -- because "this looks wrong" is a judgement about data, and the person
+# who made the recording is better placed to make it than a size check.
+ACCEPTED_FOLDERS = set()
+
+
+@app.route("/api/discover/accept", methods=["POST"])
+def api_discover_accept():
+    """Register a folder the scan held back."""
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    if not os.path.isdir(path):
+        return jsonify({"ok": False, "error": "No such folder: " + path}), 400
+    contents = discovery.classify_folder(path)
+    if not contents:
+        return jsonify({"ok": False,
+                        "error": "There is no recording data in there."}), 400
+    rec = discovery.describe_session(path, contents)
+    ACCEPTED_FOLDERS.add(path)
+    new, seen = REG.ingest([rec], scan_id="accepted", root=path)
+    STORE.record_activity([{
+        "action": "scan.accept",
+        "detail": {"path": path,
+                   "verdict": (rec.get("quality") or {}).get("verdict")},
+    }])
+    return jsonify({"ok": True, "registered": {"new": new, "seen": seen},
+                    "session": rec})
+
+
+@app.route("/api/registry/audit")
+def api_registry_audit():
+    """Re-check what is already registered against what is on disk now.
+
+    The assessment arrived after these records did, so the folders it would
+    hold back today are already in the registry. This finds them: a recording
+    with no data in it is not a recording, and it should not be sitting in a
+    project tree looking like one.
+
+    Reachable paths only -- a recording on somebody else's drive cannot be
+    judged from here, and guessing would be worse than saying nothing.
+    """
+    rows, unreachable = [], 0
+    for rec in REG.all():
+        if rec.get("retired"):
+            continue
+        here = [p for p in (rec.get("paths") or []) if os.path.isdir(p)]
+        if not here:
+            unreachable += 1
+            continue
+        contents = discovery.classify_folder(here[0])
+        if not contents:
+            rows.append({
+                "gid": rec.get("gid"), "label": rec.get("label"),
+                "path": here[0],
+                "quality": {"verdict": "reject", "usable": False,
+                            "reasons": ["there is no recording data in this "
+                                        "folder any more"]},
+            })
+            continue
+        q = discovery.assess(here[0], contents)
+        if q["verdict"] in ("empty", "reject", "suspect"):
+            rows.append({"gid": rec.get("gid"), "label": rec.get("label"),
+                         "path": here[0], "quality": q,
+                         "attached": _attachments(rec)})
+    order = {"reject": 0, "empty": 1, "suspect": 2}
+    rows.sort(key=lambda r: (order.get(r["quality"]["verdict"], 3),
+                             str(r.get("label"))))
+    return jsonify({"ok": True, "rows": rows, "unreachable": unreachable,
+                    "checked": len(REG.all()) - unreachable})
+
+
+@app.route("/api/registry/retire", methods=["POST"])
+def api_registry_retire():
+    """Mark a registered recording as not worth carrying.
+
+    Retired, not deleted: the record stays, so anything already pointing at
+    its id still resolves, and it stops appearing in the tree. Nothing on the
+    recording drive is touched -- BARRY does not delete data it did not
+    write, and an aborted acquisition is still the lab's to keep or bin.
+    """
+    body = request.get_json(force=True) or {}
+    gids = body.get("gids") or ([body["gid"]] if body.get("gid") else [])
+    reason = body.get("reason") or "no data in the folder"
+    done = []
+    for gid in gids:
+        rec = REG.by_gid(gid)
+        if not rec:
+            continue
+        ident = {k: rec.get(k) for k in
+                 ("key", "loose_key", "mouse", "session", "start", "label")}
+        ident["gid"] = gid
+        STORE.upsert_session(ident, {
+            "retired": True, "retired_reason": reason,
+            "retired_at": cloudmod.now(),
+        })
+        RESULTS.tombs.add("session", gid, note="retired: " + reason)
+        done.append(gid)
+    STORE.record_activity([{
+        "action": "registry.retire",
+        "detail": {"n": len(done), "reason": reason},
+    }])
+    return jsonify({"ok": True, "retired": done})
+
+
 @app.route("/api/registry/<gid>/forget", methods=["POST"])
 def api_registry_forget(gid):
     """Drop a record entirely.
@@ -2003,6 +2303,9 @@ def api_registry_forget(gid):
     if not STORE.sessions.erase(base):
         return jsonify({"ok": False,
                         "error": "Nothing on disk for " + gid}), 400
+    # Remembered, so the next sync retires it up there rather than pulling
+    # it straight back down.
+    RESULTS.tombs.add("session", gid, note="forgotten in housekeeping")
     STORE.record_activity([{
         "action": "registry.forget",
         "detail": {"gid": gid, "key": rec.get("key")},
@@ -2648,6 +2951,10 @@ def api_results_bulk():
     add = [t.strip() for t in (body.get("add_tags") or []) if t.strip()]
     remove = [t.strip() for t in (body.get("remove_tags") or []) if t.strip()]
     star = body.get("starred")
+    # "" is a real instruction here -- take it out of its folder -- so the
+    # difference between "not given" and "cleared" has to survive.
+    folder = body.get("folder")
+    moves = []
     touched = 0
     for rid in ids_:
         rec = RESULTS.get(rid)
@@ -2661,16 +2968,72 @@ def api_results_bulk():
         patch = {"tags": tags}
         if star is not None:
             patch["starred"] = bool(star)
+        if folder is not None:
+            moves.append(rid)
         try:
             RESULTS.curate(rec["path"], patch)
             touched += 1
         except Exception:
             continue
+    # The move happens after the tagging, and one at a time: each one
+    # renames a file and repoints whatever held its old path.
+    moved, failed = 0, []
+    for rid in moves:
+        try:
+            RESULTS.move(rid, folder, store=STORE)
+            moved += 1
+        except (ValueError, OSError) as exc:
+            failed.append(str(exc))
     STORE.record_activity([{
         "action": "result.bulk",
-        "detail": {"n": touched, "add": add, "remove": remove, "starred": star},
+        "detail": {"n": touched, "add": add, "remove": remove,
+                   "starred": star, "folder": folder, "moved": moved},
     }])
-    return jsonify({"ok": True, "touched": touched})
+    return jsonify({"ok": True, "touched": touched, "moved": moved,
+                    "failed": failed, "folders": RESULTS.folders()})
+
+
+@app.route("/api/results/folders")
+def api_results_folders():
+    """Every folder results are filed in, as a tree."""
+    return jsonify({"ok": True, "folders": RESULTS.folders(),
+                    "unfiled": RESULTS.unfiled()})
+
+
+@app.route("/api/results/folders/new", methods=["POST"])
+def api_results_folders_new():
+    """Make an empty folder, because that is how people work: you make
+    "Figure 3" and then decide what goes in it."""
+    body = request.get_json(force=True) or {}
+    try:
+        folder = RESULTS.make_folder(body.get("name"))
+    except (ValueError, OSError) as exc:
+        return fail("results/folders/new", exc, 400)
+    return jsonify({"ok": True, "folder": folder,
+                    "folders": RESULTS.folders()})
+
+
+@app.route("/api/results/folders/rename", methods=["POST"])
+def api_results_folders_rename():
+    """Rename a folder, and everything under it.
+
+    Renaming has to carry the children or a rename silently orphans them:
+    "Figure 3" becoming "Figure 4" while "Figure 3/Panels" stays behind is a
+    worse outcome than refusing.
+    """
+    body = request.get_json(force=True) or {}
+    src = RESULTS.clean_folder(body.get("from"))
+    dst = RESULTS.clean_folder(body.get("to"))
+    try:
+        touched = RESULTS.rename_folder(src, dst, store=STORE)
+    except (ValueError, OSError) as exc:
+        return fail("results/folders/rename", exc, 400)
+    STORE.record_activity([{
+        "action": "result.folder.rename",
+        "detail": {"from": src, "to": dst, "n": touched},
+    }])
+    return jsonify({"ok": True, "touched": touched,
+                    "folders": RESULTS.folders()})
 
 
 @app.route("/api/results/delete", methods=["POST"])
@@ -3062,6 +3425,103 @@ def api_mice_forget():
     return jsonify({"ok": bool(ok), "attributes": MICE.attributes()})
 
 
+@app.route("/api/feedback", methods=["GET", "POST"])
+def api_feedback():
+    """Bug reports, feature requests and suggestions.
+
+    Kept next to the errors because that is where you are standing when you
+    notice something, and taking screenshots because the useful half of most
+    reports is the screen.
+    """
+    if request.method == "GET":
+        return jsonify({"ok": True, "reports": FEEDBACK.all(),
+                        "kinds": [{"id": k, "name": v}
+                                  for k, v in feedbackmod.KINDS.items()],
+                        "states": list(feedbackmod.STATES),
+                        "counts": FEEDBACK.counts(),
+                        "user": STORE.provenance().get("user")})
+    body = request.get_json(force=True) or {}
+    try:
+        rec = FEEDBACK.add(body, user=STORE.provenance().get("user"))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                          # noqa: BLE001
+        return fail("feedback/add", exc, 400)
+    return jsonify({"ok": True, "report": rec})
+
+
+@app.route("/api/feedback/<rec_id>", methods=["POST"])
+def api_feedback_update(rec_id):
+    body = request.get_json(force=True) or {}
+    try:
+        rec = FEEDBACK.update(rec_id, body,
+                              user=STORE.provenance().get("user"))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "report": rec})
+
+
+@app.route("/api/feedback/shot/<name>")
+def api_feedback_shot(name):
+    path = FEEDBACK.shot_path(name)
+    if not path:
+        return jsonify({"ok": False, "error": "No such attachment."}), 404
+    return send_file(path)
+
+
+# Scans are held between the look and the go-ahead, so the import writes
+# exactly what was shown rather than re-reading a folder that may have
+# changed in between.
+_DSSCANS = {}
+
+
+@app.route("/api/dsimport/scan", methods=["POST"])
+def api_dsimport_scan():
+    """Read a folder of sorted snapshots and say what would be imported.
+
+    Writes nothing. Every folder gets a verdict and, when it cannot be
+    imported, the reason -- because the failure mode that matters here is
+    decisions landing on the wrong events, which nobody would notice.
+    """
+    body = request.get_json(force=True) or {}
+    root = body.get("root", "")
+    kind = body.get("kind", "ds")
+    try:
+        rows = dsimport.scan(root, BANK, kind=kind)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                              # noqa: BLE001
+        return fail("dsimport/scan", exc, 400, {"root": root})
+    token = "scan" + uuid.uuid4().hex[:10]
+    _DSSCANS[token] = rows
+    if len(_DSSCANS) > 8:
+        _DSSCANS.pop(next(iter(_DSSCANS)))
+    # The per-event maps are big and only the server needs them.
+    public = [{k: v for k, v in r.items() if not k.startswith("_")}
+              for r in rows]
+    return jsonify({"ok": True, "token": token, "root": root,
+                    "rows": public, "summary": dsimport.summary(rows)})
+
+
+@app.route("/api/dsimport/apply", methods=["POST"])
+def api_dsimport_apply():
+    body = request.get_json(force=True) or {}
+    rows = _DSSCANS.get(body.get("token") or "")
+    if rows is None:
+        return jsonify({"ok": False,
+                        "error": "That scan has expired. Scan again."}), 400
+    only = set(body.get("folders") or [])
+    if only:
+        rows = [r for r in rows if r.get("folder") in only]
+    try:
+        out = dsimport.apply(rows, BANK, CURATE, kind=body.get("kind", "ds"),
+                             replace=bool(body.get("replace", True)),
+                             who=STORE.provenance().get("user"))
+    except Exception as exc:                              # noqa: BLE001
+        return fail("dsimport/apply", exc, 400)
+    return jsonify({"ok": True, **out})
+
+
 @app.route("/api/bank")
 def api_bank():
     """The whole bank, grouped and flat, without the event lists."""
@@ -3102,6 +3562,8 @@ def api_bank_add():
         "session": {"key": rec.get("session_key"),
                     "label": rec.get("session_label")},
     }])
+    mirror_bank_soon()
+
     return jsonify({"ok": True, "entry": {k: v for k, v in rec.items()
                                           if k != "events"}})
 
@@ -3118,6 +3580,8 @@ def api_bank_update(entry_id):
     STORE.record_activity([{"action": "bank.update",
                             "detail": {"id": entry_id,
                                        "fields": sorted(body)}}])
+    mirror_bank_soon()
+
     return jsonify({"ok": True, "entry": {k: v for k, v in rec.items()
                                           if k != "events"}})
 
@@ -3128,6 +3592,8 @@ def api_bank_delete(entry_id):
     if ok:
         STORE.record_activity([{"action": "bank.delete",
                                 "detail": {"id": entry_id}}])
+    mirror_bank_soon()
+
     return jsonify({"ok": ok})
 
 
@@ -3138,7 +3604,15 @@ def api_bank_for_session():
     identity = body.get("identity")
     if not identity and body.get("path"):
         identity = ids.identify(body["path"])
-    matches = BANK.for_session(identity or {})
+    identity = dict(identity or {})
+    # ids.identify reads a folder name; it cannot know the permanent id, so
+    # look it up. Without this the match falls back to the header start time,
+    # which is exactly the fragile thing the gid was minted to replace.
+    if not identity.get("gid"):
+        rec, _how = STORE.get_session(identity)
+        if rec and rec.get("gid"):
+            identity["gid"] = rec["gid"]
+    matches = BANK.for_session(identity)
     return jsonify({"ok": True, "entries": matches,
                     "identity": identity or {}})
 
@@ -3183,3 +3657,468 @@ def api_bank_export():
     if saved:
         headers["X-Barry-Output"] = saved["rel"]
     return Response(text, mimetype="text/csv", headers=headers)
+
+
+# ==========================================================================
+# Kilosort and Phy
+# ==========================================================================
+# Nothing here runs Kilosort in-process. A sort takes an hour and holds a GPU;
+# it belongs in its own process, with its output streamed, cancellable, and
+# recorded as a run like everything else BARRY launches.
+@app.route("/api/kilosort/check")
+def api_kilosort_check():
+    """What this machine has, and what it is missing."""
+    return jsonify(spikesort.jsonsafe(dict(
+        spikesort.check(REPO_ROOT, request.args.get("python")), ok=True)))
+
+
+@app.route("/api/kilosort/plan", methods=["POST"])
+def api_kilosort_plan():
+    """What a run would do, before anything is launched.
+
+    Bad channels come from BARRY's own record of the recording when the
+    caller does not name them, which is the point: the numbers people marked
+    while looking at the traces are the numbers that should be excluded, and
+    nobody should be retyping them into a second place.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("session_path") or ""
+    bad = body.get("bad_csc")
+    if bad is None and path:
+        sess, _err = _session_for(path)
+        if sess:
+            rec, _how = STORE.get_session(sess)
+            bad = (rec or {}).get("bad_channels") or []
+    try:
+        return jsonify(spikesort.jsonsafe(dict(spikesort.plan(
+            REPO_ROOT, path, body.get("probe"), body.get("settings"),
+            bad_csc=bad or [], invert=body.get("invert", True),
+            python=body.get("python")), ok=True)))
+    except Exception as exc:                       # noqa: BLE001
+        return fail("kilosort/plan", exc, 400)
+
+
+@app.route("/api/kilosort/run", methods=["POST"])
+def api_kilosort_run():
+    """Write the run script out, then execute it as a normal job."""
+    body = request.get_json(force=True) or {}
+    path = body.get("session_path") or ""
+    bad = body.get("bad_csc")
+    if bad is None and path:
+        sess, _err = _session_for(path)
+        if sess:
+            rec, _how = STORE.get_session(sess)
+            bad = (rec or {}).get("bad_channels") or []
+    plan = spikesort.plan(REPO_ROOT, path, body.get("probe"),
+                          body.get("settings"), bad_csc=bad or [],
+                          invert=body.get("invert", True),
+                          python=body.get("python"))
+    if not plan["ready"] and not body.get("anyway"):
+        return jsonify({"ok": False, "error": "; ".join(
+            x["what"] for x in plan["problems"]), "plan": plan}), 400
+
+    os.makedirs(plan["results_dir"], exist_ok=True)
+    script = os.path.join(plan["results_dir"], "run_kilosort_barry.py")
+    with open(script, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(plan["script"])
+
+    python = body.get("python") or sys.executable
+    job = runner.start_job(
+        "Kilosort: " + os.path.basename(path.rstrip("/" + os.sep)),
+        [python, "-u", script], cwd=plan["results_dir"],
+        meta={"kind": "kilosort", "session_path": path,
+              "results_dir": plan["results_dir"], "script": script})
+    STORE.record_run({
+        "id": job.id,
+        "script": "kilosort",
+        "label": "Kilosort 4",
+        "status": "running",
+        "session": {"path": path},
+        "parameters": {
+            "probe": plan["probe"], "settings": plan["settings_file"],
+            "bad_csc": plan["bad_csc"], "bad_channels": plan["bad_channels"],
+            "invert": plan["invert"], "n_chan_bin": plan["n_chan_bin"],
+            "fs": plan["fs"],
+        },
+        "outputs": [plan["results_dir"]],
+    })
+    return jsonify({"ok": True, "job": job.id, "script": script,
+                    "results_dir": plan["results_dir"], "plan": plan})
+
+
+@app.route("/api/kilosort/install", methods=["POST"])
+def api_kilosort_install():
+    """Run one pip install, streamed, so a failure is readable.
+
+    Only the exact commands the check offers -- an arbitrary pip line from
+    the browser would be a remote install endpoint, which this is not.
+    """
+    body = request.get_json(force=True) or {}
+    what = body.get("what")
+    python = body.get("python") or sys.executable
+    plans = {
+        "torch": [python, "-m", "pip", "install", "torch", "--index-url",
+                  "https://download.pytorch.org/whl/cu121"],
+        "torch-cpu": [python, "-m", "pip", "install", "torch"],
+        "kilosort": [python, "-m", "pip", "install", "kilosort"],
+        "phy": [python, "-m", "pip", "install", "phy", "--pre", "--upgrade"],
+    }
+    cmd = plans.get(what)
+    if not cmd:
+        return jsonify({"ok": False,
+                        "error": "Not something I install: %r" % what}), 400
+    job = runner.start_job("pip install " + what, cmd, cwd=REPO_ROOT,
+                           meta={"kind": "install", "what": what})
+    return jsonify({"ok": True, "job": job.id,
+                    "command": " ".join(cmd)})
+
+
+@app.route("/api/kilosort/runs")
+def api_kilosort_runs():
+    """Sorts already done for one recording."""
+    path = request.args.get("path") or ""
+    return jsonify({"ok": True, "runs": spikesort.results_dirs(path),
+                    "binary": spikesort.find_binary(path)})
+
+
+@app.route("/api/phy/open", methods=["POST"])
+def api_phy_open():
+    """Launch Phy on a results folder.
+
+    Phy is a desktop app with its own window; BARRY starts it and gets out of
+    the way. Its console output still comes back as a job, because when it
+    refuses to start the reason is on stderr.
+    """
+    body = request.get_json(force=True) or {}
+    results = body.get("results_dir") or ""
+    info = spikesort.phy_command(results)
+    if not info["exists"]:
+        return jsonify({
+            "ok": False,
+            "error": "No params.py in %s -- Phy reads that, and Kilosort "
+                     "writes it when a sort finishes. This folder has not "
+                     "finished sorting." % (results or "(nothing chosen)"),
+        }), 400
+    python = body.get("python") or sys.executable
+    job = runner.start_job(
+        "Phy: " + os.path.basename(results.rstrip("/" + os.sep)),
+        [python, "-m", "phy", "template-gui", info["params"]],
+        cwd=results, meta={"kind": "phy", "results_dir": results})
+    STORE.record_activity([{
+        "action": "phy.open", "detail": {"results_dir": results},
+    }])
+    return jsonify({"ok": True, "job": job.id, "command": info["command"]})
+
+
+@app.route("/api/phy/guide")
+def api_phy_guide():
+    """The keys and the views, so the first hour is not spent reading docs."""
+    return jsonify({"ok": True, "keys": spikesort.PHY_KEYS,
+                    "views": spikesort.PHY_VIEWS})
+
+
+@app.route("/api/kilosort/terminal", methods=["POST"])
+def api_kilosort_terminal():
+    """Open a terminal already in the right folder, with the env set up.
+
+    The escape hatch. Everything above is a convenience over commands anyone
+    can type, and when the convenience is in the way the right answer is a
+    prompt in the right directory rather than a worse version of one.
+    """
+    body = request.get_json(force=True) or {}
+    folder = body.get("path") or REPO_ROOT
+    if not os.path.isdir(folder):
+        return jsonify({"ok": False,
+                        "error": "No such folder: " + folder}), 400
+    try:
+        if sys.platform.startswith("win"):
+            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k",
+                              "cd /d " + folder], shell=False)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-a", "Terminal", folder])
+        else:
+            subprocess.Popen(["x-terminal-emulator"], cwd=folder)
+    except Exception as exc:                       # noqa: BLE001
+        return fail("kilosort/terminal", exc, 400)
+    return jsonify({"ok": True, "path": folder})
+
+
+# ==========================================================================
+# Supabase -- the shared copy
+#
+# BARRY writes locally first, always. The files are what make it work on a
+# rig with no network and on a drive that is not mounted; this pushes what
+# they hold to Postgres and brings back what other machines have changed.
+# Nothing here is on the critical path of anything: if the sync is down,
+# BARRY carries on and catches up later.
+# ==========================================================================
+CLOUD = cloudsync.Sync(
+    LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
+    results=None, repo_root=REPO_ROOT)
+
+_cloud_lock = threading.Lock()
+_cloud_last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,
+               "error": None, "running": False}
+
+
+def _cloud_results():
+    """RESULTS is built after this block; bind it lazily rather than
+    reordering the module around a background job."""
+    if CLOUD.results is None:
+        CLOUD.results = RESULTS
+    return CLOUD.results
+
+
+def cloud_sync_once(push=True, pull=True, files=False):
+    """One round trip. Never raises: a sync that fails is a status line,
+    not an interruption to whatever someone is doing."""
+    if not CLOUD.cloud.configured:
+        return dict(_cloud_last, error="not configured")
+    if not _cloud_lock.acquire(blocking=False):
+        return dict(_cloud_last, error="a sync is already running")
+    try:
+        _cloud_last["running"] = True
+        _cloud_results()
+        out = {"pushed": 0, "pulled": 0}
+        if pull:
+            got = CLOUD.pull()
+            out["pulled"] = sum(v for v in (got.get("applied") or {}).values()
+                                if isinstance(v, int))
+        if push:
+            # Deletions first: a push that re-sends a row we have locally
+            # deleted would undo the tombstone it is about to write.
+            out["deleted"] = CLOUD.push_deletions().get("marked", 0)
+            sent = CLOUD.push(include_history=True)
+            out["pushed"] = sent.get("sent", 0)
+        if files:
+            # Up first, then down: a figure this machine made should reach
+            # the others before it goes looking for theirs.
+            up = CLOUD.upload_results()
+            out["uploaded"] = up.get("uploaded", 0)
+            down = CLOUD.pull_files()
+            out["downloaded"] = down.get("downloaded", 0)
+        # And the browsable copy of the bank, so the folder tree agrees with
+        # the view whether or not anything changed up there.
+        out["mirrored"] = CLOUD.mirror_bank(APP_DIR).get("written", 0)
+        _cloud_last.update({"at": cloudmod.now(), "ok": True,
+                            "error": None, "failures": 0, **out})
+    except Exception as exc:                       # noqa: BLE001
+        # Log the first failure of a run, not every one. The commonest reason
+        # to fail is "the schema is not applied yet", which does not fix
+        # itself in two minutes -- and filling the error log with the same
+        # line 700 times before anyone reads it helps nobody.
+        first = _cloud_last.get("ok") is not False
+        _cloud_last.update({"at": cloudmod.now(), "ok": False,
+                            "error": str(exc)[:400]})
+        _cloud_last["failures"] = _cloud_last.get("failures", 0) + 1
+        if first:
+            STORE.record_error("cloud.sync", exc)
+    finally:
+        _cloud_last["running"] = False
+        _cloud_lock.release()
+    return dict(_cloud_last)
+
+
+def _cloud_loop():
+    """Background sync. Pull first, so a push never sends a stale edit over
+    somebody else's newer one -- the database would reject it anyway, but
+    losing the race locally means the next pull just undoes your screen."""
+    time.sleep(20)          # let the app finish starting
+    while True:
+        cfg = CLOUD.cloud.reload()
+        base = max(30, int(cfg.get("interval") or 120))
+        if cfg.get("enabled") and cfg.get("auto"):
+            cloud_sync_once(files=cfg.get("upload_results", True))
+        # Back off while it is failing, up to half an hour. Something that is
+        # down stays down; retrying every two minutes for a day is just noise
+        # in somebody's network logs and ours.
+        fails = _cloud_last.get("failures", 0)
+        wait = base * min(2 ** fails, 16) if fails else base
+        time.sleep(min(wait, 1800))
+
+
+if CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto"):
+    threading.Thread(target=_cloud_loop, daemon=True,
+                     name="barry-cloud-sync").start()
+
+
+# The Data Bank folder tree is derived, so it is rebuilt whenever the bank
+# changes rather than being kept in step by hand. In a thread because it walks
+# a few hundred files and nobody should wait for it to finish banking.
+_mirror_lock = threading.Lock()
+
+
+def mirror_bank_soon():
+    def go():
+        if not _mirror_lock.acquire(blocking=False):
+            return
+        try:
+            CLOUD.mirror_bank(APP_DIR)
+        except Exception as exc:                   # noqa: BLE001
+            STORE.record_error("bank.mirror", exc)
+        finally:
+            _mirror_lock.release()
+    threading.Thread(target=go, daemon=True, name="barry-bank-mirror").start()
+
+
+# Once at startup, so the folder is there and correct before anyone looks.
+mirror_bank_soon()
+
+
+@app.route("/api/cloud/mirror", methods=["POST"])
+def api_cloud_mirror():
+    """Rewrite the Data Bank folder tree from the bank.
+
+    Derived, so this can be run any time and deleting the tree is harmless.
+    """
+    try:
+        return jsonify(dict(CLOUD.mirror_bank(APP_DIR), ok=True))
+    except Exception as exc:                       # noqa: BLE001
+        return fail("cloud/mirror", exc, 400)
+
+
+@app.route("/api/cloud/status")
+def api_cloud_status():
+    cfg = CLOUD.cloud.reload()
+    out = {
+        "ok": True,
+        "configured": CLOUD.cloud.configured,
+        "project": cfg.get("project"),
+        "url": cfg.get("url"),
+        "auto": bool(cfg.get("auto")),
+        "interval": cfg.get("interval"),
+        # A project is set but this machine has not been told the key -- the
+        # state a fresh clone is in, and what makes the panel ask.
+        "needs_key": bool(cfg.get("needs_key")),
+        "key_in_repo": bool(cfg.get("key_in_repo")),
+        "machine": CLOUD.machine,
+        "last": dict(_cloud_last),
+        "state": CLOUD.cloud.state(),
+    }
+    if request.args.get("ping") and CLOUD.cloud.configured:
+        out["ping"] = CLOUD.cloud.ping()
+    return jsonify(out)
+
+
+@app.route("/api/cloud/sync", methods=["POST"])
+def api_cloud_sync():
+    """Sync now, rather than waiting for the next tick."""
+    body = request.get_json(silent=True) or {}
+    res = cloud_sync_once(push=body.get("push", True),
+                          pull=body.get("pull", True),
+                          files=body.get("files", True))
+    return jsonify({"ok": bool(res.get("ok")), "last": res})
+
+
+@app.route("/api/cloud/key", methods=["POST"])
+def api_cloud_key():
+    """Take the Supabase key from the Sync panel and keep it on this machine.
+
+    A browser is not where I would choose to hand over a service-role
+    credential, but the alternative in practice is somebody editing a JSON
+    file, and the version of that which actually happens is the key ending up
+    pasted into the repo. This server only listens on 127.0.0.1, and the key
+    is written to GUI_logs/.cloud.json, which git ignores.
+
+    The commonest mistake is pasting the publishable key -- they sit next to
+    each other in the dashboard -- so that is caught by name rather than
+    surfacing later as a permissions error that explains nothing.
+    """
+    body = request.get_json(force=True) or {}
+    key = (body.get("key") or "").strip()
+    ok, why = cloudmod.looks_like_a_key(key)
+    if not ok:
+        return jsonify({"ok": False, "error": why}), 400
+
+    target = cloudmod.config_path(LOGS_DIR)
+    if not _git_ignores(target):
+        return jsonify({
+            "ok": False,
+            "error": "Refusing to save: git is not ignoring %s. Add "
+                     "GUI_logs/.cloud.json to .gitignore first." % target,
+        }), 400
+
+    cloudmod.save_config(LOGS_DIR, key=key)
+    CLOUD.cloud.reload()
+    ping = CLOUD.cloud.ping()
+    if not ping.get("reachable"):
+        return jsonify({"ok": False, "saved": True,
+                        "error": "Saved, but the project did not answer: %s"
+                                 % str(ping.get("error"))[:200]}), 200
+    if not ping.get("schema"):
+        return jsonify({"ok": False, "saved": True,
+                        "error": "Connected, but the tables are not there "
+                                 "yet -- run the SQL in supabase/."}), 200
+    STORE.record_activity([{"action": "cloud.key.set",
+                            "detail": {"project": CLOUD.cloud.cfg
+                                       .get("project")}}])
+    return jsonify({"ok": True, "saved": True, "ping": ping})
+
+
+def _git_ignores(path):
+    """Would git pick this file up? Used before writing anything secret."""
+    try:
+        res = subprocess.run(["git", "check-ignore", "-q", path],
+                             cwd=REPO_ROOT, capture_output=True, timeout=10)
+        return res.returncode == 0
+    except Exception:                              # noqa: BLE001
+        return False        # cannot tell, so do not write
+
+
+@app.route("/api/cloud/config", methods=["POST"])
+def api_cloud_config():
+    """Turn the sync on or off, and set how often.
+
+    Deliberately cannot set the key: a browser is the wrong place to hand
+    over a service-role credential, and tools/cloud_setup.py already refuses
+    to write it anywhere git can see.
+    """
+    body = request.get_json(force=True) or {}
+    patch = {}
+    for k in ("auto", "enabled", "upload_results"):
+        if k in body:
+            patch[k] = bool(body[k])
+    if "interval" in body:
+        patch["interval"] = max(30, int(body["interval"]))
+    if not patch:
+        return jsonify({"ok": False, "error": "Nothing to change."}), 400
+    cloudmod.save_config(LOGS_DIR, **patch)
+    CLOUD.cloud.reload()
+    return jsonify({"ok": True, "config": CLOUD.cloud.cfg})
+
+
+# ==========================================================================
+# A readable console
+# ==========================================================================
+# The dev server logs every request, and the polled routes drown out
+# everything else -- a real 500 scrolls past in under a second. These lines
+# are suppressed; the requests themselves are untouched and still show up in
+# the in-app request trace.
+#
+# Errors are never quiet: anything that is not a 2xx/3xx still prints, so a
+# route that starts failing is as loud as it ever was.
+import logging as _logging
+
+_QUIET_PATHS = (
+    "/api/link", "/api/job/", "/api/activity", "/api/debug",
+    "/api/results/file", "/api/outputs/file",
+    "/api/video/clip", "/api/video/frame",
+)
+
+
+class _QuietPolls(_logging.Filter):
+    def filter(self, record):
+        try:
+            msg = record.getMessage()
+            # Werkzeug's access line: '"GET /path HTTP/1.1" 200 -'
+            if '" 2' not in msg and '" 3' not in msg:
+                return True                      # never hide a failure
+            for p in _QUIET_PATHS:
+                if ('GET ' + p) in msg or ('POST ' + p) in msg:
+                    return False
+        except Exception:                        # noqa: BLE001
+            return True
+        return True
+
+
+_logging.getLogger("werkzeug").addFilter(_QuietPolls())

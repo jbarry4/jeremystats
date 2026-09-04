@@ -38,12 +38,28 @@ async function until(fn, ms) {
 
   // Open a recording.
   const cat = await (await fetch('/api/sessions')).json();
-  // A stored session record keeps every path it has been opened from; the
-  // newest is the one most likely to still be there.
+  /* A stored record keeps every path it has been opened from, on any
+     machine -- so "the newest" is as likely to be an unreachable mount or an
+     imported .mat as it is the folder. Ask the registry, which already works
+     out what this machine can reach. */
   let path = null;
-  for (const rec of (cat.sessions || [])) {
-    const ps = rec.paths || [];
-    if (ps.length) { path = ps[ps.length - 1]; break; }
+  try {
+    const reg = await (await fetch('/api/registry')).json();
+    for (const p of (reg.tree || [])) {
+      for (const m of p.mice) {
+        for (const s of m.sessions) {
+          if ((s.here || []).length) { path = s.here[0]; break; }
+        }
+        if (path) break;
+      }
+      if (path) break;
+    }
+  } catch (e) { /* fall through */ }
+  if (!path) {
+    for (const rec of (cat.sessions || [])) {
+      const ps = (rec.paths || []).filter(Boolean);
+      if (ps.length) { path = ps[0]; break; }
+    }
   }
   say('recording: ' + path, 'note');
   ev("setView('xplore')");

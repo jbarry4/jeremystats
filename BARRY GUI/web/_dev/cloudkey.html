@@ -1,0 +1,128 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — asking for the key</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 42vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* A machine that has never been given the key must be told so, somewhere it
+   will be seen, and must be able to fix it there. Checked against the real
+   sync panel, and against the real endpoint -- including the mistake people
+   actually make, which is pasting the publishable key.
+
+   Whether the key is currently set decides which half runs, so this is
+   useful in both states rather than only on a fresh machine. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const post = (u, b) => fetch(u, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b),
+});
+async function until(fn, ms = 12000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  head('The endpoint refuses the wrong things');
+  const pub = await post('/api/cloud/key',
+    { key: 'sb_publishable_X6tvjMf8XLe20L9xiD0vmw_EGP6WBSV' });
+  const pubBody = await pub.json();
+  check('the publishable key is refused by name', pub.status === 400
+        && /publishable/i.test(pubBody.error || ''), pubBody.error);
+  const junk = await post('/api/cloud/key', { key: 'hello' });
+  check('so is anything that is not a key', junk.status === 400);
+  const empty = await post('/api/cloud/key', { key: '   ' });
+  check('and an empty box', empty.status === 400);
+
+  head('The panel');
+  const status = await fetch('/api/cloud/status').then((r) => r.json());
+  say('note', '  configured=' + status.configured
+      + '  needs_key=' + status.needs_key
+      + '  project=' + status.project);
+  check('status says which project the repo points at', !!status.project,
+        JSON.stringify(status).slice(0, 90));
+
+  D.getElementById('syncBtn').click();
+  await until(() => D.querySelector('.cloud-note div, .cloud-note p'), 12000);
+  await sleep(900);
+  const panel = D.querySelector('.cloud-note');
+  check('the sync panel has a section for it', !!panel);
+
+  if (status.needs_key) {
+    const ask = D.querySelector('.cloud-ask');
+    check('it asks for the key', !!ask,
+          panel ? panel.textContent.slice(0, 100) : '');
+    check('with a box to paste it into',
+          !!D.querySelector('.cloud-ask input.cloud-key'));
+    check('and says where to get it',
+          /API Keys/.test((ask || {}).textContent || ''));
+    check('and that BARRY works without it',
+          /without it/.test((ask || {}).textContent || ''));
+
+    // The mistake, through the actual UI.
+    const input = D.querySelector('.cloud-ask input.cloud-key');
+    input.value = 'sb_publishable_X6tvjMf8XLe20L9xiD0vmw_EGP6WBSV';
+    Array.from(D.querySelectorAll('.cloud-ask button'))
+      .find((b) => /Connect/.test(b.textContent)).click();
+    await sleep(1200);
+    check('pasting the publishable key is explained, not just rejected',
+          /publishable/i.test(
+            (D.querySelector('.cloud-ask .hint.bad') || {}).textContent || ''),
+          (D.querySelector('.cloud-ask .hint.bad') || {}).textContent || '');
+  } else {
+    say('note', '  (this machine already has a key, so the asking panel is '
+        + 'not shown -- that is correct)');
+    check('it shows the project instead of asking',
+          /svyy|Supabase/.test(panel.textContent)
+          && !D.querySelector('.cloud-ask'),
+          panel.textContent.slice(0, 90));
+    check('with a way to sync now',
+          Array.from(D.querySelectorAll('.cloud-note button'))
+            .some((b) => /Sync now/.test(b.textContent)));
+    check('and it says when it last synced',
+          /Last sync/.test(panel.textContent));
+  }
+
+  if (errors.length) {
+    head('Errors thrown in the page');
+    errors.forEach((m) => say('bad', m));
+  }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'cloudkey: ' + bad + ' FAILED' : 'cloudkey: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'cloudkey: harness CRASH';
+} })();
+</script>

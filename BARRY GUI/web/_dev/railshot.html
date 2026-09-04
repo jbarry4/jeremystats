@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>rail</title>
+<iframe id="app" src="/?linkhold=0" style="position:fixed;inset:0;width:100vw;height:100vh;border:0"></iframe>
+<script>
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 200 && !W.BARRY; i++) await sleep(120);
+  const want = new URLSearchParams(location.search).get('state') || 'away';
+  W.eval("setRail('" + want + "')");
+  await sleep(700);
+  document.title = 'shot';
+})();
+</script>

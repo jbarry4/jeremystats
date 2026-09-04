@@ -1,0 +1,135 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — storyboard thumbnails</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* "In the storyboard, the items render fine on the main slide, but in the
+   slide deck to the left object render as a square... like the arrow turns
+   into a lil square on the left."
+
+   The rail drew every non-image item as a filled div, so an arrow, a line, a
+   highlight and a text box were four identical coloured rectangles -- and the
+   rail is what you navigate a deck by.
+
+   Checked by putting one of each on a slide and looking at what the rail
+   makes of them: the shapes have to come out as the same SVG the slide
+   draws, not as blocks. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  W.eval("setView('storyboard')");
+  await sleep(700);
+  await untilN(() => D.querySelector('.sb-rail, .sb-canvas'), 200);
+
+  /* A slide carrying one of everything the rail used to flatten. Built
+     straight into the deck rather than through the toolbar, because what is
+     being tested is the drawing, not the drawing tools. */
+  const made = W.eval('(function(){'
+    + 'var S = BARRY.storyboard || BARRY.views.storyboard;'
+    + 'if (!S || !S.debugSetSlide) return "no hook";'
+    + 'return S.debugSetSlide(['
+    + '  {id:"a1", type:"shape", shape:"arrow",  x:.05,y:.10,w:.40,h:.20,'
+    + '   color:"#c0392b", width:3},'
+    + '  {id:"l1", type:"shape", shape:"line",   x:.05,y:.40,w:.40,h:.02,'
+    + '   color:"#2980b9", width:3},'
+    + '  {id:"e1", type:"shape", shape:"ellipse",x:.55,y:.10,w:.30,h:.25,'
+    + '   color:"#27ae60", width:3},'
+    + '  {id:"h1", type:"highlight",             x:.55,y:.45,w:.30,h:.10,'
+    + '   color:"#f1c40f"},'
+    + '  {id:"t1", type:"text", text:"Dentate spike, s4", x:.05,y:.62,'
+    + '   w:.50,h:.12, size:14, color:"#12211b"},'
+    + '  {id:"k1", type:"ink", strokes:[[[0,0],[.5,.5],[1,0]]],'
+    + '   x:.05,y:.78,w:.35,h:.15, color:"#8e44ad", width:2}'
+    + ']); })()');
+  if (made === 'no hook') {
+    say('note', '  no debug hook on the storyboard module; '
+              + 'add one or drive the toolbar');
+    check('a slide could be built', false, 'no debugSetSlide');
+  } else {
+    await sleep(900);
+
+    head('The slide itself draws them (it always did)');
+    const stage = D.querySelector('.sb-canvas');
+    check('there is a slide', !!stage);
+    const stageSvg = stage ? stage.querySelectorAll('.sb-item svg').length : 0;
+    check('shapes on the slide are SVG', stageSvg >= 5, stageSvg + ' svg');
+
+    head('And now the rail does too');
+    const cells = Array.from(D.querySelectorAll('.sb-mini-item'));
+    check('the thumbnail has a cell per item', cells.length === 6,
+          cells.length + ' cells');
+    const svgs = D.querySelectorAll('.sb-mini-item > svg').length;
+    check('five of them are drawings, not blocks', svgs >= 5,
+          svgs + ' svg in the thumbnail');
+    const texts = D.querySelectorAll('.sb-mini-label').length;
+    check('and the text is text', texts === 1, texts + ' text cells');
+
+    /* The actual complaint: an arrow that looks like a square. A filled
+       rectangle has a background colour and no child; a drawing does not. */
+    const blocks = cells.filter((c) => {
+      const st = W.getComputedStyle(c);
+      const bg = st.backgroundColor;
+      const solid = bg && bg !== 'transparent'
+                 && !/rgba\(0,\s*0,\s*0,\s*0\)/.test(bg);
+      return solid && !c.firstElementChild;
+    });
+    check('no item is drawn as a plain coloured square',
+          blocks.length === 0,
+          blocks.length + ' squares: '
+          + blocks.map((b) => b.className).join(', '));
+
+    /* And they have to be distinguishable from one another, which is the
+       point of a thumbnail. */
+    const shapes = Array.from(D.querySelectorAll('.sb-mini-item > svg'))
+      .map((sv) => sv.innerHTML.replace(/\s+/g, ' ').slice(0, 60));
+    check('the drawings differ from one another',
+          new Set(shapes).size >= 4,
+          new Set(shapes).size + ' distinct of ' + shapes.length);
+    shapes.forEach((h, i) => say('note', '  ' + i + ': ' + h.slice(0, 54)));
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'sbthumb: ' + bad + ' FAILED' : 'sbthumb: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'sbthumb: harness CRASH';
+} })();
+</script>

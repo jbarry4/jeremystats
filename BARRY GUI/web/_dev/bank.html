@@ -45,7 +45,29 @@ const post = async (p, b) => (await fetch(p, {
   const D = () => frame.contentDocument;
   const $ = (s) => D().querySelector(s);
   const $$ = (s) => Array.from(D().querySelectorAll(s));
-  const sess = new URLSearchParams(location.search).get('session');
+  /* ?session=<folder> still wins, but the harness should not need to be
+     told: the registry already knows which recordings this machine can
+     reach, so ask it. Without this the whole run dies on the first line
+     that touches a recording, with an error that names none of that. */
+  let sess = new URLSearchParams(location.search).get('session');
+  if (!sess) {
+    try {
+      const reg = await (await fetch('/api/registry')).json();
+      outer: for (const p of (reg.tree || [])) {
+        for (const m of p.mice) {
+          for (const s of m.sessions) {
+            if ((s.here || []).length) { sess = s.here[0]; break outer; }
+          }
+        }
+      }
+    } catch (e) { /* reported below */ }
+  }
+  if (!sess) {
+    say('no reachable recording to test against', 'bad');
+    document.title = 'bank: no recording';
+    return;
+  }
+  say('recording: ' + sess, 'note');
 
   /* A control that used to sit on the strip and now lives behind one of its
      menu buttons. Opens the menu, then finds the control inside it. Each use
@@ -233,7 +255,15 @@ const post = async (p, b) => (await fetch(p, {
     const pipeIn = $$('.bank-entry-row .field').find(
       (d) => (d.querySelector('label') || {}).textContent === 'Produced by')
       .querySelector('input');
-    pipeIn.value = '';
+    /* Setting .value alone is not typing. A field whose handler is on
+       'input' never hears it, so the dialog keeps the old value and the
+       whole banking flow appears to do nothing. */
+    const type = (node, text) => {
+      node.value = text;
+      node.dispatchEvent(new W.Event('input', { bubbles: true }));
+      node.dispatchEvent(new W.Event('change', { bubbles: true }));
+    };
+    type(pipeIn, '');
     const nBefore = (await (await fetch('/api/bank')).json()).entries.length;
     $$('.mf button').find((b) => /^Bank/.test(b.textContent)).click();
     await sleep(700);
@@ -244,23 +274,50 @@ const post = async (p, b) => (await fetch(p, {
           !!$$('.bank-entry-row').length);
 
     // Now fill it in properly.
-    pipeIn.value = 'harness: BARRY threshold detector';
-    fieldFor('Added by').value = 'harness@test';
+    /* Every row, not just the first. The dialog offers one row per set and
+       refuses until all of them say what produced them -- correctly -- so
+       filling only the first looks like "banking does nothing". A recording
+       that has been worked on has more than one set on it. */
+    for (const row of $$('.bank-entry-row')) {
+      const inp = Array.from(row.querySelectorAll('.field')).find(
+        (d) => (d.querySelector('label') || {}).textContent === 'Produced by');
+      if (inp) type(inp.querySelector('input'),
+                    'harness: BARRY threshold detector');
+    }
+    type(fieldFor('Added by'), 'harness@test');
+    // Say what the dialog is actually working with, so "nothing happened"
+    // stops being the whole diagnosis.
+    say('  rows in the dialog: ' + $$('.bank-entry-row').length
+        + ',  produced-by = ' + JSON.stringify(pipeIn.value)
+        + ',  added-by = ' + JSON.stringify(fieldFor('Added by').value),
+        'note');
+    const toasts = [];
+    const origToast = W.toast;
+    W.toast = function (m, k) { toasts.push(k + ': ' + m); return origToast.apply(this, arguments); };
     $$('.mf button').find((b) => /^Bank/.test(b.textContent)).click();
     await sleep(1600);
     const after = await (await fetch('/api/bank')).json();
-    check('the entry is banked', after.entries.length === nBefore + 1,
+    W.toast = origToast;
+    if (toasts.length) say('  toasts: ' + toasts.join(' // '), 'note');
+    check('the entry is banked', after.entries.length > nBefore,
           nBefore + ' -> ' + after.entries.length);
-    const made = after.entries.find((e) => (e.source || {}).pipeline
+    /* One entry per set, so the selection is spread across all of them.
+       Checking only the first was fine when a recording had one set on it
+       and wrong the moment it had two. */
+    const mine = after.entries.filter((e) => (e.source || {}).pipeline
       === 'harness: BARRY threshold detector');
-    check('it records what produced it', !!made);
+    const made = mine[0];
+    check('it records what produced it', mine.length > 0,
+          mine.length + ' entr(ies)');
     check('it records who added it',
-          !!(made && made.added && made.added.by === 'harness@test'),
+          mine.length > 0 && mine.every((e) => (e.added || {}).by
+                                               === 'harness@test'),
           made ? made.added.by : '');
-    check('it records when', !!(made && made.added.at));
-    check('it banked exactly what was selected',
-          !!made && made.n === nSelected,
-          made ? made.n + ' banked, ' + nSelected + ' selected' : '');
+    check('it records when', mine.every((e) => (e.added || {}).at));
+    const bankedN = mine.reduce((a, e) => a + (e.n || 0), 0);
+    check('it banked exactly what was selected', bankedN === nSelected,
+          bankedN + ' banked across ' + mine.length + ' entr(ies), '
+          + nSelected + ' selected');
 
     /* ---------------- importing it back ---------------- */
     say('--- importing from the bank ---', 'note');
@@ -290,7 +347,9 @@ const post = async (p, b) => (await fetch(p, {
           eventsBefore + ' -> '
             + B.views.xplore.state.sessions[S.id].events.length);
 
-    if (made) await post('/api/bank/' + made.id + '/delete');
+    // Every entry this run made, not just the first -- otherwise each run
+    // leaves two more behind in a bank that belongs to somebody.
+    for (const e of mine) await post('/api/bank/' + e.id + '/delete');
   }
 
   /* ---------------- refusing an empty selection ---------------- */

@@ -1,0 +1,214 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the curation marker, step by step</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "When I load in a previously sorted DS file the first one shows up fine
+   nice and flagged... but when I go to the next one the bookmark line is
+   hidden."
+
+   Two ways to check, because they fail differently:
+
+     the paint   curate.draw records whether the candidate being decided was
+                 inside the window it was asked to paint. If it was not, the
+                 marker was skipped -- that is a stale frame, not a missing
+                 mark.
+     the pixels  and then whether a vertical line is really on the canvas at
+                 the middle, because "the code ran" is not the same as "you
+                 can see it".
+
+   Both, after every step, with time to settle -- so a marker that comes back
+   late is told apart from one that never comes back. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  /* A set that came out of the snapshot import, with flags in it. */
+  const sets = (await (await fetch('/api/curation')).json()).sets || [];
+  const withFlags = sets.filter(
+    (s) => ((s.progress || {}).by_label || {}).flag > 3);
+  if (!withFlags.length) { say('bad', 'no imported set with flags'); return; }
+  const target = withFlags[0];
+  say('note', '  ' + target.session_label + '  ('
+      + JSON.stringify((target.progress || {}).by_label) + ')');
+
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  const started = await W.eval('BARRY.curate.enter('
+    + JSON.stringify(target.gid) + ', "ds")');
+  check('curation opened', !!W.eval('BARRY.curate.active'), String(started));
+  if (!W.eval('BARRY.curate.active')) return;
+  await untilN(() => D.querySelector('.pane-canvas-host canvas'), 300);
+  await sleep(2500);
+
+  const info = () => JSON.parse(W.eval(
+    'JSON.stringify(BARRY.curate.lastDraw())'));
+
+  /* Is there really a vertical line down the middle of the plot?
+
+     The current candidate is centred, so a column of pixels near the middle
+     should differ from a column a little to the side. Sampled on the canvas
+     itself rather than trusting the draw call. */
+  /* Find the marker by its colour, not by guessing where the middle is.
+
+     The plot area starts about 70px in -- that is the channel-label gutter --
+     so sampling the middle of the CANVAS samples the wrong column, which is
+     what an earlier version of this did. The label colours are distinctive
+     against the traces, so the honest test is: how many pixels of the
+     current label's colour are on the canvas, and are they in one column? */
+  const markerPixels = () => W.eval('(function(){'
+    + 'var c = document.querySelector(".pane-canvas-host canvas");'
+    + 'if (!c) return { n: 0, why: "no canvas" };'
+    + 'var g = c.getContext("2d");'
+    + 'var im = g.getImageData(0, 0, c.width, c.height).data;'
+    + 'var want = BARRY.curate.currentColor && BARRY.curate.currentColor();'
+    + 'if (!want) return { n: 0, why: "no colour" };'
+    + 'function hex(h){ return [parseInt(h.slice(1,3),16),'
+    + '  parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }'
+    + 'var t = hex(want), cols = {}, n = 0;'
+    + 'for (var y = 0; y < c.height; y++) {'
+    + '  for (var x = 0; x < c.width; x++) {'
+    + '    var i = (y * c.width + x) * 4;'
+    + '    if (Math.abs(im[i]-t[0]) < 26 && Math.abs(im[i+1]-t[1]) < 26'
+    + '        && Math.abs(im[i+2]-t[2]) < 26) {'
+    + '      n++; cols[x] = (cols[x] || 0) + 1; } } }'
+    + 'var bestX = -1, bestN = 0;'
+    + 'Object.keys(cols).forEach(function(x){'
+    + '  if (cols[x] > bestN) { bestN = cols[x]; bestX = +x; } });'
+    + 'return { n: n, bestX: bestX, tall: bestN, colour: want }; })()');
+
+  head('The first candidate');
+  let d0 = info();
+  say('note', '  ' + JSON.stringify(d0));
+  check('the paint saw a curation set', d0 && d0.ok, JSON.stringify(d0));
+  check('the candidate was inside the painted window', d0 && d0.inWindow,
+        JSON.stringify(d0));
+  check('and its marker was drawn', d0 && d0.drewCurrent === true,
+        JSON.stringify(d0));
+  const m0 = markerPixels();
+  say('note', '  marker pixels: ' + JSON.stringify(m0));
+  check('the marker is really on the canvas', m0 && m0.tall > 30,
+        JSON.stringify(m0));
+
+  head('Stepping to the next ones');
+  /* This is the reported failure. After each step: settle, then look. */
+  const bads = [];
+  for (let k = 1; k <= 6; k++) {
+    W.eval('BARRY.curate.step && BARRY.curate.step(1)');
+    // If step is not exported, drive the button the way a person does.
+    if (!W.eval('!!BARRY.curate.step')) {
+      const nxt = Array.from(D.querySelectorAll('#curBar button'))
+        .find((b) => /▶/.test(b.textContent));
+      if (nxt) nxt.click();
+    }
+    await sleep(300);
+    const mid = info();          // straight after: may legitimately be stale
+    await untilN(() => { const i = info(); return i && i.inWindow; }, 120);
+    await sleep(900);
+    const now = info();
+    const mp = markerPixels();
+    const px = mp && mp.tall || 0;
+    const okNow = now && now.ok && now.inWindow && now.drewCurrent && px > 30;
+    say(okNow ? 'ok' : 'bad',
+        'step ' + k + ': index ' + (now && now.index)
+        + ' t=' + (now && now.current != null ? now.current.toFixed(3) : '?')
+        + ' label=' + (now && now.label)
+        + ' inWindow=' + (now && now.inWindow)
+        + ' drewCurrent=' + (now && now.drewCurrent)
+        + ' pixels=' + px
+        + (mid && !mid.inWindow ? '   (was stale right after the keypress)' : ''));
+    if (!okNow) bads.push(k);
+  }
+  check('every step showed its marker', !bads.length,
+        'missing at steps ' + bads.join(', '));
+
+  head('And going back');
+  for (let k = 1; k <= 2; k++) {
+    W.eval('BARRY.curate.step && BARRY.curate.step(-1)');
+    await untilN(() => { const i = info(); return i && i.inWindow; }, 120);
+    await sleep(800);
+    const now = info(); const px = (markerPixels() || {}).tall || 0;
+    say((now && now.drewCurrent && px > 30) ? 'ok' : 'bad',
+        'back ' + k + ': index ' + (now && now.index)
+        + ' drewCurrent=' + (now && now.drewCurrent) + ' pixels=' + px);
+  }
+
+  head('Toggling even channels, then stepping');
+  /* The reported sequence: load a sorted set, the first is fine, switch to
+     even channels only -- still fine -- then step, and it is gone. */
+  W.eval('(function(){var S=BARRY.views.xplore.state;'
+       + 'var s=S.sessions[S.active]; s.evenOnly = !s.evenOnly;'
+       + 'BARRY.views.xplore.publishFacts(s);'
+       + 'BARRY.views.xplore.reopenSameView(s);})()');
+  await untilN(() => { const i = info(); return i && i.ok; }, 200);
+  await sleep(2500);
+  const afterEven = info();
+  const evPx = (markerPixels() || {}).tall || 0;
+  say('note', '  after the toggle: ' + JSON.stringify(afterEven)
+      + ' pixels=' + evPx);
+  check('the marker survived the channel change',
+        afterEven && afterEven.drewCurrent && evPx > 30,
+        JSON.stringify(afterEven) + ' px=' + evPx);
+  for (let k = 1; k <= 3; k++) {
+    W.eval('BARRY.curate.step(1)');
+    await untilN(() => { const i = info(); return i && i.inWindow; }, 150);
+    await sleep(1100);
+    const nw = info(); const p2 = (markerPixels() || {}).tall || 0;
+    say((nw && nw.drewCurrent && p2 > 30) ? 'ok' : 'bad',
+        'after-even step ' + k + ': index ' + (nw && nw.index)
+        + ' inWindow=' + (nw && nw.inWindow)
+        + ' drewCurrent=' + (nw && nw.drewCurrent) + ' pixels=' + p2);
+  }
+
+  head('The aid panels should carry the marks too');
+  const imgMarks = W.eval('(function(){'
+    + 'var s = BARRY.views.xplore.state;'
+    + 'return s.panes.filter(function(p){ return p && p.panel !== "traces"; })'
+    + '.length; })()');
+  say('note', '  non-trace panes in this window: ' + imgMarks);
+
+  W.eval('BARRY.curate.exit()');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'curmarks: ' + bad + ' FAILED' : 'curmarks: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'curmarks: harness CRASH';
+} })();
+</script>

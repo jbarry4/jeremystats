@@ -239,6 +239,18 @@
             + 'comes out unfiltered.',
       },
       {
+        title: 'The frequency band is locked to the recording',
+        body: 'Set 4–12 Hz on a scalogram and the spectrogram beside it '
+            + 'is already there, and switching a pane between the two keeps '
+            + 'it. It is saved with the recording, so reopening comes back to '
+            + 'your band rather than the built-in 20–1000.',
+        note: 'Untick Lock to recording if you want a wide spectrogram next '
+            + 'to a narrow scalogram — then the band belongs to the '
+            + 'pane instead.',
+        placement: 'top',
+        required: false,
+      },
+      {
         title: 'Bad channels follow the recording',
         body: 'Mark one bad on the channel list and it stays marked — '
             + 'across sessions, across machines, and across a git pull, '
@@ -263,7 +275,23 @@
         placement: 'bottom',
       },
       {
-        title: 'A spectrogram, and two different frequency ranges',
+        title: 'The spectrogram is the one the old tool drew',
+        body: 'Hamming STFT, the frame set to a tenth of the window with 98% '
+            + 'overlap, scaled 30·log10 of the raw FFT and coloured over '
+            + 'the full range — the arithmetic out of '
+            + 'Xplorefinder/Analyse/core/xf_spectrogram.m, so a figure made '
+            + 'here looks like the ones already in your thesis. There is a '
+            + 'High resolution option beside it that sizes the frame for '
+            + 'frequency bins instead, which reads a narrow band better.',
+        note: 'The 30·log10 is neither amplitude dB nor power dB. The '
+            + 'MATLAB has always done it, so the absolute numbers mean '
+            + 'nothing outside this tool — only the structure within a '
+            + 'plot does.',
+        placement: 'top',
+        required: false,
+      },
+      {
+        title: 'Two different frequency ranges',
         body: 'f min and f max set the band the transform is computed over '
             + '— change them and the numbers change. The Show Hz range '
             + 'crops what is drawn out of what was already computed: the '
@@ -283,6 +311,22 @@
         action: 'click',
         placement: 'bottom',
         doText: 'Open Panel — both ranges are in there.',
+      },
+      {
+        title: 'An H10 is six probes, not one',
+        body: 'An H3 is a single line of contacts, so channel order is depth '
+            + 'order and a CSD runs straight down it. An ASSY-77 H10-D is two '
+            + 'shanks of three interleaved columns — CSC 1, 2 and 3 are '
+            + 'three different columns at the same depth. Switch the Probe '
+            + 'control to H10-D and you get six panes, one per column, each '
+            + 'with its own CSD over its own ten or twelve contacts.',
+        note: 'This is not cosmetic. A CSD down the raw channel order of an '
+            + 'H10 is a second spatial derivative over contacts that are not '
+            + 'neighbours: it produces numbers, and they do not mean '
+            + 'anything. The column map is read off '
+            + 'Probes/probe_config_H10D_journey.png.',
+        placement: 'top',
+        required: false,
       },
       {
         title: 'The panes are yours to arrange',
@@ -483,6 +527,42 @@
         note: 'If the recording has moved, it will find it again by mouse, '
             + 'session and start time and tell you it did.',
       },
+      {
+        title: 'And filed where you will find them again',
+        body: 'Results carry three different things. A tag is what a result '
+            + 'is about, and it can have five. A collection is a saved '
+            + 'search, so what is in it changes when the results do. A '
+            + 'folder is where it lives, and it lives in one.',
+        view: 'results',
+        wait: '.res-folders',
+        required: false,
+        target: '.res-folders',
+        placement: 'bottom',
+      },
+      {
+        title: 'And the folder is the folder',
+        body: 'Filing a result moves the file. Results/Figure 3 is a real '
+            + 'directory, so what this view shows and what you see when you '
+            + 'open the folder are the same thing \u2014 which matters '
+            + 'because most of the time you are looking for a figure from '
+            + 'outside BARRY. Moving one repoints the run that made it and '
+            + 'any slide holding it, so nothing goes blank a month later.',
+        view: 'results',
+        wait: '.res-folders',
+        required: false,
+        target: '.res-folders',
+        placement: 'bottom',
+      },
+      {
+        title: 'The Event Bank has a folder too',
+        body: 'Data Bank/ is the same tree the Event Bank view shows, written '
+            + 'out as folders: Project, mouse, session, then a CSV of the '
+            + 'times and a JSON of everything else, plus _index.csv over the '
+            + 'lot. It opens in Excel and goes into MATLAB in one line. It is '
+            + 'rebuilt whenever the bank changes, so delete it freely.',
+        target: railItem('eventbank'),
+        placement: 'right',
+      },
     ],
   });
 
@@ -552,6 +632,21 @@
     blurb: 'History, the debug trace, and the tools that span every '
          + 'recording at once.',
     steps: [
+      {
+        title: 'Tell someone when it annoys you',
+        body: 'The Errors view has a Feedback tab: report a bug, ask for a '
+            + 'feature, or suggest an improvement, and attach screenshots by '
+            + 'pressing Ctrl+V into the box. Win+Shift+S takes the shot. It '
+            + 'records which view you were in, which recording was open and '
+            + 'how the panes were arranged, so nobody has to reconstruct it '
+            + 'from a description.',
+        note: 'Reports are one file each under GUI_logs/feedback, tagged with '
+            + 'the machine that filed them, so two people on two computers '
+            + 'never collide. Say who wants it — that is the field that '
+            + 'gets it prioritised.',
+        target: railItem('errors'),
+        placement: 'right',
+      },
       {
         title: 'Everything that happened',
         body: 'Every run, every figure, every filter change, with who did it '
@@ -680,6 +775,35 @@
         placement: 'right',
       },
       {
+        title: 'And there is a shared copy',
+        body: 'Everything here also lives in Postgres, on Supabase, and syncs '
+            + 'in the background. That is where "what has the lab actually '
+            + 'got" becomes a question you can ask in one line instead of by '
+            + 'opening three hundred files.',
+        target: '#syncBtn',
+        placement: 'right',
+      },
+      {
+        title: 'The files did not go away, on purpose',
+        body: 'BARRY writes locally first, always. That is what makes it work '
+            + 'on a rig with no network and on a drive that is not mounted, '
+            + 'and it is why the sync can be honest about time: a laptop that '
+            + 'has been shut since Tuesday pushes edits stamped Tuesday, and '
+            + 'the database drops them if Wednesday\u2019s work is already up '
+            + 'there. Enforced in Postgres, not hoped for in the client.',
+        target: '#syncBtn',
+        placement: 'right',
+      },
+      {
+        title: 'History goes up, and stays up',
+        body: 'Runs, activity and errors are append-only, so they only travel '
+            + 'one way. Copying another machine\u2019s activity into your own '
+            + 'day log would be writing their actions into a file that says '
+            + 'it is yours. The combined history is a query instead.',
+        target: '#syncBtn',
+        placement: 'right',
+      },
+      {
         title: 'So what happens when two of you label the same recording?',
         body: 'Nothing bad. Each machine writes only its own shard, and they '
             + 'are compiled when they are read by a merge that knows what '
@@ -749,9 +873,15 @@
       },
       {
         title: 'Import the candidates',
-        body: 'From the Event Bank, or from a CSV or .mat of times. Whichever '
-            + 'way they come in, none of them arrives with a decision '
-            + 'attached.',
+        body: 'From the Event Bank, or from a CSV or .mat of times. The bank '
+            + 'option opens the bank itself — filtered to the kind you '
+            + 'are curating and searched for this recording, both clearable '
+            + 'so you can look at anything else — and every row says how '
+            + 'well it matches. Whichever way they come in, none of them '
+            + 'arrives with a decision attached.',
+        note: 'It used to take whatever was banked against the recording '
+            + 'first, without showing you. If a recording had two sets you '
+            + 'got one of them and nothing said which.',
         view: 'toolkit',
         wait: '.tk-head button',
         required: false,
@@ -761,18 +891,37 @@
       },
       {
         title: 'Then it is a key per candidate',
-        body: 'Curating opens the recording at the first undecided one, with '
-            + 'the traces large and a spectrogram, CSD and voltage raster '
-            + 'beside them. One key per category. It moves on by itself. '
-            + 'Six hundred candidates at two seconds each is twenty minutes.',
-        note: 'u undoes \u2014 back a decision and back a candidate, because '
-            + 'that is what undo means once you have already moved on. n and '
-            + 'p move without deciding. Every keystroke is saved as you go.',
+        body: 'Curating opens the recording at the first undecided one. The '
+            + 'traces get the whole window \u2014 they are what you are '
+            + 'judging \u2014 and a second window opens with the CSD, the '
+            + 'theta band, the voltage raster and a scalogram of every '
+            + 'eighth channel. Put it on your other monitor: it follows the '
+            + 'first window, so moving in either moves both. One key per '
+            + 'category, and it moves on by itself. Six hundred candidates '
+            + 'at two seconds each is twenty minutes.',
+        note: 'The frame turns blue and the top of the window says DS '
+            + 'curation, so it is obvious that a keystroke here means a '
+            + 'decision. u undoes \u2014 back a decision and back a '
+            + 'candidate, because that is what undo means once you have '
+            + 'already moved on. n and p move without deciding. Every '
+            + 'keystroke is saved as you go.',
         view: 'toolkit',
         wait: '.tk-result',
         required: false,
         target: '.tk-result',
         placement: 'top',
+      },
+      {
+        title: 'A second pass over the flagged ones',
+        body: 'Flag is a label like any other — f, or the number beside '
+            + 'it — for a candidate that needs a longer look than you '
+            + 'want to give it now. The Review control switches between the '
+            + 'undecided ones, the flagged ones and everything, so coming '
+            + 'back to them is one click rather than another walk through '
+            + 'six hundred.',
+        view: 'toolkit',
+        placement: 'top',
+        required: false,
       },
       {
         title: 'And the answers go somewhere useful',
@@ -817,10 +966,16 @@
       },
       {
         title: 'Pick a recording and open it',
-        body: 'It sets up the voltage raster, the CSD, the theta band and the '
-            + 'traces \u2014 the same four views the old tool made you '
-            + 'export by hand \u2014 and puts a labelling rail beside them, '
-            + 'one row per channel, sitting on that channel\u2019s lane.',
+        body: 'The traces fill the window, with the labelling rail beside '
+            + 'them \u2014 one row per channel, sitting on that '
+            + 'channel\u2019s lane. A second window opens carrying the '
+            + 'other four views the old tool made you export by hand: the '
+            + 'CSD, the theta band, the voltage raster and a scalogram of '
+            + 'every eighth channel.',
+        note: 'These used to share a 2x2 with the traces, which left the '
+            + 'squiggles \u2014 the thing a boundary is actually read off '
+            + '\u2014 with a quarter of the screen. Two windows is the '
+            + 'layout you were going to build by hand anyway.',
         view: 'toolkit',
         wait: '.tk-tool',
         required: false,
@@ -829,6 +984,17 @@
         action: 'click',
         placement: 'right',
         doText: 'Open StrataScope.',
+      },
+      {
+        title: 'You can tell you are in it',
+        body: 'The workspace is framed in amber and the top of the window '
+            + 'says StrataScope, with a button to leave. Both this and DS '
+            + 'curation take over the keyboard and change what dragging '
+            + 'means, and a mode you can be in without noticing is one you '
+            + 'make mistakes in.',
+        view: 'toolkit',
+        placement: 'top',
+        required: false,
       },
       {
         title: 'Paint, do not click sixty-four dropdowns',
@@ -851,6 +1017,113 @@
             + 'after a pull.',
         target: railItem('sessions'),
         placement: 'right',
+      },
+    ],
+  });
+
+  /* ======================================================================
+     9. Spike sorting
+     ====================================================================== */
+  T.register({
+    id: 'kilosort',
+    name: 'Spike sorting',
+    blurb: 'Getting Kilosort to run at all, running it, and then looking at '
+         + 'what it decided in Phy.',
+    steps: [
+      {
+        title: 'The hard part is starting',
+        body: 'Kilosort is not difficult to run. It is difficult to run for '
+            + 'the first time: the attempt fails for one of about eight '
+            + 'reasons and the error rarely says which. Every one of them is '
+            + 'checkable beforehand, so BARRY checks them beforehand.',
+        target: railItem('toolkit'),
+        action: 'click',
+        placement: 'right',
+        doText: 'Click ToolKit.',
+      },
+      {
+        title: 'Set up says what is missing',
+        body: 'One line per requirement, answered by importing it in the '
+            + 'Python that would actually do the work \u2014 not by '
+            + 'asking pip, which lies when two environments are on the '
+            + 'PATH. Anything missing comes with the exact command, and a '
+            + 'button to run it.',
+        view: 'toolkit',
+        wait: '.tk-tool',
+        required: false,
+        target: () => Array.from(document.querySelectorAll('.tk-tool'))
+          .find((b) => /Kilosort/.test(b.textContent)) || null,
+        action: 'click',
+        placement: 'right',
+        doText: 'Open Kilosort.',
+      },
+      {
+        title: 'The GPU line is the one people miss',
+        body: 'A torch that imports but sees no GPU is the CPU-only build. '
+            + 'It still sorts. It takes an afternoon instead of a coffee '
+            + 'break, and pip will not swap the builds for you \u2014 you '
+            + 'have to uninstall torch first, which the panel says.',
+        view: 'toolkit',
+        wait: '.ks-reqs',
+        required: false,
+        target: '.ks-reqs',
+        placement: 'left',
+      },
+      {
+        title: 'Run checks the recording, not just the machine',
+        body: 'Pick a recording and BARRY resolves the whole thing against '
+            + 'what is on disk before anything starts: is there a binary, '
+            + 'does its length divide evenly by the channel count, does the '
+            + 'probe describe the same number of channels as the settings. '
+            + 'That last pair is the dangerous one \u2014 a mismatch does '
+            + 'not crash, it sorts happily and puts every unit in the wrong '
+            + 'place.',
+        view: 'toolkit',
+        wait: '.ks-head .seg',
+        required: false,
+        target: '.ks-head .seg',
+        placement: 'bottom',
+      },
+      {
+        title: 'And the bad channels come from you',
+        body: 'The ones you marked while looking at the traces are the ones '
+            + 'excluded, converted on the way. The files are CSC1 upwards '
+            + 'and Kilosort counts binary rows from zero, so every number '
+            + 'goes down by one \u2014 which is exactly the off-by-one '
+            + 'that quietly excludes the wrong channel when it is done by '
+            + 'hand at six in the evening.',
+        view: 'toolkit',
+        wait: '.ks-facts',
+        required: false,
+        target: '.ks-facts',
+        placement: 'left',
+      },
+      {
+        title: 'Nothing is hidden',
+        body: 'Show the script prints exactly what will run, and it is '
+            + 'written into the results folder before it runs \u2014 so '
+            + 'you can read it first, and re-run it later without BARRY. '
+            + 'There is a terminal button in the corner for when the wrapper '
+            + 'is in the way.',
+        view: 'toolkit',
+        wait: '.ks-actions',
+        required: false,
+        target: '.ks-actions',
+        placement: 'top',
+      },
+      {
+        title: 'Then Phy, to disagree with it',
+        body: 'Phy opens what Kilosort decided in its own window. The pane '
+            + 'lists the sorts already done for a recording, the keys worth '
+            + 'knowing, and what each view is actually for. The one rule to '
+            + 'carry in: a cluster with no refractory gap in its own '
+            + 'autocorrelogram is not one cell, however good the waveform '
+            + 'looks.',
+        view: 'toolkit',
+        wait: '.ks-head .seg',
+        required: false,
+        target: '.ks-head .seg',
+        placement: 'bottom',
       },
     ],
   });

@@ -658,8 +658,22 @@ def _read_json(path):
 
 
 def _write_json(path, data):
+    """Write so that a crash leaves either the old file or the new one.
+
+    Write to a sibling, flush it all the way to the disk, then rename over
+    the target. os.replace is atomic, so no reader ever sees a half-written
+    file -- and the fsync is what makes that true of a power cut as well as
+    of a process dying. Without it the rename can reach the disk before the
+    bytes do, and the file comes back empty.
+
+    That matters more here than the cost suggests: these files are somebody's
+    curation, written one keystroke at a time, and what is being guarded
+    against is losing an afternoon of it.
+    """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(data, fh, indent=2, sort_keys=True, default=str)
+        fh.flush()
+        os.fsync(fh.fileno())
     os.replace(tmp, path)

@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8"><title>vid</title>
+<iframe id="app" src="/?linkhold=0" style="position:fixed;inset:0;width:100vw;height:100vh;border:0"></iframe>
+<script>
+/* Photograph the video pane, including the new scrub bar. */
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(100);
+  const reg = await (await fetch('/api/registry')).json();
+  let path = null;
+  for (const p of reg.tree) for (const m of p.mice) for (const s of m.sessions)
+    if (s.has_video && (s.here || []).length && !path) path = s.here[0];
+  W.eval("setView('xplore')");
+  await sleep(300);
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  for (let i = 0; i < 300; i++) {
+    if (W.eval('BARRY.views.xplore.state.order.length')) break;
+    await sleep(100);
+  }
+  W.eval("BARRY.views.xplore.setPanes([{panel:'video'}], {col:0.5,row:0.5})");
+  await sleep(3500);
+  document.title = 'shot';
+})();
+</script>

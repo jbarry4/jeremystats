@@ -16,3 +16,15 @@ Output/**/_videocache/
 # records it is compiled from.
 GUI_logs/.cache/
 GUI_logs/index.json
+
+# The Supabase secret key. Never committed -- tools/cloud_setup.py refuses to
+# write it unless git is already ignoring this path. If one does get pushed,
+# rotate it in the Supabase dashboard; that is the only real fix.
+GUI_logs/.cloud.json
+
+# The browsable copy of the Event Bank. Derived from GUI_logs/event_bank (and
+# from Supabase), regenerated whenever the bank changes, and deterministic --
+# so it is safe to delete and pointless to track. Committing it would mean two
+# machines with different halves of the bank taking turns adding and deleting
+# each other's CSVs on every push.
+Data Bank/

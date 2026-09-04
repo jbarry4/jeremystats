@@ -76,6 +76,90 @@ def free_port(preferred=8733):
     return 0        # let the OS choose
 
 
+def ask_for_key(logs_dir):
+    """First start on a new machine: get the key, once.
+
+    The repo carries the project id, so a clone already knows where to sync.
+    What it deliberately does not carry is the key -- so somebody has to hand
+    it over exactly once per machine, and the sensible moment is now, in the
+    window they are already looking at, rather than in a README they will
+    read afterwards.
+
+    Skipping is a first-class answer. BARRY writes locally first and works
+    completely without the network; the sync is an addition, never a
+    prerequisite, and starting up must never depend on someone having a
+    password to hand.
+    """
+    from backend import cloud
+
+    cfg = cloud.load_config(logs_dir)
+
+    if cfg.get("key_in_repo"):
+        print()
+        print("  !! cloud.json in the repo contains a key. That file is")
+        print("     tracked by git, so the key should be treated as public:")
+        print("     rotate it in the Supabase dashboard, then paste the new")
+        print("     one below. BARRY is ignoring the one in the file.")
+
+    if not cfg.get("needs_key"):
+        if cfg.get("enabled"):
+            print("  Sync    : %s" % cfg.get("project"))
+        return
+
+    print()
+    print("  This copy syncs to Supabase project '%s'," % cfg.get("project"))
+    print("  but this machine has not been given the key yet.")
+    print()
+    print("  Get it from the Supabase dashboard:")
+    print("     Project Settings -> API Keys -> secret / service_role")
+    print()
+    print("  It is stored in GUI_logs/.cloud.json, which git ignores, and")
+    print("  never goes into the repo.")
+    print()
+    print("  Press Enter to skip -- BARRY works fine without it, and you")
+    print("  can add it later from the Sync panel.")
+    print()
+
+    if not sys.stdin or not sys.stdin.isatty():
+        print("  (not a terminal, so skipping the question)")
+        return
+
+    for attempt in range(3):
+        try:
+            key = input("  Supabase secret key: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if not key:
+            print("  Skipped. Sync is off until a key is set.")
+            return
+        ok, why = cloud.looks_like_a_key(key)
+        if not ok:
+            print("  %s" % why)
+            continue
+
+        cloud.save_config(logs_dir, key=key)
+        c = cloud.Cloud(logs_dir)
+        print("  Checking...")
+        ping = c.ping()
+        if not ping["reachable"]:
+            print("  Could not reach the project: %s"
+                  % (ping.get("error") or "")[:160])
+            print("  Saved anyway; BARRY will keep trying in the background.")
+            return
+        if not ping["schema"]:
+            print("  Connected, but the tables are not there yet. Run the SQL")
+            print("  in supabase/ (01_schema, 02_rls, 03_storage), then")
+            print("  python tools/cloud_migrate.py --write")
+            return
+        n = sum(v for v in (ping.get("counts") or {}).values()
+                if isinstance(v, int))
+        print("  Connected. %d row(s) already up there." % n)
+        return
+
+    print("  Skipping for now. Add it later from the Sync panel.")
+
+
 def main():
     print(BANNER)
     if not check_deps():
@@ -96,6 +180,13 @@ def main():
     print("  Python  : " + sys.executable)
     print("  MATLAB  : " + (matlab or "not found (MATLAB stages disabled)"))
     print("  ffmpeg  : " + (ffmpeg or "not found (session video disabled)"))
+
+    # Before anything starts serving: if this machine has never been given
+    # the sync key, ask for it here, where somebody is looking.
+    try:
+        ask_for_key(LOGS_DIR)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check the sync settings: %s)" % exc)
 
     stale = runner.sweep_temp_files(REPO_ROOT)
     if stale:

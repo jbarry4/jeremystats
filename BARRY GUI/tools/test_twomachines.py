@@ -143,9 +143,16 @@ def main():
         for folder, dirs, files in os.walk(logs):
             # .cache is derived and git-ignored, which is the whole point of
             # it being there rather than beside the records.
-            dirs[:] = [d for d in dirs if d not in (".cache", "__pycache__")]
+            dirs[:] = [d for d in dirs
+                       if d not in (".cache", "__pycache__")
+                       and not d.startswith(".")]
             for name in files:
                 stem = name.rsplit(".", 1)[0]
+                # Dotfiles are configuration, not records: .cloud.json holds
+                # this machine's Supabase key, is gitignored, and so cannot
+                # conflict -- it has no business carrying a machine tag.
+                if name.startswith("."):
+                    continue
                 if shards.SIGIL not in stem and "runs" not in folder \
                         and not name.endswith(".md"):
                     clash.append(os.path.relpath(

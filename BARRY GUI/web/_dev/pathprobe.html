@@ -1,0 +1,116 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — paths in full</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* The complaint: "the file names and file paths sometimes collapse into
+   D://Path//g/... or KCNT1 s4 20...".
+
+   So this checks the text actually in the DOM, not whether a title attribute
+   has the full value hidden behind a hover. A path is the one thing you need
+   to read whole or not at all -- two mounts of the same recording are
+   indistinguishable once the middle is gone. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 12000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+const ELIDED = /\u2026|\.\.\./;
+const ABSOLUTE = /^([A-Za-z]:\\|\\\\)/;
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  await until(() => W.eval('BARRY'));
+
+  head('The detail panel');
+  W.eval("setView('sessions')");
+  await sleep(300);
+  W.eval("BARRY.views.sessions.setMode('housekeeping')");
+  const row = await until(() => D.querySelector('#hkBody .hk-row'));
+  check('a recording can be opened', !!row);
+  row.click();
+  const first = await until(() => D.querySelector('#hkDetail .hk-path code'));
+  check('the detail lists its paths', !!first);
+
+  const codes = [...D.querySelectorAll('#hkDetail .hk-path code')];
+  const full = codes.map((c) => c.textContent);
+  check('each one is a complete path', full.every((t) => ABSOLUTE.test(t)),
+        full[0] || '');
+  check('none of them is elided', full.every((t) => !ELIDED.test(t)),
+        full.join(' | ').slice(0, 90));
+  const cs = W.getComputedStyle(codes[0]);
+  check('and it wraps rather than clipping',
+        cs.whiteSpace !== 'nowrap' && cs.textOverflow !== 'ellipsis',
+        cs.whiteSpace + ' / ' + cs.textOverflow);
+  const seen = [...D.querySelectorAll('#hkDetail .hk-path .hk-seen')]
+    .map((s) => s.textContent);
+  check('and it says which machine saw it',
+        seen.some((t) => /seen by \S/.test(t)), seen[0] || '');
+  check('with a way to copy it',
+        [...D.querySelectorAll('#hkDetail .hk-path button')]
+          .some((b) => /Copy/.test(b.textContent)));
+  say('note', '  e.g. ' + (full[0] || '').slice(0, 68));
+  say('note', '       ' + (seen[0] || ''));
+
+  head('The table');
+  const seg = [...D.querySelectorAll('#hkBody .seg button')]
+    .find((b) => b.textContent.trim() === 'Table');
+  seg.click();
+  await sleep(600);
+  const heads = [...D.querySelectorAll('#hkBody .hk-table thead th')]
+    .map((n) => n.textContent.replace(/[\u25b4\u25be]/g, '').trim());
+  check('it has a full-path column', heads.includes('Where it is'),
+        heads.join(' | '));
+  check('and a seen-by column', heads.includes('Seen by'));
+
+  const toggle = [...D.querySelectorAll('#hkBody .hk-bar label')]
+    .find((l) => /Full values/.test(l.textContent));
+  check('and a switch to read long values whole', !!toggle);
+  if (toggle) {
+    toggle.querySelector('input').click();
+    await sleep(500);
+    const tbl = D.querySelector('#hkBody .hk-table');
+    check('the switch turns wrapping on', tbl.classList.contains('wrap'));
+    const cell = [...D.querySelectorAll('#hkBody .hk-table tbody td')]
+      .find((c) => ABSOLUTE.test(c.textContent.trim()));
+    check('a path cell then shows in full',
+          !!cell && W.getComputedStyle(cell).whiteSpace !== 'nowrap'
+          && !ELIDED.test(cell.textContent),
+          cell ? cell.textContent.trim().slice(0, 60) : 'no path cell found');
+  }
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'pathprobe: ' + bad + ' FAILED' : 'pathprobe: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'pathprobe: harness CRASH';
+} })();
+</script>

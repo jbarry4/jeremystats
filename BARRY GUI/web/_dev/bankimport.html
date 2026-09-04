@@ -1,0 +1,183 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — importing from the bank, all the way through</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "The Bank selector looks great now. One problem it doesnt work and doesnt
+   load in the event lol"
+
+   There is one modal box, and showing a dialog wiped it. The picker was
+   opened from inside the import wizard, so the wizard's nodes were
+   destroyed while the code that opened the picker still held references
+   into them -- it then wrote the staged candidates into elements that were
+   no longer in the document. Everything returned 200 and nothing happened.
+
+   So this drives the whole thing the way a person does: open the wizard,
+   click the bank tile, pick an entry, confirm, and check the candidates
+   actually arrive back in the wizard that asked for them. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+const byText = (D, sel, re) => Array.from(D.querySelectorAll(sel))
+  .find((n) => re.test((n.textContent || '').trim()));
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  head('Modals stack instead of destroying each other');
+  /* The primitive first, on its own, because everything below depends on
+     it and a failure here would look like a bank problem. */
+  W.eval('showModal(el("div", { id: "layerOne", text: "first" }))');
+  await sleep(150);
+  check('the first dialog is up', !!D.getElementById('layerOne'));
+  W.eval('showModal(el("div", { id: "layerTwo", text: "second" }))');
+  await sleep(150);
+  check('the second replaced it on screen', !!D.getElementById('layerTwo')
+        && !D.getElementById('layerOne'));
+  W.eval('closeModal()');
+  await sleep(150);
+  check('closing the second brings the first back',
+        !!D.getElementById('layerOne') && !D.getElementById('layerTwo'),
+        'one=' + !!D.getElementById('layerOne')
+        + ' two=' + !!D.getElementById('layerTwo'));
+  check('and the box is still showing',
+        !D.getElementById('bigModal').classList.contains('hidden'));
+  W.eval('closeModal()');
+  await sleep(150);
+  check('closing the last one hides the box',
+        D.getElementById('bigModal').classList.contains('hidden'));
+
+  head('Now the real thing');
+  W.eval("setView('toolkit')");
+  await sleep(400);
+  await untilN(() => D.querySelector('.tk-tool'), 200);
+  const tool = Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(b.textContent));
+  check('the curation tool is there', !!tool);
+  if (!tool) return;
+  tool.click();
+  await sleep(900);
+
+  const openBtn = byText(D, 'button', /^Import candidates/);
+  check('there is an Import candidates button', !!openBtn);
+  if (!openBtn) return;
+  openBtn.click();
+  await untilN(() => byText(D, '.choice strong', /From the Event Bank/), 120);
+  check('the import wizard opened',
+        !!byText(D, '.choice strong', /From the Event Bank/));
+
+  /* A recording has to be picked before the bank tile will do anything.
+     By its label, not by position -- the first select in the wizard is the
+     kind, and picking that one made this harness report the bank browser as
+     opening empty when it was doing exactly the right thing. */
+  const fields = Array.from(D.querySelectorAll('#bigModalBox .field'));
+  const sessField = fields.find((f) => /Recording/i.test(
+    (f.querySelector('label') || {}).textContent || ''));
+  check('there is a recording picker', !!sessField,
+        'no Recording field in the wizard');
+  /* It is BARRY.pickSession -- a type-to-search widget, not a <select>.
+     Rather than reverse-engineer its internals, type into it and take the
+     first suggestion, which is what a person does. */
+  const sessInput = sessField && sessField.querySelector('input');
+  if (sessInput) {
+    sessInput.focus();
+    sessInput.value = 'm13';
+    sessInput.dispatchEvent(new W.Event('input', { bubbles: true }));
+    await sleep(500);
+    const opt = D.querySelector('#bigModalBox .picker-list button, '
+                              + '#bigModalBox .pick-row, '
+                              + '#bigModalBox .picker-opt');
+    if (opt) { opt.click(); await sleep(300); }
+    say('note', '  recording box now: ' + (sessInput.value || '(empty)'));
+  } else {
+    say('note', '  no text input in the Recording field; using the default');
+  }
+
+  const tile = byText(D, '.choice', /From the Event Bank/);
+  tile.click();
+  await untilN(() => byText(D, '#bigModalBox h3', /Import from the Event Bank/),
+               200);
+  check('the bank browser opened',
+        !!byText(D, '#bigModalBox h3', /Import from the Event Bank/));
+
+  const rows = () => Array.from(D.querySelectorAll('.bank-targets .bm-row'));
+  await untilN(() => rows().length > 0, 200);
+  say('note', '  ' + rows().length + ' entries listed to start with');
+  check('it lists something', rows().length > 0);
+
+  /* Show everything, then pick the largest set so there is no doubt the
+     events came from the row that was chosen. */
+  const showAll = byText(D, '#bigModalBox button', /^Show everything$/);
+  check('there is a way to see the whole bank', !!showAll);
+  if (showAll) { showAll.click(); await sleep(400); }
+  say('note', '  ' + rows().length + ' entries with the filters cleared');
+
+  const target = rows().find((r) => /494 event/.test(r.textContent))
+              || rows()[0];
+  const wantN = (target.textContent.match(/(\d+) event/) || [])[1];
+  say('note', '  picking: ' + target.textContent.trim().slice(0, 70));
+  target.querySelector('input[type=radio]').click();
+  await sleep(300);
+
+  const use = byText(D, '#bigModalBox button', /^Use this set$/);
+  check('the confirm button is enabled once something is picked',
+        !!use && !use.disabled, use ? 'disabled' : 'no button');
+  use.click();
+
+  head('Back in the wizard, with the candidates');
+  await untilN(() => byText(D, '.choice strong', /From the Event Bank/), 200);
+  check('the wizard came back rather than everything closing',
+        !!byText(D, '.choice strong', /From the Event Bank/));
+  const note = D.querySelector('#bigModalBox .confirm-msg, #bigModalBox .hint');
+  const allText = (D.getElementById('bigModalBox') || {}).textContent || '';
+  say('note', '  wizard says: '
+      + (allText.match(/\d+ candidate\(s\) from [^\n]{0,60}/) || ['(nothing)'])[0]);
+  check('it staged the candidates it was given',
+        /candidate\(s\) from the bank/.test(allText), allText.slice(0, 120));
+  if (wantN) {
+    check('and the count matches the row that was picked',
+          allText.indexOf(wantN + ' candidate') >= 0,
+          'expected ' + wantN);
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'bankimport: ' + bad + ' FAILED' : 'bankimport: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'bankimport: harness CRASH';
+} })();
+</script>

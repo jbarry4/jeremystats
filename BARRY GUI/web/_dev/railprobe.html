@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>probe — the app grid in each rail state</title>
+<pre id="o" style="font:11px monospace; white-space:pre-wrap"></pre>
+<iframe id="app" src="/?linkhold=0"
+        style="width:939px;height:700px;border:1px solid #333"></iframe>
+<script>
+/* Why is #main narrower than the window when the rail is away? Measured
+   rather than guessed: the grid template, every child of #app, and where
+   each one actually lands. */
+(async () => {
+  const o = document.getElementById('o'), f = document.getElementById('app');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  for (let i = 0; i < 300 && !W.BARRY; i++) await sleep(100);
+  o.textContent += W.BARRY ? 'app loaded\n' : 'APP DID NOT LOAD\n';
+  for (const st of ['full', 'icons', 'away']) {
+    try { W.eval("setRail('" + st + "')"); } catch (e) { o.textContent += 'eval: ' + e + '\n'; }
+    await sleep(500);
+    const app = D.getElementById('app');
+    const cs = W.getComputedStyle(app);
+    o.textContent += '\n== ' + st + ' == class="' + app.className + '"\n'
+      + '  cols: ' + cs.gridTemplateColumns + '\n'
+      + '  doc:  ' + D.documentElement.clientWidth + 'px\n';
+    Array.from(app.children).forEach((c) => {
+      const r = c.getBoundingClientRect(), s2 = W.getComputedStyle(c);
+      o.textContent += '   ' + (c.id ? '#' + c.id : '.' + c.className)
+        + ' w=' + Math.round(r.width) + ' x=' + Math.round(r.left)
+        + ' disp=' + s2.display + ' pos=' + s2.position
+        + ' col=' + s2.gridColumnStart + '\n';
+    });
+  }
+  document.title = 'done';
+})();
+</script>

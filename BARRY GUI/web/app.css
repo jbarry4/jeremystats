@@ -453,7 +453,7 @@ code { font-family: var(--mono); }
 
 .view-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 12px 20px; padding: 20px 24px 14px;
+  gap: 10px 18px; padding: 13px 22px 11px;
   border-bottom: 1px solid var(--line-soft); flex: none;
   /* Wrap rather than overflow. The Storyboard header carries a title field
      and five buttons, which on a narrower window ran clean off the right
@@ -461,15 +461,21 @@ code { font-family: var(--mono); }
   flex-wrap: wrap; min-width: 0;
 }
 .view-head > * { min-width: 0; }
-.view-head.compact { padding: 14px 20px 12px; }
-.view-head h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
-.view-head .sub { margin: 3px 0 0; color: var(--text-2); font-size: 12.5px; }
+.view-head.compact { padding: 10px 18px 9px; }
+.view-head h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+/* Beside the title rather than under it. It is one short line describing the
+   view; giving it a line of its own cost 20px on every screen. */
+.view-head .head-titles {
+  display: flex; align-items: baseline; gap: 10px;
+  flex-wrap: wrap; min-width: 0;
+}
+.view-head .sub { margin: 0; color: var(--text-2); font-size: 12px; }
 .head-actions {
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
   min-width: 0; justify-content: flex-end;
 }
 
-.pad { padding: 18px 24px 28px; overflow-y: auto; flex: 1; }
+.pad { padding: 12px 20px 22px; overflow-y: auto; flex: 1; }
 
 /* ---------- buttons ---------- */
 .btn {
@@ -550,7 +556,7 @@ code { font-family: var(--mono); }
 .stat-chip.warn { background: var(--warn-soft); color: var(--warn); }
 
 /* ---------- stage cards ---------- */
-.stage-list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.stage-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 
 .track-actions {
   display: flex; align-items: center; gap: 10px;
@@ -559,9 +565,9 @@ code { font-family: var(--mono); }
 .track-actions .hint { color: var(--text-3); font-size: 12px; margin-left: auto; }
 
 .stage {
-  display: grid; grid-template-columns: 34px 1fr auto;
-  gap: 14px; align-items: start;
-  padding: 14px 16px;
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: 10px; align-items: start;
+  padding: 9px 12px;
   background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius);
   transition: border-color 0.15s, background 0.15s;
@@ -572,7 +578,7 @@ code { font-family: var(--mono); }
 .stage.running { border-color: var(--accent-line); background: var(--accent-soft); }
 
 .stage-num {
-  width: 28px; height: 28px; border-radius: 8px;
+  width: 22px; height: 22px; border-radius: 7px;
   display: grid; place-items: center;
   background: var(--bg-3); color: var(--text-2);
   font-family: var(--mono); font-size: 12px; font-weight: 600;
@@ -583,9 +589,9 @@ code { font-family: var(--mono); }
 .stage-main { min-width: 0; }
 .stage-title { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .stage-title strong { font-size: 13.5px; font-weight: 600; }
-.stage-summary { margin: 4px 0 0; color: var(--text-2); font-size: 12px; line-height: 1.5; }
+.stage-summary { margin: 2px 0 0; color: var(--text-2); font-size: 12px; line-height: 1.4; }
 .stage-meta {
-  margin-top: 7px; display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap;
   font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
 }
 .stage-meta .miss { color: var(--warn); }
@@ -613,14 +619,17 @@ code { font-family: var(--mono); }
 .tag.lang { background: var(--bg-3); color: var(--text-3); font-family: var(--mono);
             text-transform: none; letter-spacing: 0; }
 
+/* The parameters used to sit below a dashed rule with 10px of air above
+   and below it, which is 30px of card for one text box. Now a row on the
+   same block, with the label beside the box instead of stacked over it. */
 .stage-opts {
-  margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line);
-  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--line);
+  display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center;
 }
-.opt-field { display: flex; flex-direction: column; gap: 3px; }
+.opt-field { display: flex; flex-direction: row; align-items: center; gap: 6px; }
 .opt-field label { font-size: 10px; color: var(--text-3); font-family: var(--mono); }
 .opt-field input {
-  width: 110px; padding: 4px 8px; border-radius: 5px;
+  width: 78px; padding: 3px 7px; border-radius: 5px;
   border: 1px solid var(--line); background: var(--bg); color: var(--text);
   font-family: var(--mono); font-size: 11.5px;
 }
@@ -916,6 +925,19 @@ code { font-family: var(--mono); }
   border: 1px solid var(--line); background: var(--bg); color: var(--text);
   font-family: var(--mono); font-size: 12px;
 }
+/* ...but not the ones that are not text fields.
+
+   The rule above was written for the text inputs a modal usually holds, and
+   it caught radios and checkboxes too: width 100% and 9px of padding turned
+   the radio in the "load onto a recording" chooser into an 1100px control
+   that squeezed the recording's name down to nothing. Anything with a tick
+   or a dot goes back to its natural size. */
+.modal input[type="radio"],
+.modal input[type="checkbox"] {
+  width: auto; min-width: 0; flex: none;
+  padding: 0; border: 0; background: none;
+  accent-color: var(--accent);
+}
 .modal input:focus { outline: none; border-color: var(--accent-line); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
@@ -985,6 +1007,29 @@ code { font-family: var(--mono); }
 .pane-grid.panes-1 { grid-template-columns: 1fr; }
 .pane-grid.panes-2 { grid-template-columns: 1fr 1fr; }
 .pane-grid.panes-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+/* Six panes: an ASSY-77 H10-D, one pane per probe column. Laid out the way
+   the probe figure draws it -- back shank across the top, front shank across
+   the bottom -- so the picture on screen matches the one on the wall.
+   With six short panes the per-pane furniture has to give way or there is no
+   room left for the data. */
+.pane-grid.panes-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.pane-grid.panes-6 .pane-head { padding: 2px 7px; }
+.pane-grid.panes-6 .pane-head .pane-meta { display: none; }
+.pane-grid.panes-6 .pane-ctl { display: none; }
+.pane-grid.panes-6 .pane-chans { display: none; }
+.pane-grid.panes-6 .pane-main { grid-template-columns: 1fr; }
+.pane-grid.panes-6 .pane-timebar { display: none; }
+/* Which column this pane is, stated on the pane. Six near-identical rasters
+   are indistinguishable without it. */
+.pane-col-tag {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em;
+  padding: 0 5px; border-radius: 3px; flex: none;
+  background: var(--accent-soft); color: var(--accent);
+}
+.pane-col-tag.shank-front { background: var(--ok-soft); color: var(--ok); }
 
 /* ---------- one Xplorefinder pane ---------- */
 .pane { display: flex; flex-direction: column; background: var(--bg); overflow: hidden; min-width: 0; }
@@ -1009,6 +1054,11 @@ code { font-family: var(--mono); }
   display: flex; align-items: flex-end; gap: 7px; flex-wrap: wrap;
   padding: 6px 9px; border-bottom: 1px solid var(--line-soft);
   background: var(--bg-2); flex: none;
+  /* Rows stack from the top and the strip grows to hold them. Without this,
+     a narrow pane wraps the controls onto a third row and the last few
+     pixels of it are cut off -- which is how a control ends up half visible
+     and unclickable at the bottom of the strip. */
+  align-content: flex-start;
 }
 .pane-ctl .ctl > label { font-size: 9px; }
 .pane-ctl .ctl input[type=number] { width: 58px; }
@@ -1031,7 +1081,16 @@ code { font-family: var(--mono); }
   position: relative; flex: 1; overflow: hidden; background: var(--bg);
   display: flex; align-items: stretch;
 }
-.pane-img-host img { width: 100%; height: 100%; object-fit: fill; }
+/* Positioned, not stretched. A time-frequency panel covers slightly less
+   than the window it was asked for -- it cannot see half an analysis window
+   at each edge -- and filling the pane put its contents at the wrong x
+   relative to the pane beside it. placePanelImage sets left/width from the
+   panel's own reported extent; for every other panel they are 0 and 100%. */
+.pane-img-host img {
+  position: absolute; top: 0; height: 100%;
+  left: 0; width: 100%;
+  object-fit: fill;
+}
 
 /* The raster grid overlay.
 
@@ -1118,23 +1177,43 @@ code { font-family: var(--mono); }
   border-bottom: 1px solid var(--line-soft); margin-bottom: 8px;
 }
 .grp-head .count { font-family: var(--mono); font-size: 10px; color: var(--text-3); font-weight: 400; }
-.mouse-row { margin-bottom: 10px; }
+/* The mouse label beside its cards rather than above them.
+   ------------------------------------------------------------------------
+   Half these animals have one or two sessions, so a full-width label row
+   above a single 232px card left most of the screen empty -- and with
+   twenty-two mice that was several hundred pixels of nothing between you
+   and the recording you were looking for. In a gutter it costs no row at
+   all, and reading down the gutter gives you the list of mice. */
+.mouse-row {
+  display: grid; grid-template-columns: 62px 1fr;
+  gap: 4px 10px; align-items: start; margin-bottom: 6px;
+}
 .mouse-label {
   font-family: var(--mono); font-size: 11px; color: var(--text-2);
-  margin-bottom: 5px; display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  padding-top: 4px; min-width: 0; overflow: hidden;
+}
+.mouse-label strong { font-size: 11.5px; color: var(--text); }
+.mouse-label > * { max-width: 100%; overflow: hidden;
+                   text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  /* Too narrow for a gutter: back to a label above its cards. */
+  .mouse-row { grid-template-columns: 1fr; }
+  .mouse-label { flex-direction: row; align-items: center; gap: 8px;
+                 padding-top: 0; }
 }
 .mouse-label .folder { color: var(--text-3); font-size: 10px; }
-.sess-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+.sess-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 5px; }
 .sess-card {
-  padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  padding: 6px 9px; border-radius: var(--radius-sm); cursor: pointer;
   background: var(--bg-2); border: 1px solid var(--line); text-align: left;
   color: var(--text-2); transition: border-color .12s, background .12s;
 }
 .sess-card:hover { border-color: var(--accent-line); background: var(--bg-3); color: var(--text); }
-.sess-card .sc-top { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.sess-card .sc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .sess-card .sc-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
-.sess-card .sc-sub { font-family: var(--mono); font-size: 10px; color: var(--text-3); line-height: 1.6; }
-.sess-card .sc-flags { display: flex; gap: 4px; margin-top: 7px; flex-wrap: wrap; }
+.sess-card .sc-sub { font-family: var(--mono); font-size: 10px; color: var(--text-3); line-height: 1.45; }
+.sess-card .sc-flags { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
 .flagchip {
   font-size: 9px; padding: 1px 6px; border-radius: 999px;
   background: var(--bg-3); color: var(--text-3); font-family: var(--mono);
@@ -1404,6 +1483,45 @@ select { color-scheme: inherit; }
   display: grid; align-items: center; gap: 8px;
   grid-template-columns: 8px 74px minmax(70px, 1.1fr) minmax(0, 1.4fr) auto auto 14px;
 }
+/* Picking which recording to load a banked entry onto.
+   ------------------------------------------------------------------------
+   A radio, a name, and a chip saying how well it matches. The name gets
+   whatever room is left rather than a fixed column, so it is never cut --
+   these are things like "PTEN m11 s10 2023-07-25" and the interesting half
+   is the end. */
+/* Content height, capped -- not stretched to fill the dialog. With nothing
+   in it this box was reserving 450 pixels of empty scroll area under a
+   one-line message. */
+.bm-list.bank-targets { flex: none; min-height: 0; overflow-x: hidden; }
+/* Search, type and a count, above the list of what is in the bank. */
+.bank-filter {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.bank-filter input[type="text"] { flex: 1; min-width: 0; }
+.bank-filter select { flex: none; }
+.bank-filter .hint { flex: none; font-size: 11px; color: var(--text-3);
+                     white-space: nowrap; }
+.bm-list.bank-targets .bm-row {
+  display: flex; align-items: center; gap: 9px;
+  grid-template-columns: none;
+  padding: 5px 8px; border: 1px solid transparent; border-radius: 6px;
+}
+.bm-list.bank-targets .bm-row.on {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.bm-list.bank-targets .bm-row input { flex: none; accent-color: var(--accent); }
+.bm-list.bank-targets .mk-name {
+  flex: 1; min-width: 0; overflow: visible; text-overflow: clip;
+  white-space: normal; word-break: break-word; line-height: 1.3;
+}
+.bm-list.bank-targets .flagchip { flex: none; }
+
+/* The line under the list that says what will happen. */
+.confirm-sub { margin: 8px 0 0; font-size: 11.5px; color: var(--text-2);
+               line-height: 1.45; }
+.confirm-sub:empty { display: none; }
+.confirm-sub.warn { color: var(--warn); }
+
 .mk-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .mk-name { color: var(--text); overflow: hidden; text-overflow: ellipsis;
            white-space: nowrap; }
@@ -1548,8 +1666,15 @@ body.dragging-session .pane { transition: outline .1s; }
      visible. Two short rows beat one row with a third of it hidden.
 
      min-height, not height: it is still a 52px row when it fits on one, and
-     the canvas below simply gets whatever is left. */
-  min-height: 52px; max-height: 94px;
+     the canvas below simply gets whatever is left.
+
+     The cap was 94px, which is exactly two rows -- so a pane narrow enough
+     to need a third got five pixels of it and the rest behind a scrollbar
+     nobody notices. A control you can see the top of but not click is worse
+     than one that is honestly off-screen. 112px holds three rows; past that
+     it scrolls, because at some point the strip has to stop eating the
+     canvas it is a control for. */
+  min-height: 52px; max-height: 112px;
   flex-wrap: wrap; overflow-y: auto; overflow-x: hidden;
   align-items: center; scrollbar-width: thin; row-gap: 4px;
 }
@@ -1804,8 +1929,19 @@ select {
   background: #fff; border-radius: 3px; overflow: hidden;
 }
 .sb-mini-inner { position: absolute; inset: 0; }
-.sb-mini-item { position: absolute; object-fit: contain; }
-.sb-mini-text { background: var(--text-3) !important; opacity: .5; }
+.sb-mini-item { position: absolute; object-fit: contain; overflow: hidden; }
+/* The thumbnail cell holds a real drawing now -- the same SVG the slide
+   uses -- rather than a coloured rectangle, so whatever is inside fills it. */
+.sb-mini-item > img,
+.sb-mini-item > svg { width: 100%; height: 100%; display: block;
+                      object-fit: contain; }
+/* Text at thumbnail size is an indication of where the text is, not
+   something to read. It used to be painted as a flat grey block, which is
+   half of why every slide in the rail looked the same. */
+.sb-mini-label {
+  font-size: 3px; line-height: 1.25; overflow: hidden;
+  width: 100%; height: 100%; word-break: break-word;
+}
 .sb-name { grid-column: 2; font-size: 10px; color: var(--text-2);
            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-thumb .badbtn {
@@ -3265,14 +3401,24 @@ body.splitting .pane-split { pointer-events: auto !important; }
 
 .hk-paths-list { display: flex; flex-direction: column; gap: 4px; }
 .hk-path {
-  display: flex; align-items: center; gap: 7px; min-width: 0;
-  padding: 5px 7px; border-radius: var(--radius-sm); background: var(--bg-2);
+  display: grid; grid-template-columns: 10px 1fr auto; gap: 7px;
+  align-items: start; min-width: 0;
+  padding: 6px 8px; border-radius: var(--radius-sm); background: var(--bg-2);
 }
+/* Wrapped, not truncated. This used to be one nowrap line with
+   direction:rtl, which showed the end of a path and hid the start -- so
+   "\\netfiles03..." and "D:\PTEN\..." both rendered as "...2023-10-02" and
+   there was no way to tell two mounts of the same recording apart. A path is
+   the thing you need to read in full or not at all. */
 .hk-path code {
-  flex: 1; min-width: 0; font-size: 10.5px; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; direction: rtl;
-  text-align: left;
+  min-width: 0; font-size: 10.5px; line-height: 1.45;
+  white-space: pre-wrap; word-break: break-all;
 }
+.hk-path .hk-seen {
+  display: block; font-size: 9.5px; color: var(--text-3); margin-top: 2px;
+  font-family: var(--sans);
+}
+.hk-path .hk-btns { display: flex; gap: 4px; align-items: center; }
 .hk-path.here { background: var(--ok-soft); }
 
 .hk-links { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3434,8 +3580,58 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid rgba(0, 0, 0, .18);
 }
 .strata-name {
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  /* No ellipsis. A name cut to "Pyra..." tells you less than a smaller
+     name that fits, and the row already carries the full text as a
+     tooltip. */
+  flex: 1; min-width: 0; overflow: hidden;
   white-space: nowrap; color: var(--text-2);
+}
+
+/* ==========================================================================
+   The layer rail when the lanes get short
+   ==========================================================================
+   Each row is pinned to its channel's trace lane, which is the whole point --
+   the label sits on the thing it labels. At 32 channels that lane is about
+   18px and a row can carry a number, a swatch and a dropdown. At 64 it is
+   nine, and drawing all three anyway gave sixty-four six-pixel dropdowns
+   with the numbers overlapping each other: unreadable exactly when the
+   shank has the most to say.
+
+   So the row sheds what it cannot fit, in order of how little it is worth:
+   the dropdown first (painting with a brush is how this is meant to be
+   used -- clicking sixty-four dropdowns is what the tool exists to avoid),
+   then the numbers thin out. The swatch is the last thing to go, because it
+   is the one that shows where a boundary is.
+   ========================================================================== */
+.strata-rows.tight .strata-row { gap: 3px; padding: 0 4px; font-size: 9px; }
+.strata-rows.tight .strata-row select { display: none; }
+.strata-rows.tight .strata-name { display: none; }
+/* A band rather than a chip: at this size the continuous run of colour is
+   what makes a layer boundary visible at a glance. */
+.strata-rows.tight .strata-sw {
+  width: 16px; height: 100%; border-radius: 0; border: 0;
+  border-top: 1px solid rgba(0, 0, 0, .10);
+}
+.strata-rows.tight .strata-num { width: 20px; }
+
+.strata-rows.packed .strata-row { font-size: 8.5px; padding: 0 3px; }
+.strata-rows.packed .strata-num { width: 18px; }
+/* Every other number, then every fourth. Hidden rather than removed, so the
+   rows keep their width and nothing shifts sideways as you scroll a shank. */
+.strata-rows.packed .strata-num { visibility: hidden; }
+.strata-rows.packed .strata-row:nth-child(2n+1) .strata-num { visibility: visible; }
+.strata-rows.very-packed .strata-row:nth-child(2n+1) .strata-num { visibility: hidden; }
+.strata-rows.very-packed .strata-row:nth-child(4n+1) .strata-num { visibility: visible; }
+/* The hovered row always says which channel it is, whatever the spacing --
+   otherwise a 64-channel shank has three quarters of its rows anonymous. */
+.strata-rows.packed .strata-row:hover .strata-num,
+.strata-rows.packed .strata-row.hl .strata-num { visibility: visible; }
+/* And hovering lifts the row clear of its neighbours so the number is
+   readable rather than squeezed between two others. */
+.strata-rows.packed .strata-row:hover,
+.strata-rows.packed .strata-row.hl {
+  outline: 1px solid var(--accent); outline-offset: -1px;
+  position: relative; z-index: 2;
 }
 .strata-row select {
   flex: 1; min-width: 0; font: inherit; font-size: 10px;
@@ -3648,3 +3844,651 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .sync-warn { border: 1px solid var(--err); border-radius: var(--radius-sm);
              padding: 10px 12px; margin: 10px 0; }
 .sync-warn pre { font-size: 10.5px; color: var(--text-2); margin: 6px 0; }
+
+
+/* ==========================================================================
+   Kilosort and Phy
+   ========================================================================== */
+.ks-head { display: flex; align-items: flex-start; gap: 14px;
+           margin-bottom: 14px; flex-wrap: wrap; }
+.ks-head h2 { margin: 0 0 2px; font-size: 15px; }
+.ks-head .hint { margin: 0; }
+.ks-head .seg { margin-left: auto; }
+
+.ks-verdict {
+  border-radius: var(--radius-sm); padding: 11px 14px; margin: 12px 0;
+  display: grid; gap: 3px;
+}
+.ks-verdict.good { background: var(--ok-soft); border: 1px solid var(--ok); }
+.ks-verdict.bad { background: var(--warn-soft); border: 1px solid var(--warn); }
+.ks-verdict span { font-size: 11.5px; color: var(--text-2); }
+.ks-bad { background: var(--err-soft); border: 1px solid var(--err);
+          border-radius: var(--radius-sm); padding: 10px 12px; }
+
+.ks-reqs { display: grid; gap: 8px; }
+.ks-req {
+  display: grid; grid-template-columns: 12px 1fr; gap: 10px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  padding: 10px 12px; background: var(--bg-2);
+}
+.ks-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px;
+          background: var(--text-3); }
+.ks-req.ok .ks-dot { background: var(--ok); }
+.ks-req.bad .ks-dot { background: var(--err); }
+.ks-req.warn .ks-dot { background: var(--warn); }
+.ks-req.bad { border-color: var(--err); }
+.ks-req-top { display: flex; align-items: baseline; gap: 10px;
+              flex-wrap: wrap; }
+.ks-req-top code { font-size: 10.5px; color: var(--text-3); }
+.ks-req .hint { margin: 3px 0 0; }
+.ks-req-body { min-width: 0; }
+
+.ks-fix { display: flex; align-items: center; gap: 8px; margin-top: 8px;
+          flex-wrap: wrap; }
+.ks-fix pre {
+  flex: 1; min-width: 220px; margin: 0; padding: 7px 9px;
+  background: var(--bg-3); border-radius: var(--radius-sm);
+  font-size: 10.5px; white-space: pre-wrap; word-break: break-all;
+}
+.ks-note {
+  border-left: 3px solid var(--warn); padding: 8px 12px; margin: 12px 0;
+  background: var(--bg-2);
+}
+.ks-note p { margin: 4px 0; font-size: 11.5px; color: var(--text-2); }
+.ks-note pre { font-size: 10.5px; background: var(--bg-3); padding: 7px 9px;
+               border-radius: var(--radius-sm); margin: 6px 0 0; }
+
+.ks-choices { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.ks-choices label { display: grid; gap: 3px; font-size: 11px;
+                    color: var(--text-3); min-width: 220px; flex: 1; }
+.ks-choices select {
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font: inherit; font-size: 11.5px; max-width: 100%;
+}
+.ks-choices .ks-check { display: flex; align-items: center; gap: 7px;
+                        flex: 0; min-width: 0; align-self: end;
+                        padding-bottom: 6px; }
+
+.ks-problem {
+  border-left: 3px solid var(--err); background: var(--bg-2);
+  padding: 8px 12px; margin: 8px 0;
+}
+.ks-problem p { margin: 3px 0 0; font-size: 11.5px; color: var(--text-2); }
+
+.ks-facts { display: grid; gap: 4px; margin: 12px 0; }
+.ks-fact { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px;
+           font-size: 11.5px; align-items: baseline; }
+.ks-fact .k { color: var(--text-3); }
+.ks-fact .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-fact .x { color: var(--text-3); font-size: 10.5px; }
+
+.ks-script {
+  max-height: 340px; overflow: auto; background: var(--bg-3);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-size: 10.5px;
+  margin: 8px 0;
+}
+.ks-actions { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+
+.ks-runs { display: grid; gap: 6px; }
+.ks-run {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); padding: 9px 12px; background: var(--bg-2);
+}
+.ks-run.sel { border-color: var(--accent); }
+.ks-run.away { opacity: .6; }
+.ks-run .hint { display: block; margin: 2px 0 0; }
+
+.ks-views { display: grid; gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.ks-view { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+           padding: 10px 12px; background: var(--bg-2); }
+.ks-view p { margin: 4px 0 0; font-size: 11.5px; color: var(--text-2); }
+
+.ks-keys { display: grid; gap: 14px;
+           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.ks-keygroup h4 { margin: 0 0 6px; font-size: 11px; color: var(--text-3);
+                  text-transform: uppercase; letter-spacing: .06em; }
+.ks-keygroup dl { display: grid; grid-template-columns: auto 1fr;
+                  gap: 4px 10px; margin: 0; font-size: 11.5px; }
+.ks-keygroup dt { margin: 0; }
+.ks-keygroup dd { margin: 0; color: var(--text-2); }
+.ks-keygroup kbd {
+  font-family: var(--mono); font-size: 10.5px; padding: 1px 6px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 4px; background: var(--bg-3);
+}
+
+.ks-job { margin-top: 16px; border: 1px solid var(--line);
+          border-radius: var(--radius-sm); overflow: hidden; }
+.ks-job-head { display: flex; align-items: center; gap: 10px;
+               padding: 8px 12px; background: var(--bg-3); }
+.ks-job-head code { flex: 1; font-size: 10px; color: var(--text-3);
+                    overflow: hidden; text-overflow: ellipsis;
+                    white-space: nowrap; }
+.ks-log {
+  margin: 0; padding: 10px 12px; max-height: 300px; overflow: auto;
+  font-size: 10.5px; background: var(--bg); white-space: pre-wrap;
+}
+
+
+/* ==========================================================================
+   Result folders
+
+   A tag is what a result is about and it can have five; a folder is where it
+   lives, and it lives in one. Chips rather than a side rail: the depth is
+   rarely more than two, and a permanent rail would take width the thumbnails
+   want.
+   ========================================================================== */
+.res-folders {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin: 8px 0 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.res-folders-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text-3); margin-right: 4px;
+}
+.res-folders .spacer { flex: 1; }
+.folder-chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2);
+}
+.folder-chip:hover { border-color: var(--accent); color: var(--text); }
+.folder-chip.on {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--on-accent); font-weight: 600;
+}
+.folder-chip.dim { color: var(--text-3); border-style: dashed; }
+.folder-chip .n { font-size: 10px; opacity: .7; }
+.res-move {
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font: inherit; font-size: 11px;
+}
+
+.cloud-note { margin: 10px 0; }
+.cloud-line { display: flex; align-items: center; gap: 9px; }
+.cloud-line .dot { width: 8px; height: 8px; border-radius: 50%;
+                   background: var(--text-3); }
+.cloud-line .dot.ok { background: var(--ok); }
+.cloud-line .dot.bad { background: var(--err); }
+.cloud-line .spacer { flex: 1; }
+.cloud-err { font-size: 10.5px; color: var(--err); background: var(--err-soft);
+             padding: 7px 9px; border-radius: var(--radius-sm);
+             white-space: pre-wrap; margin: 6px 0; }
+
+.cloud-ask { border: 1px solid var(--accent); border-radius: var(--radius-sm);
+             padding: 12px 14px; margin: 10px 0; background: var(--bg-2); }
+.cloud-ask .row { display: flex; gap: 8px; margin: 8px 0 4px; }
+.cloud-key { flex: 1; padding: 6px 9px; border-radius: var(--radius-sm);
+             border: 1px solid var(--line); background: var(--bg);
+             color: var(--text); font: inherit; font-size: 12px;
+             font-family: var(--mono); }
+.cloud-key:focus { border-color: var(--accent); outline: none; }
+.hint.bad { color: var(--err); }
+
+.ks-pypick { border: 1px solid var(--line); border-radius: var(--radius-sm);
+             padding: 10px 12px; margin: 10px 0; background: var(--bg-2);
+             display: grid; gap: 5px; }
+.ks-pypick label { font-size: 11px; color: var(--text-3); }
+.ks-pypick .hint { margin: 0; }
+.ks-python {
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  font: inherit; font-size: 11.5px; max-width: 100%;
+}
+
+/* "Full values" on: read the path instead of guessing at it. */
+.hk-table.wrap td {
+  white-space: normal; word-break: break-all; max-width: 460px;
+  overflow: visible; text-overflow: clip;
+}
+.hk-table.wrap td.mono { font-size: 10px; }
+
+/* Folders a scan would not vouch for, and registered recordings that no
+   longer look like recordings. */
+.held-list { display: grid; gap: 8px; max-height: 52vh; overflow: auto;
+             margin: 10px 0; }
+.held-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
+  align-items: start; padding: 9px 11px; background: var(--bg-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.held-row .hint { margin: 3px 0 0; }
+.held-path {
+  display: block; font-size: 10px; color: var(--text-3); margin-top: 2px;
+  white-space: pre-wrap; word-break: break-all;
+}
+.stat-chip.warn { background: var(--warn-soft); color: var(--warn);
+                  border-color: var(--warn); cursor: pointer; }
+
+
+/* ==========================================================================
+   A rail that gets out of the way
+   ==========================================================================
+   Three states, not two. Icons-only is the one people actually live in: the
+   nav is still there, still clickable, still shows which view is active, and
+   gives back 140px of width. Fully away is for a screenshot or a talk, and
+   leaves a sliver to bring it back with -- a hidden thing with no visible
+   way back is a thing people conclude is broken. */
+.rail-toggle {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-3);
+  cursor: pointer; text-align: left; font: inherit; font-size: 12px;
+}
+.rail-toggle svg {
+  width: 17px; height: 17px; flex: none; fill: none;
+  stroke: currentColor; stroke-width: 1.7; stroke-linecap: round;
+}
+.rail-toggle:hover { background: var(--bg-3); color: var(--text); }
+
+#app.rail-icons { grid-template-columns: 54px 1fr; }
+#app.rail-icons #rail { padding: 14px 8px; align-items: center; }
+#app.rail-icons .nav-item span,
+#app.rail-icons .nav-item kbd,
+#app.rail-icons .rail-toggle span,
+#app.rail-icons .brand-text,
+#app.rail-icons .chip-btn span,
+#app.rail-icons .env { display: none; }
+#app.rail-icons .nav-item,
+#app.rail-icons .rail-toggle,
+#app.rail-icons .chip-btn { justify-content: center; padding: 8px 6px; }
+#app.rail-icons .nav-badge {
+  position: absolute; transform: translate(12px, -8px);
+}
+
+/* One column, not a zero-width one followed by the real one.
+
+   #rail carries no explicit grid-column, so it auto-places into the first
+   track and #main into the second. Hiding the rail with display:none takes
+   it out of the flow -- at which point #main auto-places into the FIRST
+   track, which this rule had set to 0. The entire interface collapsed to
+   nothing but the log dock and the little handle to bring the rail back.
+   With a single track there is nowhere wrong for #main to go. */
+#app.rail-away { grid-template-columns: 1fr; }
+#app.rail-away #rail { display: none; }
+/* The log dock asks for column 2 by name. With only one declared track it
+   made the grid invent a second one, and the two auto-sized tracks split the
+   window between them -- 523px of app beside 416px of dock. Measured, not
+   guessed: see web/_dev/railprobe.html. */
+#app.rail-away #logDock { grid-column: 1; }
+
+/* The way back. Only present when the rail is, which is the point: it is a
+   handle, not a permanent fixture. */
+#railPeek {
+  position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+  z-index: 60; width: 16px; height: 76px;
+  display: none; place-items: center;
+  border: 1px solid var(--line); border-left: 0;
+  border-radius: 0 8px 8px 0;
+  background: var(--bg-2); color: var(--text-3); cursor: pointer;
+  font-size: 10px; padding: 0;
+}
+#app.rail-away #railPeek { display: grid; }
+#railPeek:hover { color: var(--accent); border-color: var(--accent); }
+
+
+/* ==========================================================================
+   Folding a bar away
+   ==========================================================================
+   The View menu is still there for "put it all back", but hiding one bar is
+   now an arrow on that bar: one click, where your eye already is, instead of
+   four steps through a menu you have to know exists.
+
+   Every hidden bar leaves a sliver. A bar that vanishes with no visible way
+   back is one people conclude is broken, and then they reload the page. */
+.fold-btn {
+  flex: none; width: 15px; height: 15px; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 3px; background: transparent;
+  color: var(--text-3); cursor: pointer; opacity: 0.55;
+}
+.fold-btn svg { width: 11px; height: 11px; fill: none;
+                stroke: currentColor; stroke-width: 1.8;
+                stroke-linecap: round; stroke-linejoin: round; }
+.fold-btn:hover { opacity: 1; color: var(--accent); background: var(--bg-3); }
+.fold-left svg { transform: rotate(-90deg); }
+
+/* The slivers, in a row at the top of the plot. */
+.unfold-row {
+  display: flex; gap: 3px; padding: 2px 4px; flex: none;
+  background: var(--bg-2); border-bottom: 1px solid var(--line-soft);
+}
+.unfold {
+  width: 22px; height: 13px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--line-soft); border-radius: 3px;
+  background: var(--bg-3); color: var(--text-3); cursor: pointer;
+}
+.unfold svg { width: 10px; height: 10px; fill: none; stroke: currentColor;
+              stroke-width: 1.8; stroke-linecap: round; }
+.unfold:hover { color: var(--accent); border-color: var(--accent); }
+.unfold-channels svg { transform: rotate(-90deg); }
+
+/* In full screen the panes get the whole monitor and the chrome is cleared,
+   so the slivers would be the only furniture left on it. They stay -- being
+   unable to get the controls back without leaving full screen would be
+   worse -- but they get out of the way until asked for. */
+#view-xplore:fullscreen .unfold-row,
+:fullscreen #view-xplore .unfold-row { opacity: 0.25; }
+#view-xplore:fullscreen .unfold-row:hover,
+:fullscreen #view-xplore .unfold-row:hover { opacity: 1; }
+
+
+/* ==========================================================================
+   Being in a mode should look like being in a mode
+   ==========================================================================
+   StrataScope and DS curation repurpose the whole window: the panes change,
+   the keyboard changes, dragging means something different. That was
+   signalled by a toolbar appearing, which is easy to miss when you come back
+   to the window a few minutes later -- and acting on the default assumptions
+   in a mode is how a labelling session gets quietly ruined.
+
+   Three signals, deliberately redundant: the workspace is framed in the
+   mode's colour, the mode is named across the top of it, and the frame
+   carries into the aid window so the two windows read as one thing.
+   ========================================================================== */
+#app.mode-strata { --mode: #ffb81c; --mode-soft: rgba(255, 184, 28, 0.13); }
+#app.mode-curate { --mode: #4bc7f0; --mode-soft: rgba(75, 199, 240, 0.13); }
+
+#app.mode-strata #xfBody,
+#app.mode-curate #xfBody {
+  box-shadow: inset 0 0 0 2px var(--mode);
+  border-radius: var(--radius);
+}
+
+/* The banner. Ahead of the panes in the flow, so it is the first thing in
+   the workspace rather than something floating over the data. */
+.mode-banner { display: none; }
+#app.mode-strata .mode-banner,
+#app.mode-curate .mode-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 10px; flex: none;
+  background: var(--mode-soft);
+  border-bottom: 1px solid var(--mode);
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.mode-banner b { color: var(--mode); font-weight: 700; letter-spacing: 0.08em; }
+.mode-banner .mode-what { color: var(--text-2); text-transform: none;
+                          letter-spacing: 0; font-size: 11px; }
+.mode-banner .spacer { flex: 1; }
+.mode-banner button {
+  font: inherit; font-size: 11px; padding: 2px 9px;
+  border: 1px solid var(--mode); border-radius: 999px;
+  background: transparent; color: var(--mode); cursor: pointer;
+  text-transform: none; letter-spacing: 0;
+}
+.mode-banner button:hover { background: var(--mode); color: #0b0e13; }
+
+/* The aid window. Framed the same way, and labelled, so it is never mistaken
+   for the window you are supposed to be reading. */
+body.aid-window #xfBody { box-shadow: inset 0 0 0 2px var(--accent); }
+body.aid-window .xf-tabs { display: none !important; }
+
+
+/* The bad-channel control at 64 channels.
+   ------------------------------------------------------------------------
+   A lane under 15px has no room for a button with "ok" written on it, which
+   is why it used to be dropped -- and dropping it meant no way to mark a bad
+   wire on exactly the recordings that have twice as many wires. A dot fits:
+   hollow when the channel is fine, filled when it is not, and a hit area
+   that grows to the whole lane height rather than the 9px it looks like. */
+.ch-overlay .ch-lane .badbtn.dot {
+  flex: none; padding: 0;
+  width: 9px; height: 9px; max-height: 100%;
+  border-radius: 50%;
+  border: 1px solid var(--text-3); background: transparent;
+}
+.ch-overlay .ch-lane .badbtn.dot:hover {
+  border-color: var(--warn); background: var(--warn-soft);
+}
+.ch-overlay .ch-lane.marked-bad .badbtn.dot {
+  background: var(--warn); border-color: var(--warn);
+}
+/* The name yields before the control does. Without this the button is the
+   flex item that gets squeezed, and a 0px-wide button is the same bug in a
+   different costume. */
+.ch-overlay .ch-lane .badbtn,
+.ch-row .badbtn { flex: none; }
+
+
+/* A checkbox that sits in a control row next to the number fields it
+   qualifies -- the frequency lock, for one. Laid out like a .ctl so the row
+   does not develop a step in it. */
+.ctl-check {
+  display: flex; align-items: center; gap: 5px;
+  align-self: flex-end; padding: 3px 2px;
+  font-size: 11px; color: var(--text-2); cursor: pointer; white-space: nowrap;
+}
+.ctl-check input { accent-color: var(--accent); margin: 0; }
+.ctl-check:hover { color: var(--text); }
+
+
+/* ==========================================================================
+   Feedback: bugs, features, suggestions
+   ==========================================================================
+   A form next to the errors, because the moment you notice something is the
+   moment you are looking at it. The screenshot area is focusable on purpose:
+   Ctrl+V has to land somewhere, and asking people to find a folder first is
+   how a report stops being worth filing.
+   ========================================================================== */
+.fb-form { display: flex; flex-direction: column; gap: 12px; max-width: 860px; }
+.fb-head { display: flex; align-items: center; gap: 10px; }
+.fb-head strong { font-size: 14px; }
+.fb-form .field { display: flex; flex-direction: column; gap: 4px; }
+.fb-form .field > label { font-size: 11px; color: var(--text-2); }
+.fb-form input[type="text"], .fb-form textarea {
+  width: 100%; padding: 7px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  font: inherit; font-size: 12.5px; resize: vertical;
+}
+.fb-form input:focus, .fb-form textarea:focus {
+  outline: none; border-color: var(--accent-line);
+}
+.fb-form .hint { font-size: 11px; color: var(--text-3); line-height: 1.45; }
+
+.fb-drop {
+  display: flex; flex-direction: column; gap: 3px; align-items: center;
+  padding: 14px; border: 1px dashed var(--line); border-radius: var(--radius);
+  background: var(--bg-2); cursor: pointer; text-align: center;
+}
+.fb-drop:hover, .fb-drop:focus { border-color: var(--accent);
+                                 background: var(--bg-3); outline: none; }
+.fb-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.fb-drop strong { font-size: 12px; }
+.fb-drop span { font-size: 11px; color: var(--text-3); }
+
+.fb-shots { display: flex; flex-wrap: wrap; gap: 10px; }
+.fb-shot {
+  display: flex; flex-direction: column; gap: 4px; width: 190px;
+  padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); position: relative;
+}
+.fb-shot img { width: 100%; height: 108px; object-fit: cover;
+               border-radius: 4px; background: #000; }
+.fb-shot input { font-size: 10.5px !important; padding: 3px 6px !important; }
+.fb-shot .badbtn { position: absolute; top: 8px; right: 8px;
+                   background: rgba(0,0,0,.6); border-radius: 4px; }
+.fb-shots.small { gap: 6px; margin-top: 6px; }
+.fb-shots.small img { width: 132px; height: 78px; object-fit: cover;
+                      border: 1px solid var(--line); border-radius: 4px; }
+
+.fb-context summary { font-size: 11px; color: var(--text-3); cursor: pointer; }
+.fb-context pre {
+  margin: 6px 0 0; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-2);
+  max-height: 200px; overflow: auto; white-space: pre-wrap;
+}
+.fb-actions { display: flex; align-items: center; gap: 10px; }
+
+.fb-list { display: flex; flex-direction: column; gap: 8px; }
+.fb-item {
+  padding: 9px 12px; border-radius: var(--radius);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--text-3);
+}
+.fb-item.fb-bug { border-left-color: var(--err); }
+.fb-item.fb-feature { border-left-color: var(--accent); }
+.fb-item.fb-improvement { border-left-color: var(--ok); }
+.fb-item-head { display: flex; align-items: center; gap: 8px; }
+.fb-item-head strong { font-size: 12.5px; }
+.fb-kind { font-size: 12px; color: var(--text-3); }
+.fb-meta { font-family: var(--mono); font-size: 10px; color: var(--text-3);
+           margin-top: 3px; }
+.fb-detail { margin: 6px 0 0; font-size: 12px; color: var(--text-2);
+             line-height: 1.5; white-space: pre-wrap; }
+.fb-item-actions { display: flex; gap: 4px; margin-top: 8px; }
+
+
+/* Converting a video to MP4, and how far along it is. Sits under the player
+   because it is about the file, not about the moment you are looking at. */
+.vconv {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  padding: 5px 9px; background: var(--bg-2);
+  border-top: 1px solid var(--line-soft);
+  font-size: 11px; color: var(--text-2);
+}
+.vconv-text { min-width: 0; }
+.vconv-bar {
+  flex: none; width: 130px; height: 5px; border-radius: 999px;
+  background: var(--bg-3); overflow: hidden;
+}
+.vconv-fill { height: 100%; width: 0; background: var(--accent);
+              transition: width .3s linear; }
+
+.warn-line { color: var(--warn); font-size: 11.5px; margin: 6px 0 0;
+             line-height: 1.45; }
+
+/* Forty-odd recordings of scan results: scrolls in its own box rather than
+   pushing the Import button off the bottom of the view. */
+.tk-table-wrap { max-height: 46vh; overflow: auto; margin-top: 10px;
+                 border: 1px solid var(--line-soft);
+                 border-radius: var(--radius-sm); }
+.tk-table-wrap .tk-table { margin: 0; }
+.tk-table tr.dim { opacity: .55; }
+
+
+/* ==========================================================================
+   The step loader
+   ==========================================================================
+   "Reading..." on its own, for three seconds, says nothing -- and every
+   ToolKit pane is waiting on two or three requests, one of which (the
+   recording registry) is over a second by itself. So it names the step it is
+   on and marks off the ones it has finished. When it stalls, you know what
+   it stalled on.
+
+   The trace is a dentate spike sweeping past, which is what this whole
+   application is for.
+   ========================================================================== */
+.step-loader {
+  padding: 26px 0; gap: 10px;
+}
+.sl-wave { width: 132px; height: 30px; stroke-dasharray: none;
+           stroke-dashoffset: 0; animation: none; opacity: 1; }
+.sl-wave .sl-base {
+  stroke: var(--line); stroke-width: 1; fill: none;
+}
+.sl-wave .sl-spike {
+  stroke: var(--accent); stroke-width: 2; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: sl-sweep 1.9s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+/* Travels left to right and fades at the ends, so it reads as one spike
+   passing rather than a shape that jumps back. */
+@keyframes sl-sweep {
+  0%   { transform: translateX(-42%); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(42%); opacity: 0; }
+}
+.step-loader .sl-step {
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
+}
+.sl-dots { display: flex; gap: 5px; }
+.sl-dots i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--line); transition: background .2s;
+}
+.sl-dots i.now { background: var(--accent);
+                 animation: sl-pulse 1.1s ease-in-out infinite; }
+.sl-dots i.done { background: var(--ok); }
+@keyframes sl-pulse { 50% { opacity: .35; } }
+
+/* Centred in whatever pane it is filling, rather than pinned to the top-left
+   with the rest of the layout collapsed around it. */
+.tk-loading {
+  display: grid; place-items: center; min-height: 220px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-wave .sl-spike { animation: none; }
+  .sl-dots i.now { animation: none; }
+}
+
+
+/* ==========================================================================
+   Two bars under the video, in different units
+   ==========================================================================
+   The single bar tried to be both and the browser drew a third one above it.
+   Now: one slider for the video, one bar for the whole recording, each
+   saying which it is. The recording bar is the one that moves everything.
+   ========================================================================== */
+.vs, .vrec {
+  display: flex; align-items: center; gap: 9px; flex: none;
+  padding: 5px 9px; background: var(--bg-2);
+  border-top: 1px solid var(--line-soft);
+}
+.vs-play { flex: none; width: 22px; }
+.vs-track, .vrec-track {
+  position: relative; flex: 1; height: 16px; cursor: pointer;
+}
+.vs-track::before, .vrec-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 7px;
+  height: 3px; border-radius: 999px; background: var(--bg-3);
+}
+.vs-played {
+  position: absolute; left: 0; top: 7px; height: 3px;
+  border-radius: 999px; background: var(--text-2); pointer-events: none;
+}
+.vs-knob, .vrec-cursor {
+  position: absolute; top: 4px; width: 9px; height: 9px; margin-left: -4.5px;
+  border-radius: 50%; background: var(--text);
+  border: 1px solid var(--bg); pointer-events: none;
+}
+.vs-track:hover .vs-knob { background: var(--accent); }
+.vs-time, .vrec-time {
+  flex: none; font-family: var(--mono); font-size: 10px;
+  color: var(--text-3); white-space: nowrap;
+}
+/* Says what the slider is spanning. On an unconverted file it is a few
+   seconds around the cursor, not the recording, and that has to be visible
+   rather than inferred from the numbers disagreeing. */
+.vs-scope {
+  flex: none; font-size: 9.5px; padding: 1px 6px; border-radius: 999px;
+  background: var(--bg-3); color: var(--text-3); font-family: var(--mono);
+}
+.vs-scope.partial { background: var(--warn-soft); color: var(--warn); }
+
+.vrec-label {
+  flex: none; font-size: 9.5px; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--text-3);
+}
+/* What the video covers: the whole thing when converted, a short stretch
+   when it is a clip. */
+.vrec-covered {
+  position: absolute; top: 7px; height: 3px; border-radius: 999px;
+  background: var(--accent); opacity: .35; pointer-events: none;
+}
+/* The window the traces are showing. */
+.vrec-band {
+  position: absolute; top: 2px; height: 12px; border-radius: 2px;
+  background: var(--accent-soft); border: 1px solid var(--accent);
+  pointer-events: none;
+}
+.vrec-cursor { background: var(--accent); }
+

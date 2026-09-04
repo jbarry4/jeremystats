@@ -72,6 +72,109 @@ def classify_folder(path, names=None):
             "events": events}
 
 
+# --------------------------------------------------------------------------
+# Is this folder actually a recording?
+# --------------------------------------------------------------------------
+# Scanning the lab drives turned up seven folders of 64 files each, every one
+# of them exactly 16384 bytes: a Neuralynx header and no data. Aborted
+# acquisitions, registered as ordinary recordings, indistinguishable in the
+# tree from a real session.
+#
+# The rig writes channels in banks of 32, so a count that is not a multiple of
+# 32 means files are missing or something else is in the folder. Neither check
+# deletes or hides anything -- a folder that fails is reported with the reason
+# and kept out of the registry until somebody overrides it.
+CHANNEL_BANK = 32
+TINY_BYTES = 1_000_000
+
+
+def assess(path, contents):
+    """What is wrong with this folder, if anything.
+
+    Returns a verdict and reasons in words. `ok` is not the same as `empty`:
+    an empty folder is a real recording that failed, and saying so is more
+    useful than pretending it is fine or pretending it is not there.
+    """
+    ncs = contents.get("ncs") or []
+    loadable = nlx.list_csc_files(path, even_only=False)
+    parts = nlx.csc_parts(path)
+
+    n_named = len(ncs)
+    n_loadable = len(loadable)
+    unreadable = sorted(set(ncs) - {os.path.basename(p) for _n, p in loadable})
+    split = {n: len(v) for n, v in parts.items() if len(v) > 1}
+
+    empty, tiny, sizes = [], [], []
+    for _num, p in loadable:
+        recs = nlx.data_records(p)
+        try:
+            size = os.path.getsize(p)
+        except OSError:
+            size = 0
+        sizes.append(size)
+        if recs <= 0:
+            empty.append(os.path.basename(p))
+        elif size < TINY_BYTES:
+            tiny.append(os.path.basename(p))
+
+    reasons, verdict = [], "ok"
+    if not n_loadable and contents.get("mats"):
+        verdict = "ok"                    # a converted session; nothing to check
+    elif not n_loadable:
+        verdict = "reject"
+        reasons.append("no CSC file here has a name the loader can read")
+    elif empty and len(empty) == n_loadable:
+        verdict = "empty"
+        reasons.append(
+            "every one of the %d channels is header-only -- %d bytes and no "
+            "data records. The acquisition was started and never wrote "
+            "anything." % (n_loadable, nlx.HEADER_BYTES))
+    else:
+        if empty:
+            verdict = "suspect"
+            reasons.append("%d of %d channels contain no data at all (%s%s)"
+                           % (len(empty), n_loadable, ", ".join(empty[:4]),
+                              "..." if len(empty) > 4 else ""))
+        if tiny:
+            verdict = "suspect"
+            reasons.append(
+                "%d channel(s) are under 1 MB, which is a few seconds at "
+                "30 kHz (%s%s)" % (len(tiny), ", ".join(tiny[:4]),
+                                   "..." if len(tiny) > 4 else ""))
+        if n_loadable % CHANNEL_BANK:
+            verdict = "suspect"
+            reasons.append(
+                "%d channels is not a multiple of %d -- the rig records in "
+                "banks of %d, so files are probably missing"
+                % (n_loadable, CHANNEL_BANK, CHANNEL_BANK))
+        if unreadable:
+            verdict = "suspect"
+            reasons.append(
+                "%d file(s) look like CSC data but are not named so the "
+                "loader can read them (%s%s)"
+                % (len(unreadable), ", ".join(unreadable[:3]),
+                   "..." if len(unreadable) > 3 else ""))
+    if split:
+        reasons.append(
+            "%d channel(s) are split across more than one file, which "
+            "Cheetah does when acquisition restarts -- only the first part "
+            "is loaded" % len(split))
+
+    return {
+        "verdict": verdict,
+        "usable": verdict in ("ok", "suspect"),
+        "reasons": reasons,
+        "n_named": n_named,
+        "n_loadable": n_loadable,
+        "n_empty": len(empty),
+        "n_tiny": len(tiny),
+        "unreadable": unreadable[:12],
+        "split": split,
+        "bank_ok": (n_loadable % CHANNEL_BANK == 0) if n_loadable else None,
+        "median_bytes": (sorted(sizes)[len(sizes) // 2] if sizes else 0),
+    }
+
+
 def describe_session(path, contents, read_header=True):
     """Build the full session record: identity + quick technical summary."""
     header_time, fs, n_ch, duration, adbv = None, None, 0, 0.0, None
@@ -95,8 +198,11 @@ def describe_session(path, contents, read_header=True):
         n_ch = 0
 
     identity = ids.identify(path, header_time=header_time)
+    quality = assess(path, contents)
     return {
         "path": path,
+        # Whether this folder is a recording worth registering, and why not.
+        "quality": quality,
         "name": os.path.basename(path.rstrip("\\/")) or path,
         "identity": identity,
         "n_ncs": len(contents["ncs"]),

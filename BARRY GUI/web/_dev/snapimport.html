@@ -1,0 +1,141 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — snapshot import, and the ToolKit panes</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Two things.
+
+   The snapshot importer: thousands of dentate spikes were sorted by dragging
+   PNGs into folders, and that has to come back in. Scanning must write
+   nothing and must be honest about which folders it cannot do.
+
+   And the Kilosort pane, which was "super boggy, everything greyed out, and
+   sometimes snaps back to another tool". Picking it ran a bad-channel query
+   nobody asked for, which dimmed the pane to 0.55 -- and renderResult
+   returned early for Kilosort, before the line that puts the opacity back.
+   So the check here is the opacity, which is what "greyed out" actually
+   means in the DOM. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+const byText = (D, sel, re) => Array.from(D.querySelectorAll(sel))
+  .find((n) => re.test((n.textContent || '').trim()));
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await untilN(() => W.eval('BARRY'));
+
+  W.eval("setView('toolkit')");
+  await untilN(() => D.querySelector('.tk-tool'), 200);
+  const tools = () => Array.from(D.querySelectorAll('.tk-tool'));
+  const pick = async (re) => {
+    const b = tools().find((t) => re.test(t.textContent));
+    if (b) { b.click(); await sleep(900); }
+    return b;
+  };
+  const paneOpacity = () => {
+    const h = D.getElementById('tkResult');
+    return h ? W.getComputedStyle(h).opacity : '?';
+  };
+
+  head('The Kilosort pane is not greyed out');
+  const ks = await pick(/Kilosort/);
+  check('the Kilosort tool exists', !!ks);
+  await untilN(() => D.querySelector('#tkResult .ks-fact, #tkResult .hint'), 200);
+  await sleep(1200);
+  say('note', '  pane opacity: ' + paneOpacity());
+  check('the pane is at full opacity', Number(paneOpacity()) >= 0.99,
+        paneOpacity());
+  const ksText = (D.getElementById('tkResult') || {}).textContent || '';
+  check('and it actually rendered something', ksText.length > 60,
+        ksText.length + ' chars');
+
+  head('Switching tools does not snap back');
+  await pick(/Bad channels/);
+  await sleep(400);
+  await pick(/Kilosort/);
+  /* The bad-channels request from the click before is still in flight here.
+     If it lands and renders, the Kilosort pane is replaced -- which is the
+     "snaps back to another tool". */
+  await sleep(2500);
+  const stillKs = (D.getElementById('tkResult') || {}).textContent || '';
+  check('the Kilosort pane is still the one showing',
+        !/bad channel/i.test(stillKs.slice(0, 400)),
+        stillKs.slice(0, 90));
+  check('and still not dimmed', Number(paneOpacity()) >= 0.99, paneOpacity());
+
+  head('The snapshot importer scans without writing');
+  const snap = await pick(/Import sorted snapshots/);
+  check('the tool is there', !!snap);
+  if (!snap) return;
+  check('its pane is at full opacity', Number(paneOpacity()) >= 0.99,
+        paneOpacity());
+  const box = D.querySelector('#tkResult input[type=text]');
+  check('there is somewhere to put the folder', !!box);
+  if (!box) return;
+  const ROOT = 'E:\\PTEN_DS_Curation'
+             + '\\Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326';
+  box.value = ROOT;
+  box.dispatchEvent(new W.Event('input', { bubbles: true }));
+  const scanBtn = byText(D, '#tkResult button', /^Scan$/);
+  check('there is a Scan button', !!scanBtn);
+  scanBtn.click();
+  await untilN(() => D.querySelector('#tkResult .tk-table tbody tr'), 400);
+  const rows = D.querySelectorAll('#tkResult .tk-table tbody tr');
+  say('note', '  ' + rows.length + ' folders listed');
+  check('it listed the folders', rows.length >= 40, rows.length + ' rows');
+  const verdicts = {};
+  D.querySelectorAll('#tkResult .tk-table tbody tr .flagchip')
+    .forEach((c) => { const t = c.textContent.trim();
+                      verdicts[t] = (verdicts[t] || 0) + 1; });
+  say('note', '  verdicts: ' + JSON.stringify(verdicts));
+  check('most are importable', (verdicts['will import'] || 0) >= 40,
+        JSON.stringify(verdicts));
+  const summary = (D.querySelector('#tkResult .rb-verdict') || {}).textContent || '';
+  say('note', '  ' + summary.replace(/\s+/g, ' ').trim().slice(0, 130));
+  check('it says how they were sorted',
+        /dentate spikes/.test(summary) && /flagged/.test(summary), summary.slice(0, 80));
+  check('and warns about the ones filed twice',
+        /two different decisions/.test(summary));
+  check('there is an Import button', !!byText(D, '#tkResult button', /^Import \d+/));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'snapimport: ' + bad + ' FAILED' : 'snapimport: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'snapimport: harness CRASH';
+} })();
+</script>

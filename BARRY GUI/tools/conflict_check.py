@@ -89,8 +89,15 @@ def main():
     bad = []
     others = set()
     for folder, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in (".cache", "__pycache__")]
+        dirs[:] = [d for d in dirs
+                   if d not in (".cache", "__pycache__")
+                   and not d.startswith(".")]
         for name in sorted(files):
+            # A dotfile in here is configuration, not a record: .cloud.json
+            # holds this machine's Supabase key. It is gitignored and cannot
+            # conflict, so it needs no machine tag.
+            if name.startswith("."):
+                continue
             full = os.path.join(folder, name)
             rel = os.path.relpath(full, root).replace("\\", "/")
             kind, why = classify(rel, name)

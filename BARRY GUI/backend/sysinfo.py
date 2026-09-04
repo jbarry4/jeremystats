@@ -116,6 +116,35 @@ def matlab_release(path):
 # --------------------------------------------------------------------------
 # ffmpeg (needed for VT1.mpg video, which browsers cannot decode)
 # --------------------------------------------------------------------------
+def _winget_exe(name):
+    """Find an exe inside a WinGet package folder.
+
+    `winget install Gyan.FFmpeg` -- which is what this app tells people to
+    run -- unpacks to
+
+        ~/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_<hash>/
+            ffmpeg-9.0.1-full_build/bin/ffmpeg.exe
+
+    and does not always leave a shim in WinGet/Links. The version is part of
+    the path, so no fixed candidate can match it, and PATH may not pick it up
+    until a new shell -- which is how a machine with ffmpeg installed still
+    reported "ffmpeg was not found". It is the install method we recommend,
+    so it is the one that has to be found.
+    """
+    import glob
+    root = os.path.expanduser(
+        r"~\AppData\Local\Microsoft\WinGet\Packages")
+    if not os.path.isdir(root):
+        return None
+    hits = glob.glob(os.path.join(root, "*FFmpeg*", "**", name),
+                     recursive=True)
+    # Newest build first, so an upgrade is used rather than the one beside it.
+    for h in sorted(hits, reverse=True):
+        if os.path.isfile(h):
+            return h
+    return None
+
+
 def find_ffmpeg():
     exe = shutil.which("ffmpeg")
     if exe:
@@ -127,6 +156,7 @@ def find_ffmpeg():
             r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
             os.path.expanduser(r"~\scoop\shims\ffmpeg.exe"),
             os.path.expanduser(r"~\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe"),
+            _winget_exe("ffmpeg.exe"),
         ]
     else:
         candidates = [
@@ -135,7 +165,9 @@ def find_ffmpeg():
             "/opt/local/bin/ffmpeg",        # MacPorts
         ]
     for c in candidates:
-        if os.path.isfile(c):
+        # _winget_exe returns None when there is no such package, so the
+        # list can legitimately hold one.
+        if c and os.path.isfile(c):
             return c
     return None
 

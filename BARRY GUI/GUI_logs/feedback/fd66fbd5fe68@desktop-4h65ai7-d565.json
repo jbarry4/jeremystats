@@ -1,0 +1,34 @@
+{
+ "id": "fd66fbd5fe68",
+ "kind": "bug",
+ "title": "TEST",
+ "detail": "TEST",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m33 s8 2024-06-14",
+  "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 33.974,
+   "span": 1
+  },
+  "screen": "1745x835",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+ },
+ "wants": "TEST",
+ "state": "done",
+ "at": "2026-09-03T16:45:49-0400",
+ "by": "theexaminedexistence@gmail.com",
+ "machine": "DESKTOP-4H65AI7",
+ "shard": "desktop-4h65ai7-d565",
+ "screenshots": [
+  {
+   "file": "fd66fbd5fe68-1.png",
+   "bytes": 1254382,
+   "caption": ""
+  }
+ ],
+ "notes": []
+}

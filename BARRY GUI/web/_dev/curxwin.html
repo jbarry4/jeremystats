@@ -1,0 +1,195 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — curation marks in the aid window</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; }
+  .frames { display: flex; gap: 6px; padding: 0 12px 12px; }
+  .frames iframe { width: 49%; height: 44vh; border: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<div class="frames">
+  <iframe id="a" src="/"></iframe>
+  <iframe id="b" src="/"></iframe>
+</div>
+<script>
+/* "Have them show up on the other 4 windows as well... for all sorts of
+   spike curation."
+
+   The aid window is a separate page with no curate module in it, so it had
+   no way to know which candidate was being decided -- and the CSD and the
+   rasters are most of the reason it is open. What travels now is a pointer
+   on the live channel; the receiving window fetches the set itself.
+
+   Window A curates. Window B is the aid window: the same recording, but
+   showing CSD, theta, voltage and a scalogram. The question is whether B
+   draws the marks, follows A as it moves, and follows a decision's colour.
+
+   Checked in the pixels, on the image panels, because "the state arrived"
+   is not the same as "you can see it on the CSD". */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const fa = document.getElementById('a'), fb = document.getElementById('b');
+  await Promise.all([fa, fb].map((f) =>
+    new Promise((r) => f.addEventListener('load', r, { once: true }))));
+  const A = fa.contentWindow, B = fb.contentWindow;
+  const DB = fb.contentDocument;
+  const errs = [];
+  for (const W of [A, B]) {
+    W.addEventListener('error', (e) => errs.push(e.message));
+    W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  }
+  await untilN(() => A.eval('BARRY') && B.eval('BARRY'));
+
+  const sets = (await (await fetch('/api/curation')).json()).sets || [];
+  const target = (sets.filter(
+    (s) => ((s.progress || {}).by_label || {}).flag > 5) || [])[0];
+  if (!target) { say('bad', 'no imported set with flags'); return; }
+  say('note', '  ' + target.session_label);
+
+  /* B first: the aid window, four image panels on the same recording. */
+  const reg = await (await fetch('/api/registry')).json();
+  let path = null;
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.gid === target.gid && (s.here || []).length) {
+          path = s.here[0]; break outer;
+        }
+      }
+    }
+  }
+  if (!path) { say('bad', 'that recording is not reachable here'); return; }
+
+  B.eval("setView('xplore')");
+  await sleep(250);
+  await B.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await untilN(() => B.eval('BARRY.views.xplore.state.order.length') > 0);
+  B.eval("BARRY.views.xplore.setPanes(["
+       + "{panel:'csd'},{panel:'theta'},{panel:'voltage'},"
+       + "{panel:'spectrogram'}], {col:0.5,row:0.5})");
+  await untilN(() => Array.from(DB.querySelectorAll('.pane-img-host img'))
+    .filter((n) => n.naturalWidth > 0).length >= 3, 400);
+  await sleep(1500);
+  const drew = Array.from(DB.querySelectorAll('.pane-img-host img'))
+    .filter((n) => n.naturalWidth > 0).length;
+  check('the aid window has its panels up', drew >= 3, drew + ' of 4');
+
+  const marksB = () => JSON.parse(B.eval(
+    'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];'
+    + 'var m = s && s.curationMarks;'
+    + 'return m ? { n: m.events.length, index: m.index, at: m.at,'
+    + '  label: (m.events[m.index]||{}).label } : null; })())'));
+
+  head('Before anything is curated, the aid window has no marks');
+  check('nothing yet', marksB() === null, JSON.stringify(marksB()));
+
+  head('Window A starts curating');
+  A.eval("setView('toolkit')");
+  await sleep(250);
+  await A.eval('BARRY.curate.enter(' + JSON.stringify(target.gid) + ', "ds")');
+  await untilN(() => A.eval('!!BARRY.curate.active'));
+  check('A is curating', !!A.eval('BARRY.curate.active'));
+
+  const got = await untilN(() => marksB() !== null, 250);
+  check('the aid window learned about it', got >= 0,
+        'never arrived');
+  const m1 = marksB();
+  say('note', '  aid window sees: ' + JSON.stringify(m1));
+  check('with every candidate', m1 && m1.n === (target.progress || {}).total,
+        m1 && m1.n + ' of ' + (target.progress || {}).total);
+
+  /* Is a mark actually painted on the CSD? Look for the label colour. */
+  const paintedB = () => B.eval('(function(){'
+    + 'var best = 0;'
+    + 'document.querySelectorAll(".raster-grid").forEach(function(c){'
+    + '  var g = c.getContext("2d");'
+    + '  if (!c.width || !c.height) return;'
+    + '  var d = g.getImageData(0, 0, c.width, c.height).data, n = 0;'
+    + '  for (var i = 0; i < d.length; i += 4) {'
+    + '    if (d[i+3] > 40 && (d[i] > 80 || d[i+1] > 80)) n++; }'
+    + '  best = Math.max(best, n); });'
+    + 'return best; })()');
+  await sleep(1200);
+  const p1 = paintedB();
+  say('note', '  ink on the busiest aid overlay: ' + p1 + ' px');
+  check('something is drawn over the aid panels', p1 > 40, String(p1));
+
+  head('Moving in A moves the mark in B');
+  const before = marksB();
+  A.eval('BARRY.curate.step(1)');
+  const moved = await untilN(() => {
+    const m = marksB();
+    return m && (m.index !== before.index || m.at !== before.at);
+  }, 250);
+  const after = marksB();
+  check('the aid window followed', moved >= 0,
+        JSON.stringify(before) + ' -> ' + JSON.stringify(after));
+  say('note', '  now on index ' + (after && after.index)
+      + ' at t=' + (after && after.at));
+
+  head('A decision changes the colour in B too');
+  const idxNow = after && after.index;
+  A.eval('BARRY.curate.goTo(' + idxNow + ')');
+  await sleep(400);
+  /* Look at that specific candidate, not at "the current one": assign moves
+     on to the next after labelling, so the current label is a different
+     event's. An earlier version of this checked the wrong one and reported
+     a working feature as broken. */
+  const labelAt = (i) => B.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; var m = s && s.curationMarks;'
+    + 'return m && m.events[' + i + '] ? String(m.events[' + i + '].label)'
+    + ' : "none"; })()');
+  const wasLabel = labelAt(idxNow);
+  A.eval('(function(){ BARRY.curate.assign'
+       + ' ? BARRY.curate.assign("spike") : 0; })()');
+  if (!A.eval('!!BARRY.curate.assign')) {
+    // Through the key, the way a person does it.
+    const ev = new A.KeyboardEvent('keydown', { key: 'd', bubbles: true });
+    A.document.dispatchEvent(ev);
+  }
+  const relabelled = await untilN(() => labelAt(idxNow) === 'spike', 250);
+  check('the aid window shows the new decision', relabelled >= 0,
+        'candidate ' + idxNow + ' was ' + wasLabel
+        + ', the aid window now says ' + labelAt(idxNow));
+  say('note', '  candidate ' + idxNow + ': ' + wasLabel + ' -> '
+      + labelAt(idxNow) + ' in the aid window');
+
+  head('Leaving curation clears them');
+  A.eval('BARRY.curate.exit()');
+  const cleared = await untilN(() => marksB() === null, 250);
+  check('the aid window stopped drawing them', cleared >= 0,
+        JSON.stringify(marksB()));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'curxwin: ' + bad + ' FAILED' : 'curxwin: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'curxwin: harness CRASH';
+} })();
+</script>

@@ -516,7 +516,11 @@ BARRY.views.errors = (function () {
   let days = [];
   let day = '';
   let grouped = true;
-  let mode = 'errors';        // 'errors' | 'debug'
+  let mode = 'errors';        // 'errors' | 'debug' | 'feedback'
+  let reports = [];           // what has been filed
+  let kinds = [];
+  let showState = 'open';     // which reports the list shows
+  let draft = null;           // the form, while it is open
   let trace = [];
   let traceFailedOnly = false;
   let hideResolved = true;
@@ -560,6 +564,313 @@ BARRY.views.errors = (function () {
     }
   }
 
+  /* ==================================================================
+     Feedback: bugs, features, suggestions
+     ==================================================================
+     "In the errors have a suggest improvement, report bug, add feature
+     section... who wants, and ability to attach screenshots!"
+
+     Here rather than in an issue tracker because the moment you notice
+     something is the moment you are looking at it, and by the time anyone
+     has switched to a browser and found the repo the detail is gone. Reports
+     are one file each under GUI_logs/feedback, sharded by machine, so two
+     people filing on two computers never touch the same file.
+     ================================================================== */
+  const openReports = () =>
+    reports.filter((r) => (r.state || 'open') === 'open').length;
+
+  const KIND_ICON = { bug: '\u26a0', feature: '\u2726', improvement: '\u25b3' };
+
+  async function loadFeedback() {
+    try {
+      const res = await api('/api/feedback');
+      reports = res.reports || [];
+      kinds = res.kinds || [];
+      if (mode === 'feedback') render();
+    } catch (e) { /* the tab says so below */ }
+  }
+
+  /* A blank report. `context` is what the client knows and the server
+     cannot: which view was up, what was open, how big the window is. */
+  function blankDraft(kind) {
+    const xf = (BARRY.views.xplore && BARRY.views.xplore.state) || {};
+    const sess = xf.sessions && xf.active ? xf.sessions[xf.active] : null;
+    return {
+      kind: kind || 'bug',
+      title: '', detail: '', wants: '',
+      shots: [],
+      context: {
+        view: BARRY.state && BARRY.state.view,
+        recording: sess ? (sess.identity && sess.identity.label) : null,
+        path: sess ? sess.path : null,
+        panels: (xf.panes || []).filter(Boolean).map((p) => p.panel),
+        window: sess ? { t0: sess.t0, span: sess.span } : null,
+        screen: window.innerWidth + 'x' + window.innerHeight,
+        agent: navigator.userAgent,
+      },
+    };
+  }
+
+  /* Turn a File or a clipboard item into a data URI, shrunk if it is huge.
+     A 4K screenshot is several megabytes and none of that detail survives
+     being looked at in a panel, so anything over 1600px wide is scaled. */
+  function readShot(file) {
+    return new Promise((resolve) => {
+      if (!file || !/^image\//.test(file.type)) { resolve(null); return; }
+      const fr = new FileReader();
+      fr.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 1600;
+          if (img.width <= max) { resolve({ data: fr.result, caption: '' }); return; }
+          const sc = max / img.width;
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * sc);
+          c.height = Math.round(img.height * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve({ data: c.toDataURL('image/png'), caption: '' });
+        };
+        img.onerror = () => resolve({ data: fr.result, caption: '' });
+        img.src = fr.result;
+      };
+      fr.onerror = () => resolve(null);
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function addShots(files) {
+    for (const f of Array.from(files || [])) {
+      if (draft.shots.length >= 8) {
+        toast('Eight screenshots is the limit for one report.', null, 4000);
+        break;
+      }
+      const shot = await readShot(f);
+      if (shot) draft.shots.push(shot);
+    }
+    render();
+  }
+
+  function renderFeedback(host) {
+    if (!draft) {
+      host.appendChild(el('div', { class: 'res-toolbar' },
+        kinds.concat(kinds.length ? [] : [
+          { id: 'bug', name: 'Something is broken' },
+          { id: 'feature', name: 'Something is missing' },
+          { id: 'improvement', name: 'Something could be better' },
+        ]).map((k) => el('button', {
+          class: 'btn',
+          text: (KIND_ICON[k.id] || '') + '  ' + k.name,
+          onclick: () => { draft = blankDraft(k.id); render(); },
+        })).concat([
+          el('div', { class: 'spacer', style: 'flex:1' }),
+          el('select', {
+            class: 'mini-select',
+            onchange: (e) => { showState = e.target.value; render(); },
+          }, [['open', 'Open'], ['', 'Everything'], ['done', 'Done'],
+              ['planned', 'Planned'], ['declined', 'Declined']]
+            .map(([v, t]) => el('option', {
+              value: v, text: t,
+              selected: showState === v ? 'selected' : null }))),
+        ])));
+      renderReportList(host);
+      return;
+    }
+    renderForm(host);
+  }
+
+  function renderForm(host) {
+    const box = el('div', { class: 'fb-form' });
+    const kindName = (kinds.find((k) => k.id === draft.kind) || {}).name
+                     || draft.kind;
+    box.appendChild(el('div', { class: 'fb-head' }, [
+      el('strong', { text: (KIND_ICON[draft.kind] || '') + '  ' + kindName }),
+      el('div', { class: 'spacer', style: 'flex:1' }),
+      el('button', { class: 'btn ghost sm', text: 'Cancel',
+                     onclick: () => { draft = null; render(); } }),
+    ]));
+
+    const field = (label, hint, node) => el('div', { class: 'field' }, [
+      el('label', { text: label }),
+      node,
+      hint ? el('span', { class: 'hint', text: hint }) : null,
+    ]);
+
+    box.appendChild(field('In one line', null, el('input', {
+      type: 'text', value: draft.title,
+      placeholder: draft.kind === 'bug'
+        ? 'e.g. the CSD goes blank after folding the control strip'
+        : 'e.g. let me review only the flagged candidates',
+      oninput: (e) => { draft.title = e.target.value; syncSend(); },
+    })));
+
+    box.appendChild(field(
+      draft.kind === 'bug' ? 'What happened, and what you expected'
+                           : 'What you are trying to do',
+      draft.kind === 'bug'
+        ? 'What you did, what happened, what should have happened. The steps '
+          + 'matter more than the description.'
+        : 'The job it would help with, not the button you imagine. That way '
+          + 'it can be solved a better way than the one you had in mind.',
+      el('textarea', {
+        rows: '6', value: draft.detail,
+        oninput: (e) => { draft.detail = e.target.value; },
+      })));
+
+    box.appendChild(field('Who wants this', 'So it can be asked about later.',
+      el('input', {
+        type: 'text', value: draft.wants,
+        placeholder: 'your name, or whoever asked for it',
+        oninput: (e) => { draft.wants = e.target.value; },
+      })));
+
+    /* Screenshots. Paste is the one that matters: Win+Shift+S then Ctrl+V
+       is the whole interaction, and nobody has to save a file first. */
+    const drop = el('div', {
+      class: 'fb-drop', tabindex: '0',
+      title: 'Paste a screenshot, drop an image here, or click to pick one',
+      onclick: () => {
+        const inp = el('input', { type: 'file', accept: 'image/*',
+                                  multiple: 'multiple' });
+        inp.addEventListener('change', () => addShots(inp.files));
+        inp.click();
+      },
+      ondragover: (e) => { e.preventDefault();
+                           drop.classList.add('over'); },
+      ondragleave: () => drop.classList.remove('over'),
+      ondrop: (e) => {
+        e.preventDefault(); drop.classList.remove('over');
+        addShots(e.dataTransfer.files);
+      },
+      onpaste: (e) => {
+        const items = (e.clipboardData || {}).items || [];
+        const files = [];
+        for (const it of items) {
+          if (it.kind === 'file') files.push(it.getAsFile());
+        }
+        if (files.length) { e.preventDefault(); addShots(files); }
+      },
+    }, [
+      el('strong', { text: 'Screenshots' }),
+      el('span', { text: 'Click here and press Ctrl+V, or drop an image in. '
+                       + 'Win+Shift+S takes the shot.' }),
+    ]);
+    box.appendChild(drop);
+
+    if (draft.shots.length) {
+      box.appendChild(el('div', { class: 'fb-shots' },
+        draft.shots.map((sh, i) => el('div', { class: 'fb-shot' }, [
+          el('img', { src: sh.data, alt: '' }),
+          el('input', {
+            type: 'text', placeholder: 'what this shows (optional)',
+            value: sh.caption,
+            oninput: (e) => { sh.caption = e.target.value; },
+          }),
+          el('button', {
+            class: 'badbtn danger', text: '\u2715', title: 'Remove',
+            onclick: () => { draft.shots.splice(i, 1); render(); },
+          }),
+        ]))));
+    }
+
+    /* What is being sent with it, shown rather than described. Somebody
+       filing a report is entitled to know what leaves their machine. */
+    box.appendChild(el('details', { class: 'fb-context' }, [
+      el('summary', { text: 'Also sent: which view, which recording, the '
+                          + 'pane layout and the window size' }),
+      el('pre', { text: JSON.stringify(draft.context, null, 1) }),
+    ]));
+
+    const send = el('button', {
+      class: 'btn', text: 'Send it', disabled: 'disabled',
+      onclick: async () => {
+        send.disabled = 'disabled';
+        try {
+          await apiPost('/api/feedback', {
+            kind: draft.kind, title: draft.title, detail: draft.detail,
+            wants: draft.wants, context: draft.context,
+            screenshots: draft.shots,
+          });
+          toast('Filed. Thank you \u2014 it is in GUI_logs/feedback.',
+                'ok', 6000);
+          draft = null;
+          await loadFeedback();
+          render();
+        } catch (e) {
+          toast('Could not file that: ' + e.message, 'err', 8000);
+          send.disabled = null;
+        }
+      },
+    });
+    function syncSend() { send.disabled = draft.title.trim() ? null : 'disabled'; }
+    syncSend();
+    box.appendChild(el('div', { class: 'fb-actions' }, [
+      el('span', { class: 'hint',
+                   text: draft.shots.length
+                     ? draft.shots.length + ' screenshot(s) attached' : '' }),
+      el('div', { class: 'spacer', style: 'flex:1' }),
+      send,
+    ]));
+
+    host.appendChild(box);
+    // So Ctrl+V works without hunting for where to click first.
+    setTimeout(() => drop.focus(), 0);
+  }
+
+  function renderReportList(host) {
+    const rows = reports.filter((r) => !showState
+                                    || (r.state || 'open') === showState);
+    if (!rows.length) {
+      host.appendChild(el('div', { class: 'empty' }, [
+        el('p', { text: reports.length
+          ? 'Nothing ' + showState + '.'
+          : 'Nothing has been reported yet.' }),
+        el('p', { class: 'hint', text: 'Anything that made you say "that is '
+          + 'annoying" is worth one of these. It takes about twenty seconds '
+          + 'and a screenshot.' }),
+      ]));
+      return;
+    }
+    const list = el('div', { class: 'fb-list' });
+    for (const r of rows) {
+      list.appendChild(el('div', { class: 'fb-item fb-' + r.kind }, [
+        el('div', { class: 'fb-item-head' }, [
+          el('span', { class: 'fb-kind', text: KIND_ICON[r.kind] || '' }),
+          el('strong', { text: r.title }),
+          el('div', { class: 'spacer', style: 'flex:1' }),
+          el('span', { class: 'flagchip'
+            + (r.state === 'done' ? ' good' : ''), text: r.state || 'open' }),
+        ]),
+        el('div', { class: 'fb-meta',
+          text: [r.at, r.by, r.wants ? 'wanted by ' + r.wants : null,
+                 (r.context || {}).view ? 'in ' + r.context.view : null]
+            .filter(Boolean).join('  \u00b7  ') }),
+        r.detail ? el('p', { class: 'fb-detail', text: r.detail }) : null,
+        (r.screenshots || []).length
+          ? el('div', { class: 'fb-shots small' },
+              r.screenshots.map((sh) => el('a', {
+                href: '/api/feedback/shot/' + encodeURIComponent(sh.file),
+                target: '_blank', title: sh.caption || 'open full size',
+              }, [el('img', {
+                src: '/api/feedback/shot/' + encodeURIComponent(sh.file),
+                alt: sh.caption || '' })])))
+          : null,
+        el('div', { class: 'fb-item-actions' },
+          ['open', 'planned', 'done', 'declined'].map((st) => el('button', {
+            class: 'mini' + ((r.state || 'open') === st ? ' active' : ''),
+            text: st,
+            onclick: async () => {
+              try {
+                await apiPost('/api/feedback/' + encodeURIComponent(r.id),
+                              { state: st });
+                await loadFeedback();
+              } catch (e) { toast(e.message, 'err', 6000); }
+            },
+          }))),
+      ]));
+    }
+    host.appendChild(list);
+  }
+
   function render() {
     const host = $('#errBody');
     host.innerHTML = '';
@@ -583,9 +894,18 @@ BARRY.views.errors = (function () {
         title: 'Every command the interface sent, whether or not it failed',
         onclick: () => { mode = 'debug'; render(); },
       }),
+      el('button', {
+        class: 'pill' + (mode === 'feedback' ? ' active' : ''),
+        text: 'Feedback'
+            + (openReports() ? ' (' + openReports() + ')' : ''),
+        title: 'Report a bug, ask for a feature, or suggest an improvement '
+             + '\u2014 with screenshots',
+        onclick: () => { mode = 'feedback'; render(); loadFeedback(); },
+      }),
     ]));
 
     if (mode === 'debug') { renderDebug(host); return; }
+    if (mode === 'feedback') { renderFeedback(host); return; }
 
     if (errors.length) {
       host.appendChild(el('div', { class: 'res-toolbar' }, [
@@ -938,5 +1258,10 @@ BARRY.views.errors = (function () {
     });
   }
 
-  return { init, onShow: load, reload: load };
+  return {
+    init,
+    // Both, so the Feedback tab can show its count without being opened.
+    onShow: () => { load(); loadFeedback(); },
+    reload: load,
+  };
 })();

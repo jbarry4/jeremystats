@@ -30,6 +30,7 @@ in each person's head.
 """
 from __future__ import annotations
 
+import glob
 import json
 import os
 import re
@@ -46,11 +47,21 @@ SETTINGS_DIR = os.path.join(KIT, "automate_kilosort")
 CONVERTER_DIR = os.path.join(KIT, "neuralynx  converter")
 
 # What Kilosort 4 needs, in the order it needs them.
+# torch publishes wheels for a range of Python versions and nothing outside
+# it. Asking pip to install torch on a version it does not build for gives
+# "from versions: none", which reads like a network problem and is not one.
+TORCH_MIN = (3, 9)
+TORCH_MAX = (3, 13)
+
 REQUIREMENTS = [
     {
         "id": "python",
         "name": "Python",
-        "why": "Kilosort 4 is a Python package.",
+        "why": "Kilosort 4 is a Python package, and torch only publishes "
+               "builds for Python %d.%d to %d.%d -- outside that, pip says "
+               "\"from versions: none\", which looks like a network problem "
+               "and is not one."
+               % (TORCH_MIN + TORCH_MAX),
         "fix": None,
     },
     {
@@ -59,7 +70,7 @@ REQUIREMENTS = [
         "why": "Kilosort does its work on tensors. The CPU build runs, but a "
                "session that takes twenty minutes on a GPU takes hours.",
         "fix": "pip install torch --index-url "
-               "https://download.pytorch.org/whl/cu121",
+               "https://download.pytorch.org/whl/cu124",
     },
     {
         "id": "cuda",
@@ -134,6 +145,81 @@ PROBE_SNIPPET = (
 )
 
 
+def torch_supports(version):
+    """(ok, why) for a (major, minor) tuple."""
+    if not version:
+        return False, "unknown version"
+    if version < TORCH_MIN:
+        return False, "too old for torch"
+    if version > TORCH_MAX:
+        return False, ("torch has no build for Python %d.%d" % version)
+    return True, ""
+
+
+def _version_of(exe):
+    code, out = _run([exe, "-c",
+                      "import sys;print('%d.%d.%d' % sys.version_info[:3])"],
+                     timeout=30)
+    for line in (out or "").splitlines():
+        line = line.strip()
+        if re.fullmatch(r"\d+\.\d+\.\d+", line):
+            return line
+    return None
+
+
+def interpreters():
+    """Every Python on this machine, and whether torch can run on it.
+
+    Worth doing rather than telling somebody to go and install one: the
+    machine that hit this already had two usable versions sitting there, and
+    every Kilosort route here already accepts a `python` argument. So the fix
+    is a dropdown, not a download.
+    """
+    seen, out = set(), []
+
+    def add(exe, note=""):
+        exe = (exe or "").strip().strip('"')
+        if not exe or not os.path.isfile(exe):
+            return
+        real = os.path.normcase(os.path.abspath(exe))
+        if real in seen:
+            return
+        seen.add(real)
+        ver = _version_of(exe)
+        tup = tuple(int(x) for x in ver.split(".")[:2]) if ver else None
+        ok, why = torch_supports(tup)
+        out.append({
+            "path": exe, "version": ver, "usable": ok, "why": why,
+            "current": real == os.path.normcase(os.path.abspath(sys.executable)),
+            "note": note,
+        })
+
+    add(sys.executable, "the one BARRY is running on")
+
+    # The Windows launcher knows about every registered install.
+    code, listing = _run(["py", "-0p"], timeout=30)
+    if code == 0:
+        for line in (listing or "").splitlines():
+            m = re.search(r"(-V:[^\s]+)\s+\*?\s*(.+\.exe)\s*$", line.strip())
+            if m:
+                add(m.group(2), m.group(1).replace("-V:", "Python "))
+
+    for pat in (r"C:\Python3*\python.exe",
+                r"C:\Users\*\AppData\Local\Programs\Python\Python3*"
+                r"\python.exe",
+                r"C:\Users\*\anaconda3\python.exe",
+                r"C:\Users\*\miniconda3\python.exe",
+                r"C:\ProgramData\anaconda3\python.exe"):
+        for hit in glob.glob(pat):
+            add(hit)
+
+    # Best first: usable, then newest.
+    out.sort(key=lambda i: (not i["usable"],
+                            [-int(x) for x in (i["version"] or "0")
+                             .split(".")]))
+    return out
+
+
 def probe_environment(python=None):
     """Ask a Python interpreter what it has, by importing rather than guessing.
 
@@ -170,27 +256,68 @@ def probe_files(repo_root):
 
 
 def _probe_note(path):
-    """The first real comment line, and the channel count if it is stated."""
-    note, n = "", None
+    """A one-line description, and how many channels it covers.
+
+    Two shapes to read. A .prb is Python with a comment block at the top, and
+    the first comment that is not just the filename is the description people
+    wrote for themselves. A geometry .json has no comments, so the description
+    is assembled from what it contains.
+    """
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
-            head = fh.read(4000)
+            head = fh.read(20000)
     except OSError:
-        return note, n
+        return "", None
+
+    if path.lower().endswith(".json"):
+        return _geometry_note(head)
+
+    note = ""
+    base = os.path.basename(path).lower()
     for line in head.splitlines():
-        s = line.strip().lstrip("#").strip()
-        if s and not s.lower().startswith(os.path.basename(path).lower()[:6]):
-            note = s
+        t = line.strip()
+        if not t.startswith("#"):
+            break                      # past the comment block
+        t = t.lstrip("#").strip()
+        if t and base[:6] not in t.lower():
+            note = t
             break
-    m = re.search(r"(\d+)\s*ch(?:annel)?", head, re.I)
-    if m:
-        n = int(m.group(1))
-    else:
-        # A .prb is Python: count the channels it lists.
-        chans = re.search(r"['\"]channels['\"]\s*:\s*\[([^\]]*)\]", head)
-        if chans:
-            n = len([x for x in chans.group(1).split(",") if x.strip()])
+
+    # Channels: count the list Kilosort will actually read, which is the
+    # 'channels' array. Counting geometry entries instead is off by one on
+    # probe_config.prb, because its channel_groups keys are floats and the
+    # geometry has one fewer entry than the channel list.
+    total = 0
+    for block in re.findall(r"['\"]channels['\"]\s*:\s*\[([^\]]*)\]",
+                            head, re.S):
+        total += len([x for x in block.split(",") if x.strip()])
+    n = total or None
+    if not n:
+        n = len(re.findall(r"^\s*(\d+)\s*:\s*[\[(]", head, re.M)) or None
+    if not n:
+        m = re.search(r"(\d+)\s*ch(?:annel)?", head, re.I)
+        n = int(m.group(1)) if m else None
     return note, n
+
+
+def _geometry_note(head):
+    """Describe a probeinterface-style geometry file from its contents."""
+    try:
+        data = json.loads(head)
+    except ValueError:
+        return "probe geometry", None
+    probes = data.get("probes") if isinstance(data, dict) else None
+    if isinstance(probes, list) and probes:
+        p = probes[0]
+        n = len(p.get("contact_positions") or []) or None
+        name = ((p.get("annotations") or {}).get("model_name")
+                or (p.get("annotations") or {}).get("name") or "probe")
+        return "%s geometry, %s contacts" % (name, n or "?"), n
+    for key in ("contact_positions", "positions", "geometry", "channels"):
+        v = data.get(key) if isinstance(data, dict) else None
+        if isinstance(v, (list, dict)) and v:
+            return "probe geometry, %d entries" % len(v), len(v)
+    return "probe geometry", None
 
 
 def settings_files(repo_root):
@@ -205,24 +332,46 @@ def settings_files(repo_root):
             if data is None or "main" not in data:
                 continue
             main = data.get("main") or {}
-            out.append({
+            out.append(jsonsafe({
                 "name": name, "path": path,
                 "n_chan_bin": main.get("n_chan_bin"),
                 "fs": main.get("fs"),
                 "Th_universal": main.get("Th_universal"),
                 "Th_learned": main.get("Th_learned"),
-            })
+            }))
     return out
 
 
 def _read_settings(path):
-    """The lab's settings file contains bare Infinity, which is JSON5, not
-    JSON. Python's decoder accepts it; be explicit about why."""
+    """The lab's settings file contains bare Infinity, which Python's decoder
+    accepts and the JSON spec does not. Read it as written."""
     try:
         with open(path, "r", encoding="utf-8") as fh:
             return json.loads(fh.read())
     except (OSError, ValueError):
         return None
+
+
+def jsonsafe(value):
+    """Replace non-finite numbers so the result is actually valid JSON.
+
+    Kilosort settings use Infinity to mean "no limit" -- tmax, and the
+    artifact threshold -- and Python happily writes that back out as a bare
+    `Infinity` token. Every browser's JSON.parse then rejects the whole
+    response, so one setting nobody looks at breaks the entire pane with a
+    syntax error that names none of this.
+
+    None means the same thing here (no limit) and survives the trip. The file
+    on disk is untouched: the run reads the real settings, not this copy.
+    """
+    if isinstance(value, dict):
+        return {k: jsonsafe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonsafe(v) for v in value]
+    if isinstance(value, float) and (value != value or value in (
+            float("inf"), float("-inf"))):
+        return None
+    return value
 
 
 def check(repo_root, python=None):
@@ -240,9 +389,22 @@ def check(repo_root, python=None):
             out.update(extra)
         return out
 
+    here = _version_of(exe) if python else ".".join(
+        str(v) for v in sys.version_info[:3])
+    tup = tuple(int(x) for x in here.split(".")[:2]) if here else None
+    py_ok, py_why = torch_supports(tup)
+    others = interpreters()
+    usable = [i for i in others if i["usable"] and not i["current"]]
+
     rows = [
-        row("python", True, "%s  (%s)" % (
-            ".".join(str(v) for v in sys.version_info[:3]), exe)),
+        row("python", py_ok,
+            "%s  (%s)%s" % (here, exe, "" if py_ok else "  -- " + py_why),
+            {"fix": (("Point Kilosort at Python %s instead: %s"
+                      % (usable[0]["version"], usable[0]["path"]))
+                     if usable else
+                     ("Install Python %d.%d-%d.%d and point Kilosort at it. "
+                      "Nothing else on this machine has to change."
+                      % (TORCH_MIN + TORCH_MAX)))} if not py_ok else None),
         row("torch",
             bool(env.get("torch")),
             env.get("torch") and ("torch " + env["torch"] + (
@@ -274,6 +436,12 @@ def check(repo_root, python=None):
                 and r.get("severity") != "advice"]
     return {
         "rows": rows,
+        # Every Python here, so the pane can offer one rather than telling
+        # somebody to go and read the torch release notes.
+        "interpreters": others,
+        "python_ok": py_ok,
+        "python_version": here,
+        "suggest_python": usable[0]["path"] if usable else None,
         "ready": not blocking,
         "blocking": [r["id"] for r in blocking],
         "python": exe,
@@ -281,9 +449,11 @@ def check(repo_root, python=None):
         "probes": probes,
         "settings": settings_files(repo_root),
         # Everything in one line, for someone who would rather just paste it.
-        "install_all": "pip install torch --index-url "
-                       "https://download.pytorch.org/whl/cu121 && "
-                       "pip install kilosort phy --pre --upgrade",
+        "install_all": (
+            "\"%s\" -m pip install torch --index-url "
+            "https://download.pytorch.org/whl/cu124 && "
+            "\"%s\" -m pip install kilosort phy --pre --upgrade"
+            % (((usable[0]["path"] if usable and not py_ok else exe),) * 2)),
     }
 
 
@@ -437,7 +607,7 @@ def plan(repo_root, session_path, probe, settings_path, bad_csc=(),
         "probe": probe_path,
         "probe_channels": probe_chans,
         "settings_file": settings_path,
-        "settings": main,
+        "settings": jsonsafe(main),
         "n_chan_bin": n_chan,
         "fs": fs,
         "samples": samples,

@@ -35,6 +35,7 @@ BARRY.views.housekeeping = (function () {
   let tableOf = 'sessions';  // 'sessions' | 'mice'
   let sort = { col: null, dir: 'asc' };
   let mouseSel = null;       // {project, mouse} being labelled
+  let wrapCells = false;     // show long cell values in full, not clipped
 
   /* Which recordings a scan has actually found since the app started.
 
@@ -126,7 +127,9 @@ BARRY.views.housekeeping = (function () {
     host.innerHTML = '';
 
     if (!data) {
-      host.appendChild(el('div', { class: 'hint', text: 'Reading…' }));
+      host.appendChild(el('div', { class: 'tk-loading' }, [
+        stepLoader('Housekeeping', ['reading what is known about '
+                                    + 'every mouse'])]));
       return;
     }
 
@@ -243,7 +246,7 @@ BARRY.views.housekeeping = (function () {
       const mrows = BARRY.hk.sortRows(
         BARRY.hk.miceRows(data, rows), cols, sort);
       wrap.appendChild(BARRY.hk.table({
-        cols, rows: mrows, sort, onsort: resort,
+        cols, rows: mrows, sort, onsort: resort, wrap: wrapCells,
         isSel: (r) => mouseSel && mouseSel.project === r.project
                       && String(mouseSel.mouse) === String(r.mouse),
         onclick: (r) => {
@@ -267,7 +270,7 @@ BARRY.views.housekeeping = (function () {
       const cols = BARRY.hk.SESSION_COLS;
       const srows = BARRY.hk.sortRows(rows, cols, sort);
       wrap.appendChild(BARRY.hk.table({
-        cols, rows: srows, sort, onsort: resort,
+        cols, rows: srows, sort, onsort: resort, wrap: wrapCells,
         isSel: (r) => selected === r.gid,
         onclick: (r) => { selected = r.gid; mouseSel = null; render(); },
       }));
@@ -312,6 +315,18 @@ BARRY.views.housekeeping = (function () {
         title: 'The same records with columns, sortable and copyable',
         onclick: () => { view = 'table'; render(); },
       }),
+    ]));
+
+    bar.appendChild(el('label', {
+      class: 'toggle' + (wrapCells ? ' on' : ''),
+      title: 'Show long values -- paths especially -- in full instead of '
+           + 'cutting them off',
+    }, [
+      el('input', {
+        type: 'checkbox', checked: wrapCells ? 'checked' : null,
+        onchange: (e) => { wrapCells = e.target.checked; render(); },
+      }),
+      el('span', { text: 'Full values' }),
     ]));
 
     if (view === 'branches') {
@@ -415,9 +430,125 @@ BARRY.views.housekeeping = (function () {
       onclick: () => { open = {}; render(); },
     }));
     bar.appendChild(el('button', {
+      class: 'btn ghost sm', text: 'Check the recordings\u2026',
+      title: 'Re-read every reachable folder and say which ones are not '
+           + 'really recordings',
+      onclick: runAudit,
+    }));
+    bar.appendChild(el('button', {
       class: 'btn ghost sm', text: 'Refresh', onclick: () => load(true),
     }));
     return bar;
+  }
+
+  /* Re-check what is already registered against what is on disk.
+
+     The assessment arrived after most of these records did, so the folders a
+     scan would refuse today are already in the tree. Seven of them are 64
+     files of header and no data. This finds them and offers to retire them
+     -- retire, not delete: the record stays so anything pointing at its id
+     still resolves, and nothing on the recording drive is touched. */
+  async function runAudit() {
+    // loader() builds the element; showing it is the caller's job.
+    const wait = loader('Re-reading every reachable folder…',
+                        'One header per channel, so this takes a moment.');
+    const waitHost = $('#hkBody');
+    if (waitHost) waitHost.appendChild(wait);
+    let res;
+    try {
+      res = await api('/api/registry/audit');
+    } catch (e) {
+      toast(e.message, 'err', 8000);
+      return;
+    } finally {
+      if (wait && wait.remove) wait.remove();
+    }
+    const rows = res.rows || [];
+    if (!rows.length) {
+      toast('Checked ' + res.checked + ' reachable recording'
+            + (res.checked === 1 ? '' : 's') + ' \u2014 every one of them has '
+            + 'data in it.'
+            + (res.unreachable ? '  (' + res.unreachable + ' are on drives '
+               + 'this machine cannot reach, so they were not checked.)' : ''),
+            'ok', 9000);
+      return;
+    }
+    const picked = new Set(rows.filter(
+      (r) => r.quality.verdict === 'empty').map((r) => r.gid));
+    const list = el('div', { class: 'held-list' }, rows.map((r) => el('div', {
+      class: 'held-row',
+    }, [
+      el('label', { class: 'toggle' }, [
+        el('input', {
+          type: 'checkbox',
+          checked: picked.has(r.gid) ? 'checked' : null,
+          onchange: (e) => {
+            if (e.target.checked) picked.add(r.gid); else picked.delete(r.gid);
+          },
+        }),
+        el('span', { text: '' }),
+      ]),
+      el('div', { style: 'min-width:0' }, [
+        el('strong', { text: r.label || r.gid }),
+        el('code', { class: 'held-path', text: r.path }),
+        ...(r.quality.reasons || []).map(
+          (x) => el('p', { class: 'hint', text: x })),
+        attachedNote(r.attached),
+      ].filter(Boolean)),
+      el('span', { class: 'flagchip bad', text: r.quality.verdict }),
+    ])));
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: rows.length + ' recording(s) worth a look' }),
+        el('span', { class: 'sub',
+          text: res.checked + ' checked'
+              + (res.unreachable ? ', ' + res.unreachable + ' unreachable'
+                                 : '') }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/>'
+              + '</svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint',
+          text: 'Retiring one keeps the record and its permanent id \u2014 so '
+              + 'anything already pointing at it still resolves \u2014 and '
+              + 'takes it out of the tree. Nothing on the recording drive is '
+              + 'touched.' }),
+        list,
+      ]),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Leave them',
+                       onclick: closeModal }),
+        el('button', {
+          class: 'btn', text: 'Retire the ticked ones',
+          onclick: async () => {
+            const gids = [...picked];
+            if (!gids.length) { toast('Nothing ticked.', 'err'); return; }
+            try {
+              const out = await apiPost('/api/registry/retire',
+                { gids, reason: 'no data in the folder' });
+              toast('Retired ' + (out.retired || []).length + '.', 'ok');
+              closeModal();
+              await load(true);
+            } catch (e) { toast(e.message, 'err', 8000); }
+          },
+        }),
+      ]),
+    ]));
+  }
+
+  /* A recording with curated events or figures hanging off it is not
+     something to retire on a size check alone -- say so. */
+  function attachedNote(attached) {
+    const live = Object.entries(attached || {}).filter(([, v]) => v);
+    if (!live.length) return null;
+    return el('p', { class: 'hint bad',
+      text: 'Careful: this one has ' + live.map(
+        ([k, v]) => v + ' ' + k.replace(/_/g, ' ')).join(', ')
+        + ' attached.' });
   }
 
   function branch(key, kind, name, sub, depth) {
@@ -559,24 +690,45 @@ BARRY.views.housekeeping = (function () {
     const list = el('div', { class: 'hk-paths-list' });
     for (const p of (s.paths || [])) {
       const here = (s.here || []).includes(p);
+      // Which machines have actually laid eyes on this path. Two mounts of
+      // one recording look identical once a path is truncated, and knowing
+      // it was the rig rather than the laptop is usually the whole question.
+      const saw = Object.entries(s.seen || {})
+        .filter(([, v]) => v && v.path === p)
+        .map(([m]) => m);
       list.appendChild(el('div', { class: 'hk-path' + (here ? ' here' : '') }, [
         el('span', { class: 'hk-dot' + (here ? ' on' : '') }),
-        el('code', { text: p }),
-        here ? el('button', {
-          class: 'mini', text: 'Open',
-          onclick: () => { setView('xplore'); BARRY.views.xplore.open(p); },
-        }) : null,
-        el('button', {
-          class: 'mini', text: 'Split off',
-          title: 'This path is a different recording that was folded in here '
-               + 'by a loose match. Give it its own record.',
-          onclick: () => split(s.gid, p),
-        }),
-        el('button', {
-          class: 'mini', text: '✕', title: 'Forget this path',
-          onclick: () => patch(s.gid, { forget_path: p }),
-        }),
-      ].filter(Boolean)));
+        el('div', { style: 'min-width:0' }, [
+          el('code', { text: p }),
+          el('span', { class: 'hk-seen',
+            text: (saw.length ? 'seen by ' + saw.join(', ')
+                              : 'no machine has reported seeing this path')
+                + (here ? '  \u00b7  reachable from here' : '') }),
+        ]),
+        el('div', { class: 'hk-btns' }, [
+          el('button', {
+            class: 'mini', text: 'Copy', title: 'Copy the full path',
+            onclick: () => navigator.clipboard.writeText(p).then(
+              () => toast('Copied.', 'ok'),
+              () => toast('The browser would not let me use the clipboard.',
+                          'err')),
+          }),
+          here ? el('button', {
+            class: 'mini', text: 'Open',
+            onclick: () => { setView('xplore'); BARRY.views.xplore.open(p); },
+          }) : null,
+          el('button', {
+            class: 'mini', text: 'Split off',
+            title: 'This path is a different recording that was folded in '
+                 + 'here by a loose match. Give it its own record.',
+            onclick: () => split(s.gid, p),
+          }),
+          el('button', {
+            class: 'mini', text: '\u2715', title: 'Forget this path',
+            onclick: () => patch(s.gid, { forget_path: p }),
+          }),
+        ].filter(Boolean)),
+      ]));
     }
     host.appendChild(list);
     host.appendChild(el('button', {

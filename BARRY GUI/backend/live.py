@@ -17,6 +17,8 @@ import threading
 import time
 
 _LOCK = threading.Lock()
+# Waiters block on this instead of the client asking again and again.
+_CHANGED = threading.Condition(_LOCK)
 _STATE = {}
 _VERSION = {"n": 0}
 
@@ -37,6 +39,9 @@ def publish(channel, value, origin=None):
             "version": _VERSION["n"],
             "at": time.time(),
         }
+        # Wake every held poll: this is what makes linking feel instant
+        # rather than "within 400ms".
+        _CHANGED.notify_all()
         return _STATE[channel]
 
 
@@ -55,6 +60,35 @@ def snapshot(since=0):
         since = int(since or 0)
         out = {k: dict(v) for k, v in _STATE.items() if v["version"] > since}
         return {"version": _VERSION["n"], "channels": out}
+
+
+def wait(since=0, timeout=25.0):
+    """`snapshot`, but held open until there is something to say.
+
+    Returns as soon as the version passes `since`, or empty-handed when
+    the timeout runs out -- the client then simply asks again, so an idle
+    window costs one request every `timeout` seconds instead of two and a
+    half a second.
+
+    A `since` that is *ahead* of the counter means this process restarted
+    while a tab stayed open. Waiting would block until the timeout and
+    then do it again forever, so say so and let the client reset.
+    """
+    timeout = max(0.0, min(float(timeout or 0), 60.0))
+    deadline = time.time() + timeout
+    with _LOCK:
+        since = int(since or 0)
+        if since > _VERSION["n"]:
+            return {"version": _VERSION["n"], "reset": True,
+                    "channels": {k: dict(v) for k, v in _STATE.items()}}
+        while _VERSION["n"] <= since:
+            left = deadline - time.time()
+            if left <= 0:
+                break
+            _CHANGED.wait(left)
+        return {"version": _VERSION["n"],
+                "channels": {k: dict(v) for k, v in _STATE.items()
+                             if v["version"] > since}}
 
 
 def clear(channel=None):

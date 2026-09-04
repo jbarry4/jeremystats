@@ -1,0 +1,150 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — even-only across windows</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; }
+  .frames { display: flex; gap: 6px; padding: 0 12px 12px; }
+  .frames iframe { width: 49%; height: 46vh; border: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<div class="frames">
+  <iframe id="a" src="/"></iframe>
+  <iframe id="b" src="/"></iframe>
+</div>
+<script>
+/* "The even channel check uncheck is not syncing across pages."
+
+   Which channels the probe is on decides what every panel is computed from,
+   so two windows disagreeing about it means two windows showing different
+   recordings and saying nothing. Bad channels already travelled between
+   windows; these did not, and they were not even saved -- reopening the
+   recording forgot the setting.
+
+   Two real windows, one recording in each. Toggle in one, watch the other. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 400, gap = 90) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const fa = document.getElementById('a'), fb = document.getElementById('b');
+  await Promise.all([fa, fb].map((f) =>
+    new Promise((r) => f.addEventListener('load', r, { once: true }))));
+  const A = fa.contentWindow, B = fb.contentWindow;
+  const errs = [];
+  for (const W of [A, B]) {
+    W.addEventListener('error', (e) => errs.push(e.message));
+    W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  }
+  await untilN(() => A.eval('BARRY') && B.eval('BARRY'));
+
+  /* A 64-channel recording, so even-only actually changes the count. */
+  let path = null, label = '';
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) {
+          path = s.here[0]; label = s.label; break outer;
+        }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no 64-channel recording is reachable'); return; }
+  say('note', '  ' + label);
+
+  for (const W of [A, B]) {
+    W.eval("setView('xplore')");
+    await sleep(200);
+    await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  }
+  const nch = (W) => W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; return s ? s.info.channels.length : 0;})()');
+  const even = (W) => W.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; return s ? !!s.evenOnly : null;})()');
+  await untilN(() => nch(A) > 0 && nch(B) > 0);
+
+  head('Both windows start on the same reading of the file');
+  say('note', '  A: ' + nch(A) + ' channels, evenOnly=' + even(A));
+  say('note', '  B: ' + nch(B) + ' channels, evenOnly=' + even(B));
+  check('they agree to begin with', nch(A) === nch(B) && even(A) === even(B),
+        nch(A) + '/' + even(A) + ' vs ' + nch(B) + '/' + even(B));
+  const started = even(A);
+
+  head('Tick even-only in window A');
+  /* Through the toggle handler, not by poking state, so the publish and the
+     save run the way they do for a person. */
+  const flip = (W, v) => W.eval(
+    '(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; s.evenOnly=' + (v ? 'true' : 'false') + ';'
+    + 'BARRY.views.xplore.publishFacts(s);'
+    + 'BARRY.views.xplore.reopenSameView(s); })()');
+  flip(A, !started);
+  await untilN(() => even(A) === !started && nch(A) > 0);
+  say('note', '  A is now ' + nch(A) + ' channels, evenOnly=' + even(A));
+
+  const sawB = await untilN(() => even(B) === !started, 260);
+  check('window B followed', sawB >= 0,
+        'B still evenOnly=' + even(B) + ' after ' + (260 * 90 / 1000) + 's');
+  await untilN(() => nch(B) === nch(A), 260);
+  check('and is reading the same number of channels', nch(B) === nch(A),
+        nch(A) + ' in A, ' + nch(B) + ' in B');
+
+  head('And back again');
+  flip(B, started);           // the other direction, from the other window
+  await untilN(() => even(B) === started && nch(B) > 0);
+  const sawA = await untilN(() => even(A) === started, 260);
+  check('window A followed B', sawA >= 0, 'A evenOnly=' + even(A));
+  await untilN(() => nch(A) === nch(B), 260);
+  check('and they agree again', nch(A) === nch(B),
+        nch(A) + ' vs ' + nch(B));
+
+  head('It is remembered, not just broadcast');
+  flip(A, !started);
+  await untilN(() => even(A) === !started);
+  await sleep(2200);          // the state write is on a timer
+  const key = A.eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'return JSON.stringify((S.sessions[S.active].identity)||{});})()');
+  const st = await (await fetch('/api/csc/open', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })).json();
+  say('note', '  reopened from the server: even_only=' + st.even_only
+      + ', ' + (st.channels || []).length + ' channels');
+  check('a fresh open comes back with the remembered setting',
+        !!st.even_only === !started,
+        'wanted ' + (!started) + ', got ' + st.even_only);
+
+  // Put it back, so a harness run does not leave the recording changed.
+  flip(A, started);
+  await untilN(() => even(A) === started);
+  await sleep(1800);
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'evensync: ' + bad + ' FAILED' : 'evensync: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'evensync: harness CRASH';
+} })();
+</script>

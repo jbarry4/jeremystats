@@ -37,9 +37,31 @@ async function until(fn, ms) {
   const $$ = (s) => Array.from(D().querySelectorAll(s));
 
   const cat = await (await fetch('/api/sessions')).json();
+  /* Pick a recording this machine can actually open.
+
+     Taking the first record's last path was the old rule, and it breaks the
+     moment a record carries more than one: the paths accumulate across
+     machines and imports, so the last one is as likely to be an unreachable
+     mount or an imported .mat as it is the folder. Ask the registry, which
+     already works out what is reachable from here. */
   let path = null;
-  for (const rec of (cat.sessions || [])) {
-    if ((rec.paths || []).length) { path = rec.paths[rec.paths.length - 1]; break; }
+  try {
+    const reg = await (await fetch('/api/registry')).json();
+    for (const p of (reg.tree || [])) {
+      for (const m of p.mice) {
+        for (const s of m.sessions) {
+          if ((s.here || []).length) { path = s.here[0]; break; }
+        }
+        if (path) break;
+      }
+      if (path) break;
+    }
+  } catch (e) { /* fall through to the old rule */ }
+  if (!path) {
+    for (const rec of (cat.sessions || [])) {
+      const ps = (rec.paths || []).filter(Boolean);
+      if (ps.length) { path = ps[0]; break; }
+    }
   }
   say('recording: ' + path, 'note');
   ev("setView('xplore')");

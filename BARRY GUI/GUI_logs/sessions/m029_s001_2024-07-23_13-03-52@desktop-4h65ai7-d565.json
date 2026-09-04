@@ -16,10 +16,11 @@
     "n_channels": "2026-09-02T23:21:29.079851+00:00",
     "project": "2026-09-02T23:21:29.079851+00:00",
     "project_source": "2026-09-02T23:21:29.079851+00:00",
+    "retired": "2026-09-03T13:41:03.180025+00:00",
     "schema": "2026-09-02T23:21:29.079851+00:00",
     "session": "2026-09-02T23:21:29.079851+00:00",
     "start": "2026-09-02T23:21:29.079851+00:00",
-    "updated": "2026-09-02T23:23:57.209153+00:00"
+    "updated": "2026-09-04T13:13:48.314405+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,12 +32,12 @@
     "seen": {
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-02T23:21:29.079851+00:00"
+        "2026-09-04T13:13:48.314405+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-02T23:23:57.216952+00:00",
+    "at": "2026-09-04T13:13:48.314405+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -68,20 +69,21 @@
   ],
   "project": "PTEN",
   "project_source": "guessed",
+  "retired": false,
   "schema": 2,
   "seen": {
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-02T18:50:19-04:00",
+      "at": "2026-09-04T09:13:48-04:00",
       "by": "theexaminedexistence@gmail.com",
       "path": "D:\\PTEN\\PTEN\\m29_ptenblind\\m29s1jul23\\2024-07-23_13-03-51",
-      "root": "D:/PTEN",
-      "scan": "scan_765fa11e51"
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a9e7e27d1a"
     }
   },
   "session": 1,
   "start": "2024-07-23T13:03:52",
   "updated": {
-    "at": "2026-09-02T19:23:57-04:00",
+    "at": "2026-09-04T09:13:48-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"

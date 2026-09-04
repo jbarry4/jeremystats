@@ -78,20 +78,34 @@ const post = (u, b) => fetch(u, { method: 'POST',
   curBtn.click();
   await until(() => $('#tkResult .cur-set'), 12000);
   await sleep(600);
-  check('the set is listed', !!$('.cur-set'));
+
+  /* Find OUR card, not the first one. Anyone using BARRY has curation sets
+     of their own, and taking `.cur-set` unqualified meant the harness read
+     someone else's progress and, worse, pressed its keys into someone else's
+     set. It did exactly that, and the decisions had to be unpicked by hand. */
+  const card = $$('.cur-set').find(
+    (c) => /curate harness/.test(c.textContent));
+  check('the set is listed', !!card,
+        $$('.cur-set').map((c) => (c.textContent || '').slice(0, 30))
+          .join(' | '));
+  if (!card) { say('cannot continue without our own set', 'bad'); return; }
+  const inCard = (sel) => card.querySelector(sel);
+  const allInCard = (sel) => Array.from(card.querySelectorAll(sel));
+
   check('it shows the progress',
-        /0 \/ 10/.test(($('.cur-set-n') || {}).textContent || ''),
-        ($('.cur-set-n') || {}).textContent);
-  const tally = $$('.cur-tally').map((n) => n.textContent.trim());
+        /0 \/ 10/.test((inCard('.cur-set-n') || {}).textContent || ''),
+        (inCard('.cur-set-n') || {}).textContent);
+  const tally = allInCard('.cur-tally').map((n) => n.textContent.trim());
   say('  tally: ' + tally.join(' | '), 'note');
   check('it shows one tally per category', tally.length === 4, tally.join(' | '));
   check('banking is refused while nothing is decided',
-        $$('.cur-set-acts button').find(
+        allInCard('.cur-set-acts button').find(
           (b) => /Bank/.test(b.textContent)).disabled);
 
   say('');
   say('=== entering the mode ===', 'hd');
-  $$('.cur-set-acts button').find((b) => /Curate/.test(b.textContent)).click();
+  allInCard('.cur-set-acts button')
+    .find((b) => /Curate/.test(b.textContent)).click();
   const entered = await until(() => $('#curBar'), 40000);
   check('the curation bar appears', entered);
   await sleep(2500);

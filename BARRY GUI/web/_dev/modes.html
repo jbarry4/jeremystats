@@ -1,0 +1,196 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Strata and DS modes</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* "Have the main window be just squiggly lines. And the second window be a 4
+   vertical panel of CSD, Theta, Voltage Raster, and a every 8 channel
+   Scalogram." -- for StrataScope and for the DS labeller both. And: "Make it
+   more obvious that we are in strata mode or DS mode."
+
+   Two things to establish. That the main window really is reduced to traces
+   and says which mode it is in, and that the window it opens really comes up
+   with those four panels on that recording -- checked by loading the URL the
+   pop-out builds, because a popup cannot be opened from inside a harness
+   frame and the interesting half is what the new window does with the
+   instructions it is handed. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  let W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  /* A recording to work on. */
+  let path = null;
+  const reg = await (await fetch('/api/registry')).json();
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+
+  head('The banner names the mode');
+  /* Driven through setMode directly first: the mode is announced by the
+     shell, and that has to work whether or not a layer sheet loads. */
+  W.eval("setView('xplore')");
+  await sleep(200);
+  W.eval("setMode('strata', function(){ window.__left = 1; })");
+  await sleep(250);
+  const app = D.getElementById('app');
+  check('the shell is marked as being in strata mode',
+        app.classList.contains('mode-strata'));
+  const banner = D.getElementById('modeBanner');
+  const vis = (n) => !!n && W.getComputedStyle(n).display !== 'none'
+                     && n.getBoundingClientRect().height > 0;
+  check('the banner is showing', vis(banner),
+        banner ? W.getComputedStyle(banner).display : 'no banner');
+  check('and names it', /StrataScope/i.test(
+        D.getElementById('modeName').textContent),
+        D.getElementById('modeName').textContent);
+  check('and says what the mode does',
+        (D.getElementById('modeWhat').textContent || '').length > 20);
+  const framed = W.getComputedStyle(D.getElementById('xfBody')).boxShadow;
+  check('the workspace is framed in the mode colour',
+        framed && framed !== 'none', framed);
+
+  head('Leaving is one button, and it works');
+  D.getElementById('modeLeave').click();
+  await sleep(250);
+  check('the leave button called the mode back', W.eval('window.__left') === 1);
+  W.eval('setMode(null)');
+  await sleep(200);
+  check('and the shell is unmarked', !app.classList.contains('mode-strata'));
+  check('the banner is gone', !vis(D.getElementById('modeBanner')));
+
+  head('DS curation is visibly a different mode');
+  W.eval("setMode('curate', function(){})");
+  await sleep(250);
+  check('marked as curation, not strata',
+        app.classList.contains('mode-curate')
+        && !app.classList.contains('mode-strata'));
+  check('and named as such', /DS curation/i.test(
+        D.getElementById('modeName').textContent),
+        D.getElementById('modeName').textContent);
+  const cCol = W.getComputedStyle(app).getPropertyValue('--mode').trim();
+  W.eval("setMode('strata', function(){})");
+  await sleep(150);
+  const sCol = W.getComputedStyle(app).getPropertyValue('--mode').trim();
+  check('the two modes are different colours', cCol && sCol && cCol !== sCol,
+        cCol + ' vs ' + sCol);
+  W.eval('setMode(null)');
+
+  head('The main window is reduced to traces');
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await until(() => D.querySelector('.pane-canvas-host canvas'), 40000);
+  W.eval("BARRY.views.xplore.setPanes([{panel:'traces'}], {col:0.5,row:0.5})");
+  await sleep(900);
+  check('one pane', W.eval('BARRY.views.xplore.state.nPanes') === 1,
+        'nPanes=' + W.eval('BARRY.views.xplore.state.nPanes'));
+  check('and it is the traces',
+        W.eval('BARRY.views.xplore.state.panes[0].panel') === 'traces',
+        W.eval('BARRY.views.xplore.state.panes[0].panel'));
+
+  head('The second window comes up with the four aids');
+  /* The URL a pop-out would be given. Built by the same function the modes
+     call, then loaded in a frame -- a harness frame cannot open a popup, and
+     what matters is whether the receiving window understands what it was
+     sent. */
+  const specs = [
+    { panel: 'csd' }, { panel: 'theta' }, { panel: 'voltage' },
+    { panel: 'spectrogram', tfChannels: [0, 8, 16, 24], tfMode: 'stack',
+      fmin: 1, fmax: 250 },
+  ];
+  const q = new URLSearchParams({
+    csc: path, t0: '1.0000', span: '2.0000', hp: '1', lp: '300', notch: '0',
+    theme: 'dark', link: 'session', panes: JSON.stringify(specs),
+    chrome: 'notabs,noheads', role: 'aids',
+  });
+  const aid = document.createElement('iframe');
+  aid.style.cssText = 'position:fixed;left:0;bottom:0;width:44vw;height:46vh;'
+                    + 'border:1px solid #453;background:#000';
+  aid.src = '/?' + q.toString() + '#xplore';
+  document.body.appendChild(aid);
+  await new Promise((r) => aid.addEventListener('load', r, { once: true }));
+  const AW = aid.contentWindow, AD = aid.contentDocument;
+  await until(() => AW.eval('BARRY'));
+  const gotPanes = await until(
+    () => AW.eval('BARRY.views.xplore.state.nPanes') === 4, 45000);
+  check('the aid window opened four panes', !!gotPanes,
+        'nPanes=' + AW.eval('BARRY.views.xplore.state.nPanes'));
+  const got = JSON.parse(AW.eval(
+    'JSON.stringify(BARRY.views.xplore.state.panes.map(function(p){'
+    + 'return p && p.panel; }))'));
+  check('CSD, theta, voltage and a scalogram, in that order',
+        JSON.stringify(got) === JSON.stringify(
+          ['csd', 'theta', 'voltage', 'spectrogram']),
+        JSON.stringify(got));
+  check('the scalogram is on every eighth channel',
+        JSON.stringify(JSON.parse(AW.eval(
+          'JSON.stringify(BARRY.views.xplore.state.panes[3].tfChannels)')))
+        === JSON.stringify([0, 8, 16, 24]));
+  check('it is on the same recording',
+        AW.eval('BARRY.views.xplore.state.order.length') === 1);
+  check('and knows it is the aid window',
+        AD.body.classList.contains('aid-window'));
+  check('so it hides the tab bar',
+        !(AD.querySelector('.xf-tabs')
+          && AW.getComputedStyle(AD.querySelector('.xf-tabs')).display !== 'none'));
+  /* These four are image panels -- the server renders them and the pane
+     shows an <img>. Only the traces use a canvas, which is why counting
+     canvases here found none: the harness was measuring the wrong thing. */
+  const loaded = () => Array.from(AD.querySelectorAll('.pane-img-host img'))
+    .filter((n) => n.naturalWidth > 0).length;
+  await until(() => loaded() >= 4, 60000);
+  check('all four panels actually rendered', loaded() >= 4,
+        loaded() + ' of ' + AD.querySelectorAll('.pane-img-host img').length
+        + ' images loaded');
+  check('it is following the main window',
+        AW.eval('BARRY.views.xplore.state.linkMode') === 'session',
+        AW.eval('BARRY.views.xplore.state.linkMode'));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'modes: ' + bad + ' FAILED' : 'modes: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'modes: harness CRASH';
+} })();
+</script>

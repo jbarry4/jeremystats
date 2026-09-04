@@ -1,0 +1,8 @@
+{
+  "_note": "Which Supabase project BARRY syncs to. Tracked on purpose, so a clone knows where to go. The key is NOT here: BARRY asks for it the first time it starts and keeps it in GUI_logs/.cloud.json, which git ignores.",
+  "auto": true,
+  "interval": 120,
+  "project": "svyymanowlfoyblinnny",
+  "upload_results": true,
+  "url": "https://svyymanowlfoyblinnny.supabase.co"
+}

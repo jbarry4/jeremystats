@@ -354,14 +354,52 @@ BARRY.eventImport = (function () {
 })();
 
 /* Shared modal helpers used by the wizard and the figure builder. */
+/* One modal slot, but layers.
+
+   There is a single box, and showing a dialog used to wipe it. That is fine
+   until a dialog opens another one -- the import wizard opening the bank
+   browser, say. The wizard's nodes were destroyed, the code that opened the
+   browser was still holding references into them, and when the browser
+   handed its answer back that code wrote into elements no longer in the
+   document. No error, no dialog, nothing imported.
+
+   So a modal opened while one is up is a layer on top of it. Closing pops
+   back to what was underneath; closing the last one hides the box. Nodes are
+   moved rather than re-created, so listeners and references survive. */
+const _modalStack = [];
+
 function showModal(node) {
   const host = $('#bigModalBox');
+  const shell = $('#bigModal');
+  if (!shell.classList.contains('hidden') && host.firstChild) {
+    const keep = document.createElement('div');
+    while (host.firstChild) keep.appendChild(host.firstChild);
+    _modalStack.push(keep);
+  }
   host.innerHTML = '';
   host.appendChild(node);
-  $('#bigModal').classList.remove('hidden');
+  shell.classList.remove('hidden');
 }
 
 function closeModal() {
+  const host = $('#bigModalBox');
+  const shell = $('#bigModal');
+  while (host.firstChild) host.removeChild(host.firstChild);
+  const back = _modalStack.pop();
+  if (back) {
+    while (back.firstChild) host.appendChild(back.firstChild);
+    shell.classList.remove('hidden');
+    return;
+  }
+  shell.classList.add('hidden');
+}
+
+/* Dismiss everything, for the cases that really do mean "get all of this off
+   my screen" -- leaving a view, or finishing a flow from inside a nested
+   dialog. */
+function closeAllModals() {
+  _modalStack.length = 0;
+  const host = $('#bigModalBox');
+  while (host.firstChild) host.removeChild(host.firstChild);
   $('#bigModal').classList.add('hidden');
-  $('#bigModalBox').innerHTML = '';
 }

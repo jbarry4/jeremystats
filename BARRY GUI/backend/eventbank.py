@@ -317,6 +317,7 @@ class EventBank:
         which beats nothing. An entry filed on one machine has to be findable
         from another, where the path is different.
         """
+        gid = (identity or {}).get("gid")
         key = (identity or {}).get("key")
         loose = (identity or {}).get("loose_key")
         mouse = (identity or {}).get("mouse")
@@ -324,7 +325,14 @@ class EventBank:
 
         exact, strong, weak = [], [], []
         for rec in self.summaries():
-            if key and rec.get("session_key") == key:
+            # The permanent id first. `session_key` carries the recording's
+            # header start time, so matching on it means a re-read header or
+            # a clock that moved by a second stops an entry being recognised
+            # as belonging to the recording it was banked against. The gid
+            # never moves, which is the whole reason it exists.
+            if gid and rec.get("gid") == gid:
+                exact.append(dict(rec, match="exact"))
+            elif key and rec.get("session_key") == key:
                 exact.append(dict(rec, match="exact"))
             elif loose and rec.get("session_loose_key") == loose:
                 strong.append(dict(rec, match="strong"))

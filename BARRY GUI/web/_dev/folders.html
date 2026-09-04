@@ -1,0 +1,211 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — result folders</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* A folder is a real directory under Results/. Filing moves the file, so
+   what the view shows and what you see in Explorer are the same thing.
+
+   That is a stronger claim than a label, and it can break in ways a label
+   cannot: the file has to actually arrive, the id changes with the path so
+   anything holding the old one has to be repointed, and renaming a folder
+   has to carry its children. All of that is checked here, and everything it
+   creates is put back at the end. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const post = (u, b) => fetch(u, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b),
+}).then((r) => r.json());
+async function until(fn, ms = 12000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+const F1 = 'HarnessFolder';
+const F2 = 'HarnessFolder/Panels';
+let filed = [];
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const D = frame.contentDocument;
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+  await until(() => W.eval('BARRY'));
+
+  head('The API');
+  const cat = await fetch('/api/results').then((r) => r.json());
+  const all = cat.results || [];
+  check('there are results to file', all.length >= 2, all.length + '');
+  if (all.length < 2) { head('nothing to test with'); return; }
+
+  const a = all[0];
+  const b = all[1];
+  const before = a.path;
+
+  await post('/api/results/bulk', { ids: [a.id], folder: F1 });
+  await post('/api/results/bulk', { ids: [b.id], folder: F2 });
+  filed = [a.id, b.id];
+  // Remember where they came from, so they can be put back.
+  const homeA = a.rel.includes('/') ? a.rel.slice(0, a.rel.lastIndexOf('/')) : '';
+  const homeB = b.rel.includes('/') ? b.rel.slice(0, b.rel.lastIndexOf('/')) : '';
+
+  let tree = await fetch('/api/results/folders').then((r) => r.json());
+  const paths = (tree.folders || []).map((f) => f.path);
+  check('the folder appears', paths.includes(F1), paths.join(', '));
+  check('and so does the subfolder', paths.includes(F2), paths.join(', '));
+
+  const parent = (tree.folders || []).find((f) => f.path === F1);
+  const child = (tree.folders || []).find((f) => f.path === F2);
+  check('counts are per folder, not cumulative',
+        parent.n === 1 && child.n === 1,
+        'parent=' + parent.n + ' child=' + child.n);
+  check('the child knows its depth', child.depth === 1, child.depth + '');
+
+  // Asking for the parent must include what is under it.
+  const inParent = await fetch('/api/results?folder='
+    + encodeURIComponent(F1)).then((r) => r.json());
+  check('a folder means it and everything under it',
+        (inParent.results || []).length === 2,
+        (inParent.results || []).length + '');
+
+  const justChild = await fetch('/api/results?folder='
+    + encodeURIComponent(F2)).then((r) => r.json());
+  check('and a subfolder means only itself',
+        (justChild.results || []).length === 1);
+
+  const unfiled = await fetch('/api/results?folder=~unfiled')
+    .then((r) => r.json());
+  // Everything BARRY saves lands in a folder named for its recording, so
+  // "unfiled" -- loose in the top of Results/ -- is usually empty. What
+  // matters is that it means that, and never includes something in a folder.
+  check('unfiled means loose in the top of Results',
+        (unfiled.results || []).every((r) => !(r.folder || '')),
+        (unfiled.results || []).map((r) => r.rel).join(' | ') || '(none)');
+
+head('The file really moved');
+  const again = await fetch('/api/results').then((r) => r.json());
+  const moved = (again.results || []).find(
+    (r) => (r.rel || '').startsWith(F1 + '/'));
+  check('it is in the folder on disk', !!moved,
+        (again.results || []).map((r) => r.rel).join(' | ').slice(0, 120));
+  check('its path changed', !!moved && moved.path !== before,
+        moved ? moved.path : '');
+  check('and the bytes are still there',
+        !!moved && (await fetch('/api/results/file?id='
+                                + encodeURIComponent(moved.id))).status === 200);
+  // The id is a hash of the path, so it changes with the move -- which is
+  // exactly why anything holding the old one has to be repointed.
+  check('the id followed the path', !!moved && moved.id !== a.id,
+        (moved ? moved.id : '') + ' vs ' + a.id);
+
+  head('Renaming carries the children');
+  const ren = await post('/api/results/folders/rename',
+                         { from: F1, to: 'HarnessRenamed' });
+  check('the rename reports what it moved', ren.touched === 2,
+        ren.touched === undefined ? (ren.error || 'no answer')
+                                  : String(ren.touched));
+  tree = await fetch('/api/results/folders').then((r) => r.json());
+  const after = (tree.folders || []).map((f) => f.path);
+  check('the parent moved', after.includes('HarnessRenamed'),
+        after.join(', '));
+  check('and the child came with it',
+        after.includes('HarnessRenamed/Panels'), after.join(', '));
+  check('nothing is left behind under the old name',
+        !after.some((p) => p.startsWith(F1)), after.join(', '));
+
+  head('The page');
+  W.eval("setView('results')");
+  await until(() => D.querySelector('#resultsBody .res-folders'), 10000);
+  const chips = Array.from(D.querySelectorAll('#resultsBody .folder-chip'))
+    .map((c) => c.textContent);
+  check('the folder chips are shown', chips.length > 1, chips.join(' | '));
+  check('including the one we made',
+        chips.some((c) => /HarnessRenamed/.test(c)), chips.join(' | '));
+  check('and an All chip', chips.some((c) => /^All/.test(c)));
+
+  const chip = Array.from(D.querySelectorAll('#resultsBody .folder-chip'))
+    .find((c) => c.textContent.startsWith('HarnessRenamed')
+                 && !/Panels/.test(c.textContent));
+  if (chip) {
+    chip.click();
+    await sleep(400);
+    const shown = D.querySelectorAll('#resultsBody .res-card, '
+                                     + '#resultsBody tbody tr').length;
+    check('clicking a folder filters to it and its children', shown === 2,
+          shown + ' shown');
+    chip.click();
+    await sleep(300);
+  }
+
+head('An empty folder can exist before anything is in it');
+  const made = await post('/api/results/folders/new',
+                          { name: 'HarnessEmpty' });
+  check('a new folder is created', made.ok === true, made.error || '');
+  check('and it shows up with nothing in it',
+        (made.folders || []).some((f) => f.path === 'HarnessEmpty'
+                                         && f.n === 0));
+
+  head('Tidying up');
+  // Put both files back where they were, then take the folders away.
+  const nowAll = (await fetch('/api/results').then((r) => r.json())).results;
+  for (const [home, mark] of [[homeA, 'HarnessRenamed'],
+                              [homeB, 'HarnessRenamed/Panels']]) {
+    const it = nowAll.find((r) => (r.rel || '').startsWith(mark + '/'));
+    if (it) await post('/api/results/bulk', { ids: [it.id], folder: home });
+  }
+  // Renaming a folder to nothing empties it out and takes the directory
+  // with it, which is how a harness leaves no folders behind either.
+  for (const f of ['HarnessEmpty', 'HarnessRenamed/Panels',
+                   'HarnessRenamed', 'HarnessFolder/Panels',
+                   'HarnessFolder']) {
+    await post('/api/results/folders/rename', { from: f, to: '' });
+  }
+  tree = await fetch('/api/results/folders').then((r) => r.json());
+  check('the harness folders are gone',
+        !(tree.folders || []).some((f) => /Harness/.test(f.path)),
+        (tree.folders || []).map((f) => f.path).join(', ') || '(none)');
+  const finalCat = (await fetch('/api/results').then((r) => r.json())).results;
+  check('and every result is back where it started',
+        !finalCat.some((r) => /Harness/.test(r.rel || '')),
+        finalCat.map((r) => r.rel).join(' | ').slice(0, 130));
+
+  if (errors.length) {
+    head('Errors thrown in the page');
+    errors.forEach((m) => say('bad', m));
+  }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'folders: ' + bad + ' FAILED' : 'folders: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'folders: harness CRASH';
+} })();
+</script>

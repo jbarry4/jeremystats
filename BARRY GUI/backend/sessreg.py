@@ -410,13 +410,31 @@ class Registry:
                 "This record only knows one path, so there is nothing to "
                 "split off.")
 
-        self._patch(rec, {"paths": [p for p in rec["paths"] if p != path]})
         fresh = ids.identify(path)
-        # A brand-new record, deliberately: it should not match its way back
-        # into the one it just left.
+
+        # If the path re-identifies as the same recording, it IS the same
+        # recording -- the same folder reached through a different mount --
+        # and there is nothing to split. Refusing matters: the key would be
+        # identical, so the "new" record would match the old one and
+        # upsert_session would overwrite it, taking its permanent id with it.
+        # That is not a hypothetical; it happened, and every attachment
+        # hanging off that id would have come loose.
+        if fresh.get("key") and fresh.get("key") == rec.get("key"):
+            raise ValueError(
+                "That path is the same recording as the rest of this record "
+                "-- same mouse, same session, same start time, just a "
+                "different mount. There is nothing to split off. Use "
+                "'forget this path' if the mount is wrong.")
+
+        self._patch(rec, {"paths": [p for p in rec["paths"] if p != path]})
+        # A brand-new record, deliberately: it must not match its way back
+        # into the one it just left, so the key is made distinct even when
+        # the derived one would collide.
         forced = dict(fresh)
         forced["key"] = (fresh.get("key")
                          or "split_" + uuid.uuid4().hex[:8])
+        if forced["key"] == rec.get("key"):
+            forced["key"] = forced["key"] + "__split_" + uuid.uuid4().hex[:6]
         made = self.store.upsert_session(forced, {
             "gid": new_gid(),
             "project": rec.get("project") or guess_project(fresh, [path]),
