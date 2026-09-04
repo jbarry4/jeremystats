@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8"><title>stale banner</title>
+<style>body{font:12px ui-monospace,monospace;background:#0c0f14;color:#dfe6ee;margin:0;padding:12px}
+.ok{color:#7fe3b0}.bad{color:#ff8a7a}iframe{position:fixed;right:0;top:0;width:55vw;height:100vh;border:0}</style>
+<div id="o"></div><iframe id="f" src="/"></iframe>
+<script>
+const o=document.getElementById('o'),sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+let bad=0;
+const say=(c,m)=>{const d=document.createElement('div');d.className=c;d.textContent=m;
+                  o.appendChild(d);if(c==='bad')bad++;};
+(async()=>{
+ const f=document.getElementById('f');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=f.contentWindow,D=f.contentDocument;
+ for(let i=0;i<300&&!W.BARRY;i++) await sleep(100);
+ await sleep(1500);
+ const st=await W.fetch('/api/sync/status').then(r=>r.json());
+ say('ok','server reports code_changed = '+JSON.stringify(st.code_changed));
+ if (W.BARRY.refreshSync) await W.BARRY.refreshSync();
+ await sleep(700);
+ const bar=D.getElementById('codeStaleBanner');
+ say(bar?'ok':'bad','the banner is on screen: '+(bar?'yes':'NO'));
+ if(bar){
+   say('ok','   "'+bar.textContent.replace(/\s+/g,' ').slice(0,150)+'"');
+   const btns=Array.from(bar.querySelectorAll('button')).map(b=>b.textContent);
+   say('ok','   buttons: '+btns.join(', '));
+ }
+ document.title = bad ? 'stalebanner: FAILED' : 'stalebanner: passed';
+})();
+</script>

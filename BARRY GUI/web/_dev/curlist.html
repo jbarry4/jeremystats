@@ -1,0 +1,177 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the flagged pass and the list of everything</title>
+<style>
+ body{font:12px/1.55 ui-monospace,monospace;margin:0;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw}
+ iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+ .ok::before{content:'ok    ';color:#7fe3b0}.bad::before{content:'FAIL  ';color:#ff8a7a}
+ .bad{color:#ffb0a5}.note{color:#7593a2}h2{font-size:12px;margin:14px 0 5px;color:#ffb81c}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Two of the three things asked for, measured in the running app.
+
+   The Flagged pass must include Flag for Deep Review. It was matching only
+   the id `flag`, so every candidate marked with the deeper one was
+   invisible in the pass that exists to find them -- and invisible in a way
+   that looks like "there aren't any" rather than like a bug.
+
+   And there must be a list of everything, grouped by time or by category,
+   where clicking a row goes to that candidate. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => W.BARRY);
+
+  const G = 'demo-ds-tutorial';
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.curate.enter(' + JSON.stringify(G) + ', "ds")');
+  await untilN(() => W.eval('!!BARRY.curate.active'));
+  await sleep(1800);
+  check('curation is running', !!W.eval('BARRY.curate.active'));
+
+  const evs = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.events())'));
+  const inPass = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.inPass())'));
+
+  head('Mark one Flag and one Flag for Deep Review');
+  say('note', '  ' + evs().length + ' candidates');
+  await W.eval('BARRY.curate.goTo(2)'); await sleep(400);
+  await W.eval('BARRY.curate.assign("flag")'); await sleep(800);
+  await W.eval('BARRY.curate.goTo(5)'); await sleep(400);
+  await W.eval('BARRY.curate.assign("review")'); await sleep(1000);
+  const nFlag = evs().filter((e) => e.label === 'flag').length;
+  const nRev = evs().filter((e) => e.label === 'review').length;
+  say('note', '  ' + nFlag + ' marked Flag, ' + nRev
+      + ' marked Flag for Deep Review');
+  check('there is at least one of each', nFlag > 0 && nRev > 0,
+        nFlag + ' / ' + nRev);
+
+  head('The Flagged pass must find both');
+  const seg = Array.from(D.querySelectorAll('#curReview button'));
+  say('note', '  passes: ' + seg.map((b) => b.textContent.trim()).join(' | '));
+  const flagBtn = seg.find((b) => /Flagged/.test(b.textContent));
+  flagBtn.click();
+  await sleep(1000);
+  const pass = inPass();
+  say('note', '  the Flagged pass holds ' + pass.length + ' candidate(s): '
+      + pass.map((e) => e.label).join(', '));
+  check('the pass is not empty', pass.length > 0, '0 candidates');
+  check('it includes the plain Flag ones',
+        pass.some((e) => e.label === 'flag'),
+        pass.map((e) => e.label).join(','));
+  check('and it includes Flag for Deep Review',
+        pass.some((e) => e.label === 'review'),
+        pass.map((e) => e.label).join(','));
+  check('and nothing that is not flagged',
+        pass.every((e) => e.label === 'flag' || e.label === 'review'),
+        pass.map((e) => e.label).join(','));
+  const shown = (flagBtn.textContent.match(/[(](\d+)[)]/) || [])[1];
+  check('the count on the button matches what the pass holds',
+        shown === String(pass.length),
+        flagBtn.textContent.trim() + ' vs ' + pass.length);
+
+  head('The list of everything');
+  const listBtn = Array.from(D.querySelectorAll('button'))
+    .find((b) => /List all/.test(b.textContent));
+  check('there is a List all button', !!listBtn);
+  if (listBtn) {
+    listBtn.click();
+    await untilN(() => D.querySelector('.cur-list-row'), 120);
+    await sleep(600);
+    const rows = () => Array.from(D.querySelectorAll('.cur-list-row'));
+    say('note', '  ' + rows().length + ' rows listed of ' + evs().length
+        + ' candidates');
+    check('every candidate is listed', rows().length === evs().length,
+          rows().length + ' of ' + evs().length);
+    check('the one you are on is marked',
+          !!D.querySelector('.cur-list-row.here'), 'nothing marked "here"');
+
+    const segBtns = () => Array.from(
+      D.querySelectorAll('.cur-list-bar .seg button'));
+    segBtns().find((b) => /category/i.test(b.textContent)).click();
+    await sleep(600);
+    const heads = Array.from(D.querySelectorAll('.cl-head strong'))
+      .map((h) => h.textContent);
+    say('note', '  grouped by category: ' + heads.join(', '));
+    check('grouping by category makes a group per label', heads.length >= 2,
+          heads.join(','));
+    const counts = Array.from(D.querySelectorAll('.cl-head .count'))
+      .map((c) => +c.textContent);
+    check('and the group counts add up to the rows',
+          counts.reduce((n, c) => n + c, 0) === rows().length,
+          counts.join('+') + ' vs ' + rows().length);
+
+    segBtns().find((b) => /time/i.test(b.textContent)).click();
+    await sleep(600);
+    const times = rows().map((r) => r.querySelector('.cl-t').textContent);
+    const secs = times.map((t) => {
+      const p = t.split(':'); return (+p[0]) * 60 + (+p[1]);
+    });
+    let rising = true;
+    for (let i = 1; i < secs.length; i++) {
+      if (secs[i] < secs[i - 1]) rising = false;
+    }
+    say('note', '  by time: ' + times.slice(0, 4).join(', '));
+    check('by time really is in order', rising, times.slice(0, 6).join(' '));
+
+    const chips = () => Array.from(D.querySelectorAll('.cur-list-chips .pill'));
+    say('note', '  filters: '
+        + chips().map((c) => c.textContent.trim()).join(' | '));
+    chips().find((c) => /^Flagged/.test(c.textContent)).click();
+    await sleep(600);
+    const labs = rows().map((r) => r.querySelector('.cl-lab').textContent);
+    say('note', '  the Flagged filter shows: ' + labs.join(', '));
+    check('the Flagged filter shows both kinds of flag',
+          labs.some((t) => /Deep Review/.test(t))
+          && labs.some((t) => /^Flag$/.test(t)), labs.join(','));
+
+    chips().find((c) => /^All/.test(c.textContent)).click();
+    await sleep(500);
+    const target = rows()[7];
+    const want = target.querySelector('.cl-t').textContent;
+    const wasAt = W.eval('BARRY.curate.at()');
+    target.click();
+    await sleep(1400);
+    const nowAt = W.eval('BARRY.curate.at()');
+    say('note', '  clicked the row at ' + want + ': index ' + wasAt
+        + ' -> ' + nowAt);
+    check('clicking a row goes to that candidate', nowAt !== wasAt,
+          'still at ' + nowAt);
+    check('and the list closed', !D.querySelector('.cur-list-row'),
+          'the list is still up');
+  }
+
+  W.eval('BARRY.curate.exit()');
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'curlist: ' + bad + ' FAILED' : 'curlist: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'curlist: harness CRASH';
+} })();
+</script>

@@ -308,7 +308,7 @@ class EventBank:
                  or prior.get("n") != rec["n"]
                  or (prior.get("by_label") or {}) != counts)
         if moved:
-            versions.append({
+            fresh = {
                 "v": len(versions) + 1,
                 "at": _now(),
                 "by": who,
@@ -320,7 +320,16 @@ class EventBank:
                 "lost": lost,
                 "moves": moves,
                 "machine": entry.get("machine") or platform.node(),
-            })
+            }
+            if len(clean) <= self.SNAP_MAX_EVENTS:
+                fresh["snap"] = [[ev.get("start"), ev.get("label")]
+                                 for ev in clean]
+            versions.append(fresh)
+            # Older snapshots go; their counts and their notes stay, so the
+            # history is still complete, only less finely comparable far
+            # back.
+            for old in versions[:-self.SNAP_VERSIONS]:
+                old.pop("snap", None)
         elif versions:
             # Nothing changed, so no new version -- but say it was checked,
             # because "banked again and it was identical" is information.
@@ -346,6 +355,14 @@ class EventBank:
         rec["replaced"] = bool(prior)
         rec["new_version"] = bool(moved) and bool(prior)
         return rec
+
+    # A version keeps what every candidate was called at the time, so any
+    # two versions can be compared rather than only consecutive ones. Kept
+    # for the most recent versions only: the point is the recent history,
+    # and an entry banked every week for a year should not carry a year of
+    # event lists.
+    SNAP_VERSIONS = 12
+    SNAP_MAX_EVENTS = 6000
 
     def curated_entries(self, gid, kind=None, label=None):
         """The entries a curation set has already written, newest first.
