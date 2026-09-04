@@ -1,0 +1,117 @@
+{
+  "_shard": {
+    "at": "2026-09-04T15:57:01.904976+00:00",
+    "from": "pre-shard file",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "base",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2415.991466666667,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s8d7f397b9708",
+  "group": "PTEN",
+  "has_video": true,
+  "key": "m060_s001_2025-07-10_11-41-45",
+  "label": "PTEN m60 s1 2025-07-10",
+  "loose_key": "m060_s001",
+  "mouse": 60,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
+    "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M60_s1_Baseline",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M60\\M60_s1_Baseline"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:07-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M60\\M60_s1_Baseline",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T09:24:08-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
+      "root": null,
+      "scan": null
+    }
+  },
+  "session": 1,
+  "start": "2025-07-10T11:41:45",
+  "updated": {
+    "at": "2026-09-04T11:27:07-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "view_state": {
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "normalize": "shared",
+    "notch": 0,
+    "probe": null,
+    "spacing": 50,
+    "span": 1,
+    "stft_mode": null,
+    "t0": 137.225,
+    "ylim": null
+  }
+}

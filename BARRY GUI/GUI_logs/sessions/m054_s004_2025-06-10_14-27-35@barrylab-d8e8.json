@@ -1,0 +1,48 @@
+{
+  "_shard": {
+    "at": "2026-09-04T15:57:01.874841+00:00",
+    "from": "pre-shard file",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:26:50-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 1389.6704,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s75f46ee25e38",
+  "group": "PTENDKO",
+  "has_video": true,
+  "key": "m054_s004_2025-06-10_14-27-35",
+  "label": "PTENDKO m54 s4 2025-06-10",
+  "loose_key": "m054_s004",
+  "mouse": 54,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTENDKOM54_redrilled\\m54s4jun10\\2025-06-10_14-27-35"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:50-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTENDKOM54_redrilled\\m54s4jun10\\2025-06-10_14-27-35",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 4,
+  "start": "2025-06-10T14:27:35",
+  "updated": {
+    "at": "2026-09-04T11:26:50-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

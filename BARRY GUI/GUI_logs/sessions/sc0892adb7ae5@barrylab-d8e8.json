@@ -1,0 +1,77 @@
+{
+  "_at": {
+    "created": "2026-09-03T15:34:09.921836+00:00",
+    "duration_s": "2026-09-03T15:34:09.921836+00:00",
+    "first_seen_by": "2026-09-03T15:34:09.921836+00:00",
+    "fs": "2026-09-03T15:34:09.921836+00:00",
+    "gid": "2026-09-03T15:34:09.921836+00:00",
+    "group": "2026-09-03T15:34:09.921836+00:00",
+    "key": "2026-09-04T16:00:43.074999+00:00",
+    "label": "2026-09-03T15:34:09.921836+00:00",
+    "mouse": "2026-09-03T15:34:09.921836+00:00",
+    "n_channels": "2026-09-03T15:34:09.921836+00:00",
+    "project": "2026-09-03T15:34:09.921836+00:00",
+    "project_source": "2026-09-03T15:34:09.921836+00:00",
+    "retired": "2026-09-04T16:00:43.074999+00:00",
+    "schema": "2026-09-03T15:34:09.921836+00:00",
+    "start": "2026-09-03T15:34:09.921836+00:00",
+    "updated": "2026-09-04T16:00:43.074999+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01": [
+        "set",
+        "2026-09-03T15:34:09.921836+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-03T15:34:09.921836+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T16:00:43.074999+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-03T11:34:09-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1735.2362666666668,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "sc0892adb7ae5",
+  "group": "PTEN",
+  "key": null,
+  "label": "PTEN m27 2024-07-03",
+  "mouse": 27,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-03T11:34:09-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_ab3d95ea55"
+    }
+  },
+  "start": "2024-07-03T12:14:01",
+  "updated": {
+    "at": "2026-09-04T12:00:43-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

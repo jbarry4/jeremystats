@@ -1,0 +1,47 @@
+{
+  "_shard": {
+    "at": "2026-09-04T15:57:01.714837+00:00",
+    "from": "pre-shard file",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:26:37-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 1796.6421333333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s27959bc6e39c",
+  "group": "PTEN",
+  "key": "m023_s010_2024-08-14_13-48-00",
+  "label": "PTEN m23 s10 2024-08-14",
+  "loose_key": "m023_s010",
+  "mouse": 23,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s10aug14dcz3\\2024-08-14_13-48-00"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:37-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s10aug14dcz3\\2024-08-14_13-48-00",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 10,
+  "start": "2024-08-14T13:48:00",
+  "updated": {
+    "at": "2026-09-04T11:26:37-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

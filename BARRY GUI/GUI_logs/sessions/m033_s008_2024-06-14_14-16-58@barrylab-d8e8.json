@@ -1,0 +1,175 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-02T23:51:19.871687+00:00",
+    "bad_channels_note": "2026-09-02T23:51:19.871687+00:00",
+    "condition": "2026-09-02T23:51:19.871687+00:00",
+    "converted": "2026-09-02T23:51:19.871687+00:00",
+    "created": "2026-09-02T23:51:19.871687+00:00",
+    "duration_s": "2026-09-02T23:51:19.871687+00:00",
+    "first_seen_by": "2026-09-02T23:51:19.871687+00:00",
+    "fs": "2026-09-02T23:51:19.871687+00:00",
+    "gid": "2026-09-02T23:51:19.871687+00:00",
+    "group": "2026-09-02T23:51:19.871687+00:00",
+    "has_video": "2026-09-02T23:51:19.871687+00:00",
+    "key": "2026-09-02T23:51:19.871687+00:00",
+    "label": "2026-09-02T23:51:19.871687+00:00",
+    "loose_key": "2026-09-02T23:51:19.871687+00:00",
+    "mouse": "2026-09-02T23:51:19.871687+00:00",
+    "n_channels": "2026-09-02T23:51:19.871687+00:00",
+    "project": "2026-09-02T23:51:19.871687+00:00",
+    "project_source": "2026-09-02T23:51:19.871687+00:00",
+    "retired": "2026-09-03T13:40:37.791451+00:00",
+    "schema": "2026-09-02T23:51:19.871687+00:00",
+    "session": "2026-09-02T23:51:19.871687+00:00",
+    "start": "2026-09-02T23:51:19.871687+00:00",
+    "updated": "2026-09-04T16:16:54.155534+00:00",
+    "view_state": "2026-09-04T16:16:54.926012+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58": [
+        "set",
+        "2026-09-02T23:51:19.871687+00:00"
+      ],
+      "G:\\PTEN\\M33_s8": [
+        "set",
+        "2026-09-02T23:51:19.871687+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M33_s8_CNO": [
+        "set",
+        "2026-09-04T15:57:01.794821+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58": [
+        "set",
+        "2026-09-04T16:03:34.177234+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-02T23:51:19.871687+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T13:13:48.410659+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T16:16:54.926012+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "bad_channels": [
+    8,
+    41,
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "cno",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:49:57-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1863.0485333333334,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s0a1cd99454b9",
+  "group": "PTEN",
+  "has_video": true,
+  "key": "m033_s008_2024-06-14_14-16-58",
+  "label": "PTEN m33 s8 2024-06-14",
+  "loose_key": "m033_s008",
+  "mouse": 33,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+    "G:\\PTEN\\M33_s8",
+    "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:38:03-04:00",
+      "by": "barry",
+      "path": "G:\\PTEN\\M33_s8",
+      "root": "G:/PTEN",
+      "scan": "scan_597c4266fa"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T09:13:48-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a9e7e27d1a"
+    }
+  },
+  "session": 8,
+  "start": "2024-06-14T14:16:58",
+  "updated": {
+    "at": "2026-09-04T12:16:54-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": {
+      "fviewMax": 200,
+      "fviewMin": 0
+    },
+    "flock": true,
+    "gain": 1,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 1,
+    "stft_mode": null,
+    "t0": 1857.003,
+    "ylim": null
+  }
+}

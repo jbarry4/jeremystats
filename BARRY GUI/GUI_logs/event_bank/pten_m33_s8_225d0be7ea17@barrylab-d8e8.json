@@ -1,0 +1,338 @@
+{
+  "_at": {
+    "added": "2026-09-04T16:18:08.121132+00:00",
+    "curation_label": "2026-09-04T16:18:08.121132+00:00",
+    "duration_s": "2026-09-04T16:18:08.121132+00:00",
+    "events": "2026-09-04T16:18:08.121132+00:00",
+    "gid": "2026-09-04T16:18:08.121132+00:00",
+    "id": "2026-09-04T16:18:08.121132+00:00",
+    "mouse": "2026-09-04T16:18:08.121132+00:00",
+    "n": "2026-09-04T16:18:08.121132+00:00",
+    "name": "2026-09-04T16:18:08.121132+00:00",
+    "note": "2026-09-04T16:18:08.121132+00:00",
+    "project": "2026-09-04T16:18:08.121132+00:00",
+    "recording_start": "2026-09-04T16:18:08.121132+00:00",
+    "schema": "2026-09-04T16:18:08.121132+00:00",
+    "session": "2026-09-04T16:18:08.121132+00:00",
+    "session_key": "2026-09-04T16:18:08.121132+00:00",
+    "session_label": "2026-09-04T16:18:08.121132+00:00",
+    "session_loose_key": "2026-09-04T16:18:08.121132+00:00",
+    "session_path": "2026-09-04T16:18:08.121132+00:00",
+    "source": "2026-09-04T16:18:08.121132+00:00",
+    "specified": "2026-09-04T16:18:08.121132+00:00",
+    "type": "2026-09-04T16:18:08.121132+00:00",
+    "type_name": "2026-09-04T16:18:08.121132+00:00",
+    "units": "2026-09-04T16:18:08.121132+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-04T16:18:08.121132+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-04T12:18:08-04:00",
+    "by": "Rain",
+    "machine": "BarryLab"
+  },
+  "curation_label": "flag",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Flag",
+      "start": 459.032
+    },
+    {
+      "label": "Flag",
+      "start": 471.114
+    },
+    {
+      "label": "Flag",
+      "start": 478.953
+    },
+    {
+      "label": "Flag",
+      "start": 496.202
+    },
+    {
+      "label": "Flag",
+      "start": 611.988
+    },
+    {
+      "label": "Flag",
+      "start": 664.875
+    },
+    {
+      "label": "Flag",
+      "start": 717.145
+    },
+    {
+      "label": "Flag",
+      "start": 741.596
+    },
+    {
+      "label": "Flag",
+      "start": 745.476
+    },
+    {
+      "label": "Flag",
+      "start": 769.773
+    },
+    {
+      "label": "Flag",
+      "start": 770.596
+    },
+    {
+      "label": "Flag",
+      "start": 793.334
+    },
+    {
+      "label": "Flag",
+      "start": 795.32
+    },
+    {
+      "label": "Flag",
+      "start": 796.764
+    },
+    {
+      "label": "Flag",
+      "start": 860.974
+    },
+    {
+      "label": "Flag",
+      "start": 876.858
+    },
+    {
+      "label": "Flag",
+      "start": 892.92
+    },
+    {
+      "label": "Flag",
+      "start": 893.057
+    },
+    {
+      "label": "Flag",
+      "start": 894.284
+    },
+    {
+      "label": "Flag",
+      "start": 896.572
+    },
+    {
+      "label": "Flag",
+      "start": 897.8
+    },
+    {
+      "label": "Flag",
+      "start": 898.922
+    },
+    {
+      "label": "Flag",
+      "start": 900.393
+    },
+    {
+      "label": "Flag",
+      "start": 900.834
+    },
+    {
+      "label": "Flag",
+      "start": 904.538
+    },
+    {
+      "label": "Flag",
+      "start": 937.07
+    },
+    {
+      "label": "Flag",
+      "start": 956.753
+    },
+    {
+      "label": "Flag",
+      "start": 958.098
+    },
+    {
+      "label": "Flag",
+      "start": 1261.69
+    },
+    {
+      "label": "Flag",
+      "start": 1291.217
+    },
+    {
+      "label": "Flag",
+      "start": 1368.186
+    },
+    {
+      "label": "Flag",
+      "start": 1378.71
+    },
+    {
+      "label": "Flag",
+      "start": 1381.926
+    },
+    {
+      "label": "Flag",
+      "start": 1405.028
+    },
+    {
+      "label": "Flag",
+      "start": 1416.673
+    },
+    {
+      "label": "Flag",
+      "start": 1422.23
+    },
+    {
+      "label": "Flag",
+      "start": 1513.79
+    },
+    {
+      "label": "Flag",
+      "start": 1517.98
+    },
+    {
+      "label": "Flag",
+      "start": 1520.986
+    },
+    {
+      "label": "Flag",
+      "start": 1535.615
+    },
+    {
+      "label": "Flag",
+      "start": 1565.016
+    },
+    {
+      "label": "Flag",
+      "start": 1573.252
+    },
+    {
+      "label": "Flag",
+      "start": 1575.096
+    },
+    {
+      "label": "Flag",
+      "start": 1579.627
+    },
+    {
+      "label": "Flag",
+      "start": 1585.916
+    },
+    {
+      "label": "Flag",
+      "start": 1639.346
+    },
+    {
+      "label": "Flag",
+      "start": 1640.519
+    },
+    {
+      "label": "Flag",
+      "start": 1736.0
+    },
+    {
+      "label": "Flag",
+      "start": 1743.267
+    },
+    {
+      "label": "Flag",
+      "start": 1765.732
+    },
+    {
+      "label": "Flag",
+      "start": 1791.456
+    },
+    {
+      "label": "Flag",
+      "start": 1803.09
+    },
+    {
+      "label": "Flag",
+      "start": 1806.425
+    },
+    {
+      "label": "Flag",
+      "start": 1809.794
+    },
+    {
+      "label": "Flag",
+      "start": 1823.722
+    },
+    {
+      "label": "Flag",
+      "start": 1831.586
+    },
+    {
+      "label": "Flag",
+      "start": 1832.709
+    },
+    {
+      "label": "Flag",
+      "start": 1839.382
+    },
+    {
+      "label": "Flag",
+      "start": 1842.481
+    },
+    {
+      "label": "Flag",
+      "start": 1843.015
+    },
+    {
+      "label": "Flag",
+      "start": 1844.312
+    },
+    {
+      "label": "Flag",
+      "start": 1845.942
+    },
+    {
+      "label": "Flag",
+      "start": 1849.682
+    },
+    {
+      "label": "Flag",
+      "start": 1850.309
+    },
+    {
+      "label": "Flag",
+      "start": 1853.751
+    },
+    {
+      "label": "Flag",
+      "start": 1854.079
+    },
+    {
+      "label": "Flag",
+      "start": 1854.632
+    },
+    {
+      "label": "Flag",
+      "start": 1857.503
+    }
+  ],
+  "gid": "s0a1cd99454b9",
+  "id": "225d0be7ea17",
+  "mouse": 33,
+  "n": 68,
+  "name": "m33s8jun14 \u2014 Flag",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-06-14T14:16:58",
+  "schema": 1,
+  "session": 8,
+  "session_key": "m033_s008_2024-06-14_14-16-58",
+  "session_label": "PTEN m33 s8 2024-06-14",
+  "session_loose_key": "m033_s008",
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "BARRY curation (ds)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

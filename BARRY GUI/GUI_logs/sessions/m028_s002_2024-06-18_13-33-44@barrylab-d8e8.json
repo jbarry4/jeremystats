@@ -1,0 +1,67 @@
+{
+  "_shard": {
+    "at": "2026-09-04T15:57:01.744918+00:00",
+    "from": "pre-shard file",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "bad_channels": [
+    8,
+    41,
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "base",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:49:57-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2913.2970666666665,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s4a67210fc7ac",
+  "group": "PTEN",
+  "has_video": true,
+  "key": "m028_s002_2024-06-18_13-33-44",
+  "label": "PTEN m28 s2 2024-06-18",
+  "loose_key": "m028_s002",
+  "mouse": 28,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
+    "G:\\PTEN\\M28_s2",
+    "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s2_baseline"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:59-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s2_baseline",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T09:13:48-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a9e7e27d1a"
+    }
+  },
+  "session": 2,
+  "start": "2024-06-18T13:33:44",
+  "updated": {
+    "at": "2026-09-04T11:26:59-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

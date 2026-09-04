@@ -1,0 +1,103 @@
+{
+  "_at": {
+    "created": "2026-09-04T16:09:26.638798+00:00",
+    "id": "2026-09-04T16:09:26.638798+00:00",
+    "schema": "2026-09-04T16:09:26.638798+00:00",
+    "slides": "2026-09-04T16:09:26.638798+00:00",
+    "title": "2026-09-04T16:09:26.638798+00:00",
+    "updated": "2026-09-04T16:09:26.638798+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-04T16:09:26.638798+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T12:09:26-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "id": "deck_b56b15c2",
+  "schema": 1,
+  "slides": [
+    {
+      "id": "ssqvcl66",
+      "items": [],
+      "notes": "",
+      "show_notes": true,
+      "title": "Slide 1"
+    },
+    {
+      "id": "ss3e2xa9",
+      "items": [
+        {
+          "caption": "",
+          "h": 0.72,
+          "id": "ijig6odp",
+          "name": "PTEN m1 s2 2023-10-02_20260903_113520.png",
+          "rel": "PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png",
+          "result_id": "c98259ac5f66",
+          "type": "result",
+          "w": 0.84,
+          "x": 0.08,
+          "y": 0.16,
+          "z": 1
+        }
+      ],
+      "notes": "",
+      "show_notes": true,
+      "title": "PTEN m1 s2 2023-10-02"
+    },
+    {
+      "id": "s2d7qvme",
+      "items": [
+        {
+          "caption": "",
+          "h": 0.72,
+          "id": "i7grijyj",
+          "name": "PTEN m7 s2 2023-08-22_20260902_152927.png",
+          "rel": "Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+          "result_id": "4bf34a4654a8",
+          "type": "result",
+          "w": 0.84,
+          "x": 0.08,
+          "y": 0.16,
+          "z": 1
+        },
+        {
+          "a": [
+            1,
+            0
+          ],
+          "alpha": 1,
+          "b": [
+            0,
+            1
+          ],
+          "color": "#c0392b",
+          "filled": false,
+          "h": 0.2204444444444444,
+          "id": "if8vr0p6",
+          "shape": "arrow",
+          "type": "shape",
+          "w": 0.20100001226806719,
+          "width": 2,
+          "x": 0.7252699417279017,
+          "y": 0.49695454915364584,
+          "z": 3
+        }
+      ],
+      "notes": "",
+      "show_notes": true,
+      "title": "PTEN m7 s2 2023-08-22_20260902_152927"
+    }
+  ],
+  "title": "Entrainment!",
+  "updated": {
+    "at": "2026-09-04T12:09:26-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}
