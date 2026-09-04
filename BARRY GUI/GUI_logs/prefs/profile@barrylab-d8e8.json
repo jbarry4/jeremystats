@@ -1,0 +1,19 @@
+{
+  "_at": {
+    "device": "2026-09-04T19:02:38.179294+00:00",
+    "email": "2026-09-04T19:02:38.179294+00:00",
+    "initials": "2026-09-04T19:02:38.179294+00:00",
+    "name": "2026-09-04T19:02:38.179294+00:00",
+    "role": "2026-09-04T16:14:22.295869+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-04T19:02:38.179294+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "device": "StrawBarry",
+  "email": "rain.younger@uvm.edu",
+  "initials": "RY",
+  "name": "Rain",
+  "role": "Gradstudent"
+}

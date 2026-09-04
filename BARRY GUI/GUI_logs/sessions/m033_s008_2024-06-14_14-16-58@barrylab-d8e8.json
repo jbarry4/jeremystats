@@ -22,8 +22,8 @@
     "schema": "2026-09-02T23:51:19.871687+00:00",
     "session": "2026-09-02T23:51:19.871687+00:00",
     "start": "2026-09-02T23:51:19.871687+00:00",
-    "updated": "2026-09-04T18:23:11.310103+00:00",
-    "view_state": "2026-09-04T18:23:11.310103+00:00"
+    "updated": "2026-09-04T19:04:01.771239+00:00",
+    "view_state": "2026-09-04T19:04:01.771239+00:00"
   },
   "_keys": {
     "paths": {
@@ -47,16 +47,20 @@
     "seen": {
       "BarryLab": [
         "set",
-        "2026-09-04T18:23:06.079996+00:00"
+        "2026-09-04T19:01:08.241585+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T17:55:31.176659+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-04T19:03:55.247730+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-04T18:23:11.310103+00:00",
+    "at": "2026-09-04T19:04:01.771239+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -96,7 +100,7 @@
   "schema": 2,
   "seen": {
     "BarryLab": {
-      "at": "2026-09-04T14:23:06-04:00",
+      "at": "2026-09-04T15:01:07-04:00",
       "by": "Shahriar",
       "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
       "root": null,
@@ -108,16 +112,24 @@
       "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
       "root": null,
       "scan": null
+    },
+    "StrawBarry": {
+      "at": "2026-09-04T15:03:55-04:00",
+      "by": "Rain",
+      "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+      "root": null,
+      "scan": null
     }
   },
   "session": 8,
   "start": "2024-06-14T14:16:58",
   "updated": {
-    "at": "2026-09-04T14:23:11-04:00",
-    "email": "sakhava1@uvm.edu",
-    "machine": "BarryLab",
+    "at": "2026-09-04T15:04:01-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "Shahriar"
+    "user": "Rain"
   },
   "view_state": {
     "channels": [
@@ -166,7 +178,7 @@
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 478.453,
+    "t0": 470.614,
     "ylim": null
   }
 }
