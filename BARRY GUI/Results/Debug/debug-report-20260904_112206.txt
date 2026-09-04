@@ -1,0 +1,429 @@
+BARRY GUI debug report
+generated  2026-09-04 11:22:06
+machine    BarryLab / Windows 11
+python     3.12.10
+matlab     C:\Program Files\MATLAB\R2025b\bin\matlab.EXE
+ffmpeg     C:\Users\barry\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\barry\OneDrive\Desktop\jeremystats
+view       errors
+session    PTEN m34 s2 2024-06-07
+
+UI ACTIONS, oldest first (7)
+------------------------------------------------------------------
+:57.852Z  link.scope                 {"scope": "session"}
+:59.296Z  session.open               {"path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57", "channels": 32, "fs": 30000, "duration_s": 2712.8149333333336, "resto
+:59.342Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:27.777Z  theme.change               {"theme": "phosphor"}
+:36.936Z  theme.change               {"theme": "horizon-night"}
+:23.208Z  sessions.mode              {"mode": "housekeeping"}
+:34.727Z  sessions.mode              {"mode": "scan"}
+
+BROWSER CONSOLE (5)
+------------------------------------------------------------------
+11:16:57  warn  stale server: no route /api/probes
+11:17:12  warn  stale server: no route /api/feedback
+11:20:20  warn  stale server: no route /api/feedback
+11:21:25  warn  stale server: no route /api/feedback
+11:21:42  warn  stale server: no route /api/feedback
+
+REQUESTS AS THE BROWSER SAW THEM (400)
+------------------------------------------------------------------
+11:21:59  GET  /api/link                            200        4 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/link                            200        3 ms
+11:21:59  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:21:59  GET  /api/link                            200        5 ms
+11:21:59  GET  /api/link                            200        5 ms
+11:21:59  GET  /api/link                            200        4 ms
+11:21:59  GET  /api/link                            200        3 ms
+11:21:59  GET  /api/link                            200        3 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:21:59  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        3 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/discover/scan_894736ef4e        200        5 ms
+11:22:00  GET  /api/link                            200        3 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        3 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        4 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:00  GET  /api/link                            200        4 ms
+11:22:00  GET  /api/link                            200        5 ms
+11:22:00  GET  /api/link                            200        3 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        4 ms
+11:22:00  GET  /api/link                            200        2 ms
+11:22:00  GET  /api/link                            200        3 ms
+11:22:00  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/link                            200        5 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/link                            200        6 ms
+11:22:01  GET  /api/discover/scan_894736ef4e        200        5 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/link                            200        8 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:01  GET  /api/link                            200        3 ms
+11:22:01  GET  /api/link                            200        2 ms
+11:22:02  GET  /api/link                            200        2 ms
+11:22:02  GET  /api/link                            200        5 ms
+11:22:02  GET  /api/link                            200        3 ms
+11:22:02  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:02  GET  /api/link                            200        1 ms
+11:22:02  GET  /api/link                            200        4 ms
+11:22:02  GET  /api/link                            200        2 ms
+11:22:02  GET  /api/link                            200        2 ms
+11:22:02  GET  /api/link                            200        4 ms
+11:22:02  GET  /api/link                            200        4 ms
+11:22:02  GET  /api/link                            200        3 ms
+11:22:02  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:02  GET  /api/link                            200        2 ms
+11:22:02  GET  /api/link                            200        3 ms
+11:22:02  GET  /api/link                            200        3 ms
+11:22:02  GET  /api/link                            200        1 ms
+11:22:02  GET  /api/link                            200        4 ms
+11:22:02  GET  /api/link                            200        1 ms
+11:22:03  GET  /api/discover/scan_894736ef4e        200        2 ms
+11:22:03  GET  /api/link                            200        5 ms
+11:22:03  GET  /api/link                            200        5 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        1 ms
+11:22:03  GET  /api/link                            200        3 ms
+11:22:03  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        5 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        8 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        5 ms
+11:22:03  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:03  GET  /api/link                            200        1 ms
+11:22:03  GET  /api/link                            200        2 ms
+11:22:03  GET  /api/link                            200        4 ms
+11:22:04  GET  /api/link                            200        3 ms
+11:22:04  GET  /api/link                            200        2 ms
+11:22:04  GET  /api/link                            200        4 ms
+11:22:04  GET  /api/discover/scan_894736ef4e        200        2 ms
+11:22:04  GET  /api/link                            200        2 ms
+11:22:04  GET  /api/link                            200        1 ms
+11:22:04  GET  /api/link                            200        4 ms
+11:22:04  GET  /api/link                            200        4 ms
+11:22:04  GET  /api/link                            200        5 ms
+11:22:04  GET  /api/link                            200        1 ms
+11:22:04  GET  /api/link                            200        5 ms
+11:22:04  GET  /api/discover/scan_894736ef4e        200        3 ms
+11:22:04  GET  /api/link                            200        2 ms
+11:22:04  GET  /api/link                            200        6 ms
+11:22:04  GET  /api/link                            200        2 ms
+11:22:04  GET  /api/link                            200        3 ms
+11:22:04  GET  /api/link                            200        5 ms
+11:22:04  GET  /api/link                            200        5 ms
+11:22:05  GET  /api/discover/scan_894736ef4e        200        2 ms
+11:22:05  GET  /api/link                            200        1 ms
+11:22:05  GET  /api/link                            200        6 ms
+11:22:05  GET  /api/link                            200        2 ms
+11:22:05  GET  /api/link                            200        3 ms
+11:22:05  GET  /api/link                            200        1 ms
+11:22:05  GET  /api/link                            200        6 ms
+11:22:05  GET  /api/discover/scan_894736ef4e        200        2 ms
+11:22:05  GET  /api/link                            200        3 ms
+11:22:05  GET  /api/link                            200        7 ms
+11:22:05  GET  /api/link                            200        3 ms
+11:22:05  GET  /api/link                            200        7 ms
+11:22:05  GET  /api/link                            200        3 ms
+11:22:05  GET  /api/link                            200        7 ms
+11:22:05  GET  /api/discover/scan_894736ef4e        200        6 ms
+11:22:05  GET  /api/link                            200        2 ms
+11:22:05  GET  /api/link                            200        5 ms
+11:22:05  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/discover/scan_894736ef4e        200        2 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        2 ms
+11:22:06  GET  /api/link                            200        6 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        3 ms
+11:22:06  GET  /api/link                            200        6 ms
+11:22:06  GET  /api/discover/scan_894736ef4e        200        4 ms
+11:22:06  GET  /api/link                            200        5 ms
+11:22:06  GET  /api/link                            200        4 ms
+11:22:06  GET  /api/link                            200        2 ms
+11:22:06  GET  /api/link                            200        4 ms
+11:22:06  GET  /api/link                            200        5 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (200)
+------------------------------------------------------------------
+11:22:06  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:06  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:05  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:22:05  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:04  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:04  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:04  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:03  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:03  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:02  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:02  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:02  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:01  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:01  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:22:00  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:00  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:22:00  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:59  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:59  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:58  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:58  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:58  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:57  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:57  GET  /api/discover/scan_894736ef4e    200      0.4 ms  
+11:21:56  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:56  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:56  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:55  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:55  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:53  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:53  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:51  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:51  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:49  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:49  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:48  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:48  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:48  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:47  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:47  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:46  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:46  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:46  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:45  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:45  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:44  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:44  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:44  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:43  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:43  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:42  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:42  GET  /api/feedback                    404      0.3 ms  
+11:21:42  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:42  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:41  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:41  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:40  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:40  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:40  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:39  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:39  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:38  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:38  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:38  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:37  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:37  GET  /api/discover/scan_894736ef4e    200      1.0 ms  
+11:21:36  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:36  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:36  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:35  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:35  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:34  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:34  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:34  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:33  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:33  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:32  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:32  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:32  GET  /api/discover/scan_894736ef4e    200      0.0 ms  
+11:21:31  GET  /api/discover/scan_894736ef4e    200      0.2 ms  
+11:21:31  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:30  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:30  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:30  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:29  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:29  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:28  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:28  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:28  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:27  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:27  GET  /api/discover/scan_894736ef4e    200      0.6 ms  
+11:21:26  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:26  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:26  GET  /api/discover/scan_894736ef4e    200      0.2 ms  
+11:21:25  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:25  GET  /api/feedback                    404      0.4 ms  
+11:21:25  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:24  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:24  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:24  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:23  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:23  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:22  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:22  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:22  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:21  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:21  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:20  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:20  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:20  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:19  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:19  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:18  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:18  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:18  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:17  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:17  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:16  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:16  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:16  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:15  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:15  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:14  GET  /api/discover/scan_894736ef4e    200      0.4 ms  
+11:21:14  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:14  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:13  GET  /api/discover/scan_894736ef4e    200      0.0 ms  
+11:21:13  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:12  GET  /api/discover/scan_894736ef4e    200      0.6 ms  
+11:21:12  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:12  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:11  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:11  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:10  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:10  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:10  GET  /api/sync/status                 200     45.1 ms  
+11:21:10  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:09  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:09  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:08  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:08  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:08  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:07  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:07  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:06  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:06  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:06  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:05  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:05  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:04  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:04  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:04  GET  /api/discover/scan_894736ef4e    200      1.0 ms  
+11:21:03  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:03  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:02  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:02  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:02  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:01  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:01  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:00  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:21:00  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:21:00  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:59  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:59  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:58  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:58  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:58  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:57  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:57  GET  /api/discover/scan_894736ef4e    200      0.4 ms  
+11:20:56  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:56  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:56  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:55  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:55  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:54  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:53  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:53  GET  /api/discover/scan_894736ef4e    200      0.4 ms  
+11:20:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:52  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:51  GET  /api/discover/scan_894736ef4e    200      0.3 ms  
+11:20:51  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:50  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:49  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:49  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:48  GET  /api/discover/scan_894736ef4e    200      0.2 ms  
+11:20:48  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+11:20:48  GET  /api/discover/scan_894736ef4e    200      0.1 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-04T10:58:48-04:00] cloud.sync: [Errno 13] Permission denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json.tmp'
+[2026-09-04T10:32:06-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\GUI_logs\\.cache\\cloud_state.json'
+[2026-09-04T09:50:59-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-03T20:47:36.790316%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+[2026-09-03T16:54:09-04:00] run:pip install torch: Run failed with exit code 1
+$ C:\Users\Z390\miniconda3\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+  cwd: C:\Users\Z390\Desktop\jeremystats
+Looking in indexes: https://download.pytorch.org/whl/cu121
+ERROR: Could not find a version that satisfies the requirement torch (from versions: none)
+ERROR: No matching distribution found for torch
+-- exited with code 1 after 2.3s --
+[2026-09-03T16:54:02-04:00] run:pip install torch: Run failed with exit code 1
+$ C:\Users\Z390\miniconda3\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+  cwd: C:\Users\Z390\Desktop\jeremystats
+Looking in indexes: https://download.pytorch.org/whl/cu121
+ERROR: Could not find a version that satisfies the requirement torch (from versions: none)
+ERROR: No matching distribution found for torch
+-- exited with code 1 after 2.9s --
+[2026-09-03T13:34:53-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-03T15:35:29.094784%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+[2026-09-03T10:57:24-04:00] results/folders/rename: There is no folder called 'HarnessFolder'.
+Traceback (most recent call last):
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\app.py", line 2889, in api_results_folders_rename
+    touched = RESULTS.rename_folder(src, dst, store=STORE)
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\results.py", line 557, in rename_folder
+    raise ValueError("There is no folder called %r." % src)
+ValueError: There is no folder called 'HarnessFolder'.
+
+[2026-09-03T10:57:24-04:00] results/folders/rename: There is no folder called 'HarnessFolder/Panels'.
+Traceback (most recent call last):
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\app.py", line 2889, in api_results_folders_rename
+    touched = RESULTS.rename_folder(src, dst, store=STORE)
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\results.py", line 557, in rename_folder
+    raise ValueError("There is no folder called %r." % src)
+ValueError: There is no folder called 'HarnessFolder/Panels'.
+
+[2026-09-03T10:56:14-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-03T10:39:08-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-03T10:16:24-04:00] results/folders/rename: There is no folder called 'HarnessFolder'.
+Traceback (most recent call last):
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\app.py", line 2759, in api_results_folders_rename
+    touched = RESULTS.rename_folder(src, dst, store=STORE)
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\results.py", line 557, in rename_folder
+    raise ValueError("There is no folder called %r." % src)
+ValueError: There is no folder called 'HarnessFolder'.
+
+[2026-09-03T10:16:24-04:00] results/folders/rename: There is no folder called 'HarnessFolder/Panels'.
+Traceback (most recent call last):
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\app.py", line 2759, in api_results_folders_rename
+    touched = RESULTS.rename_folder(src, dst, store=STORE)
+  File "c:\Users/Z390/Desktop/jeremystats/BARRY GUI\backend\results.py", line 557, in rename_folder
+    raise ValueError("There is no folder called %r." % src)
+ValueError: There is no folder called 'HarnessFolder/Panels'.

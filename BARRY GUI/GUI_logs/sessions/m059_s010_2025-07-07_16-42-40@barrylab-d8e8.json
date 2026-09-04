@@ -1,0 +1,65 @@
+{
+  "_shard": {
+    "at": "2026-09-04T15:57:01.894928+00:00",
+    "from": "pre-shard file",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "cno",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1802.5984,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "sef04f3b4eb4d",
+  "group": "PTEN",
+  "has_video": true,
+  "key": "m059_s010_2025-07-07_16-42-40",
+  "label": "PTEN m59 s10 2025-07-07",
+  "loose_key": "m059_s010",
+  "mouse": 59,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+    "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s10_CNO",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:06-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 10,
+  "start": "2025-07-07T16:42:40",
+  "updated": {
+    "at": "2026-09-04T11:27:06-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  }
+}

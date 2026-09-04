@@ -1,0 +1,35 @@
+{
+  "_at": {
+    "pipeline_folders": "2026-09-03T14:08:40.159829+00:00",
+    "recent_scripts": "2026-09-02T23:21:29.293258+00:00",
+    "updated": "2026-09-04T16:01:57.391713+00:00"
+  },
+  "_keys": {
+    "themes": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.925044+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "gone",
+        "2026-09-04T15:57:01.925044+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-04T16:01:57.391713+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "fav_scripts": [],
+  "pipeline_folders": {
+    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
+  },
+  "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m"
+  ],
+  "themes": {
+    "BarryLab": "horizon-night"
+  },
+  "updated": "2026-09-04T12:01:57-04:00"
+}

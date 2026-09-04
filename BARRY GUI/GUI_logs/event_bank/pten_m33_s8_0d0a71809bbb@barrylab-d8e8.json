@@ -1,0 +1,274 @@
+{
+  "_at": {
+    "added": "2026-09-04T17:46:11.316743+00:00",
+    "curation_label": "2026-09-04T17:46:11.316743+00:00",
+    "duration_s": "2026-09-04T17:46:11.316743+00:00",
+    "events": "2026-09-04T17:46:11.316743+00:00",
+    "gid": "2026-09-04T17:46:11.316743+00:00",
+    "id": "2026-09-04T17:46:11.316743+00:00",
+    "mouse": "2026-09-04T17:46:11.316743+00:00",
+    "n": "2026-09-04T17:46:11.316743+00:00",
+    "name": "2026-09-04T17:46:11.316743+00:00",
+    "note": "2026-09-04T17:46:11.316743+00:00",
+    "project": "2026-09-04T17:46:11.316743+00:00",
+    "recording_start": "2026-09-04T17:46:11.316743+00:00",
+    "schema": "2026-09-04T17:46:11.316743+00:00",
+    "session": "2026-09-04T17:46:11.316743+00:00",
+    "session_key": "2026-09-04T17:46:11.316743+00:00",
+    "session_label": "2026-09-04T17:46:11.316743+00:00",
+    "session_loose_key": "2026-09-04T17:46:11.316743+00:00",
+    "session_path": "2026-09-04T17:46:11.316743+00:00",
+    "source": "2026-09-04T17:46:11.316743+00:00",
+    "specified": "2026-09-04T17:46:11.316743+00:00",
+    "type": "2026-09-04T17:46:11.316743+00:00",
+    "type_name": "2026-09-04T17:46:11.316743+00:00",
+    "units": "2026-09-04T17:46:11.316743+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-04T17:46:11.316743+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-04T13:46:11-04:00",
+    "by": "TEST1",
+    "machine": "BarryLab"
+  },
+  "curation_label": "spike",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "start": 39.694
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 49.375
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 49.517
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 60.886
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 66.983
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 72.877
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 74.565
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 110.834
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 112.783
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 138.704
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 161.299
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 355.513
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 748.381
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 748.95
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 768.865
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 769.922
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 775.794
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 776.845
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 779.812
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 781.348
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 788.936
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 794.512
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 882.323
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 899.069
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 901.969
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 906.9
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 908.167
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 919.529
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 921.941
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 922.07
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 953.176
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1229.172
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1288.036
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1333.403
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1341.089
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1341.38
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1353.868
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1366.414
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1419.911
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1532.285
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1535.369
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1535.502
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1566.68
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1571.569
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1573.38
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1575.561
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1577.714
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1578.94
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1585.111
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1637.817
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1733.964
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1852.895
+    }
+  ],
+  "gid": "s0a1cd99454b9",
+  "id": "0d0a71809bbb",
+  "mouse": 33,
+  "n": 52,
+  "name": "m33s8jun14 \u2014 Dentate Spike",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-06-14T14:16:58",
+  "schema": 1,
+  "session": 8,
+  "session_key": "m033_s008_2024-06-14_14-16-58",
+  "session_label": "PTEN m33 s8 2024-06-14",
+  "session_loose_key": "m033_s008",
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "BARRY curation (ds)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}
