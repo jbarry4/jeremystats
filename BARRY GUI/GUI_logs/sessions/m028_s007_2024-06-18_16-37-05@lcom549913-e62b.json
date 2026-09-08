@@ -1,0 +1,139 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-04T15:57:01.754614+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.754614+00:00",
+    "condition": "2026-09-04T15:57:01.754614+00:00",
+    "converted": "2026-09-04T15:57:01.754614+00:00",
+    "created": "2026-09-02T23:51:19.864953+00:00",
+    "duration_s": "2026-09-04T15:57:01.754614+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.754614+00:00",
+    "fs": "2026-09-04T15:57:01.754614+00:00",
+    "gid": "2026-09-02T23:51:19.864953+00:00",
+    "group": "2026-09-04T15:57:01.754614+00:00",
+    "has_video": "2026-09-04T15:57:01.754614+00:00",
+    "key": "2026-09-04T15:57:01.754614+00:00",
+    "label": "2026-09-04T15:57:01.754614+00:00",
+    "loose_key": "2026-09-04T15:57:01.754614+00:00",
+    "mouse": "2026-09-04T15:57:01.754614+00:00",
+    "n_channels": "2026-09-04T15:57:01.754614+00:00",
+    "project": "2026-09-04T15:57:01.754614+00:00",
+    "project_source": "2026-09-04T15:57:01.754614+00:00",
+    "retired": "2026-09-04T15:57:01.754614+00:00",
+    "schema": "2026-09-04T15:57:01.754614+00:00",
+    "session": "2026-09-04T15:57:01.754614+00:00",
+    "start": "2026-09-04T15:57:01.754614+00:00",
+    "updated": "2026-09-08T18:00:52.176807+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05": [
+        "set",
+        "2026-09-08T18:00:52.176807+00:00"
+      ],
+      "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ],
+      "G:\\PTEN\\M28_s7": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s7_CNO": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T15:57:01.754614+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T18:00:52.176807+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T18:00:52.176807+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "bad_channels": [
+    8,
+    41,
+    59
+  ],
+  "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "condition": "cno",
+  "converted": true,
+  "created": {
+    "at": "2026-09-02T18:49:57-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 2189.824,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s1563f9c932bc",
+  "group": "PTEN",
+  "has_video": true,
+  "key": "m028_s007_2024-06-18_16-37-05",
+  "label": "PTEN m28 s7 2024-06-18",
+  "loose_key": "m028_s007",
+  "mouse": 28,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05",
+    "G:\\PTEN\\M28_s7",
+    "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s7_CNO",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:59-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s7_CNO",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-04T09:13:48-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a9e7e27d1a"
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T14:00:52-04:00",
+      "by": "Rain",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
+    }
+  },
+  "session": 7,
+  "start": "2024-06-18T16:37:05",
+  "updated": {
+    "at": "2026-09-08T14:00:52-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}
