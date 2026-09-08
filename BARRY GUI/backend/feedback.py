@@ -71,18 +71,68 @@ class Feedback:
 
     # -- reading --------------------------------------------------------
     def all(self):
+        """Every report, with everybody's triage merged in.
+
+        A report is filed once, by one machine, into that machine's file --
+        and then anybody may set its state or add a note. Those arrive as
+        overlays in the shard of whoever made them, so the reading is: take
+        the report as filed, then apply every overlay anybody has written
+        for it. Newest state wins; notes are the union, oldest first.
+        """
         import json
-        out = []
+        base, overlays = {}, {}
         for path in self._all_files():
             try:
                 with io.open(path, encoding="utf-8") as fh:
                     rec = json.load(fh)
-                rec["_file"] = os.path.basename(path)
-                out.append(rec)
             except Exception:                        # noqa: BLE001
                 # A half-written or hand-edited file should not take the
                 # whole list down with it.
                 continue
+            rid = rec.get("id")
+            if not rid:
+                continue
+            if rec.get("_overlay"):
+                overlays.setdefault(rid, []).append(rec)
+                continue
+            rec["_file"] = os.path.basename(path)
+            # Two machines can only hold the same report as filed if
+            # somebody copied a file by hand. The earlier one is the
+            # original.
+            if rid not in base or (rec.get("at") or "") < (
+                    base[rid].get("at") or ""):
+                base[rid] = rec
+
+        out = []
+        for rid, rec in base.items():
+            rows = overlays.get(rid) or []
+            if rows:
+                rec = dict(rec)
+                notes = list(rec.get("notes") or [])
+                seen = {(n.get("at"), n.get("by"), n.get("text"))
+                        for n in notes}
+                newest = None
+                for ov in rows:
+                    for n in (ov.get("notes") or []):
+                        key = (n.get("at"), n.get("by"), n.get("text"))
+                        if key not in seen:
+                            seen.add(key)
+                            notes.append(n)
+                    if ov.get("state") and (
+                            newest is None
+                            or (ov.get("state_at") or "") > (newest.get("state_at") or "")):
+                        newest = ov
+                notes.sort(key=lambda n: n.get("at") or "")
+                rec["notes"] = notes
+                if newest and (newest.get("state_at") or "") > (
+                        rec.get("state_at") or ""):
+                    rec["state"] = newest["state"]
+                    rec["state_at"] = newest.get("state_at")
+                    rec["state_by"] = newest.get("state_by")
+                rec["_machines"] = sorted(
+                    {rec.get("shard") or ""}
+                    | {ov.get("shard") or "" for ov in rows})
+            out.append(rec)
         out.sort(key=lambda r: r.get("at") or "", reverse=True)
         return out
 
@@ -160,29 +210,59 @@ class Feedback:
                                     and (item.get("caption") or "") or "")})
         return out
 
+    def _overlay_file(self, rec_id):
+        return os.path.join(self.dir, "%s~%s.json" % (rec_id, self.machine))
+
     def update(self, rec_id, patch, user=None):
+        """Set a state or add a note, in THIS machine's file only.
+
+        It used to write `<id>@<the filer's shard>.json` -- so triaging a
+        report somebody else filed edited their file, on a store whose one
+        rule is that no two machines ever write the same file. That is a
+        guaranteed git conflict, and the side that loses the merge has its
+        triage quietly undone. The change goes in an overlay of our own
+        instead, and `all()` merges them on the way out.
+        """
         import json
         rec = self.get(rec_id)
         if not rec:
             raise ValueError("No such report.")
-        # Only the machine that filed it owns the file; anyone else's change
-        # would land in a different shard and the two would both be right.
-        # So edits are notes, which merge, plus a state that is last-write.
+
+        mine = rec.get("shard") == self.machine and not rec.get("_overlay")
+        path = self._file(rec_id) if mine else self._overlay_file(rec_id)
+
+        if mine:
+            out = dict(rec)
+            out.pop("_file", None)
+            out.pop("_machines", None)
+        else:
+            # Only what this machine is asserting, so the overlay cannot
+            # drift into being a stale second copy of the whole report.
+            out = {"id": rec_id, "_overlay": True, "shard": self.machine,
+                   "of": rec.get("shard")}
+            try:
+                with io.open(path, encoding="utf-8") as fh:
+                    out.update(json.load(fh))
+            except Exception:                        # noqa: BLE001
+                pass
+            out["_overlay"] = True
+            out["shard"] = self.machine
+
         if "state" in patch:
             state = str(patch["state"])
             if state not in STATES:
                 raise ValueError("Unknown state %r." % state)
-            rec["state"] = state
+            out["state"] = state
+            out["state_at"] = _now()
+            out["state_by"] = user or ""
         if patch.get("note"):
-            rec.setdefault("notes", []).append({
-                "at": _now(), "by": user or "", "text": str(patch["note"])[:2000],
+            out.setdefault("notes", []).append({
+                "at": _now(), "by": user or "",
+                "text": str(patch["note"])[:2000],
             })
-        rec.pop("_file", None)
-        path = os.path.join(self.dir, "%s@%s.json" % (rec_id, rec.get("shard")
-                                                      or self.machine))
         with io.open(path, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(rec, fh, indent=1, ensure_ascii=False)
-        return rec
+            json.dump(out, fh, indent=1, ensure_ascii=False)
+        return self.get(rec_id)
 
     def shot_path(self, name):
         """Resolve an attachment name, refusing anything that escapes."""

@@ -1,7 +1,44 @@
 {
+  "_at": {
+    "added": "2026-09-02T23:21:29.363060+00:00",
+    "by_label": "2026-09-08T18:36:00.374760+00:00",
+    "events": "2026-09-02T23:21:29.363060+00:00",
+    "gid": "2026-09-02T23:21:29.363060+00:00",
+    "id": "2026-09-02T23:21:29.363060+00:00",
+    "label_names": "2026-09-08T18:36:00.374760+00:00",
+    "mouse": "2026-09-02T23:21:29.363060+00:00",
+    "n": "2026-09-02T23:21:29.363060+00:00",
+    "name": "2026-09-02T23:21:29.363060+00:00",
+    "note": "2026-09-02T23:21:29.363060+00:00",
+    "project": "2026-09-02T23:21:29.363060+00:00",
+    "recording_start": "2026-09-02T23:21:29.363060+00:00",
+    "schema": "2026-09-02T23:21:29.363060+00:00",
+    "session": "2026-09-02T23:21:29.363060+00:00",
+    "session_key": "2026-09-02T23:21:29.363060+00:00",
+    "session_label": "2026-09-02T23:21:29.363060+00:00",
+    "session_loose_key": "2026-09-02T23:21:29.363060+00:00",
+    "session_path": "2026-09-02T23:21:29.363060+00:00",
+    "source": "2026-09-02T23:21:29.363060+00:00",
+    "specified": "2026-09-02T23:21:29.363060+00:00",
+    "type": "2026-09-02T23:21:29.363060+00:00",
+    "type_name": "2026-09-02T23:21:29.363060+00:00",
+    "units": "2026-09-02T23:21:29.363060+00:00",
+    "version": "2026-09-08T18:36:00.374760+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "v0-0f99edcd": [
+        "set",
+        "2026-09-08T18:36:00.374760+00:00"
+      ],
+      "v1-ccf59e0d": [
+        "set",
+        "2026-09-08T18:36:00.374760+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-02T23:21:29.363060+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-08T18:36:00.374760+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -10,8 +47,9 @@
     "by": "theexaminedexistence@gmail.com",
     "machine": "DESKTOP-4H65AI7"
   },
-  "curation_label": null,
-  "duration_s": null,
+  "by_label": {
+    "garbage": 42
+  },
   "events": [
     {
       "start": 102.446
@@ -142,6 +180,12 @@
   ],
   "gid": "sec05b6b24732",
   "id": "9bbeb68b5f35",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
   "mouse": 30,
   "n": 42,
   "name": "DS candidates (ETS)",
@@ -167,5 +211,387 @@
   "specified": false,
   "type": "ds",
   "type_name": "ds",
-  "units": "seconds relative to the start of the recording"
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "by_label": {
+        "unspecified": 42
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-0f99edcd",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 42,
+      "note": "Imported from ETS dentate-spike export. 42 candidates, none decided yet.",
+      "snap": [
+        [
+          102.446,
+          null
+        ],
+        [
+          104.294,
+          null
+        ],
+        [
+          336.366,
+          null
+        ],
+        [
+          387.369,
+          null
+        ],
+        [
+          404.983,
+          null
+        ],
+        [
+          459.418,
+          null
+        ],
+        [
+          564.423,
+          null
+        ],
+        [
+          575.448,
+          null
+        ],
+        [
+          580.71,
+          null
+        ],
+        [
+          769.737,
+          null
+        ],
+        [
+          781.644,
+          null
+        ],
+        [
+          795.581,
+          null
+        ],
+        [
+          874.273,
+          null
+        ],
+        [
+          963.508,
+          null
+        ],
+        [
+          1004.05,
+          null
+        ],
+        [
+          1070.382,
+          null
+        ],
+        [
+          1086.731,
+          null
+        ],
+        [
+          1234.916,
+          null
+        ],
+        [
+          1248.957,
+          null
+        ],
+        [
+          1276.621,
+          null
+        ],
+        [
+          1291.094,
+          null
+        ],
+        [
+          1303.524,
+          null
+        ],
+        [
+          1307.47,
+          null
+        ],
+        [
+          1315.185,
+          null
+        ],
+        [
+          1356.574,
+          null
+        ],
+        [
+          1370.554,
+          null
+        ],
+        [
+          1400.765,
+          null
+        ],
+        [
+          1406.676,
+          null
+        ],
+        [
+          1473.218,
+          null
+        ],
+        [
+          1474.024,
+          null
+        ],
+        [
+          1498.521,
+          null
+        ],
+        [
+          1540.448,
+          null
+        ],
+        [
+          1645.624,
+          null
+        ],
+        [
+          1671.356,
+          null
+        ],
+        [
+          1676.12,
+          null
+        ],
+        [
+          1682.898,
+          null
+        ],
+        [
+          1758.998,
+          null
+        ],
+        [
+          1784.714,
+          null
+        ],
+        [
+          1822.796,
+          null
+        ],
+        [
+          1830.79,
+          null
+        ],
+        [
+          1842.72,
+          null
+        ],
+        [
+          1855.016,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "by_label": {
+        "garbage": 42
+      },
+      "changed": 42,
+      "gained": 0,
+      "id": "v1-ccf59e0d",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 garbage": 42
+      },
+      "n": 42,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 42 of 42 decided.",
+      "rebuilt_from": {
+        "folder": "m30s4jul1",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          102.446,
+          "garbage"
+        ],
+        [
+          104.294,
+          "garbage"
+        ],
+        [
+          336.366,
+          "garbage"
+        ],
+        [
+          387.369,
+          "garbage"
+        ],
+        [
+          404.983,
+          "garbage"
+        ],
+        [
+          459.418,
+          "garbage"
+        ],
+        [
+          564.423,
+          "garbage"
+        ],
+        [
+          575.448,
+          "garbage"
+        ],
+        [
+          580.71,
+          "garbage"
+        ],
+        [
+          769.737,
+          "garbage"
+        ],
+        [
+          781.644,
+          "garbage"
+        ],
+        [
+          795.581,
+          "garbage"
+        ],
+        [
+          874.273,
+          "garbage"
+        ],
+        [
+          963.508,
+          "garbage"
+        ],
+        [
+          1004.05,
+          "garbage"
+        ],
+        [
+          1070.382,
+          "garbage"
+        ],
+        [
+          1086.731,
+          "garbage"
+        ],
+        [
+          1234.916,
+          "garbage"
+        ],
+        [
+          1248.957,
+          "garbage"
+        ],
+        [
+          1276.621,
+          "garbage"
+        ],
+        [
+          1291.094,
+          "garbage"
+        ],
+        [
+          1303.524,
+          "garbage"
+        ],
+        [
+          1307.47,
+          "garbage"
+        ],
+        [
+          1315.185,
+          "garbage"
+        ],
+        [
+          1356.574,
+          "garbage"
+        ],
+        [
+          1370.554,
+          "garbage"
+        ],
+        [
+          1400.765,
+          "garbage"
+        ],
+        [
+          1406.676,
+          "garbage"
+        ],
+        [
+          1473.218,
+          "garbage"
+        ],
+        [
+          1474.024,
+          "garbage"
+        ],
+        [
+          1498.521,
+          "garbage"
+        ],
+        [
+          1540.448,
+          "garbage"
+        ],
+        [
+          1645.624,
+          "garbage"
+        ],
+        [
+          1671.356,
+          "garbage"
+        ],
+        [
+          1676.12,
+          "garbage"
+        ],
+        [
+          1682.898,
+          "garbage"
+        ],
+        [
+          1758.998,
+          "garbage"
+        ],
+        [
+          1784.714,
+          "garbage"
+        ],
+        [
+          1822.796,
+          "garbage"
+        ],
+        [
+          1830.79,
+          "garbage"
+        ],
+        [
+          1842.72,
+          "garbage"
+        ],
+        [
+          1855.016,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    }
+  ]
 }

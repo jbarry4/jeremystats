@@ -32,8 +32,17 @@ BUCKET = "results"
 # references them.
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
-    "bank_entries", "curation_sets", "curation_events", "layer_sheets",
+    "bank_entries", "curation_sets", "curation_events", "curation_reviews",
+    "layer_sheets",
     "layer_labels", "storyboards", "results", "presets", "prefs",
+    # Both directions. A report filed on the rig has to reach the desktop,
+    # and a triage decision made on the desktop has to reach the rig --
+    # otherwise two people each see their own half of the list and neither
+    # of them can tell.
+    "feedback", "feedback_notes",
+    # So somebody added on one computer is pickable on another without
+    # waiting for a git pull.
+    "people",
 ]
 PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 
@@ -70,7 +79,8 @@ class Sync:
     """Everything BARRY knows, in both directions."""
 
     def __init__(self, logs_dir, store, bank=None, curate=None, layers=None,
-                 mice=None, results=None, repo_root=None):
+                 mice=None, results=None, repo_root=None, feedback=None,
+                 people=None):
         self.logs = os.path.abspath(logs_dir)
         self.store = store
         self.bank = bank
@@ -78,6 +88,8 @@ class Sync:
         self.layers = layers
         self.mice = mice
         self.results = results
+        self.feedback = feedback
+        self.people = people
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -224,7 +236,7 @@ class Sync:
         return {"bank_entries": out}
 
     def rows_curation(self):
-        sets, events = [], []
+        sets, events, reviews = [], [], []
         for rec in (self.curate.all() if self.curate else []):
             gid, kind = rec.get("gid"), rec.get("kind")
             if not gid or not kind:
@@ -240,6 +252,17 @@ class Sync:
                 "source": rec.get("source") or {},
                 "imports": rec.get("imports") or [],
                 "vocabulary": rec.get("labels") or rec.get("vocabulary") or [],
+                # Whose set it is and whether anybody has it open. Without
+                # these, "Rain has m33 s8 open" is a fact that stops at the
+                # machine she is sitting at.
+                "assignee": rec.get("assignee"),
+                "is_open": bool(rec.get("open")),
+                "opened_at": cloud.ts(rec.get("opened_at")),
+                "opened_by": rec.get("opened_by"),
+                "closed_at": cloud.ts(rec.get("closed_at")),
+                "archived": bool(rec.get("archived")),
+                "archived_at": cloud.ts(rec.get("archived_at")),
+                "archived_by": rec.get("archived_by"),
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": cloud.ts(up.get("at")) or cloud.now(),
@@ -261,7 +284,21 @@ class Sync:
                     "decided_at": at,
                     "updated_at": at or cloud.ts(cr.get("at")) or cloud.now(),
                 })
-        return {"curation_sets": sets, "curation_events": events}
+                for r in (ev.get("reviews") or []):
+                    who = (r.get("by") or "").strip()
+                    if not who or not r.get("label"):
+                        continue
+                    rat = cloud.ts(r.get("at"))
+                    reviews.append({
+                        "set_id": set_id,
+                        "event_id": ev.get("id"),
+                        "reviewer": who,
+                        "label": r["label"],
+                        "at": rat,
+                        "updated_at": rat or at or cloud.now(),
+                    })
+        return {"curation_sets": sets, "curation_events": events,
+                "curation_reviews": reviews}
 
     def rows_layers(self):
         sheets, labels = [], []
@@ -435,6 +472,74 @@ class Sync:
                 })
         return {"presets": [r for r in out if r["id"]]}
 
+    def rows_feedback(self):
+        """Reports and their triage, both directions.
+
+        The state and the notes are what a second person contributes, and
+        they are the reason this has to be shared rather than push-only:
+        somebody has to be able to mark a bug planned and have the person
+        who filed it see that.
+        """
+        rows, notes = [], []
+        for rec in (self.feedback.all() if self.feedback else []):
+            rid = rec.get("id")
+            if not rid:
+                continue
+            ctx = rec.get("context") or {}
+            rows.append({
+                "id": rid,
+                "kind": rec.get("kind") or "bug",
+                "state": rec.get("state") or "open",
+                "title": rec.get("title"),
+                "body": rec.get("detail") or "",
+                "wants": rec.get("wants") or "",
+                "context": ctx,
+                "view": ctx.get("view"),
+                "session_label": ctx.get("session_label") or ctx.get("session"),
+                "gid": ctx.get("gid"),
+                "shots": rec.get("screenshots") or [],
+                "state_by": rec.get("state_by"),
+                "state_at": cloud.ts(rec.get("state_at")),
+                "machine": rec.get("machine") or rec.get("shard"),
+                "created_at": cloud.ts(rec.get("at")) or cloud.now(),
+                "created_by": rec.get("by"),
+                "updated_at": (cloud.ts(rec.get("state_at"))
+                               or cloud.ts(rec.get("at")) or cloud.now()),
+                "updated_by": rec.get("state_by") or rec.get("by"),
+            })
+            for i, n in enumerate(rec.get("notes") or []):
+                at = cloud.ts(n.get("at"))
+                rows_id = "%s-%02d" % (rid, i)
+                notes.append({
+                    "id": rows_id,
+                    "feedback_id": rid,
+                    "body": n.get("text") or "",
+                    "note_by": n.get("by") or "",
+                    "at": at or cloud.now(),
+                    "updated_at": at or cloud.now(),
+                })
+        return {"feedback": rows, "feedback_notes": notes}
+
+    def rows_people(self):
+        """The roster, so a name typed on one machine is pickable on another."""
+        if not self.people:
+            return {"people": []}
+        try:
+            got = self.people.roster(self.curate, self.bank)
+        except Exception:                            # noqa: BLE001
+            return {"people": []}
+        out = []
+        for row in (got.get("people") or []) + (got.get("not_people") or []):
+            out.append({
+                "name": row.get("name"),
+                "email": row.get("email"),
+                "is_person": bool(row.get("is_person")),
+                "seen": row.get("counts") or {},
+                "last_seen": cloud.now(),
+                "updated_at": cloud.now(),
+            })
+        return {"people": out}
+
     def rows_prefs(self):
         from .store import PREFS_LOCAL
         prefs = self.store.get_prefs() or {}
@@ -463,6 +568,8 @@ class Sync:
         rows.update(self.rows_results())
         rows.update(self.rows_presets())
         rows.update(self.rows_prefs())
+        rows.update(self.rows_feedback())
+        rows.update(self.rows_people())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())
@@ -474,6 +581,7 @@ class Sync:
         "session_sightings": "gid,machine",
         "mice": "project,mouse",
         "curation_events": "set_id,event_id",
+        "curation_reviews": "set_id,event_id,reviewer",
         "layer_labels": "gid,channel",
         "presets": "kind,id",
     }

@@ -1,0 +1,77 @@
+{
+  "_at": {
+    "converted": "2026-09-04T15:57:01.674885+00:00",
+    "created": "2026-09-04T15:57:01.674885+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.674885+00:00",
+    "gid": "2026-09-04T15:57:01.674885+00:00",
+    "group": "2026-09-04T15:57:01.674885+00:00",
+    "key": "2026-09-04T15:57:01.674885+00:00",
+    "label": "2026-09-04T15:57:01.674885+00:00",
+    "loose_key": "2026-09-04T15:57:01.674885+00:00",
+    "mouse": "2026-09-04T15:57:01.674885+00:00",
+    "project": "2026-09-04T15:57:01.674885+00:00",
+    "project_source": "2026-09-04T15:57:01.674885+00:00",
+    "retired": "2026-09-08T18:35:26.982844+00:00",
+    "schema": "2026-09-04T15:57:01.674885+00:00",
+    "session": "2026-09-04T15:57:01.674885+00:00",
+    "updated": "2026-09-08T18:35:27.807427+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M15_s3_baseline_urethane": [
+        "set",
+        "2026-09-04T15:57:01.674885+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.674885+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T18:35:27.807427+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "converted": true,
+  "created": {
+    "at": "2026-09-04T11:26:59-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "first_seen_by": "scan",
+  "gid": "s00bcd86913b7",
+  "group": "PTEN_CSDsEtc",
+  "key": "m015_s003",
+  "label": "PTEN_CSDsEtc m15 s3",
+  "loose_key": "m015_s003",
+  "mouse": 15,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M15_s3_baseline_urethane"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:59-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M15_s3_baseline_urethane",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 3,
+  "updated": {
+    "at": "2026-09-08T14:35:27-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

@@ -351,20 +351,48 @@ BARRY.views.toolkit = (function () {
     renderCuration();
   }
 
-  /* How the curation list is being looked at. Held here rather than read
-     off the DOM so a re-render cannot lose a half-typed search. */
-  const curQ = { text: '', sort: 'left', show: 'all' };
+  /* How the shelf is being looked at -- the shelf only, because the bench
+     is not a query result and has no order to choose. Held here rather than
+     read off the DOM so a re-render cannot lose a half-typed search. */
+  const curQ = { text: '', sort: 'recent', show: 'all', shelf: false };
 
   const CUR_SORTS = [
+    ['recent', 'Recently touched'],
     ['left', 'Most left to do'],
     ['flag', 'Most flagged'],
     ['name', 'Name'],
     ['mouse', 'Mouse and session'],
     ['size', 'Biggest'],
-    ['recent', 'Recently touched'],
   ];
 
-  /* The sets that match what is being asked for, in the order asked for. */
+  /* "opened 2 hours ago", which is the fact, rather than a timestamp that
+     has to be subtracted from today's date in your head.
+
+     Date.parse is lenient about `-0400` but not required to accept it --
+     the server writes strftime's %z, which has no colon -- so the offset is
+     normalised first rather than left to the engine's goodwill. */
+  function curWhen(iso) {
+    if (!iso) return null;
+    const fixed = String(iso).replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+    const t = Date.parse(fixed);
+    if (!isFinite(t)) return null;
+    const mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.round(hrs / 24);
+    if (days < 14) return days + (days === 1 ? ' day ago' : ' days ago');
+    return new Date(t).toLocaleDateString(undefined,
+      { month: 'short', day: 'numeric' });
+  }
+
+  const curOpen = () => ((cur && cur.sets) || [])
+    .filter((s) => s.open && !s.archived);
+
+  /* The sets on the shelf that match what is being asked for. Everything
+     not on the bench, which includes the finished ones -- being done is not
+     a reason to be hidden, only a reason not to be in the way. */
   function curationRows() {
     const all = (cur && cur.sets) || [];
     const q = curQ.text.trim().toLowerCase();
@@ -372,6 +400,7 @@ BARRY.views.toolkit = (function () {
     const by = (st) => (st.progress || {}).by_label || {};
 
     let rows = all.filter((st) => {
+      if (st.open) return false;
       const pr = st.progress || {};
       if (curQ.show === 'left' && !(pr.left > 0)) return false;
       if (curQ.show === 'flagged' && !(by(st).flag > 0)) return false;
@@ -379,15 +408,16 @@ BARRY.views.toolkit = (function () {
       if (curQ.show === 'demo' && !String(st.gid || '').startsWith('demo-')) {
         return false;
       }
-      /* Archived sessions are out of the way unless asked for -- being
-         done with a session is the commonest reason a list gets long. */
+      /* Archived sessions are out of the way unless asked for. Archiving
+         still means what it meant -- "I am done thinking about this at all"
+         -- which is a stronger statement than closing it. */
       if (curQ.show === 'archived') {
         if (!st.archived) return false;
       } else if (st.archived) {
         return false;
       }
       if (!words.length) return true;
-      const hay = [st.name, st.kind_name, st.kind, st.gid,
+      const hay = [st.name, st.kind_name, st.kind, st.gid, st.assignee,
                    st.session && st.session.label,
                    st.session && st.session.project,
                    st.session && ('m' + st.session.mouse),
@@ -404,8 +434,8 @@ BARRY.views.toolkit = (function () {
       name: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
       size: (a, b) => ((b.progress || {}).total || 0)
                     - ((a.progress || {}).total || 0),
-      recent: (a, b) => String((b.updated || {}).at || '')
-        .localeCompare(String((a.updated || {}).at || '')),
+      recent: (a, b) => String(b.opened_at || (b.updated || {}).at || '')
+        .localeCompare(String(a.opened_at || (a.updated || {}).at || '')),
       mouse: (a, b) => {
         const sa = a.session || {}, sb = b.session || {};
         return (num(sa.mouse) - num(sb.mouse))
@@ -413,8 +443,7 @@ BARRY.views.toolkit = (function () {
             || String(a.name || '').localeCompare(String(b.name || ''));
       },
     }[curQ.sort] || (() => 0);
-    rows = rows.slice().sort(cmp);
-    return rows;
+    return rows.slice().sort(cmp);
   }
 
   function renderCuration() {
@@ -429,70 +458,219 @@ BARRY.views.toolkit = (function () {
       return;
     }
 
+    const sets = cur.sets || [];
+    const open = curOpen();
+
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
         el('h2', { text: 'Event curation' }),
         el('p', { class: 'sub',
-          text: 'Import a list of candidate times, then go through them one '
-              + 'at a time in the recording and say what each one is.' }),
+          text: open.length
+            ? 'What you have open. It stays here until you close it.'
+            : 'Open a set and it stays here until you close it.' }),
       ]),
       el('div', { class: 'spacer' }),
-      el('button', { class: 'btn', text: 'Import candidates\u2026',
+      open.length > 1 ? el('button', {
+        class: 'btn ghost sm', text: 'Close all',
+        title: 'Clear the bench. Nothing is archived, deleted or unbanked.',
+        onclick: closeAllSets,
+      }) : null,
+      el('button', { class: 'btn', text: 'Import candidates…',
                      onclick: importCandidates }),
-    ]));
+    ].filter(Boolean)));
 
-    const sets = cur.sets || [];
     if (!sets.length) {
       host.appendChild(el('div', { class: 'hint tk-empty',
         text: 'Nothing to curate yet. Import a list of candidate times '
-            + '\u2014 from the Event Bank or from a file \u2014 and it '
+            + '— from the Event Bank or from a file — and it '
             + 'will appear here. Every candidate arrives unspecified.' }));
       return;
     }
 
-    /* Searching and sorting. Forty-one sets came in from the snapshot
-       folders alone, and "which of these still has flagged items" was not
-       answerable without reading every card. */
-    /* Counted over what the list can actually show, so the numbers on the
-       chips add up to the rows underneath them. */
-    const live = sets.filter((s) => !s.archived);
-    const nLeft = live.filter((s) => ((s.progress || {}).left || 0) > 0).length;
-    const nFlag = live.filter(
+    /* ---- the bench ---- */
+    const bench = el('div', { class: 'cur-sets cur-bench', id: 'curBench' });
+    if (open.length) {
+      for (const st of open) bench.appendChild(curCard(st));
+    } else {
+      bench.appendChild(el('div', { class: 'cur-bench-empty' }, [
+        el('p', { text: 'Nothing open.' }),
+        el('p', { class: 'hint',
+          text: 'Pick one up below and it stays on the bench until you put '
+              + 'it down. Closing a set neither saves nor loses anything '
+              + '— every decision was written the moment you made it.' }),
+      ]));
+    }
+    host.appendChild(bench);
+
+    /* ---- the shelf, folded away until wanted ---- */
+    const nShelf = sets.filter((s) => !s.open && !s.archived).length;
+    const shelf = el('div', { class: 'cur-shelf', id: 'curShelf' });
+    host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+      el('button', {
+        class: 'cur-shelf-toggle' + (curQ.shelf ? ' on' : ''),
+        text: (curQ.shelf ? '▾  ' : '▸  ')
+            + (open.length ? 'Pick up another set' : 'Pick up a set')
+            + '  ·  ' + nShelf + ' put down',
+        onclick: () => { curQ.shelf = !curQ.shelf; renderCuration(); },
+      }),
+    ]));
+    if (curQ.shelf) host.appendChild(shelf);
+    if (curQ.shelf) paintShelf();
+  }
+
+  /* One set on the bench. Two verbs on the face of it -- carry on, or put
+     it down -- and everything administrative folded behind "More", because
+     a row that offers you Delete reads as a record in a table rather than
+     as work in progress. */
+  function curCard(st) {
+    const pr = st.progress || {};
+    const done = pr.left === 0 && pr.total > 0;
+    const reach = st.session && st.session.reachable;
+    const who = st.assignee || null;
+    const when = curWhen(st.opened_at);
+    const key = st.gid + '/' + st.kind;
+
+    const more = el('div', { class: 'cur-set-more',
+                             hidden: curMore[key] ? null : 'hidden' }, [
+      el('button', {
+        class: 'btn ghost sm', text: 'Bank the results…',
+        disabled: pr.specified ? null : 'disabled',
+        title: pr.specified
+          ? 'Publish the decided ones to the Event Bank as a new version. '
+            + 'Not a save — the decisions are already saved.'
+          : 'Nothing has been decided yet',
+        onclick: () => bankSet(st),
+      }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Export CSV',
+        onclick: () => window.open(
+          '/api/curation/' + encodeURIComponent(st.gid) + '/'
+          + encodeURIComponent(st.kind) + '/export', '_blank'),
+      }),
+      el('button', {
+        class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',
+        title: st.archived
+          ? 'Put it back on the shelf'
+          : 'Stronger than closing: off the shelf as well as off the bench. '
+            + 'It can still be opened, curated and banked.',
+        onclick: () => archiveSet(st, !st.archived),
+      }),
+      el('button', {
+        class: 'btn ghost sm danger', text: 'Delete',
+        onclick: () => deleteSet(st),
+      }),
+    ]);
+
+    return el('div', {
+      class: 'cur-set' + (done ? ' done' : '') + (st.archived ? ' archived' : ''),
+    }, [
+      el('div', { class: 'cur-set-top' }, [
+        el('strong', { text: st.name }),
+        el('span', { class: 'hk-chip', text: st.kind_name }),
+        el('span', { class: 'cur-set-sess',
+                     text: (st.session || {}).label || st.gid }),
+        el('div', { style: 'flex:1' }),
+        el('span', { class: 'cur-set-n',
+          text: pr.specified + ' / ' + pr.total
+              + (done ? '  ✓' : '  ·  ' + pr.left + ' left') }),
+      ]),
+      /* Whose it is and when it was last picked up. Without a name on it,
+         forty sets are forty identical rows and there is no way to tell
+         "mine, this morning" from "somebody's, in June". */
+      el('div', { class: 'cur-set-who' }, [
+        el('button', {
+          class: 'cur-who' + (who ? '' : ' none'),
+          title: who ? 'Assigned to ' + who + ' — click to change'
+                     : 'Nobody has this one. Click to put a name on it.',
+          text: who || 'unassigned',
+          onclick: () => assignSet(st),
+        }),
+        when ? el('span', { class: 'cur-set-when',
+          text: 'opened ' + when
+              + (st.opened_by && st.opened_by !== who
+                  ? ' by ' + st.opened_by : '') }) : null,
+      ].filter(Boolean)),
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+      el('div', { class: 'cur-set-tally' },
+         (st.labels || []).map((l) => el('span', {
+           class: 'cur-tally', style: '--cat:' + l.color,
+           text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
+         }))),
+      el('div', { class: 'cur-set-acts' }, [
+        el('button', {
+          class: 'btn sm', text: pr.left ? 'Carry on…' : 'Look again…',
+          disabled: reach ? null : 'disabled',
+          title: reach
+            ? 'Open the recording and step through the candidates'
+            : 'This recording is not on a drive this machine can reach',
+          onclick: () => BARRY.curate.enter(st.gid, st.kind),
+        }),
+        el('button', {
+          class: 'btn ghost sm', text: 'Put it down',
+          title: 'Off the bench. Nothing to save first — every decision '
+               + 'was written as you made it, and it is all still here.',
+          onclick: () => openSet(st, false),
+        }),
+        el('div', { style: 'flex:1' }),
+        el('button', {
+          class: 'btn ghost sm', text: curMore[key] ? 'Less' : 'More…',
+          onclick: () => {
+            curMore[key] = !curMore[key];
+            renderCuration();
+          },
+        }),
+      ]),
+      more,
+    ]);
+  }
+
+  /* Which cards have their administrative half showing. Outside the render
+     so opening it survives the next repaint. */
+  const curMore = {};
+
+  /* The shelf: a picker, and the only place the list is a list. This is
+     where searching and sorting belong -- you are looking something up. */
+  function paintShelf() {
+    const shelf = document.getElementById('curShelf');
+    if (!shelf) return;
+    shelf.innerHTML = '';
+    const sets = (cur && cur.sets) || [];
+    const down = sets.filter((s) => !s.open && !s.archived);
+    const nLeft = down.filter((s) => ((s.progress || {}).left || 0) > 0).length;
+    const nFlag = down.filter(
       (s) => (((s.progress || {}).by_label) || {}).flag > 0).length;
-    const nDone = live.filter((s) => {
+    const nDone = down.filter((s) => {
       const p = s.progress || {};
       return p.left === 0 && p.total > 0;
     }).length;
-    const nDemo = sets.filter(
+    const nDemo = down.filter(
       (s) => String(s.gid || '').startsWith('demo-')).length;
     const nArch = sets.filter((s) => s.archived).length;
 
     const search = el('input', {
       type: 'text', class: 'cur-search', value: curQ.text,
-      placeholder: 'Search a name, a mouse, a session\u2026',
-      oninput: (e) => { curQ.text = e.target.value; paintCurList(); },
+      placeholder: 'Search a name, a mouse, a session, a person…',
+      oninput: (e) => { curQ.text = e.target.value; paintShelfList(); },
     });
-
     const chip = (id, label, n) => el('button', {
       class: 'pill' + (curQ.show === id ? ' active' : ''),
       disabled: (n === 0 && id !== 'all') ? 'disabled' : null,
-      // Every chip shows the count it was given. All used to reach past
-      // it for sets.length, which counts the archived ones the list is no
-      // longer showing.
       text: label + ' (' + n + ')',
-      onclick: () => { curQ.show = id; renderCuration(); },
+      onclick: () => { curQ.show = id; paintShelf(); },
     });
 
-    host.appendChild(el('div', { class: 'cur-filter' }, [
+    shelf.appendChild(el('div', { class: 'cur-filter' }, [
       search,
       el('select', {
         title: 'Order',
-        onchange: (e) => { curQ.sort = e.target.value; paintCurList(); },
+        onchange: (e) => { curQ.sort = e.target.value; paintShelfList(); },
       }, CUR_SORTS.map(([v, t]) => el('option', {
         value: v, text: t, selected: curQ.sort === v ? 'selected' : null }))),
     ]));
-    host.appendChild(el('div', { class: 'res-toolbar cur-chips' }, [
-      chip('all', 'All', live.length),
+    shelf.appendChild(el('div', { class: 'res-toolbar cur-chips' }, [
+      chip('all', 'All', down.length),
       chip('left', 'Unfinished', nLeft),
       chip('flagged', 'Has flagged', nFlag),
       chip('done', 'Done', nDone),
@@ -501,25 +679,35 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'spacer', style: 'flex:1' }),
       el('span', { class: 'hint', id: 'curCount' }),
     ].filter(Boolean)));
-
-    const list = el('div', { class: 'cur-sets', id: 'curSets' });
-    host.appendChild(list);
-    paintCurList();
-    return;
+    /* Named columns. A bare "416 ✓", a dash and "15 minutes ago"
+       are three facts nobody can identify without being told which
+       is which. */
+    shelf.appendChild(el('div', { class: 'cur-shelf-cols' }, [
+      el('span', { class: 'csr-name', text: 'Set' }),
+      el('span', { class: 'csr-sess', text: 'Recording' }),
+      el('span', { class: 'csr-n', text: 'Decided' }),
+      el('span', { class: 'csr-who', text: 'Whose' }),
+      el('span', { class: 'csr-when', text: 'Last touched' }),
+      el('span', {}),
+    ]));
+    shelf.appendChild(el('div', { class: 'cur-shelf-list', id: 'curShelfList' }));
+    paintShelfList();
   }
 
   /* Only the list, so typing in the search box does not rebuild the box
      being typed into and lose the caret. */
-  function paintCurList() {
-    const list = document.getElementById('curSets');
+  function paintShelfList() {
+    const list = document.getElementById('curShelfList');
     if (!list) return;
     list.innerHTML = '';
     const rows = curationRows();
+    const total = ((cur && cur.sets) || []).filter(
+      (s) => !s.open && !s.archived).length;
     const count = document.getElementById('curCount');
     if (count) {
-      count.textContent = rows.length === ((cur && cur.sets) || []).length
+      count.textContent = rows.length === total
         ? rows.length + ' set(s)'
-        : rows.length + ' of ' + ((cur && cur.sets) || []).length;
+        : rows.length + ' of ' + total;
     }
     if (!rows.length) {
       list.appendChild(el('div', { class: 'hint',
@@ -530,68 +718,194 @@ BARRY.views.toolkit = (function () {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
       const reach = st.session && st.session.reachable;
+      const when = curWhen(st.opened_at) || curWhen((st.updated || {}).at);
       list.appendChild(el('div', {
-        class: 'cur-set' + (done ? ' done' : '')
-             + (st.archived ? ' archived' : ''),
+        class: 'cur-shelf-row' + (done ? ' done' : ''),
       }, [
-        el('div', { class: 'cur-set-top' }, [
-          el('strong', { text: st.name }),
-          el('span', { class: 'hk-chip', text: st.kind_name }),
-          el('span', { class: 'cur-set-sess',
-                       text: (st.session || {}).label || st.gid }),
-          el('div', { style: 'flex:1' }),
-          el('span', { class: 'cur-set-n',
-            text: pr.specified + ' / ' + pr.total
-                + (done ? '  \u2713' : '  \u00b7  ' + pr.left + ' left') }),
-        ]),
-        el('div', { class: 'cur-prog small' }, [
-          el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-        ]),
-        el('div', { class: 'cur-set-tally' },
-           (st.labels || []).map((l) => el('span', {
-             class: 'cur-tally', style: '--cat:' + l.color,
-             text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
-           }))),
-        el('div', { class: 'cur-set-acts' }, [
-          el('button', {
-            class: 'btn sm', text: pr.left ? 'Curate\u2026' : 'Review\u2026',
-            disabled: reach ? null : 'disabled',
-            title: reach
-              ? 'Open the recording and step through the candidates'
-              : 'This recording is not on a drive this machine can reach',
-            onclick: () => BARRY.curate.enter(st.gid, st.kind),
-          }),
-          el('button', {
-            class: 'btn ghost sm', text: 'Bank the results\u2026',
-            disabled: pr.specified ? null : 'disabled',
-            title: pr.specified
-              ? 'Send the decided ones to the Event Bank, one entry per '
-                + 'category'
-              : 'Nothing has been decided yet',
-            onclick: () => bankSet(st),
-          }),
-          el('button', {
-            class: 'btn ghost sm', text: 'Export CSV',
-            onclick: () => window.open(
-              '/api/curation/' + encodeURIComponent(st.gid) + '/'
-              + encodeURIComponent(st.kind) + '/export', '_blank'),
-          }),
-          el('button', {
-            class: 'btn ghost sm',
-            text: st.archived ? 'Unarchive' : 'Archive',
-            title: st.archived
-              ? 'Put it back in the list'
-              : 'Out of the way, still there. It can still be opened, '
-                + 'curated and banked.',
-            onclick: () => archiveSet(st, !st.archived),
-          }),
-          el('button', {
-            class: 'btn ghost sm danger', text: 'Delete',
-            onclick: () => deleteSet(st),
-          }),
+        el('span', { class: 'csr-name', text: st.name }),
+        el('span', { class: 'csr-sess',
+                     text: (st.session || {}).label || st.gid }),
+        el('span', { class: 'csr-n',
+          text: done ? pr.total + ' ✓'
+                     : pr.specified + ' / ' + pr.total }),
+        el('span', { class: 'csr-who' + (st.assignee ? '' : ' none'),
+                     text: st.assignee || '—' }),
+        el('span', { class: 'csr-when', text: when || '' }),
+        el('div', { class: 'csr-acts' }, [
+        el('button', {
+          class: 'btn ghost sm', text: 'Pick it up',
+          title: 'Put it on the bench. Opening the recording is the '
+               + 'next step, not this one — a set you cannot curate '
+               + 'right now can still be claimed, named and exported.',
+          onclick: () => openSet(st, true),
+        }),
+        el('button', {
+          class: 'btn ghost sm icon-only',
+          text: '\u2192', title: reach
+            ? 'Pick it up and go straight to the recording'
+            : 'This recording is not on a drive this machine can reach',
+          disabled: reach ? null : 'disabled',
+          onclick: () => BARRY.curate.enter(st.gid, st.kind),
+        }),
         ]),
       ]));
     }
+  }
+
+  /* ---- the workbench verbs ---- */
+  async function openSet(st, on) {
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(st.gid) + '/'
+        + encodeURIComponent(st.kind) + '/open', { open: !!on });
+      if (res.set) Object.assign(st, res.set);
+      renderCuration();
+      const pr = st.progress || {};
+      if (on) {
+        toast('On the bench' + (st.assignee ? ', assigned to '
+              + st.assignee : '') + '. It stays there until you put it '
+              + 'down.', 'ok', 4500);
+      } else {
+        toast('Put down. ' + (pr.specified || 0) + ' decision(s) are saved '
+              + 'and it is on the shelf whenever you want it back.',
+              'ok', 5000);
+      }
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  async function closeAllSets() {
+    const open = curOpen();
+    const ok = await BARRY.confirm(
+      'Clear the bench?',
+      'This puts down ' + open.length + ' set(s). Nothing is archived, '
+      + 'deleted or unbanked, and no decision is lost — they were all '
+      + 'written as they were made. Each one goes back on the shelf.',
+      'Put down ' + open.length + ' set(s)');
+    if (!ok) return;
+    try {
+      const res = await apiPost('/api/curation/close-all', {});
+      toast('Bench cleared — ' + res.n + ' set(s) put down.', 'ok', 5000);
+      await loadCuration();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  /* Who has worked on this repo, cached for the session. Compiled by the
+     server from the profiles, the decisions and the bank, so it is exactly
+     the set of names already stamped on the data. */
+  let roster = null;
+
+  async function people(force) {
+    if (roster && !force) return roster;
+    try {
+      roster = await api('/api/people');
+    } catch (e) {
+      roster = { people: [], not_people: [], me: null };
+    }
+    return roster;
+  }
+
+  /* Pick an owner from the people already here, rather than retyping a
+     name. A free-text box is how one person becomes three -- "Rain",
+     "rain" and "Rain " are three owners to any list that groups by name. */
+  async function assignSet(st) {
+    const r = await people();
+    let chosen = st.assignee || null;
+    const list = el('div', { class: 'bm-list tall person-list' });
+    const fresh = el('input', {
+      type: 'text', class: 'cur-search',
+      placeholder: 'Somebody not listed yet\u2014 type a name',
+    });
+
+    const paint = () => {
+      list.innerHTML = '';
+      const rows = (r.people || []);
+      if (!rows.length) {
+        list.appendChild(el('div', { class: 'hint',
+          text: 'Nobody is on the roster yet. BARRY builds it from the '
+              + 'names already stamped on decisions and bank entries, so '
+              + 'it fills in as work happens \u2014 or type one below.' }));
+      }
+      /* Nobody is a real answer, and the only way to hand a set back. */
+      list.appendChild(el('label', {
+        class: 'bm-row' + (chosen === null ? ' on' : ''),
+      }, [
+        el('input', { type: 'radio', name: 'whose',
+          checked: chosen === null ? 'checked' : null,
+          onchange: () => { chosen = null; paint(); } }),
+        el('span', { class: 'mk-name', text: 'Nobody' }),
+        el('span', { class: 'flagchip', text: 'unassigned' }),
+      ]));
+      for (const p of rows) {
+        const what = Object.keys(p.counts || {})
+          .map((k) => p.counts[k] + ' ' + k).join('  \u00b7  ');
+        list.appendChild(el('label', {
+          class: 'bm-row' + (chosen === p.name ? ' on' : ''),
+        }, [
+          el('input', { type: 'radio', name: 'whose',
+            checked: chosen === p.name ? 'checked' : null,
+            onchange: () => { chosen = p.name; paint(); } }),
+          el('span', { class: 'mk-name', text: p.name }),
+          what ? el('span', { class: 'person-what', text: what }) : null,
+          p.me ? el('span', { class: 'flagchip good', text: 'you' }) : null,
+        ].filter(Boolean)));
+      }
+    };
+    paint();
+
+    const save = async (who) => {
+      closeModal();
+      try {
+        const res = await apiPost(
+          '/api/curation/' + encodeURIComponent(st.gid) + '/'
+          + encodeURIComponent(st.kind) + '/assign', { who: who });
+        if (res.set) Object.assign(st, res.set);
+        renderCuration();
+        toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
+              + 'has this one now.', 'ok', 4000);
+      } catch (e) { toast(e.message, 'err', 8000); }
+    };
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Who is working on this?' }),
+        el('span', { class: 'sub', text: st.name || st.gid }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        list,
+        el('div', { class: 'section-label', text: 'Or add somebody' }),
+        el('div', { class: 'person-add' }, [
+          fresh,
+          el('button', {
+            class: 'btn ghost sm', text: 'Add and assign',
+            onclick: async () => {
+              const name = (fresh.value || '').trim();
+              if (!name) { toast('Type a name first.', 'err', 3000); return; }
+              try {
+                roster = await apiPost('/api/people/add', { name: name });
+              } catch (e) { toast(e.message, 'err', 8000); return; }
+              save(name);
+            },
+          }),
+        ]),
+        (r.not_people || []).length
+          ? el('p', { class: 'hint',
+              text: 'Not offered, because they are a record of where a '
+                  + 'decision came from rather than somebody who can be '
+                  + 'asked about it: '
+                  + r.not_people.map((p) => p.name).join(', ') + '.' })
+          : null,
+      ].filter(Boolean)),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        el('button', { class: 'btn', text: 'Assign',
+                       onclick: () => save(chosen) }),
+      ]),
+    ]));
   }
 
   async function archiveSet(st, on) {
@@ -854,10 +1168,18 @@ BARRY.views.toolkit = (function () {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(st.gid) + '/'
         + encodeURIComponent(st.kind) + '/bank', { added_by: who });
-      toast('Banked ' + res.entries.length + ' entr'
-            + (res.entries.length === 1 ? 'y' : 'ies') + ': '
-            + res.entries.map((x) => x.label + ' (' + x.n + ')').join(', '),
-            'ok', 8000);
+      /* One entry for the whole set, with the mix in it. `x.label`
+         was left over from the era of one entry per category and the
+         route has never returned it, so this read
+         "Banked 1 entry: undefined (416)". */
+      const it = res.entries[0] || {};
+      const names = it.label_names || {};
+      const mix = Object.keys(it.by_label || {})
+        .sort((a, b) => it.by_label[b] - it.by_label[a])
+        .map((k) => (names[k] || k) + ' ' + it.by_label[k])
+        .join(' \u00b7 ');
+      toast('Banked as version ' + (it.version || 1) + ': '
+            + (it.n || 0) + ' events \u2014 ' + mix, 'ok', 8000);
       BARRY.refreshSync();
     } catch (e) { toast(e.message, 'err', 8000); }
   }

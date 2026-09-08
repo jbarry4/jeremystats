@@ -1,0 +1,468 @@
+BARRY GUI debug report
+generated  2026-09-08 14:20:52
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     C:\Users\Z390\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    PTEN m24 s4 2024-07-16
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+Changed everything from garbage to dentate spike, clicked on bank results and when out and got a bunch of errors. And no version saved.
+
+UI ACTIONS, oldest first (31)
+------------------------------------------------------------------
+:29.442Z  link.scope                 {"scope": "session"}
+:30.032Z  session.open               {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "channels": 64, "fs": 30000, "duration_s": 1201.6981333333333, "restored": ["2 ba
+:30.056Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:48.674Z  session.open               {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "channels": 64, "fs": 30000, "duration_s": 2148.113066666667, "restored": ["
+:48.794Z  window.change              {"t0": 329.573, "span": 1, "scope": "session"}
+:48.801Z  curation.enter             {"gid": "s4b8436913f72", "kind": "ds", "n": 738, "left": 0}
+:48.821Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:17.461Z  curation.review            {"mode": "all", "n": 738}
+:24.139Z  window.change              {"t0": 8.716, "span": 1, "scope": "session"}
+:27.330Z  window.change              {"t0": 18.131, "span": 1, "scope": "session"}
+:29.562Z  window.change              {"t0": 222.106, "span": 1, "scope": "session"}
+:36.014Z  window.change              {"t0": 800.004, "span": 1, "scope": "session"}
+:45.447Z  window.change              {"t0": 1212.983, "span": 1, "scope": "session"}
+:59.639Z  window.change              {"t0": 1213.483, "span": 1, "scope": "session"}
+:07.406Z  window.change              {"t0": 1213.653, "span": 1, "scope": "session"}
+:11.538Z  window.change              {"t0": 1257.342, "span": 1, "scope": "session"}
+:15.715Z  window.change              {"t0": 1301.773, "span": 1, "scope": "session"}
+:19.763Z  window.change              {"t0": 1352.506, "span": 1, "scope": "session"}
+:24.008Z  window.change              {"t0": 1393.138, "span": 1, "scope": "session"}
+:28.042Z  window.change              {"t0": 1451.016, "span": 1, "scope": "session"}
+:32.110Z  window.change              {"t0": 1515.15, "span": 1, "scope": "session"}
+:36.423Z  window.change              {"t0": 1737.666, "span": 1, "scope": "session"}
+:40.577Z  window.change              {"t0": 1995.538, "span": 1, "scope": "session"}
+:44.909Z  window.change              {"t0": 2042.363, "span": 1, "scope": "session"}
+:57.615Z  window.change              {"t0": 2141.742, "span": 1, "scope": "session"}
+:08.738Z  curation.leave             {"gid": "s4b8436913f72", "kind": "ds", "left": 0}
+:29.640Z  window.change              {"t0": 8.716, "span": 1, "scope": "session"}
+:29.667Z  curation.enter             {"gid": "s4b8436913f72", "kind": "ds", "n": 738, "left": 0}
+:51.613Z  curation.leave             {"gid": "s4b8436913f72", "kind": "ds", "left": 0}
+:51.781Z  window.change              {"t0": 8.716, "span": 1, "scope": "session"}
+:51.795Z  curation.enter             {"gid": "s4b8436913f72", "kind": "ds", "n": 738, "left": 0}
+
+BROWSER CONSOLE (5)
+------------------------------------------------------------------
+14:19:12  error promise: Cannot read properties of null (reading 'name')
+14:19:13  error promise: Cannot read properties of null (reading 'name')
+14:19:13  error promise: Cannot read properties of null (reading 'name')
+14:19:13  error promise: Cannot read properties of null (reading 'name')
+14:19:13  error promise: Cannot read properties of null (reading 'name')
+
+REQUESTS AS THE BROWSER SAW THEM (400)
+------------------------------------------------------------------
+14:19:09  POST /api/link                            200    23959 ms
+14:19:09  POST /api/link                            200    23954 ms
+14:19:09  POST /api/curation/s4b8436913f72/ds/label 200    24157 ms
+14:19:09  POST /api/link                            200    23999 ms
+14:19:09  POST /api/link                            200    23993 ms
+14:19:09  POST /api/curation/s4b8436913f72/ds/label 200    24212 ms
+14:19:09  POST /api/link                            200    24054 ms
+14:19:09  POST /api/link                            200    24049 ms
+14:19:09  POST /api/curation/s4b8436913f72/ds/label 200    24269 ms
+14:19:09  POST /api/link                            200    24088 ms
+14:19:09  POST /api/link                            200    24096 ms
+14:19:09  POST /api/curation/s4b8436913f72/ds/label 200    24289 ms
+14:19:09  POST /api/link                            200    24126 ms
+14:19:09  POST /api/link                            200    24120 ms
+14:19:09  POST /api/curation/s4b8436913f72/ds/label 200    24345 ms
+14:19:09  POST /api/link                            200    24189 ms
+14:19:09  POST /api/link                            200    24193 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24395 ms
+14:19:10  POST /api/link                            200    24227 ms
+14:19:10  POST /api/link                            200    24222 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24433 ms
+14:19:10  POST /api/link                            200    24274 ms
+14:19:10  POST /api/link                            200    24270 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24504 ms
+14:19:10  POST /api/link                            200    24325 ms
+14:19:10  POST /api/link                            200    24321 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24540 ms
+14:19:10  POST /api/link                            200    24389 ms
+14:19:10  POST /api/link                            200    24386 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24586 ms
+14:19:10  POST /api/link                            200    24432 ms
+14:19:10  POST /api/link                            200    24427 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24638 ms
+14:19:10  POST /api/link                            200    24485 ms
+14:19:10  POST /api/link                            200    24480 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24680 ms
+14:19:10  POST /api/link                            200    24524 ms
+14:19:10  POST /api/link                            200    24515 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24727 ms
+14:19:10  POST /api/link                            200    24581 ms
+14:19:10  POST /api/link                            200    24574 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24793 ms
+14:19:10  POST /api/link                            200    24633 ms
+14:19:10  POST /api/link                            200    24629 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24845 ms
+14:19:10  POST /api/link                            200    24672 ms
+14:19:10  POST /api/link                            200    24668 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24883 ms
+14:19:10  POST /api/link                            200    24712 ms
+14:19:10  POST /api/link                            200    24717 ms
+14:19:10  POST /api/curation/s4b8436913f72/ds/label 200    24948 ms
+14:19:10  POST /api/link                            200    24780 ms
+14:19:10  POST /api/link                            200    24776 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    24992 ms
+14:19:11  POST /api/link                            200    24821 ms
+14:19:11  POST /api/link                            200    24815 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25046 ms
+14:19:11  POST /api/link                            200    24877 ms
+14:19:11  POST /api/link                            200    24870 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25093 ms
+14:19:11  POST /api/link                            200    24911 ms
+14:19:11  POST /api/link                            200    24906 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25117 ms
+14:19:11  POST /api/link                            200    24966 ms
+14:19:11  POST /api/link                            200    24961 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25157 ms
+14:19:11  POST /api/link                            200    25003 ms
+14:19:11  POST /api/link                            200    25000 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25206 ms
+14:19:11  POST /api/link                            200    25055 ms
+14:19:11  POST /api/link                            200    25044 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25238 ms
+14:19:11  POST /api/link                            200    25086 ms
+14:19:11  POST /api/link                            200    25083 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25307 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25346 ms
+14:19:11  POST /api/link                            200    24791 ms
+14:19:11  POST /api/link                            200    24787 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25420 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25442 ms
+14:19:11  POST /api/link                            200    24597 ms
+14:19:11  POST /api/curation/s4b8436913f72/ds/label 200    25614 ms
+14:19:11  POST /api/link                            200    24392 ms
+14:19:12  POST /api/csc/window                      200    25681 ms
+14:19:12  POST /api/curation/s4b8436913f72/ds/label 200    25761 ms
+14:19:12  POST /api/link                            200    24180 ms
+14:19:12  POST /api/curation/s4b8436913f72/ds/label 200    25387 ms
+14:19:12  POST /api/curation/s4b8436913f72/ds/label 200    25312 ms
+14:19:12  GET  /api/curation/s4b8436913f72/ds/banke 200    21401 ms
+14:19:12  POST /api/csc/window                      200    25876 ms
+14:19:12  GET  /api/link                            200    14217 ms
+14:19:12  POST /api/curation/s4b8436913f72/ds/label 200    25298 ms
+14:19:13  POST /api/curation/s4b8436913f72/ds/label 200    25035 ms
+14:19:13  POST /api/link                            200     6084 ms
+14:19:13  POST /api/link                            200     4316 ms
+14:19:13  POST /api/csc/window                      200    14372 ms
+14:19:13  POST /api/csc/window                      200    15792 ms
+14:19:13  GET  /api/curation/s4b8436913f72/ds/banke 200    20669 ms
+14:19:13  GET  /api/link                            200      705 ms
+14:19:13  POST /api/csc/window                      200     4855 ms
+14:19:13  GET  /api/curation/s4b8436913f72/ds/banke 200     8119 ms
+14:19:13  GET  /api/curation/s4b8436913f72/ds/banke 200     7623 ms
+14:19:13  GET  /api/curation/s4b8436913f72/ds/banke 200     7398 ms
+14:19:14  POST /api/csc/window                      200     5033 ms
+14:19:14  POST /api/session/state                   200    26397 ms
+14:19:15  POST /api/session/state                   200    16180 ms
+14:19:15  POST /api/session/state                   200    15456 ms
+14:19:25  GET  /api/bank                            200       17 ms
+14:19:25  GET  /api/bank/46ca2186d3a7               200       27 ms
+14:19:26  GET  /api/decks                           200      102 ms
+14:19:29  GET  /api/curation                        200     1600 ms
+14:19:29  GET  /api/curation/s4b8436913f72/ds       200       59 ms
+14:19:29  POST /api/link                            200      192 ms
+14:19:29  GET  /api/link                            200    16089 ms
+14:19:29  POST /api/link                            200      191 ms
+14:19:29  POST /api/link                            200      186 ms
+14:19:29  POST /api/curation/s4b8436913f72/ds/open  200      326 ms
+14:19:30  POST /api/csc/window                      200      414 ms
+14:19:32  POST /api/session/state                   200     1733 ms
+14:19:34  GET  /api/registry                        200     5266 ms
+14:19:39  GET  /api/curation                        200     1472 ms
+14:19:42  GET  /api/registry                        200     2891 ms
+14:19:47  POST /api/curation/s4b8436913f72/ds/open  200       75 ms
+14:19:51  POST /api/link                            200        7 ms
+14:19:51  GET  /api/link                            200    21730 ms
+14:19:51  GET  /api/curation/s4b8436913f72/ds       200       53 ms
+14:19:52  POST /api/link                            200      265 ms
+14:19:52  POST /api/link                            200      265 ms
+14:19:52  POST /api/link                            200      262 ms
+14:19:52  GET  /api/link                            200      159 ms
+14:19:52  POST /api/curation/s4b8436913f72/ds/open  200      369 ms
+14:19:52  POST /api/csc/window                      200      446 ms
+14:19:53  POST /api/session/state                   200      665 ms
+14:19:58  POST /api/csc/window                      200      250 ms
+14:20:04  GET  /api/errors                          200       15 ms
+14:20:04  GET  /api/feedback                        200       23 ms
+14:20:04  GET  /api/errors/grouped                  200       41 ms
+14:20:04  GET  /api/debug/trace                     200       31 ms
+14:20:17  GET  /api/link                            200    25067 ms
+14:20:42  GET  /api/link                            200    25014 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (200)
+------------------------------------------------------------------
+14:20:04  GET  /api/errors/grouped              200     11.1 ms  limit=600
+14:20:04  GET  /api/feedback                    200      5.5 ms  
+14:20:04  GET  /api/errors                      200      3.4 ms  limit=300
+14:19:58  POST /api/csc/window                  200    228.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 8.716, "t1": 9.716, "channels": "[31 items]", "px": 25
+14:19:55  GET  /api/curation/s4b8436913f72/ds   200    673.8 ms  
+14:19:53  POST /api/session/state               200    658.6 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:19:52  POST /api/prefs                       200     10.0 ms  {"patch": "{themes}"}
+14:19:52  POST /api/pipeline/check              200    299.2 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+14:19:52  POST /api/panel                       200      2.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 8.716, "t1": 9.716, "channels"
+14:19:52  POST /api/panel                       200      0.5 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "voltage", "t0": 8.716, "t1": 9.716, "channels": "[
+14:19:52  POST /api/panel                       200      0.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "theta", "t0": 8.716, "t1": 9.716, "channels": "[31
+14:19:52  POST /api/panel                       200      1.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "csd", "t0": 8.716, "t1": 9.716, "channels": "[31 i
+14:19:52  GET  /api/sync/status                 200     78.3 ms  
+14:19:52  POST /api/csc/overview                200      0.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "channel": 1, "bins": 700}
+14:19:52  POST /api/events/nev                  200      0.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34\\Events.nev", "session_path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34"}
+14:19:52  POST /api/csc/open                    200     56.9 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "invert": true}
+14:19:52  GET  /api/presets/layouts             200      2.7 ms  
+14:19:52  GET  /api/jobs                        200      0.1 ms  
+14:19:52  GET  /api/panels                      200     10.5 ms  
+14:19:52  GET  /api/probes                      200      0.2 ms  
+14:19:52  GET  /api/presets/filters             200      1.3 ms  
+14:19:52  GET  /api/pipeline                    200      0.2 ms  
+14:19:52  GET  /api/prefs                       200      1.2 ms  
+14:19:52  GET  /api/catalog                     200    267.7 ms  
+14:19:52  POST /api/csc/window                  200    306.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 8.716, "t1": 9.716, "channels": "[31 items]", "px": 25
+14:19:52  GET  /api/profile                     200      3.4 ms  
+14:19:51  POST /api/curation/s4b8436913f72/ds/o 200    187.2 ms  {"open": true}
+14:19:51  GET  /api/curation/s4b8436913f72/ds   200     45.2 ms  
+14:19:47  POST /api/curation/s4b8436913f72/ds/o 200     70.5 ms  {"open": false}
+14:19:42  GET  /api/registry                    200   2880.9 ms  
+14:19:39  GET  /api/curation                    200   1466.3 ms  
+14:19:34  GET  /api/registry                    200   5258.9 ms  
+14:19:33  POST /api/panel                       200      5.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 8.716, "t1": 9.716, "channels"
+14:19:33  POST /api/panel                       200      0.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "voltage", "t0": 8.716, "t1": 9.716, "channels": "[
+14:19:33  POST /api/panel                       200      3.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "csd", "t0": 8.716, "t1": 9.716, "channels": "[31 i
+14:19:33  POST /api/panel                       200      0.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "theta", "t0": 8.716, "t1": 9.716, "channels": "[31
+14:19:33  GET  /api/curation/s4b8436913f72/ds   200    931.8 ms  
+14:19:32  POST /api/panel                       200    963.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 2142.242, "t1": 2143.242, "cha
+14:19:32  POST /api/session/state               200   1727.2 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:19:31  POST /api/panel                       200    203.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "theta", "t0": 2142.242, "t1": 2143.242, "channels"
+14:19:31  POST /api/panel                       200    138.1 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "csd", "t0": 2142.242, "t1": 2143.242, "channels": 
+14:19:31  POST /api/panel                       200     69.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "voltage", "t0": 2142.242, "t1": 2143.242, "channel
+14:19:31  GET  /api/sync/status                 200   1210.5 ms  
+14:19:31  POST /api/csc/overview                200      0.9 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "channel": 1, "bins": 700}
+14:19:31  POST /api/events/nev                  200      1.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34\\Events.nev", "session_path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34"}
+14:19:31  POST /api/csc/open                    200   1165.4 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "invert": true}
+14:19:31  POST /api/prefs                       200    828.5 ms  {"patch": "{themes}"}
+14:19:30  POST /api/pipeline/check              200    423.5 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+14:19:30  GET  /api/presets/layouts             200      0.7 ms  
+14:19:30  GET  /api/panels                      200     12.3 ms  
+14:19:30  GET  /api/jobs                        200      0.1 ms  
+14:19:30  GET  /api/presets/filters             200      2.1 ms  
+14:19:30  GET  /api/probes                      200      0.1 ms  
+14:19:30  GET  /api/pipeline                    200      0.2 ms  
+14:19:30  GET  /api/prefs                       200      0.9 ms  
+14:19:30  GET  /api/catalog                     200    253.8 ms  
+14:19:30  POST /api/csc/window                  200    281.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 8.716, "t1": 9.716, "channels": "[31 items]", "px": 25
+14:19:29  GET  /api/profile                     200      1.8 ms  
+14:19:29  POST /api/curation/s4b8436913f72/ds/o 200    171.1 ms  {"open": true}
+14:19:29  GET  /api/curation/s4b8436913f72/ds   200     52.1 ms  
+14:19:29  GET  /api/curation                    200   1588.4 ms  
+14:19:26  GET  /api/decks                       200     13.9 ms  
+14:19:25  GET  /api/bank/46ca2186d3a7           200      0.9 ms  
+14:19:25  GET  /api/bank                        200      5.9 ms  
+14:19:15  POST /api/session/state               200   2647.5 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:19:14  POST /api/session/state               200   2075.1 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:19:14  POST /api/session/state               200   2270.6 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:19:13  POST /api/csc/window                  200    480.9 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2142.242, "t1": 2143.242, "channels": "[31 items]", "p
+14:19:13  GET  /api/curation/s4b8436913f72/ds/b 200      1.8 ms  
+14:19:13  GET  /api/curation/s4b8436913f72/ds/b 200      3.0 ms  
+14:19:13  GET  /api/curation/s4b8436913f72/ds/b 200      1.8 ms  
+14:19:13  POST /api/csc/window                  200    610.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2142.242, "t1": 2143.242, "channels": "[31 items]", "p
+14:19:13  GET  /api/curation/s4b8436913f72/ds/b 200     16.3 ms  
+14:19:13  POST /api/csc/window                  200    507.1 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2142.242, "t1": 2143.242, "channels": "[31 items]", "p
+14:19:13  POST /api/csc/window                  200    784.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2141.742, "t1": 2142.742, "channels": "[31 items]", "p
+14:19:13  POST /api/curation/s4b8436913f72/ds/l 200    837.6 ms  {"event": "e76e36bf585", "label": "spike"}
+14:19:12  POST /api/curation/s4b8436913f72/ds/l 200    887.6 ms  {"event": "e76e36bf585", "label": "spike"}
+14:19:12  POST /api/csc/window                  200   1056.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2142.242, "t1": 2143.242, "channels": "[31 items]", "p
+14:19:12  GET  /api/curation/s4b8436913f72/ds/b 200     24.6 ms  
+14:19:12  POST /api/curation/s4b8436913f72/ds/l 200    678.0 ms  {"event": "e76e36bf585", "label": "spike"}
+14:19:12  POST /api/curation/s4b8436913f72/ds/l 200    598.6 ms  {"event": "e36cbf1c93c", "label": "spike"}
+14:19:12  POST /api/curation/s4b8436913f72/ds/l 200    671.4 ms  {"event": "e4e24461aa1", "label": "spike"}
+14:19:12  POST /api/csc/window                  200    575.5 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2139.464, "t1": 2140.464, "channels": "[31 items]", "p
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    561.8 ms  {"event": "e5c2cc41b3e", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    444.9 ms  {"event": "ee069cd5e7c", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    448.2 ms  {"event": "e6d7e97b5c7", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    444.1 ms  {"event": "ec0c3fb167b", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    419.5 ms  {"event": "e366e2b79b0", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    420.6 ms  {"event": "e5ae14839d6", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    425.1 ms  {"event": "e72fe2f080b", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    441.4 ms  {"event": "e638b288d7d", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    450.4 ms  {"event": "e5455c67f10", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    447.3 ms  {"event": "e01816a846a", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    468.2 ms  {"event": "ec91d166d55", "label": "spike"}
+14:19:11  POST /api/curation/s4b8436913f72/ds/l 200    482.2 ms  {"event": "eaa74c08968", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    465.3 ms  {"event": "e9e68feb628", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    453.2 ms  {"event": "ec5120a46eb", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    463.9 ms  {"event": "eb0ca117229", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    469.4 ms  {"event": "e30ed7002c9", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    450.8 ms  {"event": "ea5c7c66057", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    455.4 ms  {"event": "ef7085571fa", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    447.1 ms  {"event": "e4887b9d5af", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    470.7 ms  {"event": "e2645e8d629", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    440.9 ms  {"event": "e917cb49d9d", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    460.9 ms  {"event": "eda2c8b6597", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    435.6 ms  {"event": "e88d4bcf3a4", "label": "spike"}
+14:19:10  POST /api/curation/s4b8436913f72/ds/l 200    437.3 ms  {"event": "ef5747550d1", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    436.0 ms  {"event": "ea685e38c13", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    543.5 ms  {"event": "ec2a097c353", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    577.9 ms  {"event": "e9deda2ceb6", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    628.5 ms  {"event": "e697a303706", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    651.7 ms  {"event": "e7f0479fe57", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    775.5 ms  {"event": "e28ef280694", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    675.7 ms  {"event": "ef87c2be00d", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    634.3 ms  {"event": "e394bbe9906", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    631.3 ms  {"event": "ebff354f39e", "label": "spike"}
+14:19:09  POST /api/curation/s4b8436913f72/ds/l 200    590.6 ms  {"event": "e6c17034492", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    426.6 ms  {"event": "e0327e147d9", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    367.2 ms  {"event": "edadb395de9", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    518.7 ms  {"event": "e4749dc2b4a", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    510.3 ms  {"event": "eee8afc1499", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    467.1 ms  {"event": "e09f53e6a16", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    541.5 ms  {"event": "e2aa1196559", "label": "spike"}
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    699.1 ms  {"event": "e87b261caa8", "label": "spike"}
+14:19:08  POST /api/csc/window                  200   1322.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2041.198, "t1": 2042.198, "channels": "[31 items]", "p
+14:19:08  POST /api/curation/s4b8436913f72/ds/l 200    652.1 ms  {"event": "ed18bb845a1", "label": "spike"}
+14:19:07  POST /api/curation/s4b8436913f72/ds/l 200    573.0 ms  {"event": "ef34b4f8873", "label": "spike"}
+14:19:07  POST /api/csc/window                  200   1413.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2040.202, "t1": 2041.202, "channels": "[31 items]", "p
+14:19:07  POST /api/csc/window                  200   1419.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2039.9, "t1": 2040.9, "channels": "[31 items]", "px": 
+14:19:07  POST /api/curation/s4b8436913f72/ds/l 200    465.1 ms  {"event": "ea0fe68b255", "label": "spike"}
+14:19:07  POST /api/curation/s4b8436913f72/ds/l 200    322.5 ms  {"event": "e8b3d2f39d3", "label": "spike"}
+14:19:07  POST /api/csc/window                  200   1373.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2036.603, "t1": 2037.603, "channels": "[31 items]", "p
+14:19:07  POST /api/csc/window                  200   1334.1 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2035.551, "t1": 2036.551, "channels": "[31 items]", "p
+14:19:06  POST /api/curation/s4b8436913f72/ds/l 200    256.6 ms  {"event": "e28cf88256f", "label": "spike"}
+14:19:06  POST /api/csc/window                  200   1371.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2035.338, "t1": 2036.338, "channels": "[31 items]", "p
+14:19:06  POST /api/curation/s4b8436913f72/ds/l 200     79.2 ms  {"event": "e80428cddf8", "label": "spike"}
+14:19:06  POST /api/csc/window                  200   1390.7 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2034.75, "t1": 2035.75, "channels": "[31 items]", "px"
+14:19:06  POST /api/curation/s4b8436913f72/ds/l 200    258.6 ms  {"event": "e2ced01480b", "label": "spike"}
+14:19:06  POST /api/csc/window                  200   1406.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2022.448, "t1": 2023.448, "channels": "[31 items]", "p
+14:19:06  POST /api/curation/s4b8436913f72/ds/l 200    202.5 ms  {"event": "eac2d82c741", "label": "spike"}
+14:19:05  POST /api/curation/s4b8436913f72/ds/l 200    296.4 ms  {"event": "e38daaaa081", "label": "spike"}
+14:19:05  POST /api/csc/window                  200   1344.4 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2021.415, "t1": 2022.415, "channels": "[31 items]", "p
+14:19:05  POST /api/curation/s4b8436913f72/ds/l 200    334.6 ms  {"event": "e8b126c4770", "label": "spike"}
+14:19:05  POST /api/csc/window                  200   1370.5 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2020.021, "t1": 2021.021, "channels": "[31 items]", "p
+14:19:05  POST /api/curation/s4b8436913f72/ds/l 200    361.1 ms  {"event": "e42508244ee", "label": "spike"}
+14:19:05  POST /api/csc/window                  200   1077.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2017.2, "t1": 2018.2, "channels": "[31 items]", "px": 
+14:19:05  POST /api/curation/s4b8436913f72/ds/l 200    468.7 ms  {"event": "ee3ab690d89", "label": "spike"}
+14:19:04  POST /api/curation/s4b8436913f72/ds/l 200    394.3 ms  {"event": "e7349df8e75", "label": "spike"}
+14:19:04  POST /api/csc/window                  200   1025.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2016.102, "t1": 2017.102, "channels": "[31 items]", "p
+14:19:04  POST /api/curation/s4b8436913f72/ds/l 200    406.6 ms  {"event": "ea6c6e698b4", "label": "spike"}
+14:19:04  POST /api/csc/window                  200    973.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2014.844, "t1": 2015.844, "channels": "[31 items]", "p
+14:19:04  POST /api/curation/s4b8436913f72/ds/l 200    390.3 ms  {"event": "e47cd7e5240", "label": "spike"}
+14:19:04  POST /api/curation/s4b8436913f72/ds/l 200    432.6 ms  {"event": "e05cca5776c", "label": "spike"}
+14:19:04  POST /api/curation/s4b8436913f72/ds/l 200    678.1 ms  {"event": "e7eed7e92b6", "label": "spike"}
+14:19:04  POST /api/csc/window                  200    747.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2014.676, "t1": 2015.676, "channels": "[31 items]", "p
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    684.2 ms  {"event": "e62125c4fcb", "label": "spike"}
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    568.3 ms  {"event": "ecb69053cc0", "label": "spike"}
+14:19:03  POST /api/csc/window                  200    505.2 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 2014.553, "t1": 2015.553, "channels": "[31 items]", "p
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    594.8 ms  {"event": "eb82929b532", "label": "spike"}
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    611.4 ms  {"event": "e4726860187", "label": "spike"}
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    539.1 ms  {"event": "e32a17f5a48", "label": "spike"}
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    595.9 ms  {"event": "e79aa6f1709", "label": "spike"}
+14:19:03  POST /api/csc/window                  200   1236.0 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1995.896, "t1": 1996.896, "channels": "[31 items]", "p
+14:19:03  POST /api/curation/s4b8436913f72/ds/l 200    421.2 ms  {"event": "eb282136bbd", "label": "spike"}
+14:19:02  POST /api/csc/window                  200   1327.1 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1995.538, "t1": 1996.538, "channels": "[31 items]", "p
+14:19:02  POST /api/curation/s4b8436913f72/ds/l 200    444.4 ms  {"event": "e0a24819e30", "label": "spike"}
+14:19:02  POST /api/panel                       200   2685.4 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1232.978, "t1": 1233.978, "cha
+14:19:02  POST /api/curation/s4b8436913f72/ds/l 200    275.4 ms  {"event": "ef81e2e0fa7", "label": "spike"}
+14:19:02  POST /api/csc/window                  200   1313.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1994.489, "t1": 1995.489, "channels": "[31 items]", "p
+14:19:02  POST /api/curation/s4b8436913f72/ds/l 200    181.4 ms  {"event": "e14d38661ae", "label": "spike"}
+14:19:02  POST /api/csc/window                  200   1391.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1990.203, "t1": 1991.203, "channels": "[31 items]", "p
+14:19:01  POST /api/curation/s4b8436913f72/ds/l 200    387.0 ms  {"event": "ebd0745f8b0", "label": "spike"}
+14:19:01  POST /api/csc/window                  200   1469.4 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1989.85, "t1": 1990.85, "channels": "[31 items]", "px"
+14:19:01  POST /api/curation/s4b8436913f72/ds/l 200    312.7 ms  {"event": "e9e7d0ae34b", "label": "spike"}
+14:19:01  POST /api/csc/window                  200   1155.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1988.291, "t1": 1989.291, "channels": "[31 items]", "p
+14:19:01  POST /api/curation/s4b8436913f72/ds/l 200    343.2 ms  {"event": "e744f934796", "label": "spike"}
+14:19:01  POST /api/csc/window                  200    923.8 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1984.735, "t1": 1985.735, "channels": "[31 items]", "p
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    180.0 ms  {"event": "e0e5bc5b4ec", "label": "spike"}
+14:19:00  POST /api/csc/window                  200    746.5 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "t0": 1983.02, "t1": 1984.02, "channels": "[31 items]", "px"
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    205.6 ms  {"event": "ea7a8e34040", "label": "spike"}
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    120.2 ms  {"event": "ee02b47ae4f", "label": "spike"}
+14:19:00  POST /api/panel                       200    552.3 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "theta", "t0": 1232.978, "t1": 1233.978, "channels"
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    189.5 ms  {"event": "e667855e1f6", "label": "spike"}
+14:19:00  POST /api/panel                       200    330.4 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "voltage", "t0": 1232.978, "t1": 1233.978, "channel
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    493.0 ms  {"event": "ecde2f05aa7", "label": "spike"}
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    454.1 ms  {"event": "e2559d29054", "label": "spike"}
+14:19:00  POST /api/panel                       200    233.6 ms  {"path": "D:\\PTEN\\CTL\\m24_ptenblind\\m24s4jul16\\2024-07-16_14-11-34", "even_only": false, "invert": true, "panel": "csd", "t0": 1232.978, "t1": 1233.978, "channels": 
+14:19:00  POST /api/curation/s4b8436913f72/ds/l 200    459.3 ms  {"event": "e5577357c09", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    440.7 ms  {"event": "e196cce0481", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    413.8 ms  {"event": "ed963f4f705", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    438.7 ms  {"event": "ea638da30d0", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    425.5 ms  {"event": "e7c17a7900c", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    441.1 ms  {"event": "e9f06800d9e", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    425.5 ms  {"event": "e6570ffd9fa", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    456.1 ms  {"event": "efc8d05de01", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    461.6 ms  {"event": "ef5d1d7ed04", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    457.7 ms  {"event": "ead6d614fc4", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    465.8 ms  {"event": "ec0b8df4b91", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    506.2 ms  {"event": "e1ca80c05ac", "label": "spike"}
+14:18:59  POST /api/curation/s4b8436913f72/ds/l 200    676.8 ms  {"event": "e70140fa5bf", "label": "spike"}
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-08T14:06:17-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T13:57:22-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-05T16:36:19-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-04T16:17:44.655608%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+
+This machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.
+[2026-09-04T13:52:35-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json.tmp' -> 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json'
+[2026-09-04T11:56:01-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:37-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:34-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:44:01-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-04T11:43:20-04:00] run:pip install phy: Run failed with exit code 1
+Requirement already satisfied: prompt-toolkit<3.1.0,>=3.0.41 in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (3.0.43)
+Requirement already satisfied: stack-data in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (0.2.0)
+Requirement already satisfied: platformdirs>=2.5 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (4.3.7)
+Requirement already satisfied: pywin32>=300 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (308)
+Requirement already satisfied: six>=1.5 in c:\users\z390\miniconda3\lib\site-packages (from python-dateutil>=2.7->matplotlib->phy) (1.17.0)
+Requirement already satisfied: cloudpickle>=3.0.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (3.0.0)
+Requirement already satisfied: fsspec>=2021.09.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (2026.7.0)
+Collecting partd>=1.4.0 (from dask->phylib<3,>=2.7.0->phy)
+  Downloading partd-1.4.2-py3-none-any.whl.metadata (4.6 kB)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in c:\users\z390\min
+[2026-09-04T11:43:06-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-04T11:41:49-04:00] run:pip install torch: Run failed with exit code 1
+$ C:\Users\Z390\miniconda3\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+  cwd: C:\Users\Z390\Desktop\jeremystats
+Looking in indexes: https://download.pytorch.org/whl/cu121
+ERROR: Could not find a version that satisfies the requirement torch (from versions: none)
+ERROR: No matching distribution found for torch
+-- exited with code 1 after 2.8s --
+[2026-09-04T11:40:02-04:00] cloud.sync: GET /rest/v1/results?updated_at=gt.2026-09-04T15:33:55%2B00:00&select=*&limit=1000&offset=0 -> HTTP 555 Internal server error.

@@ -27,7 +27,8 @@ from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                dsimport,
                feedback as feedbackmod,
                profile as profilemod,
-               layers, live, mice as micebook, nlx, pipeline, prewarm,
+               layers, live, mice as micebook, nlx, people as peoplemod,
+               pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, store,
                storyboard, sysinfo, toolkit, video)
@@ -2054,6 +2055,92 @@ def api_curation_rename(gid, kind):
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
 
 
+@app.route("/api/curation/<gid>/<kind>/open", methods=["POST"])
+def api_curation_open(gid, kind):
+    """Put a set on the workbench, or take it off.
+
+    Closing costs nothing and requires nothing. Every decision was
+    written through the moment it was made, so there is no unsaved state
+    to protect and no banking to do first -- banking is publishing a
+    result, not saving work.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    on = body.get("open")
+    on = True if on is None else bool(on)
+    try:
+        rec = CURATE.open_set(gid, kind, on, who=body.get("who"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    STORE.record_activity([{
+        "action": "curation.open" if on else "curation.close",
+        "detail": {"gid": gid, "kind": kind,
+                   "assignee": rec.get("assignee"),
+                   "left": CURATE.progress(rec).get("left")},
+    }])
+    return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/curation/<gid>/<kind>/assign", methods=["POST"])
+def api_curation_assign(gid, kind):
+    """Say whose set this is."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = CURATE.assign(gid, kind, body.get("who"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    STORE.record_activity([{
+        "action": "curation.assign",
+        "detail": {"gid": gid, "kind": kind,
+                   "assignee": rec.get("assignee")},
+    }])
+    return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/people")
+def api_people():
+    """Everyone who has worked on this repo, most likely first.
+
+    Gathered from the profiles, the curation decisions and the bank
+    rather than from a list somebody has to keep up to date.
+    """
+    return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/people/add", methods=["POST"])
+def api_people_add():
+    """Put somebody on the roster before they have touched anything."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        PEOPLE.add(body.get("name"), body.get("email"),
+                   body.get("note"))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/people/forget", methods=["POST"])
+def api_people_forget():
+    """Take a hand-added name off. A name the data carries stays:
+    it is on the records whether the roster lists it or not."""
+    body = request.get_json(force=True, silent=True) or {}
+    gone = PEOPLE.forget(body.get("name"))
+    return jsonify({"ok": True, "removed": bool(gone),
+                    **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/curation/close-all", methods=["POST"])
+def api_curation_close_all():
+    """Clear the workbench. Nothing is archived, deleted or unbanked."""
+    body = request.get_json(force=True, silent=True) or {}
+    closed = CURATE.close_all(kind=body.get("kind"))
+    if closed:
+        STORE.record_activity([{
+            "action": "curation.close_all",
+            "detail": {"sets": len(closed)},
+        }])
+    return jsonify({"ok": True, "closed": closed, "n": len(closed)})
+
+
 @app.route("/api/curation/<gid>/<kind>/archive", methods=["POST"])
 def api_curation_archive(gid, kind):
     """Put a curation session out of the way, or bring it back."""
@@ -2166,8 +2253,26 @@ def api_curation_bank(gid, kind):
     # The import, now that it is version zero of this entry's history. Its
     # times and its provenance are both carried over, so nothing is lost by
     # it no longer being a record of its own.
+    #
+    # Unless version zero could not hold them. A curated bundle carries
+    # only the decided candidates, so folding the import in is a deletion
+    # of every candidate nobody has reached yet -- recoverable from v0's
+    # snapshot, and only from there. If the import was too big for one,
+    # the second record of those times is the only copy left and it stays.
     if adopt and adopt["id"] != entry["id"]:
-        if BANK.delete(adopt["id"]):
+        v0 = next((v for v in (entry.get("versions") or [])
+                   if v.get("imported")), None)
+        safe = bool(v0 and v0.get("snap"))
+        if not safe:
+            kept_import = {
+                "id": adopt["id"], "name": adopt.get("name"),
+                "n": adopt.get("n"),
+                "why": "kept: too many candidates to snapshot into "
+                       "version 0, so this is still the only record of "
+                       "the times the detector found",
+            }
+            made[0]["kept_import"] = kept_import
+        elif BANK.delete(adopt["id"]):
             removed.append({"id": adopt["id"], "name": adopt.get("name"),
                             "n": adopt.get("n"),
                             "why": "now version 0 of this entry"})
@@ -2299,7 +2404,12 @@ def api_curation_restore(gid, kind):
                         "missing": missing, "version": want_v,
                         "progress": CURATE.progress(rec)})
     try:
-        n, prog = CURATE.label_many(gid, kind, pairs)
+        # Credited to whoever banked that version, at the time they
+        # banked it -- those are their calls, not the calls of the
+        # person putting them back.
+        n, prog = CURATE.label_many(gid, kind, pairs,
+                                    who=ver.get("by"),
+                                    at=ver.get("at"))
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -2329,6 +2439,29 @@ def api_curation_restamp():
         }])
     return jsonify({"ok": True, "sets": rows, "decisions": n,
                     "dry_run": bool(body.get("dry_run"))})
+
+
+@app.route("/api/curation/backfill", methods=["POST"])
+def api_curation_backfill():
+    """Stamp decisions that arrived from an import without provenance.
+
+    Set `dry_run` to read what it would do before letting it run.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    dry = bool(body.get("dry_run"))
+    rows = CURATE.backfill(dry_run=dry)
+    stamped = sum(r["stamped"] for r in rows)
+    reviewed = sum(r["reviewed"] for r in rows)
+    assigned = sum(1 for r in rows if r.get("assigned"))
+    if not dry and (stamped or reviewed or assigned):
+        STORE.record_activity([{
+            "action": "curation.backfill",
+            "detail": {"sets": len(rows), "stamped": stamped,
+                       "reviewed": reviewed, "assigned": assigned},
+        }])
+    return jsonify({"ok": True, "sets": rows, "stamped": stamped,
+                    "reviewed": reviewed, "assigned": assigned,
+                    "dry_run": dry})
 
 
 @app.route("/api/curation/handoff")
@@ -3835,6 +3968,9 @@ REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
+# Compiled from what everything else already records, so it cannot
+# drift out of step with the attribution on the data.
+PEOPLE = peoplemod.People(LOGS_DIR, STORE, PROFILE)
 
 
 # ==========================================================================
@@ -4396,7 +4532,7 @@ def api_kilosort_terminal():
 # ==========================================================================
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
-    results=None, repo_root=REPO_ROOT)
+    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE)
 
 _cloud_lock = threading.Lock()
 _cloud_last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,

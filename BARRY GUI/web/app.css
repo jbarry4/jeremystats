@@ -3718,6 +3718,126 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .cur-set-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* --------------------------------------------------------------------------
+   The bench and the shelf.
+
+   The list used to be one flat run of every set with a search box over it,
+   which read as a table of records rather than as work. The open ones are
+   now the view; everything put down is behind a picker, which is the only
+   part of this that is a lookup and the only part that gets a search field.
+   -------------------------------------------------------------------------- */
+.cur-bench { margin: 10px 0 4px; }
+.cur-bench-empty {
+  padding: 18px 16px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--line); background: transparent;
+  max-width: 68ch;
+}
+.cur-bench-empty p { margin: 0 0 6px; }
+.cur-bench-empty p:first-child { font-size: 12.5px; color: var(--text-2); }
+.cur-bench-empty p:last-child { margin-bottom: 0; line-height: 1.6; }
+
+/* Whose set it is, and when it was last picked up. */
+.cur-set-who {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 4px 0 2px;
+}
+.cur-who {
+  font: inherit; font-size: 10.5px; cursor: pointer;
+  padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--accent-line); background: var(--accent-soft);
+  color: var(--accent);
+}
+.cur-who:hover { background: var(--bg-3); }
+.cur-who.none {
+  border-color: var(--line); background: transparent; color: var(--text-3);
+  border-style: dashed;
+}
+.cur-set-when { font-size: 10.5px; color: var(--text-3); }
+
+/* The administrative half of a card, folded away. A row that offers Delete
+   at the same weight as "carry on" reads as a database row. */
+.cur-set-more {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+/* An author `display` beats the browser's own `[hidden] { display: none }`,
+   so a class like the one above quietly un-hides anything it is put on.
+   This is the only reason the fold worked in the markup and not on screen. */
+.cur-set-more[hidden] { display: none; }
+
+.cur-shelf-head { margin: 14px 0 0; }
+.cur-shelf-toggle {
+  font: inherit; font-size: 11.5px; cursor: pointer;
+  padding: 5px 9px; border-radius: var(--radius-sm);
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-2);
+}
+.cur-shelf-toggle:hover { background: var(--bg-2); color: var(--text-1); }
+.cur-shelf-toggle.on {
+  background: var(--bg-2); border-color: var(--line); color: var(--text-1);
+}
+.cur-shelf {
+  margin: 8px 0 4px; padding: 10px 11px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.cur-shelf-list { display: flex; flex-direction: column; margin-top: 4px; }
+/* A row, not a card: picking something up off the shelf wants a line you
+   can scan forty of, and the detail is on the bench once it is open. */
+.cur-shelf-row, .cur-shelf-cols {
+  display: grid; align-items: center; gap: 10px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) 76px
+                         minmax(0, 172px) 92px auto;
+  padding: 5px 6px; border-radius: 4px; font-size: 11.5px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.cur-shelf-row:last-child { border-bottom: 0; }
+/* The header shares the row's grid so the columns cannot drift apart
+   from the labels naming them -- but it is NOT a `.cur-shelf-row`, because
+   anything counting rows counted it as a set and the shelf reported 43 of
+   42. A label is not a row of data. */
+.cur-shelf-cols {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); padding: 5px 6px 3px;
+  border-bottom: 1px solid var(--line);
+}
+.cur-shelf-cols .csr-name { font-weight: 400; }
+
+/* Picking an owner. A roster row has to say why the name is on it -- "48
+   decisions, 3 banked versions" is what tells two similar names apart. */
+.person-list .bm-row { align-items: baseline; }
+.person-what {
+  font-size: 10px; color: var(--text-3); overflow-wrap: anywhere;
+}
+.person-add { display: flex; gap: 6px; align-items: center; }
+.person-add .cur-search { flex: 1; min-width: 0; }
+.cur-shelf-row:hover { background: var(--bg-3); }
+.csr-name { font-weight: 500; }
+/* Wrapping rather than truncating: a session label that has to be cut to
+   fit is not a label. */
+.csr-name, .csr-sess, .csr-who { overflow-wrap: anywhere; }
+.csr-sess, .csr-when { color: var(--text-3); }
+.csr-n { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.cur-shelf-row.done .csr-n { color: var(--ok); }
+/* Wide enough, and a size down, so a full email address sits on one line
+   rather than wrapping and making every row in the list a different
+   height. It is never cut: an owner you cannot read is not an owner. */
+.csr-who { color: var(--text-2); font-size: 10px; line-height: 1.35; }
+.csr-who.none { color: var(--text-3); }
+.csr-acts { display: flex; gap: 4px; align-items: center; }
+/* The arrow is a shortcut, not a second primary action. */
+.csr-acts .icon-only { padding-left: 8px; padding-right: 8px; }
+
+@media (max-width: 900px) {
+  /* The grid gives up before anything gets cut. */
+  .cur-shelf-row, .cur-shelf-cols {
+    grid-template-columns: 1fr auto; row-gap: 2px;
+  }
+  .cur-shelf-cols { display: none; }
+  .csr-sess, .csr-who, .csr-when { grid-column: 1; }
+}
+
 /* ==========================================================================
    StrataScope -- the layer rail beside the rasters.
 

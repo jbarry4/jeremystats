@@ -1,5 +1,6 @@
 {
   "_at": {
+    "assignee": "2026-09-08T18:01:48.657257+00:00",
     "created": "2026-09-03T21:07:03.420031+00:00",
     "gid": "2026-09-03T21:07:03.420031+00:00",
     "imports": "2026-09-03T21:07:03.420031+00:00",
@@ -9,45 +10,46 @@
     "schema": "2026-09-03T21:07:03.420031+00:00",
     "session_label": "2026-09-03T21:07:03.420031+00:00",
     "source": "2026-09-03T21:07:03.420031+00:00",
-    "updated": "2026-09-03T21:07:03.420031+00:00"
+    "updated": "2026-09-08T18:01:48.657257+00:00"
   },
   "_keys": {
     "events": {
       "e3b26146b40": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "e741f93f339": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "ea380f73943": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "ea7812ced82": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "ec8df77a4f8": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "edcf8533751": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ],
       "ee397631c6e": [
         "set",
-        "2026-09-03T21:07:03.420031+00:00"
+        "2026-09-08T17:44:57.093475+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T21:07:03.420031+00:00",
+    "at": "2026-09-08T18:01:48.657257+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "assignee": "theexaminedexistence@gmail.com",
   "created": {
     "at": "2026-09-03T17:07:03-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -56,38 +58,101 @@
   },
   "events": [
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ee397631c6e",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 544.959
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "edcf8533751",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 571.78
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ea7812ced82",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 909.034
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e741f93f339",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 930.59
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e3b26146b40",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1474.43
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ea380f73943",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1690.955
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ec8df77a4f8",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1717.017
     }
   ],
@@ -155,9 +220,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T14:01:48-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   }
 }

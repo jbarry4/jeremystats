@@ -5163,15 +5163,40 @@ BARRY.views.xplore = (function () {
     return 'curation:' + sessKey(sess);
   }
 
+  /* The same in-flight coalescing `publishLink` has, and for a sharper
+     reason. Curating fires this twice per keystroke -- once for the colour
+     that just changed, once from the move onto the next candidate -- and
+     with none of it coalesced, a fast pass put two link POSTs per keypress
+     into a six-connection pool that also holds a 25s long poll. The queue
+     reached twenty-five seconds, which is what made the decision writes
+     look broken: they were not slow, they were behind this.
+
+     Only the latest pointer matters, so keep that one and send it when the
+     current request finishes. Nothing is lost -- the last value is the
+     truth -- and there is never more than one of these in flight. */
+  let curSending = false;
+  let curPending = null;
+
   async function publishCuration(sess, pointer) {
     if (!sess) return;
+    if (curSending) {
+      curPending = { sess, pointer };
+      return;
+    }
+    curSending = true;
     try {
       const res = await apiPost('/api/link', {
         channel: curationChannel(sess), origin: LINK_ID,
         value: pointer || { off: true },
       });
       if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
-    } catch (e) { /* best effort, like the rest of the linking */ }
+    } catch (e) { /* best effort, like the rest of the linking */
+    } finally {
+      curSending = false;
+      const next = curPending;
+      curPending = null;
+      if (next) publishCuration(next.sess, next.pointer);
+    }
   }
 
   /* The receiving side. Fetch the set once, then follow the index.
