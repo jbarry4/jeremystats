@@ -25,7 +25,13 @@ async function untilN(fn, tries = 250, gap = 100) {
   const f = document.getElementById('app');
   await new Promise((r) => f.addEventListener('load', r, { once: true }));
   const W = f.contentWindow, D = f.contentDocument;
-  await untilN(() => W.BARRY);
+  /* `BARRY` is a top-level const in core.js, so it lives in the
+     script scope and is NOT a property of the frame's window --
+     `W.BARRY` is undefined forever, and waiting on it burned the
+     full 25s timeout on every run before carrying on regardless.
+     `setView` is a function declaration, so it does land on the
+     window, and it is only defined once core.js has run. */
+  await untilN(() => typeof W.setView === 'function');
   const post = (u, b) => W.fetch(u, { method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(b || {}) }).then((r) => r.json());

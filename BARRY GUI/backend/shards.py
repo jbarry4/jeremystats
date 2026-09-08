@@ -244,6 +244,13 @@ def merge(shards, spec=None):
         for k in s:
             if k not in META and k not in fields:
                 fields.append(k)
+    # And fields that exist only as a stamp, because a machine cleared them.
+    # Without this the loop below never asks about them and the tombstone
+    # cannot be weighed against anybody's value.
+    for _m, s in live:
+        for k in (s.get("_at") or {}):
+            if k not in META and k not in fields:
+                fields.append(k)
 
     out, fstamps, kstamps, snap = {}, {}, {}, {}
     for field in fields:
@@ -259,8 +266,17 @@ def merge(shards, spec=None):
             # too, and write() can no longer see that anything happened.
             snap[field] = {k: _fingerprint(v) for k, v in pairs}
         else:
-            cands = [(_stamp_of(s, field), m, s[field])
-                     for m, s in live if field in s]
+            cands = []
+            for m, sh in live:
+                if field in sh:
+                    cands.append((_stamp_of(sh, field), m, sh[field]))
+                elif field in (sh.get("_at") or {}):
+                    # A stamp with nothing beside it. That is not an absence
+                    # of opinion -- it is this machine saying "cleared, at
+                    # this time", and it has to be ranked against the other
+                    # machines' values or the oldest surviving value wins
+                    # forever. Un-archiving came undone exactly here.
+                    cands.append((_stamp_of(sh, field), m, None))
             if not cands:
                 continue
             pick = (min(cands, key=lambda c: (c[0], c[1])) if kind == FIRST
@@ -482,6 +498,19 @@ class Book:
                     continue
                 body[field] = None
                 stamps[field] = at
+
+            # A field this machine already had an opinion about, which the
+            # caller never saw and so cannot have meant to drop. Carried
+            # forward with the stamp it came with -- including an explicit
+            # null, which is the whole point: dropping that silently let
+            # another machine's older value win, so clearing a field held
+            # only until the next unrelated write to the same record.
+            for field, value in (prev or {}).items():
+                if field in META or field in body or field in was:
+                    continue
+                body[field] = value
+                stamps[field] = (prev.get("_at") or {}).get(field) \
+                    or stamps.get(field) or EPOCH
 
             out = dict(body)
             out["_shard"] = {"machine": machine_id(), "at": at,

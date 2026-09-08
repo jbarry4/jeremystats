@@ -342,6 +342,18 @@ BARRY.views.xplore = (function () {
 
   /* Six panes, one per column, in the order the probe figure draws them:
      back shank across the top, front shank across the bottom. */
+  /* The panel type the panes are showing, for a switch that should not
+     change what you are looking at. The focused pane first -- it is the one
+     whose type you last chose -- then any pane of this session, then the
+     default. */
+  function panelNow(sess) {
+    const mine = (p) => p && (!sess || p.sessionId === sess.id) && p.panel;
+    const f = XF.panes[XF.focused];
+    if (mine(f)) return f.panel;
+    const any = XF.panes.find(mine);
+    return (any && any.panel) || DEFAULT_PANEL;
+  }
+
   function layoutProbe(sess, panel) {
     const cols = probeColumns(sess);
     if (!cols || cols.length !== 6) {
@@ -355,7 +367,7 @@ BARRY.views.xplore = (function () {
       return false;
     }
     BARRY.views.xplore.setPanes(cols.map((c) => ({
-      panel: panel || 'csd',
+      panel: panel || panelNow(sess),
       channels: c.indices,
       colTag: c.id,
       colShank: c.shank,
@@ -366,7 +378,7 @@ BARRY.views.xplore = (function () {
             + 'recording.', null, 6000);
     }
     BARRY.activity.log('probe.layout', {
-      probe: sess.probe, panel: panel || 'csd',
+      probe: sess.probe, panel: panel || panelNow(sess),
       columns: cols.map((c) => c.indices.length),
     }, sess);
     return true;
@@ -1079,10 +1091,24 @@ BARRY.views.xplore = (function () {
         title: 'What this pane shows',
         onchange: (e) => {
           const prev = pane.panel;
-          pane.panel = e.target.value;
-          BARRY.activity.log('panel.change', { from: prev, to: pane.panel,
-                                               pane: index }, sess);
-          render(); refreshPane(index);
+          const want = e.target.value;
+          pane.panel = want;
+          /* In a probe layout the panes are one view of one recording split
+             by column, so the panel type belongs to the view. Changing it
+             on one pane used to leave the other five behind: six clicks to
+             go from CSD to voltage raster, and six chances to miss one. */
+          const spread = (sess && sess.probe && sess.probe !== 'h3')
+            ? XF.panes.filter(
+                (p, i) => p && i !== index && p.colTag
+                          && p.sessionId === pane.sessionId)
+            : [];
+          for (const p of spread) p.panel = want;
+          BARRY.activity.log('panel.change', { from: prev, to: want,
+                                               pane: index,
+                                               alsoSet: spread.length }, sess);
+          render();
+          if (spread.length) refreshAll();
+          else refreshPane(index);
         },
       }, panelOpts.concat(extras).map((p) =>
         el('option', { value: p.id, text: p.name,
@@ -6931,12 +6957,18 @@ BARRY.views.xplore = (function () {
       const sess = active();
       if (!sess) { toast('Open a recording first.', 'err');
                    e.target.value = 'h3'; return; }
+      /* Whatever the panes are showing now. Switching probe changes how
+         the array is divided, not what you want to look at -- it used to
+         force a CSD in both directions, so a voltage raster silently
+         became a CSD every time somebody changed probe. */
+      const keep = panelNow(sess);
       sess.probe = e.target.value;
       queueSaveState(sess);
-      BARRY.activity.log('probe.change', { probe: sess.probe }, sess);
+      BARRY.activity.log('probe.change', { probe: sess.probe,
+                                           panel: keep }, sess);
       if (sess.probe === 'h3') {
-        BARRY.views.xplore.setPanes([{ panel: 'csd' }], { col: 0.5, row: 0.5 });
-      } else if (!layoutProbe(sess, 'csd')) {
+        BARRY.views.xplore.setPanes([{ panel: keep }], { col: 0.5, row: 0.5 });
+      } else if (!layoutProbe(sess, keep)) {
         // The layout refused -- say so by putting the control back rather
         // than leaving it claiming a mode that is not on.
         sess.probe = 'h3';

@@ -4,12 +4,12 @@
     "added": {
       "Shahriar": [
         "set",
-        "2026-09-08T18:54:41.437285+00:00"
+        "2026-09-08T19:43:53.931930+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:54:41.437285+00:00",
+    "at": "2026-09-08T19:43:53.931930+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -17,12 +17,12 @@
     {
       "at": "2026-09-08T18:54:41.436836+00:00",
       "by": "Rain",
-      "edited_at": "2026-09-08T18:54:41.436850+00:00",
+      "edited_at": "2026-09-08T19:43:53.931229+00:00",
       "email": "Shahriar.Akhavan-Tafti@uvm.edu",
       "id": "Shahriar",
       "initials": "SA",
       "name": "Shahriar",
-      "role": "PI"
+      "role": "Gradstudent"
     }
   ]
 }

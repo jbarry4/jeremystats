@@ -45,7 +45,13 @@ async function untilN(fn, tries = 250, gap = 100) {
   W.addEventListener('error', (e) => errs.push(
     e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
   W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
-  await untilN(() => W.BARRY);
+  /* `BARRY` is a top-level const in core.js, so it lives in the
+     script scope and is NOT a property of the frame's window --
+     `W.BARRY` is undefined forever, and waiting on it burned the
+     full 25s timeout on every run before carrying on regardless.
+     `setView` is a function declaration, so it does land on the
+     window, and it is only defined once core.js has run. */
+  await untilN(() => typeof W.setView === 'function');
 
   const G = 'demo-ds-tutorial';
   W.eval("setView('toolkit')");

@@ -3,15 +3,15 @@
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
     "pipeline_folders": "2026-09-03T14:08:40.159829+00:00",
     "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
-    "smoke_probe": "2026-09-08T19:07:30.570812+00:00",
+    "smoke_probe": "2026-09-08T19:54:12.927234+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-08T19:12:54.467260+00:00"
+    "updated": "2026-09-08T19:54:13.004356+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-08T19:07:30.991847+00:00"
+        "2026-09-08T19:54:13.289811+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -34,7 +34,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T19:12:54.467260+00:00",
+    "at": "2026-09-08T19:54:13.289811+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -52,10 +52,11 @@
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
     "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
+  "smoke_probe": null,
   "themes": {
     "BarryLab": "horizon-night",
     "DESKTOP-4H65AI7": "horizon-night",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-08T15:12:54-04:00"
+  "updated": "2026-09-08T15:54:13-04:00"
 }

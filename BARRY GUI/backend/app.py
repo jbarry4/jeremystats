@@ -2254,8 +2254,16 @@ def api_curation_open(gid, kind):
     on = body.get("open")
     on = True if on is None else bool(on)
     try:
-        rec = CURATE.open_set(gid, kind, on, who=body.get("who"))
+        rec = CURATE.open_set(gid, kind, on, who=body.get("who"),
+                              unarchive=bool(body.get("unarchive")))
     except curation.CurationError as exc:
+        got = CURATE.get(gid, kind)
+        # An archived set is not a missing one, and the caller can do
+        # something about it -- so say which case this is.
+        if got is not None and got.get("archived"):
+            return jsonify({"ok": False, "archived": True,
+                            "name": got.get("name"),
+                            "error": str(exc)}), 409
         return jsonify({"ok": False, "error": str(exc)}), 404
     STORE.record_activity([{
         "action": "curation.open" if on else "curation.close",
@@ -2673,6 +2681,26 @@ def api_curation_backfill():
         }])
     return jsonify({"ok": True, "sets": rows, "stamped": stamped,
                     "reviewed": reviewed, "assigned": assigned,
+                    "dry_run": dry})
+
+
+@app.route("/api/curation/dedupe", methods=["POST"])
+def api_curation_dedupe():
+    """Collapse candidates that are two records of one time.
+
+    Set `dry_run` to read what it would do before letting it run.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    dry = bool(body.get("dry_run"))
+    rows = CURATE.dedupe(gid=body.get("gid"), kind=body.get("kind"),
+                         dry_run=dry)
+    removed = sum(r["removed"] for r in rows)
+    if not dry and removed:
+        STORE.record_activity([{
+            "action": "curation.dedupe",
+            "detail": {"sets": len(rows), "removed": removed},
+        }])
+    return jsonify({"ok": True, "sets": rows, "removed": removed,
                     "dry_run": dry})
 
 

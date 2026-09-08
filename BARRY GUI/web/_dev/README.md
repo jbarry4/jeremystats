@@ -30,6 +30,8 @@ live server with no build step and no test framework:
 | `curmanage.html` | the curation workbench: the bench, the shelf, that putting a set down costs nothing, and that a banked set's labels survive coming back |
 | `curpose.html` | poses the curation workbench for screenshots: `?open=<n>` and `?shelf=1` |
 | `curprobe.html` | a scratch page for one curation state at a time |
+| `minorui.html` | the small interface faults: the Errors badge, the bank list's scroll, probe switching keeping the panel, one panel change reaching all six panes |
+| `uiprobe.html` | a scratch page for one interface interaction at a time |
 
 Run them by opening, with the server up:
 

@@ -360,14 +360,43 @@ class Curation:
         me = prov.get("user")
         at_import = _now()
 
-        clean = []
+        # The ids this recording already uses for these times.
+        #
+        # A candidate's identity is its time in a recording, not the uuid that
+        # happened to be minted for it. Replacing the list with fresh ids for
+        # the same 416 times looks like a replacement on the machine doing it
+        # and like 416 NEW candidates to every other machine -- events merge
+        # by id, so the two shards hold disjoint id sets for one set of times
+        # and the merge is the union. That is exactly what happened to m33 s8
+        # on 2026-09-08: a set restarted from v0 on one machine while another
+        # held 416 decisions became 832 candidates, half of them undecided
+        # duplicates of the other half.
+        #
+        # So an incoming time that this set already knows keeps the id it
+        # already has, replace or not. Then restarting a set on one machine
+        # and deciding it on another converge instead of doubling.
+        was = self._read(gid, kind) or {}
+        id_at = {}
+        for e in (was.get("events") or []):
+            key = _tkey(e.get("start"))
+            if key is not None and e.get("id"):
+                id_at.setdefault(key, e["id"])
+
+        clean, used = [], set()
         for i, ev in enumerate(events or []):
             try:
                 start = float(ev.get("start") if isinstance(ev, dict) else ev)
             except (TypeError, ValueError):
                 continue
+            keep = id_at.get(_tkey(start))
+            if keep in used:
+                # Two incoming candidates at the same time: only the first
+                # can inherit the id, or they would collapse into one.
+                keep = None
+            if keep:
+                used.add(keep)
             item = {
-                "id": "e" + uuid.uuid4().hex[:10],
+                "id": keep or ("e" + uuid.uuid4().hex[:10]),
                 "start": round(start, 6),
                 "label": UNSPECIFIED,
             }
@@ -397,7 +426,7 @@ class Curation:
             raise CurationError("None of those candidates had a usable time.")
         clean.sort(key=lambda e: e["start"])
 
-        existing = self._read(gid, kind)
+        existing = was or None
         # Kept even when replacing: write() needs the record that was
         # read to know which candidates have gone. Without it the ids it
         # no longer holds get no tombstone, and they come back the next
@@ -793,6 +822,73 @@ class Curation:
                 self._write(rec)
         return out
 
+    @shards.atomic
+    def dedupe(self, gid=None, kind=None, dry_run=False):
+        """Collapse candidates that are two records of one time.
+
+        Written for the fault above: a set restarted on one machine while
+        another held decisions on it ends up with two ids per time, and the
+        BYID merge is their union. Half of them carry the decisions and half
+        are the undecided copies, so the set reads as twice its size and
+        half-finished.
+
+        The one that carries a decision wins; if neither does, the id that
+        sorts first, so two machines running this reach the same answer
+        rather than each keeping a different copy. The loser is removed --
+        which writes a tombstone, so it stays removed after a merge instead
+        of coming back from the other shard.
+        """
+        out = []
+        for rec in self.all():
+            if gid and rec.get("gid") != gid:
+                continue
+            if kind and rec.get("kind") != kind:
+                continue
+            evs = rec.get("events") or []
+            groups = {}
+            for e in evs:
+                key = _tkey(e.get("start"))
+                if key is None:
+                    continue
+                groups.setdefault(key, []).append(e)
+            dups = {k: v for k, v in groups.items() if len(v) > 1}
+            if not dups:
+                continue
+
+            drop, kept_decided = set(), 0
+            for key, rows in dups.items():
+                # A decision beats no decision; then the newest decision;
+                # then the id, so every machine picks the same survivor.
+                rows = sorted(
+                    rows,
+                    key=lambda e: (0 if e.get("label") else 1,
+                                   -_when(e.get("at")).timestamp()
+                                   if e.get("label") else 0,
+                                   str(e.get("id") or "")))
+                if rows[0].get("label"):
+                    kept_decided += 1
+                for e in rows[1:]:
+                    if e.get("id"):
+                        drop.add(e["id"])
+
+            line = {"gid": rec.get("gid"), "kind": rec.get("kind"),
+                    "name": rec.get("name"),
+                    "session_label": rec.get("session_label"),
+                    "was": len(evs), "times": len(groups),
+                    "removed": len(drop), "kept_decided": kept_decided,
+                    # A duplicate that carries a decision of its own is not
+                    # a duplicate this can settle: two people decided two
+                    # records of one candidate and both calls are real.
+                    "both_decided": sum(
+                        1 for rows in dups.values()
+                        if sum(1 for e in rows if e.get("label")) > 1)}
+            out.append(line)
+            if dry_run:
+                continue
+            rec["events"] = [e for e in evs if e.get("id") not in drop]
+            self._write(rec)
+        return out
+
     def with_decisions(self):
         """Every set anybody has actually decided something in."""
         out = []
@@ -919,7 +1015,7 @@ class Curation:
         return n, self.progress(rec)
 
     @shards.atomic
-    def open_set(self, gid, kind, on=True, who=None):
+    def open_set(self, gid, kind, on=True, who=None, unarchive=False):
         """Put a set on the workbench, or take it off.
 
         Closing is not archiving and it is not finishing: nothing is
@@ -941,12 +1037,19 @@ class Curation:
             rec["opened_at"] = _now()
             rec["opened_by"] = who
             rec.pop("closed_at", None)
-            # Picking a set up is a stronger statement than un-archiving it,
-            # so it does that too. The invariant both halves of this rely on
-            # is that archived and open are never both true: the bench is
-            # exactly the open sets, the shelf is exactly the rest, and a
-            # set that managed to be both belonged to neither and vanished.
+            # Archived and open must never both be true: the bench is exactly
+            # the open sets and the shelf is exactly the rest, so a set that
+            # is both belongs to neither and disappears. Opening an archived
+            # set therefore has to un-archive it -- but not by implication.
+            # Doing that silently made archiving undoable by accident, which
+            # is the opposite of what filing something away is for. So it is
+            # refused unless the caller has said it means to.
             if rec.get("archived"):
+                if not unarchive:
+                    raise CurationError(
+                        "That set is archived. Opening it would un-archive "
+                        "it, so say so on purpose rather than by picking it "
+                        "up.")
                 rec.pop("archived", None)
                 rec.pop("archived_at", None)
                 rec.pop("archived_by", None)

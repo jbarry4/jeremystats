@@ -340,20 +340,39 @@ BARRY.views.toolkit = (function () {
     return l;
   }
 
-  async function loadCuration() {
-    const l = (q.tool === 'curate' && !cur)
+  /* The load in flight, so several callers share one. The registry takes
+     seconds on a network share -- nineteen of them in one report -- and
+     without this, entering the tool, a stale flag and a refresh each
+     started their own, and every copy was slower for the company. */
+  let curLoading = null;
+
+  function loadCuration() {
+    if (curLoading) return curLoading;
+    /* The stepped loader whenever this is actually fetching, not only on
+       the very first visit. Coming back from curation the data IS being
+       re-read -- that is the point of the stale flag -- and showing the old
+       cards motionless for five seconds while it happens looked like the
+       view had simply stopped. */
+    const l = (q.tool === 'curate' && (!cur || curStale))
       ? tkLoading('Event curation', ['reading the curation sets',
                                      'reading the recording registry'])
       : null;
-    try {
-      cur = await api('/api/curation');
-      curStale = false;
-      if (l) l.step('reading the recording registry');
-      cur.registry = await api('/api/registry');
-    } catch (e) {
-      cur = { error: e.message, sets: [], kinds: [] };
-    }
-    renderCuration();
+    curLoading = (async () => {
+      try {
+        const got = await api('/api/curation');
+        if (l) l.step('reading the recording registry');
+        got.registry = await api('/api/registry');
+        cur = got;
+        curStale = false;
+      } catch (e) {
+        cur = { error: e.message, sets: [], kinds: [] };
+      } finally {
+        curLoading = null;
+      }
+      renderCuration();
+      return cur;
+    })();
+    return curLoading;
   }
 
   /* How the shelf is being looked at -- the shelf only, because the bench
@@ -760,7 +779,16 @@ BARRY.views.toolkit = (function () {
             ? 'Pick it up and go straight to the recording'
             : 'This recording is not on a drive this machine can reach',
           disabled: reach ? null : 'disabled',
-          onclick: () => BARRY.curate.enter(st.gid, st.kind),
+          /* Through openSet, so an archived set asks the same question
+             here as the button beside it -- going straight to the
+             recording is still picking it up. */
+          onclick: async () => {
+            if (st.archived) {
+              await openSet(st, true);
+              if (st.archived) return;      // the question was declined
+            }
+            BARRY.curate.enter(st.gid, st.kind);
+          },
         }),
         ]),
       ]));
@@ -775,11 +803,25 @@ BARRY.views.toolkit = (function () {
      detector's list with nothing decided, which is how a fresh pass begins,
      and a later version is how you carry on from where somebody left off. */
   async function newCurationSet() {
-    const reg = (cur.registry || {}).tree || [];
+    /* Wait for the registry rather than reading whatever is cached.
+       It is a seconds-long fetch on a network share, and reading it early
+       gave an empty list -- which the code then reported as "no recordings
+       are registered", to somebody with a recording open. */
+    if (!(cur && cur.registry)) {
+      toast('Reading the recording registry\u2026', null, 2500);
+      await loadCuration();
+    }
+    const reg = ((cur || {}).registry || {}).tree || [];
     const rows = reg.flatMap((p) => p.mice.flatMap((m) => m.sessions));
     if (!rows.length) {
-      toast('No recordings are registered yet. Open one in Xplorefinder '
-            + 'first.', 'err', 7000);
+      /* Now it is safe to say which of the two it is. */
+      toast((cur && cur.registry)
+        ? 'The recording registry is empty \u2014 no recording has been '
+          + 'opened on this machine yet. Open one in Xplorefinder and it '
+          + 'will be registered.'
+        : 'Could not read the recording registry'
+          + ((cur || {}).error ? ': ' + cur.error : '.')
+          + ' Nothing can be picked until it answers.', 'err', 9000);
       return;
     }
 
@@ -1005,24 +1047,62 @@ BARRY.views.toolkit = (function () {
   }
 
   /* ---- the workbench verbs ---- */
-  async function openSet(st, on) {
+  async function openSet(st, on, unarchive) {
+    /* Archiving is a decision, so un-doing it is one too. Picking up an
+       archived set used to un-archive it silently -- "archived it and could
+       still just open it" was the report. */
+    if (on && st.archived && !unarchive) {
+      const ok = await BARRY.confirm(
+        'Un-archive "' + (st.name || st.gid) + '"?',
+        'It is archived, which is how a set is filed away. Putting it on '
+        + 'the bench means taking it back out \u2014 a set cannot be both '
+        + 'archived and in use, or it shows up in neither list.',
+        'Un-archive and pick it up');
+      if (!ok) return;
+      return openSet(st, true, true);
+    }
+
+    /* On screen first. The round trip is seconds on a network share, and
+       the answer is already known locally -- the decision was made by the
+       click. Rolled back and said out loud if the write fails. */
+    const was = { open: st.open, archived: st.archived,
+                  opened_at: st.opened_at, closed_at: st.closed_at,
+                  assignee: st.assignee };
+    st.open = !!on;
+    if (on) {
+      st.opened_at = new Date().toISOString();
+      st.archived = false;
+      if (!st.assignee && BARRY.profile && BARRY.profile.who()) {
+        st.assignee = BARRY.profile.who();
+      }
+    } else {
+      st.closed_at = new Date().toISOString();
+    }
+    renderCuration();
+    const pr = st.progress || {};
+    if (on) {
+      toast('On the bench' + (st.assignee ? ', assigned to '
+            + st.assignee : '') + '. It stays there until you put it '
+            + 'down.', 'ok', 4500);
+    } else {
+      toast('Put down. ' + (pr.specified || 0) + ' decision(s) are saved '
+            + 'and it is on the shelf whenever you want it back.',
+            'ok', 5000);
+    }
+
     try {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(st.gid) + '/'
-        + encodeURIComponent(st.kind) + '/open', { open: !!on });
-      if (res.set) Object.assign(st, res.set);
+        + encodeURIComponent(st.kind) + '/open',
+        { open: !!on, unarchive: !!unarchive });
+      // The server's answer is the truth; the guess above only had to be
+      // fast. They agree in every ordinary case.
+      if (res.set) { Object.assign(st, res.set); renderCuration(); }
+    } catch (e) {
+      Object.assign(st, was);
       renderCuration();
-      const pr = st.progress || {};
-      if (on) {
-        toast('On the bench' + (st.assignee ? ', assigned to '
-              + st.assignee : '') + '. It stays there until you put it '
-              + 'down.', 'ok', 4500);
-      } else {
-        toast('Put down. ' + (pr.specified || 0) + ' decision(s) are saved '
-              + 'and it is on the shelf whenever you want it back.',
-              'ok', 5000);
-      }
-    } catch (e) { toast(e.message, 'err', 8000); }
+      toast('That did not save: ' + (e && e.message || e), 'err', 8000);
+    }
   }
 
   async function closeAllSets() {

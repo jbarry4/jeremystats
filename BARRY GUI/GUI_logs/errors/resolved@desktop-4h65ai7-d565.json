@@ -56,7 +56,7 @@
       ],
       "selftest||Test error from the Errors panel": [
         "set",
-        "2026-09-04T15:51:36.654865+00:00"
+        "2026-09-08T19:37:21.357846+00:00"
       ],
       "unhandled:/api/toolkit/bad-channels/export||filename() got multiple values for argument 'scope'": [
         "set",
@@ -69,7 +69,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-04T15:51:36.654865+00:00",
+    "at": "2026-09-08T19:37:21.357846+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -147,8 +147,8 @@
       "note": ""
     },
     "selftest||Test error from the Errors panel": {
-      "at": "2026-09-04T11:51:36-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "at": "2026-09-08T15:37:21-04:00",
+      "by": "Rain",
       "machine": "desktop-4h65ai7-d565",
       "note": ""
     },

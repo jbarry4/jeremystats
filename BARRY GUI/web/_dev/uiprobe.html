@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Probe — what happens to the frame</title>
+<style>html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+#out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* A scratch page for one interaction at a time. Currently: why a saved
+   contentWindow stops having BARRY on it. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) {}
+    await sleep(gap);
+  }
+  return -1;
+}
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  let loads = 1;
+  f.addEventListener('load', () => { loads += 1; p('  !! the frame loaded again (#' + loads + ')'); });
+  const win = () => f.contentWindow;
+  await untilN(() => win().BARRY);
+  await sleep(600);
+
+  const state = (tag) => {
+    const w = win();
+    p(tag + ':');
+    p('   contentWindow      ' + (w ? 'present' : 'MISSING'));
+    p('   .BARRY             ' + (w && w.BARRY ? 'present' : 'MISSING'));
+    p('   .BARRY.refreshSync ' + (w && w.BARRY && typeof w.BARRY.refreshSync));
+    p('   .setView           ' + (w && typeof w.setView));
+    p('   location.hash      ' + (w && w.location ? w.location.hash : '?'));
+    p('   frame loads so far ' + loads);
+  };
+
+  state('at the start');
+
+  p('\n-- eval setView(pipeline) --');
+  try { win().eval("setView('pipeline')"); p('   eval returned'); }
+  catch (e) { p('   eval THREW: ' + e.message); }
+  await sleep(400);
+  state('after setView');
+
+  p('\n-- POST /api/errors/test --');
+  await win().fetch('/api/errors/test', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then((r) => p('   status ' + r.status)).catch((e) => p('   THREW ' + e.message));
+  await sleep(300);
+  state('after the POST');
+
+  p('\n-- GET /api/sync/status --');
+  const st = await win().fetch('/api/sync/status').then((r) => r.json());
+  p('   errors counted: ' + ((st.index || {}).counts || {}).errors);
+  p('   code_changed:   ' + JSON.stringify((st.code_changed || []).slice(0, 3)));
+  await sleep(300);
+  state('after the GET');
+
+  p('\n-- call refreshSync --');
+  try {
+    await win().BARRY.refreshSync();
+    p('   refreshSync returned');
+  } catch (e) { p('   THREW: ' + e.message); }
+  await sleep(400);
+  state('after refreshSync');
+  const b = win().document.getElementById('errBadge');
+  p('\nbadge: text="' + (b && b.textContent) + '" hidden='
+    + (b && b.classList.contains('hidden')));
+  p('\ndone');
+  document.title = 'probe done';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'probe threw';
+} })();
+</script>

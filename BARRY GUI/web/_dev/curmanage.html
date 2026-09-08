@@ -60,7 +60,13 @@ async function untilN(fn, tries = 250, gap = 100) {
   W.addEventListener('error', (e) => errs.push(
     e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
   W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
-  await untilN(() => W.BARRY);
+  /* `BARRY` is a top-level const in core.js, so it lives in the
+     script scope and is NOT a property of the frame's window --
+     `W.BARRY` is undefined forever, and waiting on it burned the
+     full 25s timeout on every run before carrying on regardless.
+     `setView` is a function declaration, so it does land on the
+     window, and it is only defined once core.js has run. */
+  await untilN(() => typeof W.setView === 'function');
 
   const post = (u, b) => W.fetch(u, { method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -288,19 +294,59 @@ async function untilN(fn, tries = 250, gap = 100) {
   await sleep(700);
   check('the Archived filter shows it', !!rowFor(demoName),
         'not in the archived list');
-  /* Picking an archived set up is a stronger statement than un-archiving
-     it, so it does that too -- otherwise it lands on neither the bench (it
-     is archived) nor the shelf (it is open) and simply disappears, which is
-     what happened. The two flags can never both be true. */
+  /* Archiving is a decision, so undoing it is one too. Picking an archived
+     set up used to un-archive it silently -- "archived it and could still
+     just open it" was the report. It now asks, and the two flags can still
+     never both be true: a set that is both belongs to neither list. */
   btn(rowFor(demoName), /^Pick it up$/).click();
-  await untilN(() => cardFor(demoName), 120);
-  await sleep(700);
-  check('picking an archived set up puts it on the bench',
-        !!cardFor(demoName), 'it vanished instead');
-  const un = (await get('/api/curation')).sets.find(
-    (x) => (x.name || '') === demoName);
-  check('and un-archives it, so it is never both', !!un && !un.archived,
-        JSON.stringify(un && { open: un.open, archived: un.archived }));
+  const asked = await (async () => {
+    for (let i = 0; i < 60; i++) {
+      const b = Array.from(D.querySelectorAll('.modal button'))
+        .find((x) => /^Un-archive and pick it up$/.test(x.textContent.trim()));
+      if (b) return b;
+      await sleep(100);
+    }
+    return null;
+  })();
+  check('picking up an archived set asks first', !!asked,
+        'it un-archived without asking');
+  /* Declining leaves it exactly as it was -- that is what makes archiving
+     worth anything. */
+  const no = asked && Array.from(asked.closest('.modal')
+    .querySelectorAll('button')).find((x) => /^Cancel$/.test(x.textContent.trim()));
+  if (no) {
+    no.click();
+    await sleep(900);
+    const still = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === demoName);
+    check('declining leaves it archived and off the bench',
+          !!still && still.archived === true && still.open === false,
+          JSON.stringify(still && { open: still.open,
+                                    archived: still.archived }));
+    check('and it is not on the bench', !cardFor(demoName));
+  }
+  /* Accepting does it. */
+  btn(rowFor(demoName), /^Pick it up$/).click();
+  const yes = await (async () => {
+    for (let i = 0; i < 60; i++) {
+      const b = Array.from(D.querySelectorAll('.modal button'))
+        .find((x) => /^Un-archive and pick it up$/.test(x.textContent.trim()));
+      if (b) return b;
+      await sleep(100);
+    }
+    return null;
+  })();
+  if (yes) {
+    yes.click();
+    await untilN(() => cardFor(demoName), 120);
+    await sleep(900);
+    check('saying yes puts it on the bench', !!cardFor(demoName),
+          'it vanished instead');
+    const un = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === demoName);
+    check('and un-archives it, so it is never both', !!un && !un.archived,
+          JSON.stringify(un && { open: un.open, archived: un.archived }));
+  }
   check('no set anywhere is both open and archived',
         (await get('/api/curation')).sets.every(
           (x) => !(x.open && x.archived)), 'one is both');
@@ -378,11 +424,25 @@ async function untilN(fn, tries = 250, gap = 100) {
                      === ((before || {}).progress || {}).total,
           JSON.stringify([(after || {}).progress, (before || {}).progress]));
     /* And it can be picked straight back up, which is the difference
-       between filing something away and destroying it. */
-    await post('/api/curation/demo-long-session/ied/open', { open: true });
+       between filing something away and destroying it -- but only on
+       purpose. Opening it without saying so is refused, so that archiving
+       cannot be undone as a side effect of looking at something. */
+    const refused = await post('/api/curation/demo-long-session/ied/open',
+                               { open: true });
+    check('opening it does not quietly un-archive it',
+          refused.ok === false && refused.archived === true,
+          JSON.stringify(refused));
+    const back0 = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === 'THROWAWAY for the harness');
+    check('so it is still archived and still not open',
+          !!back0 && back0.archived === true && back0.open === false,
+          JSON.stringify(back0 && { open: back0.open,
+                                    archived: back0.archived }));
+    await post('/api/curation/demo-long-session/ied/open',
+               { open: true, unarchive: true });
     const back = (await get('/api/curation')).sets.find(
       (x) => (x.name || '') === 'THROWAWAY for the harness');
-    check('and picking it up un-archives it', !!back && !back.archived,
+    check('and saying so un-archives it', !!back && !back.archived,
           JSON.stringify(back && { archived: back.archived }));
     await post('/api/curation/demo-long-session/ied/delete', {});
   }

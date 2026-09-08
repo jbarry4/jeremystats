@@ -1,0 +1,274 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the small interface faults</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Five small things, each reported on its own and each with a specific,
+   measurable cause. Grouped here because none of them is worth a page and
+   all of them are the kind of fault that comes back:
+
+   the Errors badge      painted at boot and then only when the Errors view
+                         loaded, so a new error did not show until you
+                         clicked the thing the badge exists to draw you to
+   its position          after the `6` shortcut, so the row read "Errors 6 3"
+   the bank list         clicking an entry rebuilt the scrolling element, so
+                         the list jumped to the top and took the row you had
+                         just chosen off screen
+   probe switching       hardcoded 'csd' in both directions, so changing
+                         probe silently replaced whatever you were looking at
+   the panel type        set per pane, so a six-column probe layout wanted
+                         six clicks to change what all six of them showed
+   the mode banner       claimed "Y keeps, N rejects"; neither key does
+                         anything
+
+   `?session=<a CSC folder>` is needed for the probe checks; without it they
+   say so and are skipped rather than passing vacuously. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  /* Getters, not saved references. A harness that holds contentWindow across
+     an await is holding a handle that any navigation invalidates, and the
+     failure reads as "BARRY is undefined" a long way from the cause. */
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  let W = win(), D = doc();
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  /* `BARRY` is a top-level const in core.js, so it is in the script scope
+     and NOT a property of the frame's window: `contentWindow.BARRY` is
+     undefined forever. `setView` is a function declaration, so it does land
+     on the window. Anything on BARRY has to be reached through eval, which
+     runs inside the frame's own scope. */
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(600);
+  const run = (src) => win().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+
+  const post = (u, b) => win().fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}) }).then((r) => r.json());
+  const get = (u) => win().fetch(u).then((r) => r.json());
+  const byText = (root, sel, re) => Array.from(root.querySelectorAll(sel))
+    .find((n) => re.test((n.textContent || '').trim()));
+
+  head('1. The Errors badge');
+  const nav = Array.from(doc().querySelectorAll('.nav-item'))
+    .find((b) => b.dataset.view === 'errors');
+  check('there is an Errors nav item', !!nav);
+  const kids = Array.from(nav.children);
+  const iBadge = kids.findIndex((n) => n.id === 'errBadge');
+  const iKbd = kids.findIndex((n) => n.tagName === 'KBD');
+  say('note', '  order: ' + kids.map(
+    (n) => n.id || n.tagName.toLowerCase()).join(' '));
+  check('the count sits before the shortcut key', iBadge >= 0 && iKbd >= 0
+        && iBadge < iKbd, 'badge at ' + iBadge + ', kbd at ' + iKbd);
+
+  const badge = doc().getElementById('errBadge');
+  const readBadge = () => badge.classList.contains('hidden')
+    ? 0 : (+badge.textContent || 0);
+  const was = readBadge();
+  say('note', '  badge reads ' + was + ' to begin with');
+
+  /* Record one, from a view that is not Errors, and do not click Errors.
+     This is the whole complaint: the count has to move on its own. */
+  run("setView('pipeline')");
+  await sleep(300);
+  await post('/api/errors/test', {}).catch(() => null);
+  await sleep(400);
+  const server = ((await get('/api/sync/status')).index || {}).counts || {};
+  say('note', '  the server now counts ' + (server.errors || 0));
+  await run('BARRY.refreshSync()');
+  await sleep(300);
+  const now = readBadge();
+  say('note', '  badge reads ' + now + ' after a sync refresh, without '
+      + 'opening Errors');
+  check('the badge follows the count without the view being opened',
+        now === (server.errors || 0), now + ' vs ' + (server.errors || 0));
+  check('and it is showing rather than hidden',
+        (server.errors || 0) === 0 || !badge.classList.contains('hidden'));
+  check('the Errors view was never opened',
+        val("BARRY.state.view") === 'pipeline', val("BARRY.state.view"));
+
+  head('2. The mode banner no longer misstates the keys');
+  check('nothing claims "Y keeps"',
+        !/Y keeps/.test(doc().body.textContent || ''),
+        'the old banner text is still on the page');
+  /* And in the source of truth, not only on screen right now. */
+  const modeWhat = run("(function(){try{return (MODES.curate.what||'')}"
+                        + "catch(e){return 'MODES missing'}})()");
+  say('note', '  curate banner text: "' + modeWhat + '"');
+  check('the curation mode carries no description at all', modeWhat === '',
+        modeWhat);
+
+  head('3. The Event Bank keeps its place when you pick an entry');
+  run("setView('eventbank')");
+  await untilN(() => doc().querySelector('.bank-row'), 200);
+  await sleep(700);
+  const tree = doc().querySelector('.bank-tree');
+  const rows = () => Array.from(doc().querySelectorAll('.bank-row'));
+  say('note', '  ' + rows().length + ' rows, scroller '
+      + (tree ? tree.scrollHeight + 'px tall in ' + tree.clientHeight + 'px'
+              : 'not found'));
+  check('the list is there and scrolls', !!tree
+        && tree.scrollHeight > tree.clientHeight,
+        'nothing to scroll — cannot test the jump');
+  if (tree && tree.scrollHeight > tree.clientHeight) {
+    tree.scrollTop = Math.floor((tree.scrollHeight - tree.clientHeight) * 0.7);
+    await sleep(200);
+    const before = tree.scrollTop;
+    say('note', '  scrolled to ' + before + 'px');
+    /* Click a row that is actually in view down there, the way a person
+       does -- clicking one off screen would prove nothing. */
+    const inView = rows().find((r) => {
+      const t = r.offsetTop;
+      return t > before && t < before + tree.clientHeight;
+    }) || rows()[rows().length - 1];
+    const id = inView.getAttribute('data-id');
+    inView.click();
+    await sleep(700);
+    const after = doc().querySelector('.bank-tree').scrollTop;
+    say('note', '  scroll is ' + after + 'px after clicking');
+    check('the list does not jump back to the top',
+          Math.abs(after - before) < 40, before + ' -> ' + after);
+    check('and the row that was clicked is the one marked',
+          (doc().querySelector('.bank-row.active') || {})
+            .getAttribute('data-id') === id,
+          'marked ' + ((doc().querySelector('.bank-row.active') || {})
+            .getAttribute && (doc().querySelector('.bank-row.active') || {})
+            .getAttribute('data-id')) + ', clicked ' + id);
+    check('and the detail pane followed the selection',
+          !!doc().querySelector('.bank-detail'));
+  }
+
+  head('4. Switching probe keeps what you were looking at');
+  const params = new URLSearchParams(location.search);
+  const sessPath = params.get('session');
+  if (!sessPath) {
+    say('note', '  no ?session=<a CSC folder> given, so the probe checks '
+        + 'are skipped rather than passed');
+  } else {
+    run("setView('xplore')");
+    const sess = await run('BARRY.views.xplore.open('
+                       + JSON.stringify(sessPath) + ')');
+    check('the recording opened', !!sess, sessPath);
+    if (sess) {
+      await sleep(1200);
+      const sel = () => doc().querySelector('.pane-head select');
+      const panelOf = (i) => val('BARRY.views.xplore.state.panes['
+                             + i + '] || {}').panel;
+
+      /* Put it on something that is plainly not a CSD, so a switch that
+         forces one is unmistakable. */
+      const s0 = sel();
+      check('a pane has a panel-type control', !!s0);
+      s0.value = 'traces';
+      s0.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+      await sleep(900);
+      say('note', '  pane 0 is showing ' + panelOf(0));
+      check('it is on the voltage traces', panelOf(0) === 'traces');
+
+      const probe = doc().getElementById('xfProbe');
+      check('there is a probe control', !!probe);
+      const h10 = Array.from(probe.options).find((o) => /h10/i.test(o.value));
+      if (!h10) {
+        say('note', '  this build has no H10 option; skipping the switch');
+      } else {
+        probe.value = h10.value;
+        probe.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+        await sleep(1600);
+        const kinds = val('BARRY.views.xplore.state.panes'
+                          + '.filter(Boolean).map(function(p){'
+                          + 'return p.panel})');
+        say('note', '  after switching to ' + h10.value + ': '
+            + kinds.join(', '));
+        check('switching to H10 did not flip it to the CSD',
+              kinds.every((k) => k !== 'csd') || kinds.length === 0,
+              kinds.join(','));
+        check('every column shows what the H3 pane was showing',
+              kinds.length > 0 && kinds.every((k) => k === 'traces'),
+              kinds.join(','));
+
+        /* One change, all of them -- the six-clicks complaint. */
+        const s1 = sel();
+        if (s1 && kinds.length > 1) {
+          s1.value = 'csd';
+          s1.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+          await sleep(1400);
+          const spread = val('BARRY.views.xplore.state.panes'
+                            + '.filter(Boolean).map(function(p){'
+                            + 'return p.panel})');
+          say('note', '  after one change: ' + spread.join(', '));
+          check('changing one pane changes all of them',
+                spread.length > 1 && spread.every((k) => k === 'csd'),
+                spread.join(','));
+        }
+
+        /* And back, still without a forced CSD. */
+        probe.value = 'h3';
+        probe.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+        await sleep(1400);
+        say('note', '  back on H3: ' + panelOf(0));
+        check('going back to H3 keeps the panel too', panelOf(0) === 'csd',
+              panelOf(0));
+      }
+
+      head('5. "More" sits with the controls');
+      const strip = doc().querySelector('.ctl-strip, .pane-ctls, .ctl-row');
+      const more = byText(doc(), '.ctl-menu, .ctl button, button', /^More/);
+      check('there is a More control', !!more);
+      if (more) {
+        const spacers = Array.from(
+          (more.parentNode || doc()).querySelectorAll('.ctl-spacer'));
+        const before = spacers.filter((sp) =>
+          sp.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING);
+        say('note', '  ' + spacers.length + ' spacer(s) in the strip, '
+            + before.length + ' of them before More');
+        check('nothing pushes it away from the controls on its left',
+              before.length === 0,
+              before.length + ' spacer(s) before it');
+      }
+    }
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'minor ui';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw';
+} })();
+</script>

@@ -102,7 +102,17 @@ BARRY.curate = (function () {
     apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
             + encodeURIComponent(kindId) + '/open', { open: true })
       .then((res) => { if (res && res.set) set_.assignee = res.set.assignee; })
-      .catch(() => {});
+      .catch((e) => {
+        /* An archived set is not put on the bench by being curated -- that
+           would un-archive it as a side effect of looking at it, which is
+           the thing archiving is supposed to survive. Curating still works;
+           it just says the set is still filed away. */
+        if (/archived/i.test((e && e.message) || '')) {
+          toast('This set is archived, so it is not on the bench. Curating '
+                + 'it still works and still saves; un-archive it from the '
+                + 'ToolKit if you want it back in the list.', null, 8000);
+        }
+      });
 
     setMode('curate', exit);
     layout();

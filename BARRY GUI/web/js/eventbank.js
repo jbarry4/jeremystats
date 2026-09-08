@@ -179,8 +179,10 @@ BARRY.views.eventbank = (function () {
     const src = e.source || {};
     return el('div', {
       class: 'bank-row' + (selected === e.id ? ' active' : ''),
+      // So a selection can find its own row without rebuilding the list.
+      'data-id': e.id,
       title: 'Banked by ' + added.by + ' on ' + (added.at || '').slice(0, 16),
-      onclick: () => { selected = e.id; render(); },
+      onclick: () => selectEntry(e.id),
     }, [
       el('span', { class: 'bank-type', text: typeName(e.type) }),
       el('span', { class: 'bank-name', text: e.name }),
@@ -375,6 +377,30 @@ BARRY.views.eventbank = (function () {
   let showArchived = false;
 
   /* Repaint just the entry, so the list on the left keeps its place. */
+  /* Pick an entry without rebuilding the list.
+
+     The row's click used to call render(), which empties #bankBody and
+     builds it again -- including `.bank-tree`, the element that scrolls. So
+     clicking anything below the fold jumped the list back to the top, and
+     the entry you had just chosen was off screen. Only two things actually
+     change when a selection moves: which row is marked, and what the detail
+     pane shows. */
+  function selectEntry(id) {
+    selected = id;
+    for (const row of document.querySelectorAll('#bankBody .bank-row')) {
+      row.classList.remove('active');
+    }
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return; }
+    /* By its own id. Not by position in the visible list -- the rows are
+       grouped project / mouse / session, so the nth row is not the nth
+       entry and marking by index highlighted the wrong one. */
+    const row = document.querySelector(
+      '#bankBody .bank-row[data-id="' + String(id).replace(/"/g, '') + '"]');
+    if (row) row.classList.add('active');
+    box.parentNode.replaceChild(detail(), box);
+  }
+
   function repaint() {
     const box = document.querySelector('.bank-detail');
     if (!box || !box.parentNode) { render(); return; }
