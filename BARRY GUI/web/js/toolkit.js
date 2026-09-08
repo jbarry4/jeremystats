@@ -36,6 +36,8 @@ BARRY.views.toolkit = (function () {
     render();
     if (!scopes) await loadScopes();
     refresh();
+    // Who is in what, and keep it current while this view is open.
+    startPresence();
   }
 
   async function loadScopes() {
@@ -554,6 +556,130 @@ BARRY.views.toolkit = (function () {
      it down -- and everything administrative folded behind "More", because
      a row that offers you Delete reads as a record in a table rather than
      as work in progress. */
+  /* ---------- who is in what, right now ----------
+
+     Kept separate from the curation sets themselves because it is a
+     different kind of fact: a set is a record and is still true tomorrow,
+     presence is a claim about this minute. Ten seconds because a stale
+     "nobody is here" is worse than showing nothing -- it looks
+     authoritative, and somebody acts on it. */
+  const PRESENCE_POLL = 10000;
+  let presence = { sessions: [], machine: null, ttl_s: 150 };
+  let presenceTimer = null;
+
+  async function loadPresence(andRender) {
+    try {
+      const res = await api('/api/presence');
+      if (!res || !res.ok) return;
+      const before = JSON.stringify(presence.sessions || []);
+      presence = res;
+      // Only redraw when it actually changed: this runs every ten seconds
+      // and the shelf is a few hundred nodes.
+      if (andRender && JSON.stringify(res.sessions || []) !== before) {
+        renderCuration();
+      }
+    } catch (e) { /* presence is a courtesy, never an interruption */ }
+  }
+
+  function startPresence() {
+    if (presenceTimer) return;
+    loadPresence(true);
+    presenceTimer = setInterval(() => {
+      // Only while the curation view is the one being looked at. Polling for
+      // a panel nobody can see is just traffic.
+      if (BARRY.state.view !== 'toolkit') return;
+      loadPresence(true);
+    }, PRESENCE_POLL);
+  }
+
+  /* Everyone active in a set, this machine included -- the card wants to
+     show "you, on the rig" as much as anybody else. */
+  function inSet(st) {
+    return (presence.sessions || []).filter(
+      (s) => s.active && s.gid === st.gid && (s.kind || 'ds') === st.kind);
+  }
+
+  /* Somebody who is not us. This is what gates opening. */
+  function heldBy(st) {
+    return inSet(st).filter((s) => !s.is_me)[0] || null;
+  }
+
+  function howLong(sec) {
+    if (sec == null) return '';
+    if (sec < 60) return 'just now';
+    const m = Math.round(sec / 60);
+    if (m < 60) return m + ' min ago';
+    return Math.round(m / 60) + ' h ago';
+  }
+
+  /* The live line. Present only when somebody is in the set, so a quiet
+     shelf stays quiet. */
+  function presenceLine(st) {
+    const here = inSet(st);
+    if (!here.length) return null;
+    return el('div', { class: 'cur-live' }, here.map((s) => {
+      const n = (s.n_decided != null && s.n_total)
+        ? s.n_decided + '/' + s.n_total : null;
+      const bits = [];
+      if (n) bits.push(n + ' decided');
+      if (s.n_this_visit) bits.push('+' + s.n_this_visit + ' this sitting');
+      if (s.at_index != null) bits.push('at #' + (s.at_index + 1));
+      return el('span', {
+        class: 'cur-live-who' + (s.is_me ? ' me' : ''),
+        title: (s.person || 'Somebody') + ' on ' + (s.device || s.machine)
+             + '\nlast heard from ' + howLong(s.age_s)
+             + (s.is_me ? '\nThis is this machine.' : ''),
+      }, [
+        el('span', { class: 'cur-live-dot' }),
+        el('b', { text: s.is_me ? 'You' : (s.person || s.device || 'Somebody') }),
+        el('span', { text: ' on ' + (s.device || s.machine) }),
+        bits.length ? el('span', { class: 'cur-live-n',
+                                   text: '  ·  ' + bits.join('  ·  ') }) : null,
+      ].filter(Boolean));
+    }));
+  }
+
+  /* Opening a set somebody else is actively in.
+
+     Advisory, and the override is right there. The ask was to stop two
+     people curating the same file *accidentally* -- an accident is prevented
+     by being told, and a hard block would also stop the deliberate case,
+     which is legitimate and common: somebody left a set open on a rig and
+     went home. A lock that gets in the way of the honest case is a lock
+     people learn to route around.
+
+     Taking it marks their session rather than deleting it, so their window
+     finds out and says so, instead of carrying on writing decisions into a
+     set it no longer holds. */
+  async function enterSet(st) {
+    const held = heldBy(st);
+    if (!held) { BARRY.curate.enter(st.gid, st.kind); return; }
+
+    const who = held.person || held.device || 'Somebody';
+    const got = (held.n_decided != null && held.n_total)
+      ? held.n_decided + ' of ' + held.n_total + ' decided'
+      : 'in progress';
+    const ok = await BARRY.confirm(
+      who + ' is curating this set right now',
+      who + ' has it open on ' + (held.device || held.machine)
+      + ', last heard from ' + howLong(held.age_s) + ' — ' + got
+      + (held.n_this_visit ? ', ' + held.n_this_visit + ' this sitting' : '')
+      + '.\n\nIf you both work on it you will both be deciding the same '
+      + 'candidates, and the merge will have to pick a winner. Nothing is '
+      + 'lost either way, but one of you will have wasted the afternoon.'
+      + '\n\nOpening it anyway tells their window that you have taken it, '
+      + 'so they find out rather than carrying on.',
+      'Take it anyway');
+    if (!ok) return;
+
+    try {
+      await apiPost('/api/presence/take',
+                    { gid: st.gid, kind: st.kind, machine: held.machine });
+    } catch (e) { /* saying so is best effort; opening it is not */ }
+    BARRY.curate.enter(st.gid, st.kind);
+    loadPresence(true);
+  }
+
   function curCard(st) {
     const pr = st.progress || {};
     const done = pr.left === 0 && pr.total > 0;
@@ -624,6 +750,9 @@ BARRY.views.toolkit = (function () {
               + (st.opened_by && st.opened_by !== who
                   ? ' by ' + st.opened_by : '') }) : null,
       ].filter(Boolean)),
+      /* Above the progress bar, because it is about right now and the bar
+         is about the set. */
+      presenceLine(st),
       el('div', { class: 'cur-prog small' }, [
         el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
       ]),
@@ -639,7 +768,7 @@ BARRY.views.toolkit = (function () {
           title: reach
             ? 'Open the recording and step through the candidates'
             : 'This recording is not on a drive this machine can reach',
-          onclick: () => BARRY.curate.enter(st.gid, st.kind),
+          onclick: () => enterSet(st),
         }),
         el('button', {
           class: 'btn ghost sm', text: 'Put it down',
@@ -1746,6 +1875,12 @@ BARRY.views.toolkit = (function () {
 
   return {
     init, onShow, refresh,
+    /* For web/_dev/presence.html, which drives the real workbench rather
+       than a copy: it needs to hand in a known set of sessions and ask what
+       the bench makes of them. */
+    _presence: (got) => { if (got) presence = got; renderCuration(); },
+    _heldBy: (st) => heldBy(st),
+    _loadPresence: (andRender) => loadPresence(andRender),
     /* Curation calls this when it changes something. Cheap on purpose: it
        marks the cache stale rather than refetching, because the tool is not
        on screen while somebody is curating and a fetch per keystroke is

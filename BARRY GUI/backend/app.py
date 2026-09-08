@@ -26,6 +26,7 @@ from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                demo as demomod,
                dsimport,
                feedback as feedbackmod,
+               presence as presencemod,
                profile as profilemod,
                layers, live, mice as micebook, nlx, notes as notesmod,
                people as peoplemod,
@@ -2273,6 +2274,151 @@ def api_curation_open(gid, kind):
                    "left": CURATE.progress(rec).get("left")},
     }])
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+@app.route("/api/presence", methods=["GET"])
+def api_presence():
+    """Everyone currently in a curation set.
+
+    A GET with no side effects, because the workbench polls this and a poll
+    that writes cannot be made frequent. `active` and `age_s` are worked out
+    on the server so that the workbench and the curation bar cannot disagree
+    about who counts as present.
+    """
+    PRESENCE.sweep()
+    rows = PRESENCE.all()
+    return jsonify({
+        "ok": True,
+        "machine": PRESENCE.machine(),
+        "ttl_s": presencemod.TTL_S,
+        "configured": bool(CLOUD.cloud.configured),
+        "sessions": rows,
+    })
+
+
+@app.route("/api/presence/beat", methods=["POST"])
+def api_presence_beat():
+    """This machine is in this set, and here is how far it has got.
+
+    Answers with whoever else is in it, so one request does the whole job:
+    the client needs to know it was heard AND whether somebody has appeared
+    beside it, and asking twice would double the traffic of the thing that
+    has to be frequent.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gid, kind = body.get("gid"), body.get("kind")
+    if not gid:
+        return jsonify({"ok": False, "error": "Need a gid."}), 400
+    PRESENCE.beat(
+        gid, kind,
+        first=bool(body.get("first")),
+        doing=body.get("doing"),
+        n_total=body.get("n_total"), n_decided=body.get("n_decided"),
+        n_this_visit=body.get("n_this_visit"),
+        at_index=body.get("at_index"), at_time_s=body.get("at_time_s"))
+    return jsonify({
+        "ok": True,
+        # Whoever else is in this set -- the reason to answer at all.
+        "others": [r for r in PRESENCE.for_set(gid, kind, include_self=False)
+                   if r.get("active")],
+        # And whether this machine has had the set taken off it, which it
+        # cannot find out any other way: the taking happens elsewhere.
+        "taken": PRESENCE.taken_from_me(gid, kind),
+    })
+
+
+@app.route("/api/presence/release", methods=["POST"])
+def api_presence_release():
+    """Leaving a set. The TTL would do this anyway; this does it now."""
+    body = request.get_json(force=True, silent=True) or {}
+    if not body.get("gid"):
+        return jsonify({"ok": False, "error": "Need a gid."}), 400
+    return jsonify({"ok": PRESENCE.release(body["gid"], body.get("kind"))})
+
+
+@app.route("/api/presence/take", methods=["POST"])
+def api_presence_take():
+    """Take a set another session is in.
+
+    Deliberate, never automatic. The other session is marked rather than
+    deleted so it finds out on its next beat and can say so on screen --
+    otherwise it would carry on writing decisions into a set it no longer
+    holds, which is the silent version of the collision this exists to
+    prevent.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gid, kind = body.get("gid"), body.get("kind")
+    from_machine = body.get("machine")
+    if not gid or not from_machine:
+        return jsonify({"ok": False,
+                        "error": "Need a gid and whose session to take."}), 400
+    ok = PRESENCE.take(gid, kind, from_machine)
+    STORE.record_activity([{
+        "action": "curation.take",
+        "detail": {"gid": gid, "kind": kind, "from": from_machine},
+    }])
+    return jsonify({"ok": bool(ok)})
+
+
+# The prefix a harness row must carry. Nothing else can be written or
+# deleted through the two routes below -- a route that can write an arbitrary
+# presence row could tell the lab that somebody is curating a set they have
+# never opened.
+_TEST_GID = "harness-"
+
+
+@app.route("/api/presence/_test_ghost", methods=["POST"])
+def api_presence_test_ghost():
+    """Write a presence row as though another machine had beaten.
+
+    For web/_dev/presence.html. Half of what presence does is about a second
+    machine, and one browser does not have one -- but a row written here is
+    byte-for-byte what a colleague's heartbeat leaves, so every reader is
+    exercised for real rather than against a stub.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gid = body.get("gid") or ""
+    if not gid.startswith(_TEST_GID):
+        return jsonify({"ok": False,
+                        "error": "Test rows only, and only under "
+                                 + _TEST_GID}), 400
+    row = {
+        "gid": gid, "kind": body.get("kind") or "ds",
+        "machine": body.get("machine") or "harness-ghost",
+        "person": body.get("person"), "device": body.get("device"),
+        "last_seen": cloudmod.now(), "started_at": cloudmod.now(),
+        "doing": body.get("doing") or "curating",
+    }
+    for k in ("n_total", "n_decided", "n_this_visit", "at_index", "at_time_s"):
+        if body.get(k) is not None:
+            row[k] = body[k]
+    try:
+        CLOUD.cloud.upsert(presencemod.TABLE, [row],
+                           on_conflict="gid,kind,machine")
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    return jsonify({"ok": True, "row": row})
+
+
+@app.route("/api/presence/_test_clear", methods=["POST"])
+def api_presence_test_clear():
+    """Remove every row for a harness set, so a test leaves nothing behind.
+
+    A harness that left "Somebody is curating m33 s8" in the table would be
+    lying to whoever opens the workbench next, which is a worse failure than
+    anything it was testing.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gid = body.get("gid") or ""
+    if not gid.startswith(_TEST_GID):
+        return jsonify({"ok": False,
+                        "error": "Test rows only, and only under "
+                                 + _TEST_GID}), 400
+    try:
+        CLOUD.cloud.delete(presencemod.TABLE, "gid=eq.%s" % gid)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    return jsonify({"ok": True})
 
 
 @app.route("/api/curation/<gid>/<kind>/assign", methods=["POST"])
@@ -4550,6 +4696,83 @@ def api_bank_for_session():
                     "identity": identity or {}})
 
 
+@app.route("/api/bank/version-export", methods=["POST"])
+def api_bank_version_export():
+    """One version of one entry, as a CSV of what it held at the time.
+
+    Read straight out of the version's snapshot rather than replayed from the
+    decisions since: a snapshot is what the history panel shows, and an
+    export that reconstructs the same thing by a different route is an export
+    that can disagree with the screen.
+
+    The identity of the recording rides along on every row. A CSV that says
+    only `start_s, label` is unusable six months later, and this is exactly
+    the file somebody will still have then.
+    """
+    body = request.get_json(force=True) or {}
+    entry_id = body.get("id")
+    want_v = body.get("v")
+    if entry_id is None or want_v is None:
+        return jsonify({"ok": False, "error": "Need an entry id and a version."}), 400
+
+    rec = None
+    for r in BANK.all():
+        if r.get("id") == entry_id:
+            rec = r
+            break
+    if rec is None:
+        return jsonify({"ok": False, "error": "No such entry."}), 404
+
+    version = None
+    for v in (rec.get("versions") or []):
+        if int(v.get("v", -1)) == int(want_v):
+            version = v
+            break
+    if version is None:
+        return jsonify({"ok": False,
+                        "error": "That entry has no v%s." % want_v}), 404
+
+    # The names the labels had, so the CSV reads as words rather than ids.
+    names = {}
+    for src in (version.get("label_names"), rec.get("label_names")):
+        if isinstance(src, dict):
+            names.update(src)
+
+    added = rec.get("added") or {}
+    rows = []
+    for pair in (version.get("snap") or []):
+        try:
+            start, label = pair[0], (pair[1] if len(pair) > 1 else None)
+        except (TypeError, IndexError):
+            continue
+        rows.append({
+            "project": rec.get("project"),
+            "mouse": rec.get("mouse"),
+            "session": rec.get("session"),
+            "session_label": rec.get("session_label"),
+            "type": rec.get("type"),
+            "name": rec.get("name"),
+            "version": version.get("v"),
+            "start_s": start,
+            # Both, because an id is what the data says and a name is what a
+            # person reads, and neither on its own survives a rename.
+            "label": label,
+            "label_name": names.get(label, label),
+            "decided_by": version.get("by"),
+            "version_at": version.get("at"),
+            "version_note": version.get("note"),
+            "added_by": added.get("by"),
+            "entry_id": rec.get("id"),
+        })
+
+    text = extras.to_csv(rows)
+    name = body.get("name") or ("event-bank-%s-v%s.csv"
+                                % (entry_id, version.get("v")))
+    return Response(
+        text, mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="%s"' % name})
+
+
 @app.route("/api/bank/export", methods=["POST"])
 def api_bank_export():
     """One entry, or the whole bank, as a CSV of event times."""
@@ -4789,6 +5012,10 @@ CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
     results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE)
 
+# Who is curating what, right now. Cloud-only by design -- see
+# backend/presence.py: a presence row that survives a restart is a lie.
+PRESENCE = presencemod.Presence(CLOUD.cloud, STORE)
+
 _cloud_lock = threading.Lock()
 _cloud_last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,
                "error": None, "running": False}
@@ -4868,31 +5095,133 @@ def cloud_sync_once(push=True, pull=True, files=False):
     return dict(_cloud_last)
 
 
+# How often each half runs, in seconds. Separate because they cost
+# different things: a pull is incremental and usually comes back empty, a
+# push is only worth making when this machine has changed something.
+PULL_EVERY = 20
+PUSH_EVERY = 60          # a floor; a write pushes sooner than this
+PUSH_AFTER_WRITE = 6     # quiet period after the last write before pushing
+FILES_EVERY = 300        # figures and screenshots, which are big and rare
+
+# When a write happened, so a push can follow it promptly. Set by the
+# after_request hook rather than by each route: there are about ninety routes
+# that write and one place they all pass through.
+_push_wanted = [0.0]
+
+
+def cloud_touch():
+    """Note that something local changed, so the next push is soon."""
+    _push_wanted[0] = time.time()
+
+
+def _cloud_backoff(fails, blocked):
+    """How long to wait after a failure, by what kind of failure it was.
+
+    Doubling to a thirty-minute ceiling treated every failure as permanent,
+    so one gateway timeout -- which the message text itself calls brief --
+    took sync offline for half an hour, which is indistinguishable from it
+    being broken.
+
+    A clock that is ahead used to stand sync down until BARRY was restarted.
+    Windows fixes its own clock eventually, and ten minutes is a reasonable
+    time to look again; being silently offline until somebody restarts is
+    not.
+    """
+    if blocked:
+        return 600
+    err = str(_cloud_last.get("error") or "")
+    transient = ("504" in err or "502" in err or "503" in err
+                 or "Gateway" in err or "timed out" in err
+                 or "Timeout" in err or "Connection" in err
+                 or "555" in err)
+    if transient:
+        # Brief by nature. Creep up a little so a real outage is not hammered.
+        return min(30 * max(1, fails), 180)
+    # Structural -- a missing table, a rejected key. These do not fix
+    # themselves in thirty seconds, but they do get fixed, so keep looking.
+    return min(120 * max(1, fails), 900)
+
+
 def _cloud_loop():
-    """Background sync. Pull first, so a push never sends a stale edit over
+    """Background sync, pull and push on their own clocks.
+
+    Pull first whenever both are due, so a push never sends a stale edit over
     somebody else's newer one -- the database would reject it anyway, but
-    losing the race locally means the next pull just undoes your screen."""
-    time.sleep(20)          # let the app finish starting
+    losing the race locally means the next pull just undoes your screen.
+    """
+    time.sleep(8)           # let the app finish starting
+    next_pull = next_push = next_files = 0.0
+    retry_at = 0.0
     while True:
-        cfg = CLOUD.cloud.reload()
-        base = max(30, int(cfg.get("interval") or 120))
-        # Held off entirely while something is wrong that retrying cannot
-        # fix -- see the clock case in cloud_sync_once. A manual sync clears
-        # the flag by succeeding.
-        if (cfg.get("enabled") and cfg.get("auto")
-                and not _cloud_last.get("blocked")):
-            cloud_sync_once(files=cfg.get("upload_results", True))
-        # Back off while it is failing, up to half an hour. Something that is
-        # down stays down; retrying every two minutes for a day is just noise
-        # in somebody's network logs and ours.
-        fails = _cloud_last.get("failures", 0)
-        wait = base * min(2 ** fails, 16) if fails else base
-        time.sleep(min(wait, 1800))
+        try:
+            cfg = CLOUD.cloud.reload()
+            now = time.time()
+            if not (cfg.get("enabled") and cfg.get("auto")):
+                time.sleep(5)
+                continue
+            # Standing down after a failure, for as long as that kind of
+            # failure deserves.
+            if now < retry_at:
+                time.sleep(min(5, retry_at - now))
+                continue
+
+            # A write since the last push brings the next one forward.
+            wrote = _push_wanted[0]
+            due_push = (now >= next_push
+                        or (wrote and now - wrote >= PUSH_AFTER_WRITE))
+            due_pull = now >= next_pull
+            due_files = now >= next_files and cfg.get("upload_results", True)
+
+            if due_pull or due_push or due_files:
+                if due_push:
+                    _push_wanted[0] = 0.0
+                cloud_sync_once(pull=due_pull, push=due_push,
+                                files=due_files)
+                base = max(5, int(cfg.get("interval") or PULL_EVERY))
+                if due_pull:
+                    next_pull = time.time() + base
+                if due_push:
+                    next_push = time.time() + max(base, PUSH_EVERY)
+                if due_files:
+                    next_files = time.time() + FILES_EVERY
+
+                fails = _cloud_last.get("failures", 0)
+                if fails:
+                    retry_at = time.time() + _cloud_backoff(
+                        fails, _cloud_last.get("blocked"))
+        except Exception:                            # noqa: BLE001
+            # The loop itself must not die: everything it calls already
+            # reports its own failures, and a thread that has quietly exited
+            # looks exactly like a network that is quietly down.
+            time.sleep(30)
+        time.sleep(1)
 
 
 if CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto"):
     threading.Thread(target=_cloud_loop, daemon=True,
                      name="barry-cloud-sync").start()
+
+
+@app.after_request
+def _note_local_write(resp):
+    """Any successful write means there is something worth pushing.
+
+    Here rather than in each route: there are about ninety that write, and
+    one place they all pass through. GETs are excluded, and so are failures
+    -- a rejected request changed nothing.
+    """
+    try:
+        if (request.method in ("POST", "PUT", "PATCH", "DELETE")
+                and resp.status_code < 400
+                and request.path.startswith("/api/")
+                # Not the sync routes themselves, or a manual sync would
+                # schedule another one on its way out.
+                and not request.path.startswith("/api/cloud/")
+                and not request.path.startswith("/api/sync/")):
+            cloud_touch()
+    except Exception:                                # noqa: BLE001
+        pass
+    return resp
 
 
 # The Data Bank folder tree is derived, so it is rebuilt whenever the bank
@@ -5057,7 +5386,7 @@ def api_cloud_config():
         if k in body:
             patch[k] = bool(body[k])
     if "interval" in body:
-        patch["interval"] = max(30, int(body["interval"]))
+        patch["interval"] = max(5, int(body["interval"]))
     if not patch:
         return jsonify({"ok": False, "error": "Nothing to change."}), 400
     cloudmod.save_config(LOGS_DIR, **patch)

@@ -185,6 +185,67 @@ const hd = (t) => p('\n== ' + t + ' ==');
     ck('could decode the image to check the pixels', false, 'decode failed');
   }
 
+  hd('4b. And the TRACES draw them faint, which the rasters do not cover');
+  /* The gap that let the bug out.
+
+     Dimming lives in two different places because the two panels are drawn
+     in two different places: a raster is rendered by the server and arrives
+     as a PNG, a trace arrives as an envelope and is drawn by the canvas
+     here. Section 4 proved the server dims. It said nothing whatever about
+     the traces, which asked for all sixty-four channels and drew every one
+     of them solid -- "it puts in all 64 channels and prevents me from
+     graying out anything".
+
+     Checked by counting what the canvas is actually told to do, rather than
+     by reading pixels: the traces are drawn with fills and strokes at a set
+     alpha, so the alpha it draws at IS the claim. */
+  /* Instrument the canvas itself, then ask for a real redraw. Measuring the
+     real pane rather than a copy is the point: a copy wired up for the test
+     is a second code path, and a second code path is what went undimmed. */
+  run('window.__alphas = [];'
+    + '(function () { var P = CanvasRenderingContext2D.prototype;'
+    + 'if (P.__wrapped) return; P.__wrapped = true;'
+    + 'var f = P.fill, s = P.stroke;'
+    + 'P.fill = function () { window.__alphas.push(this.globalAlpha);'
+    + '  return f.apply(this, arguments); };'
+    + 'P.stroke = function () { window.__alphas.push(this.globalAlpha);'
+    + '  return s.apply(this, arguments); }; })()');
+  run('(function () { var X = BARRY.views.xplore.state;'
+    + 'X.panes[0].panel = "traces"; BARRY.views.xplore.render();'
+    + 'BARRY.views.xplore.refreshAll(); })()');
+  await sleep(2600);
+
+  /* 0.30 exactly is DIM_ALPHA. The marks draw at .14, .55, .6, .85 and .9,
+     so a narrow band around 0.30 cannot be confused with one of those --
+     which a loose "anything faint" test would have been. */
+  const band = (xs, lo, hi) => xs.filter((x) => x >= lo && x <= hi).length;
+  run('window.__alphas = []');
+  run('BARRY.views.xplore._redrawPane(0)');
+  await sleep(400);
+  const dimHits = val('window.__alphas') || [];
+  p('  dim mode: ' + dimHits.length + ' canvas op(s), '
+    + band(dimHits, 0.25, 0.35) + ' at DIM_ALPHA, '
+    + band(dimHits, 0.95, 1) + ' solid');
+  ck('unchecked trace rows are drawn at DIM_ALPHA',
+     band(dimHits, 0.25, 0.35) > 0,
+     'nothing drawn at 0.30 — the mode never reached the traces');
+  ck('and the checked ones are still solid', band(dimHits, 0.95, 1) > 0,
+     band(dimHits, 0.95, 1));
+
+  run('(function () { var s = ' + sessExpr + '; s.chanMode = "remove";'
+    + 'BARRY.views.xplore.refreshAll(); })()');
+  await sleep(2600);
+  run('window.__alphas = []');
+  run('BARRY.views.xplore._redrawPane(0)');
+  await sleep(400);
+  const rmHits = val('window.__alphas') || [];
+  p('  remove mode: ' + band(rmHits, 0.25, 0.35) + ' at DIM_ALPHA');
+  ck('in remove mode nothing is drawn faint, because nothing extra is drawn',
+     band(rmHits, 0.25, 0.35) === 0, band(rmHits, 0.25, 0.35));
+  run('(function () { var s = ' + sessExpr + '; s.chanMode = "dim";'
+    + 'BARRY.views.xplore.refreshAll(); })()');
+  await sleep(2200);
+
   hd('5. The header says unchecked channels are being kept');
   run('BARRY.views.xplore.render()');
   await sleep(700);

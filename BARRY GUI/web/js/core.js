@@ -1378,9 +1378,35 @@ let modeLeaveFn = null;
 /* Turn a mode on or off. `leave` is what the Leave button calls; without one
    the button is hidden, because a way out that does nothing is worse than
    none. */
+/* What mode we are in, so a change can be told from a repeat. */
+let modeNow = null;
+
 function setMode(kind, leave) {
   const app = document.getElementById('app');
   if (!app) return;
+
+  /* Every real change, with what asked for it.
+
+     Reported as "sometimes when on event curation it snaps to stratascope
+     and snaps back", which nothing in the code accounts for: `setMode` is
+     the only thing that writes the banner, and the only route to
+     `setMode('strata')` is `strata.enter()`, which is called from two click
+     handlers and nowhere else.
+
+     So rather than guess at it, this records the transition and the stack
+     that caused it. A glitch that happens sometimes and leaves no trace is
+     one nobody can fix; the next time it happens the debug report will name
+     whatever called this. */
+  if (kind !== modeNow) {
+    try {
+      const from = modeNow, to = kind;
+      modeNow = kind;
+      const stack = (new Error().stack || '').split('\n').slice(2, 5)
+        .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
+      BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+    } catch (e) { modeNow = kind; }
+  }
+
   for (const k of Object.keys(MODES)) app.classList.toggle('mode-' + k, k === kind);
   modeLeaveFn = kind ? (leave || null) : null;
   const m = MODES[kind];

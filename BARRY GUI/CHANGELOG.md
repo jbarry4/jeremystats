@@ -15,6 +15,91 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.08.7 — who is curating what, right now
+
+### Added
+
+- **The curation workbench shows who is in a set at this moment**, on which
+  machine, and how far they have got — updating every ten seconds while you
+  are looking at it. This is a different fact from the name already on the
+  card: "assigned to Rain" is still true next week, "Rain has it open" will
+  not be true after lunch, and only the second one should stop you starting.
+- **Opening a set somebody is actively in asks first**, and says what they
+  have done so far. Advisory, with the override in the dialog: the ask was to
+  prevent doing it *accidentally*, and a hard block would also stop the
+  deliberate case — somebody left a set open on a rig and went home — which
+  is common enough that blocking it would just teach people to ignore the
+  warning.
+- Taking a set **marks the other session rather than deleting it**, so their
+  window finds out on its next heartbeat and says so. The alternative is
+  silently carrying on writing decisions into a set you no longer hold, which
+  is the quiet version of the collision this exists to prevent.
+- The curation window announces a colleague arriving in the set you are in,
+  once per machine rather than every twenty seconds.
+
+Presence lives only in Supabase — no local shard, nothing in `GUI_logs`.
+A presence row that survives a restart is a lie, and a file claiming somebody
+is curating a set three days after they stopped is worse than no file. If the
+cloud is unreachable the answer is "nobody is reported present", which is
+exactly the truth available, and nothing about curating stops working.
+
+It **expires rather than unlocks**: a session is present while it keeps saying
+so, and a set is held while somebody is present in it. A lock you have to give
+back is one that strands the set when a machine crashes, and the only thing
+worse than two people in a set is nobody able to get into it.
+
+Needs `supabase/05_presence.sql`.
+
+---
+
+## 2026.09.08.6 — syncing, and three things I broke
+
+### Fixed
+
+- **Sync was slow in a way that looked like broken.** Pull and push ran as
+  one round trip every two minutes, and on failure backed off by doubling to
+  a thirty-minute ceiling — so a single gateway timeout, which the code
+  itself calls brief, took syncing offline for half an hour. They run on
+  their own clocks now: a pull every 20 seconds, and a push within a few
+  seconds of any local write rather than on a timer, which is what makes
+  your work appear on someone else's screen while they are looking at it.
+  The backoff asks what kind of failure it was — a timeout is worth retrying
+  in half a minute, a missing table is not — and a clock that is ahead no
+  longer stands sync down until BARRY is restarted.
+- **Every pull re-applied the whole roster, and pushed it straight back.**
+  `_apply_people` rewrote each incoming row unconditionally; rewriting
+  restamps, and a restamped row looks like an edit. Two machines passed the
+  same seven people back and forth forever. It writes only when something
+  actually differs.
+- **Hiding the menu hid the entire interface.** `#main` never declared a grid
+  column — it landed in column 2 by elimination, because the rail held
+  column 1. The moment the rail's hidden state stopped using `display: none`,
+  the workspace auto-placed into the column the rail had vacated, which in
+  that state is 0px wide. Both are placed explicitly now.
+- **The collapsed rail's icons sat off-centre**, because the labels collapse
+  to zero width rather than `display: none` so they can animate — and a
+  zero-width flex item still gets its gap.
+- **"Keep, greyed out" never reached the traces.** The dimming was built into
+  the raster path, where the server draws the rows; the traces come back as
+  an envelope and are drawn by the canvas, which had not been told about the
+  mode. So it did the first half of its job — ask for all 64 channels — and
+  none of the second, which is exactly "it puts in all 64 channels and
+  prevents me from graying out anything". The harness missed it because it
+  checked the server's PNG, and the traces never go near it.
+
+### Added
+
+- **Export CSV, per version, in the event bank.** The entry-level export gives
+  the events as they stand now; a version is what they were at that pass,
+  which is the thing a result should cite. Read straight from the version's
+  snapshot, so it cannot disagree with the history panel.
+- Mode changes are recorded with the stack that caused them, for the
+  "curation snaps to StrataScope and back" glitch — nothing in the code
+  accounts for it, so the next occurrence will name whatever called it
+  instead of leaving nothing behind.
+
+---
+
 ## 2026.09.08.5 — waiting, and moving
 
 ### Added

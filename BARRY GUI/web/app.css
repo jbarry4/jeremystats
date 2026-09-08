@@ -528,7 +528,17 @@ code { font-family: var(--mono); }
 .env .dot.off { background: var(--err); }
 
 /* ---------- views ---------- */
-#main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+/* Column 2, said out loud.
+
+   This used to land there by elimination: the rail held column 1, so
+   auto-placement had nowhere else to put it. Then the rail's hidden state
+   became `display: none` -- which takes it out of the grid -- and `#main`
+   auto-placed into the column the rail had vacated, which in that state is
+   0px wide. The workspace was not hidden; it was in a track with no room. */
+#main {
+  grid-column: 2; grid-row: 1;
+  overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+}
 .view { display: none; flex-direction: column; height: 100%; overflow: hidden; }
 .view.active { display: flex; }
 
@@ -4651,9 +4661,19 @@ body.splitting .pane-split { pointer-events: auto !important; }
   transition: max-width var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
               opacity .18s ease;
 }
+/* `gap: 0` matters as much as the centring.
+
+   The labels collapse to `max-width: 0` rather than `display: none` so they
+   can animate -- but a zero-width flex item is still a flex item, and the
+   10px gap meant to sit between an icon and its label was still being
+   inserted. Every icon sat half a gap left of centre. */
 #app.rail-icons .nav-item,
 #app.rail-icons .rail-toggle,
-#app.rail-icons .chip-btn { justify-content: center; padding: 8px 6px; }
+#app.rail-icons .chip-btn {
+  justify-content: center; padding: 8px 6px; gap: 0;
+}
+#app.rail-icons .who-chip,
+#app.rail-icons .brand { gap: 0; justify-content: center; }
 #app.rail-icons .nav-badge {
   position: absolute; transform: translate(12px, -8px);
 }
@@ -5644,4 +5664,45 @@ body.aid-window .xf-tabs { display: none !important; }
   .ctl-pop, .rail-hint, .tree-section.open .tree-items { animation: none; }
   #logDock, .radio-body, .rail-pips i, .tree-head .caret,
   .log-toggle svg { transition: none; }
+}
+
+
+/* ==========================================================================
+   Who is curating what, right now
+   ==========================================================================
+   A different kind of fact from the rest of the card: the name above says
+   who a set is ASSIGNED to, which is still true next week; this says who has
+   it open at this moment, which will not be true after lunch. So it reads as
+   live rather than as another field -- a lit dot, and a colour that is not
+   any of the label colours.
+   ========================================================================== */
+.cur-live {
+  display: flex; flex-direction: column; gap: 3px;
+  margin: 6px 0 2px; padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft, rgba(75, 199, 240, .10));
+  border-left: 2px solid var(--accent);
+}
+.cur-live-who {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-2);
+}
+.cur-live-who b { color: var(--text); font-weight: 600; }
+.cur-live-who.me b { color: var(--text-2); font-weight: 500; }
+.cur-live-n { color: var(--text-3); font-family: var(--mono); font-size: 10px; }
+
+/* Lit, and beating. A static dot says "there is a row here"; a beating one
+   says the information is live -- which is the whole claim being made. */
+.cur-live-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: var(--accent);
+  animation: livePulse 2s ease-in-out infinite;
+}
+.cur-live-who.me .cur-live-dot { background: var(--text-3); animation: none; }
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--accent); }
+  50%      { opacity: .55; box-shadow: 0 0 0 3px rgba(75, 199, 240, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cur-live-dot { animation: none; }
 }

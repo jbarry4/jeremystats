@@ -299,6 +299,23 @@ BARRY.views.eventbank = (function () {
           v.archived ? el('span', { class: 'pill sm', text: 'archived' })
                      : null,
           el('span', { class: 'ver-ops' }, [
+            /* Per version, not per entry.
+
+               The entry already exported "the events as they stand now". A
+               version is what they were at that pass, which is the thing a
+               result cites: 416 candidates as somebody left them at v1 is a
+               different set of numbers from 416 candidates today, and a
+               figure made from one should not be described by the other. */
+            el('button', {
+              class: 'linkish', text: 'CSV',
+              title: 'Export this version’s ' + (v.n || 0)
+                   + ' events as a CSV, as they were at this pass',
+              onclick: () => BARRY.download(
+                '/api/bank/version-export', { id: e.id, v: v.v },
+                'event-bank-'
+                  + String(e.name || e.id).replace(/[^A-Za-z0-9.-]+/g, '_')
+                  + '-v' + v.v + '.csv'),
+            }),
             el('button', { class: 'linkish', text: 'Edit',
                            title: 'Change this version\u2019s note or give '
                                 + 'it a name',

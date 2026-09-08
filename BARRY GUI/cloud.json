@@ -1,8 +1,9 @@
 {
   "_note": "Which Supabase project BARRY syncs to. Tracked on purpose, so a clone knows where to go. The key is NOT here: BARRY asks for it the first time it starts and keeps it in GUI_logs/.cloud.json, which git ignores.",
   "auto": true,
-  "interval": 120,
+  "interval": 20,
   "project": "svyymanowlfoyblinnny",
   "upload_results": true,
-  "url": "https://svyymanowlfoyblinnny.supabase.co"
+  "url": "https://svyymanowlfoyblinnny.supabase.co",
+  "_interval": "How often to PULL, in seconds. Push runs on its own clock -- a floor of a minute, but within a few seconds of any local write, which is what makes your work appear on someone else's screen while they are looking at it. 120 here used to govern both halves, so everything anybody did took up to two minutes to travel."
 }

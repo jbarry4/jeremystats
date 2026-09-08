@@ -49,6 +49,18 @@ BARRY.curate = (function () {
      (cheap, nothing to re-read) from a relabel (its copy is now stale). */
   let markRev = 0;
 
+  /* ---------- presence ----------
+     Saying "somebody is in this set" often enough that the answer is still
+     true, and rarely enough that it is not a request per keystroke. Half the
+     server's TTL, so a single dropped beat does not make somebody vanish
+     mid-sentence. */
+  const PRESENCE_BEAT = 20000;
+  let beatTimer = null;
+  let decidedAtEntry = 0;      // so "this visit" means this visit
+  let beatOthers = [];         // who else is in here, as of the last beat
+  let toldAbout = new Set();   // machines already announced, so it says it once
+  let toldTaken = false;
+
   /* ==================================================================
      Entering and leaving
      ================================================================== */
@@ -116,6 +128,8 @@ BARRY.curate = (function () {
 
     setMode('curate', exit);
     layout();
+    // So the bar can say who else is here without asking again.
+    sess.curationOthers = beatOthers;
     // Hand the candidates to the session so the trace can draw them.
     sess.curation = { kind: set_.kind, set: set_, index: 0 };
     publishMarks();
@@ -130,7 +144,74 @@ BARRY.curate = (function () {
       gid, kind: set_.kind, n: (set_.events || []).length,
       left: left(),
     }, sess);
+
+    /* Announce it, and keep announcing. The first beat carries `first`,
+       which is what starts the clock on "how long they have been at it" --
+       every later beat leaves that alone. */
+    decidedAtEntry = events().filter((e) => e.label).length;
+    beatOthers = [];
+    toldAbout = new Set();
+    toldTaken = false;
+    beat(true);
+    if (beatTimer) clearInterval(beatTimer);
+    beatTimer = setInterval(() => beat(false), PRESENCE_BEAT);
     return true;
+  }
+
+  /* One beat: where we are, and who else is here.
+
+     Deliberately quiet about failure. Presence is a courtesy -- the network
+     being down is not a reason to interrupt somebody deciding candidates,
+     and the server's TTL means a machine that goes silent stops holding the
+     set on its own. */
+  async function beat(first) {
+    if (!set_) return null;
+    const evs = events();
+    const decided = evs.filter((e) => e.label).length;
+    let res = null;
+    try {
+      res = await apiPost('/api/presence/beat', {
+        gid: set_.gid, kind: set_.kind, first: !!first,
+        doing: 'curating',
+        n_total: evs.length,
+        n_decided: decided,
+        n_this_visit: Math.max(0, decided - decidedAtEntry),
+        at_index: index,
+        at_time_s: (evs[index] || {}).start,
+      });
+    } catch (e) {
+      return null;
+    }
+    if (!res || !res.ok) return null;
+
+    beatOthers = res.others || [];
+    /* Somebody has appeared in the set you are in. Said once per machine:
+       it is news the first time and nagging every twenty seconds after. */
+    for (const o of beatOthers) {
+      if (toldAbout.has(o.machine)) continue;
+      toldAbout.add(o.machine);
+      toast((o.person || o.device || 'Somebody')
+            + ' is curating this set too, on ' + (o.device || o.machine)
+            + '. Both of you are deciding the same candidates.',
+            'err', 12000);
+      BARRY.activity.log('curation.collision',
+                         { gid: set_.gid, other: o.machine,
+                           person: o.person }, sess);
+    }
+
+    /* And somebody has taken it. Which does not stop you -- nothing here
+       can, and a decision already made is already written -- but carrying on
+       without being told is the silent collision this exists to prevent. */
+    if (res.taken && !toldTaken) {
+      toldTaken = true;
+      toast((res.taken.by || 'Somebody') + ' has taken this set over. Your '
+            + 'decisions are still being saved, but you are both in it \u2014 '
+            + 'worth a word before you carry on.', 'err', 15000);
+      BARRY.activity.log('curation.taken',
+                         { gid: set_.gid, by: res.taken.by }, sess);
+    }
+    render();
+    return res;
   }
 
   function exit() {
@@ -138,6 +219,14 @@ BARRY.curate = (function () {
     BARRY.activity.log('curation.leave', {
       gid: set_.gid, kind: set_.kind, left: left(),
     }, sess);
+
+    /* Stop beating, and say so. The TTL would free the set in a couple of
+       minutes anyway; doing it now matters because the person waiting to
+       pick it up is usually standing next to you. */
+    if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
+    apiPost('/api/presence/release',
+            { gid: set_.gid, kind: set_.kind }).catch(() => {});
+    beatOthers = [];
     if (sess) { delete sess.curation; delete sess.curationMarks; }
     // Tell the other windows the mode is over, or they keep drawing marks
     // for a set nobody is deciding any more.

@@ -169,7 +169,11 @@ def load_config(logs_dir):
         "key": key or "",
         "enabled": bool(cfg.get("enabled", True)) and bool(url and key),
         "auto": bool(cfg.get("auto", True)),
-        "interval": int(cfg.get("interval", 120)),
+        # The pull rate. Push runs on its own, faster clock after a
+        # local write -- see _cloud_loop. Two minutes was chosen when
+        # one number governed both halves and meant somebody else's
+        # work took that long to appear.
+        "interval": int(cfg.get("interval", 20)),
         "upload_results": bool(cfg.get("upload_results", True)),
         "project": cfg.get("project")
         or (re.sub(r"^https://([^.]+)\..*$", r"\1", url) if url else None),

@@ -434,6 +434,14 @@ BARRY.views.xplore = (function () {
   /* Of the channels this pane draws, the CSC numbers of the ones nobody
      selected. Numbers rather than indices, because that is what the server
      matches rows on. */
+  /* How faint a kept-but-unchecked channel is drawn.
+
+     Must match DIM_ALPHA in backend/analysis.py: the same channel can be a
+     trace in one pane and a raster row in another, and the two panes showing
+     it at different opacities would look like a rendering fault rather than
+     a setting. */
+  const DIM_ALPHA = 0.30;
+
   function paneDimChans(pane, sess) {
     if (!sess || chanMode(sess) !== 'dim') return [];
     const out = [];
@@ -6297,6 +6305,16 @@ BARRY.views.xplore = (function () {
     const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
     ctx.textAlign = 'right';
 
+    /* The channels being kept but not chosen, by number.
+
+       In 'remove' mode this is empty and every row below is drawn solid,
+       which is what it always did. In 'dim' mode the request asked for every
+       channel -- so the unchecked ones are here, in `win.series`, and it is
+       this loop's job to make them look unchecked. Without that the mode
+       does half of its work: all sixty-four channels arrive and none of them
+       is greyed. */
+    const faintNums = new Set(paneDimChans(pane, sess));
+
     for (let i = 0; i < n; i++) {
       const s = win.series[i];
       const mid = padTop + lane * (i + .5);
@@ -6304,11 +6322,13 @@ BARRY.views.xplore = (function () {
       const k = (lane * .44) * sess.gain / scale;
       const isBad = s.bad || sess.bad.has(s.number);
       const color = isBad ? P.warn : P.trace;
+      // Faint enough to read as "not one of yours", solid enough to see.
+      const a = faintNums.has(s.number) ? DIM_ALPHA : 1;
 
-      ctx.strokeStyle = P.grid; ctx.globalAlpha = .45;
+      ctx.strokeStyle = P.grid; ctx.globalAlpha = .45 * a;
       ctx.beginPath(); ctx.moveTo(padL, Math.round(mid) + .5);
       ctx.lineTo(padL + plotW, Math.round(mid) + .5); ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = a;
 
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -6335,6 +6355,9 @@ BARRY.views.xplore = (function () {
         if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
       }
       ctx.stroke();
+      // Back to solid before the next row, and before anything drawn after
+      // this loop -- the marks read their own alpha and would inherit this.
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -7637,6 +7660,19 @@ BARRY.views.xplore = (function () {
       const sess = sessionOf(XF.panes[i]);
       const bm = (sess && sess.bookmarks || []).find((x) => x.name === name);
       return bm ? dropBookmark(i, sess, bm) : null;
+    },
+    /* Redraw one pane on demand.
+
+       For web/_dev/display.html: it instruments the canvas prototype and
+       then asks for a redraw, so what it measures is the real drawing on the
+       real pane rather than a copy of it wired up for the test. `drawPane`
+       owns its own canvas and takes no context, which is why there is no
+       "draw onto this" hook here -- one would have been a second code path,
+       and a second code path is exactly what let the traces go undimmed. */
+    _redrawPane: (index) => {
+      const i = index == null ? XF.focused : index;
+      drawPane(i);
+      return true;
     },
     /* The candidate marks, drawable onto any context.
 

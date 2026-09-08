@@ -1,0 +1,225 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — who is curating what</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Presence is the only thing in BARRY that is allowed to be wrong in a
+   minute's time, so almost everything worth checking is about time and about
+   the second machine -- neither of which a single browser has.
+
+   The second machine is faked at the only place it can be: the table. A row
+   written directly with another machine id IS what a colleague's heartbeat
+   would have left, so the readers cannot tell the difference, which is the
+   point. Everything else -- the beat, the gate, the takeover -- goes through
+   the real endpoints.
+
+   Cleans up after itself: this writes to the live Supabase table, and a
+   harness that leaves "Somebody is curating m33 s8" behind would be lying to
+   whoever opens the workbench next. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+const GID = 'harness-presence-set';
+const KIND = 'ds';
+const GHOST = 'harness-ghost-machine';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  /* The frame's fetch as it was before any test touched it.
+
+     Section 7 replaces window.fetch with one that rejects every presence
+     request, to prove the workbench survives the network going away -- and
+     the first time this ran, that interception ate the cleanup in `finally`
+     too, so the fake colleague was still sitting in the live table
+     afterwards, telling anybody who opened the workbench that somebody was
+     curating a set that does not exist. A harness that lies to the lab about
+     the thing it is testing is worse than no harness. */
+  let rawFetch = null;
+
+  /* Whatever happens below, the fake session must not survive this page. */
+  const cleanup = async () => {
+    const go = rawFetch || (W && W().fetch);
+    if (!go) return;
+    const send = (path, body) => go('/api/presence' + path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    try { await send('/release', { gid: GID, kind: KIND }); }
+    catch (e) { /* best effort */ }
+    try { await send('/_test_clear', { gid: GID }); }
+    catch (e) { /* best effort */ }
+  };
+
+  try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  // Captured before anything can replace it -- see the note on rawFetch.
+  rawFetch = W().fetch.bind(W());
+  const post = async (path, body) => {
+    const r = await W().fetch(path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    return r.json();
+  };
+  const get = async (path) => (await W().fetch(path)).json();
+
+  await cleanup();
+
+  hd('1. Nothing is claimed to begin with');
+  let now = await get('/api/presence');
+  ck('the endpoint answers', now && now.ok === true, JSON.stringify(now || {}).slice(0, 80));
+  ck('and knows which machine this is', !!now.machine, now.machine);
+  p('  machine: ' + now.machine + ', ttl ' + now.ttl_s + 's, cloud '
+    + (now.configured ? 'configured' : 'NOT configured'));
+  ck('the cloud is configured, or none of this can be tested',
+     now.configured === true, 'no cloud — presence has nowhere to live');
+  const mineHere = (rows) => (rows || []).filter(
+    (s) => s.gid === GID && s.is_me);
+  ck('this machine is not in the test set yet',
+     mineHere(now.sessions).length === 0);
+
+  hd('2. A beat puts this machine in the set, with its progress');
+  let beat = await post('/api/presence/beat', {
+    gid: GID, kind: KIND, first: true, doing: 'curating',
+    n_total: 416, n_decided: 40, n_this_visit: 7, at_index: 39,
+    at_time_s: 530.85,
+  });
+  ck('the beat is accepted', beat && beat.ok === true);
+  ck('and nobody else is reported', (beat.others || []).length === 0,
+     JSON.stringify(beat.others));
+  now = await get('/api/presence');
+  const me = mineHere(now.sessions)[0];
+  ck('this machine now appears in the set', !!me);
+  if (me) {
+    p('  ' + (me.person || '(no name)') + ' on ' + (me.device || me.machine)
+      + ' — ' + me.n_decided + '/' + me.n_total + ', +' + me.n_this_visit
+      + ' this sitting, at #' + me.at_index);
+    ck('it is marked active', me.active === true);
+    ck('and marked as this machine', me.is_me === true);
+    ck('the counters came back as sent',
+       me.n_total === 416 && me.n_decided === 40 && me.n_this_visit === 7,
+       me.n_decided + '/' + me.n_total);
+    /* The name matters: a feed that says "None is curating" is useless, and
+       the profile calls it `user` rather than `name`. */
+    ck('it carries a person, not just a machine id', !!me.person,
+       'no person — the feed would read "Somebody"');
+    ck('and the age is fresh', me.age_s != null && me.age_s < 30,
+       me.age_s);
+  }
+
+  hd('3. A second machine, as its heartbeat would have left it');
+  /* Written straight to the table on purpose -- see the note at the top. */
+  await post('/api/presence/_test_ghost', {
+    gid: GID, kind: KIND, machine: GHOST,
+    person: 'A Colleague', device: 'the rig',
+    n_total: 416, n_decided: 111, n_this_visit: 20, at_index: 110,
+  });
+  now = await get('/api/presence');
+  const ghost = (now.sessions || []).filter((s) => s.machine === GHOST)[0];
+  ck('the other session is visible here', !!ghost,
+     'the ghost row did not come back');
+  if (ghost) {
+    ck('it is active', ghost.active === true);
+    ck('and is NOT reported as this machine', ghost.is_me === false);
+    p('  ' + ghost.person + ' on ' + ghost.device + ' — '
+      + ghost.n_decided + '/' + ghost.n_total);
+  }
+  beat = await post('/api/presence/beat', { gid: GID, kind: KIND });
+  ck('a beat now reports the other session back to us',
+     (beat.others || []).some((o) => o.machine === GHOST),
+     JSON.stringify((beat.others || []).map((o) => o.machine)));
+  ck('and does not report us to ourselves',
+     !(beat.others || []).some((o) => o.machine === now.machine),
+     'a second window on one machine is the same person, not a collision');
+
+  hd('4. The workbench shows it, and it is a different fact from "assigned"');
+  run = (src) => W().eval(src);
+  run("setView('toolkit')");
+  await sleep(1200);
+  run('BARRY.views.toolkit._presence(' + JSON.stringify(now) + ')');
+  await sleep(500);
+  const held = val => val;
+  const holder = run('(function () { return BARRY.views.toolkit._heldBy('
+    + JSON.stringify({ gid: GID, kind: KIND }) + '); })()');
+  p('  heldBy() → ' + (holder ? holder.person + ' on ' + holder.device : 'nobody'));
+  ck('the workbench sees the set as held by somebody else', !!holder,
+     'heldBy returned nothing, so opening would not warn');
+  ck('and it is the colleague, not us',
+     !!holder && holder.machine === GHOST, holder && holder.machine);
+
+  hd('5. Taking it tells the other session, rather than deleting it');
+  const took = await post('/api/presence/take',
+                          { gid: GID, kind: KIND, machine: GHOST });
+  ck('the take is accepted', took && took.ok === true, JSON.stringify(took));
+  now = await get('/api/presence');
+  const after = (now.sessions || []).filter((s) => s.machine === GHOST)[0];
+  ck('the other session still exists', !!after,
+     'it was deleted — their window would never find out');
+  ck('and is marked as yielded, so their window can say so',
+     !!after && !!after.yielded_to, after && after.yielded_to);
+  p('  yielded_to: ' + (after || {}).yielded_to);
+
+  hd('6. Letting go frees it now, rather than in two and a half minutes');
+  await post('/api/presence/release', { gid: GID, kind: KIND });
+  now = await get('/api/presence');
+  ck('this machine is out of the set', mineHere(now.sessions).length === 0,
+     'still listed after releasing');
+  ck('and the other session is untouched by our release',
+     (now.sessions || []).some((s) => s.machine === GHOST),
+     'releasing ours removed theirs');
+
+  hd('7. Presence never breaks curation');
+  /* The one property that matters more than any of the above: if the cloud
+     is unreachable, everything here must degrade to "nobody is reported"
+     rather than to an error. */
+  const noCloud = run('(function () {'
+    + 'var f = window.fetch;'
+    + 'window.fetch = function (u, o) {'
+    + '  if (String(u).indexOf("/api/presence") >= 0) {'
+    + '    return Promise.reject(new Error("harness: offline"));'
+    + '  }'
+    + '  return f.apply(this, arguments); };'
+    + 'return true; })()');
+  ck('fetch intercepted', noCloud === true);
+  let threw = false;
+  try {
+    await run('BARRY.views.toolkit._loadPresence(false)');
+    await sleep(400);
+  } catch (e) { threw = true; }
+  ck('a failed presence read does not throw', !threw,
+     'the workbench would break when the network does');
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'presence';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} finally {
+  await cleanup();
+  p('\n(test rows cleaned up)');
+} })();
+</script>

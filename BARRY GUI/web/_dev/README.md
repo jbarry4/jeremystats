@@ -40,6 +40,7 @@ live server with no build step and no test framework:
 | `radio.html` | that the radio loads nothing until asked, asks before the first connection, and keeps playing when minimised |
 | `marks.html` | that deleting a bookmark redraws the list rather than stacking another dialog, so the close X closes; and that one click is one request |
 | `motion.html` | the boot overlay is painted before the scripts finish and cannot outlive them; the Menu button carries its three positions; the rail really reaches 54px and 0px; and skeletons are present during a load and gone after, including a failed one |
+| `presence.html` | who is curating what: that a beat carries the counters, that a second machine is seen and reported back, that the workbench treats the set as held, that taking it marks their session rather than deleting it, and that a failed presence read never breaks the bench. Writes to the live table and clears up after itself |
 
 Run them by opening, with the server up:
 

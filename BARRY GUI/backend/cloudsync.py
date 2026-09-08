@@ -871,11 +871,43 @@ class Sync:
         """
         if not self.people:
             return 0
+
+        # What this machine already says, so an unchanged row can be
+        # skipped. Writing one restamps it, and a restamped row is pushed
+        # back up as though it were an edit -- which is how the same seven
+        # people came down and went up again on every single cycle, between
+        # every pair of machines, forever.
         n = 0
+        have = {}
+        try:
+            # The roster compiles counts from local data as well, which is
+            # more work than this needs -- but it is the only reader, and a
+            # wrong skip would be worse than a slow one.
+            for p in (self.people.roster() or []):
+                have[(p.get("name") or "").strip().lower()] = p
+        except Exception:                            # noqa: BLE001
+            have = {}
+
         for r in (rows or []):
             name = (r.get("name") or "").strip()
             if not name:
                 continue
+            want = {"email": r.get("email"), "role": r.get("role"),
+                    "initials": r.get("initials"), "orcid": r.get("orcid")}
+            mine = have.get(name.lower())
+            if mine is not None:
+                # Only the fields this row actually carries, and only when
+                # they differ. A row that says nothing new is not news.
+                same = True
+                for k, v in want.items():
+                    if v is None:
+                        continue
+                    if (str(mine.get(k) or "").strip()
+                            != str(v or "").strip()):
+                        same = False
+                        break
+                if same:
+                    continue
             try:
                 self.people.add(name, r.get("email"), None,
                                 role=r.get("role"),

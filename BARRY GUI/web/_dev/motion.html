@@ -185,9 +185,13 @@ const hd = (t) => p('\n== ' + t + ' ==');
      is the bug this is here to catch. */
   const settle = async (ms) => {
     await sleep(60);
+    /* subtree: true, because the labels collapse by transitioning their own
+       max-width. Finishing only #app's own animations left every label
+       reporting the width it was leaving, which looked exactly like the
+       collapse rule not applying at all. */
     run('(function () { var a = document.getElementById("app");'
-      + 'if (a.getAnimations) a.getAnimations().forEach(function (x) {'
-      + '  try { x.finish(); } catch (e) {} }); })()');
+      + 'var all = a.getAnimations ? a.getAnimations({ subtree: true }) : [];'
+      + 'all.forEach(function (x) { try { x.finish(); } catch (e) {} }); })()');
     await sleep(ms || 80);
   };
   const wide = railW();
@@ -224,6 +228,50 @@ const hd = (t) => p('\n== ' + t + ' ==');
      goneDisp === 'none', goneDisp);
   ck('and it all comes back', Math.abs(back - wide) < 2,
      back + ' vs ' + wide);
+
+  /* The workspace, in all three states.
+
+     Collapsing the rail hid the entire interface once, and none of the
+     checks above would have noticed: the rail was the right width in every
+     state and the view beside it had been placed in a 0px column. Measure
+     what the person is actually looking at, not only the thing being
+     animated. */
+  const mainW = () => D().getElementById('main').getBoundingClientRect().width;
+  const widths = {};
+  for (const st of ['full', 'icons', 'away']) {
+    run("setRail('" + st + "')");
+    await settle(st === 'away' ? 500 : 120);
+    widths[st] = mainW();
+  }
+  run("setRail('full')");
+  await settle();
+  p('  workspace width: full ' + widths.full.toFixed(0) + ' → icons '
+    + widths.icons.toFixed(0) + ' → hidden ' + widths.away.toFixed(0));
+  ck('the workspace has room in every state',
+     widths.full > 200 && widths.icons > 200 && widths.away > 200,
+     JSON.stringify(widths));
+  ck('and gets wider as the rail gets narrower',
+     widths.icons > widths.full && widths.away > widths.icons,
+     JSON.stringify(widths));
+
+  /* And the icons are centred, which the flex gap for an invisible label
+     quietly prevented. */
+  run("setRail('icons')");
+  await settle(200);
+  const off = Array.from(D().querySelectorAll('#rail .nav-item')).map((b) => {
+    const svg = b.querySelector('svg');
+    if (!svg) return 0;
+    const r = b.getBoundingClientRect(), s2 = svg.getBoundingClientRect();
+    // How far the icon's centre is from the button's centre.
+    return (s2.left + s2.width / 2) - (r.left + r.width / 2);
+  });
+  const worst = Math.max(...off.map(Math.abs));
+  p('  ' + off.length + ' nav icon(s), worst offset from centre '
+    + worst.toFixed(1) + 'px');
+  ck('the icons are centred in the collapsed rail', worst < 1.5,
+     worst.toFixed(1) + 'px off — a gap is being left for a hidden label');
+  run("setRail('full')");
+  await settle();
 
   hd('5. Skeletons are there during the wait, and gone after');
   /* Hold the registry open, so the wait is long enough to look at. This is
