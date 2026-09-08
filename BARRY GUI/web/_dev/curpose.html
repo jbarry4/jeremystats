@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose — the curation workbench</title>
+<style>html,body{margin:0;height:100%}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Opens the Event curation view in one specific state and leaves it open,
+   for screenshots. `?open=N` puts N sets on the bench (default 2), and
+   `?shelf=1` unfolds the picker underneath. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) {}
+    await sleep(gap);
+  }
+  return -1;
+}
+(async () => {
+  const Q = new URLSearchParams(location.search);
+  const want = Math.max(0, parseInt(Q.get('open') || '2', 10));
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  await untilN(() => W.BARRY);
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}) }).then((r) => r.json());
+  const get = (u) => W.fetch(u).then((r) => r.json());
+
+  await post('/api/curation/close-all', {});
+  const sets = (await get('/api/curation')).sets
+    .filter((s) => !s.archived && !/^demo-/.test(s.gid || ''));
+  /* One unfinished and one done, so the two states are both in the shot. */
+  const unfinished = sets.filter((s) => (s.progress || {}).left > 0);
+  const done = sets.filter((s) => (s.progress || {}).left === 0);
+  const pick = unfinished.slice(0, 1).concat(done.slice(0, want - 1))
+    .slice(0, want);
+  for (const s of pick) {
+    await post('/api/curation/' + s.gid + '/' + s.kind + '/open',
+               { open: true });
+  }
+
+  W.eval("setView('toolkit')");
+  await untilN(() => D.querySelector('.tk-tool'), 200);
+  Array.from(D.querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(b.textContent)).click();
+  await untilN(() => D.querySelector('#curBench'), 300);
+  await sleep(900);
+  if (Q.get('shelf')) {
+    const t = D.querySelector('.cur-shelf-toggle');
+    if (t) { t.click(); await untilN(() => D.querySelector('.cur-shelf-row'), 120); }
+    await sleep(600);
+  }
+  document.title = 'posed: ' + pick.length + ' on the bench';
+})();
+</script>

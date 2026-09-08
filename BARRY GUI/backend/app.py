@@ -2419,14 +2419,16 @@ def api_curation_backfill():
     rows = CURATE.backfill(dry_run=dry)
     stamped = sum(r["stamped"] for r in rows)
     reviewed = sum(r["reviewed"] for r in rows)
-    if not dry and (stamped or reviewed):
+    assigned = sum(1 for r in rows if r.get("assigned"))
+    if not dry and (stamped or reviewed or assigned):
         STORE.record_activity([{
             "action": "curation.backfill",
             "detail": {"sets": len(rows), "stamped": stamped,
-                       "reviewed": reviewed},
+                       "reviewed": reviewed, "assigned": assigned},
         }])
     return jsonify({"ok": True, "sets": rows, "stamped": stamped,
-                    "reviewed": reviewed, "dry_run": dry})
+                    "reviewed": reviewed, "assigned": assigned,
+                    "dry_run": dry})
 
 
 @app.route("/api/curation/handoff")

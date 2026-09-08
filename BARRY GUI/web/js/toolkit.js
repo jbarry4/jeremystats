@@ -679,6 +679,17 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'spacer', style: 'flex:1' }),
       el('span', { class: 'hint', id: 'curCount' }),
     ].filter(Boolean)));
+    /* Named columns. A bare "416 ✓", a dash and "15 minutes ago"
+       are three facts nobody can identify without being told which
+       is which. */
+    shelf.appendChild(el('div', { class: 'cur-shelf-cols' }, [
+      el('span', { class: 'csr-name', text: 'Set' }),
+      el('span', { class: 'csr-sess', text: 'Recording' }),
+      el('span', { class: 'csr-n', text: 'Decided' }),
+      el('span', { class: 'csr-who', text: 'Whose' }),
+      el('span', { class: 'csr-when', text: 'Last touched' }),
+      el('span', {}),
+    ]));
     shelf.appendChild(el('div', { class: 'cur-shelf-list', id: 'curShelfList' }));
     paintShelfList();
   }

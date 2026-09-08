@@ -27,6 +27,9 @@ live server with no build step and no test framework:
 | `tour.html` | presenter zoom (that it anchors on the pointer and clamps at the edges) and the guided tours end to end, including a click-to-continue step |
 | `tourshot.html` | poses the tour at a given step for screenshots: `?at=menu` or `?at=<n>` |
 | `probe.html` | a scratch page for walking one flow step by step when something is wrong |
+| `curmanage.html` | the curation workbench: the bench, the shelf, that putting a set down costs nothing, and that a banked set's labels survive coming back |
+| `curpose.html` | poses the curation workbench for screenshots: `?open=<n>` and `?shelf=1` |
+| `curprobe.html` | a scratch page for one curation state at a time |
 
 Run them by opening, with the server up:
 

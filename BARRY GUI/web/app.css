@@ -3761,6 +3761,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
   margin-top: 8px; padding-top: 8px;
   border-top: 1px solid var(--line-soft);
 }
+/* An author `display` beats the browser's own `[hidden] { display: none }`,
+   so a class like the one above quietly un-hides anything it is put on.
+   This is the only reason the fold worked in the markup and not on screen. */
+.cur-set-more[hidden] { display: none; }
 
 .cur-shelf-head { margin: 14px 0 0; }
 .cur-shelf-toggle {
@@ -3781,14 +3785,24 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .cur-shelf-list { display: flex; flex-direction: column; margin-top: 4px; }
 /* A row, not a card: picking something up off the shelf wants a line you
    can scan forty of, and the detail is on the bench once it is open. */
-.cur-shelf-row {
+.cur-shelf-row, .cur-shelf-cols {
   display: grid; align-items: center; gap: 10px;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) 84px
-                         minmax(0, 96px) 84px auto;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) 76px
+                         minmax(0, 172px) 92px auto;
   padding: 5px 6px; border-radius: 4px; font-size: 11.5px;
   border-bottom: 1px solid var(--line-soft);
 }
 .cur-shelf-row:last-child { border-bottom: 0; }
+/* The header shares the row's grid so the columns cannot drift apart
+   from the labels naming them -- but it is NOT a `.cur-shelf-row`, because
+   anything counting rows counted it as a set and the shelf reported 43 of
+   42. A label is not a row of data. */
+.cur-shelf-cols {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); padding: 5px 6px 3px;
+  border-bottom: 1px solid var(--line);
+}
+.cur-shelf-cols .csr-name { font-weight: 400; }
 .cur-shelf-row:hover { background: var(--bg-3); }
 .csr-name { font-weight: 500; }
 /* Wrapping rather than truncating: a session label that has to be cut to
@@ -3797,7 +3811,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .csr-sess, .csr-when { color: var(--text-3); }
 .csr-n { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .cur-shelf-row.done .csr-n { color: var(--ok); }
-.csr-who { color: var(--text-2); }
+/* Wide enough, and a size down, so a full email address sits on one line
+   rather than wrapping and making every row in the list a different
+   height. It is never cut: an owner you cannot read is not an owner. */
+.csr-who { color: var(--text-2); font-size: 10px; line-height: 1.35; }
 .csr-who.none { color: var(--text-3); }
 .csr-acts { display: flex; gap: 4px; align-items: center; }
 /* The arrow is a shortcut, not a second primary action. */
@@ -3805,9 +3822,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
 
 @media (max-width: 900px) {
   /* The grid gives up before anything gets cut. */
-  .cur-shelf-row {
+  .cur-shelf-row, .cur-shelf-cols {
     grid-template-columns: 1fr auto; row-gap: 2px;
   }
+  .cur-shelf-cols { display: none; }
   .csr-sess, .csr-who, .csr-when { grid-column: 1; }
 }
 

@@ -45,6 +45,14 @@ SCHEMA = 1
 # many are left.
 UNSPECIFIED = None
 
+# Names that are a record of where a decision came from rather than of a
+# person who could be asked about it. A decision may honestly say "snapshot
+# import" -- nobody knows which hand dragged those PNGs -- but a set whose
+# owner is "snapshot import" has nobody to talk to, which is the whole point
+# of putting a name on it.
+NOT_A_PERSON = frozenset({"snapshot import", "the import", "unknown",
+                          "another machine", ""})
+
 # Keys the mode itself needs. A category cannot have one of these, however
 # good a mnemonic it is: "sputter" wanted `p`, which is also "previous", so
 # pressing p to go back a candidate labelled it as a sputter instead. The
@@ -735,6 +743,7 @@ class Curation:
             who = (src.get("by") or (rec.get("created") or {}).get("user")
                    or "the import")
             stamped = reviewed = 0
+            deciders = {}
             for ev in rec.get("events") or []:
                 lab = ev.get("label")
                 if not lab:
@@ -746,12 +755,31 @@ class Curation:
                 if not (ev.get("reviews") or []):
                     _own_review(ev)
                     reviewed += 1
-            if not (stamped or reviewed):
+                got = (ev.get("by") or "").strip()
+                if got and got.lower() not in NOT_A_PERSON:
+                    deciders[got] = deciders.get(got, 0) + 1
+
+            # And a name on the set itself. Forty sets with no owner
+            # are forty identical rows; the person who actually made
+            # the calls is the honest default, and it is right there
+            # in the decisions.
+            owned = 0
+            if not (rec.get("assignee") or "").strip():
+                pick = None
+                if deciders:
+                    pick = max(sorted(deciders),
+                               key=lambda k: deciders[k])
+                pick = pick or (rec.get("created") or {}).get("user")
+                if pick:
+                    rec["assignee"] = pick
+                    owned = 1
+            if not (stamped or reviewed or owned):
                 continue
             out.append({"gid": rec.get("gid"), "kind": rec.get("kind"),
                         "name": rec.get("name"),
                         "session_label": rec.get("session_label"),
                         "stamped": stamped, "reviewed": reviewed,
+                        "assigned": rec.get("assignee") if owned else None,
                         "at": at, "by": who})
             if not dry_run:
                 self._write(rec)
@@ -787,6 +815,13 @@ class Curation:
             rec["archived_at"] = _now()
             who = (self.store.provenance() if self.store else {}).get("user")
             rec["archived_by"] = who
+            # Archiving is the stronger statement, so it implies the weaker
+            # one. Leaving a set both open and archived put it in neither
+            # place -- off the bench because it is archived, off the shelf
+            # because it is open -- and it simply disappeared.
+            if rec.get("open"):
+                rec["open"] = False
+                rec["closed_at"] = rec["archived_at"]
         else:
             rec.pop("archived", None)
             rec.pop("archived_at", None)
@@ -898,6 +933,15 @@ class Curation:
             rec["opened_at"] = _now()
             rec["opened_by"] = who
             rec.pop("closed_at", None)
+            # Picking a set up is a stronger statement than un-archiving it,
+            # so it does that too. The invariant both halves of this rely on
+            # is that archived and open are never both true: the bench is
+            # exactly the open sets, the shelf is exactly the rest, and a
+            # set that managed to be both belonged to neither and vanished.
+            if rec.get("archived"):
+                rec.pop("archived", None)
+                rec.pop("archived_at", None)
+                rec.pop("archived_by", None)
             if not (rec.get("assignee") or "").strip() and who:
                 rec["assignee"] = who
         else:
