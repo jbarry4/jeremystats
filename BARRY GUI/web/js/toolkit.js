@@ -789,19 +789,123 @@ BARRY.views.toolkit = (function () {
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
-  async function assignSet(st) {
-    const who = await askPath(
-      'Who is working on "' + (st.name || st.gid) + '"?',
-      'a name or email, or blank for nobody',
-      st.assignee || (BARRY.profile && BARRY.profile.who()) || '');
-    if (who === null) return;
+  /* Who has worked on this repo, cached for the session. Compiled by the
+     server from the profiles, the decisions and the bank, so it is exactly
+     the set of names already stamped on the data. */
+  let roster = null;
+
+  async function people(force) {
+    if (roster && !force) return roster;
     try {
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(st.gid) + '/'
-        + encodeURIComponent(st.kind) + '/assign', { who: who });
-      if (res.set) Object.assign(st, res.set);
-      renderCuration();
-    } catch (e) { toast(e.message, 'err', 8000); }
+      roster = await api('/api/people');
+    } catch (e) {
+      roster = { people: [], not_people: [], me: null };
+    }
+    return roster;
+  }
+
+  /* Pick an owner from the people already here, rather than retyping a
+     name. A free-text box is how one person becomes three -- "Rain",
+     "rain" and "Rain " are three owners to any list that groups by name. */
+  async function assignSet(st) {
+    const r = await people();
+    let chosen = st.assignee || null;
+    const list = el('div', { class: 'bm-list tall person-list' });
+    const fresh = el('input', {
+      type: 'text', class: 'cur-search',
+      placeholder: 'Somebody not listed yet\u2014 type a name',
+    });
+
+    const paint = () => {
+      list.innerHTML = '';
+      const rows = (r.people || []);
+      if (!rows.length) {
+        list.appendChild(el('div', { class: 'hint',
+          text: 'Nobody is on the roster yet. BARRY builds it from the '
+              + 'names already stamped on decisions and bank entries, so '
+              + 'it fills in as work happens \u2014 or type one below.' }));
+      }
+      /* Nobody is a real answer, and the only way to hand a set back. */
+      list.appendChild(el('label', {
+        class: 'bm-row' + (chosen === null ? ' on' : ''),
+      }, [
+        el('input', { type: 'radio', name: 'whose',
+          checked: chosen === null ? 'checked' : null,
+          onchange: () => { chosen = null; paint(); } }),
+        el('span', { class: 'mk-name', text: 'Nobody' }),
+        el('span', { class: 'flagchip', text: 'unassigned' }),
+      ]));
+      for (const p of rows) {
+        const what = Object.keys(p.counts || {})
+          .map((k) => p.counts[k] + ' ' + k).join('  \u00b7  ');
+        list.appendChild(el('label', {
+          class: 'bm-row' + (chosen === p.name ? ' on' : ''),
+        }, [
+          el('input', { type: 'radio', name: 'whose',
+            checked: chosen === p.name ? 'checked' : null,
+            onchange: () => { chosen = p.name; paint(); } }),
+          el('span', { class: 'mk-name', text: p.name }),
+          what ? el('span', { class: 'person-what', text: what }) : null,
+          p.me ? el('span', { class: 'flagchip good', text: 'you' }) : null,
+        ].filter(Boolean)));
+      }
+    };
+    paint();
+
+    const save = async (who) => {
+      closeModal();
+      try {
+        const res = await apiPost(
+          '/api/curation/' + encodeURIComponent(st.gid) + '/'
+          + encodeURIComponent(st.kind) + '/assign', { who: who });
+        if (res.set) Object.assign(st, res.set);
+        renderCuration();
+        toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
+              + 'has this one now.', 'ok', 4000);
+      } catch (e) { toast(e.message, 'err', 8000); }
+    };
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Who is working on this?' }),
+        el('span', { class: 'sub', text: st.name || st.gid }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        list,
+        el('div', { class: 'section-label', text: 'Or add somebody' }),
+        el('div', { class: 'person-add' }, [
+          fresh,
+          el('button', {
+            class: 'btn ghost sm', text: 'Add and assign',
+            onclick: async () => {
+              const name = (fresh.value || '').trim();
+              if (!name) { toast('Type a name first.', 'err', 3000); return; }
+              try {
+                roster = await apiPost('/api/people/add', { name: name });
+              } catch (e) { toast(e.message, 'err', 8000); return; }
+              save(name);
+            },
+          }),
+        ]),
+        (r.not_people || []).length
+          ? el('p', { class: 'hint',
+              text: 'Not offered, because they are a record of where a '
+                  + 'decision came from rather than somebody who can be '
+                  + 'asked about it: '
+                  + r.not_people.map((p) => p.name).join(', ') + '.' })
+          : null,
+      ].filter(Boolean)),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        el('button', { class: 'btn', text: 'Assign',
+                       onclick: () => save(chosen) }),
+      ]),
+    ]));
   }
 
   async function archiveSet(st, on) {

@@ -3803,6 +3803,15 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border-bottom: 1px solid var(--line);
 }
 .cur-shelf-cols .csr-name { font-weight: 400; }
+
+/* Picking an owner. A roster row has to say why the name is on it -- "48
+   decisions, 3 banked versions" is what tells two similar names apart. */
+.person-list .bm-row { align-items: baseline; }
+.person-what {
+  font-size: 10px; color: var(--text-3); overflow-wrap: anywhere;
+}
+.person-add { display: flex; gap: 6px; align-items: center; }
+.person-add .cur-search { flex: 1; min-width: 0; }
 .cur-shelf-row:hover { background: var(--bg-3); }
 .csr-name { font-weight: 500; }
 /* Wrapping rather than truncating: a session label that has to be cut to

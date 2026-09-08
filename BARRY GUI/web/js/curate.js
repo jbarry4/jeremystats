@@ -225,7 +225,7 @@ BARRY.curate = (function () {
      is the only path by which any of them learn about a candidate. */
   let lastChange = null;
 
-  function publishMarks() {
+  function publishMarks(opts) {
     if (!sess || !set_) return;
     sess.curationMarks = {
       kind: set_.kind,
@@ -236,6 +236,9 @@ BARRY.curate = (function () {
       events: events().map((e) => ({ start: e.start, label: e.label || null })),
       gid: set_.gid,
     };
+    // `local` updates what this window draws and tells nobody. The
+    // caller that actually settles the position does the publishing.
+    if (opts && opts.local) return;
     if (BARRY.views.xplore.publishCuration) {
       BARRY.views.xplore.publishCuration(sess, {
         gid: set_.gid, kind: set_.kind, index,
@@ -314,7 +317,12 @@ BARRY.curate = (function () {
     history.push(step_);
     markRev += 1;
     lastChange = { index, label: labelId };
-    publishMarks();          // that mark's colour just changed
+    /* Locally only. The colour has to change on this screen now, but the
+       other windows do not need to be told twice: `step(1)` below moves to
+       the next candidate and publishes the settled state a moment later.
+       Publishing here as well meant two /api/link POSTs per keystroke,
+       which is what filled the connection pool. */
+    publishMarks({ local: true });
     if (history.length > 500) history.shift();
     render();
     // Move on before the round trip, which is the whole point of the mode.
@@ -556,15 +564,30 @@ BARRY.curate = (function () {
   /* Asking for a version note, with the previous versions in front of you.
 
      Resolves to the note, or to null if it is called off. */
-  function bankDialog(entry, who) {
+  /* `at` is the set as it was when Bank was clicked -- gid, kind and name.
+     Passed in rather than read off `set_`, which may be null by now. */
+  function bankDialog(entry, who, at) {
     return new Promise((resolve) => {
-      const labs = (kind && kind.labels) || [];
+      const labs = (kind && kind.labels)
+        || (at && at.labels) || [];
       const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
                           || (id === 'unspecified' ? 'undecided' : id);
+      /* The mix, from the set if it is still open and from the last
+         progress the server reported if it is not -- leaving curation
+         empties events() and the dialog would then claim the set was
+         empty. */
       const tally = {};
-      for (const e of events()) {
-        if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
+      const live = events();
+      if (live.length) {
+        for (const e of live) {
+          if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
+        }
+      } else {
+        const by = ((at && at.progress) || {}).by_label || {};
+        for (const k in by) tally[k] = by[k];
       }
+      const stillLeft = live.length
+        ? left() : (((at && at.progress) || {}).left || 0);
       const vs = (entry && entry.versions) || [];
       /* Highest so far plus one, which is what the server does. The
          count is not the same number: the detector's import sits at
@@ -577,7 +600,7 @@ BARRY.curate = (function () {
       wrap.appendChild(el('div', { class: 'modal-head' }, [
         el('h2', { text: vs.length ? 'Bank this as version ' + next
                                    : 'Bank this set' }),
-        el('p', { class: 'sub', text: set_.name || '' }),
+        el('p', { class: 'sub', text: (at && at.name) || '' }),
       ]));
 
       /* What is about to be written. */
@@ -587,9 +610,9 @@ BARRY.curate = (function () {
         Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(
           (k) => el('span', { class: 'ver-chip',
                               text: nameOf(k) + ' ' + tally[k] }))
-        .concat(left()
+        .concat(stillLeft
           ? [el('span', { class: 'ver-chip',
-                          text: left() + ' still undecided, not banked' })]
+                          text: stillLeft + ' still undecided, not banked' })]
           : [])));
 
       if (vs.length) {
@@ -839,25 +862,54 @@ BARRY.curate = (function () {
     }
   }
 
+  /* Banking is not instant, and the set can go away while it is being
+     set up: reading the previous versions is a round trip, the dialog waits
+     on a person, and leaving curation sets `set_` to null. So every step
+     re-checks, and the identity is captured once at the start rather than
+     read off `set_` three times.
+
+     It used to read `set_.gid` after each await and `set_.name` inside the
+     dialog. On a loaded queue the first await took twenty-one seconds, the
+     user left, and the dialog threw `null.name` into the console -- outside
+     the try, so nothing told them, and nothing was banked. */
+  let banking = false;
+
   async function bank() {
+    if (!set_) return;
+    if (banking) {
+      toast('Already opening the banking dialog\u2026', null, 2500);
+      return;
+    }
+    const at = {
+      gid: set_.gid, kind: set_.kind, name: set_.name,
+      labels: (kind && kind.labels) || set_.labels || [],
+      progress: { by_label: (() => {
+        const t = {};
+        for (const e of events()) {
+          if (e.label) t[e.label] = (t[e.label] || 0) + 1;
+        }
+        return t;
+      })(), left: left() },
+    };
     /* Who is in the profile. Asking again every time was a field to retype
        and a chance to type it differently. */
-    const who = (BARRY.profile && BARRY.profile.who())
-      || await askPath('Who is banking these?', 'your name or email', '');
-    if (!who) return;
-    /* What it has been banked as before, so the note is written knowing
-       what it follows rather than into a blank box. */
-    let known = null;
+    banking = true;
     try {
-      known = await api('/api/curation/' + encodeURIComponent(set_.gid) + '/'
-                        + encodeURIComponent(set_.kind) + '/banked');
-    } catch (e) { /* never banked, or an older server; the dialog copes */ }
-    const note = await bankDialog(known && known.entry, who);
-    if (note === null) return;
-    try {
+      const who = (BARRY.profile && BARRY.profile.who())
+        || await askPath('Who is banking these?', 'your name or email', '');
+      if (!who) return;
+      /* What it has been banked as before, so the note is written knowing
+         what it follows rather than into a blank box. */
+      let known = null;
+      try {
+        known = await api('/api/curation/' + encodeURIComponent(at.gid) + '/'
+                          + encodeURIComponent(at.kind) + '/banked');
+      } catch (e) { /* never banked, or an older server; the dialog copes */ }
+      const note = await bankDialog(known && known.entry, who, at);
+      if (note === null) return;
       const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(set_.gid) + '/'
-        + encodeURIComponent(set_.kind) + '/bank',
+        '/api/curation/' + encodeURIComponent(at.gid) + '/'
+        + encodeURIComponent(at.kind) + '/bank',
         { added_by: who, note: note });
       /* One entry, one version. Says which version, and what is in it, so
          the toast confirms the thing that was written rather than a count
@@ -885,7 +937,11 @@ BARRY.curate = (function () {
                       + ' this set had been split into.' : '.'),
             'ok', 9000);
       BARRY.refreshSync();
-    } catch (e) { toast(e.message, 'err', 8000); }
+    } catch (e) {
+      toast('That did not bank: ' + (e && e.message || e), 'err', 9000);
+    } finally {
+      banking = false;
+    }
   }
 
   /* ==================================================================

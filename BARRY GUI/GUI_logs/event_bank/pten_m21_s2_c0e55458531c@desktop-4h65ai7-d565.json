@@ -1,7 +1,44 @@
 {
+  "_at": {
+    "added": "2026-09-02T23:21:29.331457+00:00",
+    "by_label": "2026-09-08T18:35:59.039369+00:00",
+    "events": "2026-09-02T23:21:29.331457+00:00",
+    "gid": "2026-09-02T23:21:29.331457+00:00",
+    "id": "2026-09-02T23:21:29.331457+00:00",
+    "label_names": "2026-09-08T18:35:59.039369+00:00",
+    "mouse": "2026-09-02T23:21:29.331457+00:00",
+    "n": "2026-09-02T23:21:29.331457+00:00",
+    "name": "2026-09-02T23:21:29.331457+00:00",
+    "note": "2026-09-02T23:21:29.331457+00:00",
+    "project": "2026-09-02T23:21:29.331457+00:00",
+    "recording_start": "2026-09-02T23:21:29.331457+00:00",
+    "schema": "2026-09-02T23:21:29.331457+00:00",
+    "session": "2026-09-02T23:21:29.331457+00:00",
+    "session_key": "2026-09-02T23:21:29.331457+00:00",
+    "session_label": "2026-09-02T23:21:29.331457+00:00",
+    "session_loose_key": "2026-09-02T23:21:29.331457+00:00",
+    "session_path": "2026-09-02T23:21:29.331457+00:00",
+    "source": "2026-09-02T23:21:29.331457+00:00",
+    "specified": "2026-09-02T23:21:29.331457+00:00",
+    "type": "2026-09-02T23:21:29.331457+00:00",
+    "type_name": "2026-09-02T23:21:29.331457+00:00",
+    "units": "2026-09-02T23:21:29.331457+00:00",
+    "version": "2026-09-08T18:35:59.039369+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "v0-3f2cac4f": [
+        "set",
+        "2026-09-08T18:35:59.039369+00:00"
+      ],
+      "v1-a9b34e70": [
+        "set",
+        "2026-09-08T18:35:59.039369+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-02T23:21:29.331457+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-08T18:35:59.039369+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -10,8 +47,10 @@
     "by": "theexaminedexistence@gmail.com",
     "machine": "DESKTOP-4H65AI7"
   },
-  "curation_label": null,
-  "duration_s": null,
+  "by_label": {
+    "garbage": 19,
+    "spike": 3
+  },
   "events": [
     {
       "start": 35.968
@@ -82,6 +121,12 @@
   ],
   "gid": "s37c7c8edfe10",
   "id": "c0e55458531c",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
   "mouse": 21,
   "n": 22,
   "name": "DS candidates (ETS)",
@@ -107,5 +152,229 @@
   "specified": false,
   "type": "ds",
   "type_name": "ds",
-  "units": "seconds relative to the start of the recording"
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "by_label": {
+        "unspecified": 22
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-3f2cac4f",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 22,
+      "note": "Imported from ETS dentate-spike export. 22 candidates, none decided yet.",
+      "snap": [
+        [
+          35.968,
+          null
+        ],
+        [
+          264.612,
+          null
+        ],
+        [
+          302.185,
+          null
+        ],
+        [
+          331.905,
+          null
+        ],
+        [
+          373.337,
+          null
+        ],
+        [
+          376.837,
+          null
+        ],
+        [
+          377.966,
+          null
+        ],
+        [
+          399.602,
+          null
+        ],
+        [
+          410.204,
+          null
+        ],
+        [
+          461.366,
+          null
+        ],
+        [
+          501.694,
+          null
+        ],
+        [
+          541.002,
+          null
+        ],
+        [
+          605.032,
+          null
+        ],
+        [
+          742.484,
+          null
+        ],
+        [
+          871.682,
+          null
+        ],
+        [
+          1367.416,
+          null
+        ],
+        [
+          1437.588,
+          null
+        ],
+        [
+          1553.63,
+          null
+        ],
+        [
+          1628.977,
+          null
+        ],
+        [
+          1741.413,
+          null
+        ],
+        [
+          1767.717,
+          null
+        ],
+        [
+          1768.293,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "by_label": {
+        "garbage": 19,
+        "spike": 3
+      },
+      "changed": 22,
+      "gained": 0,
+      "id": "v1-a9b34e70",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 garbage": 19,
+        "undecided \u2192 spike": 3
+      },
+      "n": 22,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 22 of 22 decided.",
+      "rebuilt_from": {
+        "folder": "m21s2jul29",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          35.968,
+          "garbage"
+        ],
+        [
+          264.612,
+          "garbage"
+        ],
+        [
+          302.185,
+          "garbage"
+        ],
+        [
+          331.905,
+          "garbage"
+        ],
+        [
+          373.337,
+          "garbage"
+        ],
+        [
+          376.837,
+          "garbage"
+        ],
+        [
+          377.966,
+          "garbage"
+        ],
+        [
+          399.602,
+          "garbage"
+        ],
+        [
+          410.204,
+          "garbage"
+        ],
+        [
+          461.366,
+          "garbage"
+        ],
+        [
+          501.694,
+          "garbage"
+        ],
+        [
+          541.002,
+          "garbage"
+        ],
+        [
+          605.032,
+          "garbage"
+        ],
+        [
+          742.484,
+          "garbage"
+        ],
+        [
+          871.682,
+          "garbage"
+        ],
+        [
+          1367.416,
+          "garbage"
+        ],
+        [
+          1437.588,
+          "garbage"
+        ],
+        [
+          1553.63,
+          "garbage"
+        ],
+        [
+          1628.977,
+          "spike"
+        ],
+        [
+          1741.413,
+          "spike"
+        ],
+        [
+          1767.717,
+          "garbage"
+        ],
+        [
+          1768.293,
+          "spike"
+        ]
+      ],
+      "v": 1
+    }
+  ]
 }

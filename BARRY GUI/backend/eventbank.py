@@ -402,10 +402,16 @@ class EventBank:
                  or prior.get("n") != rec["n"]
                  or (prior.get("by_label") or {}) != counts)
         if moved:
+            # A detector's export is version zero, always. It is the thing
+            # curation gets done *to* rather than a round of curation, so
+            # numbering it 1 would make the first real pass v2 and leave the
+            # history claiming a pass that never happened.
+            first_import = (not versions) and not rec["specified"]
             fresh = {
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
-                "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+                "v": 0 if first_import
+                     else max([v.get("v") or 0 for v in versions] or [0]) + 1,
                 # A stable key, so two machines' histories union instead
                 # of one replacing the other.
                 "id": uuid.uuid4().hex[:12],
@@ -430,7 +436,7 @@ class EventBank:
             # and does not insert a second, identical record of the same
             # import as version zero: the history read v0 "imported, none
             # decided", v1 "imported, none decided", v2 "first pass".
-            if not versions and not rec["specified"]:
+            if first_import:
                 fresh["imported"] = True
                 fresh["note"] = fresh["note"] or (
                     "Imported from "
@@ -439,6 +445,48 @@ class EventBank:
                     + ". " + str(rec["n"])
                     + " candidates, none decided yet.")
             versions.append(fresh)
+
+            # A set whose very first bank is already curated: the migration
+            # edge case, where the sorting happened before BARRY existed and
+            # arrives all at once. The unsorted list still has to be v0 --
+            # it is the thing the sorting was done to, and without it the
+            # history opens on a finished set and cannot say what moved. So
+            # the same times with no decision on any of them go in below the
+            # pass that decided them.
+            if (not prior) and rec["specified"] and len(versions) == 1:
+                fresh["v"] = 1
+                versions.insert(0, {
+                    "v": 0,
+                    "id": "v0-" + uuid.uuid4().hex[:8],
+                    "at": fresh["at"],
+                    "by": fresh["by"],
+                    "note": "Imported from "
+                            + ((rec.get("source") or {}).get("pipeline")
+                               or "a detector")
+                            + ". " + str(rec["n"])
+                            + " candidates, none decided yet.",
+                    "n": rec["n"],
+                    "by_label": {"unspecified": rec["n"]},
+                    "changed": 0, "gained": 0, "lost": 0, "moves": {},
+                    "machine": fresh.get("machine"),
+                    "imported": True,
+                    "synthesized": True,
+                    "snap": ([[ev.get("start"), None] for ev in clean]
+                             if len(clean) <= self.SNAP_MAX_EVENTS else None),
+                })
+                if versions[0]["snap"] is None:
+                    versions[0].pop("snap")
+                # What the first pass actually did, now that there is a
+                # before to compare it to.
+                moved_to = {}
+                for ev in clean:
+                    lab = ev.get("label_id") or ev.get("label")
+                    if lab:
+                        key = "undecided → %s" % lab
+                        moved_to[key] = moved_to.get(key, 0) + 1
+                fresh["moves"] = moved_to
+                fresh["changed"] = sum(moved_to.values())
+
             # Older snapshots go; their counts and their notes stay, so the
             # history is still complete, only less finely comparable far
             # back. Version zero keeps its snapshot however old it gets:
@@ -453,7 +501,11 @@ class EventBank:
             versions[-1].setdefault("confirmed", [])
             versions[-1]["confirmed"].append({"at": _now(), "by": who})
         rec["versions"] = versions
-        rec["version"] = versions[-1]["v"] if versions else 1
+        # `is not None`, because version zero is a real version and
+        # `versions[-1]["v"] or 1` would quietly relabel every import as v1.
+        rec["version"] = (versions[-1]["v"] if versions
+                          and versions[-1].get("v") is not None else
+                          (0 if not rec["specified"] else 1))
 
         if prior:
             rec["history"] = list(prior.get("history") or [])

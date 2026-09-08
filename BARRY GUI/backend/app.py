@@ -27,7 +27,8 @@ from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                dsimport,
                feedback as feedbackmod,
                profile as profilemod,
-               layers, live, mice as micebook, nlx, pipeline, prewarm,
+               layers, live, mice as micebook, nlx, people as peoplemod,
+               pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, store,
                storyboard, sysinfo, toolkit, video)
@@ -2095,6 +2096,38 @@ def api_curation_assign(gid, kind):
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
 
 
+@app.route("/api/people")
+def api_people():
+    """Everyone who has worked on this repo, most likely first.
+
+    Gathered from the profiles, the curation decisions and the bank
+    rather than from a list somebody has to keep up to date.
+    """
+    return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/people/add", methods=["POST"])
+def api_people_add():
+    """Put somebody on the roster before they have touched anything."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        PEOPLE.add(body.get("name"), body.get("email"),
+                   body.get("note"))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/people/forget", methods=["POST"])
+def api_people_forget():
+    """Take a hand-added name off. A name the data carries stays:
+    it is on the records whether the roster lists it or not."""
+    body = request.get_json(force=True, silent=True) or {}
+    gone = PEOPLE.forget(body.get("name"))
+    return jsonify({"ok": True, "removed": bool(gone),
+                    **PEOPLE.roster(CURATE, BANK)})
+
+
 @app.route("/api/curation/close-all", methods=["POST"])
 def api_curation_close_all():
     """Clear the workbench. Nothing is archived, deleted or unbanked."""
@@ -3935,6 +3968,9 @@ REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
+# Compiled from what everything else already records, so it cannot
+# drift out of step with the attribution on the data.
+PEOPLE = peoplemod.People(LOGS_DIR, STORE, PROFILE)
 
 
 # ==========================================================================
@@ -4496,7 +4532,7 @@ def api_kilosort_terminal():
 # ==========================================================================
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
-    results=None, repo_root=REPO_ROOT)
+    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE)
 
 _cloud_lock = threading.Lock()
 _cloud_last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,
