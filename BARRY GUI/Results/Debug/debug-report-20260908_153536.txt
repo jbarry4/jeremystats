@@ -1,0 +1,214 @@
+BARRY GUI debug report
+generated  2026-09-08 15:35:36
+machine    BarryLab / Windows 11
+python     3.12.10
+matlab     C:\Program Files\MATLAB\R2025b\bin\matlab.EXE
+ffmpeg     C:\Users\barry\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\barry\OneDrive\Desktop\jeremystats
+view       errors
+session    PTEN m33 s8 2024-06-14
+
+UI ACTIONS, oldest first (6)
+------------------------------------------------------------------
+:56.518Z  link.scope                 {"scope": "session"}
+:57.079Z  session.open               {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "channels": 64, "fs": 30000, "duration_s": 1863.0485333333334, "rest
+:57.095Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:30.983Z  window.change              {"t0": 1.671, "span": 1, "scope": "session"}
+:30.990Z  curation.enter             {"gid": "s0a1cd99454b9", "kind": "ds", "n": 832, "left": 416}
+:43.887Z  window.change              {"t0": 1.671, "span": 1, "scope": "session"}
+
+REQUESTS AS THE BROWSER SAW THEM (53)
+------------------------------------------------------------------
+15:33:56  GET  /api/profile                         200        8 ms
+15:33:56  GET  /api/catalog                         200        9 ms
+15:33:56  GET  /api/prefs                           200        3 ms
+15:33:56  GET  /api/pipeline                        200        4 ms
+15:33:56  GET  /api/probes                          200        6 ms
+15:33:56  GET  /api/presets/filters                 200        6 ms
+15:33:56  GET  /api/panels                          200        5 ms
+15:33:56  GET  /api/jobs                            200        7 ms
+15:33:56  GET  /api/presets/layouts                 200        8 ms
+15:33:56  POST /api/pipeline/check                  200      245 ms
+15:33:56  GET  /api/sync/status                     200      446 ms
+15:33:56  POST /api/prefs                           200      109 ms
+15:33:57  POST /api/csc/open                        200      298 ms
+15:33:57  POST /api/events/nev                      200       15 ms
+15:33:57  POST /api/csc/window                      200      454 ms
+15:33:59  GET  /api/toolkit/scopes                  200     1495 ms
+15:34:01  POST /api/csc/overview                    200     3924 ms
+15:34:01  POST /api/csc/window                      200      160 ms
+15:34:03  GET  /api/curation                        200     4450 ms
+15:34:03  GET  /api/curation                        200     4672 ms
+15:34:04  GET  /api/curation                        200     4286 ms
+15:34:04  GET  /api/curation                        200     4120 ms
+15:34:09  GET  /api/registry                        200     5935 ms
+15:34:14  POST /api/csc/window                      200      326 ms
+15:34:21  GET  /api/curation                        200     2637 ms
+15:34:22  GET  /api/curation                        200     2750 ms
+15:34:23  GET  /api/registry                        200    19343 ms
+15:34:23  GET  /api/registry                        200    19004 ms
+15:34:23  GET  /api/registry                        200    18999 ms
+15:34:23  GET  /api/link                            200    25019 ms
+15:34:28  POST /api/curation/s0a1cd99454b9/ds/open  200       62 ms
+15:34:30  GET  /api/curation/s0a1cd99454b9/ds       200       48 ms
+15:34:31  POST /api/curation/s0a1cd99454b9/ds/open  200      160 ms
+15:34:31  POST /api/link                            200       34 ms
+15:34:31  POST /api/link                            200       37 ms
+15:34:31  GET  /api/link                            200     7418 ms
+15:34:31  GET  /api/registry                        200     9570 ms
+15:34:31  GET  /api/registry                        200     8701 ms
+15:34:31  POST /api/link                            200        8 ms
+15:34:31  POST /api/csc/window                      200      467 ms
+15:34:33  POST /api/session/state                   200     1407 ms
+15:34:43  POST /api/link                            200       19 ms
+15:34:43  GET  /api/link                            200    12813 ms
+15:34:43  POST /api/link                            200       15 ms
+15:34:44  POST /api/csc/window                      200      315 ms
+15:34:46  POST /api/session/state                   200     1060 ms
+15:34:48  GET  /api/errors                          200       13 ms
+15:34:48  GET  /api/feedback                        200       15 ms
+15:34:48  GET  /api/errors/grouped                  200        8 ms
+15:34:48  GET  /api/debug/trace                     200        3 ms
+15:34:54  GET  /api/feedback                        200        8 ms
+15:35:08  GET  /api/link                            200    25011 ms
+15:35:34  GET  /api/link                            200    25016 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (82)
+------------------------------------------------------------------
+15:34:54  GET  /api/feedback                    200      5.4 ms  
+15:34:48  GET  /api/errors/grouped              200      6.0 ms  limit=600
+15:34:48  GET  /api/feedback                    200      7.6 ms  
+15:34:48  GET  /api/errors                      200      6.6 ms  limit=300
+15:34:46  POST /api/session/state               200   1055.5 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:34:44  POST /api/csc/window                  200    305.3 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "t0": 1.6709999999999998, "t1": 2.671, "channels": "
+15:34:44  POST /api/panel                       200      1.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.6709999999999998, "t
+15:34:44  POST /api/panel                       200      0.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.6709999999999998, "t1": 
+15:34:44  POST /api/panel                       200      1.1 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.6709999999999998, "t1": 2.
+15:34:44  POST /api/panel                       200      1.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.6709999999999998, "t1": 2.67
+15:34:39  POST /api/panel                       200      1.7 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.6709999999999998, "t
+15:34:39  POST /api/panel                       200      1.7 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.6709999999999998, "t1": 
+15:34:39  POST /api/panel                       200      0.2 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.6709999999999998, "t1": 2.
+15:34:39  POST /api/panel                       200      1.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.6709999999999998, "t1": 2.67
+15:34:37  POST /api/panel                       200      2.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.6709999999999998, "t
+15:34:37  POST /api/panel                       200      0.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.6709999999999998, "t1": 
+15:34:37  POST /api/panel                       200      0.2 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.6709999999999998, "t1": 2.
+15:34:37  POST /api/panel                       200      0.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.6709999999999998, "t1": 2.67
+15:34:37  POST /api/panel                       200      1.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.6709999999999998, "t
+15:34:37  POST /api/panel                       200      0.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.6709999999999998, "t1": 
+15:34:37  POST /api/panel                       200      0.3 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.6709999999999998, "t1": 2.
+15:34:37  POST /api/panel                       200      0.6 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.6709999999999998, "t1": 2.67
+15:34:34  POST /api/panel                       200    542.7 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.6709999999999998, "t
+15:34:34  POST /api/panel                       200    269.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.6709999999999998, "t1": 2.
+15:34:34  POST /api/panel                       200    172.3 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.6709999999999998, "t1": 
+15:34:34  POST /api/panel                       200    150.1 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.6709999999999998, "t1": 2.67
+15:34:34  GET  /api/curation/s0a1cd99454b9/ds   200    979.7 ms  
+15:34:33  POST /api/session/state               200   1404.3 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:34:33  POST /api/panel                       200    742.9 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1.671, "t1": 2.6710000
+15:34:33  POST /api/panel                       200    300.3 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "theta", "t0": 1.671, "t1": 2.6710000000000
+15:34:32  POST /api/panel                       200    183.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "voltage", "t0": 1.671, "t1": 2.67100000000
+15:34:32  POST /api/panel                       200    176.3 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "panel": "csd", "t0": 1.671, "t1": 2.671000000000000
+15:34:32  POST /api/events/nev                  200     14.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58\\Events.nev", "session_path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-1
+15:34:32  POST /api/csc/overview                200      0.7 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+15:34:32  POST /api/csc/open                    200   1475.1 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "invert": true}
+15:34:32  POST /api/prefs                       200    899.0 ms  {"patch": "{themes}"}
+15:34:32  GET  /api/sync/status                 200   1295.6 ms  
+15:34:31  POST /api/pipeline/check              200    612.6 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+15:34:31  POST /api/csc/window                  200    453.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "t0": 1.6709999999999998, "t1": 2.671, "channels": "
+15:34:31  GET  /api/presets/layouts             200      2.6 ms  
+15:34:31  GET  /api/panels                      200      8.7 ms  
+15:34:31  GET  /api/jobs                        200      0.1 ms  
+15:34:31  GET  /api/presets/filters             200      1.9 ms  
+15:34:31  GET  /api/probes                      200      0.1 ms  
+15:34:31  GET  /api/pipeline                    200      0.1 ms  
+15:34:31  GET  /api/prefs                       200      1.0 ms  
+15:34:31  GET  /api/catalog                     200      6.2 ms  
+15:34:31  GET  /api/profile                     200      1.6 ms  
+15:34:30  GET  /api/registry                    200   8677.5 ms  
+15:34:30  GET  /api/registry                    200   9517.4 ms  
+15:34:30  POST /api/curation/s0a1cd99454b9/ds/o 200     66.6 ms  {"open": true}
+15:34:30  GET  /api/curation/s0a1cd99454b9/ds   200     42.2 ms  
+15:34:28  POST /api/curation/s0a1cd99454b9/ds/o 200     59.0 ms  {"open": true}
+15:34:23  GET  /api/registry                    200  13522.0 ms  
+15:34:23  GET  /api/registry                    200  13463.7 ms  
+15:34:23  GET  /api/registry                    200  13406.4 ms  
+15:34:22  GET  /api/curation                    200   2745.6 ms  
+15:34:21  GET  /api/curation                    200   2632.9 ms  
+15:34:14  POST /api/csc/window                  200    313.6 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "t0": 1.6709999999999998, "t1": 2.671, "channels": "
+15:34:09  GET  /api/registry                    200   5915.7 ms  
+15:34:04  GET  /api/curation                    200   4116.4 ms  
+15:34:04  GET  /api/curation                    200   4263.7 ms  
+15:34:03  GET  /api/curation                    200   4667.8 ms  
+15:34:03  GET  /api/curation                    200   4444.7 ms  
+15:34:01  POST /api/csc/window                  200    151.4 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "t0": 1.6709999999999998, "t1": 2.671, "channels": "
+15:34:01  POST /api/csc/overview                200   3920.6 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+15:33:59  GET  /api/toolkit/scopes              200   1490.1 ms  
+15:33:57  POST /api/csc/window                  200    423.5 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "even_only": false, "invert": true, "t0": 1.6709999999999998, "t1": 2.671, "channels": "
+15:33:57  POST /api/events/nev                  200     12.8 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58\\Events.nev", "session_path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-1
+15:33:57  POST /api/csc/open                    200    295.2 ms  {"path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58", "invert": true}
+15:33:56  POST /api/prefs                       200    106.6 ms  {"patch": "{themes}"}
+15:33:56  GET  /api/sync/status                 200    438.7 ms  
+15:33:56  POST /api/pipeline/check              200    243.4 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+15:33:56  GET  /api/presets/layouts             200      0.3 ms  
+15:33:56  GET  /api/jobs                        200      0.0 ms  
+15:33:56  GET  /api/panels                      200      3.3 ms  
+15:33:56  GET  /api/presets/filters             200      1.3 ms  
+15:33:56  GET  /api/probes                      200      0.1 ms  
+15:33:56  GET  /api/pipeline                    200      0.1 ms  
+15:33:56  GET  /api/prefs                       200      0.6 ms  
+15:33:56  GET  /api/catalog                     200      2.9 ms  
+15:33:56  GET  /api/profile                     200      0.6 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-08T15:07:31-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:57:46-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:41:46-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:06:17-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:00:15-04:00] cloud.sync: GET /rest/v1/curation_sets?updated_at=gt.2026-09-08T15:32:37%2B00:00&select=*&limit=1000&offset=0 -> HTTP 504 {"message":"Gateway Timeout"}
+
+The database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.
+[2026-09-08T13:57:22-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-05T16:36:19-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-04T16:17:44.655608%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+
+This machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.
+[2026-09-04T13:52:35-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json.tmp' -> 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json'
+[2026-09-04T11:56:01-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:37-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:34-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:44:01-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.

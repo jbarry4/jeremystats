@@ -1,8 +1,8 @@
 {
   "_at": {
     "pipeline_folders": "2026-09-03T14:08:40.159829+00:00",
-    "recent_scripts": "2026-09-04T20:44:23.096785+00:00",
-    "updated": "2026-09-04T21:21:34.561474+00:00"
+    "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
+    "updated": "2026-09-08T19:34:32.411129+00:00"
   },
   "_keys": {
     "themes": {
@@ -12,12 +12,16 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-04T20:06:50.678142+00:00"
+        "2026-09-08T15:39:52.477222+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-09-08T17:53:47.145828+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-04T21:21:34.561474+00:00",
+    "at": "2026-09-08T19:34:32.411129+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -26,13 +30,19 @@
     "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   },
   "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m",
+    "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
+    "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
+    "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
+    "IED/05_Session_Pipeline/components/SolidSputterAvgStack.m",
+    "IED/02_CSC_Conversion/CSC2microVoltPatchCode.m",
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
-    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m",
-    "IED/03_IED_Detection/vacc_ied_detect.m"
+    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "horizon-night"
+    "DESKTOP-4H65AI7": "horizon-night",
+    "LCOM549913": "dark"
   },
-  "updated": "2026-09-04T17:21:34-04:00"
+  "updated": "2026-09-08T15:34:32-04:00"
 }
