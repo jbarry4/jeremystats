@@ -1,0 +1,992 @@
+{
+  "_at": {
+    "archived": "2026-09-08T21:24:55.781993+00:00",
+    "archived_at": "2026-09-08T21:24:55.781993+00:00",
+    "archived_by": "2026-09-08T21:24:55.781993+00:00",
+    "assignee": "2026-09-08T18:01:48.646861+00:00",
+    "closed_at": "2026-09-08T21:24:55.781993+00:00",
+    "created": "2026-09-03T21:07:03.151408+00:00",
+    "gid": "2026-09-03T21:07:03.151408+00:00",
+    "imports": "2026-09-03T21:07:03.151408+00:00",
+    "kind": "2026-09-03T21:07:03.151408+00:00",
+    "labels": "2026-09-03T21:07:03.151408+00:00",
+    "name": "2026-09-03T21:07:03.151408+00:00",
+    "open": "2026-09-08T21:24:55.781993+00:00",
+    "opened_at": "2026-09-08T21:21:43.050169+00:00",
+    "opened_by": "2026-09-08T21:21:35.105461+00:00",
+    "schema": "2026-09-03T21:07:03.151408+00:00",
+    "session_label": "2026-09-03T21:07:03.151408+00:00",
+    "source": "2026-09-03T21:07:03.151408+00:00",
+    "updated": "2026-09-08T21:24:55.781993+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e10f768101f": [
+        "set",
+        "2026-09-08T21:23:42.555819+00:00"
+      ],
+      "e16b9a228b2": [
+        "set",
+        "2026-09-08T21:22:47.467302+00:00"
+      ],
+      "e19bbbb48d8": [
+        "set",
+        "2026-09-08T21:23:27.445800+00:00"
+      ],
+      "e1d3cad3ad9": [
+        "set",
+        "2026-09-08T21:22:36.447047+00:00"
+      ],
+      "e2263f64834": [
+        "set",
+        "2026-09-08T21:23:22.781881+00:00"
+      ],
+      "e2316535b7b": [
+        "set",
+        "2026-09-08T21:23:16.743726+00:00"
+      ],
+      "e36dfb0af5d": [
+        "set",
+        "2026-09-08T21:23:54.981392+00:00"
+      ],
+      "e4309479402": [
+        "set",
+        "2026-09-08T21:23:10.325550+00:00"
+      ],
+      "e477bba7213": [
+        "set",
+        "2026-09-08T21:23:24.335855+00:00"
+      ],
+      "e59d0765f17": [
+        "set",
+        "2026-09-08T21:22:44.757064+00:00"
+      ],
+      "e5dbd8446a6": [
+        "set",
+        "2026-09-08T21:24:03.980468+00:00"
+      ],
+      "e61a3517850": [
+        "set",
+        "2026-09-08T21:22:52.804474+00:00"
+      ],
+      "e68f144cc6b": [
+        "set",
+        "2026-09-08T21:23:05.806108+00:00"
+      ],
+      "e6947167292": [
+        "set",
+        "2026-09-08T21:23:12.725750+00:00"
+      ],
+      "e6c21fcf9cc": [
+        "set",
+        "2026-09-08T21:22:50.319083+00:00"
+      ],
+      "e6ebe5ddfa0": [
+        "set",
+        "2026-09-08T21:23:33.621578+00:00"
+      ],
+      "e74b0bf5e9f": [
+        "set",
+        "2026-09-08T21:23:21.365491+00:00"
+      ],
+      "e7767ff4ec2": [
+        "set",
+        "2026-09-08T21:23:38.835610+00:00"
+      ],
+      "e7c46004e97": [
+        "set",
+        "2026-09-08T21:23:46.613543+00:00"
+      ],
+      "e89eb46a82f": [
+        "set",
+        "2026-09-08T21:24:19.026332+00:00"
+      ],
+      "e9250ce2dc7": [
+        "set",
+        "2026-09-08T21:23:00.315798+00:00"
+      ],
+      "e94e6aaf3bb": [
+        "set",
+        "2026-09-08T21:22:31.371868+00:00"
+      ],
+      "e9bf1d6b903": [
+        "set",
+        "2026-09-08T21:22:57.662513+00:00"
+      ],
+      "e9c8af37fd5": [
+        "set",
+        "2026-09-08T21:24:11.885616+00:00"
+      ],
+      "ea0a3e76a25": [
+        "set",
+        "2026-09-08T21:23:53.253550+00:00"
+      ],
+      "ea58f421b43": [
+        "set",
+        "2026-09-08T21:24:21.795634+00:00"
+      ],
+      "ea5a7faaa38": [
+        "set",
+        "2026-09-08T21:22:40.350276+00:00"
+      ],
+      "eae45b2cb35": [
+        "set",
+        "2026-09-08T21:22:55.660407+00:00"
+      ],
+      "eb06dc2e9a2": [
+        "set",
+        "2026-09-08T21:22:34.093465+00:00"
+      ],
+      "eb3e806673a": [
+        "set",
+        "2026-09-08T21:22:10.051049+00:00"
+      ],
+      "eb98add5469": [
+        "set",
+        "2026-09-08T21:22:27.429935+00:00"
+      ],
+      "ebfaf226f75": [
+        "set",
+        "2026-09-08T21:23:26.615674+00:00"
+      ],
+      "ec8636f2d42": [
+        "set",
+        "2026-09-08T21:23:50.833576+00:00"
+      ],
+      "ecd0ce78e53": [
+        "set",
+        "2026-09-08T21:24:16.975783+00:00"
+      ],
+      "edcdf93f708": [
+        "set",
+        "2026-09-08T21:23:58.515936+00:00"
+      ],
+      "eded8df3d40": [
+        "set",
+        "2026-09-08T21:22:24.047458+00:00"
+      ],
+      "ee0a81a3b7c": [
+        "set",
+        "2026-09-08T21:23:19.618256+00:00"
+      ],
+      "efa43b762e7": [
+        "set",
+        "2026-09-08T21:23:02.501265+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T21:24:55.781993+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "archived": true,
+  "archived_at": "2026-09-08T17:24:55-0400",
+  "archived_by": "Rain",
+  "assignee": "theexaminedexistence@gmail.com",
+  "closed_at": "2026-09-08T17:24:55-0400",
+  "created": {
+    "at": "2026-09-03T17:07:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "events": [
+    {
+      "at": "2026-09-08T17:22:10-0400",
+      "by": "Rain",
+      "id": "eb3e806673a",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:10-0400",
+          "by": "Rain",
+          "label": "garbage"
+        }
+      ],
+      "start": 40.64
+    },
+    {
+      "at": "2026-09-08T17:22:24-0400",
+      "by": "Rain",
+      "id": "eded8df3d40",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:22:24-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 544.267
+    },
+    {
+      "at": "2026-09-08T17:22:27-0400",
+      "by": "Rain",
+      "id": "eb98add5469",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:22:27-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 735.017
+    },
+    {
+      "at": "2026-09-08T17:22:31-0400",
+      "by": "Rain",
+      "id": "e94e6aaf3bb",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:31-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 735.609
+    },
+    {
+      "at": "2026-09-08T17:22:34-0400",
+      "by": "Rain",
+      "id": "eb06dc2e9a2",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:34-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 769.699
+    },
+    {
+      "at": "2026-09-08T17:22:36-0400",
+      "by": "Rain",
+      "id": "e1d3cad3ad9",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:22:36-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 781.863
+    },
+    {
+      "at": "2026-09-08T17:22:40-0400",
+      "by": "Rain",
+      "id": "ea5a7faaa38",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:40-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 796.409
+    },
+    {
+      "at": "2026-09-08T17:22:44-0400",
+      "by": "Rain",
+      "id": "e59d0765f17",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:44-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1101.819
+    },
+    {
+      "at": "2026-09-08T17:22:47-0400",
+      "by": "Rain",
+      "id": "e16b9a228b2",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:22:47-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1420.83
+    },
+    {
+      "at": "2026-09-08T17:22:50-0400",
+      "by": "Rain",
+      "id": "e6c21fcf9cc",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:50-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1592.034
+    },
+    {
+      "at": "2026-09-08T17:22:52-0400",
+      "by": "Rain",
+      "id": "e61a3517850",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:22:52-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1720.331
+    },
+    {
+      "at": "2026-09-08T17:22:55-0400",
+      "by": "Rain",
+      "id": "eae45b2cb35",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:55-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1810.805
+    },
+    {
+      "at": "2026-09-08T17:22:57-0400",
+      "by": "Rain",
+      "id": "e9bf1d6b903",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:22:57-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1851.853
+    },
+    {
+      "at": "2026-09-08T17:23:00-0400",
+      "by": "Rain",
+      "id": "e9250ce2dc7",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:00-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1906.403
+    },
+    {
+      "at": "2026-09-08T17:23:02-0400",
+      "by": "Rain",
+      "id": "efa43b762e7",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:02-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1913.115
+    },
+    {
+      "at": "2026-09-08T17:23:05-0400",
+      "by": "Rain",
+      "id": "e68f144cc6b",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:05-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 1990.65
+    },
+    {
+      "at": "2026-09-08T17:23:10-0400",
+      "by": "Rain",
+      "id": "e4309479402",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:10-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2062.629
+    },
+    {
+      "at": "2026-09-08T17:23:12-0400",
+      "by": "Rain",
+      "id": "e6947167292",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:12-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2083.562
+    },
+    {
+      "at": "2026-09-08T17:23:16-0400",
+      "by": "Rain",
+      "id": "e2316535b7b",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:16-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2099.319
+    },
+    {
+      "at": "2026-09-08T17:23:19-0400",
+      "by": "Rain",
+      "id": "ee0a81a3b7c",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:19-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2195.276
+    },
+    {
+      "at": "2026-09-08T17:23:21-0400",
+      "by": "Rain",
+      "id": "e74b0bf5e9f",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2207.401
+    },
+    {
+      "at": "2026-09-08T17:23:22-0400",
+      "by": "Rain",
+      "id": "e2263f64834",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:22-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2207.521
+    },
+    {
+      "at": "2026-09-08T17:23:24-0400",
+      "by": "Rain",
+      "id": "e477bba7213",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:23:24-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2216.451
+    },
+    {
+      "at": "2026-09-08T17:23:26-0400",
+      "by": "Rain",
+      "id": "ebfaf226f75",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:26-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2219.931
+    },
+    {
+      "at": "2026-09-08T17:23:27-0400",
+      "by": "Rain",
+      "id": "e19bbbb48d8",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:27-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2220.417
+    },
+    {
+      "at": "2026-09-08T17:23:33-0400",
+      "by": "Rain",
+      "id": "e6ebe5ddfa0",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:33-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2237.014
+    },
+    {
+      "at": "2026-09-08T17:23:38-0400",
+      "by": "Rain",
+      "id": "e7767ff4ec2",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:38-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2237.13
+    },
+    {
+      "at": "2026-09-08T17:23:42-0400",
+      "by": "Rain",
+      "id": "e10f768101f",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:42-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2270.735
+    },
+    {
+      "at": "2026-09-08T17:23:46-0400",
+      "by": "Rain",
+      "id": "e7c46004e97",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:46-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2350.456
+    },
+    {
+      "at": "2026-09-08T17:23:50-0400",
+      "by": "Rain",
+      "id": "ec8636f2d42",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:50-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2366.284
+    },
+    {
+      "at": "2026-09-08T17:23:53-0400",
+      "by": "Rain",
+      "id": "ea0a3e76a25",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:53-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2386.447
+    },
+    {
+      "at": "2026-09-08T17:23:54-0400",
+      "by": "Rain",
+      "id": "e36dfb0af5d",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:54-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2387.723
+    },
+    {
+      "at": "2026-09-08T17:23:58-0400",
+      "by": "Rain",
+      "id": "edcdf93f708",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:23:58-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2395.14
+    },
+    {
+      "at": "2026-09-08T17:24:03-0400",
+      "by": "Rain",
+      "id": "e5dbd8446a6",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-08T17:24:03-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2500.365
+    },
+    {
+      "at": "2026-09-08T17:24:11-0400",
+      "by": "Rain",
+      "id": "e9c8af37fd5",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:24:11-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2511.393
+    },
+    {
+      "at": "2026-09-08T17:24:16-0400",
+      "by": "Rain",
+      "id": "ecd0ce78e53",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:24:16-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2600.654
+    },
+    {
+      "at": "2026-09-08T17:24:19-0400",
+      "by": "Rain",
+      "id": "e89eb46a82f",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:24:19-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2613.871
+    },
+    {
+      "at": "2026-09-08T17:24:21-0400",
+      "by": "Rain",
+      "id": "ea58f421b43",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T17:24:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        }
+      ],
+      "start": 2666.306
+    }
+  ],
+  "gid": "s79ba9ba163c4",
+  "imports": [
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "n": 38,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "841aad39cfff",
+        "by": "snapshot import",
+        "folder": "M2ctls3jan23",
+        "kind": "snapshot folders"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "M2ctls3jan23",
+  "open": false,
+  "opened_at": "2026-09-08T17:21:43-0400",
+  "opened_by": "Rain",
+  "schema": 1,
+  "session_label": "PTEN m2 s3 2024-01-23",
+  "source": {
+    "bank_entry": "841aad39cfff",
+    "by": "snapshot import",
+    "folder": "M2ctls3jan23",
+    "kind": "snapshot folders"
+  },
+  "updated": {
+    "at": "2026-09-08T17:24:55-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}
