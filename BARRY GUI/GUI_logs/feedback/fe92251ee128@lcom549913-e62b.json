@@ -1,0 +1,4549 @@
+{
+ "id": "fe92251ee128",
+ "kind": "bug",
+ "title": "After making spectrogram and switching to CSD with another voltage raster view open everything started to bug out.",
+ "detail": "",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m1 s2 2023-10-02",
+  "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+  "panels": [
+   "csd"
+  ],
+  "window": {
+   "t0": 1699.8581333717336,
+   "span": 9.999999961599796
+  },
+  "screen": "1912x948",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+ },
+ "wants": "",
+ "state": "open",
+ "at": "2026-09-08T14:07:56-0400",
+ "by": "Rain",
+ "machine": "LCOM549913",
+ "shard": "lcom549913-e62b",
+ "screenshots": [],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "4651008e9e",
+    "at": "2026-09-08T18:07:10.458Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1699.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "3423b7cca9",
+    "at": "2026-09-08T18:07:02.943Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "366129e7b0",
+    "at": "2026-09-08T18:07:00.871Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1699.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2564882c2f",
+    "at": "2026-09-08T18:06:54.388Z",
+    "action": "clim.change",
+    "detail": {
+     "clim": null,
+     "panel": "csd"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "afc40c0237",
+    "at": "2026-09-08T18:06:51.349Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "csd",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "993dfd16ca",
+    "at": "2026-09-08T18:06:48.839Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "8e7f5e8b17",
+    "at": "2026-09-08T18:06:45.541Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "csd",
+     "to": "traces",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "46fb9b874a",
+    "at": "2026-09-08T18:06:40.943Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1689.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "cf5426f17c",
+    "at": "2026-09-08T18:06:38.375Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ff7276c93c",
+    "at": "2026-09-08T18:06:33.438Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "csd",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "a6662fddac",
+    "at": "2026-09-08T18:06:30.388Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ddd5844b6e",
+    "at": "2026-09-08T18:06:30.370Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1709.8581333333334,
+     "restored": [
+      "2 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "46e51a8fe0",
+    "at": "2026-09-08T18:06:25.871Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ecb848b918",
+    "at": "2026-09-08T18:06:17.813Z",
+    "action": "filter.change",
+    "detail": {
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "via": "None"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "f969ec7a6c",
+    "at": "2026-09-08T18:06:08.686Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "csd",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "59d2a234a0",
+    "at": "2026-09-08T18:06:06.350Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "voltage",
+     "to": "traces",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "bdc7413cd1",
+    "at": "2026-09-08T18:06:03.974Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "csd",
+     "to": "voltage",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ccec77ac82",
+    "at": "2026-09-08T18:05:55.536Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "13cccb88f2",
+    "at": "2026-09-08T18:05:49.277Z",
+    "action": "clim.change",
+    "detail": {
+     "clim": [
+      -251.1,
+      251.1
+     ],
+     "panel": "csd"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "157849d320",
+    "at": "2026-09-08T18:05:39.221Z",
+    "action": "ylim.change",
+    "detail": {
+     "ylim": null
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "34b92a7dc7",
+    "at": "2026-09-08T18:05:35.933Z",
+    "action": "clim.change",
+    "detail": {
+     "clim": null,
+     "panel": "csd"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "7c5bb8c2dc",
+    "at": "2026-09-08T18:05:29.535Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1694.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "3eef7029cf",
+    "at": "2026-09-08T18:05:27.639Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1699.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "df9a210396",
+    "at": "2026-09-08T18:05:24.501Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "scalogram",
+     "to": "csd",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2a2395b888",
+    "at": "2026-09-08T18:05:20.743Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "c18808ec0c",
+    "at": "2026-09-08T18:05:15.542Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1704.8581,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "fe91d1a287",
+    "at": "2026-09-08T18:05:08.661Z",
+    "action": "panes.chrome",
+    "detail": {
+     "what": "heads",
+     "on": false
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "a6543e327e",
+    "at": "2026-09-08T18:05:06.566Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "voltage",
+     "to": "traces",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "90532054d6",
+    "at": "2026-09-08T18:05:03.454Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "scalogram",
+     "to": "voltage",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ed889c68eb",
+    "at": "2026-09-08T18:05:01.037Z",
+    "action": "panes.chrome",
+    "detail": {
+     "what": "heads",
+     "on": true
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "bbef412c00",
+    "at": "2026-09-08T18:04:58.933Z",
+    "action": "panes.chrome",
+    "detail": {
+     "what": "strip",
+     "on": true
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "571fdf035c",
+    "at": "2026-09-08T18:04:55.989Z",
+    "action": "panes.chrome",
+    "detail": {
+     "what": "strip",
+     "on": false
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "bae24f8c3a",
+    "at": "2026-09-08T18:04:54.237Z",
+    "action": "panes.chrome",
+    "detail": {
+     "what": "heads",
+     "on": false
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "30bdd80f42",
+    "at": "2026-09-08T18:04:39.229Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "4029043560",
+    "at": "2026-09-08T18:04:39.218Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1709.8581333333334,
+     "restored": [
+      "2 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "b8bdcc01d4",
+    "at": "2026-09-08T18:04:38.536Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "1821882109",
+    "at": "2026-09-08T18:03:44.462Z",
+    "action": "channels.change",
+    "detail": {
+     "panel": "scalogram",
+     "n": 8,
+     "mode": "stack"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "c7c5f83276",
+    "at": "2026-09-08T18:03:30.089Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1700.1681,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "9c76b45de1",
+    "at": "2026-09-08T18:03:27.510Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "scalogram",
+     "pane": 0
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "54dfb445c0",
+    "at": "2026-09-08T18:03:24.845Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "3acdf6100f",
+    "at": "2026-09-08T18:03:24.818Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1709.8581333333334,
+     "restored": [
+      "2 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m001_s002_2023-10-02_16-58-03",
+     "loose_key": "m001_s002",
+     "label": "PTEN m1 s2 2023-10-02",
+     "mouse": 1,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "336920ee50",
+    "at": "2026-09-08T18:02:08.423Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "csd",
+     "to": "video",
+     "pane": 0
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "13de7b06df",
+    "at": "2026-09-08T18:02:04.160Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 290.7901,
+     "span": 73.0463,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "c7a8077ed0",
+    "at": "2026-09-08T18:02:01.825Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 219.4381,
+     "span": 73.0463,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "d373e1d27a",
+    "at": "2026-09-08T18:01:53.711Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "csd",
+     "pane": 0
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "7b0e11da5d",
+    "at": "2026-09-08T18:01:43.081Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 36.5232,
+     "span": 73.0463,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "22f1efd477",
+    "at": "2026-09-08T18:01:40.471Z",
+    "action": "window.change",
+    "detail": {
+     "t0": -4.682,
+     "span": 73.0463,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "db9a71cb4f",
+    "at": "2026-09-08T18:01:38.751Z",
+    "action": "window.change",
+    "detail": {
+     "t0": -3.1457,
+     "span": 49.0771,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "e9688665ab",
+    "at": "2026-09-08T18:01:34.208Z",
+    "action": "window.change",
+    "detail": {
+     "t0": -1.1541,
+     "span": 18.1585,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "bfd7c0bc02",
+    "at": "2026-09-08T18:01:29.483Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2.9121,
+     "span": 6.7186,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "03d66afe61",
+    "at": "2026-09-08T18:01:26.644Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2.3867,
+     "span": 8.1967,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "baa5628cc1",
+    "at": "2026-09-08T18:01:25.361Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.7458,
+     "span": 10,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "8f98cd2b8a",
+    "at": "2026-09-08T18:01:21.486Z",
+    "action": "channels.change",
+    "detail": {
+     "preset": "even",
+     "n": 32
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "e3b68a219e",
+    "at": "2026-09-08T18:01:06.257Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "9c46aa0ce1",
+    "at": "2026-09-08T18:01:06.223Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1800.7893333333334,
+     "restored": [
+      "2 bad channel(s)"
+     ]
+    },
+    "session": {
+     "key": "m008_s002_2024-02-06_17-52-07",
+     "loose_key": "m008_s002",
+     "label": "PTEN m8 s2 2024-02-06",
+     "mouse": 8,
+     "session": 2,
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "cae7a55671",
+    "at": "2026-09-08T18:00:52.974Z",
+    "action": "sessions.scan",
+    "detail": {
+     "root": "D:/Data/Archive/PTEN Project/PTEN",
+     "found": 383,
+     "elapsed": 0.8
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "e1d730481b",
+    "at": "2026-09-08T18:00:52.961Z",
+    "action": "registry.confirmed",
+    "detail": {
+     "root": "D:/Data/Archive/PTEN Project/PTEN",
+     "n": 28,
+     "total": 28
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "32c217c5dd",
+    "at": "2026-09-08T18:00:05.055Z",
+    "action": "sessions.mode",
+    "detail": {
+     "mode": "scan"
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "9c3c23d9d2",
+    "at": "2026-09-08T17:59:32.296Z",
+    "action": "sessions.mode",
+    "detail": {
+     "mode": "housekeeping"
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "3ac1eaef6a",
+    "at": "2026-09-08T17:59:18.910Z",
+    "action": "tour.finish",
+    "detail": {
+     "module": "events"
+    },
+    "session": {},
+    "view": "eventbank",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "f41e559208",
+    "at": "2026-09-08T17:59:17.748Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 7,
+     "id": null
+    },
+    "session": {},
+    "view": "eventbank",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "49dcd0e8ee",
+    "at": "2026-09-08T17:59:12.861Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 6,
+     "id": null
+    },
+    "session": {},
+    "view": "eventbank",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "44741abf60",
+    "at": "2026-09-08T17:59:07.985Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 7,
+     "id": null
+    },
+    "session": {},
+    "view": "eventbank",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ac333ea9ed",
+    "at": "2026-09-08T17:59:07.556Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 6,
+     "id": null
+    },
+    "session": {},
+    "view": "eventbank",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "b6e010efd8",
+    "at": "2026-09-08T17:59:02.648Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 5,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2cf3e79f79",
+    "at": "2026-09-08T17:58:57.811Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 4,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "c556f3ff27",
+    "at": "2026-09-08T17:58:49.850Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 3,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "07486b11d1",
+    "at": "2026-09-08T17:58:48.011Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 4,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ad84911a49",
+    "at": "2026-09-08T17:58:47.587Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 3,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "3b3f8f101a",
+    "at": "2026-09-08T17:58:44.381Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 2,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "171f518287",
+    "at": "2026-09-08T17:58:41.745Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "events",
+     "step": 1,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "071a4301b1",
+    "at": "2026-09-08T17:58:41.590Z",
+    "action": "tour.start",
+    "detail": {
+     "module": "events",
+     "steps": 7
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "8d26116251",
+    "at": "2026-09-08T17:58:33.639Z",
+    "action": "tour.finish",
+    "detail": {
+     "module": "reading"
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "187bb88067",
+    "at": "2026-09-08T17:58:33.355Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "reading",
+     "step": 12,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "6cffd415ab",
+    "at": "2026-09-08T17:58:28.801Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "reading",
+     "step": 10,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "fafd6e29fb",
+    "at": "2026-09-08T17:58:22.060Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "reading",
+     "step": 11,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "ae0be1dd4c",
+    "at": "2026-09-08T17:58:13.208Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "reading",
+     "step": 9,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "2976c1f9fb",
+    "at": "2026-09-08T17:58:08.062Z",
+    "action": "tour.step",
+    "detail": {
+     "module": "reading",
+     "step": 8,
+     "id": null
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   },
+   {
+    "id": "d78331f764",
+    "at": "2026-09-08T14:00:52-04:00",
+    "action": "registry.scan",
+    "detail": {
+     "root": "D:/Data/Archive/PTEN Project/PTEN",
+     "found": 28,
+     "new": 0,
+     "scan": "scan_e4c0479cd6"
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "lcom549913-e62b",
+    "os": "Windows"
+   }
+  ],
+  "errors": [],
+  "requests": [
+   {
+    "at": "14:03:26",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 1239.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1701.6614120533336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 74
+   },
+   {
+    "at": "14:03:26",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 1600.8,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 75
+   },
+   {
+    "at": "14:03:26",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 342.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1701.6614120533336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 76
+   },
+   {
+    "at": "14:03:28",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1396.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1701.6614120533336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 77
+   },
+   {
+    "at": "14:03:32",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 807.1,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 78
+   },
+   {
+    "at": "14:03:32",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 2611.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 79
+   },
+   {
+    "at": "14:04:30",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 45572.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 80
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/profile",
+    "status": 200,
+    "ms": 3.7,
+    "n": 81
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/catalog",
+    "status": 200,
+    "ms": 66.9,
+    "n": 82
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 1.2,
+    "n": 83
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/pipeline",
+    "status": 200,
+    "ms": 0.1,
+    "n": 84
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/probes",
+    "status": 200,
+    "ms": 0.1,
+    "n": 85
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/presets/filters",
+    "status": 200,
+    "ms": 1.9,
+    "n": 86
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/panels",
+    "status": 200,
+    "ms": 7.0,
+    "n": 87
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/jobs",
+    "status": 200,
+    "ms": 0.1,
+    "n": 88
+   },
+   {
+    "at": "14:04:38",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 0.7,
+    "n": 89
+   },
+   {
+    "at": "14:04:38",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 23.6,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 90
+   },
+   {
+    "at": "14:04:39",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 664.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "invert": true
+    },
+    "n": 91
+   },
+   {
+    "at": "14:04:39",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03\\Events.nev",
+     "session_path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "n": 92
+   },
+   {
+    "at": "14:04:39",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 347.8,
+    "body": {
+     "patch": "{themes}"
+    },
+    "n": 93
+   },
+   {
+    "at": "14:04:39",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 1.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 94
+   },
+   {
+    "at": "14:04:39",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 725.8,
+    "n": 95
+   },
+   {
+    "at": "14:04:40",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.8,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 96
+   },
+   {
+    "at": "14:04:41",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 97
+   },
+   {
+    "at": "14:04:41",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 2618.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581,
+     "t1": 1709.8581,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 98
+   },
+   {
+    "at": "14:04:42",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 99
+   },
+   {
+    "at": "14:04:48",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 100
+   },
+   {
+    "at": "14:04:50",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0
+     ],
+     "tf_mode": "mean",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 101
+   },
+   {
+    "at": "14:05:04",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1083.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 102
+   },
+   {
+    "at": "14:05:06",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 323.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 103
+   },
+   {
+    "at": "14:05:14",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 104
+   },
+   {
+    "at": "14:05:14",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 340.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 105
+   },
+   {
+    "at": "14:05:15",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 106
+   },
+   {
+    "at": "14:05:15",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 379.2,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 107
+   },
+   {
+    "at": "14:05:16",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 824.1,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 108
+   },
+   {
+    "at": "14:05:17",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 12.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 109
+   },
+   {
+    "at": "14:05:17",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 646.0,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 110
+   },
+   {
+    "at": "14:05:17",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 336.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 111
+   },
+   {
+    "at": "14:05:18",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 112
+   },
+   {
+    "at": "14:05:18",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 341.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 113
+   },
+   {
+    "at": "14:05:18",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 12.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 114
+   },
+   {
+    "at": "14:05:19",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 327.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 115
+   },
+   {
+    "at": "14:05:19",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 116
+   },
+   {
+    "at": "14:05:19",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 23.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 117
+   },
+   {
+    "at": "14:05:19",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 468.8,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 118
+   },
+   {
+    "at": "14:05:20",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 328.2,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 119
+   },
+   {
+    "at": "14:05:20",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 11.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "scalogram",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      25,
+      33,
+      41,
+      49,
+      57
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 120
+   },
+   {
+    "at": "14:05:21",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 325.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 121
+   },
+   {
+    "at": "14:05:22",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 600.5,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 122
+   },
+   {
+    "at": "14:05:24",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 350.8,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 123
+   },
+   {
+    "at": "14:05:27",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 124
+   },
+   {
+    "at": "14:05:28",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 318.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 125
+   },
+   {
+    "at": "14:05:29",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 707.6,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 126
+   },
+   {
+    "at": "14:05:30",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 704.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 127
+   },
+   {
+    "at": "14:05:30",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 836.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 128
+   },
+   {
+    "at": "14:05:31",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 603.1,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 129
+   },
+   {
+    "at": "14:05:35",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 405.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -35897.28515625,
+      35897.28515625
+     ]
+    },
+    "n": 130
+   },
+   {
+    "at": "14:05:36",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 131
+   },
+   {
+    "at": "14:05:39",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 311.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": 245.4683380126953
+    },
+    "n": 132
+   },
+   {
+    "at": "14:05:39",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 301.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 133
+   },
+   {
+    "at": "14:05:41",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 606.5,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 134
+   },
+   {
+    "at": "14:05:49",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 317.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 135
+   },
+   {
+    "at": "14:05:54",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 398.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 136
+   },
+   {
+    "at": "14:05:54",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 456.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 137
+   },
+   {
+    "at": "14:05:54",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 138
+   },
+   {
+    "at": "14:05:55",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 322.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 139
+   },
+   {
+    "at": "14:05:55",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 140
+   },
+   {
+    "at": "14:05:55",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 326.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 888,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 141
+   },
+   {
+    "at": "14:05:57",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 610.3,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 142
+   },
+   {
+    "at": "14:06:02",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 143
+   },
+   {
+    "at": "14:06:04",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 275.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 144
+   },
+   {
+    "at": "14:06:06",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 390.8,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 145
+   },
+   {
+    "at": "14:06:08",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 3,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 146
+   },
+   {
+    "at": "14:06:18",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 188.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 147
+   },
+   {
+    "at": "14:06:19",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 588.6,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 148
+   },
+   {
+    "at": "14:06:24",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 149
+   },
+   {
+    "at": "14:06:24",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 150
+   },
+   {
+    "at": "14:06:25",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 151
+   },
+   {
+    "at": "14:06:25",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -251.1,
+      251.1
+     ]
+    },
+    "n": 152
+   },
+   {
+    "at": "14:06:27",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 635.3,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 153
+   },
+   {
+    "at": "14:06:30",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 30.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "invert": true
+    },
+    "n": 154
+   },
+   {
+    "at": "14:06:30",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03\\Events.nev",
+     "session_path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
+    },
+    "n": 155
+   },
+   {
+    "at": "14:06:30",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 156
+   },
+   {
+    "at": "14:06:30",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 199.5,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 157
+   },
+   {
+    "at": "14:06:33",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 166.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 158
+   },
+   {
+    "at": "14:06:36",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 159
+   },
+   {
+    "at": "14:06:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 160
+   },
+   {
+    "at": "14:06:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 161
+   },
+   {
+    "at": "14:06:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 4.3,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 162
+   },
+   {
+    "at": "14:06:38",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 163
+   },
+   {
+    "at": "14:06:40",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 595.8,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 164
+   },
+   {
+    "at": "14:06:40",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 145.4,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 165
+   },
+   {
+    "at": "14:06:41",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 688.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1689.8581334101339,
+     "t1": 1699.8581333717336,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 166
+   },
+   {
+    "at": "14:06:42",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 591.4,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 167
+   },
+   {
+    "at": "14:06:45",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 174.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1689.8581334101339,
+     "t1": 1699.8581333717336,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 168
+   },
+   {
+    "at": "14:06:47",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 177.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 169
+   },
+   {
+    "at": "14:06:48",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 193.6,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 170
+   },
+   {
+    "at": "14:06:49",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 194.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "px": 1652,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 171
+   },
+   {
+    "at": "14:06:50",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 711.5,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 172
+   },
+   {
+    "at": "14:06:51",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 173
+   },
+   {
+    "at": "14:06:53",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 211.7,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -49279.2578125,
+      49279.2578125
+     ]
+    },
+    "n": 174
+   },
+   {
+    "at": "14:06:54",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 175
+   },
+   {
+    "at": "14:06:57",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.9,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 176
+   },
+   {
+    "at": "14:06:57",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 177
+   },
+   {
+    "at": "14:06:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 178
+   },
+   {
+    "at": "14:06:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 179
+   },
+   {
+    "at": "14:06:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 180
+   },
+   {
+    "at": "14:06:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1694.8581333909337,
+     "t1": 1704.8581333525335,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 181
+   },
+   {
+    "at": "14:07:00",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 182
+   },
+   {
+    "at": "14:07:01",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 183
+   },
+   {
+    "at": "14:07:01",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 184
+   },
+   {
+    "at": "14:07:02",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 185
+   },
+   {
+    "at": "14:07:03",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 186
+   },
+   {
+    "at": "14:07:04",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 578.8,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 187
+   },
+   {
+    "at": "14:07:10",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.1,
+    "body": {
+     "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1699.8581333717336,
+     "t1": 1709.8581333333334,
+     "channels": "[29 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      18,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 188
+   },
+   {
+    "at": "14:07:11",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 5.0,
+    "query": "limit=300",
+    "n": 189
+   },
+   {
+    "at": "14:07:11",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 16.6,
+    "query": "limit=600",
+    "n": 190
+   },
+   {
+    "at": "14:07:11",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 30.2,
+    "n": 191
+   },
+   {
+    "at": "14:07:12",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 653.1,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 192
+   },
+   {
+    "at": "14:07:15",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 3.1,
+    "n": 193
+   }
+  ]
+ },
+ "notes": []
+}
