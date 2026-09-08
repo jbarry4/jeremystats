@@ -1,0 +1,409 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the figure builder's grid</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The figure builder's grid, and the rebuild dialog getting out of the way.
+
+   Four complaints, all about being made to type or click at something that
+   should be direct:
+
+     the numbers    rows, columns and the page size were spinners. A shape is
+                    worth manipulating; the page size follows the preset.
+     adding a col   a number box beside a picture of the grid, rather than a
+                    `+` on the grid.
+     adding a panel a dropdown that put it in the first free cell, so you
+                    found out where it had gone afterwards.
+     what is loaded the builder claimed to seed from the panes on screen and
+                    then threw the arrangement away -- four at most, the
+                    first alone on the top row and the rest beneath it.
+
+   And the rebuild dialog narrated work happening behind a backdrop that
+   covered it.
+
+   `?session=<a CSC folder>` is required: there is no figure builder without
+   a recording, and a harness that passes without one is worthless. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const run = (src) => win().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const byText = (sel, re) => Array.from(doc().querySelectorAll(sel))
+    .find((n) => re.test((n.textContent || '').trim()));
+  const seen = (n) => !!(n && n.offsetParent !== null);
+  /* A real HTML5 drag, near enough: the handlers only read dataTransfer, so
+     one object shared between the two events is what they see. */
+  const drag = (from, to) => {
+    const dt = {
+      _v: '',
+      setData(_k, v) { this._v = v; },
+      getData() { return this._v; },
+      effectAllowed: '', dropEffect: '',
+    };
+    const fire = (node, type) => {
+      const e = new (win().Event)(type, { bubbles: true, cancelable: true });
+      e.dataTransfer = dt;
+      node.dispatchEvent(e);
+    };
+    fire(from, 'dragstart');
+    fire(to, 'dragover');
+    fire(to, 'drop');
+  };
+
+  const params = new URLSearchParams(location.search);
+  const sessPath = params.get('session');
+  if (!sessPath) {
+    say('bad', 'give ?session=<a CSC folder> — there is nothing to build from');
+    document.title = 'no session';
+    return;
+  }
+
+  head('0. Open a recording and the builder');
+  run("setView('xplore')");
+  const ok = await run('BARRY.views.xplore.open('
+                       + JSON.stringify(sessPath) + ')');
+  check('the recording opened', !!ok, sessPath);
+  if (!ok) throw new Error('no session');
+  await sleep(1600);
+
+  /* Four panes, each a different kind, so "everything in view" is a claim
+     with something to check. */
+  run("BARRY.views.xplore.state.nPanes = 4");
+  run("BARRY.views.xplore.fillPanes && BARRY.views.xplore.fillPanes()");
+  await sleep(600);
+  const kinds = ['traces', 'csd', 'spectrogram', 'theta'];
+  run('(function(){var P=BARRY.views.xplore.state.panes,'
+      + 'k=' + JSON.stringify(kinds) + ';'
+      + 'for(var i=0;i<4;i++){if(!P[i])P[i]={sessionId:'
+      + 'BARRY.views.xplore.state.order[0]};P[i].panel=k[i];}'
+      + 'BARRY.views.xplore.render();})()');
+  await sleep(900);
+  const onScreen = val('BARRY.views.xplore.state.panes'
+                       + '.filter(Boolean).map(function(p){return p.panel})');
+  say('note', '  panes on screen: ' + onScreen.join(', ')
+      + '  (nPanes ' + val('BARRY.views.xplore.state.nPanes') + ')');
+
+  run('BARRY.figure.open(BARRY.views.xplore.state, '
+      + 'BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.order[0]])');
+  await untilN(() => doc().querySelector('.grid-map'), 150);
+  await sleep(900);
+  check('the builder opened', !!doc().querySelector('.grid-map'));
+
+  head('1. Everything in view comes preloaded, where it was');
+  const L = () => val('BARRY.figure.layout && BARRY.figure.layout()');
+  let lay = L();
+  check('the builder exposes its layout for checking', !!lay,
+        'no layout() — cannot verify the seed');
+  if (lay) {
+    say('note', '  ' + lay.panels.length + ' panel(s), grid '
+        + lay.rows + '×' + lay.cols);
+    check('every pane on screen came through, not just four',
+          lay.panels.length === onScreen.length,
+          lay.panels.length + ' of ' + onScreen.length);
+    check('and in the same kinds',
+          lay.panels.map((p) => p.panel).join() === onScreen.join(),
+          lay.panels.map((p) => p.panel).join());
+    /* The screen is 2x2 for four panes, so the arrangement has to be too --
+       not the first alone on the top row with the rest beneath it. */
+    const at = lay.panels.map((p) => p.row + ',' + p.col).join(' ');
+    say('note', '  positions: ' + at);
+    check('laid out the way the screen is, 2×2 for four panes',
+          at === '0,0 0,1 1,0 1,1', at);
+    check('the grid is exactly big enough',
+          lay.rows === 2 && lay.cols === 2, lay.rows + '×' + lay.cols);
+  }
+
+  head('2. The numbers are shown, not typed');
+  const labelled = (name) => Array.from(doc().querySelectorAll('.field'))
+    .find((x) => ((x.querySelector('label') || {}).textContent || '')
+                   .trim() === name);
+  for (const name of ['Rows', 'Cols', 'Width in', 'Height in']) {
+    const fld = labelled(name);
+    check(name + ' is a read-out, not an input',
+          !!fld && !fld.querySelector('input')
+                && !!fld.querySelector('.fig-readout'),
+          fld ? (fld.querySelector('input') ? 'still an input' : 'no readout')
+              : 'field not found');
+  }
+  const dpi = labelled('DPI');
+  check('DPI is still editable — it is neither a column nor a width',
+        !!dpi && !!dpi.querySelector('input'));
+
+  head('3. The grid is built with + and ×');
+  const cells = () => Array.from(doc().querySelectorAll('.grid-cell'));
+  const addCol = doc().querySelector('.grid-add.col');
+  const addRow = doc().querySelector('.grid-add.row');
+  check('there is a + to add a column', !!addCol && seen(addCol));
+  check('there is a + to add a row', !!addRow && seen(addRow));
+  say('note', '  ' + cells().length + ' cell(s) to start with');
+
+  addCol.click();
+  await sleep(700);
+  say('note', '  after + column: grid ' + L().rows + '×' + L().cols
+      + ', ' + cells().length + ' cells');
+  check('the + adds a column', L().cols === 3, 'cols is ' + L().cols);
+  check('and the grid grew with it', cells().length === 6,
+        cells().length + ' cells');
+
+  addRow.click();
+  await sleep(700);
+  say('note', '  after + row: grid ' + L().rows + '×' + L().cols
+      + ', ' + cells().length + ' cells');
+  check('the + adds a row', L().rows === 3, 'rows is ' + L().rows);
+  check('and the read-outs followed',
+        (labelled('Rows').querySelector('.fig-readout').textContent === '3')
+        && (labelled('Cols').querySelector('.fig-readout').textContent === '3'),
+        labelled('Rows').textContent + ' / ' + labelled('Cols').textContent);
+
+  const xs = Array.from(doc().querySelectorAll('.grid-head .gh-x'));
+  say('note', '  ' + xs.length + ' column ×, '
+      + doc().querySelectorAll('.grid-rowh .gh-x').length + ' row ×');
+  check('every column offers an ×', xs.length === 3, xs.length);
+  /* Remove the empty third column: nothing is in it, so nothing should go. */
+  const before = L().panels.length;
+  xs[2].click();
+  await sleep(700);
+  say('note', '  after removing the empty column: grid ' + L().rows + '×'
+      + L().cols + ', ' + L().panels.length + ' panel(s)');
+  check('the × removes the column', L().cols === 2, 'cols is ' + L().cols);
+  check('and an empty one costs no panels', L().panels.length === before,
+        L().panels.length + ' vs ' + before);
+
+  /* Removing a column that holds panels must take them, shift the rest, and
+     not silently relocate anything. */
+  const c0 = L().panels.filter((p) => p.col === 0 && p.colspan === 1).length;
+  const xs2 = Array.from(doc().querySelectorAll('.grid-head .gh-x'));
+  xs2[0].click();
+  await sleep(700);
+  const after = L();
+  say('note', '  after removing column 0 (' + c0 + ' panel(s) in it): '
+      + after.panels.length + ' panel(s), cols ' + after.cols);
+  check('a populated column takes its panels with it',
+        after.panels.length === before - c0,
+        after.panels.length + ', expected ' + (before - c0));
+  check('and what was to its right shifted left',
+        after.panels.every((p) => p.col === 0),
+        after.panels.map((p) => p.col).join());
+  check('nothing is left outside the grid',
+        after.panels.every((p) => p.col + p.colspan <= after.cols
+                                  && p.row + p.rowspan <= after.rows),
+        JSON.stringify(after.panels.map((p) => [p.row, p.col])));
+
+  head('4. Panels arrive by being dragged');
+  check('the "+ add a panel…" dropdown is gone',
+        !byText('option', /add a panel/), 'the old dropdown is still there');
+  const chips = Array.from(doc().querySelectorAll('.fig-chip'));
+  say('note', '  ' + chips.length + ' kind(s) in the palette');
+  check('there is a palette to drag from', chips.length >= 3);
+  check('and its chips are draggable',
+        chips.every((c) => c.getAttribute('draggable') === 'true'));
+
+  const empty = cells().find((c) => !c.classList.contains('filled'));
+  check('there is an empty cell to drop into', !!empty);
+  if (empty && chips.length) {
+    const wanted = chips.find((c) => /raster|trace/i.test(c.textContent))
+                 || chips[0];
+    const kind = wanted.textContent.trim();
+    const nWas = L().panels.length;
+    /* Which cell is it? Read its position out of the grid order. */
+    const idx = cells().indexOf(empty);
+    const at = [Math.floor(idx / L().cols), idx % L().cols];
+    say('note', '  dropping "' + kind + '" on r' + at[0] + 'c' + at[1]);
+    drag(wanted, empty);
+    await sleep(900);
+    const now = L();
+    check('dropping a chip adds a panel', now.panels.length === nWas + 1,
+          now.panels.length + ' vs ' + (nWas + 1));
+    const added = now.panels[now.panels.length - 1];
+    check('and it lands in the cell it was dropped on',
+          !!added && added.row === at[0] && added.col === at[1],
+          JSON.stringify(added && [added.row, added.col]) + ' vs '
+          + JSON.stringify(at));
+  }
+
+  /* Dragging a filled cell moves that panel. Make room first -- the drops
+     above may have filled the grid, and skipping this check for lack of an
+     empty cell is not the same as passing it. */
+  if (!cells().some((c) => !c.classList.contains('filled'))) {
+    const more = doc().querySelector('.grid-add.row');
+    if (more && !more.disabled) { more.click(); await sleep(700); }
+  }
+  const filled = cells().filter((c) => c.classList.contains('filled'));
+  const blank = cells().find((c) => !c.classList.contains('filled'));
+  if (filled.length && blank) {
+    check('a filled cell is draggable',
+          filled[0].getAttribute('draggable') === 'true');
+    const bIdx = cells().indexOf(blank);
+    const target = [Math.floor(bIdx / L().cols), bIdx % L().cols];
+    const nWas2 = L().panels.length;
+    drag(filled[0], blank);
+    await sleep(900);
+    const moved = L();
+    check('dragging a filled cell moves rather than duplicates',
+          moved.panels.length === nWas2,
+          moved.panels.length + ' vs ' + nWas2);
+    check('and it ends up where it was dropped',
+          moved.panels.some((p) => p.row === target[0] && p.col === target[1]),
+          JSON.stringify(moved.panels.map((p) => [p.row, p.col])));
+  } else {
+    say('note', '  no filled/empty pair to test a move; skipped');
+  }
+
+  head('5. Undo, and a close button that closes');
+  /* The X behaved like a back button: `render()` went through showModal,
+     which stacks whenever the shell is already up, so every panel change
+     and every grid click pushed another copy of the builder. */
+  const shellUp = () => !doc().getElementById('bigModal')
+    .classList.contains('hidden');
+  const isBuilder = () => !!byText('h3', /^Figure builder$/);
+  check('the builder is on screen', isBuilder() && shellUp());
+
+  const undoBtn = byText('.mh button', /Undo/);
+  check('there is an undo button', !!undoBtn);
+  say('note', '  undo reads "' + ((undoBtn || {}).textContent || '').trim()
+      + '", ' + ((undoBtn || {}).disabled ? 'disabled' : 'enabled'));
+  check('and it is live, because changes have been made',
+        !!undoBtn && !undoBtn.disabled);
+
+  /* Undo has to actually take a change back. */
+  const wasCols = L().cols, wasN = L().panels.length;
+  doc().querySelector('.grid-add.col').click();
+  await sleep(700);
+  check('a column was added', L().cols === wasCols + 1,
+        L().cols + ' vs ' + (wasCols + 1));
+  byText('.mh button', /Undo/).click();
+  await sleep(700);
+  check('undo takes the column back', L().cols === wasCols,
+        L().cols + ' vs ' + wasCols);
+  check('and leaves the panels alone', L().panels.length === wasN,
+        L().panels.length + ' vs ' + wasN);
+
+  /* Ctrl+Z has to do the same thing. */
+  const before2 = L().rows;
+  doc().querySelector('.grid-add.row').click();
+  await sleep(700);
+  check('a row was added', L().rows === before2 + 1, L().rows);
+  const ev = new (win().KeyboardEvent)('keydown', {
+    key: 'z', ctrlKey: true, bubbles: true, cancelable: true });
+  doc().dispatchEvent(ev);
+  await sleep(700);
+  check('Ctrl+Z undoes it too', L().rows === before2,
+        L().rows + ' vs ' + before2);
+
+  /* Redo, since undo without it makes exploring risky. */
+  const redoBtn = byText('.mh button', /↷/);
+  check('there is a redo button', !!redoBtn);
+  if (redoBtn && !redoBtn.disabled) {
+    redoBtn.click();
+    await sleep(700);
+    check('redo puts it back', L().rows === before2 + 1, L().rows);
+    byText('.mh button', /Undo/).click();
+    await sleep(600);
+  }
+
+  /* Typing Ctrl+Z in a text field must undo the text, not the layout. */
+  const title = Array.from(doc().querySelectorAll('.mb input[type="text"]'))[0];
+  if (title) {
+    const rowsNow = L().rows;
+    title.focus();
+    title.dispatchEvent(new (win().KeyboardEvent)('keydown', {
+      key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
+    await sleep(500);
+    check('Ctrl+Z inside a text box does not touch the layout',
+          L().rows === rowsNow, L().rows + ' vs ' + rowsNow);
+  }
+
+  /* And the X closes, in one press, from whatever number of renders. */
+  const x = doc().querySelector('.mh .close-x');
+  check('there is a close button', !!x);
+  x.click();
+  await sleep(600);
+  check('one press of X closes the builder outright',
+        !isBuilder(), 'still showing the builder');
+  check('and nothing is left stacked behind it', !shellUp(),
+        'a modal is still up');
+
+  head('6. The rebuild dialog gets out of the way');
+  /* The dock is a class on the shell, so it can be checked without a run
+     record to rebuild -- and it must come off again, or the next dialog
+     opens wearing the corner. */
+  const shell = doc().getElementById('bigModal');
+  const box = doc().getElementById('bigModalBox');
+  check('there is a docked style to apply',
+        val("!!Array.from(document.styleSheets).some(function(ss){"
+            + "try{return Array.from(ss.cssRules).some(function(r){"
+            + "return r.selectorText && /modal-backdrop\\.docked/"
+            + ".test(r.selectorText)})}catch(e){return false}})"),
+        'no .modal-backdrop.docked rule');
+  run("BARRY.figrebuild.dock && BARRY.figrebuild.dock(true)");
+  await sleep(300);
+  check('docking marks the shell',
+        shell.classList.contains('docked'), shell.className);
+  check('and the box', box.classList.contains('docked'), box.className);
+  const cs = win().getComputedStyle(shell);
+  say('note', '  docked backdrop: place-items ' + cs.placeItems
+      + ', pointer-events ' + cs.pointerEvents);
+  check('the backdrop stops swallowing clicks',
+        cs.pointerEvents === 'none', cs.pointerEvents);
+  check('and it sits in a corner rather than the middle',
+        /end|start/.test(cs.placeItems), cs.placeItems);
+  run("BARRY.figrebuild.dock(false)");
+  await sleep(300);
+  check('undocking puts it back',
+        !shell.classList.contains('docked')
+        && !box.classList.contains('docked'),
+        shell.className + ' / ' + box.className);
+  check('and the backdrop takes clicks again',
+        win().getComputedStyle(shell).pointerEvents !== 'none',
+        win().getComputedStyle(shell).pointerEvents);
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'figure grid';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw';
+} })();
+</script>

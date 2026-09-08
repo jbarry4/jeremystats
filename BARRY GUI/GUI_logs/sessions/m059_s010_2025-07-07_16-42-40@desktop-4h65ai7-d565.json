@@ -6,6 +6,7 @@
     "converted": "2026-09-04T15:57:01.894928+00:00",
     "created": "2026-09-02T23:21:29.113227+00:00",
     "duration_s": "2026-09-04T15:57:01.894928+00:00",
+    "event_classes": "2026-09-08T21:02:51.952081+00:00",
     "first_seen_by": "2026-09-04T15:57:01.894928+00:00",
     "fs": "2026-09-04T15:57:01.894928+00:00",
     "gid": "2026-09-02T23:21:29.113227+00:00",
@@ -22,10 +23,40 @@
     "schema": "2026-09-04T15:57:01.894928+00:00",
     "session": "2026-09-04T15:57:01.894928+00:00",
     "start": "2026-09-04T15:57:01.894928+00:00",
-    "updated": "2026-09-08T19:36:05.967348+00:00",
-    "view_state": "2026-09-08T19:36:05.967348+00:00"
+    "updated": "2026-09-08T21:54:00.456524+00:00",
+    "view_state": "2026-09-08T21:34:41.711754+00:00"
   },
   "_keys": {
+    "bookmarks": {
+      "1d7ec795": [
+        "gone",
+        "2026-09-08T20:42:53.498917+00:00"
+      ],
+      "7fbed860": [
+        "gone",
+        "2026-09-08T20:18:12.503310+00:00"
+      ],
+      "9b17b008": [
+        "gone",
+        "2026-09-08T21:37:29.034829+00:00"
+      ],
+      "b3e94f1f": [
+        "gone",
+        "2026-09-08T21:04:43.053686+00:00"
+      ],
+      "bfdfb6b1": [
+        "gone",
+        "2026-09-08T20:16:16.349790+00:00"
+      ],
+      "c02fd703": [
+        "gone",
+        "2026-09-08T20:20:33.789982+00:00"
+      ],
+      "dd5466fa": [
+        "gone",
+        "2026-09-08T20:17:29.965675+00:00"
+      ]
+    },
     "paths": {
       "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40": [
         "set",
@@ -49,18 +80,22 @@
         "set",
         "2026-09-04T15:57:01.894928+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-08T21:54:00.456524+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.894928+00:00"
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T19:30:54.946368+00:00"
+        "2026-09-08T21:13:14.424490+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T19:36:05.967348+00:00",
+    "at": "2026-09-08T21:54:00.456524+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -68,6 +103,7 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "bookmarks": [],
   "condition": "cno",
   "converted": true,
   "created": {
@@ -77,6 +113,18 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1802.5984,
+  "event_classes": {
+    "Starting Recording": {
+      "color": "#FF6B6B",
+      "name": "Starting Recording",
+      "visible": true
+    },
+    "Stopping Recording": {
+      "color": "#FFB81C",
+      "name": "Stopping Recording",
+      "visible": true
+    }
+  },
   "first_seen_by": "scan",
   "fs": 30000.0,
   "gid": "sef04f3b4eb4d",
@@ -105,6 +153,13 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-08T17:54:00-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-02T18:50:19-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -113,7 +168,7 @@
       "scan": "scan_765fa11e51"
     },
     "StrawBarry": {
-      "at": "2026-09-08T15:30:54-04:00",
+      "at": "2026-09-08T17:13:14-04:00",
       "by": "Rain",
       "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
       "root": null,
@@ -123,14 +178,15 @@
   "session": 10,
   "start": "2025-07-07T16:42:40",
   "updated": {
-    "at": "2026-09-08T15:36:05-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T17:54:00-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
+    "chan_mode": "remove",
     "channels": [
       0,
       1,
@@ -205,13 +261,14 @@
     "hp": 0,
     "invert": true,
     "lp": 0,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 0,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 4.277,
+    "t0": 1801.5984,
     "ylim": null
   }
 }

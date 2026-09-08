@@ -27,7 +27,8 @@ from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                dsimport,
                feedback as feedbackmod,
                profile as profilemod,
-               layers, live, mice as micebook, nlx, people as peoplemod,
+               layers, live, mice as micebook, nlx, notes as notesmod,
+               people as peoplemod,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, store,
@@ -2290,6 +2291,17 @@ def api_curation_assign(gid, kind):
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
 
 
+@app.route("/api/notes")
+def api_notes():
+    """The version and what changed in it.
+
+    Read from CHANGELOG.md on every request, but only re-parsed when the
+    file has actually changed -- so editing the notes shows up without a
+    restart, which is the whole point of them living in a file.
+    """
+    return jsonify(NOTES.read())
+
+
 @app.route("/api/people")
 def api_people():
     """Everyone who has worked on this repo, most likely first.
@@ -4211,6 +4223,9 @@ MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
 PEOPLE = peoplemod.People(LOGS_DIR, STORE, PROFILE)
+# The version, read from the one place it is written: the newest
+# heading in CHANGELOG.md.
+NOTES = notesmod.Notes(APP_DIR, REPO_ROOT)
 
 
 # ==========================================================================

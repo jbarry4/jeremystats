@@ -28,6 +28,10 @@ BARRY.views.xplore = (function () {
     // which is what a fresh layout should do.
     split: { col: null, row: null },
     zoomed: null,               // index of the pane filling the workspace
+    /* The pane a single shared control strip speaks for, or -1 for none.
+       Set by renderMasterStrip before the panes are built, because each one
+       asks whether it still needs a strip of its own. */
+    master: -1,
     linkMode: 'session',   // 'none' | 'session' | 'all'
     focused: 0,
     presets: { filters: [], imports: [] },
@@ -121,6 +125,8 @@ BARRY.views.xplore = (function () {
     if (vs.fdefault) sess.fdefault = vs.fdefault;
     if (vs.flock !== undefined && vs.flock !== null) sess.flock = !!vs.flock;
     if (vs.stft_mode) sess.stftMode = vs.stft_mode;
+    if (vs.chan_mode) sess.chanMode = vs.chan_mode === 'dim' ? 'dim' : 'remove';
+    if (vs.marks_view) sess.marksView = vs.marks_view;
     if (Array.isArray(vs.channels) && vs.channels.length) {
       sess.sel = new Set(vs.channels.filter((i) => i < info.channels.length));
     }
@@ -384,16 +390,59 @@ BARRY.views.xplore = (function () {
     return true;
   }
 
+  /* What an unchecked channel does: go, or stay and be faint.
+
+     'remove' is what BARRY has always done and stays the default -- a
+     channel you unchecked is usually one you want out of the way. 'dim'
+     keeps the row, which is what you want when the point of unchecking was
+     to see what you are excluding. */
+  function chanMode(sess) {
+    return (sess && sess.chanMode) === 'dim' ? 'dim' : 'remove';
+  }
+
+  /* How visible marks are: shown, faded, or gone. */
+  function marksView(sess) {
+    const got = sess && sess.marksView;
+    return (got === 'dim' || got === 'hide') ? got : 'show';
+  }
+
+  function marksAlpha(sess) {
+    const v = marksView(sess);
+    return v === 'hide' ? 0 : (v === 'dim' ? 0.22 : 1);
+  }
+
+  /* Every channel this pane draws -- which in 'dim' mode includes the ones
+     that are not selected, because they have to be read to be shown at all.
+     `pane.channels` is the probe-column override and still wins: a column
+     the pane is not showing is not a channel it draws faintly, it is a
+     channel that belongs to another pane. */
   function paneChans(pane, sess) {
     if (!sess) return [];
-    const all = Array.from(sess.sel).sort((a, b) => a - b);
-    if (!pane || !pane.channels || !pane.channels.length) return all;
+    const dim = chanMode(sess) === 'dim';
+    const base = dim
+      ? sess.info.channels.map((_c, i) => i)
+      : Array.from(sess.sel).sort((a, b) => a - b);
+    if (!pane || !pane.channels || !pane.channels.length) return base;
     const want = new Set(pane.channels);
-    const keep = all.filter((i) => want.has(i));
+    const keep = base.filter((i) => want.has(i));
     // If the override and the selection have nothing in common the pane
     // would go blank with no explanation, so fall back to the override and
     // let the usual "not in this recording" path speak.
     return keep.length ? keep : pane.channels.slice();
+  }
+
+  /* Of the channels this pane draws, the CSC numbers of the ones nobody
+     selected. Numbers rather than indices, because that is what the server
+     matches rows on. */
+  function paneDimChans(pane, sess) {
+    if (!sess || chanMode(sess) !== 'dim') return [];
+    const out = [];
+    for (const i of paneChans(pane, sess)) {
+      if (sess.sel.has(i)) continue;
+      const ch = sess.info.channels[i];
+      if (ch) out.push(ch.number);
+    }
+    return out;
   }
 
   function fLocked(sess) {
@@ -474,6 +523,13 @@ BARRY.views.xplore = (function () {
     const span = t1 - t0;
     if (!(span > 0)) return;
     const small = (opts && opts.small) || false;
+    /* How solid to draw them.
+
+       Every globalAlpha below is an absolute assignment, so a caller cannot
+       just set ctx.globalAlpha and wrap this -- the first stroke would
+       overwrite it. Hence a multiplier carried in, applied at each one. */
+    const A = (opts && opts.alpha != null) ? opts.alpha : 1;
+    if (A <= 0) return;
     const X = (t) => x0 + ((t - t0) / span) * plotW;
 
     ctx.save();
@@ -490,14 +546,14 @@ BARRY.views.xplore = (function () {
     const stroke = (x, top, bottom, colour, wide, dashed) => {
       ctx.setLineDash(dashed ? [4, 3] : []);
       ctx.lineWidth = wide ? 1.5 : 1;
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.55 * A;
       ctx.strokeStyle = 'rgba(0,0,0,0.9)';
       ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.beginPath(); ctx.moveTo(x + 1, top); ctx.lineTo(x + 1, bottom);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       ctx.strokeStyle = colour;
       ctx.lineWidth = wide ? 2.5 : 1.6;
       ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
@@ -514,14 +570,15 @@ BARRY.views.xplore = (function () {
       // The neighbours are ticks from the bottom; the one being decided runs
       // the full height so it cannot be confused with them.
       const top = isNow ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
-      if (!isNow) ctx.globalAlpha = e.label ? 0.85 : 0.6;
+      ctx.globalAlpha = (isNow ? 1 : (e.label ? 0.85 : 0.6)) * A;
       stroke(x, top, y0 + plotH, c, isNow, !isNow && !e.label);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
 
       if (isNow) {
         /* Carets at both ends, outlined. On a busy raster the line alone can
            still be read as part of the data; a marker on the frame cannot. */
         ctx.setLineDash([]);
+        ctx.globalAlpha = A;
         const caret = (yTip, dir) => {
           ctx.beginPath();
           ctx.moveTo(x, yTip);
@@ -547,7 +604,7 @@ BARRY.views.xplore = (function () {
       const x = before ? x0 + 9 : x0 + plotW - 9;
       const y = y0 + plotH / 2;
       ctx.setLineDash([]);
-      ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = 0.9 * A;
       ctx.fillStyle = c;
       ctx.beginPath();
       ctx.moveTo(before ? x - 7 : x + 7, y);
@@ -700,6 +757,78 @@ BARRY.views.xplore = (function () {
       .push(() => target.removeEventListener(type, fn, opts));
   }
 
+  /* Which pane a single master strip would speak for, or null.
+
+     Everything on the strip except the panel settings belongs to the
+     session; the panel settings belong to a panel type. So one strip can
+     stand in for the lot exactly when every occupied pane shares both. That
+     is a probe layout, and a 2x2 of one recording in one panel type. It is
+     not two recordings side by side, where `t0` means something different in
+     each -- those keep a strip each, which is the right answer there. */
+  function masterPane() {
+    if (XF.nPanes < 2 || XF.zoomed != null) return -1;
+    let first = -1;
+    for (let i = 0; i < XF.nPanes; i++) {
+      const p = XF.panes[i];
+      if (!p || !sessionOf(p)) continue;
+      if (first < 0) { first = i; continue; }
+      const a = XF.panes[first];
+      if (p.sessionId !== a.sessionId || p.panel !== a.panel) return -1;
+    }
+    // One occupied pane in a multi-pane layout does not need a master strip;
+    // its own is already full width enough.
+    let n = 0;
+    for (let i = 0; i < XF.nPanes; i++) {
+      if (XF.panes[i] && sessionOf(XF.panes[i])) n += 1;
+    }
+    return n >= 2 ? first : -1;
+  }
+
+  /* The strip above the grid, or nothing. Its own row in #xfBody, so the
+     grid keeps every pixel it had when there is no master strip. */
+  function renderMasterStrip() {
+    const body = document.getElementById('xfBody');
+    /* Just removed. `paneControls` registers its listeners against the pane
+       it was built for, so `disposePane` above has already taken them; the
+       only thing on the node itself is the wheel handler, which goes with
+       it. */
+    const had = document.getElementById('xfMaster');
+    if (had) had.remove();
+    const at = masterPane();
+    XF.master = at;
+    if (at < 0) return;
+
+    const pane = XF.panes[at];
+    const sess = sessionOf(pane);
+    const host = el('div', { class: 'xf-master', id: 'xfMaster' }, [
+      /* Said out loud, because a control that reaches six panes at once
+         should say so before it is used rather than after. */
+      el('span', { class: 'xf-master-tag',
+        title: 'Every pane here is the same recording in the same kind of '
+             + 'panel, so these controls set all of them at once.',
+        text: XF.nPanes + ' panes \u00b7 one set of controls' }),
+    ]);
+    const strip = paneControls(at, pane, sess);
+    strip.classList.add('is-master');
+    host.appendChild(strip);
+    const grid = document.getElementById('paneGrid');
+    body.insertBefore(host, grid);
+    wireStripScroll(strip);
+  }
+
+  /* Where this pane's control strip actually lives.
+
+     Its own box normally, and the master strip when there is one. Both
+     `refreshControls` and `relabelMenu` used to look only in the pane, so
+     with a master strip they found nothing and did nothing -- the Filter
+     button went on saying "off" after a filter had been set. */
+  function stripHost(index) {
+    if (XF.master >= 0) return document.getElementById('xfMaster');
+    const grid = document.getElementById('paneGrid');
+    const box = grid && grid.children[index];
+    return (box && box.classList.contains('pane')) ? box : null;
+  }
+
   function renderPanes() {
     const grid = $('#paneGrid');
     grid.className = 'pane-grid panes-' + XF.nPanes
@@ -710,6 +839,9 @@ BARRY.views.xplore = (function () {
 
     while (XF.panes.length < XF.nPanes) XF.panes.push(null);
     XF.panes.length = Math.max(XF.nPanes, 1);
+
+    // Before the panes, because each one asks whether it needs its own.
+    renderMasterStrip();
 
     for (let i = 0; i < XF.nPanes; i++) {
       // One pane filling the workspace is just the others not being built.
@@ -759,9 +891,13 @@ BARRY.views.xplore = (function () {
     makeDropTarget(box, index);
 
     box.appendChild(paneHead(index, pane, sess));
-    const strip = paneControls(index, pane, sess);
-    box.appendChild(strip);
-    wireStripScroll(strip);
+    /* No strip of its own when one above speaks for it. Six copies of the
+       same controls, each a third of the width, is what this replaces. */
+    if (XF.master < 0) {
+      const strip = paneControls(index, pane, sess);
+      box.appendChild(strip);
+      wireStripScroll(strip);
+    }
 
     // Trace panes carry their channel list inside the plot; raster panes keep
     // the side column, where exact per-lane alignment does not apply.
@@ -1035,7 +1171,10 @@ BARRY.views.xplore = (function () {
       }),
       el('button', {
         class: 'mini', text: 'Even up the panes',
-        title: 'Undo any resizing of the splitters',
+        /* "Reset", not "Undo". It does not step back through the sizes you
+           tried, it throws them all away -- and calling it undo is why
+           Ctrl+Z was expected to reach it. */
+        title: 'Reset the splitters to equal shares',
         onclick: () => {
           XF.split = { col: null, row: null };
           render();
@@ -1076,6 +1215,29 @@ BARRY.views.xplore = (function () {
                    title: sess.path }),
       el('span', { class: 'pane-meta',
                    text: Math.round(sess.info.fs) + ' Hz · ' + sess.info.channels.length + ' ch' }),
+      /* Standing notice while marks are not fully drawn.
+
+         In the header rather than only in the menu that set it, because the
+         menu is shut by the time it matters. A mark you cannot see is
+         indistinguishable from a mark that is not there, and this is what
+         stops somebody concluding a recording has no events in it. */
+      marksView(sess) !== 'show' ? el('span', {
+        class: 'pane-warn' + (marksView(sess) === 'hide' ? ' hard' : ''),
+        title: 'Bookmarks, events and spikes are '
+             + (marksView(sess) === 'hide' ? 'not being drawn' : 'faded')
+             + '. Nothing is deleted and the counts are unchanged — '
+             + 'More › Marks turns them back on.',
+        text: marksView(sess) === 'hide' ? 'marks hidden' : 'marks faded',
+      }) : null,
+      /* And while unchecked channels are being kept, since a faint row is
+         easy to mistake for a bad one. */
+      chanMode(sess) === 'dim' && sess.sel.size < sess.info.channels.length
+        ? el('span', { class: 'pane-warn',
+            title: (sess.info.channels.length - sess.sel.size)
+                 + ' unchecked channel(s) are drawn faintly rather than '
+                 + 'removed. More › Unchecked channels.',
+            text: (sess.info.channels.length - sess.sel.size) + ' greyed' })
+        : null,
       // Which probe column this pane is. Six near-identical rasters are
       // indistinguishable without it, and the CSD in each one is computed
       // over that column alone.
@@ -1943,9 +2105,7 @@ BARRY.views.xplore = (function () {
      second click on the new button opening a duplicate. Writing the one text
      node instead keeps the strip and the popover intact. */
   function relabelMenu(index, name, value) {
-    const grid = $('#paneGrid');
-    if (!grid) return;
-    const box = grid.children[index];
+    const box = stripHost(index);
     if (!box) return;
     const node = box.querySelector(
       '.ctl-menu[data-menu="' + name + '"] .ctl-menu-value');
@@ -2385,6 +2545,74 @@ BARRY.views.xplore = (function () {
   function morePop(index, pane, sess) {
     const rows = [];
 
+    /* A little segmented chooser. Three of these would otherwise be three
+       different shapes of control doing one job. */
+    const choose = (value, options, onpick) => el('div', { class: 'ctl-seg' },
+      options.map((o) => el('button', {
+        class: 'mini' + (value === o.id ? ' on' : ''),
+        text: o.name, title: o.why,
+        onclick: () => { if (value !== o.id) onpick(o.id); },
+      })));
+
+    rows.push(popRow('Unchecked channels', [
+      choose(chanMode(sess), [
+        { id: 'remove', name: 'Remove',
+          why: 'Not read and not drawn \u2014 the raster is only the '
+             + 'channels you checked' },
+        { id: 'dim', name: 'Keep, greyed out',
+          why: 'Still drawn, faintly, so you can see what you are leaving '
+             + 'out. They are read, so this costs a little more' },
+      ], (v) => {
+        sess.chanMode = v;
+        BARRY.activity.log('display.chanMode', { mode: v }, sess);
+        closeMenu();
+        // Which channels get asked for, so every pane refetches -- and every
+        // other window has to agree, the same as invert and even-only.
+        publishFacts(sess);
+        queueSaveState(sess);
+        refreshSession(sess);
+      }),
+    ]));
+    rows.push(el('p', { class: 'ctl-pop-note',
+      text: chanMode(sess) === 'dim'
+        ? 'Greyed-out channels are read from disk, so a window with most of '
+          + 'them unchecked is no faster than one with all of them on.'
+        : 'Unchecked channels are not read at all, which is what makes a '
+          + 'narrow selection quick.' }));
+
+    rows.push(popRow('Marks \u2014 bookmarks, events, spikes', [
+      choose(marksView(sess), [
+        { id: 'show', name: 'Show', why: 'Drawn normally' },
+        { id: 'dim', name: 'Faded',
+          why: 'Drawn faintly \u2014 still there to find, out of the way of '
+             + 'the trace' },
+        { id: 'hide', name: 'Hidden',
+          why: 'Not drawn at all. Nothing is deleted; they come back when '
+             + 'you turn this off' },
+      ], (v) => {
+        sess.marksView = v;
+        BARRY.activity.log('display.marksView', { mode: v }, sess);
+        closeMenu();
+        publishFacts(sess);
+        queueSaveState(sess);
+        render();
+        refreshAll();
+      }),
+    ]));
+    /* The disclaimer. A mark you cannot see is indistinguishable from a mark
+       that is not there, and that is how somebody concludes a recording has
+       no events in it. */
+    rows.push(el('p', { class: 'ctl-pop-note' + (marksView(sess) === 'show'
+                                                 ? '' : ' warn'),
+      text: marksView(sess) === 'show'
+        ? 'Nothing is hidden. Bookmarks, events and spikes are all drawn.'
+        : (marksView(sess) === 'hide'
+            ? 'Marks are HIDDEN. Nothing has been deleted and the counts are '
+              + 'unchanged \u2014 but this recording will look as though it '
+              + 'has no events in it. The pane header says so while this is on.'
+            : 'Marks are FADED. They are all still there, and still in the '
+              + 'counts \u2014 just quiet enough to be missed.') }));
+
     rows.push(popRow(sess.events.length
       ? 'Events \u2014 ' + sess.events.length + ' loaded'
       : 'Events \u2014 none loaded', [
@@ -2625,6 +2853,108 @@ BARRY.views.xplore = (function () {
   }
 
   /* ---------- bookmarks ---------- */
+  /* What a bookmark may be.
+
+     Fixed hex rather than theme tokens: somebody who marks the seizure red
+     means red, and a colour that changed with the theme would stop meaning
+     what they chose. These are the same values the curation vocabularies
+     use, which were picked to stay legible on both the dark and the light
+     grounds. `null` is the theme accent -- the default, and what every
+     bookmark saved before this looks like. */
+  const BM_COLORS = [
+    { id: null, name: 'Default', hex: null },
+    { id: 'red', name: 'Red', hex: '#dc2626' },
+    { id: 'amber', name: 'Amber', hex: '#E5A823' },
+    { id: 'green', name: 'Green', hex: '#2f9e6e' },
+    { id: 'blue', name: 'Blue', hex: '#3b82f6' },
+    { id: 'violet', name: 'Violet', hex: '#8b5cf6' },
+    { id: 'pink', name: 'Pink', hex: '#ec4899' },
+  ];
+
+  /* The colour to draw a bookmark in. One place, so the three canvases and
+     the Marks list cannot disagree about it. */
+  function bmColor(bm, P) {
+    return (bm && bm.color) || P.accent;
+  }
+
+  /* Name and colour in one dialog.
+
+     It replaced a bare askPath for the name. Asking for the colour in a
+     second prompt after the first would be two dialogs to place one mark,
+     and picking the colour is most of the point. */
+  function bookmarkDialog(t, existing) {
+    return new Promise((resolve) => {
+      let color = (existing && existing.color) || null;
+      const name = el('input', {
+        type: 'text', class: 'cur-search',
+        value: (existing && existing.name) || '',
+        placeholder: 'e.g. "first clean IED" or "CNO onset"',
+      });
+      /* Built once, then only the `on` class moves. Rebuilding the row on
+         every click replaced every button, which throws away focus and any
+         handle anything else was holding -- including the keyboard's. */
+      const swatches = el('div', { class: 'bm-swatches' });
+      const buttons = BM_COLORS.map((c) => el('button', {
+        class: 'bm-swatch' + (c.hex ? '' : ' default'),
+        style: c.hex ? '--sw:' + c.hex : '',
+        title: c.name,
+        onclick: () => { color = c.hex; paint(); },
+      }, [c.hex ? null : el('span', { text: 'A' })].filter(Boolean)));
+      for (const b of buttons) swatches.appendChild(b);
+      const paint = () => {
+        buttons.forEach((b, i) => {
+          b.classList.toggle('on', BM_COLORS[i].hex === color);
+        });
+      };
+      paint();
+
+      let settled = false;
+      const done = (v) => {
+        if (settled) return;
+        settled = true;
+        closeModal();
+        resolve(v);
+      };
+      const save = () => {
+        const got = (name.value || '').trim();
+        if (!got) { toast('Give it a name.', 'err', 3000); name.focus(); return; }
+        done({ name: got, color: color });
+      };
+      name.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+      });
+
+      showModal(el('div', {}, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: existing ? 'Edit this bookmark'
+                                    : 'Name this bookmark' }),
+          t != null ? el('span', { class: 'sub', text: 'at ' + fmtTime(t) })
+                    : null,
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'close-x', onclick: () => done(null),
+            html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+        ].filter(Boolean)),
+        el('div', { class: 'mb' }, [
+          el('div', { class: 'field' }, [
+            el('label', { text: 'What it is' }), name]),
+          el('div', { class: 'section-label', text: 'Colour' }),
+          swatches,
+          el('p', { class: 'hint',
+            text: 'Eight bookmarks in one accent are eight identical flags. '
+                + 'The colour is what tells them apart at a glance, before '
+                + 'there is room to read the label.' }),
+        ]),
+        el('div', { class: 'mf' }, [
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn ghost', text: 'Cancel',
+                         onclick: () => done(null) }),
+          el('button', { class: 'btn', text: existing ? 'Save' : 'Add',
+                         onclick: save }),
+        ]),
+      ]));
+      setTimeout(() => { try { name.focus(); name.select(); } catch (e) {} }, 30);
+    });
+  }
   /* ======================================================================
      Placing a bookmark
 
@@ -2705,12 +3035,18 @@ BARRY.views.xplore = (function () {
     const pane = XF.panes[index];
     const w = winOf(pane, sess);
     const t = tOverride != null ? tOverride : w.t0 + w.span / 2;
-    const name = nameOverride || await askPath(
-      'Name this bookmark', 'e.g. "first clean IED" or "CNO onset"');
+    let name = nameOverride, color = null;
+    if (!name) {
+      const got = await bookmarkDialog(t);
+      if (!got) return;
+      name = got.name;
+      color = got.color;
+    }
     if (!name) return;
 
     if (!sess.identity || (sess.identity.mouse == null && !sess.identity.key)) {
-      sess.bookmarks.push({ id: 'local' + Date.now(), t, name, local: true });
+      sess.bookmarks.push({ id: 'local' + Date.now(), t, name, color,
+                            local: true });
       render();
       toast('Bookmarked locally -- this recording has no detectable id, so it '
             + 'cannot be saved across machines.', 'err', 7000);
@@ -2719,10 +3055,13 @@ BARRY.views.xplore = (function () {
     try {
       const res = await apiPost('/api/session/bookmarks', {
         identity: sess.identity,
-        bookmark: { t, name, span: w.span },
+        // `color` rides along; save_bookmark copies the whole record, so
+        // there was nothing to change on the server.
+        bookmark: { t, name, span: w.span, color },
       });
       sess.bookmarks = res.bookmarks || [];
-      BARRY.activity.log('bookmark.add', { name, t: round(t, 4) }, sess);
+      BARRY.activity.log('bookmark.add',
+                         { name, t: round(t, 4), color }, sess);
       render();
       refreshSession(sess);
       toast('Bookmarked "' + name + '" at ' + fmtTime(t), 'ok');
@@ -2758,7 +3097,7 @@ BARRY.views.xplore = (function () {
         kind: 'bookmark', t: bm.t, span: bm.span || null,
         name: bm.name || 'bookmark',
         detail: bm.local ? 'not saved -- this recording has no detectable id' : '',
-        color: P.accent, ref: bm,
+        color: bmColor(bm, P), ref: bm,
       });
     }
 
@@ -2829,6 +3168,14 @@ BARRY.views.xplore = (function () {
   let markFilter = 'all';
   let markQuery = '';
 
+  /* The open Marks list, so a change can redraw it.
+
+     Deleting used to reopen the whole dialog, which stacked a second modal
+     over the first -- and then the close X took the top one off and
+     revealed the stale one underneath, which reads exactly like the delete
+     being undone. A redraw of the list in place is what was meant. */
+  let marksRedraw = null;
+
   function openMarks(index, sess) {
     const MAX_ROWS = 400;
 
@@ -2894,6 +3241,15 @@ BARRY.views.xplore = (function () {
           el('span', { class: 'mk-kind', text: m.kind }),
           m.kind === 'bookmark'
             ? el('span', {
+                class: 'x', text: '✎', title: 'Rename or recolour this bookmark',
+                onclick: (e) => {
+                  e.stopPropagation();
+                  editBookmark(index, sess, m.ref);
+                },
+              })
+            : el('span', { class: 'x', style: 'visibility:hidden', text: '✎' }),
+          m.kind === 'bookmark'
+            ? el('span', {
                 class: 'x', text: '✕', title: 'Delete this bookmark',
                 onclick: (e) => { e.stopPropagation(); dropBookmark(index, sess, m.ref); },
               })
@@ -2911,6 +3267,13 @@ BARRY.views.xplore = (function () {
     };
 
     draw();
+    /* Guarded by whether the list is still on screen, rather than cleared by
+       a close callback: there are several ways this dialog goes away --
+       Escape, the backdrop, closeAllModals, leaving the view -- and a handle
+       that checks for itself cannot be left behind by any of them. */
+    marksRedraw = () => { if (body.isConnected) draw(); };
+    /* `replace` for the same reason as the figure builder and the event
+       import: whatever reopens this, there must never be two stacked. */
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Marks' }),
@@ -2931,25 +3294,79 @@ BARRY.views.xplore = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
       ]),
-    ]));
+    ]), { replace: true });
   }
 
-  async function dropBookmark(index, sess, bm) {
+  /* A colour you cannot correct is worse than no colour, so the Marks list
+     can change one -- and the name with it, since it is the same dialog. */
+  async function editBookmark(index, sess, bm) {
+    const got = await bookmarkDialog(bm.t, bm);
+    if (!got) return;
     if (bm.local) {
-      sess.bookmarks = sess.bookmarks.filter((x) => x.id !== bm.id);
-    } else {
+      bm.name = got.name;
+      bm.color = got.color;
+      render();
+      return;
+    }
+    try {
+      const res = await apiPost('/api/session/bookmarks', {
+        identity: sess.identity,
+        // Same id, so this replaces the record rather than adding a second
+        // bookmark at the same time.
+        bookmark: { id: bm.id, t: bm.t, span: bm.span,
+                    name: got.name, color: got.color },
+      });
+      sess.bookmarks = res.bookmarks || [];
+      BARRY.activity.log('bookmark.edit',
+                         { name: got.name, color: got.color }, sess);
+      if (marksRedraw) marksRedraw();
+      render();
+      refreshSession(sess);
+      BARRY.refreshSync();
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
+  /* Deletes in flight, by bookmark id.
+
+     The DELETE took 2.7 seconds and the row stayed in the list while it
+     did, so it got clicked again, and again -- four requests for one
+     bookmark, each queued behind the last and slower than it. The row goes
+     at the click now, and comes back if the server refuses. */
+  const dropping = new Set();
+
+  async function dropBookmark(index, sess, bm) {
+    if (dropping.has(bm.id)) return;
+
+    const before = sess.bookmarks || [];
+    // Gone from the list now, not in three seconds' time.
+    sess.bookmarks = before.filter((x) => x.id !== bm.id);
+    if (marksRedraw) marksRedraw();
+    render();
+
+    if (!bm.local) {
+      dropping.add(bm.id);
       try {
         const res = await api('/api/session/bookmarks', {
           method: 'DELETE',
           body: JSON.stringify({ identity: sess.identity, id: bm.id }),
         });
         sess.bookmarks = res.bookmarks || [];
-      } catch (err) { toast(err.message, 'err'); return; }
+      } catch (err) {
+        /* Put it back, rather than leaving the list claiming something was
+           deleted that is still on disk. */
+        sess.bookmarks = before;
+        toast(err.message, 'err');
+        if (marksRedraw) marksRedraw();
+        render();
+        return;
+      } finally {
+        dropping.delete(bm.id);
+      }
     }
     BARRY.activity.log('bookmark.delete', { name: bm.name }, sess);
+    if (marksRedraw) marksRedraw();
     render();
     refreshSession(sess);
-    openMarks(index, sess);
   }
 
   /* ======================================================================
@@ -4418,18 +4835,21 @@ BARRY.views.xplore = (function () {
     // A popover is anchored to a button on this strip, so it cannot outlive
     // the rebuild.
     closeMenu();
-    // Cheap: rebuild just this pane's control strip.
-    const grid = $('#paneGrid');
-    const box = grid.children[index];
-    if (!box || !box.classList.contains('pane')) return;
-    const pane = XF.panes[index], sess = sessionOf(pane);
+    // Cheap: rebuild just the one strip -- this pane's, or the master.
+    const box = stripHost(index);
+    if (!box) return;
+    // When one strip speaks for every pane, it is built from the pane it
+    // speaks for, not from whichever one happened to change.
+    const at = XF.master >= 0 ? XF.master : index;
+    const pane = XF.panes[at], sess = sessionOf(pane);
     if (!sess) return;
     // Guarded: a rebuild triggered while an earlier one was still in flight
     // could find the node it meant to replace already gone, and replaceChild
     // throws NotFoundError for that. Nothing here is worth an exception.
     const old = box.querySelector('.pane-ctl');
     if (!old || !old.isConnected || old.parentNode !== box) return;
-    const strip = paneControls(index, pane, sess);
+    const strip = paneControls(at, pane, sess);
+    if (XF.master >= 0) strip.classList.add('is-master');
     const left = old.scrollLeft;
     old.replaceWith(strip);
     wireStripScroll(strip);
@@ -4595,6 +5015,10 @@ BARRY.views.xplore = (function () {
       path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
       panel: pane.panel, t0: sess.t0, t1: sess.t0 + sess.span,
       channels: paneChans(pane, sess),
+      // Rows to draw faintly. Sent even when empty so a cached render from
+      // the other mode is not collected by mistake -- the server keys its
+      // cache on the whole spec.
+      dim_channels: paneDimChans(pane, sess),
       highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
       cmap: pane.cmap || 'jet', spacing_um: sess.spacing,
       bad_channels: Array.from(sess.bad),
@@ -4904,9 +5328,21 @@ BARRY.views.xplore = (function () {
        the trace -- and they were the panels that never showed which
        candidate was in question. Drawn first so the trace marks and
        bookmarks sit over it. */
-    drawCurationMarks(ctx, sess, t0, t0 + span, 0, w, 0, h, P, {});
+    /* Curation marks are gated with everything else.
+
+       They were not, on the reasoning that while you are deciding
+       candidates the candidate marks ARE the job -- but "fade the marks"
+       plainly means all of them, and a setting that quietly exempts the one
+       kind you were looking at is worse than one that does nothing. The
+       pane header says the marks are faded or hidden either way, so nothing
+       about this is silent. */
+    const mAlpha = marksAlpha(sess);
+    drawCurationMarks(ctx, sess, t0, t0 + span, 0, w, 0, h, P,
+                      { alpha: mAlpha });
+    if (mAlpha <= 0) return;
 
     ctx.save();
+    ctx.globalAlpha = mAlpha;
     for (const ev of (sess.events || [])) {
       if (ev.start < t0 || ev.start > t0 + span) continue;
       if (!eventVisible(sess, ev)) continue;
@@ -4920,7 +5356,7 @@ BARRY.views.xplore = (function () {
     ctx.setLineDash([]);
 
     for (const st of (sess.spikeSets || [])) {
-      ctx.strokeStyle = P.accent; ctx.globalAlpha = 0.8; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = P.accent; ctx.globalAlpha = 0.8 * mAlpha; ctx.lineWidth = 1.2;
       for (const ev of (st.events || [])) {
         if (ev.start < t0 || ev.start > t0 + span) continue;
         const x = X(ev.start);
@@ -4929,7 +5365,7 @@ BARRY.views.xplore = (function () {
       }
     }
     if (sess.spikeDraft) {
-      ctx.strokeStyle = P.warn; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+      ctx.strokeStyle = P.warn; ctx.globalAlpha = 0.45 * mAlpha; ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       for (const ev of (sess.spikeDraft.events || [])) {
         if (ev.start < t0 || ev.start > t0 + span) continue;
@@ -4943,9 +5379,10 @@ BARRY.views.xplore = (function () {
     for (const bm of (sess.bookmarks || [])) {
       if (bm.t < t0 || bm.t > t0 + span) continue;
       const x = X(bm.t);
-      ctx.strokeStyle = P.accent; ctx.globalAlpha = 0.9; ctx.lineWidth = 1.4;
+      const col = bmColor(bm, P);
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.9 * mAlpha; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      ctx.fillStyle = P.accent;
+      ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(x, 1); ctx.lineTo(x + 7, 5); ctx.lineTo(x, 9);
       ctx.closePath(); ctx.fill();
@@ -5343,6 +5780,11 @@ BARRY.views.xplore = (function () {
           // windows disagreeing about what the recording is.
           evenOnly: !!sess.evenOnly,
           invert: !!sess.invert,
+          // Same reasoning: what an unchecked channel does, and how visible
+          // the marks are, are facts about this recording's display that
+          // every pane and every window showing it should agree on.
+          chanMode: chanMode(sess),
+          marksView: marksView(sess),
         },
       });
       if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
@@ -5505,6 +5947,22 @@ BARRY.views.xplore = (function () {
         // Fire and forget: pollLink is not the place to wait on a reopen.
         reopenSameView(sess);
       }
+
+      /* What an unchecked channel does, and how visible the marks are.
+
+         Neither changes what is read off disk, so both are a redraw rather
+         than a reopen -- except `chanMode`, which changes which channels are
+         asked for, so it needs the panes refetched. Compared before acting,
+         same as above, or two windows would keep telling each other. */
+      if (v.chanMode !== undefined && v.chanMode !== chanMode(sess)) {
+        sess.chanMode = v.chanMode === 'dim' ? 'dim' : 'remove';
+        refreshSession(sess);
+        touched = true;
+      }
+      if (v.marksView !== undefined && v.marksView !== marksView(sess)) {
+        sess.marksView = v.marksView;
+        touched = true;
+      }
     }
 
     /* Curation, always -- like the facts above, and for the same reason.
@@ -5625,6 +6083,12 @@ BARRY.views.xplore = (function () {
           // the moment a recording was closed.
           even_only: !!sess.evenOnly,
           invert: !!sess.invert,
+          // What an unchecked channel does, and how visible the marks are.
+          // Both are display choices somebody made on purpose about this
+          // recording; forgetting them on reopen makes the choice feel like
+          // it did not take.
+          chan_mode: chanMode(sess),
+          marks_view: marksView(sess),
           probe: sess.probe || null,
           fdefault: sess.fdefault || null,
           flock: sess.flock !== false,
@@ -5791,11 +6255,25 @@ BARRY.views.xplore = (function () {
       ctx.fillText(fmtTick(t, win.t1 - win.t0), x, h - 8);
     }
 
-    drawEventMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
-    drawSpikeMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
-    drawBookmarkMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
-    /* Curation draws last, over everything, because while you are curating
-       it is the only thing you are looking at.
+    /* One gate for all three kinds, rather than the same check inside each
+       of them. Curation below is deliberately outside it: while you are
+       deciding candidates, the candidate marks are the only thing you are
+       looking at, and hiding those would hide the job. */
+    const mAlpha = marksAlpha(sess);
+    if (mAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = mAlpha;
+      drawEventMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      drawSpikeMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      drawBookmarkMarks(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      ctx.restore();
+    }
+    /* Curation draws last, over everything -- but at the same alpha as the
+       rest, so fading or hiding the marks reaches the dentate-spike marks
+       too. It used to be exempt, on the reasoning that the candidate under
+       decision is the job rather than an annotation over it; "fade the
+       marks" means all of them, and the pane header announces it either
+       way.
 
        Through sess.curationMarks rather than by asking BARRY.curate, so the
        aid window -- a separate page, with no curate module in it -- draws
@@ -5803,7 +6281,7 @@ BARRY.views.xplore = (function () {
        turn afterwards for the label text, which only makes sense in the
        window doing the deciding. */
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
-                      P, {});
+                      P, { alpha: mAlpha });
     if (BARRY.curate && BARRY.curate.draw) {
       BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
@@ -6009,13 +6487,14 @@ BARRY.views.xplore = (function () {
     for (const bm of sess.bookmarks) {
       if (bm.t < win.t0 || bm.t > win.t1) continue;
       const x = Math.round(x0 + ((bm.t - win.t0) / span) * plotW) + 0.5;
-      ctx.strokeStyle = P.accent;
+      const col = bmColor(bm, P);
+      ctx.strokeStyle = col;
       ctx.globalAlpha = 0.7;
       ctx.beginPath();
       ctx.moveTo(x, y0); ctx.lineTo(x, y0 + plotH);
       ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = P.accent;
+      ctx.fillStyle = col;
       const label = ' ⚑ ' + bm.name;
       const flip = (x + ctx.measureText(label).width + 4) > (x0 + plotW);
       ctx.textAlign = flip ? 'right' : 'left';
@@ -7135,6 +7614,39 @@ BARRY.views.xplore = (function () {
     open: openSession,
     popOutPanes,
     addBankedEvents,
+    /* Placing a bookmark and opening the Marks list, from outside. The
+       command palette has reason to offer both, and web/_dev/newfeat.html
+       drives the real dialogs rather than a copy of them -- a harness that
+       reimplements the thing it is testing tests nothing. */
+    bookmarkAt: (index, t, name) => addBookmark(
+      index == null ? XF.focused : index, sessionOf(
+        XF.panes[index == null ? XF.focused : index]), t, name),
+    openMarks: (index) => {
+      const i = index == null ? XF.focused : index;
+      return openMarks(i, sessionOf(XF.panes[i]));
+    },
+    /* Deleting a bookmark by name.
+
+       For web/_dev/marks.html, which checks that a repeat delete while one
+       is already in flight sends nothing more -- the thing that turned one
+       impatient click into four DELETEs. It cannot be checked through the
+       list any more, because the row is gone the moment it is clicked,
+       which is the other half of the fix. */
+    _dropByName: (index, name) => {
+      const i = index == null ? XF.focused : index;
+      const sess = sessionOf(XF.panes[i]);
+      const bm = (sess && sess.bookmarks || []).find((x) => x.name === name);
+      return bm ? dropBookmark(i, sess, bm) : null;
+    },
+    /* The candidate marks, drawable onto any context.
+
+       For web/_dev/display.html, which checks that fading and hiding the
+       marks reaches these too -- a claim about pixels, so the harness draws
+       with the real function and counts the alpha it strokes at, rather than
+       reading the setting back and trusting it. */
+    _drawCuration: (ctx, sess, t0, t1, x0, plotW, y0, plotH) =>
+      drawCurationMarks(ctx, sess, t0, t1, x0, plotW, y0, plotH, palette(),
+                        { alpha: marksAlpha(sess) }),
     fillPanes,
     state: XF,
     refreshAll,

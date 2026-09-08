@@ -25,6 +25,8 @@ const BARRY = {
 function reportClientError(where, message, detail) {
   const text = String(message || 'Unknown error');
   try {
+    // Whatever else is wrong, do not leave the boot overlay covering it.
+    if (BARRY.boot) BARRY.boot.clear();
     const box = document.getElementById('bootError');
     if (box) {
       box.classList.remove('hidden');
@@ -1095,6 +1097,116 @@ function showSync() {
   ]));
 }
 
+/* ==========================================================================
+   The version, and the patch notes behind it.
+
+   Read from CHANGELOG.md by the server, which is the only place the version
+   is written. Two sources of one fact drift, and the one that drifts is
+   always the one nobody thought to update.
+   ========================================================================== */
+BARRY.notes = (function () {
+  let data = null;
+
+  async function load() {
+    try {
+      data = await api('/api/notes');
+    } catch (e) {
+      data = null;
+    }
+    paint();
+    return data;
+  }
+
+  function paint() {
+    const chip = document.getElementById('verChip');
+    if (!chip) return;
+    const v = data && data.version;
+    chip.classList.toggle('hidden', !v);
+    if (!v) return;
+    chip.textContent = 'v' + v;
+    const run = (data && data.running) || null;
+    /* The commit as well as the version, because "we are both on 2026.09.08"
+       and "we are both on 65ece68" are different claims, and the second is
+       the one that settles an argument about why something behaves
+       differently for one of you. */
+    chip.title = 'BARRY ' + v
+      + (run ? '  ·  ' + run.commit + (run.dirty ? ' + local changes' : '')
+             + (run.branch ? '  ·  ' + run.branch : '')
+             : '')
+      + '\nClick for the patch notes';
+    chip.classList.toggle('dirty', !!(run && run.dirty));
+  }
+
+  function open() {
+    if (!data) { load().then((d) => { if (d) open(); }); return; }
+    if (!data.ok) {
+      toast(data.error || 'There are no patch notes to show.', 'err', 8000);
+      return;
+    }
+
+    const body = el('div', { class: 'mb notes-body' });
+    if (data.preamble) {
+      body.appendChild(el('p', { class: 'hint notes-pre',
+                                 text: data.preamble }));
+    }
+    const run = data.running;
+    if (run) {
+      body.appendChild(el('p', { class: 'confirm-sub' + (run.dirty ? ' warn' : ''),
+        text: 'This machine is running ' + run.commit
+            + (run.branch ? ' on ' + run.branch : '')
+            + (run.at ? ', committed ' + run.at.replace('T', ' ').slice(0, 16)
+                      : '')
+            + (run.dirty
+                ? ' — with uncommitted changes, so it may not match what the '
+                  + 'notes describe.'
+                : '.') }));
+    }
+
+    for (const e of (data.entries || [])) {
+      body.appendChild(el('div', { class: 'notes-rel' }, [
+        el('div', { class: 'notes-rel-head' }, [
+          el('span', { class: 'notes-ver', text: e.version }),
+          e.title ? el('span', { class: 'notes-title', text: e.title }) : null,
+        ].filter(Boolean)),
+      ].concat((e.sections || []).map((sec) =>
+        el('div', { class: 'notes-sec' }, [
+          sec.name ? el('h4', { text: sec.name }) : null,
+        ].concat(
+          (sec.prose || []).map((t) => el('p', { text: t })),
+          sec.items && sec.items.length
+            ? [el('ul', {}, sec.items.map((t) => el('li', { text: t })))]
+            : []
+        ).filter(Boolean))
+      ))));
+    }
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'What changed' }),
+        el('span', { class: 'sub', text: 'BARRY ' + (data.version || '') }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('span', { class: 'hint',
+          text: 'These live in CHANGELOG.md beside the app.' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+      ]),
+    ]));
+  }
+
+  function wire() {
+    const chip = document.getElementById('verChip');
+    if (chip) chip.addEventListener('click', open);
+    load();
+  }
+
+  return { load, open, wire, get: () => data };
+})();
+
 BARRY.setErrorCount = function setErrorCount(n) {
   const b = $('#errBadge');
   if (!b) return;
@@ -1126,22 +1238,89 @@ function railState() {
   } catch (e) { return 'full'; }
 }
 
+/* What the whole cycle is, said in one place.
+
+   The tooltip used to name only the next step, which meant the click that
+   hides the bar entirely announced itself after the fact. Now the button
+   carries where you are and where you are going. */
+const RAIL_SAYS = {
+  full:  { next: 'Shrink the menu to icons',
+           cycle: 'Menu · full → icons → hidden' },
+  icons: { next: 'Hide the menu completely',
+           cycle: 'Icons · full → icons → hidden' },
+  away:  { next: 'Bring the menu back',
+           cycle: 'Hidden · click to go back to the full menu' },
+};
+
 function setRail(state, remember) {
   const app = document.getElementById('app');
   if (!app) return;
   const s = RAIL_STATES.includes(state) ? state : 'full';
   app.classList.toggle('rail-icons', s === 'icons');
   app.classList.toggle('rail-away', s === 'away');
+
   const btn = document.getElementById('railToggle');
   if (btn) {
-    btn.title = s === 'full' ? 'Collapse the menu to icons'
-      : s === 'icons' ? 'Hide the menu' : 'Show the menu';
+    const says = RAIL_SAYS[s] || RAIL_SAYS.full;
+    btn.title = says.next + '\n' + says.cycle;
+    // Which of the three positions, on the button itself.
+    const at = RAIL_STATES.indexOf(s);
+    btn.querySelectorAll('.rail-pips i').forEach((pip, i) => {
+      pip.classList.toggle('on', i === at);
+      pip.classList.toggle('past', i < at);
+    });
   }
+
   if (remember !== false) {
     try { localStorage.setItem('barry.rail', s); } catch (e) { /* ignore */ }
   }
-  // Every canvas in the workspace just changed width.
+  railHint();
+
+  /* Coming back into view: out of `display: none` first, or there is
+     nothing on screen for the slide to move. */
+  if (s !== 'away') app.classList.remove('rail-gone');
+
+  /* Every canvas in the workspace just changed width -- but the grid is
+     mid-transition, so measuring now gives the width it is leaving. Once
+     immediately, so anything cheap keeps up with the movement, and again
+     when the movement is over, which is the size that will actually be on
+     screen. */
   window.dispatchEvent(new Event('resize'));
+  clearTimeout(setRail._settle);
+  setRail._settle = setTimeout(() => {
+    /* Now that it has finished sliding out, take it out of the layout.
+
+       Checked against the current state rather than the `s` this call was
+       made with, because two quick clicks would otherwise have the first
+       one's timer hide a rail the second one brought back.
+
+       On a timer and not `transitionend`: that event does not arrive if the
+       transition is interrupted, cancelled, or never runs, and a rail stuck
+       half-out because an event went missing is worse than one that does
+       not animate. */
+    app.classList.toggle('rail-gone', railState() === 'away');
+    window.dispatchEvent(new Event('resize'));
+  }, 340);
+
+  /* And if it is already away at load, there is no movement to wait for. */
+  if (remember === false && s === 'away') app.classList.add('rail-gone');
+}
+
+/* The hint under the button, while it is still news.
+
+   Gone for good once somebody has reached the hidden state, because at that
+   point they have found the thing it was pointing at. */
+function railHint() {
+  const box = document.getElementById('railHint');
+  if (!box) return;
+  let seen = false;
+  try { seen = localStorage.getItem('barry.railSeen') === '1'; }
+  catch (e) { seen = false; }
+  if (railState() === 'away' && !seen) {
+    try { localStorage.setItem('barry.railSeen', '1'); } catch (e) { /* ok */ }
+    seen = true;
+  }
+  box.classList.toggle('hidden', seen || railState() !== 'full');
 }
 
 function cycleRail() {
@@ -1623,6 +1802,138 @@ window.addEventListener('beforeunload', () => {
   try { BARRY.prefs.flush(); } catch (e) { /* nothing to do about it now */ }
 });
 
+/* ==========================================================================
+   The boot overlay
+   ==========================================================================
+   The markup is in index.html, above the stylesheet, so it paints on the
+   browser's first pass -- the gap it covers includes app.css and twenty-eight
+   scripts arriving, which is why it cannot be built by one of them.
+
+   What it adds here is honesty about time. "Connecting" with no subject is
+   also what a hung app says, so this names the step, and if a step outlasts
+   four seconds it names the request it is waiting for. On this machine
+   /api/registry answers in about five.
+   ========================================================================== */
+BARRY.boot = (function () {
+  const SLOW_MS = 4000;
+  let slowTimer = null;
+  let done = false;
+
+  function say(what, waitingFor) {
+    if (done) return;
+    const line = document.getElementById('bootWhat');
+    if (line) line.textContent = what;
+    const slow = document.getElementById('bootSlow');
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+    if (slow) { slow.classList.remove('on'); }
+    if (!waitingFor || !slow) return;
+    /* Only after it has actually been slow. Saying "this can take a moment"
+       immediately teaches people to expect a wait that usually is not
+       there. */
+    slowTimer = setTimeout(() => {
+      if (done) return;
+      slow.textContent = 'Still waiting on ' + waitingFor
+        + '. It is reading the catalogue from disk, not the network.';
+      slow.classList.add('on');
+    }, SLOW_MS);
+  }
+
+  /* Taking it away is idempotent and irreversible: several things race to
+     call it -- init finishing, the error handler, and a timeout -- and
+     whichever gets there first is right. */
+  function clear() {
+    if (done) return;
+    done = true;
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+    const box = document.getElementById('boot');
+    if (!box) return;
+    box.classList.add('gone');
+    // Out of the document once the fade is over, so it cannot take clicks.
+    setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
+               420);
+  }
+
+  /* A hard limit, whatever happens.
+
+     An overlay that can outlive a failure is worse than the black screen it
+     replaced: the black screen at least lets you see the app behind it. If
+     init throws before it reaches its own clear(), this still fires. */
+  setTimeout(clear, 15000);
+
+  return { say, clear };
+})();
+
+/* ==========================================================================
+   Skeletons
+   ==========================================================================
+   A skeleton is a promise about the shape of what is arriving. Through one
+   helper rather than per view, so two lists cannot promise differently for
+   the same kind of row -- and so "loading" never means an empty box that
+   reads as "nothing here", which is the failure it exists to prevent.
+
+   `rows` is a count, `kind` picks the shape. Deliberately no text: a
+   skeleton that says "Loading…" is doing the same job twice, and the word
+   is what stays behind when a render forgets to replace it.
+   ========================================================================== */
+BARRY.skeleton = (function () {
+  const SHAPES = {
+    // A session card: title, a line of meta, a row of pills.
+    card: () => [
+      el('div', { class: 'sk-line', style: 'width:38%;height:13px' }),
+      el('div', { class: 'sk-line', style: 'width:62%' }),
+      el('div', { class: 'sk-pills' }, [
+        el('div', { class: 'sk-pill' }),
+        el('div', { class: 'sk-pill', style: 'width:54px' }),
+        el('div', { class: 'sk-pill', style: 'width:38px' }),
+      ]),
+    ],
+    // A list row: one line, a shorter second one.
+    row: () => [
+      el('div', { class: 'sk-line', style: 'width:44%' }),
+      el('div', { class: 'sk-line', style: 'width:70%;height:8px' }),
+    ],
+    // A group heading with a count.
+    head: () => [
+      el('div', { class: 'sk-line', style: 'width:24%;height:11px' }),
+    ],
+  };
+
+  function block(kind, rows) {
+    const shape = SHAPES[kind] || SHAPES.row;
+    const host = el('div', {
+      class: 'sk-wrap', 'aria-hidden': 'true',
+      // Announced to a screen reader once, rather than as N meaningless rows.
+      'data-sk': kind,
+    });
+    const n = Math.max(1, rows || 3);
+    for (let i = 0; i < n; i++) {
+      /* Widths vary a little down the list. A column of identical bars reads
+         as a loading graphic; uneven ones read as text that has not arrived,
+         which is what is actually true. */
+      const w = 0.86 + ((i % 3) * 0.05);
+      host.appendChild(el('div', {
+        class: 'sk-item',
+        style: 'width:' + (w * 100).toFixed(0) + '%;'
+             + 'animation-delay:' + (i * 90) + 'ms',
+      }, shape()));
+    }
+    return host;
+  }
+
+  /* Put a skeleton into a host, and hand back the way to take it out. The
+     caller gets a function rather than having to remember the host, so a
+     failed load cannot leave the bones on screen. */
+  function into(host, kind, rows) {
+    if (!host) return () => {};
+    const b = block(kind, rows);
+    host.innerHTML = '';
+    host.appendChild(b);
+    return () => { if (b.parentNode === host) host.removeChild(b); };
+  }
+
+  return { block, into };
+})();
+
 BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
   // A ?theme= in the URL wins but is not remembered -- it is for a link, not
@@ -1632,6 +1943,8 @@ BARRY.init = async function init() {
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
 
+  BARRY.boot.say('wiring up the interface');
+
   $$('.nav-item').forEach((b) =>
     b.addEventListener('click', () => setView(b.dataset.view)));
 
@@ -1639,6 +1952,8 @@ BARRY.init = async function init() {
   wireRail();
   wireMode();
   BARRY.profile.wire();
+  BARRY.notes.wire();
+  BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
 
@@ -1687,6 +2002,7 @@ BARRY.init = async function init() {
   });
 
   // Load the catalog, then hand off to each view.
+  BARRY.boot.say('reading the repository index', '/api/catalog');
   try {
     const cat = await api('/api/catalog');
     BARRY.state.catalog = cat;
@@ -1711,6 +2027,7 @@ BARRY.init = async function init() {
 
   // Preferences gate the views (favourites, smart collections, last
   // session), so they must be in hand before any view renders.
+  BARRY.boot.say('loading your preferences', '/api/prefs');
   await BARRY.prefs.load();
 
   // Preferences and the catalog are both in hand now, so the per-machine
@@ -1748,9 +2065,18 @@ BARRY.init = async function init() {
     BARRY.setErrorCount(n);
   });
 
+  BARRY.boot.say('opening the workspace');
   setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
+
+  /* The view is up, so the overlay has done its job.
+
+     After a frame, so the fade begins over a painted interface rather than
+     over the last of the empty one -- and whatever else is still in flight
+     (the registry, the sync status) is now behind a skeleton in the view
+     that wants it, which is where a wait belongs. */
+  requestAnimationFrame(() => BARRY.boot.clear());
 
   if (cscPath && BARRY.views.xplore) {
     BARRY.views.xplore.open(cscPath).then((sess) => {

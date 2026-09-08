@@ -21,8 +21,8 @@
     "schema": "2026-09-04T15:57:01.584890+00:00",
     "session": "2026-09-04T15:57:01.584890+00:00",
     "start": "2026-09-04T15:57:01.584890+00:00",
-    "updated": "2026-09-08T19:38:00.877941+00:00",
-    "view_state": "2026-09-08T18:10:24.766099+00:00"
+    "updated": "2026-09-08T22:23:05.867051+00:00",
+    "view_state": "2026-09-08T21:51:00.921845+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -58,18 +58,22 @@
         "set",
         "2026-09-04T15:57:01.584890+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-08T22:23:05.867051+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.584890+00:00"
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T19:38:00.877941+00:00"
+        "2026-09-08T21:10:27.652482+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T19:38:00.877941+00:00",
+    "at": "2026-09-08T22:23:05.867051+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -131,6 +135,13 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-08T18:23:05-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -139,7 +150,7 @@
       "scan": "scan_a9e7e27d1a"
     },
     "StrawBarry": {
-      "at": "2026-09-08T15:38:00-04:00",
+      "at": "2026-09-08T17:10:27-04:00",
       "by": "Rain",
       "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
       "root": null,
@@ -149,14 +160,15 @@
   "session": 7,
   "start": "2023-09-22T16:15:23",
   "updated": {
-    "at": "2026-09-08T15:38:00-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T18:23:05-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
+    "chan_mode": "remove",
     "channels": [
       1,
       3,
@@ -199,13 +211,14 @@
     "hp": 0,
     "invert": true,
     "lp": 0,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 0,
-    "probe": null,
+    "probe": "h10d",
     "spacing": 50,
     "span": 10,
     "stft_mode": null,
-    "t0": 10.95737088278293,
+    "t0": 1191.6981333333333,
     "ylim": null
   }
 }

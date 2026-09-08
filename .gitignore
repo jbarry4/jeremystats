@@ -6,3 +6,16 @@ HOF Scripts/Python Visualizer/**/build/
 HOF Scripts/Python Visualizer/**/dist/
 *.pkg
 *.pyz
+
+# BARRY's error log travels by Supabase now, not by git.
+#
+# It was append-only JSONL per machine per day, committed to the repo, and
+# that commit was the only way one machine's errors reached another -- so a
+# colleague's crash was invisible until somebody remembered to commit and
+# somebody else remembered to pull. It also accumulated in the history of a
+# repo that is meant to hold recordings and decisions.
+#
+# The files stay on disk as the offline buffer: BARRY records an error
+# whether or not there is a network, which is exactly when it matters most.
+# They are cache now, not transport.
+BARRY GUI/GUI_logs/errors/

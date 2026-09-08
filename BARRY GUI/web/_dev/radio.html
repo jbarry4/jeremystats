@@ -1,0 +1,228 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the radio</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The radio is the only part of BARRY that reaches the internet, so most of
+   what is worth checking is about restraint:
+
+     nothing loads until somebody says yes,
+     the question is asked before the first connection and not after,
+     turning it off takes the player out of the page rather than muting it,
+     and minimising does NOT -- because removing the iframe stops the audio,
+     which is the one thing minimising is for.
+
+   The stream itself is not fetched here. This runs on a machine that may
+   have no network, and a harness that fails because YouTube is unreachable
+   would be testing YouTube. What is checked is the iframe BARRY builds:
+   where it points, what it is allowed to do, and when it exists. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const dock = () => D().getElementById('radioDock');
+  const frame = () => D().getElementById('radioFrame');
+  const chip = () => D().getElementById('radioBtn');
+
+  hd('1. Off, and nothing loaded');
+  ck('there is a Radio chip in the rail', !!chip());
+  ck('the dock exists but is hidden',
+     !!dock() && dock().classList.contains('hidden'),
+     dock() ? dock().className : 'no dock');
+  ck('and no player is in the page at all', !frame(),
+     'an iframe is already there');
+  p('  chip reads "' + ((chip() || {}).textContent || '').trim() + '"');
+  ck('the chip says where it would stream from',
+     /youtube/i.test((chip() || {}).title || ''), (chip() || {}).title);
+  ck('and that it is the only thing that leaves the machine',
+     /leaves this machine/.test((chip() || {}).title || ''),
+     (chip() || {}).title);
+
+  hd('2. It asks before the first connection');
+  /* Establish the precondition rather than assert it.
+
+     This asserted "nobody has agreed yet" and failed on the machine it was
+     written for, because somebody had turned the radio on that afternoon and
+     consent is remembered per machine -- which is the point of it. A harness
+     that only passes on a machine nobody has used is testing the machine. */
+  run('BARRY.radio._agree(false)');
+  ck('consent can be cleared, so the question is testable',
+     val('BARRY.radio.state().agreed') === false);
+  chip().click();
+  const ask = await (async () => {
+    for (let i = 0; i < 60; i++) {
+      const b = Array.from(D().querySelectorAll('.modal button'))
+        .find((x) => /^Turn the radio on$/.test(x.textContent.trim()));
+      if (b) return b;
+      await sleep(100);
+    }
+    return null;
+  })();
+  ck('clicking it asks first', !!ask, 'it connected without asking');
+  if (ask) {
+    const words = (ask.closest('.modal') || {}).textContent || '';
+    ck('the question says what will be loaded',
+       /youtube\.com/.test(words), words.slice(0, 90));
+    ck('and what is not sent',
+       /No recording data/.test(words), words.slice(0, 120));
+    ck('and that it is asked once per machine',
+       /once per machine/.test(words), words.slice(0, 120));
+    /* Declining must leave it exactly as it was. */
+    const no = Array.from(ask.closest('.modal').querySelectorAll('button'))
+      .find((x) => /^Cancel$/.test(x.textContent.trim()));
+    if (no) {
+      no.click();
+      await sleep(600);
+      ck('declining loads nothing', !frame(), 'an iframe appeared anyway');
+      ck('and does not record consent',
+         val('BARRY.radio.state().agreed') === false,
+         'it remembered a no as a yes');
+    }
+  }
+
+  hd('3. Saying yes puts the player in, pointing where it should');
+  run('BARRY.radio._agree(true)');
+  await run('BARRY.radio.turnOn()');
+  await untilN(() => frame(), 60);
+  ck('the player is in the page', !!frame());
+  const src = (frame() || {}).src || '';
+  p('  src: ' + src.slice(0, 96));
+  ck('it is a YouTube embed', /^https:\/\/www\.youtube\.com\/embed\//.test(src),
+     src.slice(0, 60));
+  ck('of the station that was chosen',
+     src.indexOf(val('BARRY.radio.state().station')) >= 0, src.slice(0, 70));
+  ck('it autoplays, since somebody just asked for it',
+     /autoplay=1/.test(src), src);
+  /* NOT sandboxed and NOT no-referrer, and both on purpose.
+
+     Those were added as privacy hardening and the player answered "Error
+     153 -- video player configuration error": YouTube's embed validates the
+     page it is embedded in from the Referer header, so suppressing the
+     referrer suppresses the thing it checks. Neither bought anything real —
+     a cross-origin iframe cannot touch this page whatever the sandbox
+     attribute says. Asserted so they do not come back. */
+  ck('it does not suppress the referrer YouTube validates',
+     !(frame() || {}).getAttribute('referrerpolicy'),
+     (frame() || {}).getAttribute('referrerpolicy'));
+  ck('and is not sandboxed, which broke the player config',
+     !(frame() || {}).getAttribute('sandbox'),
+     (frame() || {}).getAttribute('sandbox'));
+  ck('no origin parameter either — that is for the IFrame API',
+     src.indexOf('origin=') < 0, src);
+  ck('there is a way out to YouTube when an embed refuses',
+     !!dock().querySelector('.radio-link'), 'no escape link');
+  ck('the dock is showing', !dock().classList.contains('hidden'));
+  ck('the chip is lit', chip().classList.contains('on'), chip().className);
+  ck('and names the station',
+     ((chip() || {}).textContent || '').trim() !== 'Radio',
+     (chip() || {}).textContent);
+  const note = dock().querySelector('.radio-note');
+  ck('the dock says where it is streaming from',
+     !!note && /youtube\.com/.test(note.textContent || ''),
+     (note || {}).textContent);
+
+  hd('4. Minimising must not stop the audio');
+  const was = frame();
+  run('BARRY.radio.setSmall(false)');
+  await sleep(400);
+  ck('expanding keeps the very same iframe', frame() === was,
+     'the player was rebuilt, which would have stopped it');
+  run('BARRY.radio.setSmall(true)');
+  await sleep(400);
+  ck('and so does collapsing', frame() === was,
+     'the player was rebuilt, which would have stopped it');
+  ck('the dock is marked as minimised',
+     dock().classList.contains('mini'), dock().className);
+  /* Finish the collapse rather than wait for it.
+
+     The dock's body is the second row of a grid and collapses from `1fr` to
+     `0fr`, which is a transition -- and the animation clock is frozen under
+     --virtual-time-budget, so waiting measures the height it started from.
+     `Animation.finish()` needs no clock. */
+  run('(function () { var d = document.getElementById("radioDock");'
+    /* subtree, because the transition is on .radio-body -- a child --
+       and getAnimations() on an element does not include its descendants. */
+    + 'var a = d.getAnimations({ subtree: true }) || [];'
+    + 'a.forEach(function (x) { try { x.finish(); } catch (e) {} }); })()');
+  await sleep(120);
+  const body = dock().querySelector('.radio-body');
+  const h = body ? body.getBoundingClientRect().height : -1;
+  p('  collapsed body height: ' + Math.round(h) + 'px');
+  ck('the player is out of the way, not gone', h < 4 && !!frame(),
+     Math.round(h) + 'px');
+
+  hd('5. Changing station, and turning it off');
+  const others = val('BARRY.radio.stations()')
+    .filter((x) => x.id !== val('BARRY.radio.state().station'));
+  const all = val('BARRY.radio.stations()');
+  p('  ' + all.length + ' station(s): '
+    + all.map((x) => x.name).join(', '));
+  ck('there is more than one station', others.length >= 1);
+  /* Two of these used to be the same stream under different names, and one
+     was labelled Jazz while playing lofi. A station list that misdescribes
+     itself is a small lie in the interface. */
+  ck('no two stations are the same stream',
+     new Set(all.map((x) => x.id)).size === all.length,
+     all.map((x) => x.id).join(','));
+  if (others.length) {
+    run('BARRY.radio.pick(' + JSON.stringify(others[0].id) + ')');
+    await sleep(600);
+    ck('picking another one changes the stream',
+       ((frame() || {}).src || '').indexOf(others[0].id) >= 0,
+       ((frame() || {}).src || '').slice(0, 70));
+  }
+  run('BARRY.radio.turnOff()');
+  await sleep(500);
+  ck('turning it off removes the player entirely', !frame(),
+     'the iframe is still there, so it is muted rather than closed');
+  ck('and hides the dock', dock().classList.contains('hidden'));
+  ck('and unlights the chip', !chip().classList.contains('on'));
+
+  hd('6. It survives changing view, which is the point of it');
+  run('BARRY.radio._agree(true)');
+  await run('BARRY.radio.turnOn()');
+  await untilN(() => frame(), 60);
+  const keep = frame();
+  run("setView('sessions')");
+  await sleep(800);
+  run("setView('pipeline')");
+  await sleep(800);
+  ck('the same player is still there after two view changes',
+     frame() === keep,
+     frame() ? 'it was rebuilt' : 'it is gone');
+  run('BARRY.radio.turnOff()');
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'radio';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

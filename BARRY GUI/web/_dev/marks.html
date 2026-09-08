@@ -1,0 +1,193 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the Marks list</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Deleting a bookmark stacked another Marks dialog on top of the open one.
+
+   `dropBookmark` finished by calling `openMarks(...)` -- a whole new modal --
+   when the dialog already had a `draw()` that rebuilds the list in place. So
+   four deletes left four dialogs stacked, and the close X peeled them off one
+   at a time, each revealing a list that still contained the bookmark that had
+   just been deleted. Which is why closing it felt like an undo.
+
+   There were four deletes for one bookmark because the first DELETE took 2.7
+   seconds and the row sat there the whole time; the next three queued behind
+   it, taking 3.5s, 4.8s and 6.6s. A button that does not visibly do anything
+   for three seconds gets pressed again, and that is the button's fault.
+
+   So: how many modals are stacked, and how many requests one click sends. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(800);
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const Q = new URLSearchParams(location.search);
+  const sessExpr = 'BARRY.views.xplore.state.sessions['
+                 + 'BARRY.views.xplore.state.order[0]]';
+  /* How deep the modal stack is. One open dialog is depth 0 on the stack
+     plus the one on screen; anything on the stack while the Marks list is
+     the only thing open means a copy got pushed. */
+  /* By bare name, not off window: `const _modalStack = []` at the top
+     level of a classic script goes into the global lexical environment, so
+     `window._modalStack` is undefined while `_modalStack` in an eval in that
+     frame is not. The same trap as BARRY itself. */
+  const stacked = () => val(
+    'typeof _modalStack === "undefined" ? -1 : _modalStack.length');
+  /* Bookmark rows, by kind rather than by position.
+
+     The list is bookmarks and events and spikes together, and this recording
+     carries two events from Events.nev -- so row 0 was an event, whose
+     delete is a hidden placeholder. Clicking that bubbles to the row, which
+     jumps to the mark and closes the dialog. */
+  const bmRows = () => Array.from(D().querySelectorAll('.bm-row'))
+    .filter((r) => {
+      const k = r.querySelector('.mk-kind');
+      return k && k.textContent.trim() === 'bookmark';
+    });
+  const rows = () => bmRows().length;
+  const named = (n) => bmRows()
+    .find((r) => (r.querySelector('.mk-name') || {}).textContent === n);
+  const xIn = (row) => Array.from(row.querySelectorAll('.x'))
+    .find((x) => x.textContent === '\u2715');
+  const xOf = (i) => xIn(bmRows()[i]);
+  const pill = (re) => Array.from(D().querySelectorAll('.pill'))
+    .find((b) => re.test((b.textContent || '').trim()));
+
+  const sessPath = Q.get('session');
+  if (!sessPath) {
+    p('give ?session=<a CSC folder>');
+    document.title = 'no session';
+    return;
+  }
+
+  run("setView('xplore')");
+  await run('BARRY.views.xplore.open(' + JSON.stringify(sessPath) + ')');
+  await sleep(1800);
+
+  /* Count DELETEs, and slow them down to what the report actually saw --
+     the bug only shows when the request is slow enough to click through. */
+  run('window.__dels = 0;'
+    + '(function () { var f = window.fetch;'
+    + 'window.fetch = function (u, o) {'
+    + '  if (o && o.method === "DELETE"'
+    + '      && String(u).indexOf("bookmarks") >= 0) {'
+    + '    window.__dels += 1;'
+    + '    return new Promise(function (res) {'
+    + '      setTimeout(function () { res(f.apply(window, [u, o])); }, 2600);'
+    + '    });'
+    + '  }'
+    + '  return f.apply(this, arguments); }; })()');
+
+  hd('1. Three bookmarks, and one open dialog');
+  run('(function () { var s = ' + sessExpr + ';'
+    + 's.bookmarks = [{ id: "h1", t: 10, span: 0, name: "one",'
+    + ' color: "#2f9e6e", local: true },'
+    + '{ id: "h2", t: 20, span: 0, name: "two", color: "#c8823c",'
+    + ' local: true },'
+    + '{ id: "h3", t: 30, span: 0, name: "three", color: "#59c1e8",'
+    + ' local: true }]; })()');
+  run('BARRY.views.xplore.openMarks(0)');
+  await untilN(() => rows() >= 3, 60);
+  // Bookmarks only, so an event row cannot be mistaken for one.
+  const only = pill(/^Bookmarks/);
+  if (only) { only.click(); await sleep(400); }
+  p('  ' + rows() + ' bookmark row(s), modal stack ' + stacked());
+  ck('the three bookmarks are listed', rows() === 3, rows());
+  ck('and nothing is stacked behind the dialog', stacked() === 0, stacked());
+
+  hd('2. Deleting redraws the list instead of stacking another dialog');
+  xOf(0).click();
+  await sleep(700);
+  p('  ' + rows() + ' row(s), modal stack ' + stacked());
+  ck('the row is gone at once', rows() === 2, rows());
+  ck('and no second dialog was pushed', stacked() === 0,
+     stacked() + ' stacked — the close X would act as a back button');
+
+  hd('3. Three more deletes do not stack three more dialogs');
+  xOf(0).click();
+  await sleep(500);
+  xOf(0).click();
+  await sleep(700);
+  p('  ' + rows() + ' row(s), modal stack ' + stacked());
+  ck('all three are gone', rows() === 0, rows());
+  ck('and the stack is still empty', stacked() === 0, stacked());
+
+  hd('4. So the close X closes, rather than going back');
+  const close = Array.from(D().querySelectorAll('.close-x')).pop();
+  ck('there is a close X', !!close);
+  if (close) close.click();
+  await sleep(600);
+  const shell = D().getElementById('bigModal');
+  ck('one click and the dialog is gone',
+     !!shell && shell.classList.contains('hidden'),
+     'still showing — something was underneath it');
+
+  hd('5. One click on a slow delete is one request');
+  /* The real thing, not a local bookmark: this is the path that took 2.7
+     seconds and got clicked four times. */
+  run('window.__dels = 0');
+  await run('BARRY.views.xplore.bookmarkAt(0, 42, "probe")');
+  await sleep(1400);
+  run('BARRY.views.xplore.openMarks(0)');
+  await untilN(() => !!named('probe'), 80);
+  const only2 = pill(/^Bookmarks/);
+  if (only2) { only2.click(); await sleep(400); }
+  const row = named('probe');
+  p('  probe bookmark ' + (row ? 'listed' : 'MISSING') + ', '
+    + rows() + ' bookmark row(s)');
+  ck('the bookmark that was just made is in the list', !!row);
+  if (row) {
+    const before = rows();
+    xIn(row).click();
+    await sleep(250);
+    ck('the row goes immediately, before the server answers',
+       rows() === before - 1, rows() + ' vs ' + (before - 1));
+    /* Now the impatient clicks. There is no row to click any more, which is
+       itself the fix -- so drive the function directly, the way a queued
+       click would have. */
+    run('BARRY.views.xplore._dropByName(0, "probe")');
+    await sleep(200);
+    run('BARRY.views.xplore._dropByName(0, "probe")');
+    await sleep(3600);
+    p('  DELETE requests sent: ' + val('window.__dels'));
+    ck('a repeat while one is in flight sends nothing more',
+       val('window.__dels') === 1,
+       val('window.__dels') + ' requests for one bookmark');
+    ck('and it really is gone afterwards', !named('probe'),
+       'the probe bookmark came back');
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'marks list';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

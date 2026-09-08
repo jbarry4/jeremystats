@@ -776,10 +776,21 @@ class Sync:
     def pull(self, since=None, on_progress=None):
         """Bring down what other machines have changed, and apply it locally.
 
-        Only the two-way tables. Runs, activity and errors stay where they
-        are: they are append-only history and copying another machine's into
-        this machine's day log would be writing their actions into a file
-        that says it is yours.
+        Runs, activity and the raw error log stay push-only, and for a
+        reason worth keeping: they are append-only records of what happened
+        on one machine, and copying somebody else's into this machine's day
+        log would be writing their actions into a file that says it is
+        yours.
+
+        Error *triage* is different and does come down. "This one is
+        handled, by her, with this note" is shared state about a shared
+        list, not a record of an event -- and while it only went up, two
+        people re-triaged the same errors forever without either of them
+        being able to tell.
+
+        Feedback comes down for the same reason: a report filed on the rig
+        that never reaches the desktop is not a report, it is a note to
+        self.
         """
         state = self.cloud.state()
         since = since or state.get("last_pull")
@@ -807,6 +818,11 @@ class Sync:
             fetch("layer_sheets"), fetch("layer_labels"))
         applied["results"] = self._apply_results(fetch("results"))
         applied["storyboards"] = self._apply_decks(fetch("storyboards"))
+        applied["feedback"] = self._apply_feedback(
+            fetch("feedback"), fetch("feedback_notes"))
+        applied["people"] = self._apply_people(fetch("people"))
+        applied["errors"] = self._apply_errors(fetch("errors"))
+        applied["error_marks"] = self._apply_error_marks(fetch("error_marks"))
         if on_progress:
             on_progress(applied)
 
@@ -815,6 +831,119 @@ class Sync:
                 "through": newest_holder[0]}
 
     # -- appliers -------------------------------------------------------
+    def _apply_feedback(self, rows, notes):
+        """Reports and their triage, from every machine.
+
+        A report this machine has never seen is written as a report of its
+        own, marked with the machine that filed it. One it already has is
+        left alone except for the state and the notes, which is exactly what
+        `update` writes as an overlay -- so absorbing somebody's triage goes
+        through the same path as making it here, and cannot corrupt the file
+        the report was filed in.
+        """
+        if not self.feedback:
+            return 0
+        by_id = {}
+        for n in (notes or []):
+            fid = n.get("feedback_id")
+            if fid:
+                by_id.setdefault(fid, []).append(n)
+        n_applied = 0
+        for r in (rows or []):
+            rid = r.get("id")
+            if not rid or r.get("deleted_at"):
+                continue
+            try:
+                if self.feedback.absorb(r, by_id.get(rid) or []):
+                    n_applied += 1
+            except Exception as exc:                 # noqa: BLE001
+                self.store.record_error(
+                    "cloud.pull.feedback", str(exc), None, {"id": rid})
+        return n_applied
+
+    def _apply_people(self, rows):
+        """The roster. Somebody added on one computer becomes pickable here.
+
+        Only the hand-written details -- email, role, initials. The counts
+        are compiled from this machine's own data every time the roster is
+        read, so pulling somebody else's would be importing a number that
+        does not describe anything local.
+        """
+        if not self.people:
+            return 0
+        n = 0
+        for r in (rows or []):
+            name = (r.get("name") or "").strip()
+            if not name:
+                continue
+            try:
+                self.people.add(name, r.get("email"), None,
+                                role=r.get("role"),
+                                initials=r.get("initials"),
+                                orcid=r.get("orcid"))
+                n += 1
+            except Exception:                        # noqa: BLE001
+                continue
+        return n
+
+    def _apply_errors(self, rows):
+        """Other machines' errors, filed under the machine that had them.
+
+        The store keeps one append-only log per machine per day, so an error
+        from the rig is written to the rig's file for that day and nothing
+        pretends it happened here. Written by id, so a re-pull of the same
+        row does not double it.
+        """
+        n = 0
+        for r in (rows or []):
+            rid = r.get("id")
+            machine = r.get("machine")
+            # Ours already, by definition -- it is where the row came from.
+            if not rid or not machine or machine == self.machine:
+                continue
+            try:
+                if self.store.absorb_error({
+                        "id": rid,
+                        "at": r.get("at"),
+                        "where": r.get("where_"),
+                        "message": r.get("message"),
+                        "detail": r.get("detail"),
+                        "context": r.get("context") or {},
+                        "machine": machine,
+                        "user": r.get("git_user"),
+                }):
+                    n += 1
+            except Exception:                        # noqa: BLE001
+                continue
+        return n
+
+    def _apply_error_marks(self, rows):
+        """Which error signatures somebody has marked handled.
+
+        Newest wins per signature, and only when it is newer than what this
+        machine already says -- so re-triaging one locally is not undone by
+        the next pull of an older row.
+        """
+        have = self.store.resolved_errors() or {}
+        n = 0
+        for r in (rows or []):
+            sig = r.get("signature")
+            if not sig:
+                continue
+            mine = have.get(sig) or {}
+            theirs_at = r.get("updated_at") or ""
+            mine_at = cloud.ts(mine.get("at")) or ""
+            if mine and mine_at >= theirs_at:
+                continue
+            if r.get("resolved"):
+                if not mine:
+                    self.store.resolve_error(sig, True, r.get("note") or "")
+                    n += 1
+            elif mine:
+                self.store.resolve_error(sig, False)
+                n += 1
+        return n
+
     def _ident_for(self, gid, row=None):
         """The identity dict the local store keys on, for a gid."""
         for rec in self.store.all_sessions():

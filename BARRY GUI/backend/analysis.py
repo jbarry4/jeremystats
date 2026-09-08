@@ -121,6 +121,20 @@ def _bad_mask(sel, bad_numbers):
     return np.array([ch["number"] in bad for ch in sel], dtype=bool)
 
 
+def _dim_mask(sel, dim_numbers):
+    """Which of the drawn rows are present but not selected.
+
+    Mirrors `_bad_mask`. A bad channel and an unselected one are different
+    facts -- one is broken, the other is being ignored on purpose -- so they
+    are drawn differently and computed separately.
+    """
+    dim = set(int(d) for d in (dim_numbers or []))
+    if not dim:
+        return None
+    got = np.array([ch["number"] in dim for ch in sel], dtype=bool)
+    return got if got.any() else None
+
+
 def _drop_bad(stack, sel, bad_numbers, mode="nan"):
     """Bad channels distort a raster's color scale, so handle them explicitly."""
     mask = _bad_mask(sel, bad_numbers)
@@ -161,12 +175,20 @@ def get_cmap(cmap_id):
         return matplotlib.colormaps["viridis"]
 
 
-def _encode_image(matrix, cmap_id, clim, upsample=1):
+# How faint an unselected channel is drawn. Enough to read the shape of it,
+# not enough to mistake for something you are looking at.
+DIM_ALPHA = 0.30
+
+
+def _encode_image(matrix, cmap_id, clim, upsample=1, dim_rows=None):
     """Color-map a 2-D array straight to a base64 PNG data URI.
 
     Encoding the array itself rather than a matplotlib figure keeps the image
     pixel-exact and small: axes, ticks and labels are drawn by the browser (or
     by the exporter), never baked into the data.
+
+    `dim_rows` is a boolean mask over the rows of `matrix`: those are drawn
+    faintly, for a channel somebody has unselected but wants to keep in view.
     """
     lo, hi = clim
     if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
@@ -183,6 +205,22 @@ def _encode_image(matrix, cmap_id, clim, upsample=1):
     # NaN (bad or missing channels) becomes transparent rather than a color
     # that could be mistaken for data.
     rgba[..., 3] = np.where(np.isfinite(m), 255, 0).astype(np.uint8)
+
+    if dim_rows is not None and np.any(dim_rows):
+        rows = np.asarray(dim_rows, dtype=bool)
+        # The mask was built against the source rows; the image may have been
+        # upsampled since. Repeated rather than interpolated -- a row is
+        # either selected or it is not, and a half-dimmed row between two
+        # states would be a third state nobody asked for.
+        if rows.size != m.shape[0]:
+            reps = max(1, int(round(m.shape[0] / float(max(1, rows.size)))))
+            rows = np.repeat(rows, reps)[:m.shape[0]]
+            if rows.size < m.shape[0]:
+                rows = np.pad(rows, (0, m.shape[0] - rows.size),
+                              constant_values=False)
+        a = rgba[..., 3].astype(np.float64)
+        a[rows] *= DIM_ALPHA
+        rgba[..., 3] = a.astype(np.uint8)
 
     from matplotlib.image import imsave
     buf = io.BytesIO()
@@ -385,7 +423,11 @@ def _panel_raster(session, spec, mode):
     clim = [float(clim[0]), float(clim[1])]
 
     cmap = spec.get("cmap", default_cmap)
-    data_uri = _encode_image(matrix, cmap, clim, upsample=upsample)
+    # Against the rows actually drawn: CSD drops the first and last channel,
+    # so a mask built from the full stack would be off by one.
+    dim_rows = _dim_mask(rows, spec.get("dim_channels"))
+    data_uri = _encode_image(matrix, cmap, clim, upsample=upsample,
+                             dim_rows=dim_rows)
 
     n_samp = stack.shape[1]
     # Recompute the bad flags against the rows actually drawn: CSD drops the
@@ -397,8 +439,15 @@ def _panel_raster(session, spec, mode):
         # Row 0 of the image sits at the TOP of the extent (origin="upper"),
         # so the y axis runs from len(rows) at the top down to 1 at the bottom.
         "extent": [t0, t0 + n_samp / fs, 0.5, len(rows) + 0.5],
-        "rows": [{"label": c["label"], "number": c["number"], "bad": bool(b)}
-                 for c, b in zip(rows, row_bad)],
+        # `dim` per row so the client's channel column can mark the same
+        # ones the image drew faintly, rather than working it out again and
+        # risking a different answer.
+        "rows": [{"label": c["label"], "number": c["number"], "bad": bool(b),
+                  "dim": bool(d)}
+                 for c, b, d in zip(
+                     rows, row_bad,
+                     (dim_rows if dim_rows is not None
+                      else np.zeros(len(rows), dtype=bool)))],
         "clim": clim, "cmap": cmap, "units": units,
         "clim_auto": list(_robust_clim(matrix, float(spec.get("clim_pct", 99.5)),
                                        symmetric=True)),

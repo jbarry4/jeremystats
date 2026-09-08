@@ -468,7 +468,7 @@ BARRY.curate = (function () {
                      onclick: () => step(-1) }),
       el('button', { class: 'mini', text: '▶', title: 'Next  (n)',
                      onclick: () => step(1) }),
-      el('button', { class: 'mini', text: '↶', title: 'Undo  (u)',
+      el('button', { class: 'mini', text: '↶', title: 'Undo the last decision  (u, or Ctrl+Z)',
                      disabled: history.length ? null : 'disabled',
                      onclick: undo }),
       /* Which pass you are making. Flagged is the one that was missing:
@@ -560,6 +560,21 @@ BARRY.curate = (function () {
        never actually matter -- but "should never" is how `p` ended up meaning
        both "previous" and "sputter", and the key that moves you has to be the
        one thing that always moves you. */
+    /* Ctrl/Cmd+Z as well as `u`.
+
+       `u` is the fast key and stays the one on the button, because a hand
+       already on the vocabulary keys should not have to reach for a
+       modifier. But Ctrl+Z is what everybody tries first, and having it do
+       nothing where there is plainly an undo button is its own small
+       betrayal. */
+    if ((e.ctrlKey || e.metaKey) && k === 'z') {
+      e.preventDefault(); e.stopPropagation();
+      undo();
+      return;
+    }
+    // Any other modified key belongs to the browser or the app, not here.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
     const map = {
       n: () => step(1), arrowright: () => step(1),
       p: () => step(-1), arrowleft: () => step(-1),

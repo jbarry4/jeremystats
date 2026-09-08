@@ -21,6 +21,24 @@ BARRY.figure = (function () {
   let rendering = false;
   let pendingRender = false;
 
+  /* Undo.
+
+     Hooked in one place. Every mutation in here ends in a redraw, so the
+     redraw is where the change is noticed: if the layout no longer matches
+     the last snapshot, the snapshot becomes an undo step. That way dragging
+     a panel, adding a column, removing a row and editing a title are all
+     undoable without any of them having to remember to say so.
+
+     `events` is left out of the snapshot. It is the detector's list carried
+     through to the renderer, nothing here edits it, and a set of several
+     hundred would be copied on every keystroke for no reason. */
+  const UNDO_MAX = 60;
+  let undoStack = [];
+  let redoStack = [];
+  let current = null;       // the layout as of the last snapshot
+  let restoring = false;    // so restoring does not record itself
+  let keysOn = false;
+
   async function open(xfState, session) {
     XF = xfState;
     sess = session;
@@ -43,31 +61,55 @@ BARRY.figure = (function () {
   function buildInitialLayout() {
     const now = new Date();
     const sys = (BARRY.state.catalog && BARRY.state.catalog.system) || {};
-    // Seed from what is already on screen, so the builder opens showing the
-    // panes you were just looking at.
-    const seeds = (XF.panes || []).filter((p) => p && XF.sessions[p.sessionId]
-                                            && p.panel !== 'video' && p.panel !== 'tracking');
-    const panels = (seeds.length ? seeds : [{ panel: 'traces', sessionId: sess.id }])
-      .slice(0, 4).map((p, i) => ({
-        panel: p.panel || 'traces',
-        session_id: p.sessionId,
-        title: labelFor(p.panel || 'traces'),
-        row: i === 0 ? 0 : 1, col: i === 0 ? 0 : (i - 1) % 2,
-        // 1x1 by default. A panel that silently claims two cells is
-        // surprising, and there was no obvious way to give the span back.
-        rowspan: 1, colspan: 1,
-        cmap: p.cmap || 'jet',
-        channel: p.channel,
-        fmin: p.fmin, fmax: p.fmax,
-      }));
+    /* Everything on screen, where it is on screen.
+
+       This claimed to seed from the panes and then discarded the
+       arrangement: four at most, the first alone on the top row and the rest
+       beneath it, whatever the layout actually was. A six-pane probe view
+       arrived as four panels in the wrong places and had to be rebuilt by
+       hand -- which is most of the work the builder exists to save.
+
+       The pane grid's shape is fixed per count (1 across, 2 across, 2x2,
+       and 3x2 for a probe), so the slot index maps straight onto a row and
+       a column. Video and tracking panes are left out because they are not
+       something a figure can hold. */
+    const slots = (XF.panes || [])
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => p && XF.sessions[p.sessionId]
+                         && p.panel !== 'video' && p.panel !== 'tracking');
+
+    const PANE_COLS = { 1: 1, 2: 2, 4: 2, 6: 3 };
+    const cols = PANE_COLS[XF.nPanes] || Math.min(2, Math.max(1, slots.length));
+
+    const panels = (slots.length
+      ? slots.map(({ p, i }) => ({
+          panel: p.panel || 'traces',
+          session_id: p.sessionId,
+          title: labelFor(p.panel || 'traces'),
+          row: Math.floor(i / cols), col: i % cols,
+          // 1x1 by default. A panel that silently claims two cells is
+          // surprising, and there was no obvious way to give the span back.
+          rowspan: 1, colspan: 1,
+          cmap: p.cmap || 'jet',
+          channel: p.channel,
+          fmin: p.fmin, fmax: p.fmax,
+        }))
+      : [{ panel: 'traces', session_id: sess.id,
+           title: labelFor('traces'), row: 0, col: 0,
+           rowspan: 1, colspan: 1, cmap: 'jet' }]);
 
     return {
       title: sess.identity.label || sess.info.name,
       subtitle: '',
       page: 'letter_landscape',
       width_in: 11, height_in: 8.5, dpi: 300,
+      /* Big enough for what is actually there, and no bigger.
+         `cols` above maps a pane slot onto a column; it is not a floor. A
+         four-pane layout with one pane filled opened as a 1x2 grid holding
+         one panel -- an empty cell nobody asked for, because the screen had
+         room for one rather than because the figure wants one. */
       rows: Math.max(...panels.map((p) => p.row + p.rowspan), 1),
-      cols: 2,
+      cols: Math.max(...panels.map((p) => p.col + p.colspan), 1),
       t0: r6(sess.t0), t1: r6(sess.t0 + sess.span),
       highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
       cmap: 'jet', spacing_um: sess.spacing,
@@ -89,6 +131,106 @@ BARRY.figure = (function () {
     };
   }
 
+  function snap() {
+    if (!layout) return null;
+    const out = {};
+    for (const k of Object.keys(layout)) {
+      if (k === 'events') continue;
+      out[k] = layout[k];
+    }
+    try { return JSON.stringify(out); } catch (e) { return null; }
+  }
+
+  /* Put a snapshot back, in place.
+
+     Mutated rather than reassigned: `layout()` hands the live object out and
+     the render closures hold it, so swapping it for a new one would leave
+     half the builder editing an orphan. */
+  function restore(json) {
+    if (!json) return;
+    let got;
+    try { got = JSON.parse(json); } catch (e) { return; }
+    const events = layout.events;
+    for (const k of Object.keys(layout)) {
+      if (k !== 'events') delete layout[k];
+    }
+    Object.assign(layout, got);
+    if (events !== undefined) layout.events = events;
+    if (selected >= (layout.panels || []).length) {
+      selected = Math.max(0, (layout.panels || []).length - 1);
+    }
+  }
+
+  /* Called from the redraw. Anything that changed the layout since the last
+     look becomes a step. */
+  function noteChange() {
+    if (!layout) return;
+    const now = snap();
+    if (current === null) { current = now; return; }
+    if (restoring || now === current) return;
+    undoStack.push(current);
+    if (undoStack.length > UNDO_MAX) undoStack.shift();
+    // A fresh change abandons whatever was ahead, the way every editor does.
+    redoStack = [];
+    current = now;
+  }
+
+  function undo() {
+    if (!undoStack.length) { toast('Nothing to undo.', null, 2000); return; }
+    const back = undoStack.pop();
+    redoStack.push(snap());
+    restoring = true;
+    try {
+      restore(back);
+      current = snap();
+      render();
+      schedulePreview();
+    } finally { restoring = false; }
+  }
+
+  function redo() {
+    if (!redoStack.length) { toast('Nothing to redo.', null, 2000); return; }
+    const fwd = redoStack.pop();
+    undoStack.push(snap());
+    restoring = true;
+    try {
+      restore(fwd);
+      current = snap();
+      render();
+      schedulePreview();
+    } finally { restoring = false; }
+  }
+
+  /* Ctrl/Cmd+Z while the builder is up. Guarded by isTyping, because inside
+     a text field Ctrl+Z means the text -- taking that over would make the
+     title box impossible to correct. */
+  function keys(e) {
+    if (!layout) return;
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+    if (isTyping(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.shiftKey) redo(); else undo();
+  }
+
+  function wireKeys(on) {
+    if (on === keysOn) return;
+    keysOn = on;
+    if (on) document.addEventListener('keydown', keys, true);
+    else document.removeEventListener('keydown', keys, true);
+  }
+
+  /* Every way out of the builder. The close button and Close both used
+     closeModal directly, which left the key handler attached to a dialog
+     that was no longer on screen. */
+  function shut() {
+    wireKeys(false);
+    undoStack = [];
+    redoStack = [];
+    current = null;
+    closeModal();
+  }
+
   // Floating-point accumulation makes t0+span print as 2.19999999999; the
   // extra digits are noise, not precision.
   function r6(v) { return Math.round(v * 1e6) / 1e6; }
@@ -107,14 +249,33 @@ BARRY.figure = (function () {
      Render the builder
      ================================================================== */
   function render() {
+    noteChange();
     const box = el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Figure builder' }),
         el('span', { class: 'sub', text: layout.panels.length + ' panel(s) · '
                      + layout.rows + '×' + layout.cols }),
         el('div', { class: 'spacer' }),
+        el('button', {
+          class: 'btn ghost sm', text: '\u21b6 Undo',
+          title: undoStack.length
+            ? 'Undo the last change (Ctrl+Z) \u2014 ' + undoStack.length
+              + ' step(s) back'
+            : 'Nothing to undo yet',
+          disabled: undoStack.length ? null : 'disabled',
+          onclick: undo,
+        }),
+        el('button', {
+          class: 'btn ghost sm', text: '\u21b7',
+          title: redoStack.length
+            ? 'Redo (Ctrl+Shift+Z) \u2014 ' + redoStack.length + ' step(s)'
+            : 'Nothing to redo',
+          disabled: redoStack.length ? null : 'disabled',
+          onclick: redo,
+        }),
         el('button', { class: 'close-x', html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
-                       onclick: closeModal }),
+                       title: 'Close the builder',
+                       onclick: shut }),
       ]),
       el('div', { class: 'mb' }, [
         el('div', { class: 'fig-layout' }, [
@@ -127,13 +288,18 @@ BARRY.figure = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost sm', text: 'Save layout',
                        onclick: saveLayout }),
-        el('button', { class: 'btn ghost', text: 'Close', onclick: closeModal }),
+        el('button', { class: 'btn ghost', text: 'Close', onclick: shut }),
         el('button', { class: 'btn ghost', text: 'SVG', onclick: () => download('svg') }),
         el('button', { class: 'btn ghost', text: 'PDF', onclick: () => download('pdf') }),
         el('button', { class: 'btn', text: 'PNG', onclick: () => download('png') }),
       ]),
     ]);
-    showModal(box);
+    /* Replacing, not stacking. This is the same dialog redrawn -- and it is
+       redrawn on every panel change and every grid click, so stacking put a
+       copy of the builder behind it each time and the close button became a
+       back button that needed one press per change. */
+    showModal(box, { replace: true });
+    wireKeys(true);
   }
 
   /* ---------- left: page + panels ---------- */
@@ -153,23 +319,19 @@ BARRY.figure = (function () {
       selected: layout.page === p.id ? 'selected' : null,
     })))));
 
+    /* Read, not typed. The page size follows the preset above -- a second
+       way to set it is a second thing that can disagree with it -- and the
+       rows and columns are a shape, changed in the grid itself where you
+       can see what you are doing. */
     col.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px' }, [
-      field('Width in', num(layout.width_in, 0.5, (v) => {
-        layout.width_in = v; layout.page = ''; schedulePreview();
-      })),
-      field('Height in', num(layout.height_in, 0.5, (v) => {
-        layout.height_in = v; layout.page = ''; schedulePreview();
-      })),
+      readout('Width in', layout.width_in + '"'),
+      readout('Height in', layout.height_in + '"'),
       field('DPI', num(layout.dpi, 50, (v) => { layout.dpi = v; })),
     ]));
 
     col.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:8px' }, [
-      field('Rows', num(layout.rows, 1, (v) => {
-        layout.rows = Math.max(1, Math.min(6, v)); render(); schedulePreview();
-      })),
-      field('Cols', num(layout.cols, 1, (v) => {
-        layout.cols = Math.max(1, Math.min(4, v)); render(); schedulePreview();
-      })),
+      readout('Rows', String(layout.rows), 'Added in the grid below'),
+      readout('Cols', String(layout.cols), 'Added in the grid below'),
     ]));
 
     col.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:8px' }, [
@@ -181,11 +343,41 @@ BARRY.figure = (function () {
       })),
     ]));
 
-    /* grid map: click to place, drag across cells to span */
+    /* The grid, built by hand.
+
+       `+` on an edge adds a row or a column; `x` on one removes it. A panel
+       is dragged out of the palette below into the cell it should occupy,
+       and dragging a filled cell moves that panel. Nothing here is typed. */
     col.appendChild(el('div', { class: 'section-label', text: 'Grid' }));
     col.appendChild(el('div', { class: 'grid-help',
-      text: 'Click a cell to move the selected panel. Drag across cells to make '
-          + 'it span them. Shift-click a second cell does the same.' }));
+      text: 'Drag a panel from below into a cell. Drag a filled cell to move '
+          + 'it. Shift-click a second cell to make a panel span across. + on '
+          + 'an edge adds a row or a column.' }));
+
+    const wrap = el('div', { class: 'grid-wrap' });
+
+    /* Column headers: one per column, each able to remove itself. Their
+       widths track the grid's own columns so an `x` stays over the column
+       it removes -- no extra track, because the `+` is no longer up here. */
+    const heads = el('div', {
+      class: 'grid-heads',
+      style: 'grid-template-columns:repeat(' + layout.cols + ',1fr)',
+    });
+    for (let c = 0; c < layout.cols; c++) {
+      const cc = c;
+      heads.appendChild(el('div', { class: 'grid-head' }, [
+        el('span', { class: 'gh-n', text: 'c' + cc }),
+        layout.cols > 1 ? el('button', {
+          class: 'gh-x', text: '\u00d7',
+          title: 'Remove column ' + cc
+               + (colPanels(cc).length
+                   ? ' \u2014 ' + colPanels(cc).length + ' panel(s) in it go'
+                   : ''),
+          onclick: (e) => { e.stopPropagation(); removeCol(cc); },
+        }) : null,
+      ].filter(Boolean)));
+    }
+    wrap.appendChild(heads);
 
     const map = el('div', {
       class: 'grid-map',
@@ -193,7 +385,6 @@ BARRY.figure = (function () {
     });
 
     const cells = [];
-    let dragFrom = null;
 
     const paint = (from, to) => {
       const r0 = Math.min(from[0], to[0]), r1 = Math.max(from[0], to[0]);
@@ -203,8 +394,8 @@ BARRY.figure = (function () {
         cell.node.classList.toggle('span-preview', inside);
       }
     };
-
-    const clearPaint = () => cells.forEach((x) => x.node.classList.remove('span-preview'));
+    const clearPaint = () =>
+      cells.forEach((x) => x.node.classList.remove('span-preview'));
 
     const applySpan = (from, to) => {
       const p = layout.panels[selected];
@@ -224,41 +415,120 @@ BARRY.figure = (function () {
           (p) => rr >= p.row && rr < p.row + p.rowspan
               && cc >= p.col && cc < p.col + p.colspan);
         const node = el('div', {
-          class: 'grid-cell' + (occupant >= 0 ? ' filled' : ''),
+          class: 'grid-cell' + (occupant >= 0 ? ' filled' : '')
+               + (occupant === selected ? ' sel' : ''),
+          draggable: occupant >= 0 ? 'true' : null,
           title: occupant >= 0
-            ? (layout.panels[occupant].title || labelFor(layout.panels[occupant].panel))
-            : 'empty  (drag to span)',
-          onmousedown: (e) => {
+            ? (layout.panels[occupant].title
+               || labelFor(layout.panels[occupant].panel))
+              + '  \u2014 drag to move it'
+            : 'Empty \u2014 drop a panel here',
+          /* Moving a panel: the cell itself is the handle. */
+          ondragstart: (e) => {
+            if (occupant < 0) return;
+            selected = occupant;
+            e.dataTransfer.setData('text/plain', 'move:' + occupant);
+            e.dataTransfer.effectAllowed = 'move';
+          },
+          ondragover: (e) => {
             e.preventDefault();
-            if (!layout.panels[selected]) return;
-            if (e.shiftKey) {
-              const p = layout.panels[selected];
-              applySpan([p.row, p.col], [rr, cc]);
-              return;
+            node.classList.add('drop-over');
+          },
+          ondragleave: () => node.classList.remove('drop-over'),
+          ondrop: (e) => {
+            e.preventDefault();
+            node.classList.remove('drop-over');
+            const got = (e.dataTransfer.getData('text/plain') || '');
+            if (got.startsWith('move:')) {
+              const at = +got.slice(5);
+              const p = layout.panels[at];
+              if (!p) return;
+              p.row = rr; p.col = cc;
+              clampPanel(p);
+              selected = at;
+              render(); schedulePreview();
+            } else if (got.startsWith('add:')) {
+              addPanel(got.slice(4), rr, cc);
             }
-            dragFrom = [rr, cc];
-            paint(dragFrom, dragFrom);
           },
-          onmouseenter: () => { if (dragFrom) paint(dragFrom, [rr, cc]); },
-          onmouseup: () => {
-            if (!dragFrom) return;
-            const from = dragFrom;
-            dragFrom = null;
+          /* Spanning stays on shift-click: it is the only way to make a
+             panel wider than a cell, and it is not "adding" anything.
+             Holding shift shows what it would take, so the gesture is
+             discoverable rather than something you have to be told. */
+          onmouseenter: (e) => {
+            const p = layout.panels[selected];
+            if (!e.shiftKey || !p) return;
+            paint([p.row, p.col], [rr, cc]);
+          },
+          onmouseleave: () => clearPaint(),
+          onmousedown: (e) => {
+            if (!e.shiftKey || !layout.panels[selected]) return;
+            e.preventDefault();
             clearPaint();
-            applySpan(from, [rr, cc]);
+            const p = layout.panels[selected];
+            applySpan([p.row, p.col], [rr, cc]);
           },
-        }, [el('span', { text: occupant >= 0 ? String(occupant + 1) : '·' })]);
+          onclick: () => {
+            if (occupant >= 0 && occupant !== selected) {
+              selected = occupant; render();
+            }
+          },
+        }, [el('span', { text: occupant >= 0 ? String(occupant + 1) : '' })]);
         cells.push({ r: rr, c: cc, node });
         map.appendChild(node);
       }
     }
 
-    // A drag that ends outside the grid must not leave it stuck.
-    map.addEventListener('mouseleave', () => {
-      if (dragFrom) { dragFrom = null; clearPaint(); }
-    });
+    // Leaving the grid clears any span preview the shift key was showing.
+    map.addEventListener('mouseleave', clearPaint);
 
-    col.appendChild(map);
+    wrap.appendChild(map);
+
+    /* Row handles down the right, so an `x` sits beside the row it takes. */
+    const rowsCol = el('div', {
+      class: 'grid-rows',
+      style: 'grid-template-rows:repeat(' + layout.rows + ',1fr)',
+    });
+    for (let r = 0; r < layout.rows; r++) {
+      const rr = r;
+      rowsCol.appendChild(el('div', { class: 'grid-rowh' }, [
+        layout.rows > 1 ? el('button', {
+          class: 'gh-x', text: '\u00d7',
+          title: 'Remove row ' + rr
+               + (rowPanels(rr).length
+                   ? ' \u2014 ' + rowPanels(rr).length + ' panel(s) in it go'
+                   : ''),
+          onclick: (e) => { e.stopPropagation(); removeRow(rr); },
+        }) : null,
+      ].filter(Boolean)));
+    }
+    wrap.appendChild(rowsCol);
+
+    /* Add a column: on the right edge, the full height of the cells, so it
+       reads as "another one goes here". It used to sit in the header row,
+       which put it above the row handles -- floating in the top corner,
+       beside nothing, pointing at nothing. */
+    wrap.appendChild(el('button', {
+      class: 'grid-add col',
+      text: '+', title: 'Add a column',
+      disabled: layout.cols >= 4 ? 'disabled' : null,
+      onclick: () => {
+        layout.cols = Math.min(4, layout.cols + 1);
+        render(); schedulePreview();
+      },
+    }));
+
+    wrap.appendChild(el('button', {
+      class: 'grid-add row',
+      text: '+', title: 'Add a row',
+      disabled: layout.rows >= 6 ? 'disabled' : null,
+      onclick: () => {
+        layout.rows = Math.min(6, layout.rows + 1);
+        render(); schedulePreview();
+      },
+    }));
+
+    col.appendChild(wrap);
 
     /* panel list */
     col.appendChild(el('div', { class: 'section-label', text: 'Panels' }));
@@ -287,21 +557,30 @@ BARRY.figure = (function () {
       ]));
     });
 
-    col.appendChild(el('select', {
-      style: 'margin-top:4px',
-      onchange: (e) => {
-        if (!e.target.value) return;
-        addPanel(e.target.value);
-        e.target.value = '';
-      },
-    }, [el('option', { value: '', text: '+ add a panel…' })].concat(
-      panelDefs.map((d) => el('option', { value: d.id, text: d.name })))));
+    /* The palette. Dragged into a cell rather than chosen from a list: a
+       dropdown put the panel in the first free cell, so you found out where
+       it had gone afterwards and moved it. */
+    col.appendChild(el('div', { class: 'section-label', text: 'Drag one in' }));
+    col.appendChild(el('div', { class: 'fig-palette' },
+      panelDefs.map((d) => el('div', {
+        class: 'fig-chip', draggable: 'true', title: d.name
+          + ' \u2014 drag it into a cell above',
+        text: d.name,
+        ondragstart: (e) => {
+          e.dataTransfer.setData('text/plain', 'add:' + d.id);
+          e.dataTransfer.effectAllowed = 'copy';
+        },
+      }))));
 
     return col;
   }
 
-  function addPanel(kind) {
-    const spot = firstFreeCell();
+  function addPanel(kind, row, col) {
+    // Where it was dropped, if it was dropped. `firstFreeCell` is only the
+    // fallback now -- a panel that lands somewhere you did not point at is
+    // the thing dragging it was meant to fix.
+    const spot = (row != null && col != null)
+      ? [row, col] : firstFreeCell();
     const p = {
       panel: kind, session_id: sess.id, title: labelFor(kind),
       row: spot[0], col: spot[1], rowspan: 1, colspan: 1, cmap: 'jet',
@@ -325,6 +604,58 @@ BARRY.figure = (function () {
     }
     layout.rows = Math.min(6, layout.rows + 1);
     return [layout.rows - 1, 0];
+  }
+
+  /* Which panels a row or a column actually holds, so the `x` can say what
+     removing it costs before it is clicked. */
+  function colPanels(c) {
+    return layout.panels.filter((p) => c >= p.col && c < p.col + p.colspan);
+  }
+
+  function rowPanels(r) {
+    return layout.panels.filter((p) => r >= p.row && r < p.row + p.rowspan);
+  }
+
+  /* Removing a column is not decrementing a number.
+
+     A panel sitting only in it has nowhere to go and is removed. A panel
+     spanning it loses a column of span. Everything to its right shifts
+     left. Skipping any of those quietly relocates somebody's figure, which
+     is worse than refusing. */
+  function removeCol(c) {
+    const keep = [];
+    for (const p of layout.panels) {
+      const inside = c >= p.col && c < p.col + p.colspan;
+      if (inside && p.colspan === 1) continue;          // it was only there
+      if (inside) p.colspan -= 1;                        // it spanned it
+      if (p.col > c) p.col -= 1;                         // it was to the right
+      keep.push(p);
+    }
+    layout.panels = keep;
+    layout.cols = Math.max(1, layout.cols - 1);
+    if (selected >= layout.panels.length) {
+      selected = Math.max(0, layout.panels.length - 1);
+    }
+    layout.panels.forEach(clampPanel);
+    render(); schedulePreview();
+  }
+
+  function removeRow(r) {
+    const keep = [];
+    for (const p of layout.panels) {
+      const inside = r >= p.row && r < p.row + p.rowspan;
+      if (inside && p.rowspan === 1) continue;
+      if (inside) p.rowspan -= 1;
+      if (p.row > r) p.row -= 1;
+      keep.push(p);
+    }
+    layout.panels = keep;
+    layout.rows = Math.max(1, layout.rows - 1);
+    if (selected >= layout.panels.length) {
+      selected = Math.max(0, layout.panels.length - 1);
+    }
+    layout.panels.forEach(clampPanel);
+    render(); schedulePreview();
   }
 
   function clampPanel(p) {
@@ -481,6 +812,18 @@ BARRY.figure = (function () {
   }
 
   /* ---------- small field helpers ---------- */
+  /* A number the builder decides, shown so it can be checked and not typed
+     into. It reads as a field so the column does not go lumpy, but it is
+     text: an input somebody cannot change is worse than a value, because it
+     looks like it should work. */
+  function readout(label, value, hint) {
+    return el('div', { class: 'field' }, [
+      el('label', { text: label }),
+      el('div', { class: 'fig-readout', text: value }),
+      hint ? el('span', { class: 'hint', text: hint }) : null,
+    ].filter(Boolean));
+  }
+
   function field(label, control, hint) {
     return el('div', { class: 'field' }, [
       el('label', { text: label }), control,
@@ -701,5 +1044,10 @@ BARRY.figure = (function () {
           n ? null : 'ok', 7000);
   }
 
-  return { open, reopen };
+  /* `layout` so the layout can be checked from outside without
+     reimplementing the seeding rules -- web/_dev/figgrid.html reads it to
+     confirm the builder opened on what was actually on screen. Returned as
+     the live object rather than a copy: a harness that reads a snapshot
+     cannot tell whether a drop changed anything. */
+  return { open, reopen, layout: () => layout };
 })();

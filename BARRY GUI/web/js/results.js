@@ -41,6 +41,11 @@ BARRY.views.results = (function () {
   async function load(refresh) {
     const q = new URLSearchParams();
     if (refresh) q.set('refresh', '1');
+    /* Two reads back to back -- the catalogue and the folder tree -- and a
+       refresh rescans the output directory. Only when the panel is empty:
+       a refresh of a list already on screen should not blank it. */
+    const bones = items.length
+      ? null : BARRY.skeleton.into($('#resultsBody'), 'card', 5);
     try {
       const res = await api('/api/results?' + q.toString());
       items = res.results || [];
@@ -52,6 +57,8 @@ BARRY.views.results = (function () {
     } catch (e) {
       toast('Could not read the catalog: ' + e.message, 'err');
       items = [];
+    } finally {
+      if (bones) bones();
     }
     collections = BARRY.prefs.get('result_collections', []) || [];
     render();

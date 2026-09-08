@@ -68,7 +68,7 @@ BARRY.figrebuild = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x',
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
-          onclick: closeModal }),
+          onclick: () => { dock(false); closeModal(); } }),
       ]),
       el('div', { class: 'mb' }, [
         header(run),
@@ -80,7 +80,28 @@ BARRY.figrebuild = (function () {
       el('div', { class: 'mf' }, [
         el('span', { class: 'hint', id: 'rbHint', text: hintFor() }),
         el('div', { class: 'spacer' }),
-        el('button', { class: 'btn ghost', text: 'Close', onclick: closeModal }),
+        /* Back to full size, for reading the account rather than watching
+           it. Only there once it is docked. */
+        el('button', {
+          class: 'btn ghost sm hidden', id: 'rbGrow', text: 'Expand',
+          title: 'Bring the dialog back to the middle',
+          onclick: () => { dock(false);
+                           const b = $('#rbGrow');
+                           if (b) b.classList.add('hidden');
+                           const d = $('#rbShrink');
+                           if (d) d.classList.remove('hidden'); },
+        }),
+        el('button', {
+          class: 'btn ghost sm hidden', id: 'rbShrink', text: 'Shrink',
+          title: 'Put it back in the corner',
+          onclick: () => { dock(true);
+                           const b = $('#rbShrink');
+                           if (b) b.classList.add('hidden');
+                           const g = $('#rbGrow');
+                           if (g) g.classList.remove('hidden'); },
+        }),
+        el('button', { class: 'btn ghost', text: 'Close',
+                       onclick: () => { dock(false); closeModal(); } }),
         el('button', {
           class: 'btn' + (blocked ? ' ghost' : ' primary'),
           id: 'rbGo', text: label,
@@ -109,6 +130,7 @@ BARRY.figrebuild = (function () {
         class: 'btn ghost sm', text: 'Show the original',
         title: out.rel,
         onclick: () => {
+          dock(false);
           closeModal();
           setView('results');
           if (BARRY.views.results && BARRY.views.results.search) {
@@ -194,11 +216,30 @@ BARRY.figrebuild = (function () {
     live.textContent = msg;
   }
 
+  /* Out of the way while it works.
+
+     The point of showing the motions is watching them, and a centred modal
+     over a full-screen backdrop covers the thing it is narrating: the
+     recording opening, the window moving, the channels coming back. So once
+     it starts, the dialog shrinks into a corner and stops swallowing
+     clicks -- the account of what happened is still there to read, beside
+     the app doing it rather than on top of it. */
+  function dock(on) {
+    const shell = document.getElementById('bigModal');
+    if (shell) shell.classList.toggle('docked', !!on);
+    const box = document.getElementById('bigModalBox');
+    if (box) box.classList.toggle('docked', !!on);
+    window.dispatchEvent(new Event('resize'));
+  }
+
   async function run_() {
     if (running) return;
     running = true;
     const go = $('#rbGo');
     if (go) { go.disabled = true; go.textContent = 'Rebuilding…'; }
+    dock(true);
+    const grow = $('#rbGrow');
+    if (grow) grow.classList.remove('hidden');
 
     const steps = plan.steps || [];
     const r = plan.recipe || {};
@@ -258,7 +299,9 @@ BARRY.figrebuild = (function () {
       go.replaceWith(el('button', {
         class: 'btn primary', id: 'rbGo',
         text: 'Open the figure builder →',
-        onclick: () => finish(handoff),
+        /* The builder is a full dialog of its own, so hand back the
+           middle of the screen before opening it. */
+        onclick: () => { dock(false); finish(handoff); },
       }));
     }
     const hint = $('#rbHint');
@@ -431,5 +474,8 @@ BARRY.figrebuild = (function () {
     });
   }
 
-  return { start, button };
+  /* `dock` so the corner can be exercised without a run record to rebuild.
+     It is also the honest place for it: docking is a property of this
+     dialog, not of the modal machinery. */
+  return { start, button, dock };
 })();

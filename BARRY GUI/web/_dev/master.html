@@ -1,0 +1,107 @@
+<!doctype html>
+<meta charset="utf-8"><title>Harness — one control strip for many panes</title>
+<style>html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+#out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* A six-pane probe layout carried six copies of the control strip, each a
+   third of the width, and every one of them set the same session's filter,
+   gain, colour limits and window. One strip above the grid instead.
+
+   The condition is narrow on purpose: two panes showing two DIFFERENT
+   recordings cannot share a strip, because t0 means something different in
+   each. So both cases are checked. */
+const out=document.getElementById('out'); const p=(m)=>{out.textContent+=m+'\n'};
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function untilN(fn,t=250,g=100){for(let i=0;i<t;i++){try{if(fn())return i}catch(e){}await sleep(g)}return -1}
+let bad=0; const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']')); if(!c)bad++;};
+const hd=(t)=>p('\n== '+t+' ==');
+(async()=>{try{
+const f=document.getElementById('app');
+await new Promise(r=>f.addEventListener('load',r,{once:true}));
+const W=()=>f.contentWindow, D=()=>f.contentDocument;
+await untilN(()=>typeof W().setView==='function'); await sleep(800);
+const run=(s)=>W().eval(s), val=(e)=>run('('+e+')');
+const Q=new URLSearchParams(location.search);
+const strips=()=>D().querySelectorAll('.pane-ctl');
+const master=()=>D().getElementById('xfMaster');
+
+run("setView('xplore')");
+await run('BARRY.views.xplore.open('+JSON.stringify(Q.get('session'))+')');
+await sleep(1700);
+
+hd('1. One pane keeps its own strip');
+run("BARRY.views.xplore.state.nPanes=1");
+run("BARRY.views.xplore.render()");
+await sleep(900);
+p('  strips: '+strips().length+', master: '+(master()?'yes':'no')
+  +', XF.master '+val('BARRY.views.xplore.state.master'));
+ck('a single pane has exactly one strip', strips().length===1, strips().length);
+ck('and no master strip above it', !master());
+
+hd('2. Four panes of one recording share one');
+run("BARRY.views.xplore.state.nPanes=4");
+run("BARRY.views.xplore.fillPanes&&BARRY.views.xplore.fillPanes()");
+await sleep(400);
+run('(function(){var P=BARRY.views.xplore.state.panes,id=BARRY.views.xplore.state.order[0];'
+   +'for(var i=0;i<4;i++){P[i]={sessionId:id,panel:"csd"};}'
+   +'BARRY.views.xplore.render();})()');
+await sleep(1400);
+p('  strips: '+strips().length+', master: '+(master()?'yes':'no')
+  +', XF.master '+val('BARRY.views.xplore.state.master'));
+ck('there is one master strip', !!master());
+ck('and exactly one strip in total, not four', strips().length===1, strips().length);
+ck('the strip is marked as the master one',
+   !!D().querySelector('.pane-ctl.is-master'));
+ck('it says it reaches every pane',
+   /one set of controls/.test((master()||{}).textContent||''),
+   (master()||{}).textContent);
+const mb=master().getBoundingClientRect(), gb=D().getElementById('paneGrid').getBoundingClientRect();
+p('  master w'+Math.round(mb.width)+' at y'+Math.round(mb.top)
+  +'; grid w'+Math.round(gb.width)+' at y'+Math.round(gb.top));
+ck('it sits above the grid', mb.bottom<=gb.top+2,
+   Math.round(mb.bottom)+' vs '+Math.round(gb.top));
+ck('and spans its full width', Math.abs(mb.width-gb.width)<3,
+   Math.round(mb.width)+' vs '+Math.round(gb.width));
+ck('each pane still has its own head',
+   D().querySelectorAll('.pane-head').length===4,
+   D().querySelectorAll('.pane-head').length);
+
+hd('3. The master strip actually drives every pane');
+const S=()=>val('BARRY.views.xplore.state.sessions[BARRY.views.xplore.state.order[0]]');
+const before=S().hp;
+const hp=Array.from(D().querySelectorAll('.pane-ctl.is-master input')).length;
+p('  '+hp+' input(s) on the master strip; session hp '+before);
+ck('the strip has controls on it', hp>0);
+/* Set the filter through the session the strip is bound to, then confirm the
+   label the strip shows follows -- that is the wiring that broke when the
+   strip moved out of the pane. */
+run('(function(){var X=BARRY.views.xplore.state,s=X.sessions[X.order[0]];'
+   +'s.hp=12;BARRY.views.xplore.render();})()');
+await sleep(1100);
+const lbl=Array.from(D().querySelectorAll('.ctl-menu')).map(n=>n.textContent.trim()).join(' | ');
+p('  menus: '+lbl);
+ck('the Filter button reports the filter, not "off"',
+   /12/.test(lbl), lbl);
+
+hd('4. Two different recordings keep a strip each');
+const second=Q.get('session2');
+if(!second){ p('  no ?session2= given, so this is skipped rather than passed'); }
+else{
+  await run('BARRY.views.xplore.open('+JSON.stringify(second)+')');
+  await sleep(1800);
+  run('(function(){var X=BARRY.views.xplore.state;X.nPanes=2;'
+     +'X.panes[0]={sessionId:X.order[0],panel:"traces"};'
+     +'X.panes[1]={sessionId:X.order[1],panel:"traces"};'
+     +'BARRY.views.xplore.render();})()');
+  await sleep(1500);
+  p('  strips: '+strips().length+', master: '+(master()?'yes':'no'));
+  ck('two recordings get no master strip', !master(),
+     'they were given one, and t0 means a different thing in each');
+  ck('each pane has its own strip back', strips().length===2, strips().length);
+}
+p('\n'+(bad?bad+' FAILED':'all checks passed'));
+document.title=(bad?bad+' FAILED — ':'ok — ')+'master strip';
+}catch(e){p('THREW: '+e.message); document.title='threw';}})();
+</script>

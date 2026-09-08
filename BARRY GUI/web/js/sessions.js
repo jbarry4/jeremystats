@@ -81,12 +81,28 @@ BARRY.views.sessions = (function () {
   async function loadKnown(force) {
     if (knownLoaded && !force) return;
     knownLoaded = true;
+
+    /* The registry read takes about five seconds on a full catalogue, and
+       this view opened as an empty box for all of it -- which reads as "no
+       sessions" rather than "not yet". Only when there is nothing already on
+       screen: refreshing a list that is already there should not blank it. */
+    const bones = sessions.length
+      ? null
+      : BARRY.skeleton.into($('#sessTree'), 'card', 6);
+    const sub = $('#sessSub');
+    if (bones && sub) sub.textContent = 'Reading the catalogue\u2026';
+
     let reg;
     try {
       reg = await api('/api/registry');
     } catch (e) {
-      return;                 // an older server: the page still works
+      // An older server: the page still works, but the bones must not stay.
+      if (bones) bones();
+      if (sub) sub.textContent = '';
+      renderTree();
+      return;
     }
+    if (bones) bones();
     const rows = (reg.tree || []).flatMap(
       (p) => p.mice.flatMap((m) => m.sessions));
     const have = new Set(sessions.map((x) => x.gid).filter(Boolean));
@@ -956,6 +972,11 @@ BARRY.views.sessions = (function () {
     init,
     picked: () => Array.from(picked),
     setMode,
+    /* Forget that the registry has been read, so the next onShow reads it
+       again. For web/_dev/motion.html, which checks that the skeleton is on
+       screen during that read and gone after it -- and there is no way to
+       watch a load that only ever happens once per page. */
+    _forget: () => { knownLoaded = false; sessions = []; },
     onShow: () => {
       if (mode === 'housekeeping' && BARRY.views.housekeeping) {
         BARRY.views.housekeeping.onShow();

@@ -1,23 +1,23 @@
 {
   "_at": {
-    "archived": "2026-09-08T19:51:43.575157+00:00",
-    "archived_at": "2026-09-08T19:51:43.575157+00:00",
-    "archived_by": "2026-09-08T19:51:43.575157+00:00",
+    "archived": "2026-09-08T21:35:25.900915+00:00",
+    "archived_at": "2026-09-08T21:35:25.900915+00:00",
+    "archived_by": "2026-09-08T21:35:25.900915+00:00",
     "assignee": "2026-09-08T17:47:51.089789+00:00",
-    "closed_at": "2026-09-08T19:54:20.925690+00:00",
+    "closed_at": "2026-09-08T21:35:28.918130+00:00",
     "created": "2026-09-04T21:16:32.824118+00:00",
     "gid": "2026-09-04T21:16:32.824118+00:00",
-    "imports": "2026-09-08T19:52:50.711391+00:00",
+    "imports": "2026-09-08T22:40:34.404512+00:00",
     "kind": "2026-09-04T21:16:32.824118+00:00",
     "labels": "2026-09-04T21:16:32.824118+00:00",
     "name": "2026-09-04T21:16:32.824118+00:00",
-    "open": "2026-09-08T19:54:20.925690+00:00",
-    "opened_at": "2026-09-08T19:53:53.967018+00:00",
-    "opened_by": "2026-09-08T17:47:51.089789+00:00",
+    "open": "2026-09-08T21:35:28.918130+00:00",
+    "opened_at": "2026-09-08T21:35:25.900915+00:00",
+    "opened_by": "2026-09-08T21:35:15.386841+00:00",
     "schema": "2026-09-04T21:16:32.824118+00:00",
     "session_label": "2026-09-04T21:16:32.824118+00:00",
     "source": "2026-09-04T21:16:32.824118+00:00",
-    "updated": "2026-09-08T19:54:20.925690+00:00"
+    "updated": "2026-09-08T22:40:34.382964+00:00"
   },
   "_keys": {
     "events": {
@@ -43,7 +43,7 @@
       ],
       "e293852f107": [
         "set",
-        "2026-09-08T19:52:50.711391+00:00"
+        "2026-09-08T22:40:34.404512+00:00"
       ],
       "e461eba6e6b": [
         "set",
@@ -63,7 +63,7 @@
       ],
       "e75094966d8": [
         "set",
-        "2026-09-08T19:53:55.455945+00:00"
+        "2026-09-08T22:40:34.404512+00:00"
       ],
       "e77ecd41ebe": [
         "set",
@@ -87,7 +87,7 @@
       ],
       "eacb27094b4": [
         "set",
-        "2026-09-08T19:52:50.711391+00:00"
+        "2026-09-08T22:40:34.404512+00:00"
       ],
       "ed3b49bf97b": [
         "set",
@@ -111,16 +111,16 @@
       ],
       "ef18ab13085": [
         "set",
-        "2026-09-08T19:53:55.576586+00:00"
+        "2026-09-08T21:05:09.070817+00:00"
       ],
       "ef47ab02c57": [
         "set",
-        "2026-09-08T19:52:50.711391+00:00"
+        "2026-09-08T22:40:34.404512+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T19:54:20.925690+00:00",
+    "at": "2026-09-08T22:40:34.404512+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -128,7 +128,7 @@
   "archived_at": null,
   "archived_by": null,
   "assignee": "Rain",
-  "closed_at": "2026-09-08T15:54:20-0400",
+  "closed_at": "2026-09-08T17:35:28-0400",
   "created": {
     "at": "2026-09-04T17:16:32-04:00",
     "email": "sakhava1@uvm.edu",
@@ -138,8 +138,8 @@
   },
   "events": [
     {
-      "at": "2026-09-08T15:52:50-0400",
-      "by": "Rain",
+      "at": "2026-09-08T18:40:34-0400",
+      "by": "Shahriar Tafti",
       "id": "ef47ab02c57",
       "label": "spike",
       "reviews": [
@@ -149,16 +149,21 @@
           "label": "spike"
         },
         {
-          "at": "2026-09-08T15:52:50-0400",
+          "at": "2026-09-08T17:04:27-0400",
           "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T18:40:34-0400",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
       "start": 3.4
     },
     {
-      "at": "2026-09-08T15:52:50-0400",
-      "by": "Rain",
+      "at": "2026-09-08T18:40:34-0400",
+      "by": "Shahriar Tafti",
       "id": "e293852f107",
       "label": "spike",
       "reviews": [
@@ -168,18 +173,23 @@
           "label": "spike"
         },
         {
-          "at": "2026-09-08T15:52:50-0400",
+          "at": "2026-09-08T17:04:27-0400",
           "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T18:40:34-0400",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
       "start": 7.9
     },
     {
-      "at": "2026-09-08T15:53:55-0400",
-      "by": "Rain",
+      "at": "2026-09-08T18:40:34-0400",
+      "by": "Shahriar Tafti",
       "id": "e75094966d8",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
@@ -187,16 +197,21 @@
           "label": "garbage"
         },
         {
-          "at": "2026-09-08T15:53:55-0400",
+          "at": "2026-09-08T17:05:08-0400",
           "by": "Rain",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T18:40:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 8.2
     },
     {
-      "at": "2026-09-08T15:52:50-0400",
-      "by": "Rain",
+      "at": "2026-09-08T18:40:34-0400",
+      "by": "Shahriar Tafti",
       "id": "eacb27094b4",
       "label": "spike",
       "reviews": [
@@ -206,8 +221,13 @@
           "label": "flag"
         },
         {
-          "at": "2026-09-08T15:52:50-0400",
+          "at": "2026-09-08T17:04:27-0400",
           "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-08T18:40:34-0400",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -228,7 +248,7 @@
       "start": 21.05
     },
     {
-      "at": "2026-09-08T15:53:55-0400",
+      "at": "2026-09-08T17:05:09-0400",
       "by": "Rain",
       "id": "ef18ab13085",
       "label": "review",
@@ -239,7 +259,7 @@
           "label": "garbage"
         },
         {
-          "at": "2026-09-08T15:53:55-0400",
+          "at": "2026-09-08T17:05:09-0400",
           "by": "Rain",
           "label": "review"
         }
@@ -599,6 +619,86 @@
       "source": {
         "from": "harness bank"
       }
+    },
+    {
+      "at": "2026-09-08T16:21:57-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T16:44:20-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:04:27-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:36:12-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:55:57-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:19:29-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:24:24-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:40:34-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
     }
   ],
   "kind": "ds",
@@ -645,8 +745,8 @@
   ],
   "name": "DEMO m1 s1 (dentate spikes) (demo set)",
   "open": false,
-  "opened_at": "2026-09-08T15:53:53-0400",
-  "opened_by": "Rain",
+  "opened_at": "2026-09-08T17:35:25-0400",
+  "opened_by": "Shahriar Tafti",
   "schema": 1,
   "session_label": "DEMO m1 s1 (dentate spikes)",
   "source": {
@@ -654,11 +754,11 @@
     "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
   },
   "updated": {
-    "at": "2026-09-08T15:54:20-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T18:40:34-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

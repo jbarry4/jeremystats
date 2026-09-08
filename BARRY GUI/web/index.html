@@ -6,8 +6,86 @@
 <title>BARRY GUI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23154734'/%3E%3Cpath d='M4 18h3l3-9 4 15 4-12 3 7 2-3h5' fill='none' stroke='%23FFB81C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="app.css">
+<!-- The boot overlay's own styles, inline and before app.css, so the first
+     paint has them. Deliberately duplicating a few colours rather than using
+     the variables: those live in app.css, and the whole point of this
+     element is to be right before app.css has arrived. -->
+<style>
+  #boot {
+    position: fixed; inset: 0; z-index: 300;
+    display: grid; place-items: center; gap: 0;
+    background: #0d1117; color: #8aa4b3;
+    font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+    transition: opacity .34s ease, visibility .34s ease;
+  }
+  :root[data-theme="light"] #boot { background: #f6f7f9; color: #5a6b78; }
+  #boot.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+  .boot-in { display: flex; flex-direction: column; align-items: center;
+             gap: 14px; transform: translateY(-6px); }
+  .boot-mark {
+    width: 46px; height: 46px; border-radius: 11px;
+    background: #154734; display: grid; place-items: center;
+    box-shadow: 0 0 0 0 rgba(255, 184, 28, .45);
+    animation: bootPulse 1.9s ease-out infinite;
+  }
+  .boot-mark svg { width: 30px; height: 30px; display: block; }
+  @keyframes bootPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 184, 28, .40); }
+    70%  { box-shadow: 0 0 0 16px rgba(255, 184, 28, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 184, 28, 0); }
+  }
+  .boot-name { color: #c9d6de; font-size: 13px; letter-spacing: .04em; }
+  :root[data-theme="light"] .boot-name { color: #2d3b45; }
+  .boot-what { font-size: 11px; opacity: .8; min-height: 1.6em; }
+  /* A track that fills rather than a spinner: a spinner says "busy", a bar
+     that moves says "getting somewhere", and this is a sequence of known
+     steps rather than an unbounded wait. */
+  .boot-track {
+    width: 190px; height: 3px; border-radius: 2px;
+    background: rgba(255, 255, 255, .08); overflow: hidden;
+  }
+  :root[data-theme="light"] .boot-track { background: rgba(0, 0, 0, .08); }
+  .boot-fill {
+    height: 100%; width: 18%; border-radius: 2px; background: #FFB81C;
+    animation: bootSlide 1.25s ease-in-out infinite;
+  }
+  @keyframes bootSlide {
+    0%   { transform: translateX(-110%); width: 26%; }
+    50%  { width: 52%; }
+    100% { transform: translateX(430%); width: 26%; }
+  }
+  .boot-slow {
+    font-size: 10.5px; opacity: 0; max-width: 300px; text-align: center;
+    transition: opacity .3s ease;
+  }
+  .boot-slow.on { opacity: .75; }
+  @media (prefers-reduced-motion: reduce) {
+    .boot-mark, .boot-fill { animation: none; }
+    .boot-fill { width: 100%; }
+    #boot { transition: none; }
+  }
+</style>
 </head>
 <body>
+
+<!-- Shown until the first view has something in it. In the markup rather
+     than built by a script, because the gap this covers is partly the
+     scripts themselves parsing. -->
+<div id="boot">
+  <div class="boot-in">
+    <div class="boot-mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none"
+              stroke="#FFB81C" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="boot-name">BARRY</div>
+    <div class="boot-track"><div class="boot-fill"></div></div>
+    <div class="boot-what" id="bootWhat">starting up…</div>
+    <div class="boot-slow" id="bootSlow"></div>
+  </div>
+</div>
 
 <div id="app">
 
@@ -17,7 +95,15 @@
       <div class="brand-mark">B</div>
       <div class="brand-text">
         <strong>BARRY</strong>
-        <span id="repoName">repo</span>
+        <span class="brand-line">
+          <span id="repoName">repo</span>
+          <!-- The version, and what changed in it. Beside the repo name
+               rather than in an About box: which version everybody is on is
+               the first question when two people see different behaviour,
+               and it should be readable without going to look for it. -->
+          <button id="verChip" class="app-ver hidden"
+                  title="What changed — click for the patch notes"></button>
+        </span>
       </div>
     </div>
 
@@ -29,12 +115,23 @@
       <span class="who-name">Set who you are</span>
     </button>
 
+    <!-- Three positions, so the button shows which one it is in. The
+         second click hides the bar completely, and with only a tooltip to
+         say so that was always a surprise. -->
     <button id="railToggle" class="rail-toggle" title="Collapse the menu">
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <path d="M3 6h14M3 10h14M3 14h14"/>
       </svg>
       <span>Menu</span>
+      <span class="rail-pips" aria-hidden="true">
+        <i></i><i></i><i></i>
+      </span>
     </button>
+    <!-- Retires itself once somebody has been round the cycle once: a hint
+         that never leaves stops being a hint. -->
+    <div id="railHint" class="rail-hint hidden">
+      Click to shrink to icons · again to hide the bar
+    </div>
 
     <!-- The nav scrolls; the footer below does not. On a 640px-tall screen
          the whole column used to overflow and the Guide button ended up
@@ -104,6 +201,12 @@
       <button class="chip-btn" id="themeToggle" title="Toggle light / dark">
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
+      </button>
+      <!-- Off by default, and the only thing in BARRY that reaches the
+           internet. It says so before it is turned on. -->
+      <button class="chip-btn" id="radioBtn" title="A radio to work to">
+        <svg viewBox="0 0 20 20"><path d="M4 8h12v8H4z"/><circle cx="8" cy="12" r="2"/><path d="M13 11h2M13 13h2M6 8 15 4"/></svg>
+        <span>Radio</span>
       </button>
       <div class="env" id="envInfo"></div>
     </div>
@@ -478,6 +581,11 @@
 </div>
 
 <!-- modal host: event import wizard, figure builder, preset editors -->
+<!-- The radio. Outside every view, because the point of it is that it
+     keeps playing while you work: anything inside #main is rebuilt when the
+     view changes and the audio would stop with it. -->
+<div class="radio-dock hidden" id="radioDock"></div>
+
 <div class="modal-backdrop hidden" id="bigModal">
   <div class="modal big" id="bigModalBox"></div>
 </div>
@@ -504,6 +612,7 @@
 <script src="js/strata.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/tourmodules.js"></script>
+<script src="js/radio.js"></script>
 <script src="js/misc.js"></script>
 <script>BARRY.init();</script>
 </body>

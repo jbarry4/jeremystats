@@ -32,6 +32,14 @@ live server with no build step and no test framework:
 | `curprobe.html` | a scratch page for one curation state at a time |
 | `minorui.html` | the small interface faults: the Errors badge, the bank list's scroll, probe switching keeping the panel, one panel change reaching all six panes |
 | `uiprobe.html` | a scratch page for one interface interaction at a time |
+| `newfeat.html` | bookmark colours end to end, and the version chip against CHANGELOG.md |
+| `figgrid.html` | the figure builder: that it opens on the panes actually in view, that rows and columns are built with + and ×, that panels arrive by being dragged, and that the rebuild dialog docks out of the way |
+| `gridgeo.html` | measures where the grid's + and × controls actually sit, since "on the corner instead of the right side" is a question about boxes |
+| `master.html` | one control strip for panes that are views of one recording, and a strip each when they are not |
+| `display.html` | unchecked channels removed vs kept faint (checked through the request and the pixels), and marks faded or hidden with the notice that says so |
+| `radio.html` | that the radio loads nothing until asked, asks before the first connection, and keeps playing when minimised |
+| `marks.html` | that deleting a bookmark redraws the list rather than stacking another dialog, so the close X closes; and that one click is one request |
+| `motion.html` | the boot overlay is painted before the scripts finish and cannot outlive them; the Menu button carries its three positions; the rail really reaches 54px and 0px; and skeletons are present during a load and gone after, including a failed one |
 
 Run them by opening, with the server up:
 

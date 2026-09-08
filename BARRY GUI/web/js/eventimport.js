@@ -100,7 +100,8 @@ BARRY.eventImport = (function () {
         }),
       ]),
     ]);
-    showModal(box);
+    // Replacing, not stacking: this is the same dialog redrawn.
+    showModal(box, { replace: true });
   }
 
   function verdict(conf) {
@@ -368,10 +369,22 @@ BARRY.eventImport = (function () {
    moved rather than re-created, so listeners and references survive. */
 const _modalStack = [];
 
-function showModal(node) {
+/* `replace` for a dialog redrawing itself.
+
+   Stacking is right for a modal raised FROM another one -- closing pops back
+   to what it came from. It is wrong for a re-render, and several dialogs
+   rebuild themselves by calling this again: the figure builder does it on
+   every panel change and every grid click. Each one pushed another copy of
+   itself, so `closeModal` popped back to the previous render and the close
+   button behaved like a back button, needing as many clicks as changes you
+   had made.
+
+   Only the caller knows which of the two it is doing, so it says. */
+function showModal(node, opts) {
   const host = $('#bigModalBox');
   const shell = $('#bigModal');
-  if (!shell.classList.contains('hidden') && host.firstChild) {
+  const open = !shell.classList.contains('hidden') && host.firstChild;
+  if (open && !(opts && opts.replace)) {
     const keep = document.createElement('div');
     while (host.firstChild) keep.appendChild(host.firstChild);
     _modalStack.push(keep);

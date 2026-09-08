@@ -264,6 +264,76 @@ class Feedback:
             json.dump(out, fh, indent=1, ensure_ascii=False)
         return self.get(rec_id)
 
+    def absorb(self, row, notes=None):
+        """Take a report, or somebody's triage of one, from the cloud.
+
+        Two cases, and they are different on purpose:
+
+        A report this machine has never seen is written as a report of its
+        own, under the machine that filed it -- so nothing claims it was
+        filed here, and the shard rule still holds.
+
+        One it already has is left exactly as it is, except for the state and
+        the notes. Those go through `update`, which writes an overlay of our
+        own -- the same path as triaging it here, so absorbing somebody's
+        decision cannot corrupt the file the report lives in.
+
+        Returns True when something changed, so a pull can report a number
+        that means something.
+        """
+        import json
+        rid = (row or {}).get("id")
+        if not rid:
+            return False
+
+        mine = self.get(rid)
+        if not mine:
+            rec = {
+                "id": rid,
+                "kind": row.get("kind") or "bug",
+                "title": (row.get("title") or "")[:300],
+                "detail": row.get("body") or "",
+                "wants": row.get("wants") or "",
+                "context": row.get("context") or {},
+                "state": row.get("state") or "open",
+                "at": row.get("created_at") or _now(),
+                "by": row.get("created_by") or "",
+                "machine": row.get("machine") or "",
+                # Under the machine that filed it, not ours.
+                "shard": row.get("machine") or "cloud",
+                "screenshots": row.get("shots") or [],
+                "recent": None,
+                "notes": [],
+                "from_cloud": True,
+            }
+            if row.get("state_at"):
+                rec["state_at"] = row["state_at"]
+                rec["state_by"] = row.get("state_by")
+            path = os.path.join(self.dir, "%s@%s.json"
+                                % (rid, rec["shard"]))
+            os.makedirs(self.dir, exist_ok=True)
+            with io.open(path, "w", encoding="utf-8", newline=chr(10)) as fh:
+                json.dump(rec, fh, indent=1, ensure_ascii=False)
+            return True
+
+        # Already here. Only a newer state, and notes we do not hold, and
+        # both through the overlay path.
+        changed = False
+        theirs = row.get("state_at") or ""
+        if (row.get("state") and row["state"] != mine.get("state")
+                and theirs > (mine.get("state_at") or "")):
+            self.update(rid, {"state": row["state"]},
+                        user=row.get("state_by") or "")
+            changed = True
+        have = {(n.get("at"), n.get("text")) for n in (mine.get("notes") or [])}
+        for n in (notes or []):
+            key = (n.get("at"), n.get("body"))
+            if key in have or not n.get("body"):
+                continue
+            self.update(rid, {"note": n["body"]}, user=n.get("note_by") or "")
+            changed = True
+        return changed
+
     def shot_path(self, name):
         """Resolve an attachment name, refusing anything that escapes."""
         safe = _SAFE.sub("", os.path.basename(name or ""))

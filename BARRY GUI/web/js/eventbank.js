@@ -22,6 +22,9 @@ BARRY.views.eventbank = (function () {
   let selected = null;        // the entry id shown in the detail pane
 
   async function load() {
+    // Nothing on screen yet means an empty panel for the length of the read.
+    const bones = entries.length
+      ? null : BARRY.skeleton.into($('#bankBody'), 'row', 7);
     try {
       const res = await api('/api/bank');
       tree = res.tree || [];
@@ -31,6 +34,9 @@ BARRY.views.eventbank = (function () {
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
+    } finally {
+      // In a finally, so a failed read does not leave the bones behind.
+      if (bones) bones();
     }
     render();
   }

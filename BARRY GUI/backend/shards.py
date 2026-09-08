@@ -643,13 +643,21 @@ class DayLog:
         return os.path.join(
             self.dir, "%s%s%s.jsonl" % (day, SIGIL, machine or machine_id()))
 
-    def append(self, records):
+    def append(self, records, machine=None):
+        """Add lines to a day's log.
+
+        `machine` writes into another machine's file, which is only for
+        absorbing a record that happened there -- an error pulled from the
+        cloud belongs under the machine that had it, or the log claims
+        somebody else's crash as ours. Everything written locally leaves it
+        alone and gets this machine's own file.
+        """
         if isinstance(records, dict):
             records = [records]
         if not records:
             return 0
         day = (records[0].get("at") or _now())[:10]
-        path = self.path(day)
+        path = self.path(day, machine)
         n = 0
         with _LOCK:
             try:

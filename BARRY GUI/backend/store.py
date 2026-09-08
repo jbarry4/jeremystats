@@ -1029,6 +1029,29 @@ def _resolved_path(self):
     return self.triage.mine(TRIAGE_BASE)
 
 
+def absorb_error(self, rec):
+    """Write an error that happened on another machine.
+
+    Into that machine's log for that day, not this machine's: the file name
+    carries the machine, and an error is a record of what happened somewhere
+    -- filing somebody else's under our own name would make the log lie.
+
+    Returns False when we already hold that id, so a re-pull is free.
+    """
+    rid = (rec or {}).get("id")
+    machine = (rec or {}).get("machine")
+    if not rid or not machine:
+        return False
+    day = str(rec.get("at") or "")[:10] or _now()[:10]
+    with _LOCK:
+        for got in self.error_log.read(limit=100000, day=day) or []:
+            if got.get("id") == rid:
+                return False
+        self.error_log.append([dict(rec, shard=machine)],
+                              machine=machine)
+    return True
+
+
 def resolved_errors(self):
     return (self.triage.read(TRIAGE_BASE) or {}).get("marks") or {}
 
@@ -1057,5 +1080,6 @@ for _fn in (record_activity, list_activity, activity_days,
             get_bookmarks, save_bookmark, delete_bookmark,
             get_spike_labels, save_spike_set, delete_spike_set,
             _prefs_path, get_prefs, set_prefs,
-            _resolved_path, resolved_errors, resolve_error):
+            _resolved_path, resolved_errors, resolve_error,
+            absorb_error):
     setattr(Store, _fn.__name__, _fn)

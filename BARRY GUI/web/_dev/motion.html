@@ -1,0 +1,289 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — boot, skeletons and the collapses</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Four things, and all four are claims about time or geometry rather than
+   about state, so all four are measured.
+
+   The boot overlay: it has to be painted BEFORE the scripts finish, which is
+   the whole reason it lives in the markup. So this checks it is in the parsed
+   document, and that it is gone once the view is up -- and that it cannot
+   outlive a failure, because an overlay that traps somebody is worse than the
+   black screen it replaced.
+
+   The rail: three positions, and the complaint was that nothing said so.
+   Checked as pixels (does the grid actually interpolate, or jump) and as
+   affordance (does the button carry which of the three it is in).
+
+   Skeletons: that they are there DURING the wait and gone after, which means
+   intercepting the fetch and holding it open. A skeleton that only appears
+   after the data arrives is a flicker, and one that stays is a lie. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+
+  /* Look at the overlay while the frame is still starting, before waiting for
+     load: the point of it is the period nothing else has covered. */
+  hd('1. The overlay is painted before the scripts are done');
+  const early = await (async () => {
+    for (let i = 0; i < 120; i++) {
+      try {
+        const d = f.contentDocument;
+        const b = d && d.getElementById('boot');
+        if (b) {
+          return {
+            there: true,
+            ready: d.readyState,
+            // Its styles are inline and above app.css, so it is already
+            // painted rather than waiting for the stylesheet.
+            bg: f.contentWindow.getComputedStyle(b).backgroundColor,
+            covered: b.getBoundingClientRect().height > 200,
+            says: (d.getElementById('bootWhat') || {}).textContent || '',
+          };
+        }
+      } catch (e) { /* cross-document mid-navigation */ }
+      await sleep(25);
+    }
+    return { there: false };
+  })();
+  ck('it is in the document while it is still loading', early.there,
+     'never saw it — it may be built by a script instead of the markup');
+  if (early.there) {
+    p('  readyState at first sight: ' + early.ready);
+    p('  background: ' + early.bg + ' · says "' + early.says.trim() + '"');
+    ck('it is already styled, so it is not a flash of nothing',
+       early.bg !== 'rgba(0, 0, 0, 0)' && early.bg !== 'transparent',
+       early.bg);
+    ck('and it covers the window rather than sitting in a corner',
+       early.covered);
+    ck('and it says what is happening', early.says.trim().length > 3,
+       JSON.stringify(early.says));
+  }
+
+  await new Promise((r) => {
+    if (f.contentDocument && f.contentDocument.readyState === 'complete') r();
+    else f.addEventListener('load', r, { once: true });
+  });
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+
+  hd('2. And it goes once there is something behind it');
+  const went = await untilN(() => !D().getElementById('boot'), 150);
+  ck('the overlay is taken out of the document', went >= 0,
+     'still there — it would be taking clicks');
+  p('  gone after about ' + (went * 100) + 'ms of watching');
+  ck('the workspace is actually up behind it',
+     !!D().querySelector('#rail .nav-item'), 'no rail');
+  /* The failsafe. Not that it fires -- that would mean waiting fifteen
+     seconds -- but that clearing twice is harmless, since three separate
+     things race to do it. */
+  run('BARRY.boot.clear(); BARRY.boot.clear()');
+  ck('clearing it again is harmless', !D().getElementById('boot'));
+  run('BARRY.boot.say("late")');
+  ck('and so is talking to it after it has gone',
+     !D().getElementById('boot'));
+
+  hd('3. The Menu button shows which of three positions it is in');
+  const btn = () => D().getElementById('railToggle');
+  const pips = () => Array.from(D().querySelectorAll('.rail-pips i'));
+  const lit = () => pips().findIndex((x) => x.classList.contains('on'));
+  ck('there is a Menu button', !!btn());
+  p('  ' + pips().length + ' pip(s)');
+  ck('with one pip per position', pips().length === 3, pips().length);
+  run("setRail('full')");
+  await sleep(120);
+  p('  full  → pip ' + lit() + ', title "'
+    + (btn().title || '').replace(/\n/g, ' / ') + '"');
+  ck('full lights the first', lit() === 0, lit());
+  ck('and the tooltip names the whole cycle, not just the next step',
+     /icons/.test(btn().title) && /hidden/.test(btn().title),
+     btn().title);
+  run("setRail('icons')");
+  await sleep(120);
+  p('  icons → pip ' + lit() + ', title "'
+    + (btn().title || '').replace(/\n/g, ' / ') + '"');
+  ck('icons lights the second', lit() === 1, lit());
+  ck('and says the next click hides it completely',
+     /Hide the menu completely/.test(btn().title), btn().title);
+  /* The pips have to survive the state that hides every other label. */
+  const pipBox = D().querySelector('.rail-pips');
+  ck('the pips are still visible with the labels collapsed',
+     !!pipBox && pipBox.getBoundingClientRect().width > 4,
+     pipBox ? pipBox.getBoundingClientRect().width + 'px' : 'no pips');
+  run("setRail('away')");
+  await sleep(120);
+  ck('hidden lights the third', lit() === 2, lit());
+  /* By its box, not by offsetParent: the handle is `position: fixed`, and
+     offsetParent is null for every fixed element -- so that check could
+     never have passed however well the handle worked. */
+  const peek = D().getElementById('railPeek');
+  const pbox = peek ? peek.getBoundingClientRect() : null;
+  p('  peek handle: ' + (pbox ? pbox.width + 'x' + pbox.height : 'missing')
+    + ', display ' + (peek ? W().getComputedStyle(peek).display : '-'));
+  ck('and there is a way back', !!pbox && pbox.width > 4 && pbox.height > 4,
+     'the peek handle has no box');
+
+  hd('4. The collapse actually collapses, and is animated');
+  /* The end state, not a frame in the middle.
+
+     Mid-flight interpolation cannot be observed here: --virtual-time-budget
+     fast-forwards the timer clock and leaves the animation clock alone, so a
+     running transition reads as its start value for as long as you look.
+
+     Which is fortunate, because reading the start value forever is also what
+     the bug looked like. Transitioning `grid-template-columns` left the rail
+     at 190px in EVERY state -- the animation did not decorate the collapse,
+     it prevented it. That shows up in the final value, and the final value
+     is what this checks. */
+  const app = () => D().getElementById('app');
+  const railW = () => D().getElementById('rail').getBoundingClientRect().width;
+  const cs = () => W().getComputedStyle(app());
+  run("setRail('full')");
+  await sleep(700);
+  p('  transition: ' + cs().transitionProperty + ' '
+    + cs().transitionDuration);
+  ck('the collapse is animated', /--rail|width/.test(cs().transitionProperty)
+     && parseFloat(cs().transitionDuration) > 0.05,
+     cs().transitionProperty + ' / ' + cs().transitionDuration);
+  /* A length, deliberately: the track list is Chromium-only and was the
+     thing that jammed. */
+  ck('by interpolating a length rather than the track list',
+     !/grid-template-columns/.test(cs().transitionProperty),
+     cs().transitionProperty);
+
+  /* Finish the transition rather than wait for it.
+
+     `Animation.finish()` needs no clock, and the clock here is frozen: one
+     animation on --rail, playState "running", currentTime 0 after 400ms of
+     timer time. Waiting would measure the value it started from -- which is
+     the same thing a transition that blocks the change would show, and that
+     is the bug this is here to catch. */
+  const settle = async (ms) => {
+    await sleep(60);
+    run('(function () { var a = document.getElementById("app");'
+      + 'if (a.getAnimations) a.getAnimations().forEach(function (x) {'
+      + '  try { x.finish(); } catch (e) {} }); })()');
+    await sleep(ms || 80);
+  };
+  const wide = railW();
+  run("setRail('icons')");
+  await settle();
+  const narrow = railW();
+  run("setRail('away')");
+  // Longer, because leaving the layout happens after the movement.
+  await settle(500);
+  const gone = railW();
+  // Captured here, while it is away: read after the rail is back it would
+  // of course say `flex`, and say nothing about the hidden state.
+  const goneDisp = val(
+    'getComputedStyle(document.getElementById("rail")).display');
+  run("setRail('full')");
+  await settle();
+  const back = railW();
+  p('  rail width: full ' + wide.toFixed(0) + ' → icons '
+    + narrow.toFixed(0) + ' → hidden ' + gone.toFixed(0)
+    + ' → full ' + back.toFixed(0));
+  ck('icons really is narrower', narrow < wide - 40,
+     narrow + ' vs ' + wide + ' — the animation is blocking the collapse');
+  ck('and it is the icon width, not some interrupted value',
+     Math.abs(narrow - 54) < 2, narrow);
+  /* Zero, and out of the flow -- not merely narrow.
+
+     `display: none` cannot be animated, so the hidden state stopped using
+     it, and the rail then would not shrink below a 20px sliver: a grid
+     item's `min-width: auto` floors it at its content width, and it
+     overflowed its own 0px track to lie over the workspace. It slides out
+     now and leaves the layout afterwards. */
+  ck('hidden takes the rail out of the row', gone < 2, gone);
+  ck('and out of the layout, rather than lying over the workspace',
+     goneDisp === 'none', goneDisp);
+  ck('and it all comes back', Math.abs(back - wide) < 2,
+     back + ' vs ' + wide);
+
+  hd('5. Skeletons are there during the wait, and gone after');
+  /* Hold the registry open, so the wait is long enough to look at. This is
+     the request that really does take five seconds on this machine. */
+  run('window.__hold = true;'
+    + '(function () { var f = window.fetch;'
+    + 'window.fetch = function (u, o) {'
+    + '  if (window.__hold && String(u).indexOf("/api/registry") >= 0) {'
+    + '    return new Promise(function (res) {'
+    + '      setTimeout(function () { res(f.apply(window, [u, o])); }, 3000);'
+    + '    });'
+    + '  }'
+    + '  return f.apply(this, arguments); }; })()');
+  run('BARRY.views.sessions._forget()');
+  run("setView('sessions')");
+  run('BARRY.views.sessions.onShow()');
+  await sleep(500);
+  const skDuring = D().querySelectorAll('#sessTree .sk-item').length;
+  const sub = (D().getElementById('sessSub') || {}).textContent || '';
+  p('  during the wait: ' + skDuring + ' skeleton row(s), sub "'
+    + sub.trim() + '"');
+  ck('the tree shows bones while the registry is read', skDuring > 0,
+     'an empty box, which reads as "no sessions"');
+  ck('and says what it is waiting for', /catalogue/i.test(sub), sub);
+  /* Shape, not just presence: a skeleton is a promise about what is coming. */
+  const one = D().querySelector('#sessTree .sk-item');
+  ck('the bones have the shape of a session card',
+     !!one && one.querySelectorAll('.sk-line').length >= 2
+     && !!one.querySelector('.sk-pill'),
+     one ? one.innerHTML.length + ' chars' : 'none');
+  ck('and are hidden from a screen reader, being decorative',
+     !!D().querySelector('#sessTree [aria-hidden="true"]'),
+     'not marked aria-hidden');
+  await untilN(() => !D().querySelector('#sessTree .sk-item'), 120);
+  const skAfter = D().querySelectorAll('#sessTree .sk-item').length;
+  p('  after: ' + skAfter + ' skeleton row(s), '
+    + D().querySelectorAll('#sessTree .sess-card, #sessTree .tree-group').length
+    + ' real node(s)');
+  ck('the bones are gone once the data lands', skAfter === 0, skAfter);
+
+  hd('6. A failed load does not leave the bones behind');
+  run('window.__hold = false');
+  run('(function () { var f = window.fetch;'
+    + 'window.fetch = function (u, o) {'
+    + '  if (String(u).indexOf("/api/registry") >= 0) {'
+    + '    return Promise.reject(new Error("harness: no"));'
+    + '  }'
+    + '  return f.apply(this, arguments); }; })()');
+  run('BARRY.views.sessions._forget()');
+  run('BARRY.views.sessions.onShow()');
+  await sleep(1400);
+  const skFail = D().querySelectorAll('#sessTree .sk-item').length;
+  p('  after a rejected read: ' + skFail + ' skeleton row(s)');
+  ck('a rejected read clears them too', skFail === 0,
+     skFail + ' left on screen forever');
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'motion';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

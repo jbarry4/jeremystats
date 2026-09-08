@@ -12,6 +12,14 @@
    ========================================================================== */
 
 :root {
+  /* One duration for every collapse in the interface, so the rail, the log
+     dock and the radio all move at the same speed. Long enough to read as
+     movement, short enough that somebody clicking twice is not waiting for
+     it -- and the easing overshoots very slightly, which is what makes it
+     feel like a panel sliding rather than a value changing. */
+  --ease-dur: .28s;
+  --ease-out: cubic-bezier(.22, .61, .36, 1);
+
   --uvm-green: #154734;
   --uvm-gold:  #FFB81C;
 
@@ -380,14 +388,45 @@ code { font-family: var(--mono); }
 .hidden { display: none !important; }
 
 /* ---------- shell ---------- */
+/* The rail's width, registered so it has a type and can be animated.
+
+   Without this a custom property is an untyped string: it flips from "190px"
+   to "54px" in one frame because there is nothing to interpolate between two
+   strings. Declaring the syntax makes it a length, and lengths animate. */
+@property --rail {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 190px;
+}
+
 #app {
   display: grid;
   grid-template-columns: var(--rail) 1fr;
   grid-template-rows: 1fr auto;
   height: 100vh;
+  /* Transitioning the length rather than the track list.
+
+     `grid-template-columns` was the obvious choice -- one property governing
+     the rail and the workspace together -- and it did something worse than
+     jumping: with it transitioned, the rail stayed at 190px in every state.
+     The classes applied and the rules matched; the computed value simply
+     never moved. Forcing the transition off restored 190 -> 54 -> 0.
+
+     A length interpolates everywhere, and if the animation cannot run the
+     value still changes, because the class sets it either way -- so the
+     worst case here is an instant collapse rather than no collapse. */
+  transition: --rail var(--ease-dur) var(--ease-out);
 }
 
 #rail {
+  /* Named explicitly, not left to auto-placement.
+
+     While the hidden state was `display: none` the rail left the grid
+     altogether and never needed a column. It stays in the flow now, so that
+     it can be animated -- and without this it auto-placed into the
+     workspace column and became an invisible full-width element lying over
+     the view. */
+  grid-column: 1;
   grid-row: 1 / 3;
   background: var(--bg-2);
   border-right: 1px solid var(--line);
@@ -395,6 +434,10 @@ code { font-family: var(--mono); }
   flex-direction: column;
   padding: 14px 10px;
   gap: 18px;
+  transition: padding var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
+              opacity .2s ease,
+              transform var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
+              border-right-color .2s ease;
 }
 
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 0; }
@@ -704,14 +747,31 @@ code { font-family: var(--mono); }
   font-size: 11.5px; font-weight: 600; text-align: left;
 }
 .tree-head:hover { background: var(--bg-3); color: var(--text); }
-.tree-head .caret { width: 12px; height: 12px; transition: transform 0.15s; flex: none; }
+.tree-head .caret {
+  width: 12px; height: 12px; flex: none;
+  transition: transform var(--ease-dur) var(--ease-out);
+}
 .tree-section.open .tree-head .caret { transform: rotate(90deg); }
 .tree-head .count {
   margin-left: auto; font-family: var(--mono); font-size: 10px;
   color: var(--text-3); font-weight: 400;
 }
 .tree-items { display: none; padding-left: 6px; }
-.tree-section.open .tree-items { display: block; }
+/* An animation rather than a transition, deliberately.
+
+   Opening a section re-renders the tree, so the items are a brand new node
+   with no previous state for a transition to run from -- and a transition
+   from nothing does nothing. An animation runs when the element appears,
+   which is exactly when this should. Closing is not animated for the same
+   reason in reverse: the node is gone before there is anything to play. */
+.tree-section.open .tree-items {
+  display: block;
+  animation: treeOpen .24s var(--ease-out) both;
+}
+@keyframes treeOpen {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
 
 .tree-item {
   display: flex; align-items: center; gap: 8px; width: 100%;
@@ -884,7 +944,7 @@ code { font-family: var(--mono); }
   border-top: 1px solid var(--line);
   background: var(--bg-2);
   height: var(--log-h);
-  transition: height 0.18s ease;
+  transition: height var(--ease-dur) var(--ease-out);
   overflow: hidden;
 }
 #logDock.collapsed { height: 38px; }
@@ -900,7 +960,10 @@ code { font-family: var(--mono); }
   width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px;
   background: transparent; color: var(--text-2); cursor: pointer;
 }
-.log-toggle svg { width: 100%; height: 100%; transition: transform 0.18s; }
+.log-toggle svg {
+  width: 100%; height: 100%;
+  transition: transform var(--ease-dur) var(--ease-out);
+}
 #logDock.collapsed .log-toggle svg { transform: rotate(-90deg); }
 .log-toggle:hover { background: var(--bg-3); color: var(--text); }
 
@@ -1598,6 +1661,115 @@ select { color-scheme: inherit; }
 .grid-cell { user-select: none; }
 .grid-help {
   font-size: 10px; color: var(--text-3); line-height: 1.5; margin: 4px 0 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Building the grid by hand.
+
+   The shape used to be two number boxes beside a picture of the grid. It is
+   the picture that is worth manipulating: a `+` on each edge adds, an `x` on
+   each row and column removes, and a panel is dragged in from the palette
+   rather than chosen from a list and placed for you.
+   -------------------------------------------------------------------------- */
+/* Three columns and three rows, so every affordance sits against the thing
+   it acts on:
+
+       c0  c1  c2        <- headers, each with its own x
+     +---+---+---+  x  + <- the cells, a row handle, and "add a column"
+     +---+---+---+  x  |
+     +-----------+      <- "add a row"
+
+   The column `+` used to live in the header row, which put it above the row
+   handles: floating in the top corner, beside nothing. It is a full-height
+   button on the right edge now -- the place another column would go. */
+.grid-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px 24px;
+  grid-template-rows: auto auto auto;
+  gap: 3px; margin: 6px 0 10px;
+}
+.grid-heads {
+  grid-column: 1; grid-row: 1;
+  display: grid; gap: 3px; align-items: end;
+}
+.grid-head {
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  min-width: 0; font-size: 9px; color: var(--text-3);
+  font-family: var(--mono);
+}
+.gh-n { opacity: .75; }
+.gh-x {
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
+  padding: 0 3px; border: 0; background: none; color: var(--text-3);
+  border-radius: 3px;
+}
+.gh-x:hover { color: var(--bad, #dc2626); background: var(--bg-3); }
+
+/* The map, then the row handles beside it, so an x lines up with its row
+   however tall the cells end up. */
+.grid-wrap > .grid-map { grid-column: 1; grid-row: 2; margin: 0; }
+.grid-rows {
+  grid-column: 2; grid-row: 2;
+  display: grid; gap: 3px;
+}
+.grid-rowh { display: flex; align-items: center; justify-content: center; }
+
+.grid-add {
+  font: inherit; font-size: 13px; line-height: 1; cursor: pointer;
+  border: 1px dashed var(--line); background: transparent; color: var(--text-3);
+  border-radius: 5px;
+}
+.grid-add:hover:not(:disabled) {
+  border-color: var(--accent-line); color: var(--accent);
+  background: var(--accent-soft);
+}
+.grid-add:disabled { opacity: .35; cursor: default; }
+/* Beside the cells, the full height of them: where another column goes. */
+.grid-add.col {
+  grid-column: 3; grid-row: 2;
+  align-self: stretch; min-height: 24px;
+}
+/* Under the cells, the full width of them: where another row goes. */
+.grid-add.row {
+  grid-column: 1; grid-row: 3;
+  height: 20px;
+}
+
+/* Where a drop would land, and which panel is selected. */
+.grid-cell.drop-over {
+  border-style: solid; border-color: var(--accent);
+  background: var(--accent-soft); color: var(--accent);
+}
+.grid-cell.filled.sel { box-shadow: 0 0 0 1px var(--accent) inset; }
+.grid-cell.filled { cursor: grab; }
+.grid-cell.filled:active { cursor: grabbing; }
+
+/* The palette. Chips, because the thing being dragged is a kind of panel
+   and it should look like something you can pick up. */
+.fig-palette { display: flex; gap: 5px; flex-wrap: wrap; margin: 2px 0 4px; }
+.fig-chip {
+  font-size: 10.5px; padding: 4px 9px; border-radius: 999px; cursor: grab;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2);
+  user-select: none;
+}
+.fig-chip:hover {
+  border-color: var(--accent-line); color: var(--accent);
+  background: var(--accent-soft);
+}
+.fig-chip:active { cursor: grabbing; }
+
+/* A number the builder decides.
+
+   It had a border and a background, which made it identical to the inputs
+   beside it -- and something that looks like a field and cannot be typed
+   into is worse than a plain value, because it invites the attempt. No box:
+   just the number, in the muted weight the rest of the read-only text
+   uses. */
+.fig-readout {
+  padding: 8px 2px; color: var(--text-2);
+  font-family: var(--mono); font-size: 13px;
+  font-variant-numeric: tabular-nums; line-height: 1;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 /* ---------- outputs ---------- */
@@ -4452,14 +4624,33 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .rail-toggle:hover { background: var(--bg-3); color: var(--text); }
 
-#app.rail-icons { grid-template-columns: 54px 1fr; }
+/* The width, not the track list -- see the transition on #app. */
+#app.rail-icons { --rail: 54px; }
 #app.rail-icons #rail { padding: 14px 8px; align-items: center; }
+/* The labels go, but by collapsing rather than by `display: none`.
+
+   `display` cannot be transitioned, so every label used to disappear in the
+   same frame the rail started narrowing -- the icons were alone in a wide
+   rail for a quarter of a second, which read as a rendering fault. Width to
+   zero with the text clipped keeps them attached to the movement. */
 #app.rail-icons .nav-item span,
 #app.rail-icons .nav-item kbd,
-#app.rail-icons .rail-toggle span,
+#app.rail-icons .rail-toggle > span:not(.rail-pips),
 #app.rail-icons .brand-text,
 #app.rail-icons .chip-btn span,
-#app.rail-icons .env { display: none; }
+#app.rail-icons .env {
+  max-width: 0; opacity: 0; overflow: hidden;
+  white-space: nowrap;
+  /* So a long label does not push the rail wide on the way out. */
+  padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0;
+  pointer-events: none;
+}
+.nav-item span, .nav-item kbd, .rail-toggle > span:not(.rail-pips),
+.brand-text, .chip-btn span, .env {
+  max-width: 240px; opacity: 1;
+  transition: max-width var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
+              opacity .18s ease;
+}
 #app.rail-icons .nav-item,
 #app.rail-icons .rail-toggle,
 #app.rail-icons .chip-btn { justify-content: center; padding: 8px 6px; }
@@ -4475,13 +4666,37 @@ body.splitting .pane-split { pointer-events: auto !important; }
    track, which this rule had set to 0. The entire interface collapsed to
    nothing but the log dock and the little handle to bring the rail back.
    With a single track there is nowhere wrong for #main to go. */
-#app.rail-away { grid-template-columns: 1fr; }
-#app.rail-away #rail { display: none; }
+/* 0px rather than a one-column grid: dropping to a single column would
+   reflow everything in the row in one frame, and the second column is where
+   the workspace lives. */
+#app.rail-away { --rail: 0px; }
+#app.rail-away #rail {
+  /* Not `display: none` -- there is no animating to that. Clipped to nothing
+     and pushed left, so it slides out and takes its shadow with it. */
+  padding-left: 0; padding-right: 0;
+  /* All three, and each is load-bearing.
+
+     `min-width: 0` because a grid item's default `min-width: auto` floors it
+     at its content's min-content width -- which left a 21px sliver of rail
+     overflowing its own 0px track and lying over the workspace. `width: 0`
+     to state the target rather than inferring it from the track. And the
+     border, which is otherwise a 1px line down the left of the view. */
+  min-width: 0; border-right-color: transparent; border-right-width: 0;
+  transform: translateX(-8px);
+  opacity: 0;
+  pointer-events: none;
+}
 /* The log dock asks for column 2 by name. With only one declared track it
    made the grid invent a second one, and the two auto-sized tracks split the
    window between them -- 523px of app beside 416px of dock. Measured, not
    guessed: see web/_dev/railprobe.html. */
-#app.rail-away #logDock { grid-column: 1; }
+/* The dock stays where it always is.
+
+   This used to move it to column 1, correctly, because the hidden state
+   collapsed the grid to a single column. The grid keeps both columns now --
+   the first one shrinks to 0px -- so moving the dock there put it in a track
+   with no width. */
+#app.rail-away #logDock { grid-column: 2; }
 
 /* The way back. Only present when the rail is, which is the point: it is a
    handle, not a permanent fixture. */
@@ -4495,6 +4710,19 @@ body.splitting .pane-split { pointer-events: auto !important; }
   font-size: 10px; padding: 0;
 }
 #app.rail-away #railPeek { display: grid; }
+
+/* Out of the layout, once it has finished sliding out.
+
+   This is what `display: none` was for, and it could not be animated -- so
+   the rail slid out instead and then would not reach zero width: a grid
+   item's `min-width: auto` floors it at its content, and neither
+   `min-width: 0` nor an explicit `width: 0` moved it off a 20px sliver
+   overflowing its own 0px track.
+
+   The two requirements are not in conflict, they were just being asked of
+   one moment. Slide, then leave. Applied by core.js when the movement is
+   over, and taken off before the movement back begins. */
+#app.rail-gone #rail { display: none; }
 #railPeek:hover { color: var(--accent); border-color: var(--accent); }
 
 
@@ -5032,3 +5260,388 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .prof-chip-name:hover, .prof-chip-edit:hover { background: var(--bg-3); }
 .prof-chip.on .prof-chip-name { color: var(--accent); }
+
+/* Choosing a bookmark's colour. Swatches rather than a colour input: the
+   point is a small set of colours that stay legible on both grounds, not
+   any colour at all. */
+.bm-swatches { display: flex; gap: 7px; flex-wrap: wrap; margin: 2px 0 8px; }
+.bm-swatch {
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; background: var(--sw, var(--accent));
+  box-shadow: 0 0 0 1px var(--line) inset;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: inherit; font-size: 11px; color: var(--bg-1);
+}
+.bm-swatch.default {
+  background: var(--accent-soft); color: var(--accent);
+  border-style: dashed; border-color: var(--accent-line);
+}
+.bm-swatch:hover { border-color: var(--text-3); }
+.bm-swatch.on {
+  border-color: var(--text-1);
+  box-shadow: 0 0 0 1px var(--bg-1) inset;
+}
+
+/* The app's version, beside the repo name in the rail. Not `.ver-chip` --
+   that is the bank dialog's per-category count chip, and two unrelated
+   things sharing a class name is how one of them acquires the other's
+   padding six months later. */
+/* The repo name and the version, stacked.
+   `.brand-text span` truncates with an ellipsis, and putting the version
+   beside the name left "jeremystats" as "jeremyst…". The rail column is
+   about 130px and both strings want most of it, so they get a line each --
+   a name shortened to make room for a version is the wrong trade. */
+.brand-line {
+  display: flex; align-items: flex-start; gap: 2px; min-width: 0;
+  flex-direction: column;
+}
+/* Undo the inherited nowrap/ellipsis for these two: there is room on their
+   own line, and a repo called something longer should wrap rather than be
+   cut. */
+.brand-line, .brand-line > #repoName {
+  overflow: visible; text-overflow: clip; white-space: normal;
+  overflow-wrap: anywhere;
+}
+.app-ver {
+  font: inherit; font-size: 9.5px; line-height: 1; cursor: pointer;
+  padding: 2px 5px; border-radius: 4px; flex: none;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.app-ver:hover { color: var(--accent); border-color: var(--accent-line); }
+/* Uncommitted local changes: what is running is not what the notes
+   describe, which is worth a mark rather than a silence. */
+.app-ver.dirty { border-style: dashed; color: var(--warn, var(--accent)); }
+
+/* The notes themselves. */
+.notes-body { max-height: 66vh; overflow-y: auto; }
+.notes-pre { max-width: 72ch; line-height: 1.6; }
+.notes-rel { margin-top: 12px; }
+.notes-rel-head {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 5px; border-bottom: 1px solid var(--line);
+}
+.notes-ver {
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.notes-title { font-size: 11.5px; color: var(--text-2); }
+.notes-sec { margin: 12px 0 0; max-width: 74ch; }
+.notes-sec h4 {
+  margin: 0 0 5px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-3); font-weight: 600;
+}
+.notes-sec p { margin: 0 0 7px; line-height: 1.6; }
+.notes-sec ul { margin: 0 0 7px; padding-left: 18px; }
+.notes-sec li { margin: 0 0 5px; line-height: 1.6; }
+
+/* --------------------------------------------------------------------------
+   A dialog docked out of the way.
+
+   The rebuild narrates what it is doing to the app behind it -- a recording
+   opening, a window moving, channels coming back -- and a centred modal over
+   a full-screen backdrop covers exactly that. Once it starts it shrinks into
+   a corner and stops swallowing clicks, so the account sits beside the work
+   instead of on top of it.
+   -------------------------------------------------------------------------- */
+.modal-backdrop.docked {
+  /* No longer a backdrop: the app underneath stays usable, and the box puts
+     its own pointer events back. */
+  place-items: end start;
+  padding: 0 0 14px 14px;
+  pointer-events: none;
+  background: transparent;
+}
+.modal-backdrop.docked > .modal { pointer-events: auto; }
+.modal.big.docked {
+  width: min(430px, 44vw); max-height: min(52vh, 460px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .5);
+}
+/* Everything gets tighter, because the point of the corner is the room it
+   leaves the rest of the screen. */
+.modal.big.docked .mh { padding: 8px 12px; }
+.modal.big.docked .mh h3 { font-size: 12.5px; }
+.modal.big.docked .mb { padding: 8px 12px; }
+.modal.big.docked .mf { padding: 7px 12px; }
+/* The facts block and the verdict are for reading before you start; once
+   it is running the steps are the whole point of the corner. `.rb-problems`
+   was a guess -- the verdict block is `.rb-verdict`. */
+.modal.big.docked .rb-head,
+.modal.big.docked .rb-verdict { display: none; }
+.modal.big.docked .rb-steps { font-size: 11px; }
+
+/* --------------------------------------------------------------------------
+   One control strip for panes that are views of one thing.
+
+   A six-pane probe layout carried six copies of the strip, each squeezed
+   into a third of the width, and every one of them set the same session's
+   filter, gain, colour limits and window. One strip above the grid instead,
+   full width, with each pane keeping only what is its own.
+   -------------------------------------------------------------------------- */
+.xf-master {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 0 8px; background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+/* Said before it is used, not after: these reach every pane at once. */
+.xf-master-tag {
+  flex: none; font-size: 9.5px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  padding-right: 8px; border-right: 1px solid var(--line-soft);
+}
+.pane-ctl.is-master {
+  flex: 1; min-width: 0; border-bottom: 0; background: transparent;
+}
+
+/* With the strip lifted out, a pane head is the only furniture left, so it
+   can have its space back -- these were squeezed to make room for six
+   strips that are no longer there. */
+.pane-grid.panes-6 .pane-head { padding: 4px 8px; }
+.pane-grid.panes-6 .pane-head .pane-meta { display: inline; }
+
+@media (max-width: 1100px) {
+  /* The tag is the first thing to go: the controls are the point. */
+  .xf-master-tag { display: none; }
+}
+
+/* A standing notice in a pane head: something is not being drawn the way it
+   normally is. In the header rather than only in the menu that set it,
+   because the menu is shut by the time it matters. */
+.pane-warn {
+  flex: none; font-size: 9px; padding: 1px 6px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: .05em;
+  border: 1px solid var(--accent-line); background: var(--accent-soft);
+  color: var(--accent); white-space: nowrap;
+}
+/* Hidden is a stronger claim than faded, and reads as one. */
+.pane-warn.hard {
+  border-color: color-mix(in srgb, var(--warn, #E5A823) 55%, transparent);
+  background: color-mix(in srgb, var(--warn, #E5A823) 16%, transparent);
+  color: var(--warn, #E5A823);
+}
+
+/* A segmented chooser in a popover: three states of one setting, so they
+   look like one control rather than three buttons. */
+.ctl-seg { display: inline-flex; gap: 0; }
+.ctl-seg .mini { border-radius: 0; margin: 0; }
+.ctl-seg .mini:first-child {
+  border-top-left-radius: 5px; border-bottom-left-radius: 5px;
+}
+.ctl-seg .mini:last-child {
+  border-top-right-radius: 5px; border-bottom-right-radius: 5px;
+}
+.ctl-seg .mini + .mini { border-left: 0; }
+.ctl-seg .mini.on {
+  background: var(--accent-soft); border-color: var(--accent-line);
+  color: var(--accent);
+}
+/* A note that is a warning, not a footnote. */
+.ctl-pop-note.warn { color: var(--warn, #E5A823); }
+
+/* --------------------------------------------------------------------------
+   The radio.
+
+   Docked bottom-right, above everything except a modal, and collapsible to a
+   bar. The player is hidden by CSS when minimised rather than removed:
+   removing the iframe stops the audio, which is the one thing minimising
+   must not do.
+   -------------------------------------------------------------------------- */
+.radio-dock {
+  position: fixed; right: 14px; bottom: 14px; z-index: 60;
+  width: 300px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--bg-2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.radio-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-3);
+}
+.radio-dock.mini .radio-head { border-bottom: 0; }
+/* On air. Not animated: a pulsing dot in the corner of a screen somebody is
+   reading traces on is exactly the wrong place for movement. */
+.radio-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--ok, #5cc98d);
+}
+.radio-name {
+  font-size: 11px; color: var(--text-1); font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.radio-x {
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
+  background: none; border: 0; color: var(--text-3);
+  padding: 2px 5px; border-radius: 4px; flex: none;
+}
+.radio-x:hover { color: var(--text-1); background: var(--bg-2); }
+
+/* The body's height is set from JavaScript, measured off the built dock --
+   see `measure()` in radio.js for why nothing declarative worked here.
+
+   What the stylesheet owns is the movement, and the clipping that makes a
+   height of zero mean something. */
+.radio-body {
+  padding: 7px 8px 8px;
+  overflow: hidden;
+  transition: height var(--ease-dur) var(--ease-out),
+              padding var(--ease-dur) var(--ease-out),
+              opacity .18s ease;
+}
+/* Collapsed: the player is still in the page and still playing, just not
+   taking up the corner. Horizontal padding stays, so the width does not
+   twitch on the way down. */
+.radio-dock.mini .radio-body {
+  height: 0 !important; padding-top: 0; padding-bottom: 0; opacity: 0;
+}
+.radio-stations { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+.radio-pick {
+  font: inherit; font-size: 10px; cursor: pointer;
+  padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text-2);
+}
+.radio-pick:hover { border-color: var(--accent-line); color: var(--accent); }
+.radio-pick.on {
+  border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--accent);
+}
+.radio-frame {
+  display: block; width: 100%; height: 164px; border: 0;
+  border-radius: var(--radius-sm); background: #000;
+}
+.radio-note {
+  margin: 6px 0 0; font-size: 9.5px; line-height: 1.5; color: var(--text-3);
+}
+.radio-link { color: var(--accent); text-decoration: underline; }
+/* The rail chip, lit while it is playing. */
+.chip-btn.on { color: var(--accent); border-color: var(--accent-line); }
+
+@media (max-width: 900px) {
+  .radio-dock { width: calc(100vw - 28px); }
+}
+
+
+/* ==========================================================================
+   Skeletons
+   ==========================================================================
+   Shown while a list is being fetched. The shape is the point: an empty box
+   reads as "nothing here", which for a session tree that takes five seconds
+   is a wrong answer rather than a slow one.
+
+   The shimmer travels across the whole block rather than each bar animating
+   on its own, so it reads as one thing arriving instead of a column of
+   independent spinners.
+   ========================================================================== */
+.sk-wrap { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+
+.sk-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 7px;
+  background: var(--bg-2);
+  animation: skFade .5s ease both;
+}
+
+@keyframes skFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* One bar. The gradient is wider than the bar and slides across it, which is
+   why the size is 200%. */
+.sk-line, .sk-pill {
+  height: 10px; border-radius: 4px;
+  background: linear-gradient(90deg,
+    var(--bg-3) 0%, var(--line) 40%, var(--bg-3) 80%);
+  background-size: 200% 100%;
+  animation: skSlide 1.4s linear infinite;
+}
+
+.sk-pills { display: flex; gap: 6px; margin-top: 1px; }
+.sk-pill { width: 46px; height: 14px; border-radius: 999px; }
+
+@keyframes skSlide {
+  from { background-position: 120% 0; }
+  to   { background-position: -60% 0; }
+}
+
+/* A skeleton is a guess about how long something takes. Somebody who has
+   asked for less motion has not asked for less information, so the bars
+   stay -- they just stop moving. */
+@media (prefers-reduced-motion: reduce) {
+  .sk-line, .sk-pill, .sk-item { animation: none; }
+  .sk-line, .sk-pill { background: var(--bg-3); }
+  #app, #rail, .nav-item span, .nav-item kbd, .rail-toggle > span:not(.rail-pips),
+  .brand-text, .chip-btn span, .env { transition: none; }
+}
+
+
+/* ==========================================================================
+   The Menu button's three positions
+   ==========================================================================
+   It cycles full -> icons -> hidden. Only the tooltip said so, and only
+   after the fact, so the click that hides the bar entirely was a surprise
+   every time. The pips are on the button in every state, including the icons
+   state where there is no room for words.
+   ========================================================================== */
+.rail-pips {
+  display: flex; gap: 3px; margin-left: auto;
+  /* Kept off the label rule that collapses the rest of the rail's text, so
+     it is still readable once the words have gone. */
+  flex: none;
+}
+#app.rail-icons .rail-pips {
+  /* Under the icon rather than beside it: at 54px wide there is no room for
+     both on one line. */
+  position: absolute; bottom: 2px; left: 0; right: 0;
+  justify-content: center; margin: 0;
+}
+#app.rail-icons .rail-toggle { position: relative; padding-bottom: 11px; }
+
+.rail-pips i {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--line);
+  transition: background var(--ease-dur) var(--ease-out),
+              transform var(--ease-dur) var(--ease-out);
+}
+.rail-pips i.past { background: var(--text-3); }
+.rail-pips i.on {
+  background: var(--accent);
+  /* Grown rather than only recoloured, so it reads at 4px and without
+     relying on colour alone. */
+  transform: scale(1.6);
+}
+
+.rail-hint {
+  margin: -10px 6px 0; padding: 6px 8px;
+  font-size: 10px; line-height: 1.45; color: var(--text-3);
+  background: var(--bg-3); border-radius: var(--radius-sm);
+  border-left: 2px solid var(--accent);
+  animation: hintIn .4s var(--ease-out) both;
+}
+@keyframes hintIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ==========================================================================
+   Modals and popovers arrive rather than appear
+   ========================================================================== */
+#bigModal:not(.hidden) > #bigModalBox,
+.modal-backdrop:not(.hidden) > .modal {
+  animation: popIn .2s var(--ease-out) both;
+}
+.ctl-pop { animation: popIn .16s var(--ease-out) both; }
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #bigModal:not(.hidden) > #bigModalBox,
+  .modal-backdrop:not(.hidden) > .modal,
+  .ctl-pop, .rail-hint, .tree-section.open .tree-items { animation: none; }
+  #logDock, .radio-body, .rail-pips i, .tree-head .caret,
+  .log-toggle svg { transition: none; }
+}
