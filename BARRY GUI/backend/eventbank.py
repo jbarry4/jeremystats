@@ -54,6 +54,28 @@ def _slug(text, fallback="x"):
     return out[:40] or fallback
 
 
+def _source_for(entry, prior, pipeline):
+    """Where the times came from, which is never the curation that read
+    them.
+
+    In order: what the adopted import said, then what this entry already
+    said, and only if neither exists is a source built from the caller's
+    `pipeline`. An entry acquires a source once and keeps it.
+    """
+    came = entry.get("import_from") or {}
+    for got in (came.get("source"),
+                (prior or {}).get("source")):
+        if got:
+            return got
+    return {
+        "pipeline": pipeline,
+        "run_id": entry.get("run_id"),
+        "file": entry.get("source_file"),
+        "parameters": entry.get("parameters") or {},
+        "detector": entry.get("detector"),
+    }
+
+
 class EventBank:
     def __init__(self, root, store):
         self.root = os.path.join(root, "event_bank")
@@ -66,6 +88,12 @@ class EventBank:
             "events": shards.LWW,
             "added": shards.FIRST,
             "history": shards.BYID,
+            # Per version, not whole-list. Two machines banking the same
+            # entry is the normal case -- one person curates on the rig,
+            # another spot-checks on the desktop -- and under last-write-
+            # wins one machine's entire version history simply vanished.
+            # Each version carries an `id` so BYID can key on it.
+            "versions": shards.BYID,
         }, store)
         self.book.absorb_legacy()
         self._cache = None
@@ -218,7 +246,13 @@ class EventBank:
                         item["end"] = round(end, 6)
                 except (TypeError, ValueError):
                     pass
-            for key in ("channel", "amplitude", "label"):
+            # `label_id` as well as `label`. The display name is what
+            # makes an entry readable on its own; the id is what a
+            # curation set can actually be rebuilt from. Dropping the id
+            # here is half of why a banked set came back undecided --
+            # there was nothing left for the set to match on but the
+            # name, and the set only spoke ids.
+            for key in ("channel", "amplitude", "label", "label_id"):
                 if ev.get(key) is not None:
                     item[key] = ev[key]
             clean.append(item)
@@ -249,15 +283,16 @@ class EventBank:
             # Curation said what they are; it did not find them, and
             # overwriting this with "BARRY curation" would lose the only
             # record of where the candidates came from.
-            "source": ((entry.get("import_from") or {}).get("source")
-                       or (prior.get("source") if prior else None)
-                       if entry.get("import_from") else None) or {
-                "pipeline": pipeline,
-                "run_id": entry.get("run_id"),
-                "file": entry.get("source_file"),
-                "parameters": entry.get("parameters") or {},
-                "detector": entry.get("detector"),
-            },
+            #
+            # Written out rather than folded into one expression: a
+            # conditional binds looser than `or`, so
+            # `(A or B) if C else None or D` meant that with no
+            # `import_from` -- which is every bank after the first,
+            # because the import is folded in and gone by then -- the
+            # whole thing fell through to D and rewrote the detector out
+            # of the record. The one curated entry in the bank had
+            # already lost "ETS dentate-spike export" this way.
+            "source": _source_for(entry, prior, pipeline),
             # Who first filed this, not who last touched it -- an entry that
             # forgets where it came from every time it is refreshed is not
             # provenance. The refreshes go in `history` below.
@@ -304,8 +339,9 @@ class EventBank:
         if came_from and not any(v.get("imported") for v in versions):
             was = came_from.get("added") or {}
             n0 = came_from.get("n") or len(came_from.get("events") or [])
-            versions.insert(0, {
+            v0 = {
                 "v": 0,
+                "id": "v0-" + str(came_from.get("id") or uuid.uuid4().hex[:8]),
                 "at": was.get("at") or _now(),
                 "by": was.get("by") or "unknown",
                 "note": "Imported from "
@@ -318,7 +354,19 @@ class EventBank:
                 "machine": was.get("machine"),
                 "imported": True,
                 "from_entry": came_from.get("id"),
-            })
+            }
+            # The import's own times, so folding it in is not a deletion.
+            # Banking a half-curated set writes only the decided ones,
+            # and the import entry is then removed as "now version 0" --
+            # so without this the candidates nobody had reached yet
+            # existed nowhere afterwards, and the position join the
+            # snapshot import depends on had nothing left to join to.
+            src_events = came_from.get("events") or []
+            if src_events and len(src_events) <= self.SNAP_MAX_EVENTS:
+                v0["snap"] = [[ev.get("start"),
+                               ev.get("label_id") or ev.get("label")]
+                              for ev in src_events]
+            versions.insert(0, v0)
         # What actually moved, candidate by candidate.
         #
         # The counts alone cannot see it: two calls going one way and two
@@ -358,6 +406,9 @@ class EventBank:
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
                 "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+                # A stable key, so two machines' histories union instead
+                # of one replacing the other.
+                "id": uuid.uuid4().hex[:12],
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -370,14 +421,32 @@ class EventBank:
                 "machine": entry.get("machine") or platform.node(),
             }
             if len(clean) <= self.SNAP_MAX_EVENTS:
-                fresh["snap"] = [[ev.get("start"), ev.get("label")]
+                fresh["snap"] = [[ev.get("start"),
+                                  ev.get("label_id") or ev.get("label")]
                                  for ev in clean]
+            # The first version of an entry nobody has curated is the
+            # detector's export -- the thing curation gets done *to*.
+            # Saying so here means a later curated bank recognises it
+            # and does not insert a second, identical record of the same
+            # import as version zero: the history read v0 "imported, none
+            # decided", v1 "imported, none decided", v2 "first pass".
+            if not versions and not rec["specified"]:
+                fresh["imported"] = True
+                fresh["note"] = fresh["note"] or (
+                    "Imported from "
+                    + ((rec.get("source") or {}).get("pipeline")
+                       or "a detector")
+                    + ". " + str(rec["n"])
+                    + " candidates, none decided yet.")
             versions.append(fresh)
             # Older snapshots go; their counts and their notes stay, so the
             # history is still complete, only less finely comparable far
-            # back.
+            # back. Version zero keeps its snapshot however old it gets:
+            # it is the only record of the candidates the detector found,
+            # and the entry it came from has been deleted.
             for old in versions[:-self.SNAP_VERSIONS]:
-                old.pop("snap", None)
+                if not old.get("imported"):
+                    old.pop("snap", None)
         elif versions:
             # Nothing changed, so no new version -- but say it was checked,
             # because "banked again and it was identical" is information.

@@ -96,6 +96,14 @@ BARRY.curate = (function () {
        sorted and we just need to review the flagged items". */
     review = 'left';
 
+    /* Opening it is what puts it on the workbench. Nothing else does:
+       importing candidates leaves a set closed, because a set nobody has
+       opened is not work in progress, it is just a list that exists. */
+    apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
+            + encodeURIComponent(kindId) + '/open', { open: true })
+      .then((res) => { if (res && res.set) set_.assignee = res.set.assignee; })
+      .catch(() => {});
+
     setMode('curate', exit);
     layout();
     // Hand the candidates to the session so the trace can draw them.
@@ -302,7 +310,8 @@ BARRY.curate = (function () {
     // Optimistic: the key press has to feel instant. The write follows, and
     // a failure puts it back and says so rather than pretending.
     ev.label = labelId;
-    history.push({ id: ev.id, from: was });
+    const step_ = { id: ev.id, from: was };
+    history.push(step_);
     markRev += 1;
     lastChange = { index, label: labelId };
     publishMarks();          // that mark's colour just changed
@@ -320,7 +329,18 @@ BARRY.curate = (function () {
         { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
     } catch (e) {
+      /* Put back everything the optimistic step did, not only the
+         label. The history entry it pushed stayed behind, so `u`
+         later "undid" a decision that had never saved and wrote the
+         old value over the server's -- and the other windows kept
+         drawing the colour of a decision that did not exist. */
       ev.label = was;
+      const back = history.indexOf(step_);
+      if (back >= 0) history.splice(back, 1);
+      markRev += 1;
+      lastChange = { index: events().findIndex((x) => x.id === ev.id),
+                     label: was };
+      publishMarks();
       /* The set has been deleted out from under us -- from the ToolKit, or
          on another machine. Every further keystroke would fail the same way
          and put another red toast on screen, which is how a trace ends up
@@ -345,6 +365,7 @@ BARRY.curate = (function () {
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
+    const was = events()[at].label || null;
     events()[at].label = last.from;
     // Same as a decision as far as the other windows are concerned: a mark
     // just changed colour, and goTo below is what tells them.
@@ -357,7 +378,17 @@ BARRY.curate = (function () {
       await apiPost('/api/curation/' + encodeURIComponent(set_.gid) + '/'
                     + encodeURIComponent(set_.kind) + '/label',
                     { event: last.id, label: last.from });
-    } catch (e) { toast(e.message, 'err'); }
+    } catch (e) {
+      /* The undo did not save, so the server still holds the decision.
+         Showing it as undone would be a lie, and the history entry is
+         already gone -- so put both back and say so. */
+      events()[at].label = was;
+      history.push(last);
+      markRev += 1;
+      lastChange = { index: at, label: was };
+      publishMarks();
+      toast('That undo did not save: ' + e.message, 'err', 8000);
+    }
     render();
   }
 
@@ -535,7 +566,12 @@ BARRY.curate = (function () {
         if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
       }
       const vs = (entry && entry.versions) || [];
-      const next = vs.length + 1;
+      /* Highest so far plus one, which is what the server does. The
+         count is not the same number: the detector's import sits at
+         version zero, so an entry with v0 and v1 has two versions
+         and its next one is v2. The dialog offered to write v3 and
+         the server wrote v2. */
+      const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
 
       const wrap = el('div', { class: 'modal bank-dialog' });
       wrap.appendChild(el('div', { class: 'modal-head' }, [

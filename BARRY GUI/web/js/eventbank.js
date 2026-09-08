@@ -734,6 +734,12 @@ BARRY.views.eventbank = (function () {
 
     const matchOf = (sess) => {
       const id = sess.identity || {};
+      /* The permanent id first, the way the server matches. Checking
+         session_key first meant a recording whose header start had
+         moved by a second -- the exact case the gid exists to solve
+         -- was reported as merely "same session", and the dialog then
+         refused to preselect the one recording it was certain of. */
+      if (e.gid && id.gid && id.gid === e.gid) return 'exact';
       if (e.session_key && id.key === e.session_key) return 'exact';
       if (e.mouse != null && id.mouse === e.mouse
           && e.session != null && id.session === e.session) return 'same session';

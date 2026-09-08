@@ -9,50 +9,50 @@
     "schema": "2026-09-03T21:07:03.090459+00:00",
     "session_label": "2026-09-03T21:07:03.090459+00:00",
     "source": "2026-09-03T21:07:03.090459+00:00",
-    "updated": "2026-09-03T21:07:03.090459+00:00"
+    "updated": "2026-09-08T17:44:57.279648+00:00"
   },
   "_keys": {
     "events": {
       "e291d5bb5b9": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "e3d2defa539": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "e5dfd63eb4a": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "e62ee8d8402": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "e673323af3a": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "e9dd7c2a260": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "eb7e5505239": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "ed4c5eaf58d": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ],
       "eeb3ea8fc07": [
         "set",
-        "2026-09-03T21:07:03.090459+00:00"
+        "2026-09-08T17:44:57.279648+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T21:07:03.090459+00:00",
+    "at": "2026-09-08T17:44:57.279648+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -64,48 +64,129 @@
   },
   "events": [
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e9dd7c2a260",
       "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
       "start": 193.924
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e291d5bb5b9",
       "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
       "start": 431.096
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ed4c5eaf58d",
       "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
       "start": 1026.128
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e5dfd63eb4a",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1030.473
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "eb7e5505239",
       "label": "flag",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        }
+      ],
       "start": 1761.085
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "eeb3ea8fc07",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1911.941
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e3d2defa539",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 2189.143
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e673323af3a",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 2425.46
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e62ee8d8402",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 2517.264
     }
   ],
@@ -173,9 +254,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T13:44:57-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   }
 }

@@ -120,6 +120,54 @@ def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
+# How close two times have to be to be the same candidate. A tenth of a
+# millisecond: tight enough that two real candidates are never confused,
+# loose enough to survive a float round trip through JSON. One constant
+# rather than a literal per call site, because `create` matched at three
+# decimals while absorb, restore and the bank matched at four -- so the
+# same two candidates were one candidate in one place and two in another.
+MATCH_DP = 4
+
+
+def _tkey(value):
+    """A start time as a match key, or None if it is not a time at all."""
+    try:
+        return round(float(value), MATCH_DP)
+    except (TypeError, ValueError):
+        return None
+
+
+def resolve_label(labels, value):
+    """A label id from whatever a caller has: an id, or a display name.
+
+    The bank stores a category as its display name, because an entry has
+    to be readable on its own -- so "Garbage" is what comes back out of
+    it. The set works in ids. Matching only on ids meant every decision
+    in a banked set was silently dropped on the way back in:
+    `"Garbage" in {"garbage", ...}` is False, so a fully curated set
+    returned undecided and looked like a fresh import. Both spellings
+    are accepted here, so nowhere else has to know that the bank speaks
+    names and the set speaks ids.
+    """
+    if value is None:
+        return None
+    want = str(value).strip()
+    if not want or want.lower() == "unspecified":
+        return None
+    ids, names = set(), {}
+    for lab in labels or []:
+        lid = lab.get("id")
+        if not lid:
+            continue
+        ids.add(lid)
+        names[str(lid).lower()] = lid
+        if lab.get("name"):
+            names[str(lab["name"]).strip().lower()] = lid
+    if want in ids:
+        return want
+    return names.get(want.lower())
+
+
 def _eid():
     return "e" + uuid.uuid4().hex[:10]
 
@@ -265,6 +313,14 @@ class Curation:
             "updated": rec.get("updated") or {},
             "labels": rec.get("labels") or kind.get("labels") or [],
             "archived": bool(rec.get("archived")),
+            # The workbench facts. A set is either something somebody is
+            # working on or it is not, and the list is unreadable without
+            # that distinction once there are forty of them.
+            "open": bool(rec.get("open")),
+            "assignee": rec.get("assignee"),
+            "opened_at": rec.get("opened_at"),
+            "opened_by": rec.get("opened_by"),
+            "closed_at": rec.get("closed_at"),
             "progress": self.progress(rec),
         }
 
@@ -291,6 +347,11 @@ class Curation:
                 "A curation set has to belong to a recording. Open the "
                 "recording first so it has a permanent id.")
 
+        vocab = vocabulary(kind)
+        prov = self.store.provenance() if self.store else {}
+        me = prov.get("user")
+        at_import = _now()
+
         clean = []
         for i, ev in enumerate(events or []):
             try:
@@ -306,9 +367,22 @@ class Curation:
                 for k in ("end", "channel", "amplitude", "note"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
-                if ev.get("label") and ev["label"] in self._label_ids(kind):
-                    # An import that already carries a decision keeps it.
-                    item["label"] = ev["label"]
+                # An import that already carries a decision keeps it --
+                # by id or by display name, because a set coming back
+                # from the bank carries names.
+                got = resolve_label(
+                    vocab, ev.get("label") or ev.get("label_id"))
+                if got:
+                    item["label"] = got
+                    # Stamped, because an unstamped decision loses every
+                    # disagreement it is ever in: _when(None) sorts
+                    # oldest, so "the newer decision wins" hands the
+                    # argument to whoever touched it most recently
+                    # regardless of who actually looked at the trace.
+                    item["by"] = (ev.get("by") or (source or {}).get("by")
+                                  or me or "the import")
+                    item["at"] = ev.get("at") or at_import
+                    _remember_review(item, item["by"], got, item["at"])
             clean.append(item)
 
         if not clean:
@@ -316,27 +390,35 @@ class Curation:
         clean.sort(key=lambda e: e["start"])
 
         existing = self._read(gid, kind)
+        # Kept even when replacing: write() needs the record that was
+        # read to know which candidates have gone. Without it the ids it
+        # no longer holds get no tombstone, and they come back the next
+        # time another machine's shard is merged in -- alongside the new
+        # ids for the same times, so the set doubles.
+        prior_sync = (existing or {}).get("_sync")
         if existing and not replace:
             # Adding to a set in progress: keep the decisions already made,
             # and only take candidates at times not already covered.
             have = {}
             for e in (existing.get("events") or []):
-                have.setdefault(round(e["start"], 3), e)
-            fresh = [e for e in clean if round(e["start"], 3) not in have]
+                key = _tkey(e.get("start"))
+                if key is not None:
+                    have.setdefault(key, e)
+            fresh = [e for e in clean if _tkey(e["start"]) not in have]
 
             # What the import actually had to offer, when every time in it
             # was already here: the labels. Taken where nobody has decided,
             # reported where somebody has decided otherwise, and never
             # written over a decision -- that is what absorb is for, and it
             # asks first.
-            who = (self.store.provenance() if self.store else {}).get("user")
-            valid = {l["id"] for l in (existing.get("labels") or [])}
+            who = me
             applied, differ = 0, []
             for e in clean:
-                lab = e.get("label")
-                if not lab or lab not in valid:
+                lab = resolve_label(existing.get("labels") or vocab,
+                                    e.get("label"))
+                if not lab:
                     continue
-                hit = have.get(round(e["start"], 3))
+                hit = have.get(_tkey(e["start"]))
                 if hit is None:
                     continue
                 if not hit.get("label"):
@@ -370,15 +452,21 @@ class Curation:
             "kind": kind,
             "name": name or (KINDS[kind]["name"] + " candidates"),
             "session_label": session_label,
+            # A set arrives closed. It joins the workbench when somebody
+            # opens it, not merely because it exists.
+            "open": False,
+            "assignee": None,
             # Copied in, so a later change to the vocabulary cannot rewrite
             # what an old set meant.
-            "labels": vocabulary(kind),
+            "labels": vocab,
             "source": source or {},
             "events": clean,
             "created": self.store.provenance() if self.store else {"at": _now()},
-            "imports": [{"at": _now(), "n": len(clean), "skipped": 0,
+            "imports": [{"at": at_import, "n": len(clean), "skipped": 0,
                          "source": source or {}}],
         }
+        if prior_sync:
+            rec["_sync"] = prior_sync
         return self._write(rec), len(clean), {"labelled": 0, "disagreed": []}
 
     HANDOFF_SCHEMA = 1
@@ -620,6 +708,55 @@ class Curation:
                 self.store._stage(path)
         return out
 
+    def backfill(self, dry_run=False):
+        """Give a decision that arrived without provenance the provenance
+        its own record implies.
+
+        The sets imported from the snapshot folders carry a label and
+        nothing else -- no who, no when, no review row -- because `create`
+        did not stamp what an import already knew. Two things follow, and
+        both are silent. `_when(None)` sorts oldest, so on any handoff
+        merge an unstamped decision loses every disagreement it is in to
+        whoever touched the set most recently. And with no review row,
+        "two people agreed" can never be true of anything, which is the
+        one thing the review list was added to make sayable.
+
+        The stamp used is the import's own time, from the set's `imports`
+        record, and the name is whoever the import said it was. That is
+        the honest answer: the decision is as old as the import, and it
+        was made by whoever did the sorting.
+        """
+        out = []
+        for rec in self.all():
+            imports = rec.get("imports") or []
+            first = imports[0] if imports else {}
+            src = first.get("source") or {}
+            at = first.get("at") or (rec.get("created") or {}).get("at")
+            who = (src.get("by") or (rec.get("created") or {}).get("user")
+                   or "the import")
+            stamped = reviewed = 0
+            for ev in rec.get("events") or []:
+                lab = ev.get("label")
+                if not lab:
+                    continue
+                if not ev.get("at") and at:
+                    ev["at"] = at
+                    ev.setdefault("by", who)
+                    stamped += 1
+                if not (ev.get("reviews") or []):
+                    _own_review(ev)
+                    reviewed += 1
+            if not (stamped or reviewed):
+                continue
+            out.append({"gid": rec.get("gid"), "kind": rec.get("kind"),
+                        "name": rec.get("name"),
+                        "session_label": rec.get("session_label"),
+                        "stamped": stamped, "reviewed": reviewed,
+                        "at": at, "by": who})
+            if not dry_run:
+                self._write(rec)
+        return out
+
     def with_decisions(self):
         """Every set anybody has actually decided something in."""
         out = []
@@ -697,13 +834,20 @@ class Curation:
         return hit, self.progress(rec)
 
     @shards.atomic
-    def label_many(self, gid, kind, pairs):
-        """Several at once, for a sweep like 'everything left is garbage'."""
+    def label_many(self, gid, kind, pairs, who=None, at=None):
+        """Several at once, for a sweep like 'everything left is garbage'.
+
+        `who` and `at` are for putting a banked version back, where the
+        decisions being written are somebody else's and were made at
+        some other time. Left out, it is the person at the keyboard
+        now, which is right for a sweep.
+        """
         rec = self._read(gid, kind)
         if not rec:
             raise CurationError("No curation set for that recording.")
         valid = {l["id"] for l in (rec.get("labels") or [])}
-        who = (self.store.provenance() if self.store else {}).get("user")
+        who = (who or "").strip() or \
+            (self.store.provenance() if self.store else {}).get("user")
         index = {e["id"]: e for e in (rec.get("events") or [])}
         n = 0
         for eid, label in (pairs or {}).items():
@@ -712,16 +856,77 @@ class Curation:
                 continue
             if label is not None and label not in valid:
                 continue
+            # The same care `label` takes over one candidate. This is the
+            # back end of the fill-down sweep AND of putting a banked
+            # version back, and without it either one overwrote a
+            # colleague's call leaving no trace that they had ever made
+            # one -- which is the exact case the review list exists for.
+            _own_review(e)
+            stamp = at or _now()
             e["label"] = label
             if label is None:
                 e.pop("by", None)
                 e.pop("at", None)
             else:
                 e["by"] = who
-                e["at"] = _now()
+                e["at"] = stamp
+                _remember_review(e, who, label, stamp)
             n += 1
         self._write(rec)
         return n, self.progress(rec)
+
+    @shards.atomic
+    def open_set(self, gid, kind, on=True, who=None):
+        """Put a set on the workbench, or take it off.
+
+        Closing is not archiving and it is not finishing: nothing is
+        hidden, nothing is required first, and the decisions are already
+        saved -- every keystroke wrote through when it was made. It only
+        says whether this is something anybody is working on right now.
+
+        Opening also claims the set, if nobody has claimed it. Forty sets
+        with no owner is a list; forty sets with a name on each is a
+        division of labour.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        who = (who or "").strip() or \
+            (self.store.provenance() if self.store else {}).get("user")
+        if on:
+            rec["open"] = True
+            rec["opened_at"] = _now()
+            rec["opened_by"] = who
+            rec.pop("closed_at", None)
+            if not (rec.get("assignee") or "").strip() and who:
+                rec["assignee"] = who
+        else:
+            rec["open"] = False
+            rec["closed_at"] = _now()
+        return self._write(rec)
+
+    @shards.atomic
+    def assign(self, gid, kind, who):
+        """Say whose set this is. Empty hands it back to nobody."""
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        rec["assignee"] = (who or "").strip() or None
+        rec["assigned_at"] = _now()
+        return self._write(rec)
+
+    def close_all(self, kind=None):
+        """Take everything off the workbench. Nothing else changes."""
+        out = []
+        for rec in self.all():
+            if not rec.get("open"):
+                continue
+            if kind is not None and rec.get("kind") != kind:
+                continue
+            self.open_set(rec["gid"], rec["kind"], False)
+            out.append({"gid": rec["gid"], "kind": rec["kind"],
+                        "name": rec.get("name")})
+        return out
 
     @shards.atomic
     def rename(self, gid, kind, name):

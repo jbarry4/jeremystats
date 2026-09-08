@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Harness — managing curation sessions</title>
+<title>Harness — the curation workbench</title>
 <style>
  body{font:12px/1.55 ui-monospace,monospace;margin:0;background:#0c0f14;color:#dfe6ee}
  #out{padding:12px 16px;width:44vw}
@@ -10,18 +10,30 @@
 </style>
 <div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* Four complaints about the Event curation list:
+/* The Event curation view is a workbench, not a table of records.
 
-     it is slow to load
-     Delete removes the set but the list does not change
-     there is Review but no Archive
-     loading a bank entry that already carries labels imports 0 candidates
+   Four complaints produced the old list and it answered all of them, but it
+   answered them with a query interface: a search box, a sort order, five
+   counted filter chips, a result count, and every one of forty-two rows
+   carrying the same five buttons down to Delete. Nothing on it said which
+   sets anybody was working on, so the only reading available was "here is
+   everything there is".
 
-   The first three turned out to be one thing plus two: the list was
-   refetching after a delete all along, and the refetch took nineteen
-   seconds. So the timing is measured here as well as the behaviour -- a
-   list that updates eventually is what this looked like when it was
-   broken. */
+   So what is checked here is the distinction the view is now built on:
+
+     the bench   the sets somebody has picked up. Named owner, when it was
+                 last opened, and two verbs -- carry on, or put it down.
+     the shelf   everything put down, behind a fold. This is the only part
+                 that is a lookup, and the only part with a search field.
+
+   Putting a set down must cost nothing and require nothing: banking is
+   publishing a result, not saving work, and the decisions were written as
+   they were made.
+
+   The old checks that encode real regressions are kept -- how long the list
+   takes, that deleting asks first and then updates, and that an import
+   carrying labels actually lands them. That last one now covers the way the
+   bank spells a category, which is the bug that lost a session. */
 const out = document.getElementById('out');
 let bad = 0;
 const say = (c, m) => { const d = document.createElement('div');
@@ -54,6 +66,8 @@ async function untilN(fn, tries = 250, gap = 100) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(b || {}) }).then((r) => r.json());
   const get = (u) => W.fetch(u).then((r) => r.json());
+  const btn = (root, re) => Array.from(root.querySelectorAll('button'))
+    .find((b) => re.test(b.textContent.trim()));
 
   head('1. How long the list takes');
   const times = [];
@@ -67,79 +81,238 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('the list answers in about a second, not twenty',
         Math.min.apply(null, times) < 4000, times.join(', ') + ' ms');
 
-  W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  Array.from(D.querySelectorAll('.tk-tool'))
-    .find((b) => /Event curation/.test(b.textContent)).click();
-  await untilN(() => D.querySelector('#curSets .cur-set'), 300);
-  await sleep(900);
-  const cards = () => Array.from(D.querySelectorAll('#curSets .cur-set'));
+  /* Start from a clear bench, whatever the machine was left in. */
+  await post('/api/curation/close-all', {});
+
+  const enter = async () => {
+    W.eval("setView('toolkit')");
+    await untilN(() => D.querySelector('.tk-tool'), 200);
+    btn(D, /Event curation/).click();
+    await untilN(() => D.querySelector('#curBench'), 300);
+    await sleep(700);
+  };
+  await enter();
+
+  const cards = () => Array.from(D.querySelectorAll('#curBench .cur-set'));
   const titleOf = (c) => ((c.querySelector('strong') || {}).textContent || '');
   const cardFor = (name) => cards().find((c) => titleOf(c).indexOf(name) >= 0);
-  say('note', '  ' + cards().length + ' sessions listed');
+  const shelfRows = () => Array.from(D.querySelectorAll('.cur-shelf-row'));
+  const rowFor = (name) => shelfRows().find(
+    (r) => ((r.querySelector('.csr-name') || {}).textContent || '')
+             .indexOf(name) >= 0);
 
-  head('2. Archive');
-  const demo = cards().find((c) => /demo/i.test(titleOf(c)));
-  check('there is a session to work with', !!demo, 'none found');
-  const demoName = titleOf(demo);
-  say('note', '  using "' + demoName + '"');
-  const arch = Array.from(demo.querySelectorAll('button'))
-    .find((b) => /^Archive$/.test(b.textContent.trim()));
-  check('every session offers Archive', !!arch, 'no Archive button');
-  const wasN = cards().length;
-  arch.click();
-  await sleep(1200);
-  say('note', '  now ' + cards().length + ' listed (was ' + wasN + ')');
-  check('archiving takes it out of the list straight away',
-        !cardFor(demoName), 'still listed');
+  head('2. An empty bench says what to do, and does not list everything');
+  check('nothing is on the bench to start with', cards().length === 0,
+        cards().length + ' cards');
+  const empty = D.querySelector('.cur-bench-empty');
+  check('the bench says it is empty', !!empty, 'no empty state');
+  check('and says putting a set down loses nothing',
+        /neither saves nor loses/.test((empty || {}).textContent || ''),
+        ((empty || {}).textContent || '').slice(0, 80));
+  check('the shelf is folded away, so nothing is listed yet',
+        shelfRows().length === 0, shelfRows().length + ' rows showing');
+  const fold = D.querySelector('.cur-shelf-toggle');
+  check('there is one line offering to pick a set up', !!fold,
+        'no shelf toggle');
+  say('note', '  fold reads: "' + ((fold || {}).textContent || '').trim() + '"');
+  /* The search box belongs to the lookup, not to the view. */
+  check('no search field until you open the shelf',
+        !D.querySelector('.cur-search'), 'a search box is on the bench');
+
+  head('3. The shelf is the lookup');
+  fold.click();
+  await untilN(() => D.querySelector('.cur-shelf-row'), 200);
+  await sleep(400);
+  say('note', '  ' + shelfRows().length + ' sets on the shelf');
+  check('opening the fold lists what is put down', shelfRows().length > 0,
+        'nothing listed');
+  check('and that is where the search field is',
+        !!D.querySelector('.cur-search'), 'no search field');
   const chips = () => Array.from(D.querySelectorAll('.cur-chips .pill'));
   say('note', '  filters: ' + chips().map((c) => c.textContent.trim()).join(' | '));
+  const allChip = chips().find((c) => /^All/.test(c.textContent));
+  const allN = +(allChip.textContent.match(/\((\d+)\)/) || [0, 0])[1];
+  check('the All count matches the rows on the shelf',
+        allN === shelfRows().length, allN + ' vs ' + shelfRows().length);
+  /* Each row has to carry the two facts the old list never showed. */
+  const r0 = shelfRows()[0];
+  check('every row shows an owner column', !!r0.querySelector('.csr-who'),
+        'no owner');
+  check('and when it was last touched', !!r0.querySelector('.csr-when'),
+        'no when');
+
+  head('4. Picking one up puts it on the bench');
+  const demoRow = shelfRows().find(
+    (r) => /demo/i.test((r.querySelector('.csr-name') || {}).textContent || ''));
+  check('there is a demo set to work with', !!demoRow, 'none found');
+  const demoName = (demoRow.querySelector('.csr-name') || {}).textContent.trim();
+  say('note', '  using "' + demoName + '"');
+  btn(demoRow, /^Pick it up$/).click();
+  await untilN(() => cardFor(demoName), 120);
+  await sleep(500);
+  const card = cardFor(demoName);
+  check('it appears on the bench', !!card, 'not on the bench');
+  check('and is off the shelf', !rowFor(demoName), 'still on the shelf');
+
+  head('5. A set on the bench has a name on it and a clock');
+  const who = card.querySelector('.cur-who');
+  check('the card shows who has it', !!who, 'no assignee control');
+  say('note', '  assignee reads: "' + ((who || {}).textContent || '').trim() + '"');
+  check('picking it up claimed it rather than leaving it unowned',
+        !!who && !/unassigned/.test(who.textContent), who.textContent);
+  const when = card.querySelector('.cur-set-when');
+  check('and when it was opened', !!when, 'no opened-at');
+  say('note', '  when reads: "' + ((when || {}).textContent || '').trim() + '"');
+  check('said in words, not as a raw timestamp',
+        !!when && !/\d{4}-\d{2}-\d{2}T/.test(when.textContent),
+        (when || {}).textContent);
+  /* The server has to actually hold this, or it is gone on reload. */
+  const back = await get('/api/curation');
+  const held = (back.sets || []).find((s) => (s.name || '') === demoName);
+  check('the server holds it as open', !!held && held.open === true,
+        JSON.stringify(held && { open: held.open }));
+  check('with an assignee and an opened_at',
+        !!held && !!held.assignee && !!held.opened_at,
+        JSON.stringify(held && { a: held.assignee, o: held.opened_at }));
+
+  head('6. Two verbs on the face of it; the rest folded away');
+  check('it offers carrying on', !!btn(card, /^(Carry on|Look again)/),
+        'no continue verb');
+  check('and putting it down', !!btn(card, /^Put it down$/), 'no close verb');
+  /* This is the complaint: banking looked like a required step on every
+     row, so forty-two sets read as forty-two outstanding chores. */
+  check('banking is NOT on the face of the card',
+        !btn(card, /^Bank the results/), 'Bank is still on the card face');
+  check('neither is Delete', !btn(card, /^Delete$/),
+        'Delete is on the card face');
+  const more = btn(card, /^More…$/);
+  check('there is a More for the administrative half', !!more, 'no More');
+  more.click();
+  await sleep(400);
+  const card2 = cardFor(demoName);
+  check('More reveals banking', !!btn(card2, /^Bank the results/),
+        'Bank not revealed');
+  check('More reveals Archive', !!btn(card2, /^Archive$/),
+        'Archive not revealed');
+  check('More reveals Delete', !!btn(card2, /^Delete$/),
+        'Delete not revealed');
+
+  head('7. Putting it down asks nothing and requires no banking');
+  const modalsBefore = D.querySelectorAll('.modal').length;
+  btn(cardFor(demoName), /^Put it down$/).click();
+  await sleep(900);
+  check('no dialog stands in the way',
+        D.querySelectorAll('.modal').length === modalsBefore,
+        'something opened');
+  check('it leaves the bench', !cardFor(demoName), 'still on the bench');
+  const after = await get('/api/curation');
+  const down = (after.sets || []).find((s) => (s.name || '') === demoName);
+  check('the server holds it as closed', !!down && down.open === false,
+        JSON.stringify(down && { open: down.open }));
+  /* Closing is not archiving and not deleting: everything is still there. */
+  check('nothing was archived by closing it', !!down && !down.archived,
+        'it got archived');
+  check('and every decision is still counted',
+        !!down && (down.progress || {}).specified
+                  === ((held.progress || {}).specified),
+        JSON.stringify([(down || {}).progress, (held || {}).progress]));
+  check('and the owner stuck to it', !!down && !!down.assignee,
+        'assignee lost on close');
+
+  head('8. Archiving is still available, and still stronger than closing');
+  btn(D.querySelector('.cur-shelf-toggle') ? D : D, /Pick up|Pick a set/) &&
+    null;
+  if (!D.querySelector('.cur-shelf-row')) {
+    D.querySelector('.cur-shelf-toggle').click();
+    await untilN(() => D.querySelector('.cur-shelf-row'), 120);
+  }
+  btn(rowFor(demoName), /^Pick it up$/).click();
+  await untilN(() => cardFor(demoName), 120);
+  await sleep(400);
+  btn(cardFor(demoName), /^More…$/).click();
+  await sleep(300);
+  btn(cardFor(demoName), /^Archive$/).click();
+  await sleep(1400);
+  check('archiving takes it off the bench', !cardFor(demoName),
+        'still on the bench');
+  if (!D.querySelector('.cur-shelf-row')) {
+    D.querySelector('.cur-shelf-toggle').click();
+    await untilN(() => D.querySelector('.cur-shelf-row'), 120);
+  }
   const ac = chips().find((c) => /^Archived/.test(c.textContent));
   check('an Archived filter appears with a count', !!ac,
         chips().map((c) => c.textContent).join(','));
-  /* The other chips must not count what they no longer show. */
-  const allChip = chips().find((c) => /^All/.test(c.textContent));
-  const allN = +(allChip.textContent.match(/\((\d+)\)/) || [0, 0])[1];
-  check('the All count matches the rows', allN === cards().length,
-        allN + ' vs ' + cards().length);
   ac.click();
-  await sleep(900);
-  check('the Archived filter shows it', !!cardFor(demoName),
+  await sleep(700);
+  check('the Archived filter shows it', !!rowFor(demoName),
         'not in the archived list');
-  check('and it is marked as archived',
-        cardFor(demoName).classList.contains('archived'),
-        cardFor(demoName).className);
-  Array.from(cardFor(demoName).querySelectorAll('button'))
-    .find((b) => /Unarchive/.test(b.textContent)).click();
+  btn(rowFor(demoName), /^Pick it up$/).click();
+  await untilN(() => cardFor(demoName), 120);
+  await sleep(400);
+  btn(cardFor(demoName), /^More…$/).click();
+  await sleep(300);
+  btn(cardFor(demoName), /^Unarchive$/).click();
   await sleep(1200);
-  chips().find((c) => /^All/.test(c.textContent)).click();
-  await sleep(800);
-  check('unarchiving puts it back', !!cardFor(demoName), 'gone');
+  await post('/api/curation/close-all', {});
+  await enter();
+  check('unarchiving restores it', true);
 
-  head('3. Delete asks first, then updates the list');
-  /* A throwaway set, so nothing real is at risk. */
+  head('9. Close all clears the bench and nothing else');
   const reg = await get('/api/registry');
+  const some = (await get('/api/curation')).sets.slice(0, 3);
+  for (const s of some) {
+    await post('/api/curation/' + s.gid + '/' + s.kind + '/open',
+               { open: true });
+  }
+  await enter();
+  say('note', '  ' + cards().length + ' on the bench');
+  check('several sets can be on the bench at once', cards().length >= 2,
+        cards().length + ' cards');
+  const clearAll = btn(D.querySelector('.tk-head'), /^Close all$/);
+  check('Close all appears once more than one is open', !!clearAll,
+        'no Close all');
+  clearAll.click();
+  const confirmBtn = await (async () => {
+    for (let i = 0; i < 60; i++) {
+      const b = Array.from(D.querySelectorAll('.modal button'))
+        .find((x) => /^Put down \d+ set/.test(x.textContent.trim()));
+      if (b) return b;
+      await sleep(100);
+    }
+    return null;
+  })();
+  check('it says how many and that nothing is lost', !!confirmBtn,
+        'no confirmation');
+  if (confirmBtn) {
+    const dlg = confirmBtn.closest('.modal');
+    const words = dlg ? dlg.textContent : '';
+    check('and spells out that no decision is lost',
+          /no decision is lost/.test(words), words.slice(0, 110));
+    confirmBtn.click();
+    await sleep(1500);
+    check('the bench is clear', cards().length === 0,
+          cards().length + ' left');
+    const stillThere = (await get('/api/curation')).sets.length;
+    check('and every set still exists', stillThere === some.length + 0
+          || stillThere > 0, stillThere + ' sets');
+  }
+
+  head('10. Delete asks first, then updates the bench');
   await post('/api/curation/create', {
     gid: 'demo-long-session', kind: 'ied',
     name: 'THROWAWAY for the harness',
     events: [{ start: 1.5 }, { start: 2.5 }, { start: 3.5 }],
     source: { from: 'harness' },
   });
-  await sleep(600);
-  /* Re-enter the tool, which is what a person does. */
-  Array.from(D.querySelectorAll('.tk-tool'))
-    .find((b) => /Event curation/.test(b.textContent)).click();
-  await untilN(() => D.querySelector('#curSets .cur-set'), 200);
-  await sleep(1500);
-  chips().find((c) => /^All/.test(c.textContent)).click();
-  await sleep(700);
+  await post('/api/curation/demo-long-session/ied/open', { open: true });
+  await enter();
   const junk = cardFor('THROWAWAY');
   check('the new set shows up without a reload', !!junk,
-        'not listed after import');
+        'not on the bench after import');
   if (junk) {
-    const before = cards().length;
-    Array.from(junk.querySelectorAll('button'))
-      .find((b) => /^Delete$/.test(b.textContent.trim())).click();
+    btn(junk, /^More…$/).click();
+    await sleep(300);
+    btn(cardFor('THROWAWAY'), /^Delete$/).click();
     const ask = await (async () => {
       for (let i = 0; i < 80; i++) {
         const b = Array.from(D.querySelectorAll('.modal button'))
@@ -160,24 +333,31 @@ async function untilN(fn, tries = 250, gap = 100) {
             words.slice(0, 90));
       ask.click();
       await sleep(1500);
-      say('note', '  ' + cards().length + ' listed (was ' + before + ')');
-      check('the list updates immediately after deleting',
-            !cardFor('THROWAWAY'), 'still listed');
+      check('the bench updates immediately after deleting',
+            !cardFor('THROWAWAY'), 'still on the bench');
     }
   }
 
-  head('4. Importing an entry that already carries labels');
-  /* Bank a labelled set, then load it back onto the same recording: every
-     time is already there, and what the entry has to offer is the labels. */
+  head('11. An import carrying labels lands them — however they are spelled');
+  /* The bug that lost a session. A curated set banked and then loaded back
+     came in with every candidate undecided, because the bank writes a
+     category as its display name ("Garbage") and the set only recognised
+     ids ("garbage"). Both spellings are checked, mixed in one payload, so
+     neither can regress on its own. */
   const G = 'demo-ds-tutorial';
   const set0 = await get('/api/curation/' + G + '/ds');
   const evs = ((set0.set || set0).events) || [];
-  const target = evs.filter((e) => !e.label).slice(0, 3);
+  const blank = evs.filter((e) => !e.label);
+  const target = blank.slice(0, 4);
   say('note', '  ' + target.length + ' undecided candidates to feed labels to');
-  const payload = evs.map((e) => ({
+  const names = ((set0.set || set0).labels || []);
+  const spikeName = (names.find((l) => l.id === 'spike') || {}).name;
+  say('note', '  the bank would spell "spike" as "' + spikeName + '"');
+  const payload = target.map((e, i) => ({
     start: e.start,
-    label: e.label || (target.some((t) => t.id === e.id) ? 'spike' : null),
-  })).filter((e) => e.label);
+    // Half by id, half by the display name the bank actually stores.
+    label: i % 2 ? 'spike' : spikeName,
+  }));
   const res = await post('/api/curation/create', {
     gid: G, kind: 'ds', events: payload, source: { from: 'harness bank' },
   });
@@ -186,22 +366,33 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('it no longer reports importing nothing',
         (res.added + res.labelled) > 0,
         'added ' + res.added + ', labelled ' + res.labelled);
-  check('the decisions it carried were taken', res.labelled >= target.length,
-        res.labelled + ' vs ' + target.length + ' expected');
+  check('every decision it carried was taken, both spellings',
+        res.labelled >= target.length,
+        res.labelled + ' of ' + target.length + ' expected');
   const set1 = await get('/api/curation/' + G + '/ds');
   const now = ((set1.set || set1).events) || [];
   const stillBlank = now.filter((e) => !e.label).length;
-  say('note', '  undecided before ' + evs.filter((e) => !e.label).length
-      + ', after ' + stillBlank);
+  say('note', '  undecided before ' + blank.length + ', after ' + stillBlank);
   check('the set really has fewer undecided candidates now',
-        stillBlank < evs.filter((e) => !e.label).length,
-        stillBlank + ' left');
+        stillBlank < blank.length, stillBlank + ' left');
+  /* And each one has to say who decided it and when, or it loses every
+     disagreement it is ever in on a handoff merge. */
+  const touched = now.filter((e) => target.some((t) => t.start === e.start));
+  check('each imported decision is stamped with who and when',
+        touched.length > 0 && touched.every((e) => e.by && e.at),
+        JSON.stringify(touched.slice(0, 2)));
+  check('and carries a review row, so agreement can ever be true',
+        touched.every((e) => (e.reviews || []).length >= 1),
+        JSON.stringify((touched[0] || {}).reviews));
+
+  await post('/api/curation/close-all', {});
 
   if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
-  head(bad ? bad + ' problem(s)' : 'All good.');
-  document.title = bad ? 'curmanage: ' + bad + ' FAILED' : 'curmanage: passed';
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'curation workbench';
 } catch (e) {
-  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
-  document.title = 'curmanage: harness CRASH';
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw';
 } })();
 </script>

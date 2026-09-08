@@ -9,30 +9,30 @@
     "schema": "2026-09-03T21:07:03.081193+00:00",
     "session_label": "2026-09-03T21:07:03.081193+00:00",
     "source": "2026-09-03T21:07:03.081193+00:00",
-    "updated": "2026-09-03T21:07:03.081193+00:00"
+    "updated": "2026-09-08T17:44:57.074648+00:00"
   },
   "_keys": {
     "events": {
       "e6168265b0a": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-08T17:44:57.074648+00:00"
       ],
       "e735ef43b7d": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-08T17:44:57.074648+00:00"
       ],
       "ec72d16e29b": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-08T17:44:57.074648+00:00"
       ],
       "ef3b27952de": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-08T17:44:57.074648+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T21:07:03.081193+00:00",
+    "at": "2026-09-08T17:44:57.074648+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -44,23 +44,59 @@
   },
   "events": [
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ef3b27952de",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 531.35
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "ec72d16e29b",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 547.079
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e735ef43b7d",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 625.815
     },
     {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
       "id": "e6168265b0a",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
       "start": 1548.814
     }
   ],
@@ -128,9 +164,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T13:44:57-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   }
 }
