@@ -435,8 +435,12 @@ async function api(path, opts) {
   return data;
 }
 
-const apiPost = (path, body) =>
-  api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+/* `opts` so a caller can pass an AbortSignal. A speculative request that
+   has been superseded should stop occupying a connection, not just have its
+   answer thrown away. */
+const apiPost = (path, body, opts) =>
+  api(path, Object.assign(
+    { method: 'POST', body: JSON.stringify(body || {}) }, opts || {}));
 
 /* Once per route, not once per session.
 
@@ -851,6 +855,11 @@ BARRY.refreshSync = async function refreshSync() {
   if ((data.code_changed || []).length) {
     showCodeStaleBanner(data.code_changed, data.started_at);
   }
+  /* The error count comes back in the same call, so paint it here rather
+     than only at boot and only again when the Errors view is opened. An
+     error recorded while you are somewhere else is exactly the case the
+     badge exists for, and it was the one case it missed. */
+  BARRY.setErrorCount(((data.index || {}).counts || {}).errors || 0);
   const git = data.git || {};
   const btn = $('#syncBtn');
   const label = $('#syncLabel');
@@ -1089,6 +1098,7 @@ function showSync() {
 BARRY.setErrorCount = function setErrorCount(n) {
   const b = $('#errBadge');
   if (!b) return;
+  n = Number(n) || 0;
   b.textContent = String(n);
   b.classList.toggle('hidden', !n);
 };
@@ -1176,8 +1186,11 @@ const MODES = {
   },
   curate: {
     name: 'DS curation',
-    what: 'Judging candidates · Y keeps, N rejects, ←/→ move '
-        + '· the aids are in the second window',
+    /* No `what`. It said "Y keeps, N rejects", and neither key does
+       anything: a set carries its own vocabulary and its own keys, which
+       the mode's own bar shows next to each category. A banner that
+       misstates the controls is worse than no banner, and the bar below it
+       was already saying the true version. */
   },
 };
 
@@ -1196,7 +1209,11 @@ function setMode(kind, leave) {
   const what = document.getElementById('modeWhat');
   const out = document.getElementById('modeLeave');
   if (name) name.textContent = m ? m.name : '';
-  if (what) what.textContent = m ? m.what : '';
+  if (what) {
+    what.textContent = (m && m.what) || '';
+    // Not merely empty: an empty span still takes its margins.
+    what.hidden = !(m && m.what);
+  }
   if (out) out.style.display = (m && modeLeaveFn) ? '' : 'none';
   // Every canvas just changed height by the banner's worth.
   window.dispatchEvent(new Event('resize'));
@@ -1268,7 +1285,20 @@ BARRY.profile = (function () {
     }
   }
 
-  function open() {
+  /* Everyone BARRY has come into contact with. Cached for the dialog's
+     lifetime; a fresh copy each time it is opened. */
+  let roster = null;
+
+  async function people() {
+    try {
+      roster = await api('/api/people');
+    } catch (e) {
+      roster = { people: [], me: null };
+    }
+    return roster;
+  }
+
+  async function open() {
     const cur = prof || {};
     const f = {};
     const field = (key, label, placeholder, hint) => {
@@ -1282,11 +1312,76 @@ BARRY.profile = (function () {
       ]);
     };
 
+    /* Who is already here. A row fills the form; the pencil opens that
+       person for editing without making them the person at this keyboard,
+       because filling in a colleague's role is a different act from
+       becoming them. */
+    const known = el('div', { class: 'prof-known' });
+    let editing = null;          // whose details are in the form, if not me
+
+    const fill = (d, asMe) => {
+      for (const k of ['name', 'email', 'role', 'initials']) {
+        if (f[k]) f[k].value = (d && d[k]) || '';
+      }
+      editing = asMe ? null : (d && d.name) || null;
+      paintKnown();
+    };
+
+    const paintKnown = () => {
+      known.innerHTML = '';
+      const rows = (roster && roster.people) || [];
+      if (!rows.length) {
+        known.appendChild(el('span', { class: 'hint',
+          text: 'Nobody else on record yet.' }));
+        return;
+      }
+      for (const p of rows) {
+        const mine = (f.name && f.name.value.trim()) === p.name;
+        known.appendChild(el('span', { class: 'prof-chip' + (mine ? ' on' : '') }, [
+          el('button', {
+            class: 'prof-chip-name',
+            title: 'Use ' + p.name + ' as who this machine credits work to',
+            text: p.name + (p.role ? '  \u00b7  ' + p.role : ''),
+            onclick: async () => {
+              let d = p;
+              try {
+                const got = await api('/api/people/'
+                                      + encodeURIComponent(p.name));
+                d = Object.assign({}, p, got.person || {});
+              } catch (e) { /* the chip already has enough */ }
+              fill(d, true);
+            },
+          }),
+          el('button', {
+            class: 'prof-chip-edit', title: 'Edit ' + p.name + '\u2019s details',
+            text: '\u270e',
+            onclick: async () => {
+              let d = p;
+              try {
+                const got = await api('/api/people/'
+                                      + encodeURIComponent(p.name));
+                d = Object.assign({}, p, got.person || {});
+              } catch (e) { /* fall back to the chip */ }
+              fill(d, false);
+              toast('Editing ' + p.name + '. Saving writes their details to '
+                    + 'the roster \u2014 it does not change who this machine '
+                    + 'credits work to.', null, 7000);
+            },
+          }),
+        ]));
+      }
+    };
+
     const body = el('div', { class: 'prof-form' }, [
       el('p', { class: 'confirm-msg',
         text: 'Everything BARRY records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
             + 'every run. Set it once.' }),
+      el('div', { class: 'section-label', text: 'People already here' }),
+      known,
+      el('p', { class: 'hint',
+        text: 'Click a name to credit this machine\u2019s work to them, or '
+            + 'the pencil to fill in their details without becoming them.' }),
       field('name', 'Your name', 'e.g. Rain Alvarez',
             'What appears under a figure and against every decision.'),
       field('email', 'Email', 'you@uvm.edu',
@@ -1307,8 +1402,35 @@ BARRY.profile = (function () {
         try {
           const patch = {};
           for (const k of Object.keys(f)) patch[k] = f[k].value;
+
+          /* Editing somebody else writes only to the roster. Saving their
+             name into this machine's profile would credit everything this
+             computer does from now on to a person who is not sitting at
+             it -- which is the opposite of what the pencil is for. */
+          if (editing && (patch.name || '').trim() === editing) {
+            await apiPost('/api/people/add', {
+              name: patch.name, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            });
+            roster = null;
+            closeModal();
+            toast('Saved ' + editing + '’s details. Who this machine '
+                  + 'credits work to is unchanged — still '
+                  + (who() || 'unset') + '.', 'ok', 7000);
+            BARRY.activity.log('people.edit', { name: editing });
+            return;
+          }
+
           const res = await apiPost('/api/profile', patch);
           prof = res.profile || prof;
+          /* And onto the roster, so a role or an email typed here is there
+             for everybody -- the picker and the assignee list both read it. */
+          if ((patch.name || '').trim()) {
+            apiPost('/api/people/add', {
+              name: patch.name, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            }).catch(() => { /* the profile is saved; this is the mirror */ });
+          }
           paintChip();
           closeModal();
           toast(who()
@@ -1339,6 +1461,8 @@ BARRY.profile = (function () {
       ]),
     ]));
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
+    /* After the modal is up, so the chips land in a box that exists. */
+    people().then(paintKnown);
   }
 
   function wire() {

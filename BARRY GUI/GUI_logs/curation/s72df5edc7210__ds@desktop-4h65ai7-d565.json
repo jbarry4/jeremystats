@@ -1,101 +1,172 @@
 {
   "_at": {
-    "assignee": "2026-09-08T18:01:48.638532+00:00",
-    "created": "2026-09-03T21:07:03.081193+00:00",
+    "assignee": "2026-09-08T19:08:26.698535+00:00",
+    "closed_at": "2026-09-08T19:12:52.216888+00:00",
+    "created": "2026-09-08T19:04:45.736653+00:00",
     "gid": "2026-09-03T21:07:03.081193+00:00",
-    "imports": "2026-09-03T21:07:03.081193+00:00",
+    "imports": "2026-09-08T19:04:45.792910+00:00",
     "kind": "2026-09-03T21:07:03.081193+00:00",
-    "labels": "2026-09-03T21:07:03.081193+00:00",
-    "name": "2026-09-03T21:07:03.081193+00:00",
+    "labels": "2026-09-08T19:03:11.347561+00:00",
+    "name": "2026-09-08T19:03:11.347561+00:00",
+    "open": "2026-09-08T19:12:52.216888+00:00",
+    "opened_at": "2026-09-08T19:12:49.345527+00:00",
+    "opened_by": "2026-09-08T19:12:49.345527+00:00",
     "schema": "2026-09-03T21:07:03.081193+00:00",
     "session_label": "2026-09-03T21:07:03.081193+00:00",
-    "source": "2026-09-03T21:07:03.081193+00:00",
-    "updated": "2026-09-08T18:01:48.638532+00:00"
+    "source": "2026-09-08T19:04:45.792910+00:00",
+    "updated": "2026-09-08T19:12:52.216888+00:00"
   },
   "_keys": {
     "events": {
-      "e6168265b0a": [
+      "e01b856f1bf": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "e2f769771da": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e3304b93f55": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e33e000abb6": [
         "set",
-        "2026-09-08T17:44:57.074648+00:00"
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e45e131b801": [
+        "set",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e6168265b0a": [
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "e6384bf65ef": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "e7064e9786e": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
       ],
       "e735ef43b7d": [
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "e79debfe90f": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "e95214f27c3": [
         "set",
-        "2026-09-08T17:44:57.074648+00:00"
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e9f8f466729": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "eaaae193e3e": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "eb7d474682a": [
+        "set",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "ebe3c087f58": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
       ],
       "ec72d16e29b": [
-        "set",
-        "2026-09-08T17:44:57.074648+00:00"
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "ed766a4aa44": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "ed9affad6c2": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "ee4f58b4acf": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
       ],
       "ef3b27952de": [
-        "set",
-        "2026-09-08T17:44:57.074648+00:00"
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:01:48.638532+00:00",
+    "at": "2026-09-08T19:12:52.216888+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "assignee": "theexaminedexistence@gmail.com",
+  "closed_at": "2026-09-08T15:12:52-0400",
   "created": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T15:04:45-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   },
   "events": [
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "ef3b27952de",
+      "at": "2026-09-08T15:04:45-0400",
+      "by": "theexaminedexistence@gmail.com",
+      "id": "e33e000abb6",
       "label": "garbage",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
+          "at": "2026-09-08T15:04:45-0400",
+          "by": "theexaminedexistence@gmail.com",
           "label": "garbage"
         }
       ],
       "start": 531.35
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "ec72d16e29b",
+      "at": "2026-09-08T15:04:45-0400",
+      "by": "theexaminedexistence@gmail.com",
+      "id": "e95214f27c3",
       "label": "garbage",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
+          "at": "2026-09-08T15:04:45-0400",
+          "by": "theexaminedexistence@gmail.com",
           "label": "garbage"
         }
       ],
       "start": 547.079
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "e735ef43b7d",
+      "at": "2026-09-08T15:04:45-0400",
+      "by": "theexaminedexistence@gmail.com",
+      "id": "eb7d474682a",
       "label": "garbage",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
+          "at": "2026-09-08T15:04:45-0400",
+          "by": "theexaminedexistence@gmail.com",
           "label": "garbage"
         }
       ],
       "start": 625.815
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "e6168265b0a",
+      "at": "2026-09-08T15:04:45-0400",
+      "by": "theexaminedexistence@gmail.com",
+      "id": "e45e131b801",
       "label": "garbage",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
+          "at": "2026-09-08T15:04:45-0400",
+          "by": "theexaminedexistence@gmail.com",
           "label": "garbage"
         }
       ],
@@ -105,14 +176,16 @@
   "gid": "s72df5edc7210",
   "imports": [
     {
-      "at": "2026-09-03T17:07:03-0400",
+      "at": "2026-09-08T15:04:45-0400",
       "n": 4,
       "skipped": 0,
       "source": {
         "bank_entry": "340307eba315",
-        "by": "snapshot import",
-        "folder": "M11_HF2_s10jul25",
-        "kind": "snapshot folders"
+        "by": "theexaminedexistence@gmail.com",
+        "entry_name": "DS candidates (ETS)",
+        "kind": "bank version",
+        "pipeline": "ETS dentate-spike export",
+        "version": 1
       }
     }
   ],
@@ -139,6 +212,7 @@
     },
     {
       "color": "#E5A823",
+      "flagged": true,
       "id": "flag",
       "keys": [
         "3",
@@ -148,6 +222,7 @@
     },
     {
       "color": "#8b5cf6",
+      "flagged": true,
       "id": "review",
       "keys": [
         "4",
@@ -156,17 +231,22 @@
       "name": "Flag for Deep Review"
     }
   ],
-  "name": "M11_HF2_s10jul25",
+  "name": "DS candidates (ETS)",
+  "open": false,
+  "opened_at": "2026-09-08T15:12:49-0400",
+  "opened_by": "Rain",
   "schema": 1,
   "session_label": "PTEN m11 s10 2023-07-25",
   "source": {
     "bank_entry": "340307eba315",
-    "by": "snapshot import",
-    "folder": "M11_HF2_s10jul25",
-    "kind": "snapshot folders"
+    "by": "theexaminedexistence@gmail.com",
+    "entry_name": "DS candidates (ETS)",
+    "kind": "bank version",
+    "pipeline": "ETS dentate-spike export",
+    "version": 1
   },
   "updated": {
-    "at": "2026-09-08T14:01:48-04:00",
+    "at": "2026-09-08T15:12:52-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "StrawBarry",

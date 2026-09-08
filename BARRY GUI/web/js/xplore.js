@@ -2051,14 +2051,16 @@ BARRY.views.xplore = (function () {
         : 'Bookmarks, events and spikes appear here',
       () => marksPop(index, sess)));
 
-    host.appendChild(el('div', { class: 'ctl-spacer' }));
-
+    /* No spacer before More. There was one on each side of it, so it was
+       centred in whatever room the strip had -- floating in the middle of an
+       empty stretch, a long way from the controls it belongs with. It is
+       one of the controls; it sits with them. */
     host.appendChild(menu(index, 'More', null,
       'Events, spikes, read options, and this recording on disk',
       () => morePop(index, pane, sess)));
 
-    // Last, so it sits at the right-hand end of the strip rather than in
-    // among the controls.
+    // The one spacer, so the collapse arrow is at the right-hand end of the
+    // strip rather than in among the controls.
     host.appendChild(el('div', { class: 'ctl-spacer' }));
     host.appendChild(collapseArrow('strip'));
     return host;
@@ -4427,9 +4429,37 @@ BARRY.views.xplore = (function () {
   }
 
   const debouncers = {};
+  /* When each pane was last asked to refresh, so a burst can be told from
+     a single move. */
+  const lastAsk = {};
+
+  /* How long a pane waits before it actually fetches.
+
+     80 ms coalesces a drag, which is what it was for, and coalesces nothing
+     at all when the window moves once every few hundred milliseconds -- a
+     keystroke pass through candidates. The traces are cheap and should stay
+     that responsive. An image panel is half a second to two and a half
+     seconds of work on 64 channels, so asking for one per keystroke buries
+     the server in renders for windows nobody is looking at any more.
+
+     So an image panel waits long enough to be sure you have stopped. The
+     wait is only long while you are moving: land on a candidate and stay
+     there, and the next fetch is as quick as it ever was. */
+  const PANEL_SETTLE = 420;
+
+  function refreshDelay(index) {
+    const pane = XF.panes[index];
+    if (!pane || !isImagePanel(pane.panel)) return 80;
+    const now = performance.now();
+    const since = now - (lastAsk[index] || 0);
+    lastAsk[index] = now;
+    return since < 900 ? PANEL_SETTLE : 80;
+  }
+
   function refreshPane(index) {
     clearTimeout(debouncers[index]);
-    debouncers[index] = setTimeout(() => doRefreshPane(index), 80);
+    debouncers[index] = setTimeout(() => doRefreshPane(index),
+                                   refreshDelay(index));
   }
 
   async function doRefreshPane(index) {
@@ -4567,10 +4597,18 @@ BARRY.views.xplore = (function () {
   async function fetchImagePanel(index, pane, sess) {
     if (!sess.sel.size && isChannelPanel(pane.panel)) return;
     const id = (pane._req = (pane._req || 0) + 1);
+    /* Stop the one before this. It was going to be discarded on arrival
+       anyway, and until it arrived it was holding one of the six
+       connections this page gets and a thread on the server. */
+    if (pane._abort) { try { pane._abort.abort(); } catch (e) {} }
+    const ctl = (typeof AbortController === 'function')
+      ? new AbortController() : null;
+    pane._abort = ctl;
     if (pane._loading) pane._loading.classList.remove('hidden');
     try {
       const spec = panelSpec(index, pane, sess);
-      const res = await apiPost('/api/panel', spec);
+      const res = await apiPost('/api/panel', spec,
+                                ctl ? { signal: ctl.signal } : null);
       if (id !== pane._req) return;
       pane._panelData = res;
       if (pane._img) {
@@ -4582,12 +4620,18 @@ BARRY.views.xplore = (function () {
       // whose load event fired before the data was assigned.
       drawRasterGrid(pane, res);
     } catch (e) {
-      if (id === pane._req) {
+      // An abort is this code's own doing, not a failure to report.
+      const aborted = (e && (e.name === 'AbortError'
+                             || /abort/i.test(e.message || '')));
+      if (id === pane._req && !aborted) {
         if (pane._img) pane._img.removeAttribute('src');
         showPanelError(pane, e.message);
       }
     } finally {
-      if (pane._loading) pane._loading.classList.add('hidden');
+      if (pane._abort === ctl) pane._abort = null;
+      if (id === pane._req && pane._loading) {
+        pane._loading.classList.add('hidden');
+      }
     }
   }
 

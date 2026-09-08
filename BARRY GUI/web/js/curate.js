@@ -137,6 +137,9 @@ BARRY.curate = (function () {
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
     setMode(null);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
     set_ = null; kind = null; sess = null; history = [];
     const bar = $('#curBar');
     if (bar) bar.remove();
@@ -336,6 +339,9 @@ BARRY.curate = (function () {
         + encodeURIComponent(set_.kind) + '/label',
         { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
+      if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+        BARRY.views.toolkit.curationChanged();
+      }
     } catch (e) {
       /* Put back everything the optimistic step did, not only the
          label. The history entry it pushed stayed behind, so `u`
@@ -616,8 +622,15 @@ BARRY.curate = (function () {
           : [])));
 
       if (vs.length) {
+        /* "Already banked as N versions" is wrong when the history it is
+           about to join belongs to the detector's export rather than to a
+           previous bank of this set -- v0 was nobody banking anything. */
         wrap.appendChild(el('div', { class: 'section-label',
-          text: 'Already banked as ' + vs.length + ' version'
+          text: entry && entry.adopted
+            ? 'Carrying on from ' + (entry.source || 'the detector')
+              + '  ·  ' + vs.length + ' version'
+              + (vs.length === 1 ? '' : 's') + ' so far'
+            : 'Already banked as ' + vs.length + ' version'
               + (vs.length === 1 ? '' : 's') }));
         const list = el('div', { class: 'ver-list compact' });
         for (let i = vs.length - 1; i >= 0; i--) {
@@ -625,6 +638,8 @@ BARRY.curate = (function () {
           list.appendChild(el('div', { class: 'ver-row' }, [
             el('div', { class: 'ver-top' }, [
               el('span', { class: 'ver-n', text: 'v' + v.v }),
+              v.imported ? el('span', { class: 'flagchip',
+                                        text: 'the import' }) : null,
               el('span', { class: 'ver-when',
                            text: (v.at || '').replace('T', ' ').slice(0, 16) }),
               el('span', { class: 'ver-who', text: v.by || 'unknown' }),
@@ -632,6 +647,16 @@ BARRY.curate = (function () {
             ]),
             v.note ? el('div', { class: 'ver-note', text: v.note })
                    : el('div', { class: 'ver-note none', text: 'no note' }),
+            /* What each version holds, so the history is readable as a
+               history rather than as a list of dates. */
+            v.by_label && Object.keys(v.by_label).length
+              ? el('div', { class: 'ver-mix small' },
+                  Object.keys(v.by_label)
+                    .sort((a, b) => v.by_label[b] - v.by_label[a])
+                    .map((k) => el('span', { class: 'ver-chip',
+                                             text: nameOf(k) + ' '
+                                                 + v.by_label[k] })))
+              : null,
             v.changed
               ? el('div', { class: 'ver-shifts' }, [
                   el('span', { class: 'ver-since',

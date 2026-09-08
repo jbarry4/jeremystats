@@ -226,8 +226,17 @@ async function untilN(fn, tries = 250, gap = 100) {
         'Bank not revealed');
   check('More reveals Archive', !!vbtn(card2, /^Archive$/),
         'Archive not revealed');
-  check('More reveals Delete', !!vbtn(card2, /^Delete$/),
-        'Delete not revealed');
+  /* Delete is gone from this view altogether. It erased every machine's
+     shard of a set -- the only irreversible thing here -- and it sat at the
+     same weight as Export CSV. Archiving is what "get this out of my way"
+     means, and it destroys nothing. */
+  check('Delete is offered nowhere on the card',
+        !vbtn(card2, /^Delete$/) && !btn(card2, /^Delete$/),
+        'Delete is still there');
+  check('and Archive says plainly that nothing is deleted',
+        /Nothing is deleted/.test(
+          (vbtn(card2, /^Archive$/) || {}).title || ''),
+        ((vbtn(card2, /^Archive$/) || {}).title || '').slice(0, 70));
   check('and the fold can be closed again',
         !!vbtn(card2, /^Less$/), 'no Less');
 
@@ -338,7 +347,10 @@ async function untilN(fn, tries = 250, gap = 100) {
           || stillThere > 0, stillThere + ' sets');
   }
 
-  head('10. Delete asks first, then updates the bench');
+  head('10. Archiving a set keeps every decision');
+  /* What Delete used to be tested for -- that the bench updates at once --
+     still matters, and archiving is now the verb that does it. What it must
+     NOT do is touch the data. */
   await post('/api/curation/create', {
     gid: 'demo-long-session', kind: 'ied',
     name: 'THROWAWAY for the harness',
@@ -351,30 +363,28 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('the new set shows up without a reload', !!junk,
         'not on the bench after import');
   if (junk) {
-    vbtn(await openMore('THROWAWAY'), /^Delete$/).click();
-    const ask = await (async () => {
-      for (let i = 0; i < 80; i++) {
-        const b = Array.from(D.querySelectorAll('.modal button'))
-          .find((x) => /^Delete \d+ decision/.test(x.textContent.trim()));
-        if (b) return b;
-        await sleep(100);
-      }
-      return null;
-    })();
-    check('Delete asks before destroying anything', !!ask,
-          'it deleted with no confirmation');
-    if (ask) {
-      const dlg = ask.closest('.modal') || D.querySelector('.modal');
-      const words = dlg ? dlg.textContent : '';
-      check('and says it affects every machine', /every machine/.test(words),
-            words.slice(0, 90));
-      check('and offers archiving instead', /Archive it instead/.test(words),
-            words.slice(0, 90));
-      ask.click();
-      await sleep(1500);
-      check('the bench updates immediately after deleting',
-            !cardFor('THROWAWAY'), 'still on the bench');
-    }
+    const before = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === 'THROWAWAY for the harness');
+    vbtn(await openMore('THROWAWAY'), /^Archive$/).click();
+    await sleep(1500);
+    check('the bench updates immediately after archiving',
+          !cardFor('THROWAWAY'), 'still on the bench');
+    const after = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === 'THROWAWAY for the harness');
+    check('the set still exists', !!after, 'it was destroyed');
+    check('and is marked archived', !!after && after.archived === true);
+    check('with every candidate still there',
+          !!after && (after.progress || {}).total
+                     === ((before || {}).progress || {}).total,
+          JSON.stringify([(after || {}).progress, (before || {}).progress]));
+    /* And it can be picked straight back up, which is the difference
+       between filing something away and destroying it. */
+    await post('/api/curation/demo-long-session/ied/open', { open: true });
+    const back = (await get('/api/curation')).sets.find(
+      (x) => (x.name || '') === 'THROWAWAY for the harness');
+    check('and picking it up un-archives it', !!back && !back.archived,
+          JSON.stringify(back && { archived: back.archived }));
+    await post('/api/curation/demo-long-session/ied/delete', {});
   }
 
   head('11. An import carrying labels lands them — however they are spelled');

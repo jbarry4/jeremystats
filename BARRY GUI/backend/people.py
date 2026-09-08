@@ -46,6 +46,20 @@ def _looks_like_a_person(name):
     return bool(name) and name.strip().lower() not in NOT_PEOPLE
 
 
+def rows_detail(people):
+    """Every stored detail row: hand-edited first, then the profiles."""
+    out = []
+    for r in people._extra():
+        out.append(dict(r, name=r.get("name")))
+    prof = shards.Book(os.path.join(people.logs, "prefs"), {}, None)
+    for machine, path in prof.shard_files("profile"):
+        got = shards._read_json(path) or {}
+        nm = _clean(got.get("name")) or _clean(got.get("email"))
+        if nm:
+            out.append(dict(got, name=nm))
+    return out
+
+
 class People:
     """The roster, compiled on demand from everything else."""
 
@@ -64,25 +78,70 @@ class People:
         rec = self.book.read("people") or {}
         return [r for r in (rec.get("added") or []) if r.get("id")]
 
-    def add(self, name, email=None, note=None):
-        """Put somebody on the roster before they have touched anything."""
+    # What may be said about a person. `name` is the key every other record
+    # uses, so it is not in here -- renaming somebody would orphan their
+    # decisions rather than move them.
+    FIELDS = ("email", "role", "initials", "orcid", "note")
+
+    def add(self, name, email=None, note=None, **extra):
+        """Put somebody on the roster, or edit what it says about them.
+
+        The same call for both: a roster is a small set of facts about a
+        person, and "add" and "edit" differ only in whether a row was there
+        already. Anything not passed is left as it was, so editing one field
+        does not blank the rest.
+        """
         name = _clean(name)
         if not name:
             raise ValueError("A person needs a name.")
         rec = self.book.read("people") or {}
-        rows = [r for r in (rec.get("added") or [])
-                if (r.get("id") or "").lower() != name.lower()]
-        rows.append({
-            "id": name,
-            "name": name,
-            "email": _clean(email),
-            "note": _clean(note),
-            "at": shards._now(),
-            "by": (self.store.provenance() if self.store else {}).get("user"),
-        })
+        was = None
+        rows = []
+        for r in (rec.get("added") or []):
+            if (r.get("id") or "").lower() == name.lower():
+                was = r
+            else:
+                rows.append(r)
+
+        row = dict(was or {})
+        row["id"] = name
+        row["name"] = name
+        given = dict(extra)
+        if email is not None:
+            given["email"] = email
+        if note is not None:
+            given["note"] = note
+        for k in self.FIELDS:
+            if k in given and given[k] is not None:
+                row[k] = _clean(given[k])
+        row.setdefault("at", shards._now())
+        row["edited_at"] = shards._now()
+        row["by"] = (self.store.provenance() if self.store else {}).get("user")
+        rows.append(row)
         rec["added"] = rows
         self.book.write("people", rec)
         return self.roster()
+
+    def details(self, name):
+        """What the roster holds about one person, editable fields only."""
+        name = _clean(name)
+        for r in self._extra():
+            if (r.get("id") or "").lower() == (name or "").lower():
+                out = {k: r.get(k) or "" for k in self.FIELDS}
+                out["name"] = r.get("name")
+                out["edited_at"] = r.get("edited_at")
+                return out
+        # Not hand-edited, but the profiles may still know something.
+        prof = shards.Book(os.path.join(self.logs, "prefs"), {}, None)
+        for machine, path in prof.shard_files("profile"):
+            got = shards._read_json(path) or {}
+            nm = _clean(got.get("name")) or _clean(got.get("email"))
+            if nm and nm.lower() == (name or "").lower():
+                out = {k: got.get(k) or "" for k in self.FIELDS}
+                out["name"] = nm
+                out["from_profile"] = machine
+                return out
+        return {"name": name, **{k: "" for k in self.FIELDS}}
 
     def forget(self, name):
         """Take a hand-added name off. A name the data carries cannot go:
@@ -163,9 +222,18 @@ class People:
                 note(v.get("by"), "banked versions", 1,
                      machine=v.get("machine"))
 
-        # Hand-added names.
+        # Hand-added and hand-edited names.
         for row in self._extra():
             note(row.get("name"), "added by hand", 1, email=row.get("email"))
+
+        # Everything the roster or a profile says about each of them, so the
+        # picker can show a role and the editor can open populated.
+        for r in rows_detail(self):
+            hit = seen.get(r["name"])
+            if hit is not None:
+                for k in ("email", "role", "initials", "orcid", "note"):
+                    if r.get(k) and not hit.get(k):
+                        hit[k] = r[k]
 
         me = (self.store.provenance() if self.store else {}).get("user")
         me = _clean(me)

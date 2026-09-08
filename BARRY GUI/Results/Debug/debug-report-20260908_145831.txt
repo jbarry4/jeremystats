@@ -1,0 +1,352 @@
+BARRY GUI debug report
+generated  2026-09-08 14:58:31
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     C:\Users\Z390\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    PTEN m59 s10 2025-07-07
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+Tried to do a fresh import: m59 s10 2025-07-07 TEST; did not add it to the list. The import candidates may be an issue... so we don't want to be able to import new events from the event curation that would have to go through the event back. What I want to do is create an Curation Set button actually. That will allow me to select a recording, get the event from the event back, choose it's verison and then start working on it. The current workflow is odd.
+
+UI ACTIONS, oldest first (7)
+------------------------------------------------------------------
+:02.431Z  link.scope                 {"scope": "session"}
+:03.403Z  session.open               {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "channels": 64, "fs": 30000, "duration_s": 1201.6981333333333, "restored": ["2 ba
+:03.457Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+:55.331Z  session.open               {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "channels": 64, "fs": 30000, "duration_s": 1802.5984, "restored": ["1 bad chann
+:55.465Z  window.change              {"t0": 3.547, "span": 1, "scope": "session"}
+:55.471Z  curation.enter             {"gid": "sef04f3b4eb4d", "kind": "ds", "n": 373, "left": 0}
+:55.485Z  events.import              {"file": "Events.nev", "n": 2, "source": "nev", "relative_to": "recording", "auto": true}
+
+REQUESTS AS THE BROWSER SAW THEM (112)
+------------------------------------------------------------------
+14:50:02  GET  /api/profile                         200       14 ms
+14:50:02  GET  /api/catalog                         200       75 ms
+14:50:02  GET  /api/prefs                           200       10 ms
+14:50:02  GET  /api/pipeline                        200       21 ms
+14:50:02  GET  /api/presets/filters                 200       22 ms
+14:50:02  GET  /api/probes                          200       30 ms
+14:50:02  GET  /api/jobs                            200       32 ms
+14:50:02  GET  /api/presets/layouts                 200       49 ms
+14:50:02  GET  /api/panels                          200       90 ms
+14:50:02  POST /api/pipeline/check                  200      325 ms
+14:50:03  POST /api/csc/open                        200      714 ms
+14:50:03  POST /api/prefs                           200      681 ms
+14:50:03  POST /api/events/nev                      200       47 ms
+14:50:03  GET  /api/sync/status                     200     1025 ms
+14:50:03  POST /api/csc/window                      200      303 ms
+14:50:03  POST /api/csc/overview                    200      436 ms
+14:50:04  POST /api/csc/window                      200      289 ms
+14:50:04  GET  /api/decks                           200       41 ms
+14:50:06  GET  /api/toolkit/scopes                  200      820 ms
+14:50:09  GET  /api/curation                        200     2374 ms
+14:50:14  GET  /api/registry                        200     4674 ms
+14:50:29  GET  /api/link                            200    25016 ms
+14:50:54  GET  /api/link                            200    25007 ms
+14:50:55  GET  /api/curation/sef04f3b4eb4d/ds       200       58 ms
+14:50:55  POST /api/csc/open                        200       61 ms
+14:50:55  POST /api/events/nev                      200      151 ms
+14:50:55  POST /api/curation/sef04f3b4eb4d/ds/open  200      161 ms
+14:50:55  POST /api/link                            200      112 ms
+14:50:55  GET  /api/link                            200      980 ms
+14:50:55  POST /api/link                            200      111 ms
+14:50:55  POST /api/link                            200       80 ms
+14:50:55  GET  /api/link                            200      136 ms
+14:50:56  POST /api/csc/window                      200      913 ms
+14:50:57  POST /api/csc/overview                    200     1559 ms
+14:50:57  POST /api/csc/window                      200      531 ms
+14:51:00  POST /api/session/state                   200     3826 ms
+14:51:08  GET  /api/history                         200       20 ms
+14:51:08  GET  /api/activity                        200       52 ms
+14:51:11  GET  /api/decks                           200      101 ms
+14:51:11  GET  /api/bank                            200       33 ms
+14:51:13  GET  /api/bank/900c7dc74289               200       13 ms
+14:51:15  GET  /api/registry                        200     6120 ms
+14:51:20  GET  /api/link                            200    25013 ms
+14:51:22  POST /api/bank/900c7dc74289/version/2     200       29 ms
+14:51:22  GET  /api/bank/900c7dc74289               200      158 ms
+14:51:34  GET  /api/decks                           200       32 ms
+14:51:34  GET  /api/decks                           200        8 ms
+14:51:36  GET  /api/bank                            200       68 ms
+14:51:36  GET  /api/bank/900c7dc74289               200       11 ms
+14:51:37  POST /api/csc/window                      200      111 ms
+14:51:38  POST /api/csc/window                      200      103 ms
+14:51:39  GET  /api/curation                        200     3331 ms
+14:51:43  POST /api/csc/window                      200      108 ms
+14:51:45  GET  /api/registry                        200     6125 ms
+14:52:05  GET  /api/link                            200    45022 ms
+14:52:25  GET  /api/decks                           200       92 ms
+14:52:25  GET  /api/scratch/saved                   200       19 ms
+14:52:25  GET  /api/outputs                         200       79 ms
+14:52:28  GET  /api/curation                        200     1977 ms
+14:52:34  GET  /api/registry                        200     6045 ms
+14:52:35  GET  /api/link                            200    29930 ms
+14:52:44  POST /api/curation/sef04f3b4eb4d/ds/open  200       48 ms
+14:52:54  POST /api/curation/sef04f3b4eb4d/ds/open  200       41 ms
+14:52:59  POST /api/curation/sef04f3b4eb4d/ds/archi 200       40 ms
+14:53:01  GET  /api/link                            200    25023 ms
+14:53:01  GET  /api/curation                        200     2033 ms
+14:53:07  GET  /api/bank                            200       30 ms
+14:53:07  GET  /api/bank/900c7dc74289               200       10 ms
+14:53:07  GET  /api/registry                        200     6145 ms
+14:53:13  GET  /api/curation                        200     2019 ms
+14:53:19  GET  /api/registry                        200     6116 ms
+14:53:30  GET  /api/bank                            200       31 ms
+14:53:30  GET  /api/bank/900c7dc74289               200        9 ms
+14:53:44  GET  /api/curation                        200     2050 ms
+14:53:46  GET  /api/link                            200    45025 ms
+14:53:50  GET  /api/registry                        200     5952 ms
+14:53:53  GET  /api/bank                            200       25 ms
+14:53:53  GET  /api/bank/900c7dc74289               200        8 ms
+14:53:58  GET  /api/curation                        200     2004 ms
+14:54:04  GET  /api/registry                        200     6269 ms
+14:54:16  GET  /api/link                            200    29944 ms
+14:54:23  GET  /api/bank                            200       14 ms
+14:54:30  GET  /api/bank/900c7dc74289               200        7 ms
+14:54:31  POST /api/curation/create                 200       92 ms
+14:54:33  GET  /api/sync/status                     200     1414 ms
+14:54:34  GET  /api/curation                        200     2292 ms
+14:54:40  GET  /api/registry                        200     6083 ms
+14:54:41  GET  /api/link                            200    25016 ms
+14:54:57  GET  /api/bank                            200       15 ms
+14:55:00  GET  /api/bank/900c7dc74289               200        8 ms
+14:55:01  POST /api/curation/create                 200       90 ms
+14:55:01  GET  /api/sync/status                     200      221 ms
+14:55:03  GET  /api/curation                        200     2090 ms
+14:55:09  GET  /api/registry                        200     6112 ms
+14:55:23  GET  /api/bank                            200       14 ms
+14:55:26  GET  /api/link                            200    45019 ms
+14:55:30  GET  /api/bank/900c7dc74289               200        7 ms
+14:55:34  POST /api/curation/create                 200       88 ms
+14:55:35  GET  /api/sync/status                     200     1496 ms
+14:55:36  GET  /api/curation                        200     2351 ms
+14:55:42  GET  /api/registry                        200     6148 ms
+14:55:53  GET  /api/history                         200       17 ms
+14:55:53  GET  /api/activity                        200       35 ms
+14:55:55  GET  /api/errors                          200       27 ms
+14:55:55  GET  /api/feedback                        200       33 ms
+14:55:55  GET  /api/errors/grouped                  200       16 ms
+14:55:55  GET  /api/debug/trace                     200        6 ms
+14:55:56  GET  /api/link                            200    29947 ms
+14:56:21  GET  /api/link                            200    25007 ms
+14:57:06  GET  /api/link                            200    45023 ms
+14:57:36  GET  /api/link                            200    29880 ms
+14:58:01  GET  /api/link                            200    25012 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (148)
+------------------------------------------------------------------
+14:57:31  GET  /api/registry                    200   5879.6 ms  
+14:57:25  GET  /api/registry                    200   6355.3 ms  
+14:57:19  GET  /api/registry                    200   6532.9 ms  
+14:57:14  GET  /api/curation                    200   2841.3 ms  
+14:57:13  GET  /api/registry                    200   7602.9 ms  
+14:57:11  GET  /api/curation                    200   2666.2 ms  
+14:57:08  GET  /api/curation                    200   3220.4 ms  
+14:57:05  GET  /api/curation                    200   5417.5 ms  
+14:57:01  GET  /api/toolkit/scopes              200   1883.0 ms  
+14:56:58  GET  /api/decks                       200     13.2 ms  
+14:56:44  GET  /api/bank/46ca2186d3a7           200      1.8 ms  
+14:56:41  GET  /api/bank                        200      9.8 ms  
+14:56:38  POST /api/csc/window                  200     91.3 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "even_only": false, "invert": true, "t0": 10.95737088278293, "t1": 20.957370882782932, "channels": "[
+14:56:38  POST /api/csc/overview                200      1.0 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "even_only": false, "invert": true, "channel": 1, "bins": 700}
+14:56:38  GET  /api/sync/status                 200   1359.0 ms  
+14:56:38  POST /api/events/nev                  200      1.0 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23\\Events.nev", "session_path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23"}
+14:56:38  POST /api/prefs                       200   1000.1 ms  {"patch": "{themes}"}
+14:56:38  POST /api/csc/open                    200   1076.5 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "invert": true}
+14:56:37  POST /api/pipeline/check              200    340.1 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+14:56:36  GET  /api/errors/grouped              200      8.7 ms  limit=600
+14:56:36  GET  /api/feedback                    200     16.6 ms  
+14:56:36  GET  /api/errors                      200     15.1 ms  limit=300
+14:56:36  GET  /api/presets/layouts             200      1.2 ms  
+14:56:36  GET  /api/jobs                        200      0.1 ms  
+14:56:36  GET  /api/panels                      200      8.9 ms  
+14:56:36  GET  /api/presets/filters             200      2.1 ms  
+14:56:36  GET  /api/probes                      200      0.1 ms  
+14:56:36  GET  /api/pipeline                    200      0.1 ms  
+14:56:36  GET  /api/prefs                       200      1.2 ms  
+14:56:36  GET  /api/catalog                     200     63.0 ms  
+14:56:36  GET  /api/profile                     200      2.9 ms  
+14:55:55  GET  /api/errors/grouped              200      7.9 ms  limit=600
+14:55:55  GET  /api/feedback                    200     11.5 ms  
+14:55:55  GET  /api/errors                      200      7.0 ms  limit=300
+14:55:53  GET  /api/history                     200      1.5 ms  limit=400
+14:55:42  GET  /api/registry                    200   6140.5 ms  
+14:55:36  GET  /api/curation                    200   2345.3 ms  
+14:55:35  GET  /api/sync/status                 200   1489.9 ms  
+14:55:34  POST /api/curation/create             200     82.9 ms  {"gid": "sef04f3b4eb4d", "kind": "ds", "name": "m59 s10 2025-07-07 TEST", "events": "[373 items]", "source": "{from}"}
+14:55:30  GET  /api/bank/900c7dc74289           200      1.9 ms  
+14:55:23  GET  /api/bank                        200      5.8 ms  
+14:55:09  GET  /api/registry                    200   6103.1 ms  
+14:55:03  GET  /api/curation                    200   2085.3 ms  
+14:55:01  GET  /api/sync/status                 200    215.4 ms  
+14:55:01  POST /api/curation/create             200     85.6 ms  {"gid": "sef04f3b4eb4d", "kind": "ds", "name": "m59 s10 2025-07-07 TEST", "events": "[373 items]", "source": "{from}"}
+14:54:59  GET  /api/bank/900c7dc74289           200      1.5 ms  
+14:54:57  GET  /api/bank                        200      7.0 ms  
+14:54:40  GET  /api/registry                    200   6076.0 ms  
+14:54:34  GET  /api/curation                    200   2286.1 ms  
+14:54:33  GET  /api/sync/status                 200   1407.8 ms  
+14:54:31  POST /api/curation/create             200     87.1 ms  {"gid": "sef04f3b4eb4d", "kind": "ds", "name": "Fresh Import Text", "events": "[373 items]", "source": "{from}"}
+14:54:30  GET  /api/bank/900c7dc74289           200      1.6 ms  
+14:54:23  GET  /api/bank                        200      7.6 ms  
+14:54:04  GET  /api/registry                    200   6261.7 ms  
+14:53:58  GET  /api/curation                    200   1999.1 ms  
+14:53:53  GET  /api/bank/900c7dc74289           200      1.7 ms  
+14:53:53  GET  /api/bank                        200      7.7 ms  
+14:53:50  GET  /api/registry                    200   5943.9 ms  
+14:53:44  GET  /api/curation                    200   2045.0 ms  
+14:53:30  GET  /api/bank/900c7dc74289           200      2.0 ms  
+14:53:30  GET  /api/bank                        200      9.5 ms  
+14:53:19  GET  /api/registry                    200   6105.2 ms  
+14:53:13  GET  /api/curation                    200   2012.6 ms  
+14:53:07  GET  /api/registry                    200   6135.3 ms  
+14:53:07  GET  /api/bank/900c7dc74289           200      2.3 ms  
+14:53:07  GET  /api/bank                        200      7.9 ms  
+14:53:01  GET  /api/curation                    200   2025.6 ms  
+14:52:59  POST /api/curation/sef04f3b4eb4d/ds/a 200     34.5 ms  {"archived": true}
+14:52:54  POST /api/curation/sef04f3b4eb4d/ds/o 200     35.6 ms  {"open": true}
+14:52:44  POST /api/curation/sef04f3b4eb4d/ds/o 200     42.2 ms  {"open": false}
+14:52:34  GET  /api/registry                    200   6036.2 ms  
+14:52:28  GET  /api/curation                    200   1972.1 ms  
+14:52:25  GET  /api/outputs                     200     62.7 ms  
+14:52:25  GET  /api/scratch/saved               200      2.8 ms  
+14:52:25  GET  /api/decks                       200     16.7 ms  
+14:51:45  GET  /api/registry                    200   6117.1 ms  
+14:51:43  POST /api/csc/window                  200    100.5 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "t0": 3.5469999999999997, "t1": 4.547, "channels": "[64 items]"
+14:51:39  GET  /api/curation                    200   3326.4 ms  
+14:51:38  POST /api/csc/window                  200     94.6 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "t0": 3.5469999999999997, "t1": 4.547, "channels": "[64 items]"
+14:51:37  POST /api/csc/window                  200    101.2 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "t0": 3.5469999999999997, "t1": 4.547, "channels": "[64 items]"
+14:51:36  GET  /api/bank/900c7dc74289           200      2.6 ms  
+14:51:36  GET  /api/bank                        200     11.4 ms  
+14:51:34  GET  /api/decks                       200      2.5 ms  
+14:51:34  GET  /api/decks                       200     13.5 ms  
+14:51:22  GET  /api/bank/900c7dc74289           200    152.1 ms  
+14:51:22  POST /api/bank/900c7dc74289/version/2 200     23.6 ms  {"action": "delete"}
+14:51:15  GET  /api/registry                    200   6103.2 ms  
+14:51:13  GET  /api/bank/900c7dc74289           200      4.8 ms  
+14:51:11  GET  /api/bank                        200      9.5 ms  
+14:51:11  GET  /api/decks                       200      4.8 ms  
+14:51:08  GET  /api/history                     200      1.8 ms  limit=400
+14:51:02  POST /api/panel                       200    617.2 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 3.5469999999999997, "t1": 4.547, 
+14:51:01  POST /api/panel                       200    433.5 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "theta", "t0": 3.5469999999999997, "t1": 4.547, "chann
+14:51:01  POST /api/panel                       200    270.5 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "csd", "t0": 3.5469999999999997, "t1": 4.547, "channel
+14:51:01  POST /api/panel                       200    141.9 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "voltage", "t0": 3.5469999999999997, "t1": 4.547, "cha
+14:51:01  GET  /api/curation/sef04f3b4eb4d/ds   200   1385.1 ms  
+14:51:01  POST /api/panel                       200      2.0 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1697.259, "t1": 1698.259, "channe
+14:51:01  POST /api/panel                       200      1.0 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "voltage", "t0": 1697.259, "t1": 1698.259, "channels":
+14:51:01  POST /api/panel                       200      1.0 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "theta", "t0": 1697.259, "t1": 1698.259, "channels": "
+14:51:01  POST /api/panel                       200      3.6 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "csd", "t0": 1697.259, "t1": 1698.259, "channels": "[6
+14:51:00  POST /api/session/state               200   3553.1 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+14:50:59  POST /api/panel                       200    638.3 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "spectrogram", "t0": 1697.259, "t1": 1698.259, "channe
+14:50:59  POST /api/panel                       200    446.4 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "theta", "t0": 1697.259, "t1": 1698.259, "channels": "
+14:50:58  POST /api/panel                       200    274.3 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "csd", "t0": 1697.259, "t1": 1698.259, "channels": "[6
+14:50:58  POST /api/panel                       200    188.0 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "panel": "voltage", "t0": 1697.259, "t1": 1698.259, "channels":
+14:50:58  GET  /api/sync/status                 200   2603.4 ms  
+14:50:58  POST /api/csc/overview                200      0.9 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+14:50:58  POST /api/events/nev                  200      1.5 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40\\Events.nev", "session_path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"}
+14:50:58  POST /api/prefs                       200   1993.0 ms  {"patch": "{themes}"}
+14:50:58  POST /api/csc/open                    200   2553.6 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "invert": true}
+14:50:57  POST /api/csc/window                  200    491.3 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "t0": 3.5469999999999997, "t1": 4.547, "channels": "[64 items]"
+14:50:57  POST /api/csc/overview                200   1496.2 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+14:50:56  POST /api/pipeline/check              200    959.1 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+14:50:56  POST /api/csc/window                  200    727.9 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "even_only": false, "invert": true, "t0": 3.5469999999999997, "t1": 4.547, "channels": "[64 items]"
+14:50:55  GET  /api/presets/layouts             200      2.8 ms  
+14:50:55  GET  /api/jobs                        200      0.1 ms  
+14:50:55  GET  /api/panels                      200     15.9 ms  
+14:50:55  GET  /api/presets/filters             200      4.7 ms  
+14:50:55  GET  /api/probes                      200      0.2 ms  
+14:50:55  GET  /api/pipeline                    200      0.2 ms  
+14:50:55  GET  /api/prefs                       200      3.5 ms  
+14:50:55  GET  /api/catalog                     200    100.5 ms  
+14:50:55  GET  /api/profile                     200      5.6 ms  
+14:50:55  POST /api/curation/sef04f3b4eb4d/ds/o 200     58.6 ms  {"open": true}
+14:50:55  POST /api/events/nev                  200      0.8 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40\\Events.nev", "session_path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"}
+14:50:55  POST /api/csc/open                    200     46.9 ms  {"path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40", "invert": true}
+14:50:55  GET  /api/curation/sef04f3b4eb4d/ds   200     52.2 ms  
+14:50:14  GET  /api/registry                    200   4666.6 ms  
+14:50:09  GET  /api/curation                    200   2368.6 ms  
+14:50:06  GET  /api/toolkit/scopes              200    806.9 ms  
+14:50:04  GET  /api/decks                       200      9.9 ms  
+14:50:04  POST /api/csc/window                  200    269.0 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "even_only": false, "invert": true, "t0": 10.95737088278293, "t1": 20.957370882782932, "channels": "[
+14:50:03  POST /api/csc/overview                200    432.3 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "even_only": false, "invert": true, "channel": 1, "bins": 700}
+14:50:03  POST /api/csc/window                  200    283.1 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "even_only": false, "invert": true, "t0": 10.95737088278293, "t1": 20.957370882782932, "channels": "[
+14:50:03  GET  /api/sync/status                 200    959.1 ms  
+14:50:03  POST /api/events/nev                  200      0.8 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23\\Events.nev", "session_path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23"}
+14:50:03  POST /api/prefs                       200    626.0 ms  {"patch": "{themes}"}
+14:50:03  POST /api/csc/open                    200    708.4 ms  {"path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23", "invert": true}
+14:50:02  POST /api/pipeline/check              200    314.6 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+14:50:02  GET  /api/panels                      200     37.2 ms  
+14:50:02  GET  /api/presets/layouts             200      0.7 ms  
+14:50:02  GET  /api/jobs                        200      0.2 ms  
+14:50:02  GET  /api/probes                      200      0.2 ms  
+14:50:02  GET  /api/presets/filters             200      0.7 ms  
+14:50:02  GET  /api/pipeline                    200      0.2 ms  
+14:50:02  GET  /api/prefs                       200      0.9 ms  
+14:50:02  GET  /api/catalog                     200     67.4 ms  
+14:50:02  GET  /api/profile                     200      3.2 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-08T14:57:46-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:41:46-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T14:06:17-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-08T13:57:22-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-05T16:36:19-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-04T16:17:44.655608%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {"code":"PGRST303","details":null,"hint":null,"message":"JWT issued at future"}
+
+This machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.
+[2026-09-04T13:52:35-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json.tmp' -> 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\PTEN\\m33\\s8 2024-06-14\\ds - m33s8jun14 — Dentate Spike.json'
+[2026-09-04T11:56:01-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:37-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:50:34-04:00] csc/window: could not convert string to float: 'M13'
+Traceback (most recent call last):
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 511, in api_csc_window
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 628, in get_window
+    t0 = max(0.0, float(t0))
+                             
+  File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\csc.py", line 326, in _read_channel_window
+    i1 = max(i0, int(np.ceil(t1 * fs)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'M13'
+
+[2026-09-04T11:44:01-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-04T11:43:20-04:00] run:pip install phy: Run failed with exit code 1
+Requirement already satisfied: prompt-toolkit<3.1.0,>=3.0.41 in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (3.0.43)
+Requirement already satisfied: stack-data in c:\users\z390\miniconda3\lib\site-packages (from ipython>=7.23.1->ipykernel->phy) (0.2.0)
+Requirement already satisfied: platformdirs>=2.5 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (4.3.7)
+Requirement already satisfied: pywin32>=300 in c:\users\z390\miniconda3\lib\site-packages (from jupyter-core!=5.0.*,>=4.12->ipykernel->phy) (308)
+Requirement already satisfied: six>=1.5 in c:\users\z390\miniconda3\lib\site-packages (from python-dateutil>=2.7->matplotlib->phy) (1.17.0)
+Requirement already satisfied: cloudpickle>=3.0.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (3.0.0)
+Requirement already satisfied: fsspec>=2021.09.0 in c:\users\z390\miniconda3\lib\site-packages (from dask->phylib<3,>=2.7.0->phy) (2026.7.0)
+Collecting partd>=1.4.0 (from dask->phylib<3,>=2.7.0->phy)
+  Downloading partd-1.4.2-py3-none-any.whl.metadata (4.6 kB)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in c:\users\z390\min
+[2026-09-04T11:43:06-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.

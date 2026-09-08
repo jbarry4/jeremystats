@@ -473,6 +473,14 @@ class Curation:
             "imports": [{"at": at_import, "n": len(clean), "skipped": 0,
                          "source": source or {}}],
         }
+        # Whose set it is survives being restarted. Replacing the candidate
+        # list -- reimporting, or starting again from a different banked
+        # version -- is a statement about the data, not about who is
+        # responsible for going through it.
+        if existing:
+            for keep in ("assignee", "assigned_at"):
+                if existing.get(keep) is not None:
+                    rec[keep] = existing[keep]
         if prior_sync:
             rec["_sync"] = prior_sync
         return self._write(rec), len(clean), {"labelled": 0, "disagreed": []}

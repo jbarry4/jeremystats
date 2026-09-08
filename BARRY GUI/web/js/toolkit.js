@@ -320,6 +320,10 @@ BARRY.views.toolkit = (function () {
      unspecified and stay that way until somebody looks at them.
      ================================================================== */
   let cur = null;
+  /* Set by curation whenever a decision is made or a set is opened or put
+     down. The tool reloads on its next showing instead of repainting a
+     picture of how things were when it was last looked at. */
+  let curStale = false;
 
   /* Show what it is waiting on while it waits.
 
@@ -343,6 +347,7 @@ BARRY.views.toolkit = (function () {
       : null;
     try {
       cur = await api('/api/curation');
+      curStale = false;
       if (l) l.step('reading the recording registry');
       cur.registry = await api('/api/registry');
     } catch (e) {
@@ -467,7 +472,8 @@ BARRY.views.toolkit = (function () {
         el('p', { class: 'sub',
           text: open.length
             ? 'What you have open. It stays here until you close it.'
-            : 'Open a set and it stays here until you close it.' }),
+            : 'Start a set from a banked entry, or pick one up below. It '
+              + 'stays here until you close it.' }),
       ]),
       el('div', { class: 'spacer' }),
       open.length > 1 ? el('button', {
@@ -475,15 +481,22 @@ BARRY.views.toolkit = (function () {
         title: 'Clear the bench. Nothing is archived, deleted or unbanked.',
         onclick: closeAllSets,
       }) : null,
-      el('button', { class: 'btn', text: 'Import candidates…',
-                     onclick: importCandidates }),
+      /* Not "Import candidates". Candidates live in the Event Bank, with
+         the detector that found them and their version history; curation
+         reads a version out of it. Importing them here made Event curation
+         a second door into the same store, and implied a recording could
+         have more than one set of a kind -- it cannot, so a second import
+         merged into the first, added nothing and threw away the name. */
+      el('button', { class: 'btn', text: 'New curation set…',
+                     onclick: newCurationSet }),
     ].filter(Boolean)));
 
     if (!sets.length) {
       host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'Nothing to curate yet. Import a list of candidate times '
-            + '— from the Event Bank or from a file — and it '
-            + 'will appear here. Every candidate arrives unspecified.' }));
+        text: 'Nothing to curate yet. Start a set from something in the '
+            + 'Event Bank — pick the recording, the entry and which '
+            + 'version of it to work from. Version 0 is the detector\u2019s '
+            + 'list with nothing decided yet.' }));
       return;
     }
 
@@ -551,14 +564,16 @@ BARRY.views.toolkit = (function () {
         class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',
         title: st.archived
           ? 'Put it back on the shelf'
-          : 'Stronger than closing: off the shelf as well as off the bench. '
-            + 'It can still be opened, curated and banked.',
+          : 'Files the set away: off the shelf as well as off the bench. '
+            + 'Nothing is deleted — every candidate and every decision '
+            + 'stays exactly as it is, and it can still be opened, curated '
+            + 'and banked.',
         onclick: () => archiveSet(st, !st.archived),
       }),
-      el('button', {
-        class: 'btn ghost sm danger', text: 'Delete',
-        onclick: () => deleteSet(st),
-      }),
+      /* No Delete. It erased every machine's shard of the set -- the one
+         irreversible thing in this view, sitting at the same weight as
+         Export CSV. Archiving is what "get this out of my way" means, and
+         it destroys nothing. */
     ]);
 
     return el('div', {
@@ -752,6 +767,243 @@ BARRY.views.toolkit = (function () {
     }
   }
 
+  /* Start a set from a banked entry's version.
+
+     Three questions in order, because each one narrows the next: which
+     recording, which of its banked entries, and which version of that
+     entry. The version matters and used to be unaskable -- v0 is the
+     detector's list with nothing decided, which is how a fresh pass begins,
+     and a later version is how you carry on from where somebody left off. */
+  async function newCurationSet() {
+    const reg = (cur.registry || {}).tree || [];
+    const rows = reg.flatMap((p) => p.mice.flatMap((m) => m.sessions));
+    if (!rows.length) {
+      toast('No recordings are registered yet. Open one in Xplorefinder '
+            + 'first.', 'err', 7000);
+      return;
+    }
+
+    /* Default to a recording that actually has something banked. The first
+       reachable one is usually not that, and opening the wizard onto "there
+       is nothing to work from here" makes it look broken when it is only
+       pointed at the wrong session. */
+    let banked = new Set();
+    try {
+      const b = await api('/api/bank');
+      for (const e of (b.entries || [])) {
+        if (e.gid && (e.type === 'ds' || e.type === 'ied')) banked.add(e.gid);
+      }
+    } catch (e) { /* the picker still works, it just starts somewhere else */ }
+    let gid = (rows.find((r) => r.reachable && banked.has(r.gid))
+               || rows.find((r) => banked.has(r.gid))
+               || rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    let info = null;            // what is banked for the chosen recording
+    let entry = null;
+    let ver = null;
+
+    const body = el('div', { class: 'mb' });
+    const okBtn = el('button', { class: 'btn', text: 'Start on it',
+                                 disabled: 'disabled' });
+
+    const sessPick = BARRY.pickSession({
+      rows,
+      value: gid,
+      placeholder: 'Which recording? Type a mouse, session or date\u2026',
+      onpick: (r) => { gid = r.gid; entry = null; ver = null; load(); },
+    });
+
+    const load = async () => {
+      info = null;
+      paint();
+      try {
+        info = await api('/api/curation/for-recording/'
+                         + encodeURIComponent(gid));
+      } catch (e) {
+        info = { entries: [], existing: [], error: e.message };
+      }
+      // One entry, one version worth having: choose it, so the common case
+      // is two clicks rather than four.
+      const es = info.entries || [];
+      if (es.length === 1) {
+        entry = es[0];
+        const usable = (entry.versions || []).filter((v) => v.usable);
+        if (usable.length === 1) ver = usable[0];
+      }
+      paint();
+    };
+
+    const paint = () => {
+      body.innerHTML = '';
+      body.appendChild(el('div', { class: 'field' }, [
+        el('label', { text: 'Recording' }), sessPick]));
+
+      if (!info) {
+        body.appendChild(el('p', { class: 'hint',
+          text: 'Reading what is banked for it\u2026' }));
+        okBtn.disabled = 'disabled';
+        return;
+      }
+      if (info.error) {
+        body.appendChild(el('p', { class: 'confirm-sub warn',
+                                   text: info.error }));
+        okBtn.disabled = 'disabled';
+        return;
+      }
+
+      /* What is already there, said before anything is chosen -- replacing
+         a half-finished set is the one irreversible thing here. */
+      for (const ex of (info.existing || [])) {
+        const pr = ex.progress || {};
+        body.appendChild(el('p', { class: 'confirm-sub warn',
+          text: 'This recording already has a ' + (ex.kind_name || ex.kind)
+              + ' set \u2014 ' + pr.specified + ' of ' + pr.total
+              + ' decided'
+              + (ex.assignee ? ', ' + ex.assignee + '\u2019s' : '')
+              + (ex.archived ? ', archived' : '')
+              + '. Starting a new one of that kind replaces it.' }));
+      }
+
+      const es = info.entries || [];
+      if (!es.length) {
+        body.appendChild(el('p', { class: 'confirm-msg',
+          text: 'Nothing of a curatable kind is banked against this '
+              + 'recording, so there are no times to work from. File the '
+              + 'detector\u2019s output in the Event Bank first \u2014 that '
+              + 'is where candidates live.' }));
+        okBtn.disabled = 'disabled';
+        return;
+      }
+
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Which banked entry' }));
+      const list = el('div', { class: 'bm-list' });
+      for (const e of es) {
+        list.appendChild(el('label', {
+          class: 'bm-row' + (entry && entry.id === e.id ? ' on' : ''),
+        }, [
+          el('input', { type: 'radio', name: 'ncsEntry',
+            checked: entry && entry.id === e.id ? 'checked' : null,
+            onchange: () => {
+              entry = e; ver = null;
+              const usable = (e.versions || []).filter((v) => v.usable);
+              if (usable.length === 1) ver = usable[0];
+              paint();
+            } }),
+          el('span', { class: 'mk-name', text: e.name }),
+          el('span', { class: 'flagchip', text: e.kind_name }),
+          el('span', { class: 'person-what',
+                       text: (e.n || 0) + ' events'
+                           + (e.source ? '  \u00b7  ' + e.source : '') }),
+        ]));
+      }
+      body.appendChild(list);
+
+      if (!entry) { okBtn.disabled = 'disabled'; return; }
+
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Which version to work from' }));
+      const names = entry.label_names || {};
+      const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+      const vlist = el('div', { class: 'bm-list' });
+      for (const v of (entry.versions || [])) {
+        const mix = Object.keys(v.by_label || {})
+          .sort((a, b) => v.by_label[b] - v.by_label[a])
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ');
+        vlist.appendChild(el('label', {
+          class: 'bm-row' + (ver && ver.v === v.v ? ' on' : '')
+               + (v.usable ? '' : ' off'),
+        }, [
+          el('input', { type: 'radio', name: 'ncsVer',
+            disabled: v.usable ? null : 'disabled',
+            checked: ver && ver.v === v.v ? 'checked' : null,
+            onchange: () => { ver = v; paint(); } }),
+          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          v.imported ? el('span', { class: 'flagchip',
+                                    text: 'the detector' }) : null,
+          el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
+          el('span', { class: 'person-what',
+            text: (v.by || 'unknown')
+                + '  \u00b7  ' + (curWhen(v.at) || '')
+                + (v.usable ? '' : '  \u00b7  no snapshot kept') }),
+        ].filter(Boolean)));
+      }
+      body.appendChild(vlist);
+
+      if (ver) {
+        const decided = Object.keys(ver.by_label || {})
+          .filter((k) => k !== 'unspecified')
+          .reduce((n, k) => n + ver.by_label[k], 0);
+        body.appendChild(el('p', { class: 'confirm-msg',
+          text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
+              + (decided ? ', ' + decided + ' of them already decided as of '
+                           + 'v' + ver.v + '.'
+                         : ', none decided \u2014 a fresh pass.') }));
+        if (ver.note) {
+          body.appendChild(el('p', { class: 'hint', text: '\u201c'
+                                     + ver.note + '\u201d' }));
+        }
+      }
+      okBtn.disabled = ver ? null : 'disabled';
+    };
+
+    okBtn.onclick = async () => {
+      if (!entry || !ver) return;
+      const had = (info.existing || []).find((x) => x.kind === entry.kind);
+      if (had) {
+        const pr = had.progress || {};
+        const ok = await BARRY.confirm(
+          'Replace the existing ' + (had.kind_name || had.kind) + ' set?',
+          'This recording already has one \u2014 "' + (had.name || '')
+          + '", ' + pr.specified + ' of ' + pr.total + ' decided'
+          + (had.assignee ? ', assigned to ' + had.assignee : '')
+          + '. A recording has one set per kind, so starting from v' + ver.v
+          + ' replaces it. The decisions in it are still in the bank if they '
+          + 'were ever banked; anything never banked goes.',
+          'Replace it with v' + ver.v, true);
+        if (!ok) return;
+      }
+      okBtn.disabled = 'disabled';
+      try {
+        const res = await apiPost('/api/curation/from-bank', {
+          gid, kind: entry.kind, entry: entry.id, version: ver.v,
+          replace: true,
+        });
+        closeModal();
+        const pr = res.progress || {};
+        toast('Started "' + (res.set || {}).name + '" from v' + ver.v
+              + ': ' + pr.total + ' candidate(s), ' + pr.left + ' to decide.'
+              + (res.replaced ? ' The previous set was replaced.' : ''),
+              'ok', 8000);
+        await loadCuration();
+        // Straight onto the bench, which is what "start working on it" means.
+        openSet((cur.sets || []).find(
+          (x) => x.gid === gid && x.kind === entry.kind) || {}, true);
+      } catch (e) {
+        toast(e.message, 'err', 9000);
+        okBtn.disabled = null;
+      }
+    };
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'New curation set' }),
+        el('span', { class: 'sub',
+                     text: 'from a version of something already banked' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        okBtn,
+      ]),
+    ]));
+    load();
+  }
+
   /* ---- the workbench verbs ---- */
   async function openSet(st, on) {
     try {
@@ -925,34 +1177,6 @@ BARRY.views.toolkit = (function () {
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
-  async function deleteSet(st) {
-    /* This calls erase, which removes every machine's shard of the set --
-       not just this one's. It used to ask nothing at all. */
-    const pr = st.progress || {};
-    const decided = (pr.total || 0) - (pr.left || 0);
-    const who = (st.updated || {}).user;
-    const ok = await BARRY.confirm(
-      'Delete "' + (st.name || st.gid) + '"?',
-      'This destroys ' + (pr.total || 0) + ' candidate(s) and '
-      + decided + ' decision(s)'
-      + (who ? ', last touched by ' + who : '') + '. It removes the set on '
-      + 'every machine that shares these logs, not only this one, and it '
-      + 'cannot be undone. Archive it instead if you only want it out of '
-      + 'the list.',
-      'Delete ' + decided + ' decision(s)', true);
-    if (!ok) return;
-    try {
-      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
-                    + encodeURIComponent(st.kind) + '/delete', {});
-      if (cur && cur.sets) {
-        cur.sets = cur.sets.filter(
-          (x) => !(x.gid === st.gid && x.kind === st.kind));
-      }
-      renderCuration();
-      toast('Deleted.', 'ok');
-      loadCuration();
-    } catch (e) { toast(e.message, 'err', 8000); }
-  }
 
   /* Browse the bank and pick something, rather than being handed
      entries[0].
@@ -961,204 +1185,7 @@ BARRY.views.toolkit = (function () {
      picked above -- both clearable, because "show me what else is in here"
      is a reasonable thing to want and the old flow made it impossible.
      Resolves to the full entry, or null if cancelled. */
-  /* The bank's own vocabulary, borrowed rather than duplicated -- it is
-     loaded from the server and this module has no copy of it. */
-  const bankTypes = () => {
-    const eb = BARRY.views.eventbank;
-    return (eb && eb.typeList && eb.typeList()) || [];
-  };
-  const bankTypeName = (id) => {
-    const t = bankTypes().find((x) => x.id === id || x === id);
-    return (t && (t.name || t)) || id || 'event';
-  };
 
-  function bankMatch(entry, sess) {
-    if (!sess) return 'unknown';
-    if (entry.session_key && sess.key && entry.session_key === sess.key) {
-      return 'exact';
-    }
-    if (entry.mouse != null && entry.mouse === sess.mouse
-        && entry.session != null && entry.session === sess.session) {
-      return 'same session';
-    }
-    if (entry.mouse != null && entry.mouse === sess.mouse) {
-      return 'same mouse only';
-    }
-    return 'different recording';
-  }
-
-  async function pickFromBank(sess, wantKind) {
-    let all = [];
-    try {
-      const res = await api('/api/bank');
-      all = res.entries || [];
-    } catch (e) {
-      toast('Could not read the bank: ' + e.message, 'err', 8000);
-      return null;
-    }
-    if (!all.length) {
-      toast('The Event Bank is empty.', 'err', 5000);
-      return null;
-    }
-
-    /* Prefilled, not restricted. The search starts on this recording and the
-       type on what you are curating, and either can be cleared. */
-    let query = [sess.mouse != null ? 'm' + sess.mouse : '',
-                 sess.session != null ? 's' + sess.session : '']
-      .filter(Boolean).join(' ');
-    let typeFilter = wantKind || '';
-    let chosen = null;
-    let widened = '';
-
-    const rank = { 'exact': 0, 'same session': 1, 'same mouse only': 2,
-                   'different recording': 3, 'unknown': 4 };
-
-    const matching = () => {
-      const q = query.trim().toLowerCase();
-      const words = q ? q.split(/\s+/) : [];
-      return all.filter((e) => {
-        if (typeFilter && e.type !== typeFilter) return false;
-        if (!words.length) return true;
-        const hay = [e.name, e.session_label, e.project,
-                     e.mouse != null ? 'm' + e.mouse : '',
-                     e.session != null ? 's' + e.session : '',
-                     e.type, e.added_by].filter(Boolean).join(' ').toLowerCase();
-        return words.every((w) => hay.indexOf(w) >= 0);
-      }).sort((a, b) => (rank[bankMatch(a, sess)] - rank[bankMatch(b, sess)])
-                     || String(a.name).localeCompare(String(b.name)));
-    };
-
-    /* Opening on an empty list is a bad answer to "what is in the bank".
-
-       The filters start narrow on purpose -- this recording, this kind --
-       but a recording with nothing banked against it would then show
-       nothing at all, which reads as a broken dialog rather than as an
-       honest "none for this one". So if the narrow view is empty the search
-       is dropped, and if that is still empty the type goes too, with a line
-       saying what happened. */
-    const narrow = matching().length;
-    if (!narrow && query) {
-      query = '';
-      widened = 'Nothing banked against this recording'
-              + (typeFilter ? ' for that type' : '') + ', so this is '
-              + (typeFilter ? 'every entry of that type.' : 'the whole bank.');
-    }
-    if (!matching().length && typeFilter) {
-      typeFilter = '';
-      widened = 'Nothing in the bank matched this recording or that type, '
-              + 'so this is everything.';
-    }
-
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (v) => { if (!done) { done = true; closeModal(); resolve(v); } };
-
-      const list = el('div', { class: 'bm-list tall bank-targets' });
-      const note = el('p', { class: 'confirm-sub' });
-      const count = el('span', { class: 'hint' });
-      const okBtn = el('button', {
-        class: 'btn', text: 'Use this set', disabled: 'disabled',
-        onclick: async () => {
-          if (!chosen) return;
-          try {
-            const full = await api('/api/bank/' + encodeURIComponent(chosen.id));
-            const entry = full.entry || {};
-            finish({ name: chosen.name, events: entry.events || [] });
-          } catch (e) {
-            toast('Could not read that entry: ' + e.message, 'err', 8000);
-          }
-        },
-      });
-
-      const paint = () => {
-        const rows2 = matching();
-        list.innerHTML = '';
-        count.textContent = rows2.length + ' of ' + all.length + ' entries';
-        if (!rows2.length) {
-          list.appendChild(el('div', { class: 'hint',
-            text: 'Nothing in the bank matches that. Clear the search or the '
-                + 'type to see everything.' }));
-        }
-        for (const e of rows2) {
-          const m = bankMatch(e, sess);
-          list.appendChild(el('label', {
-            class: 'bm-row' + (chosen && chosen.id === e.id ? ' on' : ''),
-          }, [
-            el('input', {
-              type: 'radio', name: 'bankPick',
-              checked: chosen && chosen.id === e.id ? 'checked' : null,
-              onchange: () => { chosen = e; paint(); },
-            }),
-            el('span', { class: 'mk-name',
-                         text: e.name + '  \u00b7  ' + (e.session_label || '?')
-                             + '  \u00b7  ' + (e.n || 0) + ' event(s)' }),
-            el('span', { class: 'flagchip', text: bankTypeName(e.type) }),
-            el('span', { class: 'flagchip' + (m === 'exact' ? ' good'
-                         : (m === 'different recording' ? ' bad' : '')),
-                         text: m }),
-          ]));
-        }
-        okBtn.disabled = chosen ? null : 'disabled';
-        if (!chosen) {
-          note.textContent = '';
-          note.className = 'confirm-sub';
-        } else {
-          const m = bankMatch(chosen, sess);
-          if (m === 'exact' || m === 'same session') {
-            note.textContent = chosen.n + ' candidate(s) from '
-              + (chosen.session_label || 'that entry') + '.';
-            note.className = 'confirm-sub';
-          } else {
-            note.textContent = 'That set is ' + m + ' \u2014 banked against '
-              + (chosen.session_label || 'another recording')
-              + '. Its times are seconds from the start of that one, so on '
-              + 'this recording they will land somewhere arbitrary.';
-            note.className = 'confirm-sub warn';
-          }
-        }
-      };
-
-      const search = el('input', {
-        type: 'text', value: query, placeholder: 'Search name, mouse, session…',
-        oninput: (e) => { query = e.target.value; paint(); },
-      });
-      const types = el('select', {
-        onchange: (e) => { typeFilter = e.target.value; paint(); },
-      }, [el('option', { value: '', text: 'Every type' })].concat(
-        bankTypes().map((t) => el('option', {
-          value: t.id || t, text: t.name || t,
-          selected: (t.id || t) === typeFilter ? 'selected' : null,
-        }))));
-
-      showModal(el('div', {}, [
-        el('div', { class: 'mh' }, [
-          el('h3', { text: 'Import from the Event Bank' }),
-          el('span', { class: 'sub', text: 'onto '
-            + (sess.label || ('m' + sess.mouse + ' s' + sess.session)) }),
-          el('div', { class: 'spacer' }),
-          el('button', { class: 'close-x', onclick: () => finish(null),
-            html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
-        ]),
-        el('div', { class: 'mb' }, [
-          el('div', { class: 'bank-filter' }, [search, types, count]),
-          widened ? el('p', { class: 'confirm-sub', text: widened }) : null,
-          list,
-          note,
-        ]),
-        el('div', { class: 'mf' }, [
-          el('button', { class: 'btn ghost sm', text: 'Show everything',
-            title: 'Clear the search and the type filter',
-            onclick: () => { query = ''; typeFilter = '';
-                             search.value = ''; types.value = ''; paint(); } }),
-          el('div', { class: 'spacer' }),
-          el('button', { class: 'btn ghost', text: 'Cancel',
-                         onclick: () => finish(null) }),
-          okBtn,
-        ]),
-      ]));
-      paint();
-    });
-  }
 
   async function bankSet(st) {
     const who = await askPath('Who is banking these?', 'your name or email',
@@ -1184,138 +1211,6 @@ BARRY.views.toolkit = (function () {
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
-  /* Where candidates come from. Both sources end at the same place: a list
-     of times, none of them decided. */
-  async function importCandidates() {
-    const reg = (cur.registry || {}).tree || [];
-    const rows = reg.flatMap((p) => p.mice.flatMap((m) => m.sessions));
-    if (!rows.length) {
-      toast('No recordings are registered yet. Open one in Xplorefinder '
-            + 'first.', 'err', 7000);
-      return;
-    }
-
-    // A search field, not a dropdown: there are hundreds of recordings now.
-    let pickedGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
-    const sessPick = BARRY.pickSession({
-      rows,
-      value: pickedGid,
-      placeholder: 'Which recording? Type a mouse, session or date\u2026',
-      onpick: (r) => { pickedGid = r.gid; },
-    });
-    const kindSel = el('select', {}, (cur.kinds || []).map((k) =>
-      el('option', { value: k.id, text: k.name })));
-    const nameIn = el('input', { type: 'text',
-                                 placeholder: 'e.g. LL detector pass 1' });
-
-    let staged = [];
-    let from = null;
-    const note = el('p', { class: 'hint', text: 'Nothing picked yet.' });
-    const stage = (evs, what) => {
-      staged = (evs || []).filter(
-        (e) => typeof (e && e.start !== undefined ? e.start : e) === 'number');
-      from = what;
-      note.textContent = staged.length
-        ? staged.length + ' candidate(s) from ' + what
-          + ' \u2014 all of them unspecified until curated.'
-        : 'That source had no usable times in it.';
-    };
-
-    const src = el('div', { class: 'choice-grid' }, [
-      el('button', { class: 'choice', onclick: async () => {
-        const s = rows.find((r) => r.gid === pickedGid);
-        if (!s) { toast('Pick a recording first.', 'err'); return; }
-        const picked = await pickFromBank(s, kindSel.value);
-        if (!picked) return;
-        stage(picked.events || [], 'the bank: ' + picked.name);
-      } }, [
-        el('strong', { text: 'From the Event Bank\u2026' }),
-        el('span', { text: 'browse what is banked, this recording first' }),
-      ]),
-      el('button', { class: 'choice', onclick: async () => {
-        const path = await pickPath('file', '');
-        if (!path) return;
-        try {
-          const info = await apiPost('/api/events/inspect', { path });
-          stage(info.events || info.preview || [], baseName(path));
-        } catch (e) { toast(e.message, 'err', 8000); }
-      } }, [
-        el('strong', { text: 'From a file' }),
-        el('span', { text: 'a CSV, .mat or .nev of times' }),
-      ]),
-    ]);
-
-    showModal(el('div', {}, [
-      el('div', { class: 'mh' }, [
-        el('h3', { text: 'Import candidates' }),
-        el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
-          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
-      ]),
-      el('div', { class: 'mb' }, [
-        el('p', { class: 'confirm-msg',
-          text: 'Every candidate arrives unspecified. That is the point: the '
-              + 'import records that a detector thought something was here, '
-              + 'not that it was right.' }),
-        el('div', { class: 'wiz-grid' }, [
-          el('div', { class: 'field' }, [
-            el('label', { text: 'Recording' }), sessPick]),
-          el('div', { class: 'field' }, [
-            el('label', { text: 'What kind' }), kindSel]),
-        ]),
-        el('div', { class: 'field' }, [
-          el('label', { text: 'Call this set' }), nameIn]),
-        el('div', { class: 'section-label', text: 'Where from' }),
-        src,
-        note,
-      ]),
-      el('div', { class: 'mf' }, [
-        el('div', { class: 'spacer' }),
-        el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
-        el('button', { class: 'btn primary', text: 'Import', onclick: async () => {
-          if (!staged.length) {
-            toast('Pick a source with some times in it first.', 'err');
-            return;
-          }
-          try {
-            const res = await apiPost('/api/curation/create', {
-              gid: pickedGid, kind: kindSel.value,
-              name: nameIn.value.trim() || null,
-              events: staged,
-              source: { from },
-            });
-            closeModal();
-            /* "Imported 0 candidates" was what you got for loading a set
-               whose times were all already here -- true, and silent about
-               the labels, which were the whole reason for loading it. */
-            const bits = [];
-            if (res.added) bits.push(res.added + ' new candidate(s)');
-            if (res.labelled) bits.push(res.labelled + ' decision(s) taken');
-            const clash = (res.disagreed || []).length;
-            if (clash) {
-              bits.push(clash + ' left alone \u2014 already decided '
-                        + 'differently here');
-            }
-            toast(bits.length
-              ? 'Imported: ' + bits.join(', ') + '.'
-              : 'Nothing to import \u2014 every time in there is already '
-                + 'in this set, with the same decision.', 'ok', 8000);
-            /* Show it straight away; the refetch confirms it. */
-            if (res.set && cur && cur.sets) {
-              const at = cur.sets.findIndex(
-                (x) => x.gid === res.set.gid && x.kind === res.set.kind);
-              if (at >= 0) cur.sets[at] = res.set;
-              else cur.sets.unshift(res.set);
-              renderCuration();
-            }
-            loadCuration();
-            BARRY.refreshSync();
-          } catch (e) { toast(e.message, 'err', 8000); }
-        } }),
-      ]),
-    ]));
-  }
 
   /* ==================================================================
      StrataScope
@@ -1609,7 +1504,13 @@ BARRY.views.toolkit = (function () {
       }
       return;
     }
-    if (q.tool === 'curate') { renderCuration(); return; }
+    if (q.tool === 'curate') {
+      // Reload rather than repaint when something has changed since this
+      // was last read -- which is the whole of "why do I have to refresh".
+      if (!cur || curStale) loadCuration();
+      else renderCuration();
+      return;
+    }
     if (q.tool === 'strata') { renderStrata(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
@@ -1765,6 +1666,11 @@ BARRY.views.toolkit = (function () {
 
   return {
     init, onShow, refresh,
+    /* Curation calls this when it changes something. Cheap on purpose: it
+       marks the cache stale rather than refetching, because the tool is not
+       on screen while somebody is curating and a fetch per keystroke is
+       exactly the kind of thing that made the queue back up. */
+    curationChanged: () => { curStale = true; },
     /* Drop what each pane has cached, so the loading path can be exercised
        on a second visit. Only web/_dev/tkload.html uses this. */
     debugForget: () => { preview = null; cur = null; strata = null; },

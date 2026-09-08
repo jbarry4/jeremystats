@@ -1,22 +1,24 @@
 {
   "_at": {
-    "created": "2026-09-04T16:06:55.635922+00:00",
-    "id": "2026-09-04T16:06:55.635922+00:00",
-    "schema": "2026-09-04T16:06:55.635922+00:00",
-    "slides": "2026-09-04T16:06:55.635922+00:00",
-    "title": "2026-09-04T16:06:55.635922+00:00",
-    "updated": "2026-09-04T16:06:55.635922+00:00"
+    "created": "2026-09-08T19:01:23.587920+00:00",
+    "id": "2026-09-08T19:01:23.587920+00:00",
+    "schema": "2026-09-08T19:01:23.587920+00:00",
+    "slides": "2026-09-08T19:01:23.587920+00:00",
+    "title": "2026-09-08T19:01:23.587920+00:00",
+    "updated": "2026-09-08T19:01:23.587920+00:00"
   },
   "_shard": {
-    "at": "2026-09-04T16:06:55.635922+00:00",
+    "at": "2026-09-08T19:01:23.587920+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-04T12:06:55-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T15:01:23-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   },
   "id": "deck_d726f9b2",
   "schema": 1,
@@ -152,9 +154,11 @@
   ],
   "title": "Test story",
   "updated": {
-    "at": "2026-09-04T12:06:55-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-08T15:01:23-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Rain"
   }
 }

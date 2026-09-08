@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Harness — importing from the bank, all the way through</title>
+<title>Harness — starting a curation set from the bank</title>
 <style>
   body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
          color: #dfe6ee; }
@@ -16,18 +16,26 @@
 <div id="out"></div>
 <iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* "The Bank selector looks great now. One problem it doesnt work and doesnt
-   load in the event lol"
+/* Where candidates come from, and how a set starts.
 
-   There is one modal box, and showing a dialog wiped it. The picker was
-   opened from inside the import wizard, so the wizard's nodes were
-   destroyed while the code that opened the picker still held references
-   into them -- it then wrote the staged candidates into elements that were
-   no longer in the document. Everything returned 200 and nothing happened.
+   This used to drive "Import candidates" in Event curation, which is gone.
+   It was wrong in two ways and the second one cost real confusion:
 
-   So this drives the whole thing the way a person does: open the wizard,
-   click the bank tile, pick an entry, confirm, and check the candidates
-   actually arrive back in the wizard that asked for them. */
+   It made Event curation a second door into the store of candidates. The
+   Event Bank is that store -- it holds the times, the detector that found
+   them, and the version history. Curation should read a version out of it.
+
+   And it implied a recording could have more than one set of a kind. It
+   cannot: a set is keyed by (recording, kind). So a second import of the
+   same 373 times took the "add to a set in progress" path, matched every
+   time against one already there, added nothing, threw away the name that
+   had been typed, and returned 200. Three attempts in the 14:54 report on
+   2026-09-08, each of them `n: 0, skipped: 373`, and nothing on screen.
+
+   So what is checked here is the flow that replaced it: pick a recording,
+   pick a banked entry, pick which version to work from, start. Plus the two
+   things that have to be true of it -- that v0 gives you a fresh pass, and
+   that replacing an existing set says so first. */
 const out = document.getElementById('out');
 let bad = 0;
 const say = (c, m) => { const d = document.createElement('div');
@@ -38,146 +46,206 @@ const check = (n, c, d) => say(c ? 'ok' : 'bad',
 const head = (t) => { const h = document.createElement('h2');
                       h.textContent = t; out.appendChild(h); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function untilN(fn, tries = 300, gap = 90) {
+async function untilN(fn, tries = 250, gap = 100) {
   for (let i = 0; i < tries; i++) {
-    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
     await sleep(gap);
   }
   return -1;
 }
-const byText = (D, sel, re) => Array.from(D.querySelectorAll(sel))
-  .find((n) => re.test((n.textContent || '').trim()));
 
 (async () => { try {
-  const frame = document.getElementById('app');
-  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
-  const W = frame.contentWindow, D = frame.contentDocument;
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
   const errs = [];
-  W.addEventListener('error', (e) => errs.push(e.message));
-  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
-  await untilN(() => W.eval('BARRY'));
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => W.BARRY);
 
-  head('Modals stack instead of destroying each other');
-  /* The primitive first, on its own, because everything below depends on
-     it and a failure here would look like a bank problem. */
-  W.eval('showModal(el("div", { id: "layerOne", text: "first" }))');
-  await sleep(150);
-  check('the first dialog is up', !!D.getElementById('layerOne'));
-  W.eval('showModal(el("div", { id: "layerTwo", text: "second" }))');
-  await sleep(150);
-  check('the second replaced it on screen', !!D.getElementById('layerTwo')
-        && !D.getElementById('layerOne'));
-  W.eval('closeModal()');
-  await sleep(150);
-  check('closing the second brings the first back',
-        !!D.getElementById('layerOne') && !D.getElementById('layerTwo'),
-        'one=' + !!D.getElementById('layerOne')
-        + ' two=' + !!D.getElementById('layerTwo'));
-  check('and the box is still showing',
-        !D.getElementById('bigModal').classList.contains('hidden'));
-  W.eval('closeModal()');
-  await sleep(150);
-  check('closing the last one hides the box',
-        D.getElementById('bigModal').classList.contains('hidden'));
+  const get = (u) => W.fetch(u).then((r) => r.json());
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}) }).then(async (r) => {
+      const j = await r.json();
+      j._status = r.status;
+      return j;
+    });
+  const byText = (root, sel, re) => Array.from(root.querySelectorAll(sel))
+    .find((n) => re.test((n.textContent || '').trim()));
+  const seen = (n) => !!(n && n.offsetParent !== null);
 
-  head('Now the real thing');
+  head('1. The route, before the interface');
+  /* A recording with a rebuilt history: v0 the detector, v1 the sort. */
+  const bank = await get('/api/bank');
+  const cand = (bank.entries || []).filter(
+    (e) => e.type === 'ds' && e.gid && (e.versions || []).length > 1);
+  say('note', '  ' + cand.length + ' ds entries with more than one version');
+  check('there is a banked entry with a history to work from',
+        cand.length > 0);
+  if (!cand.length) throw new Error('nothing to test against');
+  const ent = cand.sort((a, b) => (a.n || 0) - (b.n || 0))[0];
+  const gid = ent.gid;
+  say('note', '  using "' + ent.name + '" (' + ent.n + ' events, v'
+      + (ent.versions || []).map((v) => v.v).join(' v') + ')');
+
+  const info = await get('/api/curation/for-recording/'
+                         + encodeURIComponent(gid));
+  const row = (info.entries || []).find((e) => e.id === ent.id);
+  check('the recording reports what it has banked', !!row,
+        'entry not listed for its own gid');
+  const v0 = (row.versions || []).find((v) => v.v === 0);
+  check('version zero is offered', !!v0);
+  check('and is marked as the detector’s own',
+        !!v0 && v0.imported === true);
+  check('and says nothing was decided in it',
+        !!v0 && Object.keys(v0.by_label || {}).join() === 'unspecified',
+        JSON.stringify((v0 || {}).by_label));
+  check('and can actually be built from', !!v0 && v0.usable === true);
+
+  head('2. Starting from v0 gives a fresh pass');
+  /* Refuses first, because there is already a set for this recording. */
+  const refused = await post('/api/curation/from-bank',
+    { gid, kind: 'ds', entry: ent.id, version: 0 });
+  check('it refuses to replace a set without being told to',
+        refused._status === 409 && !!refused.exists,
+        'status ' + refused._status);
+  check('and says what it would be replacing',
+        !!refused.exists && refused.exists.total > 0,
+        JSON.stringify(refused.exists));
+  say('note', '  refusal reads: ' + (refused.error || '').slice(0, 100));
+
+  const made = await post('/api/curation/from-bank',
+    { gid, kind: 'ds', entry: ent.id, version: 0, replace: true });
+  check('with replace it starts the set', made.ok === true, made.error);
+  const pr = made.progress || {};
+  say('note', '  ' + pr.total + ' candidates, ' + pr.specified + ' decided, '
+      + pr.left + ' left');
+  check('every candidate arrives undecided from v0',
+        pr.total > 0 && pr.specified === 0 && pr.left === pr.total,
+        JSON.stringify(pr));
+  check('and the count matches the version',
+        pr.total === (v0.n || 0), pr.total + ' vs ' + v0.n);
+
+  head('3. Starting from a later version carries its decisions');
+  const later = (row.versions || [])
+    .filter((v) => v.usable && v.v > 0)
+    .sort((a, b) => b.v - a.v)[0];
+  check('there is a later version to try', !!later);
+  if (later) {
+    const decided = Object.keys(later.by_label || {})
+      .filter((k) => k !== 'unspecified')
+      .reduce((n, k) => n + later.by_label[k], 0);
+    say('note', '  v' + later.v + ' held ' + decided + ' decisions');
+    const got = await post('/api/curation/from-bank',
+      { gid, kind: 'ds', entry: ent.id, version: later.v, replace: true });
+    check('it starts from that version', got.ok === true, got.error);
+    const p2 = got.progress || {};
+    say('note', '  now ' + p2.specified + ' of ' + p2.total + ' decided');
+    check('the decisions came with it', p2.specified === decided,
+          p2.specified + ' vs ' + decided + ' expected');
+    /* The whole point of the version picker: two versions of one entry are
+       genuinely different starting points. */
+    check('so v0 and v' + later.v + ' are different places to start',
+          decided > 0);
+  }
+
+  head('4. It refuses what it cannot do, in words');
+  const noSuch = await post('/api/curation/from-bank',
+    { gid, kind: 'ds', entry: ent.id, version: 99, replace: true });
+  check('a version that does not exist is refused',
+        noSuch._status === 404, 'status ' + noSuch._status);
+  check('and the refusal lists the ones that do',
+        /has v/.test(noSuch.error || ''), noSuch.error);
+  const wrongKind = await post('/api/curation/from-bank',
+    { gid, kind: 'nonsense', entry: ent.id, version: 0, replace: true });
+  check('an unknown kind is refused', wrongKind._status === 400,
+        'status ' + wrongKind._status);
+
+  head('5. The interface offers it, and no longer offers importing');
   W.eval("setView('toolkit')");
-  await sleep(400);
   await untilN(() => D.querySelector('.tk-tool'), 200);
-  const tool = Array.from(D.querySelectorAll('.tk-tool'))
-    .find((b) => /Event curation/.test(b.textContent));
+  const tool = byText(D, '.tk-tool', /Event curation/);
   check('the curation tool is there', !!tool);
-  if (!tool) return;
   tool.click();
+  await untilN(() => D.querySelector('#curBench'), 300);
   await sleep(900);
 
-  const openBtn = byText(D, 'button', /^Import candidates/);
-  check('there is an Import candidates button', !!openBtn);
-  if (!openBtn) return;
-  openBtn.click();
-  await untilN(() => byText(D, '.choice strong', /From the Event Bank/), 120);
-  check('the import wizard opened',
-        !!byText(D, '.choice strong', /From the Event Bank/));
+  check('there is no "Import candidates" button any more',
+        !byText(D, 'button', /^Import candidates/),
+        'the old import path is still on screen');
+  const newBtn = byText(D, 'button', /^New curation set/);
+  check('there is a "New curation set" button', !!newBtn);
+  if (!newBtn) throw new Error('no way into the flow');
 
-  /* A recording has to be picked before the bank tile will do anything.
-     By its label, not by position -- the first select in the wizard is the
-     kind, and picking that one made this harness report the bank browser as
-     opening empty when it was doing exactly the right thing. */
-  const fields = Array.from(D.querySelectorAll('#bigModalBox .field'));
-  const sessField = fields.find((f) => /Recording/i.test(
-    (f.querySelector('label') || {}).textContent || ''));
-  check('there is a recording picker', !!sessField,
-        'no Recording field in the wizard');
-  /* It is BARRY.pickSession -- a type-to-search widget, not a <select>.
-     Rather than reverse-engineer its internals, type into it and take the
-     first suggestion, which is what a person does. */
+  newBtn.click();
+  await untilN(() => byText(D, 'h3', /New curation set/), 150);
+  check('the wizard opens', !!byText(D, 'h3', /New curation set/));
+  await sleep(1200);
+
+  const fields = Array.from(D.querySelectorAll('.field'));
+  const sessField = fields.find((x) => /Recording/i.test(
+    (x.querySelector('label') || {}).textContent || ''));
+  check('it asks which recording first', !!sessField);
+
+  /* Point it at the recording this harness has been using. The wizard
+     defaults to one that has something banked, but not necessarily this
+     one -- and the steps after this depend on which recording is chosen,
+     so leaving it to the default made the rest of this section test
+     whichever session happened to sort first. */
+  const label = (info.session || {}).label || '';
+  const mouse = (label.match(/m(\d+)/i) || [])[1];
   const sessInput = sessField && sessField.querySelector('input');
-  if (sessInput) {
+  if (sessInput && mouse) {
     sessInput.focus();
-    sessInput.value = 'm13';
+    sessInput.value = 'm' + mouse;
     sessInput.dispatchEvent(new W.Event('input', { bubbles: true }));
     await sleep(500);
-    const opt = D.querySelector('#bigModalBox .picker-list button, '
-                              + '#bigModalBox .pick-row, '
-                              + '#bigModalBox .picker-opt');
-    if (opt) { opt.click(); await sleep(300); }
+    const opt = D.querySelector('.pick-row, .picker-list button, .picker-opt');
+    if (opt) { opt.click(); }
+    await sleep(1500);
     say('note', '  recording box now: ' + (sessInput.value || '(empty)'));
   } else {
-    say('note', '  no text input in the Recording field; using the default');
+    say('note', '  using the wizard default recording');
+    await sleep(800);
   }
 
-  const tile = byText(D, '.choice', /From the Event Bank/);
-  tile.click();
-  await untilN(() => byText(D, '#bigModalBox h3', /Import from the Event Bank/),
-               200);
-  check('the bank browser opened',
-        !!byText(D, '#bigModalBox h3', /Import from the Event Bank/));
+  /* The three questions are asked in order, and each one appears only once
+     the one before it has an answer. */
+  const step = (re) => byText(D, '.section-label', re);
+  check('then which banked entry', !!step(/Which banked entry/),
+        'no entry step');
+  await untilN(() => step(/Which version/), 60);
+  check('then which version', !!step(/Which version/), 'no version step');
 
-  const rows = () => Array.from(D.querySelectorAll('.bank-targets .bm-row'));
-  await untilN(() => rows().length > 0, 200);
-  say('note', '  ' + rows().length + ' entries listed to start with');
-  check('it lists something', rows().length > 0);
+  const vrows = Array.from(D.querySelectorAll('.bm-row'))
+    .filter((r) => /^v\d/.test((r.querySelector('.ver-n') || {}).textContent || ''));
+  say('note', '  ' + vrows.length + ' version(s) offered');
+  check('the versions are listed', vrows.length > 0);
+  check('the detector’s own version is marked',
+        !!byText(D, '.flagchip', /the detector/),
+        'v0 is not identified');
+  /* A version with no snapshot cannot be a starting point, and must not
+     look like one. */
+  const dead = vrows.filter((r) => r.classList.contains('off'));
+  say('note', '  ' + dead.length + ' version(s) with no snapshot kept');
+  check('any version without a snapshot is disabled, not silently broken',
+        dead.every((r) => (r.querySelector('input') || {}).disabled),
+        'an unusable version is selectable');
 
-  /* Show everything, then pick the largest set so there is no doubt the
-     events came from the row that was chosen. */
-  const showAll = byText(D, '#bigModalBox button', /^Show everything$/);
-  check('there is a way to see the whole bank', !!showAll);
-  if (showAll) { showAll.click(); await sleep(400); }
-  say('note', '  ' + rows().length + ' entries with the filters cleared');
-
-  const target = rows().find((r) => /494 event/.test(r.textContent))
-              || rows()[0];
-  const wantN = (target.textContent.match(/(\d+) event/) || [])[1];
-  say('note', '  picking: ' + target.textContent.trim().slice(0, 70));
-  target.querySelector('input[type=radio]').click();
-  await sleep(300);
-
-  const use = byText(D, '#bigModalBox button', /^Use this set$/);
-  check('the confirm button is enabled once something is picked',
-        !!use && !use.disabled, use ? 'disabled' : 'no button');
-  use.click();
-
-  head('Back in the wizard, with the candidates');
-  await untilN(() => byText(D, '.choice strong', /From the Event Bank/), 200);
-  check('the wizard came back rather than everything closing',
-        !!byText(D, '.choice strong', /From the Event Bank/));
-  const note = D.querySelector('#bigModalBox .confirm-msg, #bigModalBox .hint');
-  const allText = (D.getElementById('bigModalBox') || {}).textContent || '';
-  say('note', '  wizard says: '
-      + (allText.match(/\d+ candidate\(s\) from [^\n]{0,60}/) || ['(nothing)'])[0]);
-  check('it staged the candidates it was given',
-        /candidate\(s\) from the bank/.test(allText), allText.slice(0, 120));
-  if (wantN) {
-    check('and the count matches the row that was picked',
-          allText.indexOf(wantN + ' candidate') >= 0,
-          'expected ' + wantN);
-  }
+  check('and it warns that a set already exists',
+        !!byText(D, '.confirm-sub.warn', /already has a/),
+        'no warning about replacing');
+  const start = byText(D, 'button', /^Start on it$/);
+  check('there is a button to start', !!start && seen(start));
 
   if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
-  head(bad ? bad + ' problem(s)' : 'All good.');
-  document.title = bad ? 'bankimport: ' + bad + ' FAILED' : 'bankimport: passed';
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'set from the bank';
 } catch (e) {
-  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
-  document.title = 'bankimport: harness CRASH';
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw';
 } })();
 </script>

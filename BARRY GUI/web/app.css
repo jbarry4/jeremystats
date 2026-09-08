@@ -5014,3 +5014,21 @@ body.aid-window .xf-tabs { display: none !important; }
 .cur-filter select { flex: none; }
 .cur-chips { margin-bottom: 10px; }
 .cur-chips .pill:disabled { opacity: .35; cursor: default; }
+
+/* The people already on record, in the Profile dialog. Two targets per
+   chip: the name adopts them, the pencil edits them. */
+.prof-known { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 4px; }
+.prof-chip {
+  display: inline-flex; align-items: stretch; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-2); overflow: hidden;
+}
+.prof-chip.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.prof-chip-name, .prof-chip-edit {
+  font: inherit; font-size: 10.5px; cursor: pointer;
+  background: transparent; border: 0; color: var(--text-1); padding: 2px 9px;
+}
+.prof-chip-edit {
+  border-left: 1px solid var(--line); color: var(--text-3); padding: 2px 7px;
+}
+.prof-chip-name:hover, .prof-chip-edit:hover { background: var(--bg-3); }
+.prof-chip.on .prof-chip-name { color: var(--accent); }

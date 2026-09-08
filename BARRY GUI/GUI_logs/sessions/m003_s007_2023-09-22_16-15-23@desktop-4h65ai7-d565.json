@@ -21,7 +21,7 @@
     "schema": "2026-09-04T15:57:01.584890+00:00",
     "session": "2026-09-04T15:57:01.584890+00:00",
     "start": "2026-09-04T15:57:01.584890+00:00",
-    "updated": "2026-09-08T18:11:30.008547+00:00",
+    "updated": "2026-09-08T19:10:52.690769+00:00",
     "view_state": "2026-09-08T18:10:24.766099+00:00"
   },
   "_keys": {
@@ -32,6 +32,10 @@
       ]
     },
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s7\\2023-09-22_16-15-23": [
+        "set",
+        "2026-09-08T18:00:51.827500+00:00"
+      ],
       "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23": [
         "set",
         "2026-09-04T15:57:01.584890+00:00"
@@ -60,12 +64,12 @@
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T18:11:30.008547+00:00"
+        "2026-09-08T19:10:52.690769+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:11:30.008547+00:00",
+    "at": "2026-09-08T19:10:52.690769+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -112,7 +116,8 @@
     "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
     "G:\\PTEN\\M3_s7",
     "Y:\\ProcessedPtenData\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s7_CNO"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s7_CNO",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s7\\2023-09-22_16-15-23"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -134,7 +139,7 @@
       "scan": "scan_a9e7e27d1a"
     },
     "StrawBarry": {
-      "at": "2026-09-08T14:11:29-04:00",
+      "at": "2026-09-08T15:10:52-04:00",
       "by": "Rain",
       "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
       "root": null,
@@ -144,7 +149,7 @@
   "session": 7,
   "start": "2023-09-22T16:15:23",
   "updated": {
-    "at": "2026-09-08T14:11:30-04:00",
+    "at": "2026-09-08T15:10:52-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "StrawBarry",

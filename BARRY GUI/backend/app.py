@@ -2029,6 +2029,192 @@ def api_curation_create():
                     "set": CURATE.summary(rec)})
 
 
+@app.route("/api/curation/from-bank", methods=["POST"])
+def api_curation_from_bank():
+    """Start a curation set from one version of a banked entry.
+
+    The bank holds the candidates and their history; this reads a version
+    out of it. `version` 0 is the detector's list with nothing decided,
+    which is the normal way to begin a fresh pass. A later version carries
+    the decisions as they stood when it was banked, which is how you carry
+    on from somebody else's work or go back to it.
+
+    A recording has one curation set per kind, so this replaces whatever is
+    there -- and refuses unless the caller has said so, because the set it
+    would replace may be half-finished.
+    """
+    body = request.get_json(force=True) or {}
+    gid = (body.get("gid") or "").strip()
+    kind = (body.get("kind") or "").strip()
+    entry_id = (body.get("entry") or "").strip()
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False,
+                        "error": "%r is not a kind of curation this BARRY "
+                                 "knows about." % kind}), 400
+
+    ent = BANK.get(entry_id) if entry_id else None
+    if not ent:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    if gid and ent.get("gid") and ent["gid"] != gid:
+        return jsonify({
+            "ok": False,
+            "error": "That entry was banked against a different recording. "
+                     "Its times are seconds from the start of that one, so "
+                     "on this one they would land somewhere arbitrary."}), 400
+    gid = gid or ent.get("gid")
+    if not gid:
+        return jsonify({"ok": False,
+                        "error": "That entry has no recording id, so there "
+                                 "is nothing to attach a set to."}), 400
+
+    sess = _session_by_gid(gid)
+    if not sess:
+        return jsonify({"ok": False, "error": "No such recording."}), 404
+
+    try:
+        want_v = int(body.get("version"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Which version?"}), 400
+
+    versions = ent.get("versions") or []
+    ver = next((v for v in versions if v.get("v") == want_v), None)
+    if ver is None:
+        return jsonify({
+            "ok": False,
+            "error": "That entry has no version %s. It has %s."
+                     % (want_v, ", ".join("v%s" % v.get("v")
+                                          for v in versions) or "none")}), 404
+
+    vocab = curation.vocabulary(kind)
+    snap = ver.get("snap")
+    if snap:
+        events = []
+        for pair in snap:
+            try:
+                start = float(pair[0])
+            except (TypeError, ValueError, IndexError):
+                continue
+            item = {"start": start}
+            lab = curation.resolve_label(vocab, pair[1] if len(pair) > 1
+                                         else None)
+            if lab:
+                item["label"] = lab
+            events.append(item)
+    elif want_v == (ent.get("version") or 0):
+        # The newest version is whatever the entry currently holds, so it
+        # does not need a snapshot of its own.
+        events = [{"start": e.get("start"),
+                   **({"label": curation.resolve_label(
+                        vocab, e.get("label_id") or e.get("label"))}
+                      if curation.resolve_label(
+                        vocab, e.get("label_id") or e.get("label")) else {})}
+                  for e in (ent.get("events") or [])]
+    else:
+        return jsonify({
+            "ok": False,
+            "error": "Version %s no longer carries a candidate-by-candidate "
+                     "snapshot, so a set cannot be built from it -- only the "
+                     "recent versions keep one. Its counts and its note are "
+                     "still in the history." % want_v}), 400
+
+    if not events:
+        return jsonify({"ok": False,
+                        "error": "That version has no usable times in it."}), 400
+
+    existing = CURATE.get(gid, kind)
+    if existing and not body.get("replace"):
+        prog = CURATE.progress(existing)
+        return jsonify({
+            "ok": False,
+            "exists": {
+                "name": existing.get("name"),
+                "total": prog["total"], "specified": prog["specified"],
+                "left": prog["left"],
+                "assignee": existing.get("assignee"),
+                "archived": bool(existing.get("archived")),
+            },
+            "error": "%s already has a %s set -- %d of %d decided. A "
+                     "recording has one set per kind, so starting from v%s "
+                     "would replace it."
+                     % (sess.get("label") or gid,
+                        curation.KINDS[kind]["name"].lower(),
+                        prog["specified"], prog["total"], want_v)}), 409
+
+    try:
+        rec, n, extra = CURATE.create(
+            gid, kind, events,
+            name=(body.get("name") or "").strip() or ent.get("name"),
+            source={"kind": "bank version", "bank_entry": ent["id"],
+                    "entry_name": ent.get("name"), "version": want_v,
+                    "pipeline": (ent.get("source") or {}).get("pipeline"),
+                    "by": ver.get("by")},
+            session_label=sess.get("label"),
+            replace=True)
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    prog = CURATE.progress(rec)
+    STORE.record_activity([{
+        "action": "curation.from_bank",
+        "detail": {"gid": gid, "kind": kind, "entry": ent["id"],
+                   "version": want_v, "n": n,
+                   "decided": prog["specified"],
+                   "replaced": bool(existing)},
+        "session": {"key": sess.get("key"), "label": sess.get("label")},
+    }])
+    return jsonify({"ok": True, "n": n, "version": want_v,
+                    "replaced": bool(existing),
+                    "entry": {"id": ent["id"], "name": ent.get("name")},
+                    "progress": prog,
+                    "set": CURATE.summary(rec)})
+
+
+@app.route("/api/curation/for-recording/<gid>")
+def api_curation_for_recording(gid):
+    """What is banked against this recording that a set could start from.
+
+    Every entry with a version history, per kind, with each version's counts
+    -- so the picker can say "v0, 373 candidates, none decided" and "v1, the
+    folder sort, 283 spikes" and let somebody choose between them.
+    """
+    out = []
+    for rec in BANK.all():
+        if rec.get("gid") != gid:
+            continue
+        kind = (rec.get("type") or "").strip()
+        if kind not in curation.KINDS:
+            continue
+        vs = []
+        newest = rec.get("version") or 0
+        for v in (rec.get("versions") or []):
+            vs.append({
+                "v": v.get("v"), "at": v.get("at"), "by": v.get("by"),
+                "n": v.get("n"), "note": v.get("note"),
+                "by_label": v.get("by_label") or {},
+                "imported": bool(v.get("imported")),
+                # Whether a set can actually be built from it.
+                "usable": bool(v.get("snap")) or v.get("v") == newest,
+            })
+        vs.sort(key=lambda x: -(x["v"] or 0))
+        out.append({
+            "id": rec["id"], "name": rec.get("name"), "kind": kind,
+            "kind_name": curation.KINDS[kind]["name"],
+            "n": rec.get("n"),
+            "source": (rec.get("source") or {}).get("pipeline"),
+            "label_names": rec.get("label_names") or {},
+            "versions": vs,
+        })
+    out.sort(key=lambda r: (r["kind"], r["name"] or ""))
+
+    have = []
+    for kind in curation.KINDS:
+        got = CURATE.get(gid, kind)
+        if got:
+            have.append(CURATE.summary(got))
+    return jsonify({"ok": True, "entries": out, "existing": have,
+                    "session": _session_by_gid(gid)})
+
+
 @app.route("/api/curation/<gid>/<kind>/label", methods=["POST"])
 def api_curation_label(gid, kind):
     body = request.get_json(force=True) or {}
@@ -2111,11 +2297,18 @@ def api_people_add():
     """Put somebody on the roster before they have touched anything."""
     body = request.get_json(force=True, silent=True) or {}
     try:
-        PEOPLE.add(body.get("name"), body.get("email"),
-                   body.get("note"))
+        PEOPLE.add(body.get("name"), body.get("email"), body.get("note"),
+                   role=body.get("role"), initials=body.get("initials"),
+                   orcid=body.get("orcid"))
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
+
+
+@app.route("/api/people/<name>")
+def api_people_one(name):
+    """What the roster holds about one person, for the editor."""
+    return jsonify({"ok": True, "person": PEOPLE.details(name)})
 
 
 @app.route("/api/people/forget", methods=["POST"])
@@ -2313,13 +2506,27 @@ def api_curation_banked(gid, kind):
     """
     found = BANK.curated_entries(gid, kind)
     whole = [e for e in found if e.get("curation_label") == "*"]
-    if not whole:
+    ent = whole[0] if whole else None
+
+    # The detector import this set will be written onto, if it has not been
+    # banked under its own name yet. `curated_entries` only knows about
+    # entries this set has already written, and an import has no
+    # `curation_label` -- so a set whose history is v0 (the detector) plus v1
+    # (a sort done before BARRY) looked untouched here, and the dialog
+    # offered to write "version 1" while the route was about to write v2.
+    # Asked the same way the bank route asks, so the two cannot disagree.
+    if ent is None:
+        rec = CURATE.get(gid, kind)
+        if rec:
+            bundle = CURATE.bank_one(rec, only_specified=True)
+            if bundle["n"]:
+                ent = BANK.source_entry_for(gid, kind, bundle["events"])
+    if ent is None:
         return jsonify({"ok": True, "entry": None,
                         "split": [{"id": e["id"], "name": e.get("name"),
                                    "n": e.get("n"),
                                    "label": e.get("curation_label")}
                                   for e in found]})
-    ent = whole[0]
     return jsonify({
         "ok": True,
         "entry": {
@@ -2328,6 +2535,11 @@ def api_curation_banked(gid, kind):
             "by_label": ent.get("by_label") or {},
             "label_names": ent.get("label_names") or {},
             "added": ent.get("added") or {},
+            # So the dialog can say "carrying on from the detector's export"
+            # rather than "this set has not been banked before", which was
+            # true of the set and false of the entry it writes onto.
+            "adopted": ent.get("curation_label") is None,
+            "source": (ent.get("source") or {}).get("pipeline"),
             "versions": [{k: v for k, v in ver.items() if k != "snap"}
                          for ver in (ent.get("versions") or [])],
         },
