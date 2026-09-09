@@ -94,8 +94,34 @@ const PROBE = 'Harness Probe Person';
      'every name looks held — the delete could never be used');
 
   hd('2. A name with work behind it is refused');
-  const worked = people.filter((x) => held(x) > 0)
-    .sort((a, b) => held(b) - held(a))[0];
+  /* Somebody the data carries AND who has no hand-added row, so the
+     forget genuinely changes nothing.
+
+     This used to take whoever had the most work, which is a real colleague
+     -- and if they happened to have a hand-added row, the forget removed
+     it. That row is where a merge keeps its aliases, so running this
+     harness quietly undid the Rain / Rain Younger merge, repeatedly, and it
+     took a while to work out that the test was the thing breaking it.
+
+     A name with no hand-add is the honest subject anyway: the claim is that
+     the data holds them there, not that a row does. */
+  const HAND_SRC = 'added by hand';
+  const pure = people.filter(
+    (x) => held(x) > 0 && !((x.counts || {})[HAND_SRC]));
+  const worked = (pure.sort((a, b) => held(b) - held(a))[0])
+    || people.filter((x) => held(x) > 0).sort((a, b) => held(b) - held(a))[0];
+  /* Preferred, not required. On this store every real person also has a
+     hand-added row, so there is nobody to pick who is entirely safe -- and
+     failing here would be reporting the roster rather than the code. Said
+     out loud, and whatever is removed is put back below. */
+  const risky = !!((worked.counts || {})[HAND_SRC]);
+  p('  subject: ' + worked.name + (risky
+    ? '  (has a hand-added row — it will be restored afterwards)'
+    : '  (no hand-added row, nothing to destroy)'));
+  const keepDetails = risky
+    ? await (await W().fetch('/api/people/'
+        + encodeURIComponent(worked.name))).json().catch(() => null)
+    : null;
   p('  trying: ' + worked.name + ' (' + held(worked) + ' records)');
   /* Compared as a set, not as a count. A count is a race: another harness
      leaving a `curate@harness` behind moves it for reasons that have
@@ -111,6 +137,26 @@ const PROBE = 'Harness Probe Person';
      'a name carried by the data was removed');
   ck('and the forget removed nobody', lost.length === 0,
      'lost: ' + lost.join(', '));
+
+  /* Restore what the forget took. A hand-added row is where a merge keeps
+     its aliases, so removing one quietly undid the Rain / Rain Younger
+     merge every time this harness ran. */
+  if (keepDetails && keepDetails.person) {
+    const d = keepDetails.person;
+    try {
+      await post('/api/people/add', {
+        name: worked.name, email: d.email || null, role: d.role || null,
+        initials: d.initials || null,
+      });
+      if ((d.aliases || []).length) {
+        await post('/api/people/add',
+                   { name: worked.name, aliases: d.aliases });
+      }
+      p('  restored ' + worked.name + '’s row'
+        + ((d.aliases || []).length
+            ? ' and ' + d.aliases.length + ' alias(es)' : ''));
+    } catch (e) { p('  could not restore: ' + e.message); }
+  }
 
   hd('3. A hand-added name goes');
   await post('/api/people/add', { name: PROBE, role: 'harness' });

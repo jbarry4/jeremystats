@@ -1094,6 +1094,79 @@ function conflictNote(c) {
 }
 
 
+/* Sync, from anywhere, with the phase on the button.
+
+   The same request the dialog's "Sync now" makes -- there is one sync and
+   one lock -- but reachable in one click and reporting into the rail rather
+   than into a modal that has to be open to be read.
+
+   `/api/sync/progress` is polled while the request is in flight because a
+   full round trip is three or four seconds and the pull alone is fifteen
+   round trips. A button that says nothing for that long is indistinguishable
+   from a button that did nothing. */
+let _syncing = false;
+
+async function globalSync(btn) {
+  if (_syncing) return;
+  _syncing = true;
+  const label = document.getElementById('syncNowLabel');
+  const was = label ? label.textContent : 'Sync now';
+  if (btn) btn.classList.add('busy');
+
+  let stop = false;
+  const watch = async () => {
+    while (!stop) {
+      try {
+        const got = await api('/api/sync/progress');
+        const st = (got && got.step) || {};
+        /* `stop` is re-checked AFTER the await. Setting it only stops the
+           next iteration; a request already in flight would otherwise
+           write its phase over the label the `finally` had just put
+           back -- which left the chip reading "pushing error_marks 93%"
+           for ever. */
+        if (stop) break;
+        if (st.running && label) {
+          const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+          label.textContent = (st.phase || 'syncing')
+            + (st.table ? ' ' + st.table : '')
+            + (pct != null ? '  ' + pct + '%' : '');
+        }
+      } catch (e) { /* the sync is what matters, not the commentary */ }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  };
+  watch();
+
+  try {
+    const res = await apiPost('/api/cloud/sync', {});
+    const last = (res && res.last) || {};
+    if (last.error) {
+      toast('Sync: ' + last.error, 'err', 8000);
+    } else {
+      /* What actually moved, not "done". "Sent 0, brought back 0" is a
+         useful answer -- it means everybody is already level. */
+      toast('Sent ' + (last.pushed || 0) + ', brought back '
+            + (last.pulled || 0)
+            + (last.downloaded ? ', downloaded ' + last.downloaded + ' file(s)'
+               : '') + '.', 'ok', 6000);
+    }
+    /* Whatever came down should be on screen without a second thought. */
+    try { await BARRY.refreshSync(); } catch (e) { /* status only */ }
+    const v = BARRY.views[BARRY.state.view];
+    if (v && v.reload) { try { v.reload(); } catch (e) { /* leave it */ } }
+    else if (v && v.onShow) { try { v.onShow(); } catch (e) { /* leave it */ } }
+  } catch (e) {
+    toast('Could not sync: ' + e.message, 'err', 9000);
+  } finally {
+    stop = true;
+    _syncing = false;
+    if (btn) btn.classList.remove('busy');
+    if (label) label.textContent = was;
+  }
+}
+
+BARRY.syncNow = globalSync;
+
 function showSync() {
   const d = BARRY.sync || {};
   const git = d.git || {};
@@ -1577,6 +1650,10 @@ BARRY.profile = (function () {
       if (mine) mineOnly.push(box);
       return box;
     };
+    /* Nothing is machine-only in this form any more -- the one field that
+       was has moved out entirely. The mechanism stays: the next field that
+       is about the computer rather than the person must not be editable
+       while somebody else's details are in the form. */
 
     /* Who is already here. A row fills the form; the pencil opens that
        person for editing without making them the person at this keyboard,
@@ -1864,12 +1941,25 @@ BARRY.profile = (function () {
             'What appears under a figure and against every decision.'),
       field('email', 'Email', 'you@uvm.edu',
             'So a decision can be asked about later.'),
-      field('device', 'What the lab calls this machine',
-            (cur.machine || 'this computer'),
-            'The real hostname (' + (cur.machine || '?') + ') is kept as '
-            + 'well, so "which computer" is still answerable. This name is '
-            + 'stamped on every error and action from this computer, so two '
-            + 'machines sharing one cannot be told apart.', true),
+      /* The machine's name is not a field here any more. It belongs to
+         the computer, and while it sat in this form every path that saved
+         a profile could rename the machine -- which is how one computer
+         came to file errors under five names. It lives under Device, in
+         Errors. */
+      el('p', { class: 'hint prof-device-note' }, [
+        el('span', { text: 'This computer is called ' }),
+        el('strong', { text: (cur.device_name || cur.machine || 'unnamed') }),
+        el('span', { text: '. That belongs to the computer rather than to '
+                         + 'you, so it is set under ' }),
+        el('button', {
+          class: 'linkish', text: 'Errors \u2192 Device',
+          onclick: () => {
+            closeModal();
+            setView('errors');
+          },
+        }),
+        el('span', { text: ' and switching profiles leaves it alone.' }),
+      ]),
       field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
@@ -2528,6 +2618,8 @@ BARRY.init = async function init() {
   $('#themeToggle').addEventListener('click', showThemePicker);
 
   $('#syncBtn').addEventListener('click', showSync);
+  const goBtn = $('#syncNowBtn');
+  if (goBtn) goBtn.addEventListener('click', () => globalSync(goBtn));
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));

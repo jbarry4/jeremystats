@@ -55,6 +55,49 @@ PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 UNSTAMPED = "1970-01-01T00:00:00+00:00"
 
 
+def _slim_versions(versions):
+    """Version metadata, with the snapshots left behind.
+
+    `snap` is the copy that makes a version restorable and it is the bulk of
+    the record. It stays in the JSON shard; this is what travels.
+    """
+    out = []
+    for v in (versions or []):
+        if not isinstance(v, dict):
+            continue
+        row = {k: v.get(k) for k in
+               ("v", "at", "by", "n", "note", "by_label", "machine",
+                "imported")
+               if v.get(k) is not None}
+        if row.get("v") is not None:
+            # Said on the row rather than inferred later: a reader needs to
+            # know this copy cannot be restored from.
+            row["snap_here"] = bool(v.get("snap"))
+            out.append(row)
+    return out
+
+
+def _bank_touched(rec):
+    """When this entry last changed.
+
+    The newest of: when it was added, the newest version, and the newest
+    history line. Using only `added.at` meant an edited entry looked
+    unchanged for ever and the incremental push skipped it.
+    """
+    stamps = []
+    added = _prov(rec, "added")
+    if added.get("at"):
+        stamps.append(cloud.ts(added["at"]))
+    for v in (rec.get("versions") or []):
+        if isinstance(v, dict) and v.get("at"):
+            stamps.append(cloud.ts(v["at"]))
+    for h in (rec.get("history") or []):
+        if isinstance(h, dict) and h.get("at"):
+            stamps.append(cloud.ts(h["at"]))
+    stamps = [x for x in stamps if x]
+    return max(stamps) if stamps else None
+
+
 def _prov(rec, key="updated"):
     p = rec.get(key) or {}
     return p if isinstance(p, dict) else {}
@@ -243,7 +286,22 @@ class Sync:
                 "added_machine": added.get("machine"),
                 "history": rec.get("history") or [],
                 "events": rec.get("events") or [],
-                "updated_at": cloud.ts(added.get("at")) or cloud.now(),
+                # The version history, without the snapshots.
+                #
+                # Measured on this store: 110 versions are 44 KB of metadata
+                # and 0.5 MB of snapshots. The metadata is what makes a
+                # version visible on another machine -- who, when, how many,
+                # the label mix -- and the snapshot is what lets it be
+                # restored. So the metadata comes here and the snapshots stay
+                # in the JSON shard, which is the redundancy copy.
+                "versions": _slim_versions(rec.get("versions")),
+                "version": _int(rec.get("version")),
+                # The newest thing that happened to it, not the moment it was
+                # created. This was `added.at`, so an entry that was edited
+                # afterwards never looked new to the incremental push and
+                # stopped travelling the moment it existed -- which is most
+                # of why a new version needed a git pull.
+                "updated_at": _bank_touched(rec) or cloud.now(),
                 "updated_by": added.get("by") or self.machine,
             })
         return {"bank_entries": out}
@@ -940,6 +998,17 @@ class Sync:
             for other in (row.get("aliases") or []):
                 aliased[str(other).strip().lower()] = row.get("name")
 
+        # Names this machine has retired. Checked as well as the aliases
+        # because the aliases are not enough: the same push that resurrects
+        # a merged-away name also unions its old alias back the other way,
+        # so the alias that was supposed to suppress it disappears. A
+        # tombstone cannot be argued with by an incoming row.
+        retired = set()
+        try:
+            retired = self.people.retired()
+        except Exception:                            # noqa: BLE001
+            retired = set()
+
         self.merge_reverts = 0
         for r in (rows or []):
             name = (r.get("name") or "").strip()
@@ -948,6 +1017,12 @@ class Sync:
             # The old spelling of somebody who has been merged. Writing it
             # would re-create the entry the merge removed, which is exactly
             # what used to happen on every cycle.
+            if name.lower() in retired:
+                # Removed here on purpose. The other machine will stop
+                # sending it once it pulls; until then this is what keeps it
+                # from coming back every twenty seconds.
+                self.merge_reverts += 1
+                continue
             keep = aliased.get(name.lower())
             if keep and keep.strip().lower() != name.lower():
                 self.merge_reverts += 1
@@ -1212,7 +1287,21 @@ class Sync:
         have = {e.get("id") for e in self.bank.all()}
         n = 0
         for r in rows:
-            if r.get("deleted_at") or r.get("id") in have:
+            if r.get("deleted_at"):
+                continue
+            # An entry this machine already has is not nothing to do. It
+            # used to be skipped outright, so a version created elsewhere
+            # arrived in the row and was thrown away -- which is why a new
+            # v# only showed up after a git pull.
+            if r.get("id") in have:
+                try:
+                    got = self.bank.absorb_versions(
+                        r.get("id"), r.get("versions") or [],
+                        r.get("version"))
+                    if got:
+                        n += got
+                except Exception:        # noqa: BLE001
+                    pass
                 continue
             try:
                 self.bank.add({
@@ -1235,6 +1324,15 @@ class Sync:
                     "curated": bool(r.get("specified")),
                     "curation_label": r.get("curation_label"),
                 })
+                # And the history it arrived with, or a brand new entry
+                # would show as v0 on this machine while the machine that
+                # made it shows v3.
+                if r.get("versions"):
+                    try:
+                        self.bank.absorb_versions(
+                            r.get("id"), r.get("versions"), r.get("version"))
+                    except Exception:    # noqa: BLE001
+                        pass
                 n += 1
             except Exception:            # noqa: BLE001
                 continue

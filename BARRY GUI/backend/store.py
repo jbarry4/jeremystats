@@ -215,6 +215,11 @@ class Store:
     # ------------------------------------------------------------------
     # Provenance -- who/what/where, stamped on every record
     # ------------------------------------------------------------------
+    # Set by app.py once the Device record is built. `None` means "not
+    # wired up", and provenance falls back to the hostname -- which is what
+    # a machine with no name has always done.
+    device = None
+
     def provenance(self):
         """Who did this, and where.
 
@@ -234,9 +239,18 @@ class Store:
                 eff = self.profile.effective()
                 who = eff.get("user")
                 email = eff.get("email")
-                device = eff.get("device")
             except Exception:                        # noqa: BLE001
                 who = None
+        # What this COMPUTER is called, from the computer's own record --
+        # not from whoever is using it. The two used to be one record, so
+        # every path that saved a profile could rename the machine, and
+        # several did: one computer ended up filing under five names while
+        # two different computers were both set to the same one.
+        if self.device is not None:
+            try:
+                device = (self.device.get(self.profile) or {}).get("name")
+            except Exception:                        # noqa: BLE001
+                device = None
         out = {
             "user": who or _git_user() or _os_user(),
             "machine": device or platform.node(),

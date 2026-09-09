@@ -10,6 +10,7 @@ code runs on Windows and macOS.
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import os
 import shutil
@@ -23,6 +24,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
+               device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
                dsimport,
@@ -55,6 +57,19 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 # one, and back onto it so provenance() can see it.
 PROFILE = profilemod.Profile(LOGS_DIR, STORE)
 STORE.profile = PROFILE
+
+# What this COMPUTER is called, in a record of its own. It used to be a
+# profile field, which meant every path that saved a profile could rename
+# the machine -- and that name is stamped on every error, action and run.
+DEVICE = devicemod.Device(LOGS_DIR, STORE)
+STORE.device = DEVICE
+# Once, at start-up. Without it a machine that has already been named would
+# revert to its hostname the first time it runs this build, and since the
+# name is on every row the history would fork.
+_adopted = DEVICE.adopt(PROFILE)
+# So the profile dialog can SAY what this computer is called without being
+# able to change it.
+PROFILE.device = DEVICE
 
 _CATALOG = {"items": [], "sections": [], "scanned": 0}
 _SESSIONS = {}          # cache key -> opened session
@@ -2776,12 +2791,32 @@ def api_people():
 
 @app.route("/api/people/add", methods=["POST"])
 def api_people_add():
-    """Put somebody on the roster before they have touched anything."""
+    """Put somebody on the roster, or edit what it says about them.
+
+    `aliases` is accepted because it is how a merge is expressed: the
+    records keep the name each machine stamped on them -- deliberately,
+    provenance is not editable -- and an alias on the surviving entry is
+    what folds them at read time. Without it here there was no way to
+    merge two names except by editing a shard by hand.
+    """
     body = request.get_json(force=True, silent=True) or {}
+    extra = {}
+    if "aliases" in body:
+        got = body.get("aliases")
+        if isinstance(got, (list, tuple)):
+            # Lower-cased, because the fold is case-insensitive and storing
+            # both "Rain" and "rain" as aliases of the same person is two
+            # entries for one statement.
+            extra["aliases"] = sorted({str(a).strip().lower()
+                                       for a in got if str(a).strip()})
+        elif got in (None, ""):
+            extra["aliases"] = []
+    if "archived" in body:
+        extra["archived"] = bool(body.get("archived"))
     try:
         PEOPLE.add(body.get("name"), body.get("email"), body.get("note"),
                    role=body.get("role"), initials=body.get("initials"),
-                   orcid=body.get("orcid"))
+                   orcid=body.get("orcid"), **extra)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
@@ -2806,6 +2841,36 @@ def api_people_forget():
 # Names a harness may create and destroy. Anything else is somebody's
 # colleague, and this route will not touch it.
 _TEST_PERSON = "zz "
+
+
+@app.route("/api/device")
+def api_device():
+    """What this computer is called, and how firmly.
+
+    Separate from the profile on purpose. Switching who this machine credits
+    work to must not be able to rename the machine, and when the two shared
+    a record it could -- measured: one computer filed errors under five
+    different names while two computers were both set to the same one.
+    """
+    got = DEVICE.get(PROFILE)
+    got["adopted_from_profile"] = _adopted
+    return jsonify({"ok": True, "device": got})
+
+
+@app.route("/api/device", methods=["POST"])
+def api_device_save():
+    """Name this computer. Empty puts it back to the hostname.
+
+    Nothing about a person is touched here, and nothing here travels with a
+    profile: the record is a shard belonging to this machine.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    got = DEVICE.save(body.get("name"))
+    STORE.record_activity([{
+        "action": "device.rename",
+        "detail": {"name": got.get("name"), "id": got.get("id")},
+    }])
+    return jsonify({"ok": True, "device": got})
 
 
 @app.route("/api/people/_test_purge", methods=["POST"])
@@ -2844,6 +2909,23 @@ def api_people_test_purge():
             except Exception:                            # noqa: BLE001
                 pass
     return jsonify({"ok": True, "removed": gone, "removed_shared": cloud_gone})
+
+
+@app.route("/api/people/retired")
+def api_people_retired():
+    """Names that have been merged away or removed from the roster.
+
+    Worth exposing because the logs keep them: the activity and error logs
+    record whatever name each machine believed at the time, on purpose, so a
+    merged-away colleague still appears in them. A reader -- or a check --
+    needs to be able to tell "a name that used to be somebody" from "a name
+    nothing has ever heard of".
+    """
+    try:
+        names = sorted(PEOPLE.retired())
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 500
+    return jsonify({"ok": True, "names": names})
 
 
 @app.route("/api/people/archive", methods=["POST"])
@@ -4490,6 +4572,143 @@ def api_csc_overview():
 # ==========================================================================
 # Errors: grouping and triage
 # ==========================================================================
+# ==========================================================================
+# The JSON shards, as a backup you can look at
+#
+# Supabase is the primary route now. This is the redundancy: the copy that
+# survives an unreachable database, the copy that holds the version
+# snapshots that are too large to send, and the copy a fresh `git clone`
+# arrives with. A backup nobody can inspect is a backup nobody trusts.
+# ==========================================================================
+# What each folder under GUI_logs is for, so the list reads as something
+# other than a directory dump.
+_SHARD_WHAT = {
+    "activity": "every action, per machine per day",
+    "errors": "the error log, per machine per day",
+    "runs": "what was run, with its parameters",
+    "sessions": "the recording registry",
+    "curation": "curation sets and every decision in them",
+    "event_bank": "banked entries and their version snapshots",
+    "layers": "StrataScope layer sheets",
+    "mice": "the colony",
+    "prefs": "profiles, this computer's name, preferences",
+    "presets": "saved filter and analysis presets",
+    "results": "the figure catalogue",
+    "storyboards": "decks",
+    "feedback": "reports filed from the interface",
+    "tombstones": "what has been deleted, so a delete travels",
+}
+
+# Enough to read a shard, not enough to stream a gigabyte into a browser.
+SHARD_MAX = 400_000
+
+
+def _shard_root():
+    return LOGS_DIR
+
+
+@app.route("/api/backup/json")
+def api_backup_json():
+    """What the redundancy copy holds, by folder and by file."""
+    root = _shard_root()
+    groups = []
+    total_files = total_bytes = 0
+    for name in sorted(os.listdir(root)):
+        folder = os.path.join(root, name)
+        if not os.path.isdir(folder):
+            continue
+        # `.cache` and friends are BARRY's own working files, not a copy of
+        # anything -- listing them as part of the backup invites somebody to
+        # treat them as one.
+        if name.startswith("."):
+            continue
+        files = []
+        for fn in sorted(os.listdir(folder)):
+            full = os.path.join(folder, fn)
+            if not os.path.isfile(full):
+                continue
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            # `base@machine.json` -- the shard naming. Split so the list can
+            # say whose a file is, which is the whole point of sharding.
+            stem = fn.rsplit(".", 1)[0]
+            base, _, machine = stem.partition("@")
+            files.append({
+                "name": fn, "base": base or stem,
+                "machine": machine or None,
+                "mine": machine == shards.machine_id(),
+                "bytes": st.st_size,
+                "at": datetime.datetime.fromtimestamp(
+                    st.st_mtime).astimezone().isoformat(timespec="seconds"),
+            })
+            total_files += 1
+            total_bytes += st.st_size
+        if not files:
+            continue
+        files.sort(key=lambda f: f["at"], reverse=True)
+        groups.append({
+            "folder": name,
+            "what": _SHARD_WHAT.get(name),
+            "n": len(files),
+            "bytes": sum(f["bytes"] for f in files),
+            "machines": sorted({f["machine"] for f in files if f["machine"]}),
+            "files": files,
+        })
+    groups.sort(key=lambda g: -g["bytes"])
+    return jsonify({
+        "ok": True, "root": root,
+        "folders": groups,
+        "files": total_files, "bytes": total_bytes,
+        # Said here rather than left to be inferred: this is the backup, and
+        # what it is a backup OF is the shared database.
+        "role": ("The redundancy copy. Supabase is the primary route; this "
+                 "is what survives an unreachable database, what holds the "
+                 "version snapshots that are too large to send, and what a "
+                 "fresh clone of the repository arrives with."),
+    })
+
+
+@app.route("/api/backup/json/<folder>/<name>")
+def api_backup_json_one(folder, name):
+    """One shard, as it is on disk.
+
+    Read-only, and pinned inside GUI_logs: the file name comes from a URL,
+    so it is checked against the resolved path rather than trusted to be
+    free of "..".
+    """
+    root = os.path.abspath(_shard_root())
+    full = os.path.abspath(os.path.join(root, folder, name))
+    if not full.startswith(root + os.sep) or not os.path.isfile(full):
+        return jsonify({"ok": False, "error": "No such shard."}), 404
+    try:
+        size = os.path.getsize(full)
+        with io.open(full, encoding="utf-8", errors="replace") as fh:
+            text = fh.read(SHARD_MAX + 1)
+    except OSError as exc:
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 500
+    clipped = len(text) > SHARD_MAX
+    if clipped:
+        text = text[:SHARD_MAX]
+    pretty = text
+    try:
+        # JSONL -- one record per line -- in the day logs; a single object
+        # everywhere else. Both are shown as they are, only re-indented.
+        if not clipped:
+            if text.lstrip().startswith("{") and "\n{" in text:
+                rows = [json.loads(l) for l in text.splitlines() if l.strip()]
+                pretty = json.dumps(rows, indent=1)[:SHARD_MAX]
+            else:
+                pretty = json.dumps(json.loads(text), indent=1)[:SHARD_MAX]
+    except Exception:                                    # noqa: BLE001
+        pretty = text                    # unparseable is worth seeing raw
+    return jsonify({
+        "ok": True, "folder": folder, "name": name,
+        "bytes": size, "clipped": clipped, "text": pretty,
+    })
+
+
 @app.route("/api/errors/client", methods=["POST"])
 def api_errors_client():
     """A fault the interface noticed about itself.
@@ -4893,6 +5112,8 @@ COLUMN_MIGRATIONS = {
     "reference_channels_source": "07_reference_channels.sql",
     "aliases": "08_people_aliases.sql",
     "archived": "09_people_archived.sql",
+    "versions": "11_bank_versions.sql",
+    "version": "11_bank_versions.sql",
 }
 
 
@@ -4915,6 +5136,8 @@ COLUMN_TABLES = {
     "reference_channels_source": "sessions",
     "aliases": "people",
     "archived": "people",
+    "versions": "bank_entries",
+    "version": "bank_entries",
 }
 
 
@@ -5840,6 +6063,10 @@ MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
 PEOPLE = peoplemod.People(LOGS_DIR, STORE, PROFILE)
+# So removing somebody from the roster survives the next sync. Without it
+# another machine still holding the name pushes its copy back and the pull
+# re-creates it -- measured, on a merge and on a harness probe.
+PEOPLE.tombs = RESULTS.tombs
 # The version, read from the one place it is written: the newest
 # heading in CHANGELOG.md.
 NOTES = notesmod.Notes(APP_DIR, REPO_ROOT)

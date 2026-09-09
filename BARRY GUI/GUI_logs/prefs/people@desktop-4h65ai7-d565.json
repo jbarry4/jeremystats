@@ -7,20 +7,20 @@
         "2026-09-09T14:22:50.713703+00:00"
       ],
       "Harness Probe Person": [
-        "gone",
-        "2026-09-09T15:09:17.015193+00:00"
+        "set",
+        "2026-09-09T16:19:59.567789+00:00"
       ],
       "Isabella Piatek": [
         "set",
         "2026-09-09T13:38:41.337782+00:00"
       ],
       "Rain": [
-        "set",
-        "2026-09-09T15:09:21.659088+00:00"
+        "gone",
+        "2026-09-09T16:16:59.815503+00:00"
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T13:41:55.408098+00:00"
+        "2026-09-09T16:19:48.686630+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,11 +28,15 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-09T15:06:08.629162+00:00"
+        "2026-09-09T16:05:46.693543+00:00"
+      ],
+      "Sylvia Clouse": [
+        "set",
+        "2026-09-09T15:29:28.090685+00:00"
       ],
       "TEST": [
         "set",
-        "2026-09-09T15:27:53.559156+00:00"
+        "2026-09-09T15:28:39.468505+00:00"
       ],
       "ZZ probe": [
         "gone",
@@ -64,11 +68,11 @@
       ],
       "zz edit probe": [
         "set",
-        "2026-09-09T15:27:50.551378+00:00"
+        "2026-09-09T16:24:23.764906+00:00"
       ],
       "zz edit probe renamed": [
         "set",
-        "2026-09-09T15:27:47.742831+00:00"
+        "2026-09-09T16:24:23.794531+00:00"
       ],
       "zz probe A": [
         "gone",
@@ -77,23 +81,11 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:27:53.559156+00:00",
+    "at": "2026-09-09T16:24:23.794531+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": [
-    {
-      "aliases": [
-        "rain younger"
-      ],
-      "archived": true,
-      "at": "2026-09-09T15:09:21.658575+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T15:09:21.658585+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain",
-      "name": "Rain"
-    },
     {
       "archived": true,
       "at": "2026-09-09T03:23:25.620635+00:00",
@@ -176,45 +168,61 @@
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "zz edit probe renamed",
-      "edited_at": "2026-09-09T15:06:08.628694+00:00",
-      "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T16:05:46.692101+00:00",
+      "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
       "role": "Gradstudent"
     },
     {
-      "at": "2026-09-08T21:24:06.731205+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T13:41:55.408097+00:00",
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-09T16:19:48.238353+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T16:19:48.685524+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Gradstudent"
+      "name": "Rain Younger"
     },
     {
       "archived": true,
       "at": "2026-09-09T14:23:28.606785+00:00",
       "by": "Rain Younger",
-      "edited_at": "2026-09-09T15:27:53.558957+00:00",
+      "edited_at": "2026-09-09T15:28:39.468504+00:00",
       "id": "TEST",
       "name": "TEST"
     },
     {
       "archived": true,
-      "at": "2026-09-09T15:15:02.413795+00:00",
+      "at": "2026-09-09T16:24:23.763631+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T15:27:50.551193+00:00",
+      "edited_at": "2026-09-09T16:24:23.763649+00:00",
       "id": "zz edit probe",
       "name": "zz edit probe"
     },
     {
-      "archived": true,
-      "at": "2026-09-09T15:15:02.436274+00:00",
+      "at": "2026-09-09T15:29:28.090683+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-09-09T15:29:28.090684+00:00",
+      "email": "seclouse@uvm.edu",
+      "id": "Sylvia Clouse",
+      "name": "Sylvia Clouse"
+    },
+    {
+      "at": "2026-09-09T16:19:59.567192+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T15:27:47.742650+00:00",
+      "edited_at": "2026-09-09T16:19:59.567202+00:00",
+      "id": "Harness Probe Person",
+      "name": "Harness Probe Person"
+    },
+    {
+      "archived": true,
+      "at": "2026-09-09T16:24:23.793247+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T16:24:23.793265+00:00",
       "id": "zz edit probe renamed",
       "name": "zz edit probe renamed"
     }

@@ -1140,8 +1140,18 @@ BARRY.views.errors = (function () {
              + '\u2014 with screenshots',
         onclick: () => { mode = 'feedback'; render(); loadFeedback(); },
       }),
+      /* The redundancy copy, where somebody can actually look at it. A
+         backup nobody can inspect is a backup nobody trusts. */
+      el('button', {
+        class: 'pill' + (mode === 'backup' ? ' active' : ''),
+        text: 'JSON backup',
+        title: 'The JSON shards on disk \u2014 the redundancy copy behind '
+             + 'the shared database',
+        onclick: () => { mode = 'backup'; render(); loadBackup(); },
+      }),
     ]));
 
+    if (mode === 'backup') { renderBackup(host); return; }
     if (mode === 'debug') { renderDebug(host); return; }
     if (mode === 'feedback') { renderFeedback(host); return; }
 
@@ -1293,7 +1303,18 @@ BARRY.views.errors = (function () {
        panel disagree about what the machines are called. */
     const shown = (id) => labels[id] || id;
     return el('div', { class: 'res-toolbar dev-bar' }, [
-      el('span', { class: 'dev-bar-label', text: 'Device' }),
+      /* A button, not a label. "Which computers are there and what are
+         they called" is the question this word raises, so it is the thing
+         that answers it. */
+      el('button', {
+        class: 'dev-bar-label as-button',
+        title: 'Name this computer, archive the ones that have gone, and '
+             + 'see which names in the log belong to which machine',
+        onclick: () => deviceManager(),
+      }, [
+        el('span', { text: 'Device' }),
+        el('span', { class: 'dev-bar-caret', text: '\u2699' }),
+      ]),
       el('span', { class: 'ctl-seg' }, [
         el('button', {
           class: 'mini' + (devPick ? '' : ' on'),
@@ -1655,6 +1676,147 @@ BARRY.views.errors = (function () {
 
   let showRetired = false;
 
+  /* Managing the computers.
+
+     Reached from the word DEVICE. Everything here is about machines and
+     nothing about people -- the two used to share a record, and that is
+     precisely how one computer came to file errors under five different
+     names while two computers were both set to the same one. */
+  async function deviceManager() {
+    let mine = null;
+    try {
+      mine = (await api('/api/device')).device;
+    } catch (e) {
+      mine = null;
+    }
+    await loadDevices(true);
+    drawDeviceManager(mine);
+  }
+
+  function drawDeviceManager(mine) {
+    const all = (devices && devices.devices) || [];
+    const body = el('div', { class: 'mb dev-mgr' });
+
+    /* This computer first, with the box that names it. */
+    if (mine) {
+      const box = el('input', {
+        type: 'text', class: 'dev-name-in', value: mine.named ? mine.name : '',
+        placeholder: mine.real || 'this computer',
+      });
+      const say = el('div', { class: 'hint' });
+      const paintSay = () => {
+        say.textContent = mine.named
+          ? 'Named here. Its own name is ' + mine.real + '.'
+          : 'Not named yet, so BARRY uses the name the computer reports: '
+            + mine.real + '.';
+      };
+      paintSay();
+      body.appendChild(el('div', { class: 'dev-mgr-me' }, [
+        el('div', { class: 'section-label', text: 'This computer' }),
+        el('div', { class: 'dev-mgr-row' }, [
+          box,
+          el('button', {
+            class: 'btn sm', text: 'Save name',
+            onclick: async () => {
+              try {
+                const res = await apiPost('/api/device', { name: box.value });
+                mine = res.device;
+                paintSay();
+                await loadDevices(true);
+                toast('This computer is now called ' + mine.name + '. '
+                      + 'Nothing about who it credits work to has changed.',
+                      'ok', 6000);
+                drawDeviceManager(mine);
+              } catch (e) { toast(e.message, 'err', 8000); }
+            },
+          }),
+        ]),
+        say,
+        el('p', { class: 'hint',
+          text: 'This is what gets stamped on every error, action and run '
+              + 'from this computer. It belongs to the computer, not to '
+              + 'you \u2014 switching who BARRY credits work to leaves it '
+              + 'alone.' }),
+        mine.adopted_from_profile
+          ? el('p', { class: 'hint',
+              text: 'Carried over from the profile, where it used to live: '
+                  + mine.adopted_from_profile }) : null,
+        el('p', { class: 'hint dev-mgr-id',
+          text: 'Identity: ' + mine.id + '  \u2014 derived from the '
+              + 'hostname and the network address, and what BARRY actually '
+              + 'compares. The name above is only for reading.' }),
+      ].filter(Boolean)));
+    }
+
+    /* Everybody else. */
+    const others = all.filter((d) => !d.is_me);
+    body.appendChild(el('div', { class: 'section-label',
+      text: others.length ? 'Other computers' : 'No other computers yet' }));
+    for (const d of others) {
+      body.appendChild(el('div', {
+        class: 'dev-mgr-other' + (d.archived ? ' archived' : ''),
+      }, [
+        el('span', { class: 'dev-dot' + (d.online ? ' on' : '') }),
+        el('strong', { text: d.label || d.hostname || d.id }),
+        (d.also_known_as || []).length
+          ? el('span', { class: 'dev-aka',
+              text: 'also ' + d.also_known_as.join(', ') }) : null,
+        el('span', { class: 'dev-user', text: d.user || '' }),
+        el('div', { style: 'flex:1' }),
+        el('span', { class: 'dev-col', text: d.age_s == null
+          ? 'never synced' : ago(d.age_s) }),
+        el('button', {
+          class: 'btn ghost sm',
+          text: d.archived ? 'Bring back' : 'Archive',
+          title: d.archived
+            ? 'Put it back on the lists'
+            : 'Take it off the device lists. Everything it recorded stays '
+              + 'on record and stays counted.',
+          onclick: () => archiveDevice(d, !d.archived)
+            .then(() => deviceManager()),
+        }),
+      ].filter(Boolean)));
+    }
+
+    /* The two things the data says that nothing used to show. */
+    const unclaimed = (devices && devices.unclaimed_names) || [];
+    const ambiguous = (devices && devices.ambiguous_labels) || [];
+    if (unclaimed.length) {
+      body.appendChild(el('div', { class: 'hint dev-unclaimed' }, [
+        el('strong', { text: 'Names in the log with no machine: ' }),
+        el('span', { text: unclaimed.join(', ')
+          + ' \u2014 older names for these computers, or machines that '
+          + 'never registered. Nothing is guessed: a machine is only '
+          + 'claimed by its identity.' }),
+      ]));
+    }
+    if (ambiguous.length) {
+      body.appendChild(el('div', { class: 'ecx-warn' }, [
+        el('strong', { text: 'More than one computer answers to: ' }),
+        el('span', { text: ambiguous.join(', ')
+          + '. Their rows cannot be told apart by name, which is why the '
+          + 'real hostname is shown in brackets. Rename one of them above '
+          + 'to clear it.' }),
+      ]));
+    }
+
+    showModal(el('div', { class: 'dev-mgr-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Computers' }),
+        el('span', { class: 'sub',
+          text: 'what they are called, and which have gone' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'Done', onclick: closeModal }),
+      ]),
+    ]), { replace: true });
+  }
+
   async function archiveDevice(d, yes) {
     if (yes) {
       const ok = await BARRY.confirm(
@@ -1671,13 +1833,175 @@ BARRY.views.errors = (function () {
       if (res && res.run) {
         toast('The shared database needs supabase/' + res.run
               + ' run first.', 'err', 9000);
-        return;
+        return false;
       }
       await loadDevices(true);
       toast(yes ? d.label + ' archived.' : d.label + ' is back.', 'ok');
+      return true;
     } catch (e) {
       toast('Could not archive ' + d.label + ': ' + e.message, 'err', 8000);
+      return false;
     }
+  }
+
+  /* ======================================================================
+     The JSON backup
+
+     Supabase is the primary route. These files are the redundancy: what
+     survives an unreachable database, what holds the version snapshots that
+     are too big to send, and what a fresh clone of the repository arrives
+     with. Read-only -- this is the copy of record and the interface has no
+     business editing it.
+     ====================================================================== */
+  let backup = null;
+  let backupOpen = {};
+  let shardShown = null;
+
+  async function loadBackup(force) {
+    if (backup && !force) { render(); return; }
+    try {
+      backup = await api('/api/backup/json');
+    } catch (e) {
+      backup = { failed: e.message };
+    }
+    render();
+  }
+
+  function kb(n) {
+    if (n == null) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  function renderBackup(host) {
+    if (!backup) { loadBackup(); }
+    host.appendChild(el('div', { class: 'res-toolbar' }, [
+      el('span', { class: 'hint',
+        text: backup && backup.role ? backup.role : 'Reading the shards\u2026' }),
+      el('div', { style: 'flex:1' }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Refresh',
+        onclick: () => loadBackup(true),
+      }),
+    ]));
+
+    if (!backup) {
+      host.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return;
+    }
+    if (backup.failed) {
+      host.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the shards: ' + backup.failed }));
+      return;
+    }
+
+    host.appendChild(el('div', { class: 'fb-stats' }, [
+      el('span', { class: 'stat-chip',
+                   text: backup.files + ' file(s)' }),
+      el('span', { class: 'stat-chip', text: kb(backup.bytes) }),
+      el('span', { class: 'stat-chip',
+                   text: (backup.folders || []).length + ' folder(s)' }),
+      el('span', { class: 'stat-chip', title: backup.root,
+                   text: 'on disk' }),
+    ]));
+
+    for (const g of (backup.folders || [])) {
+      const open = !!backupOpen[g.folder];
+      host.appendChild(el('button', {
+        class: 'bk-folder' + (open ? ' on' : ''),
+        onclick: () => { backupOpen[g.folder] = !open; render(); },
+      }, [
+        el('span', { class: 'bk-caret', text: open ? '\u25be' : '\u25b8' }),
+        el('strong', { text: g.folder }),
+        g.what ? el('span', { class: 'bk-what', text: g.what }) : null,
+        el('div', { style: 'flex:1' }),
+        /* How many machines have written into it. A folder with one is a
+           folder only this computer contributes to. */
+        g.machines.length
+          ? el('span', { class: 'bk-col',
+                         text: g.machines.length + ' machine(s)' }) : null,
+        el('span', { class: 'bk-col', text: g.n + ' file(s)' }),
+        el('span', { class: 'bk-col', text: kb(g.bytes) }),
+      ].filter(Boolean)));
+
+      if (!open) continue;
+      const list = el('div', { class: 'bk-files' });
+      /* Bounded: `sessions` alone is 785 files, and a wall of them is not
+         a view of anything. The rest are a click away in the folder. */
+      const shown = g.files.slice(0, 60);
+      for (const f of shown) {
+        list.appendChild(el('button', {
+          class: 'bk-file' + (shardShown
+                              && shardShown.folder === g.folder
+                              && shardShown.name === f.name ? ' on' : ''),
+          onclick: () => openShard(g.folder, f.name),
+        }, [
+          el('span', { class: 'bk-name', text: f.base }),
+          el('span', { class: 'bk-machine' + (f.mine ? ' mine' : ''),
+                       text: f.machine || '\u2014' }),
+          el('div', { style: 'flex:1' }),
+          el('span', { class: 'bk-col', text: kb(f.bytes) }),
+          el('span', { class: 'bk-col', title: BARRY.whenRaw(f.at),
+                       text: BARRY.when(f.at, 'stamp') }),
+        ]));
+      }
+      if (g.files.length > shown.length) {
+        list.appendChild(el('div', { class: 'hint',
+          text: 'and ' + (g.files.length - shown.length) + ' more, newest '
+              + 'first \u2014 open the folder on disk to see them all.' }));
+      }
+      host.appendChild(list);
+    }
+
+    if (shardShown) host.appendChild(shardPanel());
+  }
+
+  async function openShard(folder, name) {
+    shardShown = { folder: name ? folder : null, name: name, text: null };
+    render();
+    try {
+      const got = await api('/api/backup/json/'
+                            + encodeURIComponent(folder) + '/'
+                            + encodeURIComponent(name));
+      shardShown = Object.assign({ folder: folder, name: name }, got);
+    } catch (e) {
+      shardShown = { folder: folder, name: name, failed: e.message };
+    }
+    render();
+  }
+
+  function shardPanel() {
+    const sh = shardShown;
+    const box = el('div', { class: 'bk-view' });
+    box.appendChild(el('div', { class: 'sec-head' }, [
+      el('div', { class: 'section-label',
+                  text: sh.folder + ' / ' + sh.name }),
+      el('div', { style: 'flex:1' }),
+      sh.bytes != null
+        ? el('span', { class: 'hint', text: kb(sh.bytes) }) : null,
+      el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        onclick: () => { shardShown = null; render(); },
+      }),
+    ].filter(Boolean)));
+    if (sh.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read it: ' + sh.failed }));
+      return box;
+    }
+    if (sh.text == null) {
+      box.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return box;
+    }
+    if (sh.clipped) {
+      box.appendChild(el('div', { class: 'ecx-warn',
+        text: 'Shown from the start and cut off \u2014 this file is larger '
+            + 'than the viewer will load. Nothing is missing from the file '
+            + 'itself; open it on disk to see the rest.' }));
+    }
+    box.appendChild(el('pre', { class: 'bk-json', text: sh.text }));
+    return box;
   }
 
   function ago(sec) {

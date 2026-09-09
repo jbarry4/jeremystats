@@ -360,6 +360,21 @@ BARRY.views.xplore = (function () {
   }
 
   function layoutProbe(sess, panel) {
+    const want = panel || panelNow(sess);
+    /* One camera is one pane. The six-up exists because an H10-D is six
+       probe columns, which is a fact about channels -- and video and
+       tracking have none. Six video panes is one that plays and five that
+       sit empty. */
+    if (!isChannelPanel(want)) {
+      BARRY.views.xplore.setPanes([{ panel: want }], { col: 0.5, row: 0.5 });
+      toast('One pane: there is a single camera, so an H10 layout has '
+            + 'nothing to spread it across. Switch back to traces or CSD '
+            + 'for the six columns.', null, 6000);
+      BARRY.activity.log('probe.layout',
+                         { probe: sess.probe, panel: want, columns: 1,
+                           why: 'not a channel panel' }, sess);
+      return true;
+    }
     const cols = probeColumns(sess);
     if (!cols || cols.length !== 6) {
       toast('That probe has no column map to lay out.', 'err');
@@ -372,7 +387,7 @@ BARRY.views.xplore = (function () {
       return false;
     }
     BARRY.views.xplore.setPanes(cols.map((c) => ({
-      panel: panel || panelNow(sess),
+      panel: want,
       channels: c.indices,
       colTag: c.id,
       colShank: c.shank,
@@ -383,7 +398,7 @@ BARRY.views.xplore = (function () {
             + 'recording.', null, 6000);
     }
     BARRY.activity.log('probe.layout', {
-      probe: sess.probe, panel: panel || panelNow(sess),
+      probe: sess.probe, panel: want,
       columns: cols.map((c) => c.indices.length),
     }, sess);
     return true;
@@ -1231,7 +1246,20 @@ BARRY.views.xplore = (function () {
              by column, so the panel type belongs to the view. Changing it
              on one pane used to leave the other five behind: six clicks to
              go from CSD to voltage raster, and six chances to miss one. */
-          const spread = (sess && sess.probe && sess.probe !== 'h3')
+          const inProbeLayout = !!(sess && sess.probe && sess.probe !== 'h3'
+                                   && pane.colTag);
+          /* Video and tracking have no channels, so a six-up has nothing to
+             spread them across: it produced six video panes, one playing
+             and five empty. Collapse to one instead of copying the panel
+             into all six. */
+          if (inProbeLayout && !isChannelPanel(want)) {
+            BARRY.activity.log('panel.change', { from: prev, to: want,
+                                                 pane: index,
+                                                 collapsed: true }, sess);
+            layoutProbe(sess, want);
+            return;
+          }
+          const spread = inProbeLayout
             ? XF.panes.filter(
                 (p, i) => p && i !== index && p.colTag
                           && p.sessionId === pane.sessionId)

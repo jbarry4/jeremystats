@@ -6344,3 +6344,96 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--ok-soft); border-left-color: var(--ok);
   color: var(--text);
 }
+
+/* --------------------------------------------------------------------------
+   Managing the computers
+
+   Reached from the word DEVICE above the error list. Everything in here is
+   about machines and nothing about people -- they used to share a record.
+   -------------------------------------------------------------------------- */
+.dev-bar-label.as-button {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 999px; padding: 2px 9px; cursor: pointer;
+  color: var(--text-3); font: inherit;
+}
+.dev-bar-label.as-button:hover {
+  border-color: var(--accent-line); color: var(--text-2);
+}
+.dev-bar-caret { font-size: 11px; opacity: 0.75; }
+.dev-mgr-wrap { min-width: 560px; }
+.dev-mgr { display: flex; flex-direction: column; gap: 10px; }
+.dev-mgr-me {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: 8px;
+  background: var(--bg-2); border-left: 3px solid var(--accent);
+}
+.dev-mgr-row { display: flex; gap: 8px; align-items: center; }
+.dev-name-in {
+  flex: 1; min-width: 0; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit;
+}
+.dev-mgr-id { font-family: var(--mono); font-size: 11px; }
+.dev-mgr-other {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; font-size: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.dev-mgr-other.archived { opacity: 0.55; }
+.prof-device-note { line-height: 1.7; }
+
+/* Sync now, and the panel that explains it -- two acts, one row. */
+.rail-sync { display: flex; gap: 4px; align-items: stretch; }
+.rail-sync .sync-go { flex: 1; min-width: 0; }
+.rail-sync .sync-go span {
+  overflow: hidden; text-overflow: clip; white-space: nowrap;
+}
+.rail-sync .sync-info { flex: none; padding-left: 8px; padding-right: 8px; }
+.chip-btn.busy { border-color: var(--accent-line); color: var(--accent); }
+.chip-btn.busy svg { animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Collapsed to icons, the label goes and the two chips stack. */
+#app.rail-icons .rail-sync { flex-direction: column; }
+#app.rail-icons .rail-sync .sync-info { display: none; }
+
+/* --------------------------------------------------------------------------
+   The JSON backup
+
+   Read-only, and it should look it: nothing here is a control that changes
+   anything, so nothing here is styled like one.
+   -------------------------------------------------------------------------- */
+.bk-folder {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 9px; margin-top: 4px; cursor: pointer;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); color: var(--text-2);
+  font: inherit; text-align: left;
+}
+.bk-folder:hover { border-color: var(--accent-line); }
+.bk-folder.on { background: var(--bg-3); color: var(--text); }
+.bk-caret { width: 10px; color: var(--text-3); }
+.bk-what { color: var(--text-3); font-size: 11.5px; }
+.bk-col { color: var(--text-3); font-size: 11px; font-family: var(--mono); }
+.bk-files { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 6px; }
+.bk-file {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  padding: 3px 9px 3px 27px; cursor: pointer;
+  background: none; border: 0; border-radius: 4px;
+  color: var(--text-2); font: inherit; font-size: 12px; text-align: left;
+}
+.bk-file:hover { background: var(--bg-hover); }
+.bk-file.on { background: var(--accent-soft); color: var(--accent); }
+.bk-name { font-family: var(--mono); }
+.bk-machine { color: var(--text-3); font-size: 11px; }
+.bk-machine.mine { color: var(--accent); }
+.bk-view {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.bk-json {
+  margin: 8px 0 0; max-height: 46vh; overflow: auto;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--text-2); white-space: pre;
+}

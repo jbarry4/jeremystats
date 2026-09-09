@@ -224,6 +224,34 @@
         "set",
         "2026-09-09T03:37:41.966363+00:00"
       ],
+      "person:Harness Probe Person": [
+        "set",
+        "2026-09-09T16:19:49.482703+00:00"
+      ],
+      "person:Rain": [
+        "set",
+        "2026-09-09T16:16:59.837538+00:00"
+      ],
+      "person:Rain Younger": [
+        "gone",
+        "2026-09-09T16:09:16.429262+00:00"
+      ],
+      "person:zz edit probe": [
+        "set",
+        "2026-09-09T16:19:55.628184+00:00"
+      ],
+      "person:zz edit probe renamed": [
+        "set",
+        "2026-09-09T16:19:17.778881+00:00"
+      ],
+      "person:zz probe person": [
+        "set",
+        "2026-09-09T16:05:43.471119+00:00"
+      ],
+      "person:zz test machine": [
+        "set",
+        "2026-09-09T16:05:43.683447+00:00"
+      ],
       "result:Debug/debug-report-20260903_100900.txt": [
         "set",
         "2026-09-03T14:18:56.029176+00:00"
@@ -519,7 +547,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T14:08:39.510361+00:00",
+    "at": "2026-09-09T16:19:55.628184+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -1018,6 +1046,54 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-08T23:37:41-0400"
+    },
+    "person:Harness Probe Person": {
+      "at": "2026-09-09T12:19:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Harness Probe Person",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:Rain": {
+      "at": "2026-09-09T12:16:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Rain",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz edit probe": {
+      "at": "2026-09-09T12:19:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz edit probe",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz edit probe renamed": {
+      "at": "2026-09-09T12:19:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz edit probe renamed",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz probe person": {
+      "at": "2026-09-09T12:05:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz probe person",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz test machine": {
+      "at": "2026-09-09T12:05:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz test machine",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
     },
     "result:Debug/debug-report-20260903_100900.txt": {
       "at": "2026-09-03T10:18:56-0400",

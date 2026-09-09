@@ -77,8 +77,15 @@ const RENAMED = 'zz edit probe renamed';
 
     hd('3. Editing them, with the name left alone');
     run('BARRY.profile.open()');
-    await untilN(() => D().querySelector('.prof-chip'), 200);
-    await sleep(700);
+    /* Waited for by NAME, not just for any chip to exist.
+
+       Run on its own this passed every time; run straight after
+       people.html it threw "no chip to edit". The roster is shared state
+       and another harness had just been adding and removing its own probe,
+       so "some chip has rendered" is not the same as "mine has". */
+    await untilN(() => Array.from(D().querySelectorAll('.prof-chip'))
+      .some((c) => (c.textContent || '').indexOf(PROBE) >= 0), 250);
+    await sleep(500);
     /* Through the pencil, as a person would. */
     const chip = Array.from(D().querySelectorAll('.prof-chip'))
       .find((c) => (c.textContent || '').indexOf(PROBE) >= 0);
@@ -119,10 +126,15 @@ const RENAMED = 'zz edit probe renamed';
        name is stamped on every decision -- so it must be refused rather
        than half-applied, and it must not touch the profile either. */
     run('BARRY.profile.open()');
-    await untilN(() => D().querySelector('.prof-chip'), 200);
-    await sleep(700);
+    await untilN(() => Array.from(D().querySelectorAll('.prof-chip'))
+      .some((c) => (c.textContent || '').indexOf(PROBE) >= 0), 250);
+    await sleep(500);
     const chip2 = Array.from(D().querySelectorAll('.prof-chip'))
       .find((c) => (c.textContent || '').indexOf(PROBE) >= 0);
+    ck('the probe is still there to edit', !!chip2,
+       Array.from(D().querySelectorAll('.prof-chip-name'))
+         .map((b) => b.textContent).join(' | '));
+    if (!chip2) throw new Error('no chip to edit');
     chip2.querySelector('.prof-chip-edit').click();
     await sleep(700);
     const nameIn = Array.from(D().querySelectorAll('.prof-form input'))
@@ -192,9 +204,15 @@ const RENAMED = 'zz edit probe renamed';
       const blank = shown.every((i) => !i.value);
       ck('and the form is empty, not somebody else’s details', blank,
          shown.map((i) => i.value).filter(Boolean).join(' | '));
-      ck('the machine’s own name is not on the form when adding a person',
-         Array.from(D().querySelectorAll('.prof-form .field'))
-           .some((b) => b.hidden));
+      /* Absent, not hidden. It used to be a field that got hidden in this
+         mode; it has since left the form entirely and lives under
+         Errors -> Device, because it belongs to the computer. A hidden
+         input still submits, so gone is better than hidden. */
+      ck('the machine’s own name is not on the form at all',
+         !Array.from(D().querySelectorAll('.prof-form label'))
+           .some((l) => /machine|computer|device/i.test(l.textContent || '')),
+         Array.from(D().querySelectorAll('.prof-form label'))
+           .map((l) => l.textContent.trim()).join(' | '));
     }
     run('closeAllModals()');
   } catch (e) {

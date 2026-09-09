@@ -680,6 +680,63 @@ class EventBank:
         return n
 
     @shards.atomic
+    def absorb_versions(self, entry_id, versions, current=None):
+        """Take on version metadata from another machine.
+
+        Merged by version number, and only ever ADDING: a version this
+        machine already knows is left exactly as it is, snapshot included.
+        The incoming rows have no snapshot -- they came over Supabase, which
+        carries the metadata and not the half-megabyte of snapshots -- so
+        overwriting a local version with one would throw away the only copy
+        of what it held.
+
+        Returns how many were new, so the sync can report movement rather
+        than guess at it.
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            return 0
+        have = {}
+        for v in (rec.get("versions") or []):
+            if v.get("v") is not None:
+                have[int(v["v"])] = v
+        added = 0
+        for incoming in (versions or []):
+            try:
+                num = int(incoming.get("v"))
+            except (TypeError, ValueError):
+                continue
+            if num in have:
+                continue
+            row = {k: incoming.get(k) for k in
+                   ("v", "at", "by", "n", "note", "by_label", "machine")
+                   if incoming.get(k) is not None}
+            row["v"] = num
+            # Said outright on the record: this one arrived without its
+            # snapshot, so it can be seen and cited but not restored until
+            # the JSON shard carrying it turns up.
+            row["snap_elsewhere"] = True
+            have[num] = row
+            added += 1
+        if not added:
+            return 0
+        rec["versions"] = [have[k] for k in sorted(have)]
+        try:
+            top = max(have)
+        except ValueError:
+            top = rec.get("version")
+        # The pointer only ever moves forward. A machine that is behind must
+        # not drag the current version back for everybody.
+        if current is not None:
+            try:
+                top = max(top, int(current))
+            except (TypeError, ValueError):
+                pass
+        if top is not None and (rec.get("version") or 0) < top:
+            rec["version"] = top
+        self._save(rec)
+        return added
+
     def edit_version(self, entry_id, v, patch):
         """Change what a version says about itself, not what it holds."""
         rec = self.get(entry_id)

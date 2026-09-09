@@ -93,6 +93,10 @@ class People:
     # removed, and the two drifting apart would make the delete button lie.
     HAND = "added by hand"
 
+    # Set by app.py. Without it `forget` still works and simply does not
+    # survive a sync, which is how it behaved before.
+    tombs = None
+
     # Fields that are not text. `_clean` would turn False into the string
     # "False", which is truthy, so an unarchive would archive.
     FLAGS = ("archived",)
@@ -171,18 +175,80 @@ class People:
                 return out
         return {"name": name, **{k: "" for k in self.FIELDS}}
 
-    def forget(self, name):
+    def forget(self, name, retire=True):
         """Take a hand-added name off. A name the data carries cannot go:
-        it is on the records whether the roster lists it or not."""
+        it is on the records whether the roster lists it or not.
+
+        `retire` writes a tombstone, and it is what makes this survive.
+        Without one, removing a name is undone by the next sync: another
+        machine still holding it pushes its copy, and the pull writes it
+        back. Measured -- a merged-away name and a harness probe both came
+        back within seconds. The tombstone is read on the way in, so an
+        incoming row cannot resurrect it, and travels like any other so the
+        other machine stops sending it once it pulls.
+        """
         name = _clean(name)
         rec = self.book.read("people") or {}
         rows = [r for r in (rec.get("added") or [])
                 if (r.get("id") or "").lower() != (name or "").lower()]
-        if len(rows) == len(rec.get("added") or []):
+        gone = len(rows) != len(rec.get("added") or [])
+        if gone:
+            rec["added"] = rows
+            self.book.write("people", rec)
+        # Retired only if the name is genuinely gone from the roster.
+        #
+        # Neither "the caller asked" nor "a row was removed" is the right
+        # test, and both were tried. `forget` is called on names the data
+        # carries -- it refuses those, correctly, because the name is on the
+        # records whether the roster lists it or not -- and such a name can
+        # still have a hand-added row that gets removed. Retiring one of
+        # those tells every pull to skip a live colleague, and the first two
+        # versions of this did exactly that to the person with the most work
+        # in the lab.
+        #
+        # So the roster is recompiled and asked. A name that survives is
+        # carried by the data and is not retired; a name that has gone has
+        # gone, whether because nothing carried it or because an alias now
+        # folds it into somebody else -- which is what a merge is.
+        if gone and retire and name and self.tombs is not None:
+            try:
+                still = self.roster() or {}
+                listed = {
+                    (row.get("name") or "").strip().lower()
+                    for row in ((still.get("people") or [])
+                                + (still.get("not_people") or []))
+                }
+                if name.lower() not in listed:
+                    self.tombs.add(
+                        "person", name,
+                        "merged away or removed from the roster")
+            except Exception:                        # noqa: BLE001
+                pass
+        return gone
+
+    def retired(self):
+        """Names that have been merged away or removed, lower-cased."""
+        if self.tombs is None:
+            return set()
+        out = set()
+        try:
+            for row in (self.tombs.all("person") or []):
+                got = row.get("id") if isinstance(row, dict) else None
+                if got:
+                    out.add(str(got).strip().lower())
+        except Exception:                            # noqa: BLE001
+            return set()
+        return out
+
+    def unretire(self, name):
+        """Bring a retired name back -- for one removed by mistake."""
+        name = _clean(name)
+        if not name or self.tombs is None:
             return False
-        rec["added"] = rows
-        self.book.write("people", rec)
-        return True
+        try:
+            return bool(self.tombs.forget("person", name))
+        except Exception:                            # noqa: BLE001
+            return False
 
     def archive(self, name, yes=True):
         """Take somebody off the pickers without taking them off the record.

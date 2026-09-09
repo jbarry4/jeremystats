@@ -15,6 +15,126 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.09.1 — the computer is not the person
+
+### Changed
+
+- **What a computer is called is now the computer's own record.** It used to
+  be a field in the profile, next to your name and your email, and that was
+  wrong in a way that took measuring to see: every path that saved a profile
+  could rename the machine, and that name is stamped on every error, action
+  and run.
+
+  Measured across 216 errors before the fix: **one computer had filed under
+  five different labels** — Bluebarry, DESKTOP-4H65AI7, StrawBarry,
+  Strawbarrry and "Rig 2 (Barry lab)" — while **two different computers had
+  both been set to "Strawbarrry"**. So one machine looked like five and two
+  machines looked like one.
+
+  It lives in `device.py` now, in its own shard, and switching who this
+  machine credits work to cannot touch it. The old value is adopted once at
+  start-up, because a machine that has already been named should not revert
+  to its hostname and fork its own history.
+
+- **Errors group by the computer, not by what somebody typed.** `shard` —
+  the hostname slug plus a hash of the MAC — has been on every error record
+  all along and is unique by construction. Grouping on it collects this
+  machine's 188 errors into one row instead of five. The label is still what
+  is shown, with the real hostname in brackets: **Bluebarry
+  (DESKTOP-4H65AI7)**, **StrawBarry (LCOM549913)**, **Strawbarry
+  (BARRYLAB)** — the last two being different computers whose friendly names
+  differ by the case of one letter.
+
+- **DEVICE is a button.** It opens a panel that names this computer, archives
+  the ones that have gone, lists the names in the log that no machine answers
+  to, and warns when two computers answer to the same label. The rename box
+  lives there and only there.
+
+- **Editing a profile cannot go wrong the way it did.** Save used to decide
+  what to do by comparing the name in the form with the name being edited, so
+  changing a name at all fell through to the branch that set THIS COMPUTER's
+  identity to the person being edited and then added their new name to the
+  roster beside the old row. Proven by putting the old line back: editing a
+  probe person set the machine's profile from "Shahriar Tafti" to "zz edit
+  probe renamed".
+
+  The mode is explicit now and on screen. A rename is refused with the
+  reason — the name is stamped on every decision, banked set and layer sheet
+  — and offers the two real options. **Add somebody…** is its own button, so
+  creating is never a side effect of editing.
+
+- **Three jirai kei themes**: Jirai Kei (black, baby pink), Jirai Shiro
+  (off-white, deep rose) and Jirai Yami (plum, lavender, sick mint). The
+  first pass had errors 1.04:1 and 1.32:1 from their own accents — a failed
+  run rendered as decoration — so the error colours were pushed apart to
+  1.62:1 and 1.97:1 and `--ok` is mint in all three.
+
+### Fixed
+
+- **Event versions travel through Supabase instead of waiting for a git
+  pull.** Three separate reasons they did not:
+
+  * the version history was never sent — no `versions` column, nothing in
+    the payload
+  * `updated_at` was `added.at`, the moment the entry was *created*, so an
+    edited entry never looked new to the incremental push and stopped
+    travelling the moment it existed
+  * `_apply_bank` skipped any row whose id it already had, so a version that
+    did come down was thrown away on arrival
+
+  The snapshots stay behind, and that is measured rather than preferred: the
+  110 versions here are 44 KB of metadata and 0.5 MB of snapshots. The
+  metadata is what makes a version *appear*; the snapshot is what lets one be
+  *restored*. So metadata goes live over Supabase and snapshots stay in the
+  JSON, which is the redundancy copy.
+
+- **A merged-away name stays away.** Merging Rain into Rain Younger would not
+  stick: deleting the row locally worked, deleting it from the shared table
+  worked for a few seconds, and then the other machine — running, and still
+  holding the old direction — pushed its copy back.
+
+  Two things were wrong. There was no way to say "this name is retired", so
+  `forget` now writes a tombstone, which is the mechanism this codebase
+  already uses to make a deletion travel. And the two records had aliases
+  pointing at *each other*, so whichever the roster compiled first won.
+
+  Getting the tombstone rule right took three attempts, and the two failures
+  are worth recording: "retire whenever asked" and "retire whenever a row was
+  removed" both retired a live colleague, because `forget` is called on names
+  the data carries and such a name can still have a hand-added row. The rule
+  is now: recompile the roster and retire the name only if it has actually
+  gone. Verified stable across a minute of live pulls with the other machine
+  pushing: one entry, Rain Younger, 3,028 records, active.
+
+### Added
+
+- **A sync button you can reach.** There was one, three clicks in. The rail
+  chip now syncs on click and reports the phase while it runs.
+
+- **The JSON shards, viewable.** Supabase is the primary route; the JSON in
+  GUI_logs is the redundancy — what survives an unreachable database, what
+  holds the snapshots too large to send, and what a fresh clone arrives with.
+  A backup nobody can inspect is a backup nobody trusts, so it has a section
+  beside the error log: 1,084 files across 12 folders, whose each is, when it
+  was written, and the contents of any one of them. Read-only.
+
+- **Archiving, for people and for computers.** Removal is refused for
+  anything the data carries, correctly, which left nowhere to put somebody
+  who has left the lab. Archiving takes them off the pickers and changes no
+  count anywhere.
+
+- **One camera is one pane.** An H10-D is six probe columns, so H10 mode
+  gives each one a pane — right for traces, voltage, CSD and theta, nonsense
+  for video, which produced six panes of which one played. Both the way in
+  and the panel switch now collapse to one.
+
+- **One colour scale across an H10.** The master strip's tooltip said it set
+  every pane at once and the scale did not: six shanks of one recording came
+  up at [-2.71e+4], [-2.04e+4] and [-2.16e+4] while the control read
+  "pinned", and a CSD is read by colour.
+
+---
+
 ## 2026.09.08.17 — numbers you can quote
 
 Six things, and one thread running through all of them: every one of these
