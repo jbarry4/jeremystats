@@ -1,7 +1,71 @@
 {
+  "_at": {
+    "bad_channels": "2026-09-09T14:14:24.028151+00:00",
+    "created": "2026-09-02T23:51:19.849758+00:00",
+    "duration_s": "2026-09-04T15:57:01.695046+00:00",
+    "event_classes": "2026-09-09T14:26:34.700772+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.695046+00:00",
+    "fs": "2026-09-04T15:57:01.695046+00:00",
+    "gid": "2026-09-03T00:10:40.126938+00:00",
+    "group": "2026-09-04T15:57:01.695046+00:00",
+    "has_video": "2026-09-04T15:57:01.695046+00:00",
+    "key": "2026-09-04T15:57:01.695046+00:00",
+    "label": "2026-09-04T15:57:01.695046+00:00",
+    "loose_key": "2026-09-04T15:57:01.695046+00:00",
+    "merged_in": "2026-09-04T15:57:01.695046+00:00",
+    "mouse": "2026-09-04T15:57:01.695046+00:00",
+    "n_channels": "2026-09-04T15:57:01.695046+00:00",
+    "note": "2026-09-09T20:23:45.889923+00:00",
+    "project": "2026-09-04T15:57:01.695046+00:00",
+    "project_source": "2026-09-04T15:57:01.695046+00:00",
+    "retired": "2026-09-04T15:57:01.695046+00:00",
+    "schema": "2026-09-04T15:57:01.695046+00:00",
+    "session": "2026-09-04T15:57:01.695046+00:00",
+    "spike_labels": "2026-09-09T07:24:50.173178+00:00",
+    "start": "2026-09-04T15:57:01.695046+00:00",
+    "updated": "2026-09-09T20:23:45.889923+00:00",
+    "view_state": "2026-09-09T14:27:28.984158+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
+        "set",
+        "2026-09-04T15:57:01.695046+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\m22_ptenblind\\m22s4jul15\\2024-07-15_16-43-22": [
+        "set",
+        "2026-09-04T15:57:01.695046+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
+        "set",
+        "2026-09-04T15:57:01.695046+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.695046+00:00"
+      ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T16:05:36.649678+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T17:39:26.289933+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T21:11:59.857899+00:00"
+      ],
+      "Strawbarrry": [
+        "set",
+        "2026-09-09T14:27:20.761055+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-04T15:57:01.695046+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-09T20:23:45.889923+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -33,16 +97,6 @@
       "color": "#FFB81C",
       "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
       "visible": true
-    },
-    "flow harness sd": {
-      "color": "#c9a6ff",
-      "name": "flow harness sd",
-      "visible": true
-    },
-    "flow harness uv": {
-      "color": "#f59fb4",
-      "name": "flow harness uv",
-      "visible": true
     }
   },
   "first_seen_by": "scan",
@@ -71,7 +125,7 @@
   ],
   "mouse": 22,
   "n_channels": 64,
-  "note": "",
+  "note": "harness note",
   "paths": [
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
@@ -89,9 +143,30 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-09T12:05:36-04:00",
+      "by": "Shahriar Tafti",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-04T11:00:25-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "at": "2026-09-04T13:39:26-04:00",
+      "by": "Shahriar",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T17:11:59-04:00",
+      "by": "Rain",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
+    },
+    "Strawbarrry": {
+      "at": "2026-09-09T10:27:20-04:00",
+      "by": "Shahriar Tafti",
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
       "root": null,
       "scan": null
@@ -103,10 +178,12 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-04T11:26:35-04:00",
-    "machine": "BarryLab",
+    "at": "2026-09-09T16:23:45-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "barry"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
     "channels": [
@@ -148,16 +225,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 7,
+    "hp": 3,
     "invert": true,
     "lp": 0,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 0,
-    "probe": "h10d",
+    "probe": "h3",
     "spacing": 50,
-    "span": 4,
+    "span": 1,
     "stft_mode": null,
-    "t0": 1277.860633208218,
+    "t0": 13.3,
     "ylim": 2133.0312426885184
   }
 }
