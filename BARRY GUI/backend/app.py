@@ -2803,6 +2803,28 @@ def api_people_forget():
                     **PEOPLE.roster(CURATE, BANK)})
 
 
+@app.route("/api/people/archive", methods=["POST"])
+def api_people_archive():
+    """Take somebody off the pickers, or put them back.
+
+    Not removal, and unlike removal it works on a name the data carries --
+    which is the case it exists for. Nothing is deleted, no count changes,
+    and their name stays on every record it is already on.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    want = body.get("archived", True)
+    try:
+        PEOPLE.archive(body.get("name"), bool(want))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{
+        "action": "profile.archive",
+        "detail": {"name": body.get("name"), "archived": bool(want)},
+    }])
+    return jsonify({"ok": True, "archived": bool(want),
+                    **PEOPLE.roster(CURATE, BANK)})
+
+
 # ==========================================================================
 # What a sitting actually was
 # ==========================================================================
@@ -4777,6 +4799,7 @@ COLUMN_MIGRATIONS = {
     "needs_processing": "07_reference_channels.sql",
     "reference_channels_source": "07_reference_channels.sql",
     "aliases": "08_people_aliases.sql",
+    "archived": "09_people_archived.sql",
 }
 
 
@@ -4798,6 +4821,7 @@ COLUMN_TABLES = {
     "needs_processing": "sessions",
     "reference_channels_source": "sessions",
     "aliases": "people",
+    "archived": "people",
 }
 
 
@@ -5084,14 +5108,46 @@ def api_devices():
             slot[key]["n"] += 1
 
     mine = shards.machine_id()
+
+    # Every name the logs mention, so the ones no machine claims can be
+    # listed rather than silently dropped. The log stores friendly names and
+    # those change: this lab has DESKTOP-4H65AI7, BarryLab, Strawbarrry and
+    # Blackbarry on record alongside the three names currently in use.
+    log_names = set(newest)
+    claimed = set()
+
     out = []
     for m in machines:
         seen = presencemod._age_s(m.get("last_seen"))
         host = m.get("hostname")
+        real = _real_host(m.get("id"))
+        # Rows written under this machine's other names. Matched on the
+        # friendly name or the real hostname and nothing looser -- a fuzzy
+        # match here would have folded StrawBarry into Strawbarry, and they
+        # are two people's computers.
+        aka = sorted(
+            n for n in log_names
+            if n and n.lower() in {(host or "").lower(), (real or "").lower()}
+            and n != host)
+        claimed.update(aka)
+        if host:
+            claimed.add(host)
         got = newest.get(host) or {}
+        # Counted under every name it has answered to.
+        for other in aka:
+            more = newest.get(other) or {}
+            for key in ("actions", "errors"):
+                if key in more and key not in got:
+                    got = dict(got)
+                    got[key] = more[key]
         out.append({
             "id": m.get("id"),
             "hostname": host,
+            # What to put on screen: "Bluebarry (DESKTOP-4H65AI7)".
+            "label": _machine_label(host, m.get("id")),
+            "real_host": real,
+            "also_known_as": aka,
+            "archived": bool(m.get("archived")),
             "os": m.get("os"),
             "user": m.get("git_user"),
             "first_seen": m.get("first_seen"),
@@ -5108,9 +5164,102 @@ def api_devices():
             "last_error_at": (got.get("errors") or {}).get("at"),
             "recent_errors": (got.get("errors") or {}).get("n") or 0,
         })
-    out.sort(key=lambda d: (d.get("age_s") is None, d.get("age_s") or 0))
-    return jsonify({"ok": True, "configured": True, "machine": mine,
-                    "devices": out})
+    # Archived last, then by how recently they were heard from.
+    out.sort(key=lambda d: (bool(d.get("archived")),
+                            d.get("age_s") is None, d.get("age_s") or 0))
+    return jsonify({
+        "ok": True, "configured": True, "machine": mine,
+        "machine_label": _machine_label(
+            (STORE.provenance() or {}).get("machine"), mine),
+        "devices": out,
+        # Names in the logs that no machine in the table answers to -- an
+        # older friendly name, or a computer that never registered. Reported
+        # rather than guessed at: matching them by shape is how two people's
+        # machines would get merged.
+        "unclaimed_names": sorted(n for n in log_names
+                                  if n and n not in claimed),
+    })
+
+
+# ==========================================================================
+# What a computer is called, and what it actually is
+#
+# `machines.id` is `slug(platform.node())` plus a four-character hash of the
+# MAC address, so it decodes the real computer name -- which the friendly
+# name often is not. Bluebarry is DESKTOP-4H65AI7; StrawBarry is LCOM549913
+# and Strawbarry is BARRYLAB, and those last two are different computers
+# whose friendly names differ by the case of one letter.
+#
+# So a machine is shown as "Friendly (ACTUAL)" whenever the two differ. It
+# is the difference between two rows somebody has to squint at and two rows
+# that cannot be mistaken for each other.
+# ==========================================================================
+def _real_host(machine_id):
+    """The computer's own name, out of its shard id.
+
+    The id is the hostname slug plus "-" plus four hex characters. Anything
+    that does not look like that is returned as it came: better to show an
+    unfamiliar id than to invent a hostname by chopping it.
+    """
+    got = str(machine_id or "")
+    if "-" not in got:
+        return got.upper() or None
+    head, tag = got.rsplit("-", 1)
+    if len(tag) == 4 and all(c in "0123456789abcdef" for c in tag.lower()):
+        return head.upper() or None
+    return got.upper() or None
+
+
+def _machine_label(friendly, machine_id):
+    """"Bluebarry (DESKTOP-4H65AI7)", or just the name when they agree."""
+    real = _real_host(machine_id)
+    name = str(friendly or "").strip() or real or str(machine_id or "")
+    if not real or real.lower() == name.lower():
+        return name
+    return "%s (%s)" % (name, real)
+
+
+@app.route("/api/devices/archive", methods=["POST"])
+def api_devices_archive():
+    """Take a computer off the lists, or put it back.
+
+    Same reasoning as archiving a person: a machine that has been retired
+    still wrote every row it wrote, so it cannot be deleted -- but it should
+    not go on cluttering a device picker for ever. Nothing is removed and no
+    count changes.
+
+    Keyed on the id rather than the name, because the name is the thing that
+    changes: this lab has four names in its logs for three computers.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    mid = (body.get("id") or "").strip()
+    if not mid:
+        return jsonify({"ok": False,
+                        "error": "Which computer? Pass its id."}), 400
+    want = bool(body.get("archived", True))
+    if not CLOUD.cloud.configured:
+        return jsonify({"ok": False,
+                        "error": "The machine list lives in the shared "
+                                 "database, so archiving one needs a "
+                                 "connection."}), 400
+    try:
+        CLOUD.cloud.patch_rows("machines", "id=eq.%s" % _q(mid),
+                               {"archived": want})
+    except Exception as exc:                             # noqa: BLE001
+        msg = str(exc)
+        if "42703" in msg or "PGRST204" in msg:
+            return jsonify({
+                "ok": False,
+                "error": "The shared database has no `archived` column on "
+                         "machines yet. Run supabase/10_machines_archived"
+                         ".sql and try again.",
+                "run": "10_machines_archived.sql"}), 400
+        return jsonify({"ok": False, "error": msg[:200]}), 502
+    STORE.record_activity([{
+        "action": "device.archive",
+        "detail": {"id": mid, "archived": want},
+    }])
+    return jsonify({"ok": True, "id": mid, "archived": want})
 
 
 @app.route("/api/errors/bundle", methods=["POST"])

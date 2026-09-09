@@ -1644,17 +1644,62 @@ BARRY.profile = (function () {
       }
     };
 
+    /* Off the pickers, without pretending to be off the record.
+
+       This is the one that works on a name the data carries -- which is the
+       case that matters, because somebody who has left the lab has two
+       thousand decisions behind them and removal is refused for exactly
+       that reason. Nothing is deleted, no count moves, and their name stays
+       on every record it is on. */
+    const archivePerson = async (person, yes) => {
+      const held = heldBy(person);
+      if (yes) {
+        const ok = await BARRY.confirm(
+          'Archive ' + person.name + '?',
+          (held.n
+            ? person.name + ' stays on ' + held.n + ' record'
+              + (held.n === 1 ? '' : 's') + ' — ' + held.what.join(', ')
+              + ', all still counted for them. '
+            : '')
+          + 'Archiving only stops them being offered as an owner for new '
+          + 'work. Nothing is deleted, no number changes, and it can be '
+          + 'undone at any time.'
+          + '\n\nIt applies everywhere, not just on this computer — being '
+          + 'offered work is a lab-wide question.',
+          'Archive');
+        if (!ok) return;
+      }
+      try {
+        const res = await apiPost('/api/people/archive',
+                                  { name: person.name, archived: !!yes });
+        roster = res;
+        paintKnown();
+        toast(yes ? person.name + ' archived — still on every record, no '
+                    + 'longer offered for new work.'
+                  : person.name + ' is back on the roster.', 'ok', 5000);
+      } catch (e) {
+        toast('Could not archive ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
+    let showArchived = false;
+
     const paintKnown = () => {
       known.innerHTML = '';
-      const rows = (roster && roster.people) || [];
-      if (!rows.length) {
+      const all = (roster && roster.people) || [];
+      const rows = all.filter((x) => !x.archived);
+      const away = all.filter((x) => x.archived);
+      if (!rows.length && !away.length) {
         known.appendChild(el('span', { class: 'hint',
           text: 'Nobody else on record yet.' }));
         return;
       }
-      for (const p of rows) {
+      const chip = (p) => {
         const mine = (f.name && f.name.value.trim()) === p.name;
-        known.appendChild(el('span', { class: 'prof-chip' + (mine ? ' on' : '') }, [
+        return el('span', {
+          class: 'prof-chip' + (mine ? ' on' : '')
+                 + (p.archived ? ' archived' : ''),
+        }, [
           el('button', {
             class: 'prof-chip-name',
             title: 'Use ' + p.name + ' as who this machine credits work to',
@@ -1699,18 +1744,53 @@ BARRY.profile = (function () {
              hidden: an affordance that is silently absent teaches nothing,
              and "why can I remove that one and not this one" is the
              question this has to answer. */
+          /* And the one that always works. Beside the × on purpose: the
+             × is refused for anybody the data carries, and the answer to
+             "then how do I get them out of my pickers" should not be
+             somewhere else. */
+          el('button', {
+            class: 'prof-chip-arch' + (p.archived ? ' on' : ''),
+            title: p.archived
+              ? p.name + ' is archived — not offered for new work. '
+                + 'Click to put them back.'
+              : 'Archive ' + p.name + ': off the pickers, still on every '
+                + 'record they are on. Reversible.',
+            text: p.archived ? '\u21ba' : '\u25f4',
+            onclick: () => archivePerson(p, !p.archived),
+          }),
           el('button', {
             class: 'prof-chip-del' + (heldBy(p).n ? ' held' : ''),
             title: heldBy(p).n
               ? p.name + ' is on ' + heldBy(p).n + ' record'
                 + (heldBy(p).n === 1 ? '' : 's')
                 + ' (' + heldBy(p).what.join(', ') + '). '
-                + 'Names the data carries cannot be removed.'
+                + 'Names the data carries cannot be removed — archive them '
+                + 'instead, which takes them off the pickers and leaves the '
+                + 'records alone.'
               : 'Remove ' + p.name + ' from the roster',
             text: '\u00d7',
             onclick: () => removePerson(p),
           }),
-        ]));
+        ]);
+      };
+
+      for (const p of rows) known.appendChild(chip(p));
+
+      /* The archived, folded away. Counted in the heading rather than
+         hidden without trace: "where did that name go" is the question a
+         silent filter creates. */
+      if (away.length) {
+        known.appendChild(el('button', {
+          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
+          text: (showArchived ? '\u25be  ' : '\u25b8  ')
+                + away.length + ' archived',
+          title: 'Archived people are still on every record they are on, '
+               + 'and still counted. They are only kept out of the pickers.',
+          onclick: () => { showArchived = !showArchived; paintKnown(); },
+        }));
+        if (showArchived) {
+          for (const p of away) known.appendChild(chip(p));
+        }
       }
     };
 
@@ -1827,6 +1907,62 @@ function setView(name) {
   }
   const v = BARRY.views[name];
   if (v && v.onShow) v.onShow();
+}
+
+/* ==========================================================================
+   A popover hung off a button
+
+   xplore.js has its own copy of this, entangled with pane state, and it is
+   staying there -- but anything else that needs a grouped set of controls
+   should not grow a tenth variation. Fixed-positioned and parented to
+   <body> on purpose: a popover inside a scroller gets clipped by it and
+   slides away from its own button.
+   ========================================================================== */
+let _openPop = null;
+
+function closePopover() {
+  if (!_openPop) return;
+  const { node, button, away, esc } = _openPop;
+  document.removeEventListener('mousedown', away, true);
+  document.removeEventListener('keydown', esc, true);
+  window.removeEventListener('resize', closePopover);
+  if (node && node.parentNode) node.parentNode.removeChild(node);
+  if (button) button.classList.remove('active');
+  _openPop = null;
+}
+
+/* `build` is called on open, not on wiring, so the popover shows the state
+   as it is now rather than as it was when the button was drawn. */
+function openPopover(button, build) {
+  const wasMine = _openPop && _openPop.button === button;
+  closePopover();
+  if (wasMine) return;                    // a second click closes it
+
+  const node = el('div', { class: 'ctl-pop' }, [build(closePopover)]);
+  document.body.appendChild(node);
+  button.classList.add('active');
+
+  const r = button.getBoundingClientRect();
+  const w = node.offsetWidth;
+  node.style.left = Math.max(8, Math.min(
+    r.left, window.innerWidth - w - 8)) + 'px';
+  const h = node.offsetHeight;
+  node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+    ? (r.top - h - 6) + 'px'
+    : (r.bottom + 6) + 'px';
+
+  const away = (ev) => {
+    if (!node.contains(ev.target) && !button.contains(ev.target)) {
+      closePopover();
+    }
+  };
+  const esc = (ev) => { if (ev.key === 'Escape') closePopover(); };
+  _openPop = { node, button, away, esc };
+  setTimeout(() => {
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('keydown', esc, true);
+    window.addEventListener('resize', closePopover);
+  }, 0);
 }
 
 /* ==========================================================================

@@ -248,6 +248,9 @@ BARRY.views.eventbank = (function () {
     const nv = x.n_versions || (x.versions || []).length;
     return el('div', {
       class: 'bank-row' + (sheetSel === x.gid ? ' on' : ''),
+      // So the selection can be moved without rebuilding the list, which
+      // is what used to scroll it back to the top.
+      'data-gid': x.gid,
       onclick: function () { selectSheet(x.gid); },
     }, [
       el('div', { class: 'bank-row-top' }, [
@@ -274,10 +277,39 @@ BARRY.views.eventbank = (function () {
     ]);
   }
 
+  /* Move the selection without rebuilding the list.
+
+     Calling `render()` here rebuilt the whole split, so the scroller was a
+     brand new element and the browser started it at the top -- with
+     sixty-seven sheets, clicking the one you had scrolled down to threw you
+     back to the beginning. And it happened twice, once before the fetch and
+     once after it.
+
+     The events side has had this fix for a while and there is a note on
+     `selectEntry` explaining it; this is the same thing for the sheets. */
+  function paintSheetSelection(gid) {
+    for (const row of document.querySelectorAll('#bankBody .bank-row')) {
+      if (row.hasAttribute('data-gid')) row.classList.remove('on');
+    }
+    /* By its own gid rather than by position: the rows are grouped by
+       project and then by mouse, so the nth row is not the nth sheet. */
+    const row = document.querySelector(
+      '#bankBody .bank-row[data-gid="' + String(gid).replace(/"/g, '') + '"]');
+    if (row) row.classList.add('on');
+  }
+
+  function repaintSheet() {
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return false; }
+    box.parentNode.replaceChild(layerDetail(), box);
+    return true;
+  }
+
   async function selectSheet(gid) {
     sheetSel = gid;
     sheetOne = null;
-    render();
+    paintSheetSelection(gid);
+    if (!repaintSheet()) return;      // no split on screen yet; render did it
     try {
       /* The single-sheet read, because it is the only one carrying the
          snapshots -- the list leaves them out, and without them the history
@@ -287,7 +319,10 @@ BARRY.views.eventbank = (function () {
     } catch (e) {
       toast('Could not read that sheet: ' + e.message, 'err');
     }
-    render();
+    /* Still the sheet somebody is looking at? A second click while the
+       first read was in flight would otherwise paint the older answer over
+       the newer one. */
+    if (sheetSel === gid) repaintSheet();
   }
 
   function layerDetail() {

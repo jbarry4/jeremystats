@@ -15,6 +15,34 @@ BARRY.views.sessions = (function () {
   let query = '';
   let groupFilter = '';
   const flags = new Set();
+
+  /* Availability is a choice, not a switch.
+
+     "Everything BARRY knows" and "only what I can open right now" are two
+     different jobs -- one is a catalogue of 473 recordings, the other is a
+     work queue of 184 -- and as the ninth checkbox in a row of nine that
+     distinction was invisible. */
+  let avail = 'all';                      // 'all' | 'open'
+
+  /* What each filter is called and where it belongs. One list, so the
+     popover, the chips and the count can never disagree about what is on. */
+  const FILTERS = [
+    { group: 'Recording', id: 'video', name: 'Has video' },
+    { group: 'Recording', id: 'converted', name: 'Converted (.mat)',
+      note: 'A .mat written by the conversion step' },
+    { group: 'Recording', id: 'bad', name: 'Has bad channels' },
+    { group: 'Quality', id: 'good', name: 'Marked good',
+      note: 'Flagged good for analysis' },
+    { group: 'Quality', id: 'exclude', name: 'Hide excluded',
+      note: 'Leave out anything flagged exclude' },
+    { group: 'Quality', id: 'unhealthy', name: 'Health notes',
+      note: 'Only the ones the health check flagged' },
+    /* Which recordings still need StrataScope is a question with sixty-odd
+       sheets behind it now, and scrolling four hundred cards looking for
+       the gaps is not an answer. */
+    { group: 'Layers', id: 'layers', name: 'Layers labelled' },
+    { group: 'Layers', id: 'nolayers', name: 'Layers still to do' },
+  ];
   const picked = new Set();   // paths queued for opening
   const health = {};          // path -> report from /api/session/health
   let healthBusy = false;
@@ -444,20 +472,158 @@ BARRY.views.sessions = (function () {
     const nLayers = ((s.has || {}).layers) || 0;
     if (flags.has('layers') && !nLayers) return false;
     if (flags.has('nolayers') && nLayers) return false;
-    /* Reachable from this machine.
+    /* Can I open this, right now, on this computer.
 
-       `here` is the paths that exist right now, which is not the same as
-       the paths BARRY knows: a recording can be remembered from a drive
-       nobody has mounted since, and it still has a path. Falling back to
-       "has a path" made this match almost everything, which is the shape of
-       a filter that is not filtering. */
-    if (flags.has('here')
-        && !((s.here || []).length || s._found || s._reachable)) return false;
+       Not `here`, which is only whether a folder exists -- a folder can
+       outlive its contents. The server answers this one properly: the
+       registry asks the loader itself (`can_open`), and a scan already
+       counted the CSC and .mat files so it can say `loadable` for free.
+
+       The bug this replaces went the other way from the obvious one. A
+       recording a scan had just walked, on this very machine, carried
+       neither `here` nor `reachable` -- so the filter read the absence as
+       "not on this machine" and hid the only certainly-openable things in
+       the list. */
+    if (avail === 'open' && !canOpen(s)) return false;
     if (!query) return true;
     const q = query.toLowerCase();
     return (s.identity.label || '').toLowerCase().includes(q)
       || (s.path || '').toLowerCase().includes(q)
       || (s.name || '').toLowerCase().includes(q);
+  }
+
+  /* Whether this recording opens on a click.
+
+     Three shapes reach this list and they say it differently: the registry
+     sends `can_open` and a `loadable` list, a scan sends `loadable` as a
+     boolean, and anything older only has `here`. Taking the first that is
+     actually present is the difference between a filter and a guess -- and
+     reading a missing field as "no" is what hid every scanned recording. */
+  function canOpen(s) {
+    if (typeof s.can_open === 'boolean') return s.can_open;
+    if (typeof s.loadable === 'boolean') return s.loadable;
+    if (Array.isArray(s.loadable)) return s.loadable.length > 0;
+    return (s.here || []).length > 0 || !!s._reachable;
+  }
+
+  function nActive() {
+    return flags.size + (avail === 'all' ? 0 : 1);
+  }
+
+  /* One button, the chips for whatever is on, and nothing else. */
+  function renderFilterBar() {
+    const bar = $('#sessFilterBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const n = nActive();
+
+    bar.appendChild(el('button', {
+      class: 'btn ghost sm filter-open' + (n ? ' on' : ''),
+      onclick: (e) => openPopover(e.currentTarget, filterPop),
+    }, [
+      el('span', { html: '<svg viewBox="0 0 20 20" class="fb-ico">'
+        + '<path d="M3 5h14M6 10h8M9 15h2"/></svg>' }),
+      el('span', { text: 'Filter' }),
+      n ? el('span', { class: 'fb-count', text: String(n) }) : null,
+    ].filter(Boolean)));
+
+    /* A chip per active filter. The point of collapsing nine pills into a
+       button is compactness; the point of the chips is that compactness
+       must not cost you knowing what is on. */
+    if (avail === 'open') {
+      bar.appendChild(chip('Only what opens here', () => {
+        avail = 'all'; renderFilterBar(); renderTree();
+      }));
+    }
+    for (const f of FILTERS) {
+      if (!flags.has(f.id)) continue;
+      bar.appendChild(chip(f.name, () => {
+        flags.delete(f.id); renderFilterBar(); renderTree();
+      }));
+    }
+    if (n > 1) {
+      bar.appendChild(el('button', {
+        class: 'linkish fb-clear', text: 'Clear all',
+        onclick: () => {
+          flags.clear(); avail = 'all'; renderFilterBar(); renderTree();
+        },
+      }));
+    }
+  }
+
+  function chip(label, off) {
+    return el('span', { class: 'fb-chip' }, [
+      el('span', { text: label }),
+      el('button', { class: 'fb-chip-x', text: '\u00d7',
+        title: 'Turn this one off', onclick: off }),
+    ]);
+  }
+
+  function filterPop() {
+    const box = el('div', { class: 'ctl-pop-body' });
+
+    /* Availability first, because it is the one that changes what the view
+       is FOR rather than which subset of it you see. */
+    box.appendChild(el('div', { class: 'ctl-pop-group' }, [
+      el('div', { class: 'ctl-pop-title', text: 'Which recordings' }),
+      radio('Everything BARRY knows', avail === 'all',
+            'Every recording on record, including ones on drives nobody '
+            + 'has mounted since.',
+            () => { avail = 'all'; refresh(); }),
+      radio('Only what opens here', avail === 'open',
+            'Only the ones this computer can open right now \u2014 the '
+            + 'folder is reachable and the CSC or .mat files are in it. '
+            + 'This is the work queue.',
+            () => { avail = 'open'; refresh(); }),
+    ]));
+
+    let last = null;
+    let group = null;
+    for (const f of FILTERS) {
+      if (f.group !== last) {
+        last = f.group;
+        group = el('div', { class: 'ctl-pop-group' }, [
+          el('div', { class: 'ctl-pop-title', text: f.group }),
+        ]);
+        box.appendChild(group);
+      }
+      group.appendChild(check(f, () => {
+        if (flags.has(f.id)) flags.delete(f.id); else flags.add(f.id);
+        refresh();
+      }));
+    }
+
+    function refresh() {
+      renderFilterBar();
+      renderTree();
+      /* Repainted in place rather than closed: turning three filters on
+         should be three clicks, not three clicks and two re-opens. */
+      const open = document.querySelector('.ctl-pop');
+      if (open && open.firstChild) {
+        open.replaceChild(filterPop(), open.firstChild);
+      }
+    }
+    return box;
+  }
+
+  function radio(label, on, note, pick) {
+    return el('label', { class: 'ctl-pop-opt' + (on ? ' on' : ''),
+                         title: note || '' }, [
+      el('input', { type: 'radio', name: 'sessAvail',
+        checked: on ? 'checked' : null, onchange: pick }),
+      el('span', { text: label }),
+    ]);
+  }
+
+  function check(f, toggle) {
+    return el('label', {
+      class: 'ctl-pop-opt' + (flags.has(f.id) ? ' on' : ''),
+      title: f.note || '',
+    }, [
+      el('input', { type: 'checkbox',
+        checked: flags.has(f.id) ? 'checked' : null, onchange: toggle }),
+      el('span', { text: f.name }),
+    ]);
   }
 
   /* ---------- tree ---------- */
@@ -473,6 +639,7 @@ BARRY.views.sessions = (function () {
       + (nKnown ? '  ·  ' + nFound + ' found by this scan, '
                   + nKnown + ' remembered' : '')
       + (query ? '  ·  matching "' + query + '"' : '')
+      + (avail === 'open' ? '  ·  only what opens here' : '')
       + (picked.size ? '  ·  ' + picked.size + ' selected' : '');
     renderPickBar();
 
@@ -980,13 +1147,9 @@ BARRY.views.sessions = (function () {
       deb = setTimeout(renderTree, 120);
     });
 
-    $$('#sessFilters .filter-row .pill[data-flag]').forEach((b) =>
-      b.addEventListener('click', () => {
-        const f = b.dataset.flag;
-        if (flags.has(f)) flags.delete(f); else flags.add(f);
-        b.classList.toggle('active', flags.has(f));
-        renderTree();
-      }));
+    /* The nine pills are gone; the bar builds itself from FILTERS, so
+       there is nothing left to wire up one at a time. */
+    renderFilterBar();
 
     renderRecents();
 

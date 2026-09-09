@@ -5424,12 +5424,6 @@ body.aid-window .xf-tabs { display: none !important; }
   padding: 0 8px; background: var(--bg-2);
   border-bottom: 1px solid var(--line);
 }
-/* Said before it is used, not after: these reach every pane at once. */
-.xf-master-tag {
-  flex: none; font-size: 9.5px; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .05em;
-  padding-right: 8px; border-right: 1px solid var(--line-soft);
-}
 .pane-ctl.is-master {
   flex: 1; min-width: 0; border-bottom: 0; background: transparent;
 }
@@ -5439,11 +5433,6 @@ body.aid-window .xf-tabs { display: none !important; }
    strips that are no longer there. */
 .pane-grid.panes-6 .pane-head { padding: 4px 8px; }
 .pane-grid.panes-6 .pane-head .pane-meta { display: inline; }
-
-@media (max-width: 1100px) {
-  /* The tag is the first thing to go: the controls are the point. */
-  .xf-master-tag { display: none; }
-}
 
 /* A standing notice in a pane head: something is not being drawn the way it
    normally is. In the header rather than only in the menu that set it,
@@ -6081,4 +6070,106 @@ body.aid-window .xf-tabs { display: none !important; }
   font-size: 11.5px; color: var(--text-3);
   border-left: 2px solid var(--line);
   padding-left: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Archived profiles
+
+   Dimmed rather than hidden, and never struck through: they are still on
+   every record they are on, and a line through the name would say otherwise.
+   -------------------------------------------------------------------------- */
+.prof-chip.archived { opacity: 0.55; }
+.prof-chip.archived .prof-chip-name { font-style: italic; }
+.prof-chip-arch {
+  border: 0; background: none; cursor: pointer;
+  color: var(--text-3); padding: 0 4px; font-size: 12px;
+}
+.prof-chip-arch:hover { color: var(--accent); }
+.prof-chip-arch.on { color: var(--accent); }
+.prof-arch-toggle {
+  border: 1px dashed var(--line); background: none; cursor: pointer;
+  color: var(--text-3); font-size: 11.5px;
+  padding: 3px 9px; border-radius: 999px;
+}
+.prof-arch-toggle:hover { border-color: var(--accent-line); }
+.prof-arch-toggle.on { border-style: solid; color: var(--text-2); }
+
+/* Archived computers, and the names they used to answer to. */
+.dev-row.archived { opacity: 0.55; }
+.dev-aka { color: var(--text-3); font-size: 11px; font-style: italic; }
+.dev-arch {
+  border: 0; background: none; cursor: pointer;
+  color: var(--text-3); padding: 0 4px; font-size: 12px;
+}
+.dev-arch:hover, .dev-arch.on { color: var(--accent); }
+.dev-unclaimed {
+  margin-top: 6px; padding: 7px 10px; border-radius: 6px;
+  background: var(--bg-2); border-left: 2px solid var(--line);
+}
+
+/* --------------------------------------------------------------------------
+   One filter control
+
+   Nine pills in a row read as wallpaper: nothing grouped them and nothing
+   said how many were on. The button carries the count, the chips carry the
+   state, and the grouping lives in the popover.
+   -------------------------------------------------------------------------- */
+.filter-bar {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; padding: 6px 0;
+}
+.filter-open { display: inline-flex; align-items: center; gap: 6px; }
+.filter-open.on { border-color: var(--accent-line); color: var(--text); }
+.fb-ico {
+  width: 13px; height: 13px; fill: none; stroke: currentColor;
+  stroke-width: 1.6; stroke-linecap: round;
+}
+.fb-count {
+  min-width: 16px; padding: 0 4px; border-radius: 999px;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 10px; font-weight: 700; text-align: center;
+}
+.fb-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 4px 2px 9px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  font-size: 11.5px;
+}
+.fb-chip-x {
+  border: 0; background: none; cursor: pointer; color: var(--text-3);
+  padding: 0 3px; font-size: 13px; line-height: 1;
+}
+.fb-chip-x:hover { color: var(--err); }
+.fb-clear { font-size: 11.5px; }
+.ctl-pop-opt {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 4px; border-radius: 5px; cursor: pointer;
+  font-size: 12.5px;
+}
+.ctl-pop-opt:hover { background: var(--bg-hover); }
+.ctl-pop-opt.on { color: var(--text); }
+.ctl-pop-opt input { margin: 0; }
+
+/* The channel list, inside the Ch popover.
+
+   Two columns, because sixty-four single-file rows is a lot of scrolling
+   for something you are usually only glancing at. */
+.ctl-chans {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px 10px;
+  max-height: 300px; overflow-y: auto;
+  border-top: 1px solid var(--line-soft); padding-top: 6px;
+}
+.ctl-chan {
+  display: flex; align-items: center; gap: 6px;
+  padding: 1px 3px; border-radius: 4px; cursor: pointer;
+  font-size: 11.5px; font-family: var(--mono);
+}
+.ctl-chan:hover { background: var(--bg-hover); }
+.ctl-chan.off { color: var(--text-3); }
+.ctl-chan input { margin: 0; }
+.ctl-chan .cc-n { min-width: 22px; text-align: right; }
+.ctl-chan.marked-bad .cc-n { color: var(--err); }
+.ctl-chan .cc-bad {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--err);
 }

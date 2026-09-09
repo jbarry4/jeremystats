@@ -558,6 +558,10 @@ class Sync:
                 # so `_apply_people` wrote it back every cycle and the merge
                 # looked like it had failed.
                 "aliases": sorted(row.get("aliases") or []) or None,
+                # Whether they should still be offered work. Shared, because
+                # that is a lab-wide question -- and because a local-only
+                # flag would be written back by the next pull.
+                "archived": bool(row.get("archived")) or None,
                 "last_seen": cloud.now(),
                 "updated_at": cloud.now(),
             })
@@ -955,6 +959,12 @@ class Sync:
             # last-write-wins would have one of them silently undo the
             # other.
             theirs = [a for a in (r.get("aliases") or []) if a]
+            # Last-write-wins, unlike aliases: "she is back" is a correction
+            # of "she has left", not a second opinion to be unioned with it.
+            # `None` means the row says nothing, which is not the same as
+            # saying False -- a machine that has not run migration 09 sends
+            # nothing here and must not un-archive anybody.
+            put_away = r.get("archived")
             mine = have.get(name.lower())
             if mine is not None:
                 # Only the fields this row actually carries, and only when
@@ -967,6 +977,10 @@ class Sync:
                             != str(v or "").strip()):
                         same = False
                         break
+                # A different archive state is news.
+                if same and put_away is not None:
+                    if bool(mine.get("archived")) != bool(put_away):
+                        same = False
                 # An alias this machine has not got is news even when every
                 # other field matches.
                 if same and theirs:
@@ -985,12 +999,16 @@ class Sync:
                     have_now.setdefault(str(a).strip().lower(),
                                         str(a).strip())
                 merged = sorted(have_now.values())
+            more = {}
+            if merged:
+                more["aliases"] = merged
+            if put_away is not None:
+                more["archived"] = bool(put_away)
             try:
                 self.people.add(name, r.get("email"), None,
                                 role=r.get("role"),
                                 initials=r.get("initials"),
-                                orcid=r.get("orcid"),
-                                **({"aliases": merged} if merged else {}))
+                                orcid=r.get("orcid"), **more)
                 n += 1
             except TypeError:
                 # A People without the `aliases` field. The rest of the row
