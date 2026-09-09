@@ -88,6 +88,11 @@ class People:
     FIELDS = ("email", "role", "initials", "orcid", "note", "aliases",
               "archived")
 
+    # What `counts` calls a hand-added entry. Named rather than repeated:
+    # `roster` tests it, the client tests it to decide whether a name can be
+    # removed, and the two drifting apart would make the delete button lie.
+    HAND = "added by hand"
+
     # Fields that are not text. `_clean` would turn False into the string
     # "False", which is truthy, so an unarchive would archive.
     FLAGS = ("archived",)
@@ -138,6 +143,11 @@ class People:
         rows.append(row)
         rec["added"] = rows
         self.book.write("people", rec)
+        # Which it was. A caller that meant to edit and got a create has
+        # just made a duplicate, and until now it had no way to tell:
+        # matching is on `id`, so saving under a changed name cannot find
+        # the old row and appends beside it.
+        self.last_add_created = was is None
         return self.roster()
 
     def details(self, name):
@@ -256,11 +266,26 @@ class People:
             if not name:
                 return
             name = alias_of.get(name.lower(), name)
-            row = seen.setdefault(name, {
+            # Keyed case-insensitively. Keyed as-written, "Rain" on a
+            # decision and "rain" typed into the editor were two people --
+            # and so were "Rain" and "Rain ", which is one stray keystroke
+            # in a text field.
+            key = name.lower()
+            row = seen.setdefault(key, {
                 "name": name, "email": None, "machines": [],
                 "counts": {}, "total": 0, "is_person": _looks_like_a_person(name),
                 "sources": [],
             })
+            # Which spelling to show. One somebody chose outright -- a
+            # profile, or a hand-added entry -- beats one that came off a
+            # record; failing that, the one with capitals wins, because the
+            # capital was typed on purpose.
+            if name != row["name"]:
+                chosen = where in ("profile", HAND_SOURCE)
+                better = chosen or (name != name.lower()
+                                    and row["name"] == row["name"].lower())
+                if better:
+                    row["name"] = name
             row["counts"][where] = row["counts"].get(where, 0) + n
             row["total"] += n
             if where not in row["sources"]:
@@ -310,7 +335,7 @@ class People:
 
         # Hand-added and hand-edited names.
         for row in self._extra():
-            note(row.get("name"), "added by hand", 1, email=row.get("email"))
+            note(row.get("name"), self.HAND, 1, email=row.get("email"))
 
         # Everything the roster or a profile says about each of them, so the
         # picker can show a role and the editor can open populated.
@@ -340,6 +365,7 @@ class People:
         # should be OFFERED work, not about who did it -- so it is the
         # caller's business to leave them out of a picker, and nobody's
         # business to make the totals disagree with the records.
+        HAND_SOURCE = self.HAND
         put_away = self.archived()
         for r in rows:
             r["me"] = bool(me and r["name"] == me)

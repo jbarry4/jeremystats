@@ -1557,15 +1557,25 @@ BARRY.profile = (function () {
   async function open() {
     const cur = prof || {};
     const f = {};
-    const field = (key, label, placeholder, hint) => {
+    /* `mine` marks a field that is about this COMPUTER rather than about a
+       person, so it can be taken off screen when the form is about somebody
+       else. Only `device` is one, and it matters: that field is what
+       `provenance().machine` reads, and it stamps every error and activity
+       row. Leaving it editable while filling in a colleague's details is
+       how one computer ends up filing under five names. */
+    const mineOnly = [];
+
+    const field = (key, label, placeholder, hint, mine) => {
       f[key] = el('input', {
         type: 'text', value: cur[key] || '', placeholder: placeholder || '',
       });
-      return el('div', { class: 'field' }, [
+      const box = el('div', { class: 'field' }, [
         el('label', { text: label }),
         f[key],
         hint ? el('span', { class: 'hint', text: hint }) : null,
       ]);
+      if (mine) mineOnly.push(box);
+      return box;
     };
 
     /* Who is already here. A row fills the form; the pencil opens that
@@ -1573,14 +1583,58 @@ BARRY.profile = (function () {
        because filling in a colleague's role is a different act from
        becoming them. */
     const known = el('div', { class: 'prof-known' });
-    let editing = null;          // whose details are in the form, if not me
+    /* Which of three jobs Save is doing.
+
+         null      set who THIS COMPUTER credits work to
+         a name    edit that person's roster entry, and nothing else
+         'new'     put somebody new on the roster
+
+       Held explicitly rather than worked out from whether the name in the
+       form still matches. That comparison is what let editing somebody
+       fall through to the profile branch and rewrite this machine's
+       identity. */
+    let editing = null;
+    let creating = false;
 
     const fill = (d, asMe) => {
       for (const k of ['name', 'email', 'role', 'initials']) {
         if (f[k]) f[k].value = (d && d[k]) || '';
       }
       editing = asMe ? null : (d && d.name) || null;
+      creating = false;
+      paintMode();
       paintKnown();
+    };
+
+    /* Start a new one. Clears the form rather than inheriting whoever was
+       in it -- a create that arrives pre-filled with somebody else's email
+       is how two people end up sharing one. */
+    const startNew = () => {
+      for (const k of ['name', 'email', 'role', 'initials']) {
+        if (f[k]) f[k].value = '';
+      }
+      editing = null;
+      creating = true;
+      paintMode();
+      paintKnown();
+      if (f.name) f.name.focus();
+    };
+
+    const modeLine = el('p', { class: 'prof-mode' });
+
+    const paintMode = () => {
+      /* Off screen when the form is not about this computer. */
+      for (const box of mineOnly) box.hidden = !!(editing || creating);
+      modeLine.className = 'prof-mode'
+        + (editing ? ' editing' : (creating ? ' creating' : ''));
+      modeLine.textContent = editing
+        ? 'Editing ' + editing + '. Save writes to the roster only \u2014 '
+          + 'it does not change who this computer credits work to.'
+        : (creating
+          ? 'Adding somebody new to the roster. Save puts them on it; it '
+            + 'does not change who this computer credits work to.'
+          : 'This is who this computer credits work to. Save applies it to '
+            + 'everything BARRY records here from now on.');
     };
 
     /* Remove, and then say what actually happened.
@@ -1796,6 +1850,7 @@ BARRY.profile = (function () {
     };
 
     const body = el('div', { class: 'prof-form' }, [
+      modeLine,
       el('p', { class: 'confirm-msg',
         text: 'Everything BARRY records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
@@ -1812,7 +1867,9 @@ BARRY.profile = (function () {
       field('device', 'What the lab calls this machine',
             (cur.machine || 'this computer'),
             'The real hostname (' + (cur.machine || '?') + ') is kept as '
-            + 'well, so "which computer" is still answerable.'),
+            + 'well, so "which computer" is still answerable. This name is '
+            + 'stamped on every error and action from this computer, so two '
+            + 'machines sharing one cannot be told apart.', true),
       field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
@@ -1825,14 +1882,96 @@ BARRY.profile = (function () {
         try {
           const patch = {};
           for (const k of Object.keys(f)) patch[k] = f[k].value;
+          /* Belt and braces. The field is hidden in these modes, and a
+             hidden input still submits its value -- so the value is
+             dropped here too rather than trusted not to arrive. */
+          if (editing || creating) delete patch.device;
 
-          /* Editing somebody else writes only to the roster. Saving their
-             name into this machine's profile would credit everything this
-             computer does from now on to a person who is not sitting at
-             it -- which is the opposite of what the pencil is for. */
-          if (editing && (patch.name || '').trim() === editing) {
+          /* Editing somebody writes to the roster and nowhere else.
+
+             Decided by the mode, not by whether the name still matches.
+             It used to fall through to the profile branch the moment the
+             name differed at all -- which set THIS MACHINE's identity to
+             the person being edited, and then added their new name to the
+             roster beside the old row rather than in place of it. One
+             duplicate, and a computer credited to somebody who was not
+             sitting at it. */
+          /* Somebody new. The roster and nothing else -- adding a
+             colleague is not a statement about which computer this is. */
+          if (creating) {
+            const typed = (patch.name || '').trim();
+            if (!typed) {
+              toast('A person needs a name.', 'err', 4000);
+              save.disabled = null;
+              return;
+            }
+            const clash = ((roster && roster.people) || [])
+              .concat((roster && roster.not_people) || [])
+              .find((x) => (x.name || '').toLowerCase() === typed.toLowerCase());
+            if (clash) {
+              /* Not refused -- editing them is a reasonable thing to have
+                 meant. But it must not silently create a second row, which
+                 is what the old path did. */
+              save.disabled = null;
+              const go = await BARRY.confirm(
+                clash.name + ' is already on the roster',
+                'BARRY can update their details instead of adding a second '
+                + clash.name + '. Two entries with the same name cannot be '
+                + 'told apart on any record.',
+                'Update ' + clash.name);
+              if (!go) return;
+            }
             await apiPost('/api/people/add', {
-              name: patch.name, email: patch.email,
+              name: clash ? clash.name : typed, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            });
+            roster = null;
+            closeModal();
+            toast(clash ? 'Updated ' + clash.name + '.'
+                        : typed + ' added to the roster.', 'ok', 6000);
+            BARRY.activity.log(clash ? 'people.edit' : 'people.add',
+                               { name: clash ? clash.name : typed });
+            return;
+          }
+
+          if (editing) {
+            const typed = (patch.name || '').trim();
+
+            /* A rename, which is not a thing that can be done. `name` is
+               the key every decision, banked set and layer sheet is
+               stamped with, so changing it here would leave all of them
+               pointing at a person the roster no longer lists. Said
+               plainly, with the two real options offered. */
+            if (typed && typed !== editing) {
+              save.disabled = null;
+              const asNew = await BARRY.confirm(
+                'Rename ' + editing + ' to ' + typed + '?',
+                editing + ' is the name stamped on their decisions, their '
+                + 'banked sets and their layer sheets. Renaming the roster '
+                + 'entry cannot rename those, so they would be left '
+                + 'crediting somebody the roster no longer lists.'
+                + '\n\nBARRY can add ' + typed + ' as a separate person '
+                + 'instead, leaving ' + editing + ' exactly as they are. If '
+                + 'they really are the same person, archive one and add the '
+                + 'other as an alias — that folds the old name without '
+                + 'rewriting anything.',
+                'Add ' + typed + ' as a new person');
+              if (!asNew) return;
+              await apiPost('/api/people/add', {
+                name: typed, email: patch.email,
+                role: patch.role, initials: patch.initials,
+              });
+              roster = null;
+              closeModal();
+              toast(typed + ' added. ' + editing + ' is unchanged.',
+                    'ok', 6000);
+              BARRY.activity.log('people.add', { name: typed,
+                                                 from_edit: editing });
+              return;
+            }
+
+            await apiPost('/api/people/add', {
+              name: editing, email: patch.email,
               role: patch.role, initials: patch.initials,
             });
             roster = null;
@@ -1877,12 +2016,27 @@ BARRY.profile = (function () {
       ]),
       el('div', { class: 'mb' }, [body]),
       el('div', { class: 'mf' }, [
+        /* On the left, away from Save: adding somebody is a different job
+           from saving the form, and putting them together is how one gets
+           pressed for the other. */
+        el('button', {
+          class: 'btn ghost', text: 'Add somebody\u2026',
+          title: 'Put a new person on the roster. Does not change who this '
+               + 'computer credits work to.',
+          onclick: startNew,
+        }),
+        editing || creating ? el('button', {
+          class: 'btn ghost', text: 'Back to me',
+          title: 'Put your own details back in the form',
+          onclick: () => fill(prof, true),
+        }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: closeModal }),
         save,
-      ]),
+      ].filter(Boolean)),
     ]));
+    paintMode();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);

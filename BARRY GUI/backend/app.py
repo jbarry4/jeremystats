@@ -2803,6 +2803,49 @@ def api_people_forget():
                     **PEOPLE.roster(CURATE, BANK)})
 
 
+# Names a harness may create and destroy. Anything else is somebody's
+# colleague, and this route will not touch it.
+_TEST_PERSON = "zz "
+
+
+@app.route("/api/people/_test_purge", methods=["POST"])
+def api_people_test_purge():
+    """Remove a harness's probe people, here and in the shared roster.
+
+    A harness that creates a person has to be able to un-create one, and
+    removing it locally is not enough: a push during the run sends it up and
+    the next pull writes it back. That happened twice while building this,
+    and both times a name had to be deleted out of the shared table by hand.
+
+    Guarded on the prefix rather than trusted: a purge that could take any
+    name is a route that can quietly delete a colleague.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    names = [str(n) for n in (body.get("names") or []) if n]
+    refused = [n for n in names if not n.lower().startswith(_TEST_PERSON)]
+    if refused:
+        return jsonify({
+            "ok": False,
+            "error": "This only removes probe names beginning %r. Refused: %s"
+                     % (_TEST_PERSON, ", ".join(refused)),
+        }), 400
+
+    gone, cloud_gone = [], []
+    for name in names:
+        try:
+            if PEOPLE.forget(name):
+                gone.append(name)
+        except Exception:                                # noqa: BLE001
+            pass
+        if CLOUD.cloud.configured:
+            try:
+                CLOUD.cloud.delete("people", "name=eq.%s" % _q(name))
+                cloud_gone.append(name)
+            except Exception:                            # noqa: BLE001
+                pass
+    return jsonify({"ok": True, "removed": gone, "removed_shared": cloud_gone})
+
+
 @app.route("/api/people/archive", methods=["POST"])
 def api_people_archive():
     """Take somebody off the pickers, or put them back.
