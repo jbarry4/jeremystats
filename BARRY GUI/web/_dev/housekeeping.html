@@ -118,7 +118,20 @@ const post = (u, b) => fetch(u, { method: 'POST',
 
   say('');
   say('=== one recording, in full ===', 'hd');
-  $$('.hk-row')[0].click();
+  /* A real record, not the built-in example.
+     The demo project is in the tree so that a machine with nothing mounted
+     is not an empty application, but a demo recording is deliberately NOT a
+     registry record -- so patch, merge and split answer "No session
+     demo-ds-tutorial" for it. This section is about those operations, and
+     picking whatever the UI happened to list first meant it had been
+     testing them against a recording they cannot apply to. */
+  const realRows = $$('.hk-row').filter((r) => {
+    const id = (r.querySelector('.hk-gid') || {}).textContent || '';
+    return id && !/^demo-/.test(id.trim());
+  });
+  check('there is a real recording to organise', realRows.length > 0,
+        realRows.length + ' of ' + $$('.hk-row').length + ' are not demos');
+  (realRows[0] || $$('.hk-row')[0]).click();
   await sleep(600);
   const det = $('#hkDetail');
   check('picking a row opens the detail', !!det.querySelector('.hk-dhead'));

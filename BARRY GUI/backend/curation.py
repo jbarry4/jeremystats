@@ -297,6 +297,14 @@ class Curation:
         done = 0
         for e in evs:
             lab = e.get("label")
+            # The word counts as no decision, not as a decision called
+            # "unspecified". It is not in either vocabulary and should never
+            # be stored -- but a sync did store it, on seven candidates, and
+            # this counter reported them as done: `left` 0, `percent` 100,
+            # on a set nobody had finished. A count that a stray value in
+            # the data can invert is worth making stubborn.
+            if lab == "unspecified":
+                lab = None
             if lab:
                 done += 1
                 by[lab] = by.get(lab, 0) + 1
@@ -998,9 +1006,14 @@ class Curation:
         if label is None:
             hit.pop("by", None)
             hit.pop("at", None)
+            # See `label_many`: an undo needs a time of its own or it cannot
+            # be ordered against somebody else's decision on the same
+            # candidate, and it must not be `at`.
+            hit["cleared_at"] = _now()
         else:
             hit["by"] = who
             hit["at"] = _now()
+            hit.pop("cleared_at", None)
         self._write(rec)
         return hit, self.progress(rec)
 
@@ -1038,6 +1051,13 @@ class Curation:
             if label is None:
                 e.pop("by", None)
                 e.pop("at", None)
+                # When it was un-decided, so the undo can be ordered against
+                # somebody else's decision on the same candidate. Not in
+                # `at`: that means "when this was decided", is read that way
+                # by the receipt and the review list, and a stamp there on a
+                # candidate with no label is how a decision nobody made gets
+                # counted.
+                e["cleared_at"] = stamp
             else:
                 e["by"] = who
                 e["at"] = stamp

@@ -30,8 +30,8 @@
     "schema": "2026-09-04T15:57:01.904976+00:00",
     "session": "2026-09-04T15:57:01.904976+00:00",
     "start": "2026-09-04T15:57:01.904976+00:00",
-    "updated": "2026-09-09T07:10:13.655922+00:00",
-    "view_state": "2026-09-09T07:10:13.655922+00:00"
+    "updated": "2026-09-09T19:56:18.644255+00:00",
+    "view_state": "2026-09-09T19:56:18.644255+00:00"
   },
   "_keys": {
     "paths": {
@@ -64,11 +64,15 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T16:09:29.809939+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-09T19:56:04.023890+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T07:10:13.655922+00:00",
+    "at": "2026-09-09T19:56:18.644255+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -134,12 +138,20 @@
       "path": "D:\\PTEN\\CTL\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
       "root": null,
       "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-09T15:56:04-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2025-07-10T11:41:45",
   "updated": {
-    "at": "2026-09-09T03:10:13-04:00",
+    "at": "2026-09-09T15:56:18-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -182,7 +194,7 @@
       31
     ],
     "clim": null,
-    "even_only": false,
+    "even_only": true,
     "fdefault": null,
     "flock": true,
     "gain": 1,
@@ -196,7 +208,7 @@
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 336.335,
+    "t0": 517.138,
     "ylim": null
   }
 }

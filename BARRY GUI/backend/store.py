@@ -450,12 +450,29 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
+            # A record with no permanent id cannot be reached by anything:
+            # every by-gid route answers 404, nothing can be attached to it,
+            # and it files itself under the shared `unknown` shard below.
+            #
+            # `Registry.ensure` and `_durable_patch` both mint one, so
+            # opening a recording or scanning for it is covered -- but three
+            # routes write through here directly (a note, a bad channel
+            # list, a saved view state), and one of them created exactly
+            # this: a record holding a note, no id, and no way to remove it.
+            # The id belongs at the choke point.
+            if not rec.get("gid"):
+                rec["gid"] = identity.get("gid") or new_gid()
             # The permanent id is the last resort, not the string
             # "unknown": every recording BARRY cannot derive a key for would
             # otherwise share one filename and overwrite the one before it.
             # Three real recordings went through that file before anyone
             # noticed, and the only reason two survived is that they had
             # already been pushed to the shared copy.
+            #
+            # With an id minted above, "unknown" is now unreachable -- it is
+            # left in as the belt to the braces, and because a fallback that
+            # cannot be hit costs nothing while a missing one costs a file
+            # that overwrites itself.
             base = self.session_base(
                 rec.get("key") or identity.get("loose_key")
                 or rec.get("gid") or identity.get("gid") or "unknown")
@@ -652,6 +669,17 @@ class Store:
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+def new_gid():
+    """A short, permanent name for a recording.
+
+    The same shape `sessreg.new_gid` makes, and deliberately not derived from
+    anything: a derived id is an id that changes when the thing it was
+    derived from is corrected. Defined here rather than imported because
+    `sessreg` imports this module, and the other direction would be a cycle.
+    """
+    return "s" + uuid.uuid4().hex[:12]
+
+
 def _now():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 

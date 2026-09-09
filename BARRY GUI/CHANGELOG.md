@@ -15,6 +15,289 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.09.2 — one probe, one panel
+
+### Fixed
+
+- **A session record with no permanent id, and the hole that made it.** The
+  housekeeping check said “every one has a gid: 1 without”, and it was:
+  `Y:\ProcessedPtenData\PTEN_CFCs\VACC\CFC\Other`, created 2026-09-04 on
+  BarryLab, no gid, no key, no channels.
+
+  A record with no id cannot be reached by anything — every by-gid route
+  answers 404, nothing can be attached to it, and it files itself under the
+  shared `unknown` shard whose own comment records having eaten three real
+  recordings. Two layers disagreed about whose job the id was:
+  `Registry.ensure` and `_durable_patch` both mint one, but
+  `Store.upsert_session` would *create* a record without one — and three
+  routes write through the store directly (a note, a bad-channel list, a
+  saved view state). Add a note to a folder that is not a recording and you
+  get exactly this.
+
+  The id is minted at the choke point now, which also makes the `unknown`
+  filename unreachable. The existing row was repaired rather than deleted
+  — given an id and a note saying where the id came from — so it can be
+  corrected or forgotten like any other record. 515 records before and
+  after, none without an id.
+
+- **The built-in example offered four controls that could not work.** The
+  demo project is in the tree so that a machine with nothing mounted is not
+  an empty application, but a demo recording is deliberately not a registry
+  record — so filing it under a project, annotating it, merging it and
+  splitting it all answer “No session demo-ds-tutorial”. Housekeeping
+  offered all four anyway, and a new user’s first click in Everything
+  BARRY knows is quite likely to be the example. It now says what it is,
+  and the writes are not offered. Everything that reads — the id, the
+  paths, the links to what is attached — stays, because that is the point
+  of having an example.
+
+- **The figure footer ran off the page on the journal-column preset.** Two
+  causes. `_ranges` collapsed only *consecutive* runs, so every-other-
+  channel — which is what “even only” gives you — printed as thirty-two
+  numbers and was cut by the paper edge; it says `CSC 1-63/2` now, the same
+  rule the grid cells and the column heads use. And the packer laid whole
+  phrases onto lines and never split one, so a phrase longer than the line
+  overflowed; it wraps at its own separators instead. Nothing is cut,
+  because a provenance strip that is approximate is worse than none.
+
+  The layout also reserved three lines for it and a 3.5in page needs five,
+  fitting only because the space under the tick labels happened to be free.
+  The footer is measured before the grid is laid out now: letter 3 lines at
+  5% of the page, slide 3 lines, 3.5in column 5 lines and the plot shrinks
+  to make room.
+
+- **`CSC59 (bad)` ran off the left edge.** The margin reserved a flat four
+  characters’ worth whatever the labels said, and a bad channel is
+  exactly the row somebody goes looking for. Measured from the labels that
+  will actually be drawn, capped so one pathological name cannot eat the
+  plot.
+
+- **The last native browser dialog is gone.** `window.confirm` survived on
+  “Forget this recording” — the one control that destroys a record’s
+  history, and the one with no room to say so. It uses the application’s
+  own dialog now, and says the part the old text left out: a fresh record
+  gets a NEW permanent id, so anything still attached to the old one will
+  not find its way back.
+
+
+
+- **The incremental sync was comparing timestamps as text, across offsets.**
+  Found while checking that picking up a layer sheet reached the shared
+  table. It did not: the payload was right, the columns existed, nothing
+  errored.
+
+  ```
+  batch = [r for r in batch if str(r["updated_at"]) > since]
+  ```
+
+  `since` is UTC — `2026-09-09T18:55:06+00:00`. A record written 45 seconds
+  later carries `2026-09-09T14:55:51-04:00`, because `cloud.ts` validated the
+  stamp and handed it back as BARRY wrote it. As text, `"14:55" < "18:55"`,
+  so a row written *after* the last push looked older than it and was
+  dropped.
+
+  Vermont is UTC-4, so this hit **every record whose local hour was before
+  20:00** — which is every record written during a working day. Those edits
+  travelled only when something forced a full push. It is very likely the
+  mechanism under "I made updates to Sylvia and Shahriar and Rain's profiles
+  that are not showing up in a different computer"; the missing `role` and
+  `initials` fields were real and this was underneath them.
+
+  `ts()` normalises to UTC now — a timestamptz column stores an instant, so
+  the offset was never information the database kept, only something the
+  sender could get wrong — and the filter parses both sides. A stamp that
+  cannot be parsed is sent rather than dropped: a needless upsert costs one
+  round trip the database discards, and a dropped one loses somebody's work.
+
+  The same fault was on the way IN, in the error triage: a signature you
+  marked handled here carried a local stamp and the incoming row carried
+  UTC, so as text your afternoon mark sorted before a colleague's morning
+  one and the pull undid your triage. Both sides compare times now.
+
+- **A sync could replace real curation decisions with "undecided", and the
+  progress bar would not have noticed.** Found because `curate.html` failed on
+  `left`, and the server's own numbers were impossible:
+
+  ```
+  {"by_label": {"garbage":1,"solid":1,"sputter":1,"unspecified":7},
+   "left": 0, "percent": 100, "specified": 10, "total": 10}
+  ```
+
+  Ten specified, seven of them unspecified. Three faults in a line:
+
+  * `curation_events.label` is `NOT NULL`, so the shared table has no way to
+    write "nobody has decided" and the push sends the word `unspecified`
+    instead. That is the schema's encoding and it is fine.
+  * `_apply_curation` then wrote that word back as a *local* label, because
+    "different from what we have" was the whole test.
+  * `progress` counts any non-empty label as a decision, so those became
+    decisions: `left` 0, `percent` 100, on a set nobody had finished.
+
+  Measured on a real set afterwards: 162 cloud rows carrying the word against
+  162 locally decided events. The old applier would have overwritten **every
+  one of those decisions with "unspecified"** — and `specified` would still
+  have read 162, so nothing on screen would have shown that a day of
+  judgements had been replaced by a placeholder.
+
+  Now: the word is normalised to "no decision" on the way in, `progress`
+  refuses to count it, and an incoming decision only wins if it is newer
+  (below). Applying all 324 rows for that set changes nothing.
+
+- **A pull could undo today's curation with a decision from last January.**
+  `_apply_curation` compared no timestamps at all — last pull won — so two
+  people working one set undid each other silently. Measured before the fix:
+
+  ```
+  event e99e3dd4290 | local: spike, decided 2026-09-09T11:27:37-0400
+  applied: 1        | label now: garbage, at 2025-01-01T00:00:00+00:00
+  ```
+
+  The rule now: a decision beats no decision, and past that the newer one
+  wins, compared as times. An incoming row with no stamp cannot overturn a
+  decision that has one — on the push side an unreadable stamp means "send it
+  and let the database sort it out", which is cheap, and on the pull side it
+  would mean "overwrite somebody's judgement on no evidence", which is not.
+
+- **A repair to the shared table needs a stamp or it is silently discarded.**
+  Worth writing down: `barry_keep_newest` returns the OLD row for any update
+  whose `updated_at` is not newer, so a `PATCH` that fixes a value and leaves
+  the stamp alone comes back HTTP 204 and changes nothing.
+
+- **A full push died on duplicate keys, which is the push you reach for when
+  things are not travelling.** `ON CONFLICT DO UPDATE command cannot affect
+  row a second time` from `errors`: two shards holding the same failure
+  produce two rows with one id, and Postgres will not guess which you meant.
+  Batches are collapsed to one row per conflict key — the later one, because
+  the builders read in order — including the implicit primary key, which is
+  where it bit: `errors` is keyed on `id` and is not in the `ON_CONFLICT`
+  map.
+
+  With both fixed, a full push is 44,316 rows across 19 tables in 69 s, and
+  an incremental one carries a sheet picked up a minute ago in 79 rows.
+
+- **The two session views were two doors to one answer.** "Scan a drive" and
+  "Everything BARRY knows" were both seeded from the whole registry, so both
+  showed all 476 recordings. Three separate faults:
+
+  * sightings were keyed on `provenance().machine` — the *typed* label — so
+    this computer's were filed under `Bluebarry`, `DESKTOP-4H65AI7` and
+    `Strawbarrry`, and asking "has this machine met it" by id matched **none
+    of 476**. New sightings are keyed on the machine id, which is derived;
+    the label rides along for reading; and "have I met this" matches the id
+    or any name this computer has answered to, because rewriting years of
+    other machines' sightings is how two people's computers got merged the
+    last time.
+  * `setMode` toggled the two panels *under* the list and never re-drew the
+    list, so both modes rendered the same 188 cards.
+  * `#sessSub` had two authors — prose from the mode switch, counts from the
+    tree — so it read `188 of 185` in one mode and prose in the other. One
+    author now, and the count and the filter share a predicate so they
+    cannot disagree again.
+
+  Scan a drive: **185 on this computer, read from the registry on this
+  disk**. Everything BARRY knows: the shared catalogue, kept in step through
+  Supabase.
+
+- **The figure builder printed six copies of one H3 where an H10 was
+  wanted.** `buildInitialLayout` copied each pane into a panel and dropped
+  `channels` — the per-pane override that *is* the column — so six panels
+  each fell back to the whole selection.
+
+  It is one panel now. The cell subdivides itself: the back shank's three
+  columns in physical order, a gap, the front shank's three, each headed
+  with its window and channel run (`W1 centre / CSC 1-31/3 +32`), sharing
+  one depth axis and **one colour scale computed across all six before any
+  is drawn**. Six independently auto-scaled CSDs is the bug already fixed
+  once in the viewer, and a figure is where that mistake gets printed.
+
+- **My own harness runner was under-reporting.** It counted one spelling of
+  a passing check, so `figgrid.html` — 54 checks, every one passing — came
+  back as a single check, indistinguishable from a screenshot-taker. Part of
+  why the suite looked dead in places.
+
+### Changed
+
+- **StrataScope has event curation's workbench.** It had a flat list of
+  every sheet that exists, in one order, with a Delete on each that fired on
+  the first click and erased every label on that recording without a word.
+
+  Now: the open sheets are the bench, everything else is the shelf, and
+  picking one up claims it if nobody has. Opening a recording in StrataScope
+  puts it on the bench, the way curating does. **Close** is the only removal
+  — it takes the work set off the bench and changes no label, no version and
+  no snapshot — with **File away** for "I am done thinking about this at
+  all". Picking up an archived sheet is refused unless you say you mean to
+  un-archive it, so filing something away cannot be undone by accident. A
+  work set can be named by clicking its title, because a second pass after a
+  probe map was corrected is not the same work as the first.
+
+  The bench travels: `assignee`, `is_open` and `archived` sync, so it can
+  answer "is anybody already labelling this recording" rather than only
+  "what am I working on". Migration 13.
+
+  Delete is gone from the cards. It had grown a three-paragraph confirmation
+  explaining everything it would *not* destroy, which is the tell that the
+  button should not be there.
+
+- **The figure footer says what the figure is of, and stops cutting itself
+  off.** It was two fixed lines at a fixed size with everything past a
+  character count replaced by an ellipsis — so the answer to "which
+  channels" would have been the first half of the answer. It packs now: the
+  facts are laid into as many lines as they need at a size that fits the
+  page, and nothing is dropped. On a letter page that is three lines in the
+  height the old two occupied.
+
+  What was missing and is now there: the probe, the hemisphere, the filter,
+  which channels (as runs — `CSC 1-10/3` — not sixty-four numbers), which
+  are marked bad, the contact spacing, the gain, and whether the scale was
+  pinned or worked out from the data. That last one matters more than it
+  looks: a printed CSD with an auto scale cannot be compared with another
+  printed CSD, and nothing on the page used to say which it was.
+
+- **The scan's own two settings are behind one button**, like the filters
+  beside them. "Read headers" and "Depth" were a checkbox and a number box
+  sharing a line with the recent-roots list. The button names what is not
+  standard rather than counting it — `depth 3` explains a scan that found
+  nothing, where a badge reading `1` does not.
+
+### Added
+
+- **A panel spans by having its edge dragged.** Grips on a panel's right
+  edge, bottom edge and corner; the cells it would take light up as you go.
+  An edge owns one axis, so dragging the bottom edge sideways cannot
+  secretly widen the panel. Shift-click still works.
+
+  Measured while checking it: dragging the bottom edge did nothing at all,
+  because the row below was scrolled past the bottom of the dialog and the
+  pointer resolved to the backdrop. A drag now resolves to the nearest cell,
+  which also covers the gaps between cells and overshooting the grid.
+
+- **A panel comes out by being dragged out.** Moving, adding and spanning
+  were all drags; removal was a small x in a list. There is a bin under the
+  grid now.
+
+- **Which window is which, in channel numbers.** Every grid cell and panel
+  row carries the channels its panel draws — `CSC 1-10/3` — so six columns
+  of one probe are told apart at a glance instead of by index.
+
+- **Which columns of the probe, and in what order.** Collapsing the six
+  panes into one panel answered “make it a single 1x1 for the entire 6
+  pane view” and took the other half of the request with it —
+  “remove certain windows and arrange certain windows in certain
+  order”. The panel editor now shows a chip per column in the order they
+  will be drawn, each with its channel run: click one to drop it, drag one
+  onto another to reorder, click a faint one to bring it back. The last
+  column cannot be dropped, because a panel drawing nothing is not a
+  picture of anything.
+
+  Not cosmetic. A shank that broke mid-experiment is three columns of noise
+  beside three of data sharing one colour scale, so dropping it makes the
+  other three readable and not merely tidier. One column left draws as a
+  single full-width raster with its head suppressed, since the panel title
+  already says which column it is.
+
+---
+
 ## 2026.09.09.1 — the computer is not the person
 
 ### Changed

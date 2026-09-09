@@ -24,6 +24,16 @@ BARRY.views.sessions = (function () {
      distinction was invisible. */
   let avail = 'all';                      // 'all' | 'open'
 
+  /* What the scan itself is told to do.
+
+     Held here rather than read off two inputs in the toolbar, because the
+     inputs are gone: they were the state, and a popover that is rebuilt
+     every time it opens cannot be. Defaults are named so the button can say
+     when they have been changed -- "why did the scan miss it" is almost
+     always Depth. */
+  const SCAN_DEFAULTS = { headers: true, depth: 6 };
+  const scanOpts = Object.assign({}, SCAN_DEFAULTS);
+
   /* What each filter is called and where it belongs. One list, so the
      popover, the chips and the count can never disagree about what is on. */
   const FILTERS = [
@@ -80,6 +90,15 @@ BARRY.views.sessions = (function () {
   function fromRegistry(r) {
     const path = (r.here || [])[0] || (r.paths || [])[0] || '';
     return {
+      /* Whether THIS computer has met it: true, false, or null for "the
+         server did not say". Carried through because the two modes are two
+         different questions and this is what separates them.
+
+         Null matters. The demo project is appended to the payload after the
+         walk that marks the rows, so those rows carry no answer at all, and
+         `!!undefined` made that indistinguishable from "not seen" -- which
+         hid the tour session from the scan view. Absent is not no. */
+      _seenHere: r.seen_here === undefined ? null : !!r.seen_here,
       path,
       name: r.label || r.key || r.gid,
       gid: r.gid,
@@ -212,8 +231,8 @@ BARRY.views.sessions = (function () {
     try {
       const res = await apiPost('/api/discover/start', {
         root,
-        max_depth: parseInt($('#rootDepth').value, 10) || 6,
-        read_headers: $('#rootHeaders').checked,
+        max_depth: scanOpts.depth || SCAN_DEFAULTS.depth,
+        read_headers: !!scanOpts.headers,
       });
       scanId = res.job.id;
       remember(root);
@@ -455,7 +474,25 @@ BARRY.views.sessions = (function () {
     }
   }
 
+  /* Is this recording part of what THIS computer has met?
+
+     Its own function because the filter and the count both need it and they
+     had it written out twice, differently -- which is how the view came to
+     say "188 of 185": the filter passed a row nobody had answered for and
+     the count did not count it. */
+  function inLocal(s) {
+    return !s._remembered || s._seenHere !== false;
+  }
+
   function matches(s) {
+    /* "Scan a drive" is this computer's own view: what it has been exposed
+       to, read off the registry on disk with no database involved.
+       "Everything BARRY knows" is the shared catalogue -- every recording
+       any machine has met, which is what travels through Supabase.
+
+       A recording found by the scan running now counts as met whether or
+       not a sighting has been filed yet. */
+    if (mode === 'scan' && !inLocal(s)) return false;
     if (groupFilter && (s.identity.group || 'Ungrouped') !== groupFilter) return false;
     if (flags.has('video') && !s.has_video) return false;
     if (flags.has('converted') && !s.converted) return false;
@@ -533,13 +570,13 @@ BARRY.views.sessions = (function () {
     if (avail === 'open') {
       bar.appendChild(chip('Only what opens here', () => {
         avail = 'all'; renderFilterBar(); renderTree();
-      }));
+      }, 'open'));
     }
     for (const f of FILTERS) {
       if (!flags.has(f.id)) continue;
       bar.appendChild(chip(f.name, () => {
         flags.delete(f.id); renderFilterBar(); renderTree();
-      }));
+      }, f.id));
     }
     if (n > 1) {
       bar.appendChild(el('button', {
@@ -551,8 +588,107 @@ BARRY.views.sessions = (function () {
     }
   }
 
-  function chip(label, off) {
-    return el('span', { class: 'fb-chip' }, [
+  /* The scan's settings: one button, and what is not standard on its face.
+
+     Modelled on the filter button beside it, because it is the same
+     problem -- controls that matter occasionally and are in the way
+     always. */
+  function renderScanOpts() {
+    const bar = $('#rootOptsBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const odd = [];
+    if (!scanOpts.headers) odd.push('no headers');
+    if (scanOpts.depth !== SCAN_DEFAULTS.depth) {
+      odd.push('depth ' + scanOpts.depth);
+    }
+    bar.appendChild(el('button', {
+      class: 'btn ghost sm filter-open' + (odd.length ? ' on' : ''),
+      title: 'How this scan reads the drive',
+      onclick: (e) => openPopover(e.currentTarget, scanOptsPop),
+    }, [
+      el('span', { html: '<svg viewBox="0 0 20 20" class="fb-ico">'
+        + '<circle cx="10" cy="10" r="3"/><path d="M10 3v3M10 14v3M3 10h3'
+        + 'M14 10h3"/></svg>' }),
+      el('span', { text: 'Scan options' }),
+      /* Named, not counted. "2" would tell you something is different
+         without telling you what, and the whole reason to show it is that
+         a changed depth explains a scan that found nothing. */
+      odd.length ? el('span', { class: 'fb-count', text: odd.join(', ') })
+                 : null,
+    ].filter(Boolean)));
+  }
+
+  function scanOptsPop() {
+    const box = el('div', { class: 'ctl-pop-body' });
+    box.appendChild(el('div', { class: 'ctl-pop-group' }, [
+      el('div', { class: 'ctl-pop-title', text: 'How to read what it finds' }),
+      el('label', { class: 'ctl-pop-opt' + (scanOpts.headers ? ' on' : ''),
+                    title: 'Opens the first CSC file of each candidate to '
+                         + 'read its real header. Slower, and the only way '
+                         + 'to get the exact recording id.' }, [
+        el('input', { type: 'checkbox',
+          checked: scanOpts.headers ? 'checked' : null,
+          onchange: () => { scanOpts.headers = !scanOpts.headers; back(); } }),
+        el('span', { text: 'Read headers (exact IDs)' }),
+      ]),
+      el('p', { class: 'hint', text: scanOpts.headers
+        ? 'Every folder is opened far enough to read one header. This is '
+          + 'what makes two copies of one recording recognisable as the '
+          + 'same recording.'
+        : 'Folders are identified by name and shape only, which is faster '
+          + 'and cannot tell two copies apart.' }),
+    ]));
+    box.appendChild(el('div', { class: 'ctl-pop-group' }, [
+      el('div', { class: 'ctl-pop-title', text: 'How deep to look' }),
+      el('label', { class: 'ctl-pop-opt' }, [
+        el('input', {
+          type: 'number', value: String(scanOpts.depth), min: '1', max: '12',
+          class: 'inp sm',
+          oninput: (e) => {
+            const v = parseInt(e.target.value, 10);
+            scanOpts.depth = (v >= 1 && v <= 12) ? v : SCAN_DEFAULTS.depth;
+            renderScanOpts();
+          },
+        }),
+        el('span', { text: 'folders below the root' }),
+      ]),
+      el('p', { class: 'hint',
+        text: 'A recording six folders down from a project root is normal '
+            + 'here. Lower is faster; too low and the scan finds nothing '
+            + 'and looks broken.' }),
+    ]));
+    if (scanOpts.headers !== SCAN_DEFAULTS.headers
+        || scanOpts.depth !== SCAN_DEFAULTS.depth) {
+      box.appendChild(el('button', {
+        class: 'linkish fb-clear', text: 'Back to the usual',
+        onclick: () => {
+          Object.assign(scanOpts, SCAN_DEFAULTS);
+          renderScanOpts();
+          const open = document.querySelector('.ctl-pop');
+          if (open && open.firstChild) {
+            open.replaceChild(scanOptsPop(), open.firstChild);
+          }
+        },
+      }));
+    }
+
+    function back() {
+      renderScanOpts();
+      const open = document.querySelector('.ctl-pop');
+      if (open && open.firstChild) {
+        open.replaceChild(scanOptsPop(), open.firstChild);
+      }
+    }
+    return box;
+  }
+
+  function chip(label, off, id) {
+    /* `data-flag` so anything driving this page -- a harness, a keyboard
+       shortcut later -- can name a control rather than matching its
+       wording. Nine pills carried it; collapsing them into a popover
+       should not have cost it. */
+    return el('span', { class: 'fb-chip', 'data-flag': id || null }, [
       el('span', { text: label }),
       el('button', { class: 'fb-chip-x', text: '\u00d7',
         title: 'Turn this one off', onclick: off }),
@@ -569,12 +705,12 @@ BARRY.views.sessions = (function () {
       radio('Everything BARRY knows', avail === 'all',
             'Every recording on record, including ones on drives nobody '
             + 'has mounted since.',
-            () => { avail = 'all'; refresh(); }),
+            () => { avail = 'all'; refresh(); }, 'all'),
       radio('Only what opens here', avail === 'open',
             'Only the ones this computer can open right now \u2014 the '
             + 'folder is reachable and the CSC or .mat files are in it. '
             + 'This is the work queue.',
-            () => { avail = 'open'; refresh(); }),
+            () => { avail = 'open'; refresh(); }, 'open'),
     ]));
 
     let last = null;
@@ -606,9 +742,9 @@ BARRY.views.sessions = (function () {
     return box;
   }
 
-  function radio(label, on, note, pick) {
+  function radio(label, on, note, pick, id) {
     return el('label', { class: 'ctl-pop-opt' + (on ? ' on' : ''),
-                         title: note || '' }, [
+                         title: note || '', 'data-avail': id || null }, [
       el('input', { type: 'radio', name: 'sessAvail',
         checked: on ? 'checked' : null, onchange: pick }),
       el('span', { text: label }),
@@ -619,6 +755,7 @@ BARRY.views.sessions = (function () {
     return el('label', {
       class: 'ctl-pop-opt' + (flags.has(f.id) ? ' on' : ''),
       title: f.note || '',
+      'data-flag': f.id,
     }, [
       el('input', { type: 'checkbox',
         checked: flags.has(f.id) ? 'checked' : null, onchange: toggle }),
@@ -634,10 +771,27 @@ BARRY.views.sessions = (function () {
 
     const nFound = sessions.filter((x) => !x._remembered).length;
     const nKnown = sessions.length - nFound;
-    $('#sessSub').textContent = visible.length + ' of ' + sessions.length
-      + ' session(s)'
-      + (nKnown ? '  ·  ' + nFound + ' found by this scan, '
-                  + nKnown + ' remembered' : '')
+    /* The two modes are two questions, and this line is where the view
+       says which one it is answering. It used to fight with `setMode` over
+       the same element -- prose from one, counts from the other, last
+       writer winning -- so it now says both in the space of one line. */
+    $('#sessSub').textContent = visible.length + ' of '
+      + (mode === 'scan' ? sessions.filter(inLocal).length : sessions.length)
+      + (mode === 'scan'
+          ? ' on this computer  ·  read from the registry on this disk'
+          : ' in the shared catalogue  ·  every machine, kept in step '
+            + 'through Supabase')
+      /* In the shared view, how the list divides between what this scan
+         just found and what was already on record. Left out of the local
+         view, where it said "185 of 185 ... 479 remembered" -- the 479
+         being the whole catalogue, most of which this view is
+         deliberately not showing. */
+      + (mode !== 'scan' && nKnown
+          ? '  ·  ' + nFound + ' found by this scan, '
+            + nKnown + ' remembered'
+          : '')
+      + (mode === 'scan' && nFound
+          ? '  ·  ' + nFound + ' found by this scan' : '')
       + (query ? '  ·  matching "' + query + '"' : '')
       + (avail === 'open' ? '  ·  only what opens here' : '')
       + (picked.size ? '  ·  ' + picked.size + ' selected' : '');
@@ -1148,6 +1302,7 @@ BARRY.views.sessions = (function () {
       deb = setTimeout(renderTree, 120);
     });
 
+    renderScanOpts();
     /* The nine pills are gone; the bar builds itself from FILTERS, so
        there is nothing left to wire up one at a time. */
     renderFilterBar();
@@ -1180,12 +1335,17 @@ BARRY.views.sessions = (function () {
     if (hk) hk.classList.toggle('hidden', mode !== 'housekeeping');
     $$('#sessModeSeg button').forEach(
       (b) => b.classList.toggle('active', b.dataset.mode === mode));
-    const sub = $('#sessSub');
-    if (sub) {
-      sub.textContent = mode === 'scan'
-        ? 'Scan a data root and open any recording.'
-        : 'Every recording BARRY has met, with its permanent id and every '
-          + 'path it has been seen at.';
+    /* Re-drawn, because the mode is a question about the list and not
+       only about the panels under it. This used to toggle two `hidden`
+       classes and leave the list exactly as it was, so the local view
+       showed the whole catalogue until something else happened to
+       re-render.
+
+       The line above the list is written by `renderTree`, which is also
+       what counts the cards. */
+    if (sessions.length) {
+      renderFilterBar();
+      renderTree();
     }
     for (const b of $$('#sessHealth, #sessCompare, #sessReveal, #sessScan')) {
       b.classList.toggle('hidden', mode !== 'scan');
@@ -1205,6 +1365,11 @@ BARRY.views.sessions = (function () {
        screen during that read and gone after it -- and there is no way to
        watch a load that only ever happens once per page. */
     _forget: () => { knownLoaded = false; sessions = []; },
+    /* What the scan will actually be told to do. For web/_dev/sessfilter.html:
+       the settings moved out of two inputs and into module state, and a
+       button that merely looks changed is not the same as a scan that is
+       changed -- so the harness reads the state the scan reads. */
+    _scanOpts: () => Object.assign({}, scanOpts),
     onShow: () => {
       if (mode === 'housekeeping' && BARRY.views.housekeeping) {
         BARRY.views.housekeeping.onShow();

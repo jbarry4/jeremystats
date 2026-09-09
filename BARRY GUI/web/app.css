@@ -6437,3 +6437,84 @@ body.aid-window .xf-tabs { display: none !important; }
   font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
   color: var(--text-2); white-space: pre;
 }
+
+/* The role, as a list. Matched to the text inputs beside it so the form does
+   not look like two different forms. */
+.prof-role {
+  width: 100%; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit;
+}
+
+/* ---- the figure grid: edges you can grab, and a bin -------------------- */
+
+/* A cell says which panel it is and what that panel draws. The channel note
+   is the part that distinguishes six panels of one probe from each other, so
+   it is the part that must not be cut off -- it wraps instead. */
+.grid-cell { position: relative; }
+.grid-cell .gc-n { font-weight: 600; }
+.grid-cell .gc-ch {
+  display: block; font-size: 9px; line-height: 1.15; color: var(--text-3);
+  margin-top: 2px; word-break: break-word;
+}
+.grid-cell.filled .gc-ch { color: var(--text-2); }
+
+/* The handles. Wide enough to hit with a mouse without hunting, invisible
+   until the cell is under the pointer so the grid stays a grid. */
+.gc-grip {
+  position: absolute; opacity: 0; transition: opacity .12s;
+  background: var(--accent); border-radius: 2px;
+}
+.grid-cell:hover .gc-grip, .grid-cell.sel .gc-grip { opacity: .55; }
+.gc-grip:hover { opacity: 1 !important; }
+.gc-grip.e { top: 22%; bottom: 22%; right: -3px; width: 6px;
+             cursor: ew-resize; }
+.gc-grip.s { left: 22%; right: 22%; bottom: -3px; height: 6px;
+             cursor: ns-resize; }
+.gc-grip.se { right: -4px; bottom: -4px; width: 10px; height: 10px;
+              cursor: nwse-resize; border-radius: 3px; }
+
+.grid-bin {
+  margin: 8px 0 2px; padding: 8px 10px; text-align: center;
+  border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  color: var(--text-3); font-size: 11px;
+}
+.grid-bin.over {
+  border-color: var(--err); color: var(--err);
+  background: color-mix(in srgb, var(--err) 8%, transparent);
+}
+
+/* ---- the StrataScope workbench ---------------------------------------- */
+
+/* The work set's name, edited in place. It has to look editable without
+   looking like an input, or the card turns into a form. */
+.sheet-name { cursor: text; border-bottom: 1px dashed transparent; }
+.sheet-name:hover, .sheet-name:focus {
+  border-bottom-color: var(--line); outline: none;
+}
+.sheet-name-edit { max-width: 22ch; }
+
+/* A sheet on the bench, marked the way a curation set on the bench is. */
+.cur-set.on-bench { border-left: 3px solid var(--accent); }
+
+/* ---- which columns of the probe a panel draws ------------------------- */
+
+/* Laid out in the order they will be drawn, so the control reads like the
+   picture it controls. Wrapping rather than scrolling: six chips fit two
+   rows in the side column at any sensible width. */
+.probe-cols {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px;
+}
+.pc-chip {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 4px 7px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); min-width: 72px;
+}
+.pc-chip:hover { border-color: var(--accent); }
+/* A dropped column stays visible: bringing one back should not require
+   remembering that it existed. */
+.pc-chip.off { opacity: .45; border-style: dashed; cursor: pointer; }
+.pc-id { font-weight: 600; font-size: 11px; }
+.pc-what { font-size: 9px; color: var(--text-3); }
+.pc-csc { font-size: 9px; color: var(--text-2); }
