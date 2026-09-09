@@ -436,7 +436,8 @@ BARRY.views.history = (function () {
              it: which recording. */
           el('span', { class: 'hist-what', text: rowGist(a) }),
           el('span', { class: 'tm',
-            text: (a.at || '').slice(5, 16).replace('T', ' ') }),
+            title: BARRY.whenRaw(a.at),
+            text: BARRY.when(a.at, 'stamp') }),
         ].filter(Boolean)));
       }
       return;
@@ -462,7 +463,8 @@ BARRY.views.history = (function () {
       }, [
         el('span', { class: 'st ' + (r.kind === 'figure' ? 'figure' : (r.status || '')) }),
         el('span', { class: 'nm', text: r.label || r.script || '(run)' }),
-        el('span', { class: 'tm', text: at ? at.slice(5, 16).replace('T', ' ') : '' }),
+        el('span', { class: 'tm', title: BARRY.whenRaw(at),
+                     text: BARRY.when(at, 'stamp') }),
       ]));
     }
   }
@@ -481,7 +483,9 @@ BARRY.views.history = (function () {
     host.appendChild(el('div', { class: 'detail-head' }, [
       el('div', {}, [
         el('h2', { text: a.action }),
-        el('p', { class: 'detail-path', text: (a.at || '').replace('T', ' ') }),
+        el('p', { class: 'detail-path', title: BARRY.whenRaw(a.at),
+                  text: BARRY.when(a.at, 'second')
+                      + (a.at ? '   (recorded as ' + a.at + ')' : '') }),
       ]),
     ]));
 
@@ -1207,7 +1211,8 @@ BARRY.views.errors = (function () {
           el('span', { class: 'ec-where', text: e.where || 'unknown' }),
           el('span', { class: 'flagchip', text: e.id }),
           e.machine ? el('span', { class: 'flagchip', text: e.machine }) : null,
-          el('span', { class: 'ec-when', text: (e.at || '').replace('T', ' ').slice(0, 19) }),
+          el('span', { class: 'ec-when', title: BARRY.whenRaw(e.at),
+                       text: BARRY.when(e.at, 'second') }),
         ].filter(Boolean)),
         el('p', { class: 'ec-msg', text: e.message || '' }),
       ]);
@@ -1254,31 +1259,39 @@ BARRY.views.errors = (function () {
        stay readable by picking them in the panel; they just do not clutter
        a chooser for ever. */
     const live = known.filter((d) => !d.archived);
-    const seen = new Set(live.map((d) => d.hostname).filter(Boolean));
-    /* An older name of a live machine belongs to that machine, not to a
-       chip of its own. */
-    const alias = {};
+    /* Keyed on the machine id, not the name, because the groups are -- and
+       because the name is not an identity: one computer here has filed
+       errors under five different labels and two computers have shared
+       one. Comparing a name to an id matched nothing, which would have
+       filtered the whole list away. */
+    const seen = new Set(live.map((d) => d.id).filter(Boolean));
+    const labels = {};
     for (const d of live) {
-      for (const other of (d.also_known_as || [])) alias[other] = d.hostname;
+      if (d.id) labels[d.id] = d.label || d.hostname || d.id;
     }
+    /* A computer that has errors on record and has stopped syncing is not
+       in the device table, so its id comes off the groups. Its label comes
+       off the group too -- the table is the only other place one lives. */
     for (const g of groups) {
-      for (const m of (g.machines || [])) {
-        if (!alias[m]) seen.add(m);
+      if (!g.machine) continue;
+      seen.add(g.machine);
+      if (!labels[g.machine]) {
+        labels[g.machine] = g.machine_label || g.machine;
       }
     }
-    const names = Array.from(seen).sort();
+    /* Sorted by what is on screen. Sorting shard ids puts
+       "barrylab-d8e8" before "desktop-..." for reasons nobody can see. */
+    const names = Array.from(seen).sort(
+      (a, b) => String(labels[a] || a).localeCompare(String(labels[b] || b)));
     if (!devices) loadDevices();
 
-    const online = (name) => {
-      const d = live.find((x) => x.hostname === name);
+    const online = (id) => {
+      const d = live.find((x) => x.id === id);
       return d ? d.online : null;
     };
     /* "Bluebarry (DESKTOP-4H65AI7)" on the chip too, or the picker and the
        panel disagree about what the machines are called. */
-    const shown = (name) => {
-      const d = live.find((x) => x.hostname === name);
-      return (d && d.label) || name;
-    };
+    const shown = (id) => labels[id] || id;
     return el('div', { class: 'res-toolbar dev-bar' }, [
       el('span', { class: 'dev-bar-label', text: 'Device' }),
       el('span', { class: 'ctl-seg' }, [
@@ -1349,8 +1362,8 @@ BARRY.views.errors = (function () {
         title: typeof r.detail === 'object'
           ? JSON.stringify(r.detail, null, 1) : String(r.detail || ''),
       }, [
-        el('span', { class: 'dfr-at', text: String(r.at || '').slice(5, 19)
-                                            .replace('T', ' ') }),
+        el('span', { class: 'dfr-at', title: BARRY.whenRaw(r.at),
+                     text: BARRY.when(r.at, 'stamp') }),
         el('span', { class: 'dfr-kind',
                      text: r.kind === 'error' ? '!' : '·' }),
         el('span', { class: 'dfr-what', text: r.what || '' }),
@@ -1880,7 +1893,8 @@ BARRY.views.errors = (function () {
               ? el('span', {
                   class: 'err-reopened', text: 'came back',
                   title: 'Marked resolved on '
-                       + (g.resolved_at || '?').replace('T', ' ').slice(0, 16)
+                       + (g.resolved_at ? BARRY.when(g.resolved_at, 'minute')
+                                        : '?')
                        + ', and has happened again since',
                 })
               : null,
@@ -1888,11 +1902,12 @@ BARRY.views.errors = (function () {
           ].filter(Boolean)),
           el('div', { class: 'err-gwhere',
                       text: (g.where || 'unknown')
-                            + (g.machines.length ? '  \u00b7  '
+                            + (g.machines.length > 1 ? '  \u00b7  also as '
                                + g.machines.join(', ') : '') }),
         ]),
         el('span', { class: 'err-gwhere',
-                     text: (g.last || '').replace('T', ' ').slice(0, 16) }),
+                     title: BARRY.whenRaw(g.last),
+                     text: BARRY.when(g.last, 'minute') }),
         el('span', { class: 'caret', style: open ? 'transform:rotate(90deg)' : '',
           html: '<svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>' }),
       ]));
@@ -1922,12 +1937,14 @@ BARRY.views.errors = (function () {
                 text: 'resolved by ' + g.resolved_by
                       + (g.resolved_note ? ' \u2014 ' + g.resolved_note : '') })
             : el('span', { class: 'hint',
-                text: 'first seen ' + (g.first || '').slice(0, 16).replace('T', ' ') }),
+                title: BARRY.whenRaw(g.first),
+                text: 'first seen ' + BARRY.when(g.first, 'minute') }),
         ]));
 
         for (const rec of g.records) {
           body.appendChild(el('div', { class: 'err-occ',
-            text: (rec.at || '').replace('T', ' ').slice(0, 19)
+            title: BARRY.whenRaw(rec.at),
+            text: BARRY.when(rec.at, 'second')
                   + '   ' + (rec.machine || '') + '   ' + rec.id }));
         }
         const first = g.records[0] || {};

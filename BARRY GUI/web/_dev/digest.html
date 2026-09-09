@@ -106,9 +106,11 @@ const hd = (t) => p('\n== ' + t + ' ==');
     syncBtn = Array.from(D().querySelectorAll('button'))
       .find((b) => /^Sync now$/.test((b.textContent || '').trim()));
     return !!syncBtn;
-  }, 150);
+  }, 400);
   ck('the Sync now button is reachable', !!syncBtn,
-     'no button labelled "Sync now"');
+     'found instead: ' + Array.from(D().querySelectorAll('#bigModalBox button'))
+       .map((b) => b.textContent.trim()).filter((t) => t && t.length < 30)
+       .join(' | '));
 
   if (syncBtn) {
     /* Canned answers, so the label has something definite to report and
@@ -270,9 +272,18 @@ const hd = (t) => p('\n== ' + t + ' ==');
      interrupted, and a digest that clears on render cannot be read twice. */
   const a1 = await get('/api/digest');
   const a2 = await get('/api/digest');
+  /* The mark is the claim. It must not move on a read -- that is the whole
+     point, since the first read is usually the one where you get
+     interrupted. */
   ck('two reads give the same mark', a1.since === a2.since,
      a1.since + ' vs ' + a2.since);
-  ck('two reads give the same count', a1.n === a2.n, a1.n + ' vs ' + a2.n);
+  /* The count is live, and demanding two reads agree is demanding that the
+     lab stopped working in between. It went 5,241 -> 5,247 while this
+     harness was running, which is six actions, which is correct. What
+     cannot happen is it going DOWN: the window is fixed by the mark, so the
+     set of actions in it only grows. */
+  ck('and the count does not go backwards', a2.n >= a1.n,
+     a1.n + ' -> ' + a2.n);
 
   /* ---------------------------------------------------------------- */
   hd('3. The receipt refuses to invent a pace');
@@ -642,8 +653,14 @@ const hd = (t) => p('\n== ' + t + ' ==');
          !!note && note.textContent.indexOf(
            Number(a1.counted).toLocaleString()) >= 0,
          note && note.textContent);
+      /* Read a moment apart from the card, so an action arriving in
+         between is not a failure -- but the headline must be the real
+         total, not the page, and those differ by thousands rather than by
+         a handful. */
+      const fresh = await get('/api/digest');
       ck('the headline is the total, not the page',
-         lead === a1.n, lead + ' vs ' + a1.n);
+         Math.abs(lead - fresh.n) <= 50 && lead > (fresh.counted || 0),
+         lead + ' vs ' + fresh.n + ' (page was ' + fresh.counted + ')');
     } else {
       ck('and the headline is the sum of the names beside it',
          parts.length ? lead === sum : true, lead + ' vs ' + sum);

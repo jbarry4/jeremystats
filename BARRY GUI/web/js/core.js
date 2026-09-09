@@ -476,11 +476,11 @@ let codeStaleShown = false;
 function showCodeStaleBanner(files, startedAt) {
   if (codeStaleShown) return;
   codeStaleShown = true;
-  const when = (startedAt || '').replace('T', ' ').slice(0, 16);
+  const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
     el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
-                     + 'server started' + (when ? ' at ' + when : '')
+                     + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
                      + 'old thing \u2014 so a fix you are expecting may '
                      + 'appear not to work.' }),
@@ -1204,7 +1204,7 @@ BARRY.notes = (function () {
       body.appendChild(el('p', { class: 'confirm-sub' + (run.dirty ? ' warn' : ''),
         text: 'This machine is running ' + run.commit
             + (run.branch ? ' on ' + run.branch : '')
-            + (run.at ? ', committed ' + run.at.replace('T', ' ').slice(0, 16)
+            + (run.at ? ', committed ' + fmtWhen(run.at, 'minute')
                       : '')
             + (run.dirty
                 ? ' — with uncommitted changes, so it may not match what the '
@@ -1454,6 +1454,7 @@ function setMode(kind, leave) {
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
       BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
 
@@ -1908,6 +1909,113 @@ function setView(name) {
   const v = BARRY.views[name];
   if (v && v.onShow) v.onShow();
 }
+
+/* A mode change that undoes itself, filed as an error.
+
+   The activity log already records every transition with the stack that
+   caused it, and that is the right place for the ordinary ones -- but it has
+   thousands of rows and hundreds of mode changes, so the one that matters
+   is unfindable. This watches for the shape of the reported fault instead:
+   into a mode and back out within three seconds, with nothing in between
+   that a person did.
+
+   `lastGesture` is the test that makes it worth reporting. Somebody who
+   clicks StrataScope, looks, and clicks away has done exactly the same
+   transitions -- what they have not done is do it with no input at all. */
+let _lastMode = { at: 0, from: null, to: null, via: '' };
+let _lastGesture = 0;
+
+document.addEventListener('pointerdown', () => { _lastGesture = Date.now(); },
+                          true);
+document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
+                          true);
+
+function noticeBounce(from, to, via) {
+  const now = Date.now();
+  const prev = _lastMode;
+  _lastMode = { at: now, from: from, to: to, via: via };
+  if (!prev.at) return;
+
+  const gap = now - prev.at;
+  /* Reversed: A -> B then B -> A. Either direction counts; the report was
+     "snaps to StrataScope and snaps back", and the same fault entering
+     curation would be the same bug. */
+  const reversed = prev.to === from && prev.from === to;
+  if (!reversed || gap > 3000) return;
+  /* A person doing it deliberately is not a fault. Anything within a
+     second of a click or a key is theirs. */
+  if (now - _lastGesture < 1000) return;
+
+  try {
+    apiPost('/api/errors/client', {
+      where: 'mode.bounce',
+      message: 'The mode changed to ' + (prev.to || 'none') + ' and back to '
+             + (to || 'none') + ' in ' + gap + 'ms with no click or '
+             + 'keypress. Nothing in the code accounts for this; both '
+             + 'stacks are below.',
+      context: {
+        gap_ms: gap,
+        first: { from: prev.from, to: prev.to, via: prev.via },
+        second: { from: from, to: to, via: via },
+        ms_since_input: now - _lastGesture,
+        view: BARRY.state && BARRY.state.view,
+      },
+    }).catch(() => { /* it is a report about a glitch, not a transaction */ });
+  } catch (e) { /* never let the watcher break the thing it watches */ }
+}
+
+/* ==========================================================================
+   One clock on screen
+
+   The stores keep two. A local shard stamp carries this machine's offset
+   ("2026-09-08T14:17:31-0400"); a row pulled from Supabase is in UTC
+   ("2026-09-09T04:03:12.146+00:00"). Slicing the string -- which is what
+   every timestamp on screen used to do -- prints whichever digits are in it
+   and discards the offset, so cloud rows read four hours off all summer and
+   a list mixing the two looked out of order.
+
+   Parsed and shown in the reader's own time instead. `whenRaw` is for the
+   tooltip: the mix of clocks was impossible to see, and anybody who wonders
+   should be able to check what was actually written down.
+   ========================================================================== */
+function _pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+/* `form`:
+     'stamp'   09-08 14:17          compact, for log rows
+     'minute'  2026-09-08 14:17     the default
+     'second'  2026-09-08 14:17:31
+     'time'    14:17:31             when the date is already established
+   An unparseable value comes back unchanged -- an odd-looking string beats
+   "Invalid Date" where a time should be. */
+function fmtWhen(iso, form) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const Y = d.getFullYear();
+  const M = _pad2(d.getMonth() + 1);
+  const D = _pad2(d.getDate());
+  const h = _pad2(d.getHours());
+  const m = _pad2(d.getMinutes());
+  const sec = _pad2(d.getSeconds());
+  if (form === 'stamp') return M + '-' + D + ' ' + h + ':' + m;
+  if (form === 'second') {
+    return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + sec;
+  }
+  if (form === 'time') return h + ':' + m + ':' + sec;
+  return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
+}
+
+/* What was actually written down. Names the clock, because that is the part
+   nobody could see. */
+function whenRaw(iso) {
+  if (!iso) return '';
+  const raw = String(iso);
+  const utc = /(\+00:?00|Z)$/.test(raw);
+  return 'Shown in your time. Recorded as ' + raw + (utc ? ' (UTC)' : '');
+}
+
+BARRY.when = fmtWhen;
+BARRY.whenRaw = whenRaw;
 
 /* ==========================================================================
    A popover hung off a button

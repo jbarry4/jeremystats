@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8"><title>Harness — a mode that undoes itself</title>
+<style>html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+#out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0}</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "Sometimes it snaps to StrataScope and snaps back." Nothing in the code
+   accounts for it, so this does not test a fix -- it tests the detector,
+   which is the thing that will name the cause next time.
+
+   Two claims: a bounce with no input is reported, and a bounce a person
+   plainly caused is not. The second matters more than it looks. A watcher
+   that fires on ordinary use gets ignored within a day. */
+const out=document.getElementById('out');
+const p=(m)=>{out.textContent+=m+'\n'};
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+let bad=0;
+const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad++;};
+(async()=>{try{
+ const f=document.getElementById('app');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=()=>f.contentWindow, D=()=>f.contentDocument;
+ for(let i=0;i<300 && typeof W().setView!=='function';i++) await sleep(100);
+ await sleep(1200);
+ const count=async()=>{
+   const r=await (await W().fetch('/api/errors?limit=400')).json();
+   return (r.errors||[]).filter(e=>/mode\.bounce/.test(e.where||'')).length;
+ };
+ const before=await count();
+ p('mode.bounce errors on record: '+before);
+
+ p('\n== 1. A bounce with no input is reported ==');
+ /* Driven through setMode directly: entering a real mode would need a
+    recording and a set, and what is being tested is the watcher. */
+ W().eval("setMode('strata')");
+ await sleep(120);
+ W().eval("setMode(null)");
+ await sleep(2500);
+ const after=await count();
+ p('  now: '+after);
+ ck('the bounce filed an error', after > before, before+' -> '+after);
+
+ const r=await (await W().fetch('/api/errors?limit=400')).json();
+ const one=(r.errors||[]).filter(e=>/mode\.bounce/.test(e.where||''))[0];
+ if(one){
+   p('  where:   '+one.where);
+   p('  message: '+String(one.message).slice(0,110));
+   const c=one.context||{};
+   ck('it says how long the bounce took', typeof c.gap_ms==='number', c.gap_ms);
+   ck('and carries both stacks', !!(c.first&&c.second), JSON.stringify(Object.keys(c)));
+   ck('and how long since anybody touched anything',
+      typeof c.ms_since_input==='number', c.ms_since_input);
+   ck('it is filed as a UI fault, not a server one',
+      /^ui\//.test(one.where||''), one.where);
+ }
+
+ p('\n== 2. A bounce a person caused is not reported ==');
+ const was=await count();
+ /* A real pointer event, then the same two transitions. This is what
+    somebody clicking into StrataScope and straight back out looks like,
+    and it must not raise anything. */
+ /* The constructor reference is taken first. `new W().PointerEvent(...)`
+    parses as `(new W()).PointerEvent(...)` -- it calls the window as a
+    constructor, which throws. */
+ const PE = W().PointerEvent;
+ D().body.dispatchEvent(new PE('pointerdown', { bubbles: true }));
+ await sleep(50);
+ W().eval("setMode('strata')");
+ await sleep(120);
+ W().eval("setMode(null)");
+ await sleep(2500);
+ const now=await count();
+ ck('nothing filed for a deliberate one', now === was, was+' -> '+now);
+
+ p('\n== 3. The threshold is real, checked on what it recorded ==');
+ /* Not by sleeping. Under --virtual-time-budget the timer clock
+    fast-forwards while `Date.now()` in the page does not keep step, so a
+    3.6s sleep here is a fraction of that to the detector and a slow bounce
+    cannot be staged. What can be checked is that it applies its own rule. */
+ const all = await (await W().fetch('/api/errors?limit=400')).json();
+ const mine = (all.errors || []).filter(
+   (e) => /mode[.]bounce/.test(e.where || ''));
+ p('  ' + mine.length + ' bounce(s) on record');
+ const gaps = mine.map((e) => (e.context || {}).gap_ms)
+   .filter((g) => typeof g === 'number');
+ p('  gaps: ' + JSON.stringify(gaps.slice(0, 8)) + ' ms');
+ ck('every bounce recorded a gap', gaps.length === mine.length,
+    gaps.length + ' of ' + mine.length);
+ ck('and every gap is inside the three-second window',
+    gaps.every((g) => g >= 0 && g <= 3000),
+    JSON.stringify(gaps.filter((g) => g > 3000)));
+
+ p(bad?'\n'+bad+' FAILURE(S)':'\nall checks passed');
+}catch(e){p('THREW '+(e&&e.stack||e));p('1 FAILURE(S)')}})();
+</script>

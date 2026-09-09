@@ -1,62 +1,74 @@
 {
   "_at": {
-    "added": "2026-09-09T07:31:17.213679+00:00",
-    "by_label": "2026-09-09T07:31:17.213679+00:00",
-    "curation_label": "2026-09-09T07:31:17.213679+00:00",
-    "duration_s": "2026-09-09T07:31:17.213679+00:00",
-    "events": "2026-09-09T07:31:17.213679+00:00",
-    "gid": "2026-09-09T07:31:17.213679+00:00",
-    "id": "2026-09-09T07:31:17.213679+00:00",
-    "label_names": "2026-09-09T07:31:17.213679+00:00",
-    "mouse": "2026-09-09T07:31:17.213679+00:00",
-    "n": "2026-09-09T07:31:17.213679+00:00",
-    "name": "2026-09-09T07:31:17.213679+00:00",
-    "note": "2026-09-09T07:31:17.213679+00:00",
-    "project": "2026-09-09T07:31:17.213679+00:00",
-    "recording_start": "2026-09-09T07:31:17.213679+00:00",
-    "schema": "2026-09-09T07:31:17.213679+00:00",
-    "session": "2026-09-09T07:31:17.213679+00:00",
-    "session_key": "2026-09-09T07:31:17.213679+00:00",
-    "session_label": "2026-09-09T07:31:17.213679+00:00",
-    "session_loose_key": "2026-09-09T07:31:17.213679+00:00",
-    "session_path": "2026-09-09T07:31:17.213679+00:00",
-    "source": "2026-09-09T07:31:17.213679+00:00",
-    "specified": "2026-09-09T07:31:17.213679+00:00",
-    "type": "2026-09-09T07:31:17.213679+00:00",
-    "type_name": "2026-09-09T07:31:17.213679+00:00",
-    "units": "2026-09-09T07:31:17.213679+00:00",
-    "version": "2026-09-09T07:31:17.213679+00:00"
+    "added": "2026-09-09T14:29:25.424115+00:00",
+    "by_label": "2026-09-09T14:29:25.424115+00:00",
+    "curation_label": "2026-09-09T14:29:25.424115+00:00",
+    "duration_s": "2026-09-09T14:29:25.424115+00:00",
+    "events": "2026-09-09T14:29:25.424115+00:00",
+    "gid": "2026-09-09T14:29:25.424115+00:00",
+    "id": "2026-09-09T14:29:25.424115+00:00",
+    "label_names": "2026-09-09T14:29:25.424115+00:00",
+    "mouse": "2026-09-09T14:29:25.424115+00:00",
+    "n": "2026-09-09T14:29:25.424115+00:00",
+    "name": "2026-09-09T14:29:25.424115+00:00",
+    "note": "2026-09-09T14:29:25.424115+00:00",
+    "project": "2026-09-09T14:29:25.424115+00:00",
+    "recording_start": "2026-09-09T14:29:25.424115+00:00",
+    "schema": "2026-09-09T14:29:25.424115+00:00",
+    "session": "2026-09-09T14:29:25.424115+00:00",
+    "session_key": "2026-09-09T14:29:25.424115+00:00",
+    "session_label": "2026-09-09T14:29:25.424115+00:00",
+    "session_loose_key": "2026-09-09T14:29:25.424115+00:00",
+    "session_path": "2026-09-09T14:29:25.424115+00:00",
+    "source": "2026-09-09T14:29:25.424115+00:00",
+    "specified": "2026-09-09T14:29:25.424115+00:00",
+    "type": "2026-09-09T14:29:25.424115+00:00",
+    "type_name": "2026-09-09T14:29:25.424115+00:00",
+    "units": "2026-09-09T14:29:25.424115+00:00",
+    "version": "2026-09-09T14:29:25.424115+00:00"
   },
   "_keys": {
     "history": {
-      "{\"at\": \"2026-09-09T03:31:17-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"events\"], \"now_n\": 24, \"was_n\": 24, \"why\": \"re-banked from the curation set\"}": [
+      "{\"at\": \"2026-09-09T10:29:22-04:00\", \"by\": \"Shahriar\", \"changed\": [\"events\"], \"now_n\": 24, \"was_n\": 24, \"why\": \"re-banked from the curation set\"}": [
         "set",
-        "2026-09-09T07:31:17.213679+00:00"
+        "2026-09-09T14:29:25.424115+00:00"
+      ],
+      "{\"at\": \"2026-09-09T10:29:25-04:00\", \"by\": \"Shahriar\", \"changed\": [\"events\"], \"now_n\": 24, \"was_n\": 24, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-09T14:29:25.424115+00:00"
+      ],
+      "{\"at\": \"2026-09-09T10:29:31-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"versions\"], \"why\": \"deleted version 2\"}": [
+        "set",
+        "2026-09-09T14:29:31.951134+00:00"
       ]
     },
     "versions": {
-      "a7c509c741da": [
+      "66cdc9b93589": [
         "set",
-        "2026-09-09T07:31:17.213679+00:00"
+        "2026-09-09T14:29:25.424115+00:00"
       ],
-      "acd5ca7d478d": [
+      "6d8a6986ea38": [
         "set",
-        "2026-09-09T07:31:17.213679+00:00"
+        "2026-09-09T14:29:31.691908+00:00"
       ],
-      "v0-7f3f3866": [
+      "864e9aeabd15": [
+        "gone",
+        "2026-09-09T14:29:31.951134+00:00"
+      ],
+      "v0-bb58bb0e": [
         "set",
-        "2026-09-09T07:31:17.213679+00:00"
+        "2026-09-09T14:29:25.424115+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T07:31:17.213679+00:00",
+    "at": "2026-09-09T14:29:31.951134+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-09-09T03:31:14-04:00",
-    "by": "Shahriar Tafti",
+    "at": "2026-09-09T10:29:20-04:00",
+    "by": "Shahriar",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -67,33 +79,33 @@
   "duration_s": null,
   "events": [
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 3.4
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 7.9
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 8.2
     },
     {
-      "label": "Dentate Spike",
-      "label_id": "spike",
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 14.6
     },
     {
-      "label": "Dentate Spike",
-      "label_id": "spike",
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 21.05
     },
     {
-      "label": "Dentate Spike",
-      "label_id": "spike",
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 21.4
     },
     {
@@ -190,17 +202,35 @@
   "gid": "demo-ds-tutorial",
   "history": [
     {
-      "at": "2026-09-09T03:31:17-04:00",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-09T10:29:22-04:00",
+      "by": "Shahriar",
       "changed": [
         "events"
       ],
       "now_n": 24,
       "was_n": 24,
       "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-09T10:29:25-04:00",
+      "by": "Shahriar",
+      "changed": [
+        "events"
+      ],
+      "now_n": 24,
+      "was_n": 24,
+      "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-09T10:29:31-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "versions"
+      ],
+      "why": "deleted version 2"
     }
   ],
-  "id": "c1591147e3da",
+  "id": "1f21cf0c6cac",
   "label_names": {
     "flag": "Flag",
     "garbage": "Garbage",
@@ -230,17 +260,17 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
-      "at": "2026-09-09T03:31:14-04:00",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-09T10:29:20-04:00",
+      "by": "Shahriar",
       "by_label": {
         "unspecified": 24
       },
       "changed": 0,
       "gained": 0,
-      "id": "v0-7f3f3866",
+      "id": "v0-bb58bb0e",
       "imported": true,
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
@@ -349,37 +379,49 @@
       "v": 0
     },
     {
-      "at": "2026-09-09T03:31:14-04:00",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-09T10:29:20-04:00",
+      "by": "Shahriar",
       "by_label": {
-        "flag": 1,
-        "garbage": 5,
-        "spike": 18
+        "spike": 24
       },
       "changed": 24,
+      "edits": [
+        {
+          "at": "2026-09-09T10:29:31-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        },
+        {
+          "at": "2026-09-09T10:29:31-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "unarchived"
+          ]
+        }
+      ],
       "gained": 0,
-      "id": "a7c509c741da",
+      "id": "6d8a6986ea38",
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
       "moves": {
-        "undecided \u2192 flag": 1,
-        "undecided \u2192 garbage": 5,
-        "undecided \u2192 spike": 18
+        "undecided \u2192 spike": 24
       },
       "n": 24,
-      "note": "first pass through the session",
+      "note": "first pass",
       "snap": [
         [
           3.4,
-          "garbage"
+          "spike"
         ],
         [
           7.9,
-          "garbage"
+          "spike"
         ],
         [
           8.2,
-          "garbage"
+          "spike"
         ],
         [
           14.6,
@@ -395,15 +437,15 @@
         ],
         [
           27.8,
-          "garbage"
+          "spike"
         ],
         [
           33.2,
-          "garbage"
+          "spike"
         ],
         [
           33.9,
-          "flag"
+          "spike"
         ],
         [
           41.5,
@@ -469,46 +511,46 @@
       "v": 1
     },
     {
-      "at": "2026-09-09T03:31:17-04:00",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-09T10:29:25-04:00",
+      "by": "Shahriar",
       "by_label": {
         "garbage": 6,
         "spike": 18
       },
-      "changed": 1,
+      "changed": 3,
       "gained": 0,
-      "id": "acd5ca7d478d",
+      "id": "66cdc9b93589",
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
       "moves": {
-        "Flag \u2192 Garbage": 1
+        "Dentate Spike \u2192 Garbage": 3
       },
       "n": 24,
-      "note": "second look: one call changed",
+      "note": "third pass",
       "snap": [
         [
           3.4,
-          "garbage"
+          "spike"
         ],
         [
           7.9,
-          "garbage"
+          "spike"
         ],
         [
           8.2,
-          "garbage"
+          "spike"
         ],
         [
           14.6,
-          "spike"
+          "garbage"
         ],
         [
           21.05,
-          "spike"
+          "garbage"
         ],
         [
           21.4,
-          "spike"
+          "garbage"
         ],
         [
           27.8,
@@ -583,7 +625,7 @@
           "spike"
         ]
       ],
-      "v": 2
+      "v": 3
     }
   ]
 }

@@ -379,8 +379,8 @@ BARRY.views.eventbank = (function () {
       box.appendChild(el('div', { class: 'ver-row' }, [
         el('div', { class: 'ver-top' }, [
           el('span', { class: 'ver-n', text: 'v' + v.v }),
-          el('span', { class: 'ver-when',
-            text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+          el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
+            text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
           el('span', { class: 'ver-count', text: n + ' labelled' }),
           el('span', { class: 'ver-ops' }, [
@@ -635,8 +635,8 @@ BARRY.views.eventbank = (function () {
       }, [
         el('div', { class: 'ver-top' }, [
           el('span', { class: 'ver-n', text: 'v' + v.v }),
-          el('span', { class: 'ver-when',
-                       text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+          el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
+                       text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
           el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
           i === shown.length - 1 && !v.archived
@@ -685,9 +685,9 @@ BARRY.views.eventbank = (function () {
           : el('div', { class: 'ver-note none', text: 'no note' }),
         (v.edits || []).length
           ? el('div', { class: 'ver-edited',
+              title: BARRY.whenRaw(v.edits[v.edits.length - 1].at),
               text: 'note edited '
-                  + (v.edits[v.edits.length - 1].at || '')
-                      .replace('T', ' ').slice(0, 16)
+                  + BARRY.when(v.edits[v.edits.length - 1].at, 'minute')
                   + ' by ' + (v.edits[v.edits.length - 1].by || 'someone') })
           : null,
         el('div', { class: 'ver-mix' }, keys.filter((k) => counts[k]).map(
@@ -817,8 +817,8 @@ BARRY.views.eventbank = (function () {
     const wrap = el('div', { class: 'modal ver-edit' });
     wrap.appendChild(el('div', { class: 'modal-head' }, [
       el('h2', { text: 'Version ' + v.v }),
-      el('p', { class: 'sub',
-                text: (v.at || '').replace('T', ' ').slice(0, 16)
+      el('p', { class: 'sub', title: BARRY.whenRaw(v.at),
+                text: BARRY.when(v.at, 'minute')
                     + '  \u00b7  ' + (v.by || 'unknown')
                     + '  \u00b7  ' + (v.n || 0) + ' events' }),
     ]));
@@ -977,7 +977,7 @@ BARRY.views.eventbank = (function () {
       }, others.map((o) => el('option', {
         value: String(o.v),
         text: 'v' + o.v + '  ' + (o.by || '') + '  '
-            + (o.at || '').replace('T', ' ').slice(0, 16),
+            + BARRY.when(o.at, 'minute'),
         selected: o.v === against.v ? 'selected' : null,
       }))),
     ]));
@@ -1041,7 +1041,8 @@ BARRY.views.eventbank = (function () {
       add('Parameters', src.parameters);
     }
     add('Added by', added.by);
-    add('Added at', (added.at || '').replace('T', ' '));
+    add('Added at', BARRY.when(added.at, 'second')
+                    + (added.at ? '   (' + added.at + ')' : ''));
     add('On machine', added.machine);
     /* Not "v3 of 2": numbers are never reused, so once a version has been
        deleted the highest number and the count are different things and
@@ -1060,7 +1061,7 @@ BARRY.views.eventbank = (function () {
       box.appendChild(el('div', { class: 'section-label', text: 'Edited' }));
       box.appendChild(el('div', { class: 'source-box' }, [
         el('pre', { text: e.history.map((h) =>
-          (h.at || '').replace('T', ' ') + '  ' + (h.by || '')
+          BARRY.when(h.at, 'second') + '  ' + (h.by || '')
           + '  ' + (h.changed || []).join(', ')).join('\n') }),
       ]));
     }

@@ -644,7 +644,8 @@ BARRY.views.results = (function () {
         el('div', { class: 'res-sub', text: [
           r.session_label, r.author, fmtBytes(r.bytes),
         ].filter(Boolean).join('  ·  ') }),
-        el('div', { class: 'res-sub', text: (r.created || '').replace('T', ' ').slice(0, 16) }),
+        el('div', { class: 'res-sub', title: BARRY.whenRaw(r.created),
+                    text: BARRY.when(r.created, 'minute') }),
         (r.tags || []).length ? el('div', { class: 'res-tags' },
           r.tags.map((t) => el('span', {
             class: 'flagchip', text: t,
@@ -709,7 +710,8 @@ BARRY.views.results = (function () {
       el('td', { text: r.type }),
       el('td', { text: r.session_label || '' }),
       el('td', { text: r.author || '' }),
-      el('td', { text: (r.created || '').replace('T', ' ').slice(0, 16) }),
+      el('td', { title: BARRY.whenRaw(r.created),
+                 text: BARRY.when(r.created, 'minute') }),
       el('td', { text: fmtBytes(r.bytes) }),
       el('td', { text: (r.tags || []).join(', ') }),
     ]));

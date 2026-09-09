@@ -738,7 +738,8 @@ BARRY.views.sessions = (function () {
       }),
       el('div', { class: 'sc-top' }, [
         el('span', { class: 'sc-name', text: 's' + (i.session != null ? i.session : '?') }),
-        el('span', { class: 'sc-sub', text: i.start ? i.start.replace('T', ' ') : s.name }),
+        el('span', { class: 'sc-sub',
+                     text: i.start ? BARRY.when(i.start, 'second') : s.name }),
       ]),
       el('div', { class: 'sc-sub', text:
         (s.channels ? s.channels + ' ch · ' : '')

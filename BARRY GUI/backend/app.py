@@ -4447,6 +4447,31 @@ def api_csc_overview():
 # ==========================================================================
 # Errors: grouping and triage
 # ==========================================================================
+@app.route("/api/errors/client", methods=["POST"])
+def api_errors_client():
+    """A fault the interface noticed about itself.
+
+    JS errors have always gone into the activity log and nowhere else, so
+    the Errors page -- the place somebody actually looks -- never showed
+    them. This is the way in.
+
+    `where` is prefixed with "ui/" so a browser fault is never mistaken for
+    a server one at a glance, and the traceback slot carries whatever stack
+    the browser had.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    where = str(body.get("where") or "unknown")[:120]
+    message = str(body.get("message") or "")[:2000]
+    if not message:
+        return jsonify({"ok": False, "error": "Nothing to report."}), 400
+    ctx = body.get("context")
+    rec = STORE.record_error(
+        "ui/" + where, message,
+        str(body.get("stack") or "")[:8000] or None,
+        ctx if isinstance(ctx, dict) else {"detail": ctx})
+    return jsonify({"ok": True, "id": (rec or {}).get("id")})
+
+
 @app.route("/api/errors/grouped")
 def api_errors_grouped():
     recs = STORE.list_errors(limit=int(request.args.get("limit", 600)),
@@ -4472,7 +4497,32 @@ def api_errors_grouped():
         r["resolved"] = bool(mark) and (r.get("at") or "") <= (mark.get("at") or "")
 
     groups = extras.group_errors(recs, per_machine=per_machine)
+
+    # The registered name for each computer, keyed on the same shard id the
+    # groups are keyed on. Preferred over the newest label in the log: the
+    # log carries whatever was last typed into a profile's `device` field,
+    # and on this store that is a typo ("Strawbarrry") which two different
+    # computers have both been set to.
+    known = {}
+    if CLOUD.cloud.configured:
+        try:
+            for m in (CLOUD.cloud.select("machines", limit=200) or []):
+                if m.get("id") and m.get("hostname"):
+                    known[m["id"]] = m["hostname"]
+        except Exception:                                # noqa: BLE001
+            known = {}
+
     for g in groups:
+        mid = g.get("machine")
+        if mid and known.get(mid):
+            g["machine_label"] = _machine_label(known[mid], mid)
+        # Whether this row is a computer or only a name. A record written
+        # before the shard field existed can only be filed under its label,
+        # and a label is not unique -- so the row says so rather than
+        # implying an identity it does not have.
+        g["machine_known"] = bool(mid and mid in known)
+        g["machine_is_shard"] = bool(
+            mid and extras.real_host(mid) and "-" in str(mid))
         mark = (book.get(g["key"]) if g.get("machine") else None)
         scope = "machine" if mark else "everywhere"
         if not mark:
@@ -5178,6 +5228,15 @@ def api_devices():
         # machines would get merged.
         "unclaimed_names": sorted(n for n in log_names
                                   if n and n not in claimed),
+        # Labels that more than one computer answers to. The hazard, and the
+        # reason the real hostname is shown in brackets: `machines.hostname`
+        # is pushed from `provenance().machine`, which is the free-text
+        # `device` field of a profile -- so it is whatever was last typed,
+        # it changes, and nothing stops two machines being given the same
+        # one. This lab has had exactly that.
+        "ambiguous_labels": sorted(
+            name for name, ids in _by_label(machines).items()
+            if len(ids) > 1),
     })
 
 
@@ -5194,6 +5253,16 @@ def api_devices():
 # is the difference between two rows somebody has to squint at and two rows
 # that cannot be mistaken for each other.
 # ==========================================================================
+def _by_label(machines):
+    """label -> the machine ids using it. Usually one each; not always."""
+    out = {}
+    for m in machines or []:
+        name = (m.get("hostname") or "").strip().lower()
+        if name and m.get("id"):
+            out.setdefault(name, set()).add(m["id"])
+    return out
+
+
 def _real_host(machine_id):
     """The computer's own name, out of its shard id.
 

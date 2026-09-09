@@ -919,7 +919,8 @@ BARRY.views.storyboard = (function () {
           el('div', { class: 'res-sub', text: d.slides + ' slide(s)'
             + (d.author ? '  ·  ' + d.author : '') }),
           el('div', { class: 'res-sub',
-            text: (d.updated || '').replace('T', ' ').slice(0, 16) }),
+            title: BARRY.whenRaw(d.updated),
+            text: BARRY.when(d.updated, 'minute') }),
         ]),
         el('div', { class: 'res-acts' }, [
           el('button', { class: 'mini', text: 'Open', onclick: () => openDeck(d.id) }),
