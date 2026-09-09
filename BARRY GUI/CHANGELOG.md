@@ -15,6 +15,89 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.08.9 — what the spreadsheets knew
+
+Three facts lived in two Excel files and nowhere else, which meant they were
+true only for whoever had the file open. `tools/import_feeder.py` brings them
+in; it reports and writes nothing unless given `--apply`, because the first
+version of any importer is wrong in a way you only see in the diff.
+
+### Added
+
+- **Hemisphere, on 64 recordings** — 36 left, 28 right, from the feeder
+  sheet's `side` column. Shown on the session card, because pooling a left
+  and a right CA1 recording without noticing is a mistake that survives into
+  a figure. Two-way through Supabase, and it records where the value came
+  from so a wrong one can be traced rather than argued about.
+- **Layer sheets for 64 recordings, with a v0/v1 history** — 4,076 channels
+  labelled from the sheet's `location` column. v0 is the empty sheet and v1
+  is the import, mirroring the event bank: a layer sheet is evidence, and
+  evidence with no history cannot be cited. v0 looks pointless until you need
+  to answer "was this channel ever unlabelled", which is exactly the question
+  that comes up when a migration turns out to have been wrong.
+- Two layer regions the vocabulary lacked: **THAL** (twelve deep channels of
+  m2s3 — thalamus, and emphatically not "out of brain", which was the only
+  other place it could have gone) and **DG2** (m30's lower blade with no
+  sublayer given). Appended, so every id already written keeps its meaning.
+
+### Not applied, on purpose
+
+**The bad-channel column would only have removed things.** Against what BARRY
+already holds from the Toothy workbook it adds nothing: all eleven differences
+are channels BARRY calls bad and the sheet does not — 13 flags in total,
+including m24 s4 dropping 24 and 25.
+
+Un-flagging is not a neutral edit. A channel marked bad is left out of what
+people look at and of what they compute, so clearing the mark puts whatever
+was wrong with it back into the analysis, quietly, in recordings somebody may
+already have drawn conclusions from. The importer reports it and writes
+nothing; `--bad-mode union` adds without ever removing, and `--bad-mode
+replace` treats the sheet as authoritative. Which of those is right is a
+judgement about the data, not about the code.
+
+### Fixed while there
+
+- The layer applier rewrote every label on every pull, restamping sheets that
+  had not changed and pushing them straight back up — the same write loop the
+  roster was stuck in. It now writes only what differs.
+
+Needs `supabase/06_hemisphere.sql`.
+
+---
+
+## 2026.09.08.8 — a greyed channel is not in the equation
+
+### Fixed
+
+- **"Keep, greyed out" was letting the greyed channels set the colour
+  scale.** Measured on m11 s10 with sixteen channels checked: the CSD came
+  back at ±73,833 with the rest removed and ±143,792 with them greyed — the
+  same sixteen channels, drawn through a colour map twice as wide, because a
+  display setting had been changed. A setting that alters the picture you are
+  reading is not a display setting; it is a second analysis wearing a
+  disguise. The scale now comes from the channels you actually chose, and so
+  does the value the "auto" button resets to.
+- **The traces had it too, by the same route.** Every trace is scaled by
+  `robust_max`, which the server computes over every channel the request
+  asked for — and in this mode that is all of them, so unchecking a quiet
+  channel while a loud one stayed greyed rescaled everything on screen. The
+  greyed ones no longer get a say in the axis.
+
+The rule, now asserted: **an unchecked channel in "keep, greyed out" is a
+reference image and influences no number.** The testable form is exact — the
+rows you kept come out identical whether the unchecked ones are removed or
+greyed — and the harness checks the colour scale, the reset value, and the
+row identities against each other rather than against a remembered constant.
+
+Also checked, because they were asked about and neither was obvious: the
+spectrogram is unaffected either way (it has one channel and frequency down
+the rows, so `dim_channels` means nothing to it — the risk was that it
+failed on a field it did not understand, and it does not), and the mode
+remains a fact about the recording rather than the pane, so every pane
+showing it agrees.
+
+---
+
 ## 2026.09.08.7 — who is curating what, right now
 
 ### Added

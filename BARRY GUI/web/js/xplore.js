@@ -6301,19 +6301,36 @@ BARRY.views.xplore = (function () {
     // echoes ylim back as robust_max, but the envelope it returns does not
     // depend on it -- so honouring it locally makes the amplitude slider
     // instant instead of one request per pixel of drag.
-    const shared = (sess.ylim != null ? sess.ylim : win.robust_max) || 1;
-    const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
-    ctx.textAlign = 'right';
-
     /* The channels being kept but not chosen, by number.
 
        In 'remove' mode this is empty and every row below is drawn solid,
        which is what it always did. In 'dim' mode the request asked for every
        channel -- so the unchecked ones are here, in `win.series`, and it is
-       this loop's job to make them look unchecked. Without that the mode
-       does half of its work: all sixty-four channels arrive and none of them
-       is greyed. */
+       this loop's job to make them look unchecked.
+
+       Declared before the amplitude, which needs it. */
     const faintNums = new Set(paneDimChans(pane, sess));
+
+    /* The shared amplitude, from the channels that are actually chosen.
+
+       `win.robust_max` is computed by the server over every channel the
+       request asked for -- and in "keep, greyed out" mode that is all of
+       them, so unchecking a quiet channel while a loud one stayed greyed
+       rescaled every trace on screen. The greyed ones are a reference
+       image; they do not get a say in the axis. */
+    let shared = (sess.ylim != null ? sess.ylim : win.robust_max) || 1;
+    if (sess.ylim == null && faintNums.size) {
+      let peak = 0;
+      for (let i = 0; i < n; i++) {
+        const s = win.series[i];
+        if (faintNums.has(s.number)) continue;
+        const m = localMax(s);
+        if (m > peak) peak = m;
+      }
+      if (peak > 0) shared = peak;
+    }
+    const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
+    ctx.textAlign = 'right';
 
     for (let i = 0; i < n; i++) {
       const s = win.series[i];

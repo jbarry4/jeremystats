@@ -416,16 +416,30 @@ def _panel_raster(session, spec, mode):
 
     matrix = _decimate_cols(matrix, int(spec.get("max_cols", 2000)))
 
+    # Against the rows actually drawn: CSD drops the first and last channel,
+    # so a mask built from the full stack would be off by one.
+    dim_rows = _dim_mask(rows, spec.get("dim_channels"))
+
+    # The colour scale comes from the channels you actually chose.
+    #
+    # It used to come from the whole matrix, which in "keep, greyed out" mode
+    # includes every channel you unchecked -- so the same sixteen channels
+    # were drawn at +/-73,833 with the rest removed and +/-143,792 with them
+    # greyed. A display setting that changes the picture you are reading is
+    # not a display setting.
+    scale_from = matrix
+    if dim_rows is not None and np.any(dim_rows):
+        kept = ~np.asarray(dim_rows, dtype=bool)
+        if np.any(kept):
+            scale_from = matrix[kept]
+
     clim = _explicit_clim(spec)
     if clim is None:
-        clim = list(_robust_clim(matrix, float(spec.get("clim_pct", 99.5)),
+        clim = list(_robust_clim(scale_from, float(spec.get("clim_pct", 99.5)),
                                  symmetric=True))
     clim = [float(clim[0]), float(clim[1])]
 
     cmap = spec.get("cmap", default_cmap)
-    # Against the rows actually drawn: CSD drops the first and last channel,
-    # so a mask built from the full stack would be off by one.
-    dim_rows = _dim_mask(rows, spec.get("dim_channels"))
     data_uri = _encode_image(matrix, cmap, clim, upsample=upsample,
                              dim_rows=dim_rows)
 
@@ -449,7 +463,11 @@ def _panel_raster(session, spec, mode):
                      (dim_rows if dim_rows is not None
                       else np.zeros(len(rows), dtype=bool)))],
         "clim": clim, "cmap": cmap, "units": units,
-        "clim_auto": list(_robust_clim(matrix, float(spec.get("clim_pct", 99.5)),
+        # From the same rows as `clim` -- this is what the "auto" button
+        # resets to, and resetting to a different number from the one that
+        # was applied is its own small betrayal.
+        "clim_auto": list(_robust_clim(scale_from,
+                                       float(spec.get("clim_pct", 99.5)),
                                        symmetric=True)),
         "clim_manual": _explicit_clim(spec) is not None,
         "shape": list(matrix.shape),

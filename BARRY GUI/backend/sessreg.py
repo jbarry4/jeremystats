@@ -565,6 +565,12 @@ class Registry:
             # From the Toothy workbook: base vs cno. A fact about the
             # recording, so it belongs on the recording rather than the mouse.
             "condition": rec.get("condition"),
+            # Which hippocampus. From the lab's feeder sheet, where it lived
+            # in a `side` column and was therefore true only for whoever had
+            # the spreadsheet open -- and a left and a right CA1 recording
+            # are not the same recording.
+            "hemisphere": rec.get("hemisphere"),
+            "hemisphere_source": rec.get("hemisphere_source"),
             "n_channels": rec.get("n_channels"),
             "fs": rec.get("fs"),
             "duration_s": rec.get("duration_s"),

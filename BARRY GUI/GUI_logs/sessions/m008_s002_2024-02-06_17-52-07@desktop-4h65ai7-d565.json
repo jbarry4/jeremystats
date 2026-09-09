@@ -11,6 +11,8 @@
     "gid": "2026-09-02T23:51:19.830864+00:00",
     "group": "2026-09-04T15:57:01.614645+00:00",
     "has_video": "2026-09-04T15:57:01.614645+00:00",
+    "hemisphere": "2026-09-09T00:00:28.345785+00:00",
+    "hemisphere_source": "2026-09-09T00:00:28.345785+00:00",
     "key": "2026-09-04T15:57:01.614645+00:00",
     "label": "2026-09-04T15:57:01.614645+00:00",
     "loose_key": "2026-09-04T15:57:01.614645+00:00",
@@ -22,10 +24,15 @@
     "schema": "2026-09-04T15:57:01.614645+00:00",
     "session": "2026-09-04T15:57:01.614645+00:00",
     "start": "2026-09-04T15:57:01.614645+00:00",
-    "updated": "2026-09-08T15:42:08.048050+00:00"
+    "updated": "2026-09-09T00:00:28.345785+00:00",
+    "view_state": "2026-09-08T18:02:06.094353+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07": [
+        "set",
+        "2026-09-08T18:39:23.120111+00:00"
+      ],
       "D:\\PTEN\\PTEN\\M8_Pten\\M8s2feb6\\2024-02-06_17-52-07": [
         "set",
         "2026-09-04T15:57:01.614645+00:00"
@@ -54,12 +61,12 @@
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T15:42:08.048050+00:00"
+        "2026-09-08T18:01:06.189231+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T15:42:08.048050+00:00",
+    "at": "2026-09-09T00:00:28.345785+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -82,6 +89,8 @@
   "gid": "sba57286bdee3",
   "group": "PTEN",
   "has_video": true,
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m008_s002_2024-02-06_17-52-07",
   "label": "PTEN m8 s2 2024-02-06",
   "loose_key": "m008_s002",
@@ -91,7 +100,8 @@
     "D:\\PTEN\\PTEN\\M8_Pten\\M8s2feb6\\2024-02-06_17-52-07",
     "G:\\PTEN\\M8_s2",
     "Y:\\ProcessedPtenData\\M8_Pten\\M8s2feb6\\2024-02-06_17-52-07",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M8_s2_baseline"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M8_s2_baseline",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -113,21 +123,73 @@
       "scan": "scan_a9e7e27d1a"
     },
     "StrawBarry": {
-      "at": "2026-09-08T11:42:08-04:00",
+      "at": "2026-09-08T14:01:06-04:00",
       "by": "Rain",
-      "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s2feb6\\2024-02-06_17-52-07",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_66e751fc99"
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s2\\2024-02-06_17-52-07",
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
   "start": "2024-02-06T17:52:07",
   "updated": {
-    "at": "2026-09-08T11:42:08-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T20:00:28-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "normalize": "shared",
+    "notch": 0,
+    "probe": null,
+    "spacing": 50,
+    "span": 73.04631415427916,
+    "stft_mode": null,
+    "t0": 290.7901242645795,
+    "ylim": null
   }
 }

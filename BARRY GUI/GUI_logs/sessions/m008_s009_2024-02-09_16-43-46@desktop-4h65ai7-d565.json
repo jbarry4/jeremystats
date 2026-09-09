@@ -11,6 +11,8 @@
     "gid": "2026-09-02T23:51:19.832789+00:00",
     "group": "2026-09-04T15:57:01.625038+00:00",
     "has_video": "2026-09-04T15:57:01.625038+00:00",
+    "hemisphere": "2026-09-09T00:00:29.131043+00:00",
+    "hemisphere_source": "2026-09-09T00:00:29.131043+00:00",
     "key": "2026-09-04T15:57:01.625038+00:00",
     "label": "2026-09-04T15:57:01.625038+00:00",
     "loose_key": "2026-09-04T15:57:01.625038+00:00",
@@ -22,11 +24,15 @@
     "schema": "2026-09-04T15:57:01.625038+00:00",
     "session": "2026-09-04T15:57:01.625038+00:00",
     "start": "2026-09-04T15:57:01.625038+00:00",
-    "updated": "2026-09-08T15:42:08.065371+00:00",
-    "view_state": "2026-09-08T15:40:33.406724+00:00"
+    "updated": "2026-09-09T00:00:29.131043+00:00",
+    "view_state": "2026-09-08T23:37:35.413094+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s9\\2024-02-09_16-43-46": [
+        "set",
+        "2026-09-08T18:39:36.141669+00:00"
+      ],
       "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46": [
         "set",
         "2026-09-04T15:57:01.625038+00:00"
@@ -49,18 +55,22 @@
         "set",
         "2026-09-04T15:57:01.625038+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-08T23:37:30.889788+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.625038+00:00"
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T15:42:08.065371+00:00"
+        "2026-09-08T18:00:51.959389+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T15:42:08.065371+00:00",
+    "at": "2026-09-09T00:00:29.131043+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -82,6 +92,8 @@
   "gid": "s83ce541881d3",
   "group": "PTEN",
   "has_video": true,
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m008_s009_2024-02-09_16-43-46",
   "label": "PTEN m8 s9 2024-02-09",
   "loose_key": "m008_s009",
@@ -91,7 +103,8 @@
     "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
     "G:\\PTEN\\M8_s9",
     "Y:\\ProcessedPtenData\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M8_s9_CNO"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M8_s9_CNO",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s9\\2024-02-09_16-43-46"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -105,6 +118,13 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-08T19:37:30-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:22:42-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -113,24 +133,25 @@
       "scan": null
     },
     "StrawBarry": {
-      "at": "2026-09-08T11:42:08-04:00",
+      "at": "2026-09-08T14:00:51-04:00",
       "by": "Rain",
-      "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_66e751fc99"
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s9\\2024-02-09_16-43-46",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
     }
   },
   "session": 9,
   "start": "2024-02-09T16:43:46",
   "updated": {
-    "at": "2026-09-08T11:42:08-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T20:00:29-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
+    "chan_mode": "remove",
     "channels": [
       0,
       1,
@@ -205,13 +226,14 @@
     "hp": 0,
     "invert": true,
     "lp": 0,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 0,
     "probe": null,
     "spacing": 50,
-    "span": 0.45139908800050504,
+    "span": 1,
     "stft_mode": null,
-    "t0": 310.6363004559998,
+    "t0": 82.023,
     "ylim": null
   }
 }

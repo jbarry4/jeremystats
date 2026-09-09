@@ -62,6 +62,13 @@ REGIONS = [
      "note": "dentate, unspecified"},
     {"id": "out", "name": "Out of brain", "color": "#3d4a44",
      "note": "above the surface, or in white matter"},
+    # The lab's feeder sheet uses two names this list had no home for.
+    # Appended rather than inserted, so every id already written down keeps
+    # meaning what it meant.
+    {"id": "thal", "name": "THAL", "color": "#b48ead",
+     "note": "thalamus"},
+    {"id": "dg2", "name": "DG2", "color": "#7fb069",
+     "note": "dentate, lower blade, unspecified"},
 ]
 
 REGION_IDS = {r["id"] for r in REGIONS}
@@ -124,6 +131,98 @@ class Layers:
             "channels": list(channels or []),
             "created": self.store.provenance() if self.store else {"at": _now()},
         }
+        return self._write(rec)
+
+    # ---------------------------------------------------------------
+    # Versions
+    #
+    # The same shape the event bank uses, and for the same reason: a layer
+    # sheet is evidence, and evidence with no history cannot be cited.
+    # `snap` is the whole labels mapping rather than a diff -- a sheet is
+    # sixty-four short strings, and a snapshot cannot disagree with what it
+    # is a snapshot of.
+    # ---------------------------------------------------------------
+    def _version(self, rec, labels, note=None, by=None, v=None):
+        vs = rec.get("versions") or []
+        return {
+            "v": v if v is not None else (
+                max([x.get("v") or 0 for x in vs] or [-1]) + 1),
+            "at": _now(),
+            "by": by or (self.store.provenance().get("user")
+                         if self.store else None),
+            "machine": shards.machine_id(),
+            "n": len(labels or {}),
+            "note": note,
+            "snap": dict(labels or {}),
+        }
+
+    @shards.atomic
+    def adopt_versions(self, gid, versions):
+        """Take a history down from the cloud.
+
+        Only called when the other side has more of it than this machine --
+        see _apply_layers. A history is append-only in practice, so "more
+        versions" is the whole test; merging two divergent histories would
+        need a rule nobody has had to write yet, and inventing one here would
+        be guessing on behalf of a case that has not happened.
+        """
+        rec = self.get(gid)
+        if not rec:
+            return None
+        rec["versions"] = [dict(v) for v in (versions or [])]
+        return self._write(rec)
+
+    @shards.atomic
+    def snapshot(self, gid, note=None, by=None):
+        """Freeze the sheet as it stands as the next version."""
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("This recording has no layer sheet yet.")
+        rec.setdefault("versions", []).append(
+            self._version(rec, rec.get("labels") or {}, note=note, by=by))
+        return self._write(rec)
+
+    @shards.atomic
+    def import_versions(self, gid, mapping, session_label=None,
+                        channels=None, note=None, by=None):
+        """Create a sheet with v0 empty and v1 holding an import.
+
+        v0 is written even though it says nothing, because "this channel was
+        unlabelled before the migration" is a fact somebody will want when
+        the migration turns out to have been wrong -- and a history that
+        starts at the first thing anybody did cannot answer it.
+
+        Refuses to run over a sheet somebody has already labelled by hand.
+        An import is a starting point, not a correction, and quietly
+        replacing real work with a spreadsheet's opinion of it is the worst
+        thing this could do.
+        """
+        rec = self.get(gid)
+        if rec and (rec.get("labels") or {}) and (rec.get("versions") or []):
+            raise LayerError(
+                "This sheet already has labels and a history; an import "
+                "would be overwriting somebody's work.")
+        if not rec:
+            rec = self.ensure(gid, session_label=session_label,
+                              channels=channels)
+            rec = self.get(gid)
+
+        clean = {}
+        for ch, region in (mapping or {}).items():
+            if region not in REGION_IDS:
+                raise LayerError("%r is not one of the layers." % region)
+            clean[str(int(ch))] = region
+
+        # v0: nothing said yet. v1: what the sheet says.
+        rec["versions"] = [
+            self._version(rec, {}, v=0, by=by,
+                          note="Before any labelling."),
+        ]
+        rec["labels"] = clean
+        rec["versions"].append(
+            self._version(rec, clean, v=1, by=by, note=note))
+        if channels:
+            rec["channels"] = list(channels)
         return self._write(rec)
 
     @shards.atomic

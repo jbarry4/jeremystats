@@ -146,6 +146,12 @@ class Sync:
                 "bad_channels": sorted({int(b) for b in
                                         (rec.get("bad_channels") or [])}),
                 "bad_channels_note": rec.get("bad_channels_note"),
+                # Which hippocampus. Carried in the lab's feeder sheet all
+                # along, which meant it was true only for whoever had the
+                # spreadsheet open -- and a left and a right CA1 recording
+                # are different recordings.
+                "hemisphere": rec.get("hemisphere"),
+                "hemisphere_source": rec.get("hemisphere_source"),
                 "n_channels": _int(rec.get("n_channels")),
                 "fs": _num(rec.get("fs")),
                 "duration_s": _num(rec.get("duration_s")),
@@ -315,6 +321,10 @@ class Sync:
                 "session_label": rec.get("session_label"),
                 "channels": [int(c) for c in (rec.get("channels") or [])],
                 "regions": rec.get("regions") or [],
+                # The history, as a snapshot per version. Without it a
+                # colleague pulling this sheet gets the labels but no way to
+                # tell an import from a correction.
+                "versions": rec.get("versions") or [],
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -1003,6 +1013,11 @@ class Sync:
         ("label", "label"), ("note", "note"), ("condition", "condition"),
         ("bad_channels", "bad_channels"),
         ("bad_channels_note", "bad_channels_note"), ("retired", "retired"),
+        # Which hippocampus, and where that was learned. Two-way like the
+        # rest: somebody correcting a side on the rig has to reach the
+        # desktop, or the two machines disagree about what the recording is.
+        ("hemisphere", "hemisphere"),
+        ("hemisphere_source", "hemisphere_source"),
     )
 
     @staticmethod
@@ -1162,10 +1177,26 @@ class Sync:
                 continue
             self.layers.ensure(gid, s.get("session_label"),
                                channels=s.get("channels") or [])
+            mine = self.layers.get(gid) or {}
+
             mapping = {k: v for k, v in (by_gid.get(gid) or {}).items() if v}
-            if mapping:
-                self.layers.set_many(gid, mapping)
-                n += len(mapping)
+            # Only what actually differs. Writing the same labels back on
+            # every pull restamps the sheet, and a restamped sheet is pushed
+            # up as though it were an edit -- the same loop the roster was
+            # stuck in, passing identical rows between machines forever.
+            have = mine.get("labels") or {}
+            changed = {k: v for k, v in mapping.items() if have.get(k) != v}
+            if changed:
+                self.layers.set_many(gid, changed)
+                n += len(changed)
+
+            # The history, when this machine has less of it than the cloud.
+            # Never the other way: a sheet that has been versioned here and
+            # not there is this machine being ahead, not behind.
+            theirs = s.get("versions") or []
+            if theirs and len(theirs) > len(mine.get("versions") or []):
+                self.layers.adopt_versions(gid, theirs)
+                n += 1
         return n
 
     def _apply_results(self, rows):

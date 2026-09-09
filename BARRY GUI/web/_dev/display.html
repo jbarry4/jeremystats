@@ -246,6 +246,92 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + 'BARRY.views.xplore.refreshAll(); })()');
   await sleep(2200);
 
+  hd('4c. A greyed channel is not in the equation');
+  /* The point of the whole mode.
+
+     It used to draw the unchecked channels faintly and then let them set the
+     colour scale: the same sixteen channels came out at ±73,833 with the
+     rest removed and ±143,792 with them greyed. A display setting that
+     changes the picture you are reading by a factor of two is not a display
+     setting, it is a second analysis wearing a disguise.
+
+     So: the rows you kept must come out identical either way. */
+  const sixteen = [];
+  for (let i = 0; i < 16; i++) sixteen.push(i);
+  const allCh = [];
+  for (let i = 0; i < nAll; i++) allCh.push(i);
+  const specFor = (chans, dims) => ({
+    path: sessPath, even_only: false, invert: true, panel: 'csd',
+    t0: 100, t1: 101, px: 800, channels: chans,
+    dim_channels: dims || [],
+  });
+  const ask = (body) => W().fetch('/api/panel', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((r) => r.json());
+
+  const cutRes = await ask(specFor(sixteen));
+  const dimRes = await ask(specFor(allCh, allCh.filter((i) => i >= 16)));
+  p('  clim removed: ' + JSON.stringify(cutRes.clim));
+  p('  clim greyed:  ' + JSON.stringify(dimRes.clim));
+  ck('the colour scale is the same either way',
+     JSON.stringify(cutRes.clim) === JSON.stringify(dimRes.clim),
+     'greyed channels are setting the scale');
+  ck('and so is the scale the auto button would reset to',
+     JSON.stringify(cutRes.clim_auto) === JSON.stringify(dimRes.clim_auto),
+     JSON.stringify(dimRes.clim_auto));
+  const keptNums = (r) => (r.rows || []).filter((x) => !x.dim)
+    .map((x) => x.number).join(',');
+  ck('and the kept rows are the same channels',
+     keptNums(cutRes) === keptNums(dimRes),
+     keptNums(dimRes).slice(0, 60));
+
+  hd('4d. The spectrogram is untouched by any of it');
+  /* A different shape of panel entirely -- one channel, frequency down the
+     rows. `dim_channels` means nothing to it, and the risk is not that it
+     dims the wrong thing but that it fails outright on a field it does not
+     understand. */
+  const spec1 = await ask({
+    path: sessPath, even_only: false, invert: true, panel: 'spectrogram',
+    t0: 100, t1: 101, px: 800, channels: sixteen,
+  });
+  const spec2 = await ask({
+    path: sessPath, even_only: false, invert: true, panel: 'spectrogram',
+    t0: 100, t1: 101, px: 800, channels: allCh,
+    dim_channels: allCh.filter((i) => i >= 16),
+  });
+  ck('it renders with channels removed', spec1.ok !== false, spec1.error);
+  ck('and renders with channels greyed', spec2.ok !== false, spec2.error);
+  p('  spectrogram clim: ' + JSON.stringify(spec1.clim)
+    + ' vs ' + JSON.stringify(spec2.clim));
+  ck('and it is not accidentally dimming its own frequency rows',
+     !(spec2.rows || []).some((r) => r.dim),
+     (spec2.rows || []).filter((r) => r.dim).length + ' rows marked dim');
+
+  hd('4e. The mode is a fact about the recording, so every pane follows');
+  run('(function () { var X = BARRY.views.xplore.state;'
+    + 'if (X.panes.length < 2 && BARRY.views.xplore.fillPanes) {'
+    + '  BARRY.views.xplore.fillPanes(2); } })()');
+  await sleep(1200);
+  run('(function () { var s = ' + sessExpr + '; s.chanMode = "remove";'
+    + 'BARRY.views.xplore.render(); })()');
+  await sleep(600);
+  /* Both panes read the same session object, which is the mechanism -- so
+     the check that matters is that the pane header agrees, not that two
+     copies of a flag were kept in step. */
+  const heads = () => Array.from(D().querySelectorAll('.pane-warn'))
+    .filter((x) => /greyed/.test(x.textContent || '')).length;
+  p('  panes: ' + val('BARRY.views.xplore.state.panes.filter(Boolean).length')
+    + ', "greyed" notices in remove mode: ' + heads());
+  ck('no pane claims channels are greyed when they are removed',
+     heads() === 0, heads());
+  run('(function () { var s = ' + sessExpr + '; s.chanMode = "dim";'
+    + 'BARRY.views.xplore.render(); })()');
+  await sleep(600);
+  p('  "greyed" notices in dim mode: ' + heads());
+  ck('and every pane showing the recording says so once it is on',
+     heads() >= 1, heads());
+
   hd('5. The header says unchecked channels are being kept');
   run('BARRY.views.xplore.render()');
   await sleep(700);

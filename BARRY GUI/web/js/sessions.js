@@ -545,6 +545,16 @@ BARRY.views.sessions = (function () {
         + (s.fs ? Math.round(s.fs) + ' Hz · ' : '')
         + (s.duration_s ? fmtTime(s.duration_s) : '') }),
       el('div', { class: 'sc-flags' }, [
+        /* Which hippocampus. On the card rather than behind a click,
+           because pooling a left and a right recording without noticing is
+           the kind of mistake that survives into a figure. */
+        s.hemisphere ? el('span', {
+          class: 'flagchip hemi',
+          title: 'Recorded in the ' + (s.hemisphere === 'L' ? 'left' : 'right')
+               + ' hippocampus'
+               + (s.hemisphere_source ? '\nfrom ' + s.hemisphere_source : ''),
+          text: s.hemisphere === 'L' ? 'left' : 'right',
+        }) : null,
         s.converted ? el('span', { class: 'flagchip mat', text: '.mat' }) : null,
         s.has_video ? el('span', { class: 'flagchip video', text: 'video' }) : null,
         s.has_tracking ? el('span', { class: 'flagchip', text: 'tracking' }) : null,
