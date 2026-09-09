@@ -476,11 +476,11 @@ let codeStaleShown = false;
 function showCodeStaleBanner(files, startedAt) {
   if (codeStaleShown) return;
   codeStaleShown = true;
-  const when = (startedAt || '').replace('T', ' ').slice(0, 16);
+  const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
     el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
-                     + 'server started' + (when ? ' at ' + when : '')
+                     + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
                      + 'old thing \u2014 so a fix you are expecting may '
                      + 'appear not to work.' }),
@@ -1204,7 +1204,7 @@ BARRY.notes = (function () {
       body.appendChild(el('p', { class: 'confirm-sub' + (run.dirty ? ' warn' : ''),
         text: 'This machine is running ' + run.commit
             + (run.branch ? ' on ' + run.branch : '')
-            + (run.at ? ', committed ' + run.at.replace('T', ' ').slice(0, 16)
+            + (run.at ? ', committed ' + fmtWhen(run.at, 'minute')
                       : '')
             + (run.dirty
                 ? ' — with uncommitted changes, so it may not match what the '
@@ -1454,6 +1454,7 @@ function setMode(kind, leave) {
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
       BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
 
@@ -1644,17 +1645,62 @@ BARRY.profile = (function () {
       }
     };
 
+    /* Off the pickers, without pretending to be off the record.
+
+       This is the one that works on a name the data carries -- which is the
+       case that matters, because somebody who has left the lab has two
+       thousand decisions behind them and removal is refused for exactly
+       that reason. Nothing is deleted, no count moves, and their name stays
+       on every record it is on. */
+    const archivePerson = async (person, yes) => {
+      const held = heldBy(person);
+      if (yes) {
+        const ok = await BARRY.confirm(
+          'Archive ' + person.name + '?',
+          (held.n
+            ? person.name + ' stays on ' + held.n + ' record'
+              + (held.n === 1 ? '' : 's') + ' — ' + held.what.join(', ')
+              + ', all still counted for them. '
+            : '')
+          + 'Archiving only stops them being offered as an owner for new '
+          + 'work. Nothing is deleted, no number changes, and it can be '
+          + 'undone at any time.'
+          + '\n\nIt applies everywhere, not just on this computer — being '
+          + 'offered work is a lab-wide question.',
+          'Archive');
+        if (!ok) return;
+      }
+      try {
+        const res = await apiPost('/api/people/archive',
+                                  { name: person.name, archived: !!yes });
+        roster = res;
+        paintKnown();
+        toast(yes ? person.name + ' archived — still on every record, no '
+                    + 'longer offered for new work.'
+                  : person.name + ' is back on the roster.', 'ok', 5000);
+      } catch (e) {
+        toast('Could not archive ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
+    let showArchived = false;
+
     const paintKnown = () => {
       known.innerHTML = '';
-      const rows = (roster && roster.people) || [];
-      if (!rows.length) {
+      const all = (roster && roster.people) || [];
+      const rows = all.filter((x) => !x.archived);
+      const away = all.filter((x) => x.archived);
+      if (!rows.length && !away.length) {
         known.appendChild(el('span', { class: 'hint',
           text: 'Nobody else on record yet.' }));
         return;
       }
-      for (const p of rows) {
+      const chip = (p) => {
         const mine = (f.name && f.name.value.trim()) === p.name;
-        known.appendChild(el('span', { class: 'prof-chip' + (mine ? ' on' : '') }, [
+        return el('span', {
+          class: 'prof-chip' + (mine ? ' on' : '')
+                 + (p.archived ? ' archived' : ''),
+        }, [
           el('button', {
             class: 'prof-chip-name',
             title: 'Use ' + p.name + ' as who this machine credits work to',
@@ -1699,18 +1745,53 @@ BARRY.profile = (function () {
              hidden: an affordance that is silently absent teaches nothing,
              and "why can I remove that one and not this one" is the
              question this has to answer. */
+          /* And the one that always works. Beside the × on purpose: the
+             × is refused for anybody the data carries, and the answer to
+             "then how do I get them out of my pickers" should not be
+             somewhere else. */
+          el('button', {
+            class: 'prof-chip-arch' + (p.archived ? ' on' : ''),
+            title: p.archived
+              ? p.name + ' is archived — not offered for new work. '
+                + 'Click to put them back.'
+              : 'Archive ' + p.name + ': off the pickers, still on every '
+                + 'record they are on. Reversible.',
+            text: p.archived ? '\u21ba' : '\u25f4',
+            onclick: () => archivePerson(p, !p.archived),
+          }),
           el('button', {
             class: 'prof-chip-del' + (heldBy(p).n ? ' held' : ''),
             title: heldBy(p).n
               ? p.name + ' is on ' + heldBy(p).n + ' record'
                 + (heldBy(p).n === 1 ? '' : 's')
                 + ' (' + heldBy(p).what.join(', ') + '). '
-                + 'Names the data carries cannot be removed.'
+                + 'Names the data carries cannot be removed — archive them '
+                + 'instead, which takes them off the pickers and leaves the '
+                + 'records alone.'
               : 'Remove ' + p.name + ' from the roster',
             text: '\u00d7',
             onclick: () => removePerson(p),
           }),
-        ]));
+        ]);
+      };
+
+      for (const p of rows) known.appendChild(chip(p));
+
+      /* The archived, folded away. Counted in the heading rather than
+         hidden without trace: "where did that name go" is the question a
+         silent filter creates. */
+      if (away.length) {
+        known.appendChild(el('button', {
+          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
+          text: (showArchived ? '\u25be  ' : '\u25b8  ')
+                + away.length + ' archived',
+          title: 'Archived people are still on every record they are on, '
+               + 'and still counted. They are only kept out of the pickers.',
+          onclick: () => { showArchived = !showArchived; paintKnown(); },
+        }));
+        if (showArchived) {
+          for (const p of away) known.appendChild(chip(p));
+        }
       }
     };
 
@@ -1827,6 +1908,169 @@ function setView(name) {
   }
   const v = BARRY.views[name];
   if (v && v.onShow) v.onShow();
+}
+
+/* A mode change that undoes itself, filed as an error.
+
+   The activity log already records every transition with the stack that
+   caused it, and that is the right place for the ordinary ones -- but it has
+   thousands of rows and hundreds of mode changes, so the one that matters
+   is unfindable. This watches for the shape of the reported fault instead:
+   into a mode and back out within three seconds, with nothing in between
+   that a person did.
+
+   `lastGesture` is the test that makes it worth reporting. Somebody who
+   clicks StrataScope, looks, and clicks away has done exactly the same
+   transitions -- what they have not done is do it with no input at all. */
+let _lastMode = { at: 0, from: null, to: null, via: '' };
+let _lastGesture = 0;
+
+document.addEventListener('pointerdown', () => { _lastGesture = Date.now(); },
+                          true);
+document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
+                          true);
+
+function noticeBounce(from, to, via) {
+  const now = Date.now();
+  const prev = _lastMode;
+  _lastMode = { at: now, from: from, to: to, via: via };
+  if (!prev.at) return;
+
+  const gap = now - prev.at;
+  /* Reversed: A -> B then B -> A. Either direction counts; the report was
+     "snaps to StrataScope and snaps back", and the same fault entering
+     curation would be the same bug. */
+  const reversed = prev.to === from && prev.from === to;
+  if (!reversed || gap > 3000) return;
+  /* A person doing it deliberately is not a fault. Anything within a
+     second of a click or a key is theirs. */
+  if (now - _lastGesture < 1000) return;
+
+  try {
+    apiPost('/api/errors/client', {
+      where: 'mode.bounce',
+      message: 'The mode changed to ' + (prev.to || 'none') + ' and back to '
+             + (to || 'none') + ' in ' + gap + 'ms with no click or '
+             + 'keypress. Nothing in the code accounts for this; both '
+             + 'stacks are below.',
+      context: {
+        gap_ms: gap,
+        first: { from: prev.from, to: prev.to, via: prev.via },
+        second: { from: from, to: to, via: via },
+        ms_since_input: now - _lastGesture,
+        view: BARRY.state && BARRY.state.view,
+      },
+    }).catch(() => { /* it is a report about a glitch, not a transaction */ });
+  } catch (e) { /* never let the watcher break the thing it watches */ }
+}
+
+/* ==========================================================================
+   One clock on screen
+
+   The stores keep two. A local shard stamp carries this machine's offset
+   ("2026-09-08T14:17:31-0400"); a row pulled from Supabase is in UTC
+   ("2026-09-09T04:03:12.146+00:00"). Slicing the string -- which is what
+   every timestamp on screen used to do -- prints whichever digits are in it
+   and discards the offset, so cloud rows read four hours off all summer and
+   a list mixing the two looked out of order.
+
+   Parsed and shown in the reader's own time instead. `whenRaw` is for the
+   tooltip: the mix of clocks was impossible to see, and anybody who wonders
+   should be able to check what was actually written down.
+   ========================================================================== */
+function _pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+/* `form`:
+     'stamp'   09-08 14:17          compact, for log rows
+     'minute'  2026-09-08 14:17     the default
+     'second'  2026-09-08 14:17:31
+     'time'    14:17:31             when the date is already established
+   An unparseable value comes back unchanged -- an odd-looking string beats
+   "Invalid Date" where a time should be. */
+function fmtWhen(iso, form) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const Y = d.getFullYear();
+  const M = _pad2(d.getMonth() + 1);
+  const D = _pad2(d.getDate());
+  const h = _pad2(d.getHours());
+  const m = _pad2(d.getMinutes());
+  const sec = _pad2(d.getSeconds());
+  if (form === 'stamp') return M + '-' + D + ' ' + h + ':' + m;
+  if (form === 'second') {
+    return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + sec;
+  }
+  if (form === 'time') return h + ':' + m + ':' + sec;
+  return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
+}
+
+/* What was actually written down. Names the clock, because that is the part
+   nobody could see. */
+function whenRaw(iso) {
+  if (!iso) return '';
+  const raw = String(iso);
+  const utc = /(\+00:?00|Z)$/.test(raw);
+  return 'Shown in your time. Recorded as ' + raw + (utc ? ' (UTC)' : '');
+}
+
+BARRY.when = fmtWhen;
+BARRY.whenRaw = whenRaw;
+
+/* ==========================================================================
+   A popover hung off a button
+
+   xplore.js has its own copy of this, entangled with pane state, and it is
+   staying there -- but anything else that needs a grouped set of controls
+   should not grow a tenth variation. Fixed-positioned and parented to
+   <body> on purpose: a popover inside a scroller gets clipped by it and
+   slides away from its own button.
+   ========================================================================== */
+let _openPop = null;
+
+function closePopover() {
+  if (!_openPop) return;
+  const { node, button, away, esc } = _openPop;
+  document.removeEventListener('mousedown', away, true);
+  document.removeEventListener('keydown', esc, true);
+  window.removeEventListener('resize', closePopover);
+  if (node && node.parentNode) node.parentNode.removeChild(node);
+  if (button) button.classList.remove('active');
+  _openPop = null;
+}
+
+/* `build` is called on open, not on wiring, so the popover shows the state
+   as it is now rather than as it was when the button was drawn. */
+function openPopover(button, build) {
+  const wasMine = _openPop && _openPop.button === button;
+  closePopover();
+  if (wasMine) return;                    // a second click closes it
+
+  const node = el('div', { class: 'ctl-pop' }, [build(closePopover)]);
+  document.body.appendChild(node);
+  button.classList.add('active');
+
+  const r = button.getBoundingClientRect();
+  const w = node.offsetWidth;
+  node.style.left = Math.max(8, Math.min(
+    r.left, window.innerWidth - w - 8)) + 'px';
+  const h = node.offsetHeight;
+  node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+    ? (r.top - h - 6) + 'px'
+    : (r.bottom + 6) + 'px';
+
+  const away = (ev) => {
+    if (!node.contains(ev.target) && !button.contains(ev.target)) {
+      closePopover();
+    }
+  };
+  const esc = (ev) => { if (ev.key === 'Escape') closePopover(); };
+  _openPop = { node, button, away, esc };
+  setTimeout(() => {
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('keydown', esc, true);
+    window.addEventListener('resize', closePopover);
+  }, 0);
 }
 
 /* ==========================================================================

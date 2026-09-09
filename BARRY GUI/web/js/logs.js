@@ -436,7 +436,8 @@ BARRY.views.history = (function () {
              it: which recording. */
           el('span', { class: 'hist-what', text: rowGist(a) }),
           el('span', { class: 'tm',
-            text: (a.at || '').slice(5, 16).replace('T', ' ') }),
+            title: BARRY.whenRaw(a.at),
+            text: BARRY.when(a.at, 'stamp') }),
         ].filter(Boolean)));
       }
       return;
@@ -462,7 +463,8 @@ BARRY.views.history = (function () {
       }, [
         el('span', { class: 'st ' + (r.kind === 'figure' ? 'figure' : (r.status || '')) }),
         el('span', { class: 'nm', text: r.label || r.script || '(run)' }),
-        el('span', { class: 'tm', text: at ? at.slice(5, 16).replace('T', ' ') : '' }),
+        el('span', { class: 'tm', title: BARRY.whenRaw(at),
+                     text: BARRY.when(at, 'stamp') }),
       ]));
     }
   }
@@ -481,7 +483,9 @@ BARRY.views.history = (function () {
     host.appendChild(el('div', { class: 'detail-head' }, [
       el('div', {}, [
         el('h2', { text: a.action }),
-        el('p', { class: 'detail-path', text: (a.at || '').replace('T', ' ') }),
+        el('p', { class: 'detail-path', title: BARRY.whenRaw(a.at),
+                  text: BARRY.when(a.at, 'second')
+                      + (a.at ? '   (recorded as ' + a.at + ')' : '') }),
       ]),
     ]));
 
@@ -1207,7 +1211,8 @@ BARRY.views.errors = (function () {
           el('span', { class: 'ec-where', text: e.where || 'unknown' }),
           el('span', { class: 'flagchip', text: e.id }),
           e.machine ? el('span', { class: 'flagchip', text: e.machine }) : null,
-          el('span', { class: 'ec-when', text: (e.at || '').replace('T', ' ').slice(0, 19) }),
+          el('span', { class: 'ec-when', title: BARRY.whenRaw(e.at),
+                       text: BARRY.when(e.at, 'second') }),
         ].filter(Boolean)),
         el('p', { class: 'ec-msg', text: e.message || '' }),
       ]);
@@ -1250,17 +1255,43 @@ BARRY.views.errors = (function () {
     /* Every machine the errors mention, plus every machine that syncs. A
        machine can have errors on record and have stopped syncing, and it
        would drop off a list built only from the device table. */
-    const seen = new Set(known.map((d) => d.hostname).filter(Boolean));
-    for (const g of groups) {
-      for (const m of (g.machines || [])) seen.add(m);
+    /* Archived computers are not offered. Their rows stay in the log and
+       stay readable by picking them in the panel; they just do not clutter
+       a chooser for ever. */
+    const live = known.filter((d) => !d.archived);
+    /* Keyed on the machine id, not the name, because the groups are -- and
+       because the name is not an identity: one computer here has filed
+       errors under five different labels and two computers have shared
+       one. Comparing a name to an id matched nothing, which would have
+       filtered the whole list away. */
+    const seen = new Set(live.map((d) => d.id).filter(Boolean));
+    const labels = {};
+    for (const d of live) {
+      if (d.id) labels[d.id] = d.label || d.hostname || d.id;
     }
-    const names = Array.from(seen).sort();
+    /* A computer that has errors on record and has stopped syncing is not
+       in the device table, so its id comes off the groups. Its label comes
+       off the group too -- the table is the only other place one lives. */
+    for (const g of groups) {
+      if (!g.machine) continue;
+      seen.add(g.machine);
+      if (!labels[g.machine]) {
+        labels[g.machine] = g.machine_label || g.machine;
+      }
+    }
+    /* Sorted by what is on screen. Sorting shard ids puts
+       "barrylab-d8e8" before "desktop-..." for reasons nobody can see. */
+    const names = Array.from(seen).sort(
+      (a, b) => String(labels[a] || a).localeCompare(String(labels[b] || b)));
     if (!devices) loadDevices();
 
-    const online = (name) => {
-      const d = known.find((x) => x.hostname === name);
+    const online = (id) => {
+      const d = live.find((x) => x.id === id);
       return d ? d.online : null;
     };
+    /* "Bluebarry (DESKTOP-4H65AI7)" on the chip too, or the picker and the
+       panel disagree about what the machines are called. */
+    const shown = (id) => labels[id] || id;
     return el('div', { class: 'res-toolbar dev-bar' }, [
       el('span', { class: 'dev-bar-label', text: 'Device' }),
       el('span', { class: 'ctl-seg' }, [
@@ -1279,7 +1310,7 @@ BARRY.views.errors = (function () {
         el('span', { class: 'dev-dot'
                             + (online(name) ? ' on' : '')
                             + (online(name) === null ? ' unknown' : '') }),
-        el('span', { text: name }),
+        el('span', { text: shown(name) }),
       ])))),
       el('div', { style: 'flex:1' }),
       kind === 'debug' && devPick
@@ -1331,8 +1362,8 @@ BARRY.views.errors = (function () {
         title: typeof r.detail === 'object'
           ? JSON.stringify(r.detail, null, 1) : String(r.detail || ''),
       }, [
-        el('span', { class: 'dfr-at', text: String(r.at || '').slice(5, 19)
-                                            .replace('T', ' ') }),
+        el('span', { class: 'dfr-at', title: BARRY.whenRaw(r.at),
+                     text: BARRY.when(r.at, 'stamp') }),
         el('span', { class: 'dfr-kind',
                      text: r.kind === 'error' ? '!' : '·' }),
         el('span', { class: 'dfr-what', text: r.what || '' }),
@@ -1526,19 +1557,38 @@ BARRY.views.errors = (function () {
       return box;
     }
 
-    const list = devices.devices || [];
-    if (!list.length) {
+    const all = devices.devices || [];
+    if (!all.length) {
       box.appendChild(el('div', { class: 'hint',
         text: 'No machines have synced yet.' }));
       return box;
     }
+    const list = all.filter((d) => !d.archived || showRetired);
+    const retired = all.filter((d) => d.archived).length;
     for (const d of list) {
-      box.appendChild(el('div', { class: 'dev-row' + (d.is_me ? ' me' : '') }, [
+      box.appendChild(el('div', {
+        class: 'dev-row' + (d.is_me ? ' me' : '')
+               + (d.archived ? ' archived' : ''),
+      }, [
         el('span', { class: 'dev-dot' + (d.online ? ' on' : ''),
           title: d.online ? 'Pushed within the last five minutes'
                           : 'Nothing pushed for over five minutes' }),
-        el('strong', { class: 'dev-host', text: d.hostname || d.id }),
+        /* The friendly name with the computer's own name after it. Two of
+           these machines have friendly names differing by the case of one
+           letter and are different computers; one has two names and is one
+           computer. The bracket is what tells them apart. */
+        el('strong', { class: 'dev-host', text: d.label || d.hostname || d.id,
+          title: 'Known to BARRY as ' + d.id }),
         d.is_me ? el('span', { class: 'flagchip sm', text: 'this one' }) : null,
+        /* The names it used to answer to, so old log rows are accounted
+           for rather than looking like a fourth machine. */
+        (d.also_known_as || []).length
+          ? el('span', { class: 'dev-aka',
+              title: 'Rows in the shared log under this machine\u2019s '
+                   + 'older names are counted here',
+              text: 'also ' + d.also_known_as.join(', ') }) : null,
+        d.archived
+          ? el('span', { class: 'flagchip sm', text: 'archived' }) : null,
         el('span', { class: 'dev-user', text: d.user || '' }),
         el('div', { style: 'flex:1' }),
         /* Two facts, not one. "Seen" is the sync; "sending" is whether it
@@ -1553,13 +1603,81 @@ BARRY.views.errors = (function () {
         el('span', { class: 'dev-col' + (d.recent_errors ? ' warn' : ''),
           title: 'Errors in the most recent slice',
           text: d.recent_errors + ' errors' }),
+        /* Retiring a computer. Same promise as archiving a person: it
+           wrote every row it wrote and none of that changes -- it just
+           stops cluttering the pickers. Not offered for this machine,
+           where it would only confuse. */
+        d.is_me ? null : el('button', {
+          class: 'dev-arch' + (d.archived ? ' on' : ''),
+          title: d.archived
+            ? d.label + ' is archived. Click to bring it back.'
+            : 'Archive ' + d.label + ': off the device lists. Everything it '
+              + 'recorded stays on record and stays counted.',
+          text: d.archived ? '\u21ba' : '\u25f4',
+          onclick: () => archiveDevice(d, !d.archived),
+        }),
       ].filter(Boolean)));
+    }
+    if (retired) {
+      box.appendChild(el('button', {
+        class: 'prof-arch-toggle' + (showRetired ? ' on' : ''),
+        text: (showRetired ? '\u25be  ' : '\u25b8  ')
+              + retired + ' archived',
+        onclick: () => { showRetired = !showRetired; render(); },
+      }));
+    }
+    /* Names in the log that no machine answers to. Reported rather than
+       folded in: the only safe way to claim one is an id, and matching by
+       shape would have merged two people's computers. */
+    if ((devices.unclaimed_names || []).length) {
+      box.appendChild(el('div', { class: 'hint dev-unclaimed' }, [
+        el('strong', { text: 'Also in the log: ' }),
+        el('span', { text: devices.unclaimed_names.join(', ')
+          + ' \u2014 ' + (devices.unclaimed_names.length === 1
+            ? 'a name no machine in the table answers to. It is an older '
+              + 'name for one of these computers, or one that never '
+              + 'registered.'
+            : 'names no machine in the table answers to. They are older '
+              + 'names for these computers, or machines that never '
+              + 'registered.')
+          + ' Nothing is guessed: a machine is only claimed by its id.' }),
+      ]));
     }
     box.appendChild(el('p', { class: 'hint',
       text: 'Online means it pushed within five minutes. The sync loop '
           + 'pushes at least once a minute, so a machine quiet for longer '
-          + 'has either been closed or has stopped syncing.' }));
+          + 'has either been closed or has stopped syncing. The name in '
+          + 'brackets is what the computer calls itself \u2014 two of these '
+          + 'friendly names differ by one letter and are different '
+          + 'machines.' }));
     return box;
+  }
+
+  let showRetired = false;
+
+  async function archiveDevice(d, yes) {
+    if (yes) {
+      const ok = await BARRY.confirm(
+        'Archive ' + d.label + '?',
+        'It stays on every action and error it recorded, and those stay '
+        + 'counted. Archiving only takes it off the device lists.'
+        + '\n\nIt applies everywhere, not just here.',
+        'Archive');
+      if (!ok) return;
+    }
+    try {
+      const res = await apiPost('/api/devices/archive',
+                                { id: d.id, archived: !!yes });
+      if (res && res.run) {
+        toast('The shared database needs supabase/' + res.run
+              + ' run first.', 'err', 9000);
+        return;
+      }
+      await loadDevices(true);
+      toast(yes ? d.label + ' archived.' : d.label + ' is back.', 'ok');
+    } catch (e) {
+      toast('Could not archive ' + d.label + ': ' + e.message, 'err', 8000);
+    }
   }
 
   function ago(sec) {
@@ -1775,7 +1893,8 @@ BARRY.views.errors = (function () {
               ? el('span', {
                   class: 'err-reopened', text: 'came back',
                   title: 'Marked resolved on '
-                       + (g.resolved_at || '?').replace('T', ' ').slice(0, 16)
+                       + (g.resolved_at ? BARRY.when(g.resolved_at, 'minute')
+                                        : '?')
                        + ', and has happened again since',
                 })
               : null,
@@ -1783,11 +1902,12 @@ BARRY.views.errors = (function () {
           ].filter(Boolean)),
           el('div', { class: 'err-gwhere',
                       text: (g.where || 'unknown')
-                            + (g.machines.length ? '  \u00b7  '
+                            + (g.machines.length > 1 ? '  \u00b7  also as '
                                + g.machines.join(', ') : '') }),
         ]),
         el('span', { class: 'err-gwhere',
-                     text: (g.last || '').replace('T', ' ').slice(0, 16) }),
+                     title: BARRY.whenRaw(g.last),
+                     text: BARRY.when(g.last, 'minute') }),
         el('span', { class: 'caret', style: open ? 'transform:rotate(90deg)' : '',
           html: '<svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>' }),
       ]));
@@ -1817,12 +1937,14 @@ BARRY.views.errors = (function () {
                 text: 'resolved by ' + g.resolved_by
                       + (g.resolved_note ? ' \u2014 ' + g.resolved_note : '') })
             : el('span', { class: 'hint',
-                text: 'first seen ' + (g.first || '').slice(0, 16).replace('T', ' ') }),
+                title: BARRY.whenRaw(g.first),
+                text: 'first seen ' + BARRY.when(g.first, 'minute') }),
         ]));
 
         for (const rec of g.records) {
           body.appendChild(el('div', { class: 'err-occ',
-            text: (rec.at || '').replace('T', ' ').slice(0, 19)
+            title: BARRY.whenRaw(rec.at),
+            text: BARRY.when(rec.at, 'second')
                   + '   ' + (rec.machine || '') + '   ' + rec.id }));
         }
         const first = g.records[0] || {};

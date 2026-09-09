@@ -144,11 +144,38 @@ const PROBE = 'Harness Probe Person';
     + dels.filter((b) => b.classList.contains('held')).length + ' marked held');
   ck('every chip offers removal', dels.length === chips.length,
      dels.length + ' vs ' + chips.length);
+  /* Against what is on screen. Archived people are folded away, so the
+     rendered chips are a subset of the roster and comparing with the whole
+     of it counts names that were never drawn. */
+  const shownNames = new Set(
+    Array.from(D().querySelectorAll('.prof-chip .prof-chip-name'))
+      .map((b) => (b.textContent || '').split('  \u00b7  ')[0]));
+  const onScreen = people.filter((x) => shownNames.has(x.name));
   ck('and the ones carried by the data are marked as held',
      dels.filter((b) => b.classList.contains('held')).length
-       === people.filter((x) => held(x) > 0).length,
+       === onScreen.filter((x) => held(x) > 0).length,
      dels.filter((b) => b.classList.contains('held')).length + ' marked, '
-     + people.filter((x) => held(x) > 0).length + ' expected');
+     + onScreen.filter((x) => held(x) > 0).length + ' expected of '
+     + onScreen.length + ' shown');
+
+  /* And the archive, which is the button that always works -- removal is
+     refused for anybody the data carries, which is most of the roster. */
+  const archs = Array.from(D().querySelectorAll('.prof-chip-arch'));
+  ck('every chip also offers archiving', archs.length === chips.length,
+     archs.length + ' vs ' + chips.length);
+  const away = people.filter((x) => x.archived);
+  const fold = D().querySelector('.prof-arch-toggle');
+  if (away.length) {
+    ck('archived people are folded away, and counted in the fold',
+       !!fold && fold.textContent.indexOf(String(away.length)) >= 0,
+       fold ? fold.textContent.trim() : 'no fold');
+    ck('and are not among the chips on screen',
+       away.every((x) => !shownNames.has(x.name)),
+       away.filter((x) => shownNames.has(x.name)).map((x) => x.name).join(','));
+  } else {
+    p('  (nobody is archived, so the fold is correctly absent)');
+    ck('no fold is shown when nobody is archived', !fold);
+  }
   const heldBtn = dels.find((b) => b.classList.contains('held'));
   ck('a held one says how many records hold it',
      !!heldBtn && /is on \d+ record/.test(heldBtn.title || ''),

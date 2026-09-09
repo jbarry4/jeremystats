@@ -201,6 +201,19 @@ def describe_session(path, contents, read_header=True):
     quality = assess(path, contents)
     return {
         "path": path,
+        # A scan walked this folder to get here, so it exists, and the file
+        # counts below say whether it will open. Both are recorded rather
+        # than left to be inferred: "On this machine" used to filter OUT
+        # everything a scan had just found, because a scanned recording
+        # carried neither field and the filter read the absence as "not
+        # here".
+        "here": [path],
+        "reachable": True,
+        # The real test, and free -- the files are already counted. This is
+        # the same condition `csc.describe_path` applies: a folder with CSC
+        # .ncs files, or with a converted .mat, can be opened; one with
+        # neither cannot, whatever else is in it.
+        "loadable": bool(contents["ncs"] or contents["mats"]),
         # Whether this folder is a recording worth registering, and why not.
         "quality": quality,
         "name": os.path.basename(path.rstrip("\\/")) or path,

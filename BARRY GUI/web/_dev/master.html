@@ -54,8 +54,16 @@ ck('there is one master strip', !!master());
 ck('and exactly one strip in total, not four', strips().length===1, strips().length);
 ck('the strip is marked as the master one',
    !!D().querySelector('.pane-ctl.is-master'));
+/* On the tooltip, not in the text. The visible label was removed on
+   purpose: the strip sits across the top of the grid and plainly spans it,
+   so the words were explaining something already said and spending a row of
+   height to do it. The explanation still has to exist somewhere. */
 ck('it says it reaches every pane',
-   /one set of controls/.test((master()||{}).textContent||''),
+   /all of them at once/.test(
+     (D().querySelector('.pane-ctl.is-master') || {}).title || ''),
+   (D().querySelector('.pane-ctl.is-master') || {}).title);
+ck('and spends no vertical space saying it',
+   !/one set of controls/.test((master()||{}).textContent||''),
    (master()||{}).textContent);
 const mb=master().getBoundingClientRect(), gb=D().getElementById('paneGrid').getBoundingClientRect();
 p('  master w'+Math.round(mb.width)+' at y'+Math.round(mb.top)

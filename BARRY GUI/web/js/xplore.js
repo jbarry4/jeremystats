@@ -777,16 +777,16 @@ BARRY.views.xplore = (function () {
 
     const pane = XF.panes[at];
     const sess = sessionOf(pane);
-    const host = el('div', { class: 'xf-master', id: 'xfMaster' }, [
-      /* Said out loud, because a control that reaches six panes at once
-         should say so before it is used rather than after. */
-      el('span', { class: 'xf-master-tag',
-        title: 'Every pane here is the same recording in the same kind of '
-             + 'panel, so these controls set all of them at once.',
-        text: XF.nPanes + ' panes \u00b7 one set of controls' }),
-    ]);
+    /* No label. It used to carry "6 panes . one set of controls", which
+       explained something the layout already says -- the strip sits across
+       the top of the grid -- and spent a row of height doing it. The
+       explanation lives on the strip's tooltip now, where it costs
+       nothing. */
+    const host = el('div', { class: 'xf-master', id: 'xfMaster' });
     const strip = paneControls(at, pane, sess);
     strip.classList.add('is-master');
+    strip.title = 'Every pane here is the same recording in the same kind '
+                + 'of panel, so these controls set all of them at once.';
     host.appendChild(strip);
     const grid = document.getElementById('paneGrid');
     body.insertBefore(host, grid);
@@ -876,11 +876,15 @@ BARRY.views.xplore = (function () {
       wireStripScroll(strip);
     }
 
-    // Trace panes carry their channel list inside the plot; raster panes keep
-    // the side column, where exact per-lane alignment does not apply.
-    const sideCol = isChannelPanel(pane.panel) && pane.panel !== 'traces';
-    const main = el('div', { class: 'pane-main' + (sideCol ? '' : ' no-channels') });
-    if (sideCol) main.appendChild(paneChannels(index, sess));
+    /* No side column any more. A trace pane draws its channel list inside
+       the plot, where it lines up with the lanes; every other channel panel
+       used to get a column of its own on the left instead, which put the
+       same control in a different place and a different shape depending on
+       the panel, and took width off the data in every pane that had one.
+
+       It lives on the control strip for all of them now -- the `Ch` menu,
+       next to Filter and Marks -- with the per-channel list inside it. */
+    const main = el('div', { class: 'pane-main no-channels' });
     main.appendChild(panePlot(index, pane, sess));
     box.appendChild(main);
     return box;
@@ -1586,6 +1590,10 @@ BARRY.views.xplore = (function () {
                           : (data && data.clim_auto);
     const pinned = isTraces ? (sess.ylim != null)
                             : !!(pane.clim || sess.clim);
+    /* Whether this strip speaks for the whole grid. Worth saying on the
+       control: "pinned" on a strip that reached one of six panes was true
+       about that pane and false about the picture. */
+    const shared = XF.master >= 0;
 
     // One magnitude drives both: for traces it is the half-lane amplitude,
     // for a raster the symmetric color limit.
@@ -1631,7 +1639,8 @@ BARRY.views.xplore = (function () {
       // and forth lands where the pointer says rather than compounding.
       const peak = Math.max(Math.abs(baseClim[0]), Math.abs(baseClim[1])) || 1;
       const k = m / peak;
-      pane.clim = [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)];
+      setClim(index, pane, sess,
+              [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)]);
       clearTimeout(pane._climTimer);
       pane._climTimer = setTimeout(() => refreshPane(index), commit ? 0 : 220);
       if (commit) {
@@ -1683,10 +1692,15 @@ BARRY.views.xplore = (function () {
         num_,
         el('button', {
           class: 'mini' + (pinned ? '' : ' active'),
-          text: pinned ? 'pinned' : 'auto',
-          title: pinned
+          text: (pinned ? 'pinned' : 'auto') + (shared ? ' \u00b7 all' : ''),
+          title: (shared
+            ? 'One scale for every pane in the grid \u2014 they are the '
+              + 'same recording in the same panel, so a colour means the '
+              + 'same thing in all of them.\n\n'
+            : '')
+            + (pinned
             ? 'Pinned \u2014 click to go back to per-window scaling'
-            : 'Scaling to each window. Move the slider to pin it.',
+            : 'Scaling to each window. Move the slider to pin it.'),
           onclick: () => {
             if (isTraces) {
               sess.ylim = pinned ? null : Math.abs(magnitude);
@@ -1694,8 +1708,13 @@ BARRY.views.xplore = (function () {
               queueSaveState(sess);
               refreshSession(sess);
             } else {
-              if (pinned) { pane.clim = null; sess.clim = null; }
-              else { pane.clim = [-Math.abs(magnitude), Math.abs(magnitude)]; }
+              if (pinned) {
+                setClim(index, pane, sess, null);
+                if (sess) sess.clim = null;
+              } else {
+                setClim(index, pane, sess,
+                        [-Math.abs(magnitude), Math.abs(magnitude)]);
+              }
               BARRY.activity.log('clim.change',
                                  { clim: pane.clim, panel: pane.panel }, sess);
               refreshPane(index);
@@ -1892,7 +1911,7 @@ BARRY.views.xplore = (function () {
             if (!isFinite(a) || !isFinite(b) || b <= a) {
               toast('Max must be greater than min.', 'err'); return;
             }
-            pane.clim = [a, b];
+            setClim(index, pane, sess, [a, b]);
             BARRY.activity.log('clim.change', { clim: pane.clim,
                                                 panel: pane.panel }, sess);
             pop.remove(); render(); refreshPane(index);
@@ -1901,7 +1920,8 @@ BARRY.views.xplore = (function () {
         el('button', {
           class: 'btn ghost sm', text: 'Auto',
           onclick: () => {
-            pane.clim = null; sess.clim = null;
+            setClim(index, pane, sess, null);
+            if (sess) sess.clim = null;
             BARRY.activity.log('clim.change', { clim: null,
                                                 panel: pane.panel }, sess);
             pop.remove(); render(); refreshPane(index);
@@ -2119,6 +2139,29 @@ BARRY.views.xplore = (function () {
   }
 
   /* ---------- per-pane controls ---------- */
+  /* Set a colour scale, on one pane or on all of them.
+
+     A master strip stands in for every pane, and `masterPane()` only
+     returns one when every occupied pane is the same recording in the same
+     panel -- so when it is showing, "all of them" is unambiguous and is
+     what the strip already promises in its tooltip. Writing one pane's
+     `clim` left the other five auto-scaled: six shanks of one H10 came up
+     at [-2.71e+4], [-2.04e+4] and [-2.16e+4] while the control said
+     "pinned", and a CSD read by colour across those cannot be compared.
+
+     The value also lands on the session. `pane.clim || sess.clim || auto`
+     is the lookup, so a pane opened afterwards picks up the shared range
+     instead of auto-scaling itself back out of line. */
+  function setClim(index, pane, sess, value) {
+    const all = XF.master >= 0;
+    if (!all) { pane.clim = value; return; }
+    for (let i = 0; i < XF.nPanes; i++) {
+      const other = XF.panes[i];
+      if (other && sessionOf(other)) other.clim = value;
+    }
+    if (sess) sess.clim = value;
+  }
+
   function paneControls(index, pane, sess) {
     const host = el('div', { class: 'pane-ctl' });
     // Prepended after everything else is built -- see the end of this
@@ -2186,7 +2229,10 @@ BARRY.views.xplore = (function () {
         'Settings for this panel type', () => panelPop(index, pane, sess)));
     }
 
-    if (pane.panel === 'traces') {
+    /* Every channel panel, not just traces. It used to appear here for a
+       trace pane and as a side column for anything else, so the control
+       moved and changed shape when the panel did. */
+    if (isChannelPanel(pane.panel)) {
       host.appendChild(menu(index, 'Ch',
         sess.sel.size + '/' + sess.info.channels.length,
         'Which channels are drawn', () => channelPop(index, sess)));
@@ -2480,10 +2526,50 @@ BARRY.views.xplore = (function () {
               },
             }))),
       ]),
-      el('p', { class: 'ctl-pop-note',
-        text: 'Individual channels are toggled on the list beside the '
-            + 'trace; a bad channel is marked there too.' }),
+      /* The list itself, because this is now the only place it is. It
+         used to say "toggled on the list beside the trace" -- true for a
+         trace pane, where the list is drawn in the plot, and false for a
+         raster, where that list was the side column this replaces. */
+      chanList(index, sess),
     ]);
+  }
+
+  /* Every channel, toggleable, with the bad ones marked.
+
+     Scrolls inside the popover rather than growing it: sixty-four rows at
+     full height would run off the screen, and `.ctl-pop` already caps its
+     own height. */
+  function chanList(index, sess) {
+    const box = el('div', { class: 'ctl-chans' });
+    for (const c of sess.info.channels) {
+      /* `sess.bad` is the live set -- what somebody has marked in this
+         session -- and `c.bad` is what the file itself said. The side
+         column this replaces used both, and using only one would have
+         quietly stopped marking half of them. */
+      const isBad = sess.bad.has(c.number) || c.bad;
+      box.appendChild(el('label', {
+        class: 'ctl-chan' + (sess.sel.has(c.index) ? '' : ' off')
+               + (isBad ? ' marked-bad' : ''),
+        title: isBad ? 'Channel ' + c.number + ' is marked bad' : '',
+      }, [
+        el('input', {
+          type: 'checkbox',
+          checked: sess.sel.has(c.index) ? 'checked' : null,
+          onchange: () => {
+            if (sess.sel.has(c.index)) sess.sel.delete(c.index);
+            else sess.sel.add(c.index);
+            BARRY.activity.log('channels.change',
+              { one: c.number, n: sess.sel.size }, sess);
+            render(); refreshSession(sess);
+            queueSaveState(sess);
+            publishLink(sess.t0, sess.span, sess);
+          },
+        }),
+        el('span', { class: 'cc-n', text: String(c.number) }),
+        isBad ? el('span', { class: 'cc-bad', text: 'bad' }) : null,
+      ].filter(Boolean)));
+    }
+    return box;
   }
 
   function marksPop(index, sess) {

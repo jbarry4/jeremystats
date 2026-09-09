@@ -17,7 +17,7 @@
     "schema": "2026-09-04T15:57:01.735034+00:00",
     "session": "2026-09-04T15:57:01.735034+00:00",
     "start": "2026-09-04T15:57:01.735034+00:00",
-    "updated": "2026-09-08T15:42:08.174029+00:00"
+    "updated": "2026-09-09T13:48:17.813727+00:00"
   },
   "_keys": {
     "paths": {
@@ -35,6 +35,10 @@
         "set",
         "2026-09-04T15:57:01.735034+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.813727+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.735034+00:00"
@@ -46,7 +50,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T15:42:08.174029+00:00",
+    "at": "2026-09-09T13:48:17.813727+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -82,6 +86,13 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\m27_ptenblind\\m27s2jul2\\2024-07-03_13-57-53",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -100,11 +111,11 @@
   "session": 2,
   "start": "2024-07-03T13:57:53",
   "updated": {
-    "at": "2026-09-08T11:42:08-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T09:48:17-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

@@ -32,6 +32,17 @@ import subprocess
 import sys
 import urllib.parse
 
+# Harness output is full of typographic dashes and quotes, and a Windows
+# console is cp1252 -- printing one raised UnicodeEncodeError and took the
+# whole run down partway through, losing every result so far. Reconfigured
+# rather than sanitised at each print, so a stray character can never end a
+# sweep again.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:                                        # noqa: BLE001
+    pass
+
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 BASE = "http://127.0.0.1:8791"
 ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"

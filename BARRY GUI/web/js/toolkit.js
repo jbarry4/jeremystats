@@ -1447,7 +1447,13 @@ BARRY.views.toolkit = (function () {
 
     const paint = () => {
       list.innerHTML = '';
-      const rows = (r.people || []);
+      /* Archived people are not offered. Except the one who already has
+         this set: hiding a current owner would leave a set assigned to a
+         name that is nowhere on screen, and no way to hand it on. */
+      const rows = (r.people || []).filter(
+        (x) => !x.archived || x.name === st.assignee);
+      const away = (r.people || []).filter(
+        (x) => x.archived && x.name !== st.assignee).length;
       if (!rows.length) {
         list.appendChild(el('div', { class: 'hint',
           text: 'Nobody is on the roster yet. BARRY builds it from the '
@@ -1476,7 +1482,17 @@ BARRY.views.toolkit = (function () {
           el('span', { class: 'mk-name', text: p.name }),
           what ? el('span', { class: 'person-what', text: what }) : null,
           p.me ? el('span', { class: 'flagchip good', text: 'you' }) : null,
+          p.archived
+            ? el('span', { class: 'flagchip', text: 'archived' }) : null,
         ].filter(Boolean)));
+      }
+      /* Said, not silently dropped. A picker that is quietly shorter than
+         the roster is a picker somebody will scroll looking for a name. */
+      if (away) {
+        list.appendChild(el('div', { class: 'hint',
+          text: away + ' archived ' + (away === 1 ? 'person is' : 'people are')
+              + ' not listed. They are still on every record they are on — '
+              + 'un-archive them in Profile to offer them work again.' }));
       }
     };
     paint();

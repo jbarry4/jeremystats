@@ -85,7 +85,12 @@ class People:
     # crediting an email address should still be traceable to the person
     # credited by name now, and the surviving entry is the only place
     # that can be written down.
-    FIELDS = ("email", "role", "initials", "orcid", "note", "aliases")
+    FIELDS = ("email", "role", "initials", "orcid", "note", "aliases",
+              "archived")
+
+    # Fields that are not text. `_clean` would turn False into the string
+    # "False", which is truthy, so an unarchive would archive.
+    FLAGS = ("archived",)
 
     def add(self, name, email=None, note=None, **extra):
         """Put somebody on the roster, or edit what it says about them.
@@ -117,10 +122,16 @@ class People:
             given["note"] = note
         for k in self.FIELDS:
             if k in given and given[k] is not None:
-                # A list stays a list. _clean is for the text fields, and
-                # running it over aliases would turn them into one string.
-                row[k] = (list(given[k]) if isinstance(given[k], (list, tuple))
-                          else _clean(given[k]))
+                # A list stays a list, a flag stays a bool. `_clean` is for
+                # the text fields: over `aliases` it would join them into one
+                # string, and over `False` it would produce "False", which is
+                # truthy -- so unarchiving would archive.
+                if k in self.FLAGS:
+                    row[k] = bool(given[k])
+                elif isinstance(given[k], (list, tuple)):
+                    row[k] = list(given[k])
+                else:
+                    row[k] = _clean(given[k])
         row.setdefault("at", shards._now())
         row["edited_at"] = shards._now()
         row["by"] = (self.store.provenance() if self.store else {}).get("user")
@@ -162,6 +173,51 @@ class People:
         rec["added"] = rows
         self.book.write("people", rec)
         return True
+
+    def archive(self, name, yes=True):
+        """Take somebody off the pickers without taking them off the record.
+
+        Works on a name the data carries, and that is the whole point:
+        `forget` refuses those, correctly, so somebody who has left the lab
+        had nowhere to go and kept being offered as an owner for new work.
+
+        A person who has never been added by hand has no row here at all --
+        the roster compiled them from their decisions -- so one is created to
+        hold the flag. That row says nothing except "archived"; it does not
+        claim to be the source of the name.
+        """
+        name = _clean(name)
+        if not name:
+            raise ValueError("A person needs a name.")
+        rec = self.book.read("people") or {}
+        rows, found = [], False
+        for r in (rec.get("added") or []):
+            if (r.get("id") or "").lower() == name.lower():
+                found = True
+                r = dict(r)
+                r["archived"] = bool(yes)
+                r["edited_at"] = shards._now()
+            rows.append(r)
+        if not found:
+            rows.append({
+                "id": name, "name": name, "archived": bool(yes),
+                "at": shards._now(), "edited_at": shards._now(),
+                "by": (self.store.provenance() if self.store else {})
+                .get("user"),
+            })
+        rec["added"] = rows
+        self.book.write("people", rec)
+        return True
+
+    def archived(self):
+        """The names flagged archived, lower-cased for lookup."""
+        out = set()
+        for r in self._extra():
+            if r.get("archived"):
+                nm = _clean(r.get("name") or r.get("id"))
+                if nm:
+                    out.add(nm.lower())
+        return out
 
     # ------------------------------------------------------------------
     def roster(self, curation=None, bank=None):
@@ -279,11 +335,19 @@ class People:
         folded = {}
         for other, keep in alias_of.items():
             folded.setdefault(keep, []).append(other)
+        # Archived names stay in the list, with the flag on them, and every
+        # count stays exactly as it was. Archiving is a statement about who
+        # should be OFFERED work, not about who did it -- so it is the
+        # caller's business to leave them out of a picker, and nobody's
+        # business to make the totals disagree with the records.
+        put_away = self.archived()
         for r in rows:
             r["me"] = bool(me and r["name"] == me)
             got = sorted(folded.get(r["name"]) or [])
             if got:
                 r["aliases"] = got
+            if r["name"].lower() in put_away:
+                r["archived"] = True
         rows.sort(key=lambda r: (not r["me"], not r["is_person"],
                                  -r["total"], r["name"].lower()))
         return {

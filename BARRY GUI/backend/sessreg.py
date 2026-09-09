@@ -54,6 +54,37 @@ def new_gid():
     return "s" + uuid.uuid4().hex[:12]
 
 
+# Whether a folder will open, remembered against its mtime.
+#
+# `os.path.isdir` is not the question -- a folder can survive its contents,
+# and a recording with no CSC .ncs and no converted .mat cannot be opened
+# however much else is in it. Asking the loader is authoritative and costs a
+# listdir, which over a network share is worth caching: 28ms each, 184 of
+# them, and the registry is read on every visit to the Sessions view.
+_OPENS = {}
+
+
+def _opens(path):
+    """True when `csc.describe_path` would accept this folder."""
+    try:
+        stamp = os.path.getmtime(path)
+    except OSError:
+        _OPENS.pop(path, None)
+        return False
+    was = _OPENS.get(path)
+    if was and was[0] == stamp:
+        return was[1]
+    try:
+        from . import csc
+        ok = bool((csc.describe_path(path) or {}).get("ok"))
+    except Exception:                                    # noqa: BLE001
+        # An unreadable share is not a verdict about the recording. Say no
+        # for now and ask again when its mtime changes.
+        ok = False
+    _OPENS[path] = (stamp, ok)
+    return ok
+
+
 def _newest_sighting(rec):
     """The most recent time any machine laid eyes on this recording."""
     best = None
@@ -530,6 +561,11 @@ class Registry:
     def summary(self, rec, attachments=None):
         """One row of the housekeeping view."""
         paths = list(rec.get("paths") or [])
+        # Computed once, and reused for the loadability check below: the
+        # folders that do not exist must not be touched again. Reaching for
+        # an unmounted network path costs a timeout, and checking all 471
+        # rather than the 184 that answer took this read from 5s to 25s.
+        here = [p for p in paths if os.path.isdir(p)]
         row = {
             "gid": rec.get("gid"),
             "key": rec.get("key"),
@@ -551,7 +587,14 @@ class Registry:
             # Which of those paths this machine can actually reach. The point
             # of listing them all is to see, at a glance, that a recording is
             # known but not mounted here.
-            "here": [p for p in paths if os.path.isdir(p)],
+            "here": here,
+            # Which of them will actually open, which is not the same
+            # question: a folder can outlive its contents. Asked of the
+            # loader itself rather than guessed at, and only of the folders
+            # that already answered `isdir` -- touching an unmounted network
+            # path costs a timeout, and asking all 471 instead of the 184
+            # that exist took the registry read from 5s to 25s.
+            "loadable": [p for p in here if _opens(p)],
             "bad_channels": rec.get("bad_channels") or [],
             "merged_in": rec.get("merged_in") or [],
             "split_from": rec.get("split_from"),
@@ -586,6 +629,9 @@ class Registry:
             "converted": bool(rec.get("converted")),
         }
         row["reachable"] = bool(row["here"])
+        # "Can I click this right now." The filter that says "on this
+        # machine" means this one, not `reachable`.
+        row["can_open"] = bool(row["loadable"])
         if attachments:
             row["has"] = attachments(rec) or {}
         return row
