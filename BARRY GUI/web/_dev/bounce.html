@@ -91,6 +91,27 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
     gaps.every((g) => g >= 0 && g <= 3000),
     JSON.stringify(gaps.filter((g) => g > 3000)));
 
+ /* Resolve what this filed. Running the harness proves the detector
+    works, and the proof is a handful of real-looking errors in the real
+    list -- above genuine faults on the Errors page. Resolved rather than
+    deleted: the log is append-only by design, and a row saying "this was
+    the harness" beats a gap. */
+ const filed = await (await W().fetch('/api/errors?limit=400')).json();
+ const sigs = new Set((filed.errors || [])
+   .filter((e) => /mode[.]bounce/.test(e.where || ''))
+   .map((e) => (e.where || '') + '||' + (e.message || '')));
+ for (const sig of sigs) {
+   try {
+     await W().fetch('/api/errors/resolve', {
+       method: 'POST', headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ signature: sig, resolved: true,
+         note: 'Filed by web/_dev/bounce.html while testing the detector. '
+             + 'Not a real occurrence.' }),
+     });
+   } catch (e) { /* the checks are what matter */ }
+ }
+ p('  (resolved ' + sigs.size + ' bounce signature(s) this harness filed)');
+
  p(bad?'\n'+bad+' FAILURE(S)':'\nall checks passed');
 }catch(e){p('THREW '+(e&&e.stack||e));p('1 FAILURE(S)')}})();
 </script>
