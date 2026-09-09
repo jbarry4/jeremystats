@@ -2,71 +2,74 @@
   "_at": {},
   "_keys": {
     "added": {
+      "Fatima": [
+        "set",
+        "2026-09-09T13:38:37.949429+00:00"
+      ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-09T01:46:56.241490+00:00"
+        "2026-09-09T07:18:59.742310+00:00"
       ],
       "Isabella Piatek": [
         "set",
-        "2026-09-09T01:51:50.169996+00:00"
+        "2026-09-09T13:38:37.968029+00:00"
       ],
       "Rain": [
         "set",
-        "2026-09-09T01:51:50.220446+00:00"
+        "2026-09-09T13:38:37.844563+00:00"
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T01:51:50.205152+00:00"
+        "2026-09-09T13:38:37.982150+00:00"
       ],
       "Shahriar": [
         "set",
-        "2026-09-09T01:51:50.078054+00:00"
+        "2026-09-09T13:38:37.997663+00:00"
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-09T01:51:50.111152+00:00"
+        "2026-09-09T13:38:37.830561+00:00"
+      ],
+      "bankback@harness": [
+        "set",
+        "2026-09-09T13:38:37.856442+00:00"
+      ],
+      "curate@harness": [
+        "set",
+        "2026-09-09T13:38:37.925373+00:00"
       ],
       "harness@test": [
         "set",
-        "2026-09-09T01:51:50.134335+00:00"
+        "2026-09-09T13:38:37.903015+00:00"
       ],
       "snapshot import": [
         "set",
-        "2026-09-09T01:51:50.190017+00:00"
+        "2026-09-09T13:38:38.011858+00:00"
       ],
       "theexaminedexistence@gmail.com": [
         "set",
-        "2026-09-09T01:51:50.063249+00:00"
+        "2026-09-09T13:38:37.869377+00:00"
+      ],
+      "unknown": [
+        "set",
+        "2026-09-09T13:38:38.025769+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T01:51:50.220446+00:00",
+    "at": "2026-09-09T13:38:38.025769+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": [
     {
-      "at": "2026-09-08T21:33:34.592458+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.062730+00:00",
-      "id": "theexaminedexistence@gmail.com",
-      "name": "theexaminedexistence@gmail.com"
-    },
-    {
-      "at": "2026-09-08T18:54:41.436836+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.076200+00:00",
-      "email": "sakhava1@uvm.edu",
-      "id": "Shahriar",
-      "initials": "SA",
-      "name": "Shahriar",
-      "role": "Gradstudent"
-    },
-    {
+      "aliases": [
+        "shahriar",
+        "theexaminedexistence@gmail.com"
+      ],
       "at": "2026-09-08T21:24:21.570229+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.109978+00:00",
+      "edited_at": "2026-09-09T13:38:37.829976+00:00",
       "email": "Shahriar.Akhavan-Tafti@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
@@ -74,16 +77,52 @@
       "role": "Gradstudent"
     },
     {
+      "at": "2026-09-09T07:19:33.632116+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.844004+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain",
+      "name": "Rain"
+    },
+    {
+      "at": "2026-09-09T03:23:15.319492+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.855885+00:00",
+      "id": "bankback@harness",
+      "name": "bankback@harness"
+    },
+    {
+      "at": "2026-09-09T03:57:13.815088+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.868806+00:00",
+      "id": "theexaminedexistence@gmail.com",
+      "name": "theexaminedexistence@gmail.com"
+    },
+    {
       "at": "2026-09-09T00:24:47.355274+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.133153+00:00",
+      "edited_at": "2026-09-09T13:38:37.901895+00:00",
       "id": "harness@test",
       "name": "harness@test"
     },
     {
+      "at": "2026-09-09T03:21:15.958106+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.924248+00:00",
+      "id": "curate@harness",
+      "name": "curate@harness"
+    },
+    {
+      "at": "2026-09-09T03:47:09.330136+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.948333+00:00",
+      "id": "Fatima",
+      "name": "Fatima"
+    },
+    {
       "at": "2026-09-08T21:23:16.555182+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.168914+00:00",
+      "edited_at": "2026-09-09T13:38:37.967371+00:00",
       "email": "Isabella.Piatek@uvm.edu",
       "id": "Isabella Piatek",
       "initials": "IP",
@@ -91,29 +130,34 @@
       "role": "Graduate Student"
     },
     {
+      "at": "2026-09-09T04:38:47.736501+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.981382+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "name": "Rain Younger"
+    },
+    {
+      "at": "2026-09-09T03:57:13.826895+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T13:38:37.996879+00:00",
+      "email": "sakhava1@uvm.edu",
+      "id": "Shahriar",
+      "name": "Shahriar"
+    },
+    {
       "at": "2026-09-08T21:33:34.651413+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.189034+00:00",
+      "edited_at": "2026-09-09T13:38:38.011188+00:00",
       "id": "snapshot import",
       "name": "snapshot import"
     },
     {
-      "at": "2026-09-08T21:24:06.731205+00:00",
+      "at": "2026-09-09T06:33:36.346009+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.204515+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Gradstudent"
-    },
-    {
-      "at": "2026-09-09T01:47:23.047537+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T01:51:50.219771+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain",
-      "name": "Rain"
+      "edited_at": "2026-09-09T13:38:38.025250+00:00",
+      "id": "unknown",
+      "name": "unknown"
     }
   ]
 }

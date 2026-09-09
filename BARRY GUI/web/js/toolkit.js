@@ -508,6 +508,16 @@ BARRY.views.toolkit = (function () {
          a second door into the same store, and implied a recording could
          have more than one set of a kind -- it cannot, so a second import
          merged into the first, added nothing and threw away the name. */
+      /* Not a novelty. It is the only view of the decisions as a set
+         rather than one at a time, which makes it the only place a
+         detector producing mostly obvious garbage would show up. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Hall of garbage',
+        title: 'The candidates nobody had to think about — rejected fast, '
+             + 'never flagged, never revisited. Useful for showing a new '
+             + 'curator what garbage looks like.',
+        onclick: showGarbageHall,
+      }),
       el('button', { class: 'btn', text: 'New curation set…',
                      onclick: newCurationSet }),
     ].filter(Boolean)));
@@ -680,6 +690,153 @@ BARRY.views.toolkit = (function () {
     loadPresence(true);
   }
 
+  /* ==================================================================
+     The hall of garbage
+     ==================================================================
+     The candidates nobody had to think about: rejected, decided in under a
+     couple of seconds, never flagged, never revisited. Which makes it a
+     teaching set -- the fastest way to explain what garbage looks like is
+     forty examples that nobody hesitated over -- and a sanity check on the
+     detector, since a detector producing this much obvious garbage is
+     saying something about its threshold.
+
+     The honest part is the caveat. Most of the decisions in this store were
+     backfilled with one shared timestamp, so their gaps are not durations
+     at all, and those are excluded and counted rather than quietly averaged
+     in. A hall of fame built on made-up numbers would be worse than none.
+     ================================================================== */
+  let hall = null;
+
+  async function showGarbageHall() {
+    showModal(el('div', { class: 'gh-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hall of garbage' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('div', { class: 'hint', text: 'Reading every decision…' }),
+      ]),
+    ]));
+    try {
+      hall = await api('/api/curation/garbage-hall?limit=60');
+    } catch (e) {
+      hall = { failed: e.message };
+    }
+    drawHall();
+  }
+
+  function drawHall() {
+    if (!hall) return;
+    const rows = hall.hall || [];
+    const body = el('div', { class: 'mb' });
+
+    if (hall.failed) {
+      body.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the decisions: ' + hall.failed }));
+    } else {
+      body.appendChild(el('p', { class: 'sub',
+        text: 'Rejected in under ' + hall.quick_s + ' seconds, never '
+            + 'flagged, never revisited. Sorted by how fast the call was.' }));
+
+      /* Said before the list, not after it. If most of the store cannot be
+         timed then the list is a sample of a corner of it, and somebody
+         reading "5 qualify" out of nine thousand decisions deserves to know
+         why before they conclude the detector is fine. */
+      if (hall.unusable) {
+        body.appendChild(el('div', { class: 'ecx-warn' }, [
+          el('strong', { text: hall.unusable.toLocaleString()
+                             + ' decisions could not be timed. ' }),
+          el('span', { text: hall.why || 'They share one timestamp, so the '
+            + 'gap between them is not how long anybody took. They are left '
+            + 'out rather than guessed at.' }),
+        ]));
+      }
+
+      if (!rows.length) {
+        body.appendChild(el('div', { class: 'hint',
+          text: 'Nothing qualifies yet. It fills up as people curate — '
+              + 'every fast rejection lands here.' }));
+      } else {
+        const list = el('div', { class: 'gh-list' });
+        rows.forEach((r, i) => {
+          list.appendChild(el('div', { class: 'gh-row' }, [
+            el('span', { class: 'gh-rank', text: '#' + (i + 1) }),
+            el('span', { class: 'gh-took', text: r.took_s + 's' }),
+            el('span', { class: 'gh-sess', text: r.session || r.gid }),
+            el('span', { class: 'gh-at', text: fmtClock(r.start) }),
+            el('span', { class: 'gh-by', text: r.by || '' }),
+            /* Straight to the candidate, because "show me" is the next
+               thought after "that was quick". */
+            el('button', {
+              class: 'linkish gh-go', text: 'look',
+              title: 'Open that recording at that moment',
+              onclick: () => { closeModal(); goToCandidate(r); },
+            }),
+          ]));
+        });
+        body.appendChild(list);
+        body.appendChild(el('div', { class: 'hint gh-foot',
+          text: rows.length >= hall.n
+            ? (hall.n === 1 ? 'One qualifies.'
+                            : 'All ' + hall.n + ' that qualify are shown.')
+            : hall.n + ' qualify altogether; the fastest ' + rows.length
+              + ' are shown.' }));
+      }
+    }
+
+    showModal(el('div', { class: 'gh-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hall of garbage' }),
+        el('span', { class: 'sub',
+          text: 'The candidates nobody had to think about' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+      body,
+    ]), { replace: true });
+  }
+
+  function fmtClock(sec) {
+    if (!isFinite(sec)) return '';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+  }
+
+  /* Open the recording it came from and put the window on it. Not curation
+     mode -- looking at an example is not deciding it, and entering curation
+     would take the set off whoever has it and reset their pass. */
+  async function goToCandidate(r) {
+    const sets = (cur && cur.sets) || [];
+    const st = sets.find((x) => x.gid === r.gid && x.kind === r.kind);
+    const label = (st && st.session && st.session.label) || r.session || r.gid;
+    let info = st;
+    if (!info) {
+      try {
+        info = await api('/api/curation/' + encodeURIComponent(r.gid) + '/'
+                         + encodeURIComponent(r.kind));
+      } catch (e) { info = null; }
+    }
+    const here = ((info && (info.session || {})).here) || [];
+    if (!here.length) {
+      toast('That recording is not reachable from this machine: ' + label,
+            'warn', 7000);
+      return;
+    }
+    setView('xplore');
+    const sess = await BARRY.views.xplore.open(here[0]);
+    if (!sess) return;
+    /* A second either side, the same window curation uses -- enough to tell
+       a deflection from an artifact on one wire, which is the whole point of
+       looking at it. */
+    BARRY.views.xplore.setWindow(0, Math.max(0, r.start - 0.5), 1.0);
+  }
+
   function curCard(st) {
     const pr = st.progress || {};
     const done = pr.left === 0 && pr.total > 0;
@@ -704,6 +861,17 @@ BARRY.views.toolkit = (function () {
         onclick: () => window.open(
           '/api/curation/' + encodeURIComponent(st.gid) + '/'
           + encodeURIComponent(st.kind) + '/export', '_blank'),
+      }),
+      /* What the last sitting on it came to. Available whether or not the
+         set is open, because the question "how long did that take" arrives
+         after you have already left. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Receipt',
+        disabled: (pr.specified) ? null : 'disabled',
+        title: pr.specified
+          ? 'What the last sitting on this set came to, and how fast'
+          : 'Nothing has been decided yet',
+        onclick: () => BARRY.curate.receipt(st.gid, st.kind),
       }),
       el('button', {
         class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',

@@ -81,7 +81,11 @@ class People:
     # What may be said about a person. `name` is the key every other record
     # uses, so it is not in here -- renaming somebody would orphan their
     # decisions rather than move them.
-    FIELDS = ("email", "role", "initials", "orcid", "note")
+    # `aliases` is how a merge stays readable. A six-month-old caption
+    # crediting an email address should still be traceable to the person
+    # credited by name now, and the surviving entry is the only place
+    # that can be written down.
+    FIELDS = ("email", "role", "initials", "orcid", "note", "aliases")
 
     def add(self, name, email=None, note=None, **extra):
         """Put somebody on the roster, or edit what it says about them.
@@ -113,7 +117,10 @@ class People:
             given["note"] = note
         for k in self.FIELDS:
             if k in given and given[k] is not None:
-                row[k] = _clean(given[k])
+                # A list stays a list. _clean is for the text fields, and
+                # running it over aliases would turn them into one string.
+                row[k] = (list(given[k]) if isinstance(given[k], (list, tuple))
+                          else _clean(given[k]))
         row.setdefault("at", shards._now())
         row["edited_at"] = shards._now()
         row["by"] = (self.store.provenance() if self.store else {}).get("user")
@@ -166,10 +173,33 @@ class People:
         """
         seen = {}
 
+        # Alias -> the surviving name, from the `aliases` written on each
+        # roster entry.
+        #
+        # Resolved HERE rather than by rewriting the records, and that is
+        # the important part. `added.by` on a bank entry is declared
+        # shards.FIRST -- whoever recorded it first stays authoritative, on
+        # purpose, so that nobody editing a description can quietly change
+        # who added the events. The activity log is append-only for the same
+        # reason. Both of those are right, and both mean a name in a record
+        # is what the machine believed at the time.
+        #
+        # So the record keeps what it said and the roster does the folding.
+        # Which is also reversible: remove an alias and the two names come
+        # apart again, with nothing lost.
+        alias_of = {}
+        for row in ((self.book.read("people") or {}).get("added") or []):
+            keep = _clean(row.get("name") or row.get("id"))
+            for other in (row.get("aliases") or []):
+                other = _clean(other)
+                if other and keep:
+                    alias_of[other.lower()] = keep
+
         def note(name, where, n=1, email=None, machine=None):
             name = _clean(name)
             if not name:
                 return
+            name = alias_of.get(name.lower(), name)
             row = seen.setdefault(name, {
                 "name": name, "email": None, "machines": [],
                 "counts": {}, "total": 0, "is_person": _looks_like_a_person(name),
@@ -242,8 +272,18 @@ class People:
                  machine=_clean(platform.node()))
 
         rows = list(seen.values())
+        # Which spellings were folded into each surviving name. The map was
+        # built above and then discarded, so the rows said nothing about it
+        # -- which made the sync unable to share a merge, and made a roster
+        # where a name somebody remembers has quietly disappeared.
+        folded = {}
+        for other, keep in alias_of.items():
+            folded.setdefault(keep, []).append(other)
         for r in rows:
             r["me"] = bool(me and r["name"] == me)
+            got = sorted(folded.get(r["name"]) or [])
+            if got:
+                r["aliases"] = got
         rows.sort(key=lambda r: (not r["me"], not r["is_person"],
                                  -r["total"], r["name"].lower()))
         return {

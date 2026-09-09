@@ -97,14 +97,20 @@ const PROBE = 'Harness Probe Person';
   const worked = people.filter((x) => held(x) > 0)
     .sort((a, b) => held(b) - held(a))[0];
   p('  trying: ' + worked.name + ' (' + held(worked) + ' records)');
-  const before = (await roster()).people.length;
+  /* Compared as a set, not as a count. A count is a race: another harness
+     leaving a `curate@harness` behind moves it for reasons that have
+     nothing to do with this forget, so this passed alone and failed in a
+     suite. What is being claimed is that the forget removed nobody. */
+  const namesOf = (r) => new Set((r.people || []).map((x) => x.name));
+  const beforeSet = namesOf(await roster());
   await post('/api/people/forget', { name: worked.name });
   const after = await roster();
-  ck('they are still on the roster',
-     (after.people || []).some((x) => x.name === worked.name),
+  const afterSet = namesOf(after);
+  const lost = Array.from(beforeSet).filter((n) => !afterSet.has(n));
+  ck('they are still on the roster', afterSet.has(worked.name),
      'a name carried by the data was removed');
-  ck('and the roster is the same size', after.people.length === before,
-     after.people.length + ' vs ' + before);
+  ck('and the forget removed nobody', lost.length === 0,
+     'lost: ' + lost.join(', '));
 
   hd('3. A hand-added name goes');
   await post('/api/people/add', { name: PROBE, role: 'harness' });

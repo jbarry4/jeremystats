@@ -823,6 +823,38 @@ class Curation:
         return out
 
     @shards.atomic
+    def set_order(self, gid, kind, how, scores=None):
+        """Remember the order somebody wants to work in.
+
+        Stored, never applied. Re-ordering `events` themselves would change
+        what `index` means in every other window, in every saved view and in
+        the aid window -- and which order you want to work in is a
+        preference about a sitting, not a property of the data.
+
+        `scores` is the slot a model would fill: event id -> a number, where
+        lower means "probably obvious". Nothing here produces one, and
+        nothing here decides anything with one either; the most it can do is
+        change what you are shown first.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No such curation set.")
+        rec["order"] = how
+        if scores:
+            keep = {}
+            for ev in (rec.get("events") or []):
+                eid = ev.get("id")
+                if eid in scores:
+                    try:
+                        keep[eid] = float(scores[eid])
+                    except (TypeError, ValueError):
+                        continue
+            rec["scores"] = keep
+            rec["scored_at"] = _now()
+        self._write(rec)
+        return rec
+
+    @shards.atomic
     def dedupe(self, gid=None, kind=None, dry_run=False):
         """Collapse candidates that are two records of one time.
 

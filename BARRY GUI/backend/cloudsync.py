@@ -552,6 +552,12 @@ class Sync:
                 "email": row.get("email"),
                 "is_person": bool(row.get("is_person")),
                 "seen": row.get("counts") or {},
+                # The other spellings that are this same person. Local-only
+                # until now, which meant a merge held until the next pull and
+                # then came apart: the shared roster still had the old name,
+                # so `_apply_people` wrote it back every cycle and the merge
+                # looked like it had failed.
+                "aliases": sorted(row.get("aliases") or []) or None,
                 "last_seen": cloud.now(),
                 "updated_at": cloud.now(),
             })
@@ -790,7 +796,7 @@ class Sync:
     # ==================================================================
     # Pull
     # ==================================================================
-    def pull(self, since=None, on_progress=None):
+    def pull(self, since=None, on_progress=None, on_table=None):
         """Bring down what other machines have changed, and apply it locally.
 
         Runs, activity and the raw error log stay push-only, and for a
@@ -815,6 +821,12 @@ class Sync:
         applied, newest = {}, since
 
         def fetch(table):
+            # Said before the request, not after it: the point of announcing
+            # a table is that it is the one currently taking the time. The
+            # pull is the slow half of a sync -- fifteen round trips -- and
+            # it used to report the single word "pulling" for all of them.
+            if on_table:
+                on_table(table)
             rows = self.cloud.select_all(table, q)
             for r in rows:
                 got = r.get("updated_at")
@@ -900,17 +912,49 @@ class Sync:
             # The roster compiles counts from local data as well, which is
             # more work than this needs -- but it is the only reader, and a
             # wrong skip would be worse than a slow one.
-            for p in (self.people.roster() or []):
-                have[(p.get("name") or "").strip().lower()] = p
+            #
+            # `roster()` returns a DICT of {people, not_people, me}, and
+            # iterating it walks the keys -- so this loop used to bind `row`
+            # to the string "people", raise AttributeError on `.get`, hit the
+            # except below, and leave `have` empty. Which meant the skip
+            # never skipped, and the write loop this guard exists to stop was
+            # still running: 11 of 11 unchanged rows written on every cycle.
+            got = self.people.roster() or {}
+            listed = ((got.get("people") or [])
+                      + (got.get("not_people") or [])
+                      if isinstance(got, dict) else list(got))
+            for row in listed:
+                have[(row.get("name") or "").strip().lower()] = row
         except Exception:                            # noqa: BLE001
             have = {}
 
+        # Every spelling this machine has been told is somebody else. Built
+        # once: a row per cloud person and a lookup per row would re-read the
+        # roster file for each of them.
+        aliased = {}
+        for row in have.values():
+            for other in (row.get("aliases") or []):
+                aliased[str(other).strip().lower()] = row.get("name")
+
+        self.merge_reverts = 0
         for r in (rows or []):
             name = (r.get("name") or "").strip()
             if not name:
                 continue
+            # The old spelling of somebody who has been merged. Writing it
+            # would re-create the entry the merge removed, which is exactly
+            # what used to happen on every cycle.
+            keep = aliased.get(name.lower())
+            if keep and keep.strip().lower() != name.lower():
+                self.merge_reverts += 1
+                continue
             want = {"email": r.get("email"), "role": r.get("role"),
                     "initials": r.get("initials"), "orcid": r.get("orcid")}
+            # Aliases are unioned, not overwritten. Two people merging
+            # different spellings on different machines are both right, and
+            # last-write-wins would have one of them silently undo the
+            # other.
+            theirs = [a for a in (r.get("aliases") or []) if a]
             mine = have.get(name.lower())
             if mine is not None:
                 # Only the fields this row actually carries, and only when
@@ -923,14 +967,42 @@ class Sync:
                             != str(v or "").strip()):
                         same = False
                         break
+                # An alias this machine has not got is news even when every
+                # other field matches.
+                if same and theirs:
+                    here = {str(a).strip().lower()
+                            for a in (mine.get("aliases") or [])}
+                    if any(str(a).strip().lower() not in here
+                           for a in theirs):
+                        same = False
                 if same:
                     continue
+            merged = None
+            if theirs:
+                have_now = {str(a).strip().lower(): str(a).strip()
+                            for a in ((mine or {}).get("aliases") or [])}
+                for a in theirs:
+                    have_now.setdefault(str(a).strip().lower(),
+                                        str(a).strip())
+                merged = sorted(have_now.values())
             try:
                 self.people.add(name, r.get("email"), None,
                                 role=r.get("role"),
                                 initials=r.get("initials"),
-                                orcid=r.get("orcid"))
+                                orcid=r.get("orcid"),
+                                **({"aliases": merged} if merged else {}))
                 n += 1
+            except TypeError:
+                # A People without the `aliases` field. The rest of the row
+                # is still worth applying.
+                try:
+                    self.people.add(name, r.get("email"), None,
+                                    role=r.get("role"),
+                                    initials=r.get("initials"),
+                                    orcid=r.get("orcid"))
+                    n += 1
+                except Exception:                    # noqa: BLE001
+                    continue
             except Exception:                        # noqa: BLE001
                 continue
         return n

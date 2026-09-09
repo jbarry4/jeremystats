@@ -965,6 +965,31 @@ function cloudNote() {
     }
     const last = c.last || {};
     const when = last.at ? new Date(last.at).toLocaleTimeString() : 'not yet';
+    /* A schema a migration behind. Worth saying loudly and worth saying
+       here: a column the database has not got is dropped on the way up so
+       that the rest of the sync survives, and the cost of that kindness is
+       that the field silently never travels. */
+    api('/api/sync/pending-migrations').then((m) => {
+      if (!m || !m.run || !m.run.length) return;
+      const cols = Object.keys(m.pending || {}).map(
+        (t) => t + ': ' + m.pending[t].join(', '));
+      box.insertBefore(el('div', { class: 'cloud-err mig-pending' }, [
+        el('strong', { text: 'The shared database is behind this copy of '
+                           + 'BARRY. ' }),
+        el('span', { text: 'Run ' }),
+        el('code', { text: m.run.join(' and ') }),
+        el('span', { text: ' from supabase/ in the SQL editor. Until then '
+                         + 'these fields are dropped on the way up and stay '
+                         + 'on this machine only — everything else syncs '
+                         + 'normally.' }),
+        el('div', { class: 'mig-cols', text: cols.join('   ·   ') }),
+        m.unaccounted && m.unaccounted.length
+          ? el('div', { class: 'mig-cols',
+              text: 'No migration accounts for: '
+                  + m.unaccounted.join(', ') + '. That is worth looking at.' })
+          : null,
+      ].filter(Boolean)), box.firstChild);
+    }).catch(() => { /* an older server has no such route */ });
     box.appendChild(el('div', { class: 'cloud-line' }, [
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
@@ -978,7 +1003,31 @@ function cloudNote() {
         disabled: last.running ? 'disabled' : null,
         onclick: async (e) => {
           e.target.disabled = true;
-          e.target.textContent = 'Syncing…';
+          /* Say where it has got to, rather than nothing for four seconds.
+
+             A full sync is three or four seconds and the registry read
+             alone is five, and the button used to sit there saying
+             "Syncing…" for all of it -- which is indistinguishable from
+             hung. The server has always known which table it was on; the
+             button simply never asked. */
+          const label = e.target;
+          let stop = false;
+          const watch = async () => {
+            while (!stop) {
+              try {
+                const p = await api('/api/sync/progress');
+                const st = (p && p.step) || {};
+                if (st.running) {
+                  const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+                  label.textContent = (st.phase || 'syncing')
+                    + (st.table ? ' ' + st.table : '')
+                    + (pct != null ? '  ' + pct + '%' : '');
+                }
+              } catch (err) { /* the sync itself is what matters */ }
+              await new Promise((r) => setTimeout(r, 350));
+            }
+          };
+          watch();
           try {
             const r = await apiPost('/api/cloud/sync', {});
             const l = r.last || {};
@@ -987,6 +1036,7 @@ function cloudNote() {
                   + (l.downloaded ? ', downloaded ' + l.downloaded + ' file(s)'
                      : '') + '.', l.ok === false ? 'err' : 'ok', 7000);
           } catch (err) { toast(err.message, 'err', 8000); }
+          stop = true;
           showSync();
         },
       }),

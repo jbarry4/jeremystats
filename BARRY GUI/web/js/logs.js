@@ -267,10 +267,139 @@ BARRY.views.history = (function () {
     return '';
   }
 
+  /* ==================================================================
+     What changed since you last looked
+     ==================================================================
+     The activity log could always answer this and nothing asked it. The
+     mark is per machine and only moves when somebody presses the button --
+     a digest that clears itself on render cannot be read twice, and the
+     first read is usually the one where you get interrupted.
+     ================================================================== */
+  let digest = null;
+  let digestOpen = true;
+
+  async function loadDigest() {
+    try {
+      digest = await api('/api/digest');
+    } catch (e) {
+      digest = { failed: e.message };
+    }
+    renderList();
+  }
+
+  function digestCard() {
+    if (!digest) { loadDigest(); return null; }
+    if (digest.failed || digest.configured === false) return null;
+    /* Nothing to say is worth saying once, quietly, rather than with an
+       empty panel that looks like a failure to load. */
+    if (!digest.n && !digest.errors) {
+      return el('div', { class: 'digest quiet' }, [
+        el('span', { text: 'Nobody else has done anything since '
+                         + when(digest.since) + '.' }),
+      ]);
+    }
+    const box = el('div', { class: 'digest' + (digestOpen ? '' : ' shut') });
+    box.appendChild(el('div', { class: 'digest-head' }, [
+      el('strong', { text: 'Since you last looked' }),
+      el('span', { class: 'digest-when', text: when(digest.since) }),
+      el('div', { style: 'flex:1' }),
+      el('button', {
+        class: 'linkish', text: digestOpen ? 'hide' : 'show',
+        onclick: () => { digestOpen = !digestOpen; renderList(); },
+      }),
+      /* Marking it read is deliberate and separate. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Mark as seen',
+        title: 'Moves the mark to now. Nothing else changes.',
+        onclick: async () => {
+          try {
+            await apiPost('/api/digest/seen', {});
+            digest = null;
+            loadDigest();
+            toast('Caught up.', 'ok');
+          } catch (e) { toast(e.message, 'err'); }
+        },
+      }),
+    ]));
+    if (!digestOpen) return box;
+
+    const body = el('div', { class: 'digest-body' });
+    body.appendChild(el('div', { class: 'digest-line' }, [
+      el('strong', { text: Number(digest.n).toLocaleString() }),
+      el('span', { text: ' action' + (digest.n === 1 ? '' : 's') + ' by ' }),
+      el('span', { text: (digest.by_person || [])
+        .map((x) => x.who + ' (' + x.n.toLocaleString() + ')').join(', ')
+        || 'nobody' }),
+      digest.errors
+        ? el('span', { class: 'digest-err',
+                       text: '  ·  ' + digest.errors + ' error'
+                           + (digest.errors === 1 ? '' : 's') })
+        : null,
+    ].filter(Boolean)));
+    /* The headline is a real count; the breakdown is computed from as much
+       of it as one page holds. When those differ the card has to say so --
+       "2,018 actions by Rain (999)" is two numbers that plainly do not add
+       up, and a reader can only conclude that one of them is wrong. */
+    if (digest.partial) {
+      body.appendChild(el('div', { class: 'digest-partial',
+        text: 'The names above account for '
+            + Number(digest.counted).toLocaleString() + ' of those — the '
+            + 'most recent page. The total is exact; the split is what fits '
+            + 'in one read.' }));
+    }
+
+    if ((digest.by_kind || []).length) {
+      body.appendChild(el('div', { class: 'digest-kinds' },
+        digest.by_kind.slice(0, 8).map((k) => el('span', {
+          class: 'flagchip sm', text: k.kind + ' ' + k.n,
+        }))));
+    }
+    /* Which recordings, because that is the part somebody acts on -- "Rain
+       has been in m5 s7" is a reason to go and look. */
+    if ((digest.sessions || []).length) {
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Recordings touched' }));
+      for (const s of digest.sessions) {
+        body.appendChild(el('div', { class: 'digest-sess' }, [
+          el('span', { class: 'ds-key', text: s.key }),
+          el('span', { class: 'ds-who', text: s.who.join(', ') }),
+          el('span', { class: 'ds-n', text: s.n + ' action(s)' }),
+        ]));
+      }
+    }
+    box.appendChild(body);
+    return box;
+  }
+
+  function when(iso) {
+    const t = Date.parse(iso);
+    if (!isFinite(t)) return String(iso || '');
+    const secs = (Date.now() - t) / 1000;
+    if (secs < 90) return 'a moment ago';
+    if (secs < 5400) return Math.round(secs / 60) + ' minutes ago';
+    if (secs < 172800) return Math.round(secs / 3600) + ' hours ago';
+    return Math.round(secs / 86400) + ' days ago';
+  }
+
   function renderList() {
     renderTimeline();
     const host = $('#histList');
     host.innerHTML = '';
+
+    /* On arrival, above everything. "What has everybody else been doing"
+       is the question somebody opens this view with, and it used to take
+       reading four hundred rows to answer.
+
+       Its own host, outside the list: it is a summary of the view, and it
+       has to survive the list being re-rendered by a filter keystroke
+       without being rebuilt each time. */
+    const dgHost = $('#histDigest');
+    if (dgHost) {
+      const dg = digestCard();
+      dgHost.innerHTML = '';
+      if (dg) dgHost.appendChild(dg);
+      dgHost.hidden = !dg;
+    }
 
     if (mode === 'activity') {
       host.appendChild(whoBar());
@@ -1107,6 +1236,115 @@ BARRY.views.errors = (function () {
      one resolved clears every past repeat and any future one that matches.
      ====================================================================== */
   /* ==================================================================
+     Which device
+     ==================================================================
+     Shared by Errors and the Debug trace, because "the rig" is one thought
+     and having to pick it twice is two.
+     ================================================================== */
+  let devPick = '';            // '' = all of them
+  let devFeed = null;          // the chosen machine's feed, when Debug wants it
+  let devFeedFor = null;
+
+  function deviceBar(kind) {
+    const known = (devices && devices.devices) || [];
+    /* Every machine the errors mention, plus every machine that syncs. A
+       machine can have errors on record and have stopped syncing, and it
+       would drop off a list built only from the device table. */
+    const seen = new Set(known.map((d) => d.hostname).filter(Boolean));
+    for (const g of groups) {
+      for (const m of (g.machines || [])) seen.add(m);
+    }
+    const names = Array.from(seen).sort();
+    if (!devices) loadDevices();
+
+    const online = (name) => {
+      const d = known.find((x) => x.hostname === name);
+      return d ? d.online : null;
+    };
+    return el('div', { class: 'res-toolbar dev-bar' }, [
+      el('span', { class: 'dev-bar-label', text: 'Device' }),
+      el('span', { class: 'ctl-seg' }, [
+        el('button', {
+          class: 'mini' + (devPick ? '' : ' on'),
+          text: 'All', title: 'Every machine',
+          onclick: () => { devPick = ''; render(); },
+        }),
+      ].concat(names.map((name) => el('button', {
+        class: 'mini' + (devPick === name ? ' on' : ''),
+        title: name + (online(name) === null ? ''
+                       : online(name) ? ' — syncing now'
+                                      : ' — nothing pushed for over 5 minutes'),
+        onclick: () => { devPick = name; render(); },
+      }, [
+        el('span', { class: 'dev-dot'
+                            + (online(name) ? ' on' : '')
+                            + (online(name) === null ? ' unknown' : '') }),
+        el('span', { text: name }),
+      ])))),
+      el('div', { style: 'flex:1' }),
+      kind === 'debug' && devPick
+        ? el('span', { class: 'hint',
+            text: 'Its actions and errors, from the shared log. The request '
+                + 'trail is per-machine and stays where it was made.' })
+        : null,
+    ].filter(Boolean));
+  }
+
+  async function loadDevFeed(machine) {
+    devFeedFor = machine;
+    devFeed = null;
+    render();
+    try {
+      devFeed = await api('/api/devices/feed?limit=140&machine='
+                          + encodeURIComponent(machine));
+    } catch (e) {
+      devFeed = { failed: e.message };
+    }
+    render();
+  }
+
+  /* One machine's recent life, newest first. Errors and actions in one
+     column rather than two, because the useful shape is "these four things
+     happened and then it broke". */
+  function devFeedPanel() {
+    if (devFeedFor !== devPick) { loadDevFeed(devPick); }
+    const box = el('div', { class: 'dev-feed' });
+    if (!devFeed) {
+      box.appendChild(el('div', { class: 'hint', text: 'Reading…' }));
+      return box;
+    }
+    if (devFeed.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read that machine: ' + devFeed.failed }));
+      return box;
+    }
+    const rows = devFeed.feed || [];
+    if (!rows.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Nothing from ' + devPick + ' in the shared log yet. It may '
+            + 'not have synced since it was last used.' }));
+      return box;
+    }
+    for (const r of rows) {
+      box.appendChild(el('div', {
+        class: 'dev-feed-row' + (r.kind === 'error' ? ' err' : ''),
+        title: typeof r.detail === 'object'
+          ? JSON.stringify(r.detail, null, 1) : String(r.detail || ''),
+      }, [
+        el('span', { class: 'dfr-at', text: String(r.at || '').slice(5, 19)
+                                            .replace('T', ' ') }),
+        el('span', { class: 'dfr-kind',
+                     text: r.kind === 'error' ? '!' : '·' }),
+        el('span', { class: 'dfr-what', text: r.what || '' }),
+        el('span', { class: 'dfr-detail',
+          text: typeof r.detail === 'object'
+            ? shortDetail(r.detail) : String(r.detail || '').slice(0, 90) }),
+      ]));
+    }
+    return box;
+  }
+
+  /* ==================================================================
      What was happening when it broke
      ================================================================== */
   async function toggleContext(e) {
@@ -1344,6 +1582,18 @@ BARRY.views.errors = (function () {
     const client = BARRY.debug.requests();
     const con = BARRY.debug.console();
 
+    host.appendChild(deviceBar('debug'));
+    /* Another machine's feed instead of this one's request trail.
+
+       The trail is this process's own and is not collected from anywhere
+       else -- which is right: nobody debugs by reading somebody else's HTTP
+       log. What a remote machine publishes is its actions and its errors,
+       and that is what this shows. */
+    if (devPick && devPick !== ((devices || {}).machine)) {
+      host.appendChild(devFeedPanel());
+      return;
+    }
+
     /* Which machines are syncing, above this session's own trace.
 
        The trace itself is per-process and in memory -- it is what THIS
@@ -1478,7 +1728,11 @@ BARRY.views.errors = (function () {
   }
 
   function renderGroups(host) {
-    const list = groups.filter((g) => !(hideResolved && g.resolved));
+    host.appendChild(deviceBar('errors'));
+    const list = groups.filter((g) => !(hideResolved && g.resolved))
+      .filter((g) => !devPick
+                     || g.machine === devPick
+                     || (g.machines || []).indexOf(devPick) >= 0);
     if (!list.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
         el('svg', { viewBox: '0 0 24 24',
@@ -1491,15 +1745,19 @@ BARRY.views.errors = (function () {
     }
 
     for (const g of list) {
-      const open = openGroups.has(g.signature);
+      // Keyed on `key`, not `signature`: groups are per machine now, and
+      // two machines' rows share a signature. Opening one would have opened
+      // both.
+      const gkey = g.key || g.signature;
+      const open = openGroups.has(gkey);
       const card = el('div', {
         class: 'err-group' + (g.resolved ? ' resolved' : ''),
       });
       card.appendChild(el('div', {
         class: 'err-ghead',
         onclick: () => {
-          if (open) openGroups.delete(g.signature);
-          else openGroups.add(g.signature);
+          if (open) openGroups.delete(gkey);
+          else openGroups.add(gkey);
           render();
         },
       }, [
@@ -1594,8 +1852,13 @@ BARRY.views.errors = (function () {
       if (note === null) note = '';
     }
     try {
+      /* Scoped to the machine the group is for, when it is for one.
+         "Fixed on the rig" and "fixed" are different claims, and the old
+         call could only make the second -- so closing a fault you had
+         only fixed in one place hid it everywhere. */
       await apiPost('/api/errors/resolve',
-                    { signature: g.signature, resolved: on, note });
+                    { signature: g.signature, machine: g.machine || null,
+                      resolved: on, note });
       await load();
       toast(on ? 'Marked resolved' : 'Reopened', 'ok');
     } catch (e) { toast(e.message, 'err'); }

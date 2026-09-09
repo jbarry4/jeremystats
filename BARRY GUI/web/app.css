@@ -5767,7 +5767,20 @@ body.aid-window .xf-tabs { display: none !important; }
   padding: 0 8px 0 2px; white-space: nowrap;
 }
 /* Armed: something is selected, so these label rather than pick up a brush. */
-.strata-brush.arm { border-color: var(--accent-line, rgba(75, 199, 240, .4)); }
+/* Armed: something is selected, so these label it rather than pick up a
+   brush.
+
+   NOT via `border-color`. The layer's own colour lives in
+   `border-left: 3px solid var(--cat)`, and the shorthand overrides the
+   left side along with the other three -- so arming every button wiped the
+   colour off all fifteen of them, which is most of how they are told apart.
+   A ring outside the border says the same thing and touches nothing. */
+.strata-brush.arm {
+  box-shadow: 0 0 0 1px var(--accent-line, rgba(75, 199, 240, .45));
+}
+.strata-brush.arm:hover {
+  box-shadow: 0 0 0 1px var(--accent);
+}
 .strata-brush.clearone { opacity: .8; }
 .strata-brush.clearone:disabled { opacity: .35; cursor: default; }
 
@@ -5902,4 +5915,170 @@ body.aid-window .xf-tabs { display: none !important; }
 .hist-what {
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ==========================================================================
+   Which device
+   ==========================================================================
+   Errors group per machine now, and the Debug view can show a remote
+   machine's feed instead of this one's request trail. One selector, shared,
+   because "the rig" is one thought.
+   ========================================================================== */
+.dev-bar { margin-bottom: 6px; }
+.dev-bar-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); margin-right: 2px;
+}
+.dev-bar .mini { display: flex; align-items: center; gap: 5px; }
+/* Unknown is not offline. A machine with errors on record but no row in the
+   device table has never synced from here, which is a third state. */
+.dev-dot.unknown { background: var(--line); }
+
+.dev-feed { display: flex; flex-direction: column; gap: 1px; }
+.dev-feed-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 5px; border-radius: 3px;
+}
+.dev-feed-row:hover { background: var(--bg-3); }
+.dev-feed-row.err { background: var(--err-soft); color: var(--err); }
+.dfr-at { color: var(--text-3); flex: none; }
+.dev-feed-row.err .dfr-at { color: var(--err); }
+.dfr-kind { color: var(--text-3); width: 8px; flex: none; }
+.dev-feed-row.err .dfr-kind { color: var(--err); font-weight: 700; }
+.dfr-what { color: var(--text); min-width: 150px; }
+.dev-feed-row.err .dfr-what { color: var(--err); }
+.dfr-detail {
+  color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   What changed since you last looked
+   -------------------------------------------------------------------------- */
+.digest {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-2);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.digest.quiet {
+  border-left-color: var(--line);
+  padding: 8px 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  background: none;
+}
+.digest-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.digest.shut .digest-head { border-bottom: none; }
+.digest-when { color: var(--text-3); font-size: 12px; }
+.digest-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.digest-line { font-size: 13px; }
+.digest-err { color: var(--err); font-weight: 600; }
+.digest-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.digest-sess {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 10px; align-items: baseline;
+  font-size: 12px; padding: 2px 0;
+  border-top: 1px dotted var(--line);
+}
+.digest-sess .ds-key { font-family: var(--mono); }
+.digest-sess .ds-who { color: var(--accent); }
+.digest-sess .ds-n { color: var(--text-3); }
+
+/* --------------------------------------------------------------------------
+   Session receipt
+
+   A card, deliberately -- the headline is meant to be readable from across
+   a room and screenshottable without cropping.
+   -------------------------------------------------------------------------- */
+.rcpt { display: flex; flex-direction: column; gap: 12px; min-width: 340px; }
+.rcpt-big {
+  font-size: 30px; font-weight: 700; line-height: 1.15;
+  letter-spacing: -0.4px;
+}
+.rcpt-sub { color: var(--text-3); font-size: 12px; }
+.rcpt-rate {
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--bg-3); border-left: 3px solid var(--accent);
+  font-size: 15px;
+}
+.rcpt-rate strong { font-size: 20px; }
+.rcpt-rate-note { color: var(--text-3); font-size: 12px; }
+.rcpt-rate.quiet {
+  border-left-color: var(--line);
+  color: var(--text-3); font-size: 12px;
+}
+.rcpt-labs { display: flex; flex-direction: column; gap: 3px; }
+.rcpt-lab {
+  display: grid; grid-template-columns: 10px 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 3px 0; border-top: 1px dotted var(--line);
+}
+.rcpt-lab i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+.rcpt-lab .rl-n { font-family: var(--mono); }
+.rcpt-foot { color: var(--text-3); font-size: 12px; }
+
+/* --------------------------------------------------------------------------
+   Hall of garbage
+   -------------------------------------------------------------------------- */
+.gh-wrap { min-width: 560px; }
+.gh-list { display: flex; flex-direction: column; gap: 1px; margin-top: 8px; }
+.gh-row {
+  display: grid;
+  /* The recording name takes what it needs and the rest sit next to it,
+     rather than the name taking a whole free column and leaving the last
+     two floating out at the far edge with a hand's width of nothing in
+     between. */
+  grid-template-columns: 34px 52px auto 62px minmax(80px, max-content) 40px 1fr;
+  gap: 10px; align-items: baseline;
+  padding: 4px 6px; font-size: 12px;
+  border-radius: 4px;
+}
+.gh-row:nth-child(odd) { background: var(--bg-2); }
+.gh-rank { color: var(--text-3); font-family: var(--mono); }
+.gh-took { font-family: var(--mono); font-weight: 700; color: var(--err); }
+.gh-at { font-family: var(--mono); color: var(--text-3); }
+.gh-by { color: var(--accent); overflow: hidden; text-overflow: clip; }
+.gh-foot { margin-top: 8px; }
+.rcpt-bulk {
+  font-size: 12px; color: var(--text-2);
+  padding: 7px 10px; border-radius: 6px;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+
+/* The digest's host: full width, above the split, and taking no room at all
+   when there is nothing to say. */
+.hist-digest-host { padding-top: 8px; padding-bottom: 0; }
+.hist-digest-host:empty { display: none; }
+.hist-digest-host .digest { margin-bottom: 0; }
+.hist-digest-host .digest-sess { grid-template-columns: 320px auto 1fr; }
+.hist-digest-host .digest-sess .ds-n { text-align: right; }
+
+/* A schema a migration behind. Warn rather than error: the sync is working,
+   one field is not travelling. */
+.mig-pending {
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+.mig-pending code {
+  background: var(--bg-3); padding: 1px 5px; border-radius: 3px;
+  font-family: var(--mono);
+}
+.mig-cols {
+  margin-top: 6px; font-family: var(--mono); font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.digest-partial {
+  font-size: 11.5px; color: var(--text-3);
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
 }

@@ -1,16 +1,20 @@
 {
   "_at": {
-    "assignee": "2026-09-08T18:01:48.748007+00:00",
+    "assignee": "2026-09-09T02:02:26.398831+00:00",
+    "closed_at": "2026-09-09T07:08:56.888078+00:00",
     "created": "2026-09-03T21:07:03.564794+00:00",
     "gid": "2026-09-03T21:07:03.564794+00:00",
     "imports": "2026-09-03T21:07:03.564794+00:00",
     "kind": "2026-09-03T21:07:03.564794+00:00",
     "labels": "2026-09-03T21:07:03.564794+00:00",
     "name": "2026-09-03T21:07:03.564794+00:00",
+    "open": "2026-09-09T07:08:56.888078+00:00",
+    "opened_at": "2026-09-09T07:10:11.243065+00:00",
+    "opened_by": "2026-09-09T02:52:04.674841+00:00",
     "schema": "2026-09-03T21:07:03.564794+00:00",
     "session_label": "2026-09-03T21:07:03.564794+00:00",
     "source": "2026-09-03T21:07:03.564794+00:00",
-    "updated": "2026-09-08T18:01:48.748007+00:00"
+    "updated": "2026-09-09T07:10:11.243065+00:00"
   },
   "_keys": {
     "events": {
@@ -56,7 +60,7 @@
       ],
       "e03f7d48161": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T07:10:05.995517+00:00"
       ],
       "e04a53cd7df": [
         "set",
@@ -88,7 +92,7 @@
       ],
       "e09e46c5e8c": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:24:40.222283+00:00"
       ],
       "e0a9823dfda": [
         "set",
@@ -144,7 +148,7 @@
       ],
       "e0f8d83506f": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T03:29:37.163650+00:00"
       ],
       "e0f9aabdf17": [
         "set",
@@ -340,7 +344,7 @@
       ],
       "e2a36a121fc": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T07:09:00.748087+00:00"
       ],
       "e2af15f5d8a": [
         "set",
@@ -348,7 +352,7 @@
       ],
       "e2b2ff7731b": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "e2bec2840de": [
         "set",
@@ -464,7 +468,7 @@
       ],
       "e39271432d2": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "e3940cbae97": [
         "set",
@@ -668,7 +672,7 @@
       ],
       "e535cbfbe76": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "e543e575677": [
         "set",
@@ -676,7 +680,7 @@
       ],
       "e55514d2e56": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:32:57.288702+00:00"
       ],
       "e557c45b6c6": [
         "set",
@@ -796,7 +800,7 @@
       ],
       "e64106b896e": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T03:30:30.706002+00:00"
       ],
       "e6418885e93": [
         "set",
@@ -816,7 +820,7 @@
       ],
       "e661894d9d9": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T03:30:30.476548+00:00"
       ],
       "e667a82233e": [
         "set",
@@ -964,7 +968,7 @@
       ],
       "e76c0db0956": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T05:54:38.558311+00:00"
       ],
       "e76f67f5a35": [
         "set",
@@ -1072,7 +1076,7 @@
       ],
       "e81f6381547": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:24:40.222283+00:00"
       ],
       "e822889abac": [
         "set",
@@ -1116,11 +1120,11 @@
       ],
       "e879c84f0ef": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "e87f360cd37": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T07:10:05.698373+00:00"
       ],
       "e887796931a": [
         "set",
@@ -1236,7 +1240,7 @@
       ],
       "e96df5044f2": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:32:57.410437+00:00"
       ],
       "e971382d2b3": [
         "set",
@@ -1256,11 +1260,11 @@
       ],
       "e978d4aa203": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:54:39.995234+00:00"
       ],
       "e98483098f4": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "e9a2ad40992": [
         "set",
@@ -1332,7 +1336,7 @@
       ],
       "ea5b000e7c4": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T07:10:05.558110+00:00"
       ],
       "ea614f41950": [
         "set",
@@ -1440,7 +1444,7 @@
       ],
       "eaed3384d0c": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "eaedec5f2ae": [
         "set",
@@ -1492,11 +1496,11 @@
       ],
       "eb634acd5c1": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:53:49.768985+00:00"
       ],
       "eb770d7347b": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:02:26.398831+00:00"
       ],
       "eb77201a68b": [
         "set",
@@ -1568,7 +1572,7 @@
       ],
       "ebe71f825a8": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:24:40.222283+00:00"
       ],
       "ebe85c6ca38": [
         "set",
@@ -1584,7 +1588,7 @@
       ],
       "ec1c182b136": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T07:10:05.414693+00:00"
       ],
       "ec1ffe3aac7": [
         "set",
@@ -1596,7 +1600,7 @@
       ],
       "ec26403c4ca": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:31:51.791325+00:00"
       ],
       "ec2c8ee927b": [
         "set",
@@ -1644,7 +1648,7 @@
       ],
       "ec7bcd1c06a": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T05:54:38.365485+00:00"
       ],
       "ec7f67b8e62": [
         "set",
@@ -1764,7 +1768,7 @@
       ],
       "ed7ed94bd14": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T06:24:40.222283+00:00"
       ],
       "ed846018282": [
         "set",
@@ -1900,7 +1904,7 @@
       ],
       "ee744b7a5a0": [
         "set",
-        "2026-09-08T17:44:57.248496+00:00"
+        "2026-09-09T02:54:40.126325+00:00"
       ],
       "ee74a87774d": [
         "set",
@@ -2113,11 +2117,12 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:01:48.748007+00:00",
+    "at": "2026-09-09T07:10:11.243065+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "assignee": "theexaminedexistence@gmail.com",
+  "assignee": "Shahriar Tafti",
+  "closed_at": null,
   "created": {
     "at": "2026-09-03T17:07:03-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -2127,13 +2132,13 @@
   "events": [
     {
       "at": "2026-09-04T09:10:42-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "e2b2ff7731b",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T09:10:42-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2309,13 +2314,13 @@
     },
     {
       "at": "2026-09-04T09:24:10-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "eaed3384d0c",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T09:24:10-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2323,13 +2328,13 @@
     },
     {
       "at": "2026-09-04T09:11:52-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "e98483098f4",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T09:11:52-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2337,13 +2342,13 @@
     },
     {
       "at": "2026-09-04T09:13:09-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "e39271432d2",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T09:13:09-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2351,13 +2356,13 @@
     },
     {
       "at": "2026-09-04T09:13:49-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "e879c84f0ef",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T09:13:49-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2365,13 +2370,13 @@
     },
     {
       "at": "2026-09-04T09:24:10-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "eb770d7347b",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T09:24:10-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -2420,15 +2425,15 @@
       "start": 137.587
     },
     {
-      "at": "2026-09-04T09:24:10-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "at": "2026-09-08T22:54:39-0400",
+      "by": "Shahriar Tafti",
       "id": "e978d4aa203",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
-          "at": "2026-09-04T09:24:10-0400",
-          "by": "theexaminedexistence@gmail.com",
-          "label": "flag"
+          "at": "2026-09-08T22:54:39-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 137.725
@@ -2449,13 +2454,13 @@
     },
     {
       "at": "2026-09-04T12:09:30-0400",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "id": "e535cbfbe76",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T12:09:30-0400",
-          "by": "theexaminedexistence@gmail.com",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -2476,43 +2481,58 @@
       "start": 181.253
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-08T22:53:49-0400",
+      "by": "Shahriar Tafti",
       "id": "eb634acd5c1",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T22:53:49-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 181.386
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-08T22:54:40-0400",
+      "by": "Shahriar Tafti",
       "id": "ee744b7a5a0",
-      "label": "flag",
+      "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T22:54:40-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 184.921
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-08T23:30:30-0400",
+      "by": "Shahriar Tafti",
       "id": "e661894d9d9",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T23:30:30-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 205.573
@@ -2532,15 +2552,20 @@
       "start": 211.798
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-08T23:29:37-0400",
+      "by": "Shahriar Tafti",
       "id": "e0f8d83506f",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T23:29:37-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 215.562
@@ -2560,15 +2585,20 @@
       "start": 222.63
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-08T23:30:30-0400",
+      "by": "Shahriar Tafti",
       "id": "e64106b896e",
-      "label": "flag",
+      "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-08T23:30:30-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 223.469
@@ -2672,92 +2702,142 @@
       "start": 296.455
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T02:32:57-0400",
+      "by": "Shahriar Tafti",
       "id": "e55514d2e56",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:32:57-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 303.599
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T02:31:51-0400",
+      "by": "Shahriar Tafti",
       "id": "ec26403c4ca",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:31:51-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 305.748
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T02:32:57-0400",
+      "by": "Shahriar Tafti",
       "id": "e96df5044f2",
-      "label": "flag",
+      "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:32:57-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:32:57-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 306.867
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T03:10:05-0400",
+      "by": "Shahriar Tafti",
       "id": "ec1c182b136",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:32:57-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 306.975
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T03:09:00-0400",
+      "by": "Shahriar Tafti",
       "id": "e2a36a121fc",
-      "label": "flag",
+      "label": "spike",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T02:32:57-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:09:00-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 312.064
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T03:10:05-0400",
+      "by": "Shahriar Tafti",
       "id": "ea5b000e7c4",
-      "label": "flag",
+      "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 336.671
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T03:10:05-0400",
+      "by": "Shahriar Tafti",
       "id": "e87f360cd37",
       "label": "flag",
       "reviews": [
@@ -2765,13 +2845,23 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "Shahriar Tafti",
+          "label": "flag"
         }
       ],
       "start": 336.835
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T03:10:05-0400",
+      "by": "Shahriar Tafti",
       "id": "e03f7d48161",
       "label": "flag",
       "reviews": [
@@ -2779,13 +2869,23 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "unknown",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T03:10:05-0400",
+          "by": "Shahriar Tafti",
+          "label": "flag"
         }
       ],
       "start": 337.034
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": null,
+      "by": null,
       "id": "e81f6381547",
       "label": "flag",
       "reviews": [
@@ -2793,13 +2893,18 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:22:59-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 339.053
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": null,
+      "by": null,
       "id": "ed7ed94bd14",
       "label": "flag",
       "reviews": [
@@ -2807,6 +2912,11 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:54:38-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 348.157
@@ -2868,8 +2978,8 @@
       "start": 423.136
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": null,
+      "by": null,
       "id": "ebe71f825a8",
       "label": "flag",
       "reviews": [
@@ -2877,13 +2987,18 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:53:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
         }
       ],
       "start": 423.315
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": null,
+      "by": null,
       "id": "e09e46c5e8c",
       "label": "flag",
       "reviews": [
@@ -2891,6 +3006,11 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:54:38-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
         }
       ],
       "start": 429.358
@@ -3064,8 +3184,8 @@
       "start": 503.495
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T01:54:38-0400",
+      "by": "Shahriar Tafti",
       "id": "ec7bcd1c06a",
       "label": "flag",
       "reviews": [
@@ -3073,19 +3193,29 @@
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
           "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:54:38-0400",
+          "by": "Shahriar Tafti",
+          "label": "flag"
         }
       ],
       "start": 517.638
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
+      "at": "2026-09-09T01:54:38-0400",
+      "by": "Shahriar Tafti",
       "id": "e76c0db0956",
       "label": "flag",
       "reviews": [
         {
           "at": "2026-09-03T17:07:03-0400",
           "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-09T01:54:38-0400",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -9517,6 +9647,9 @@
     }
   ],
   "name": "m60s1jul10",
+  "open": true,
+  "opened_at": "2026-09-09T03:10:11-0400",
+  "opened_by": "Shahriar Tafti",
   "schema": 1,
   "session_label": "PTEN m60 s1 2025-07-10",
   "source": {
@@ -9526,11 +9659,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-08T14:01:48-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T03:10:11-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

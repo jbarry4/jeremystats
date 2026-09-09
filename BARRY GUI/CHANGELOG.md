@@ -15,6 +15,319 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.08.17 — numbers you can quote
+
+Six things, and one thread running through all of them: every one of these
+produces a number somebody would say out loud — "587 in twenty-nine
+minutes", "213 actions since I last looked", "five qualify" — and a number
+you quote is a number that has to be right.
+
+### Added
+
+- **A session receipt.** What a sitting came to, in a card: how many
+  decided, over how long, at what pace, split by label. On the way out of a
+  set when there was a sitting worth reporting, and from the **Receipt**
+  button on the workbench whenever the question arrives later.
+
+  It exists for two unrelated reasons. It is pleasant to see the afternoon
+  add up. And the pace is the only thing anywhere in BARRY that says
+  something about the *deciding* rather than about the data — a set decided
+  at twenty a minute and a set decided at four are not the same evidence,
+  and nothing in the interface used to show which one you had.
+
+- **A hall of garbage** — the candidates nobody had to think about:
+  rejected, decided in under two and a half seconds, never flagged, never
+  revisited. It is a teaching set, because the fastest way to explain what
+  garbage looks like is forty examples that nobody hesitated over, and it is
+  a sanity check on the detector, since a detector producing mostly obvious
+  garbage is saying something about its threshold. **look** opens the
+  recording at that moment rather than entering curation: looking at an
+  example is not deciding it, and entering the set would take it off
+  whoever has it.
+
+- **"Since you last looked."** A card at the top of History: how many
+  actions, by whom, on which recordings, and how many errors — since the
+  last time you pressed **Mark as seen** on this machine. It leaves your own
+  actions out, because a digest of what you did yourself is a diary, and the
+  question is what everybody else has been doing.
+
+  Reading it does not clear it. The first read is usually the one where you
+  get interrupted, and a digest that clears itself on render cannot be read
+  twice.
+
+- **The dataset, and the slot a model would write into.**
+  `/api/curation/dataset?format=csv` is all 9,265 human decisions as rows —
+  which recording, when in it, what it was called, by whom, how long they
+  took and whether anybody revisited it. The last two columns are the
+  interesting ones: hesitation is the signal.
+
+  And `POST /api/curation/<gid>/<kind>/order` sets the order candidates are
+  visited in — `hardest` puts the ones somebody hesitated over first, which
+  is worth having on its own for a review pass.
+
+  This is deliberately where it stops. No classifier. The moment a model
+  exists somebody will be tempted to let it decide, and the whole value of
+  this store is that a person did: every decision in it has a name and a
+  time against it. The useful thing a model can do here is change the
+  *order*, so the hard cases get looked at while people are still fresh.
+
+### Changed
+
+- **A fault on two machines is now two rows.** The same traceback on the rig
+  and on the desktop used to arrive as one group with a count of two — and
+  "happened twice" is a different fact from "happens on both machines", the
+  second of which tells you it is not something about one computer.
+  Resolving is scoped the same way: **Resolved** on the rig now says fixed
+  on the rig. `?fold=fault` folds them back to one row per fault, because
+  "is this the same bug in both places" is also a real question.
+
+  The fault's own signature is unchanged. Twenty-two triage marks were
+  keyed on it before this, and they all still apply.
+
+- **Errors and the Debug trace have a device picker.** Errors filters to one
+  machine's groups. Debug swaps this machine's request trail for the chosen
+  machine's feed — its actions and its errors, interleaved, because the
+  useful shape is "these four things happened and then it broke". The
+  request trail itself stays local and should: nobody debugs by reading
+  somebody else's HTTP log.
+
+- **The Sync button says where it has got to.** It used to read "Syncing…"
+  for three or four seconds, which is indistinguishable from hung. Both
+  halves now name the table they are on and how far through they are — the
+  pull especially, which is the slow half at fifteen round trips and used to
+  report the single word "pulling" for all of them.
+
+  The bar's denominator is an estimate, and it stretches rather than
+  overrunning: counting exactly would mean walking every table first, which
+  is most of the work the bar is meant to be reporting on.
+
+- **Four names became two.** `theexaminedexistence@gmail.com`, `Shahriar`
+  and `Shahriar Tafti` were one person; `Rain` and `Rain Younger` were
+  another. 423 decisions, 430 reviews, 38 assignments and 118 bank fields
+  now carry the name their author actually goes by.
+
+  Seven bank entries were left alone on purpose. `added.by` is immutable
+  across the shard merge — provenance is not an editable field — so those
+  fold at read time instead, through aliases stored on the roster. The
+  activity and error logs were not touched at all: they record what each
+  machine believed at the time, which is the point of a log.
+
+### Fixed
+
+- **The StrataScope layer buttons got their colours back.** A
+  `border-color:` shorthand on the armed-brush style was overriding the
+  `border-left: 3px solid var(--cat)` that carries each layer's colour, so
+  all fifteen went grey the moment anything was selected. It is a
+  `box-shadow` ring now, which cannot touch the border.
+
+### The sync was quietly broken, and this is what it took to find out
+
+All four of these were found by checking whether the two SQL files from
+earlier had been run. 06 had; 07 had not; and the consequences went a long
+way past "one field does not sync".
+
+- **One un-run migration was stopping the whole lab's sync.** `sessions`
+  carries six columns that `supabase/07_reference_channels.sql` adds, so
+  every upsert of a changed recording came back
+
+  ```
+  HTTP 400 PGRST204  Could not find the 'extraction_note' column
+                     of 'sessions' in the schema cache
+  ```
+
+  and because `sessions` is first in the push order, that exception aborted
+  the push before it reached any other table. Curation, layers, the bank,
+  the error triage: none of it went up, from the moment a recording changed.
+
+  It hid because it was intermittent in the worst possible way. A push with
+  no session changes in it skips the table and succeeds, so the sync looked
+  fine most of the time. The repair push sent **26,327 rows**.
+
+  A column the database has not got is now dropped on the way up and the
+  rest of the push carries on — and because that means nothing visibly
+  breaks, the sync panel says which file to run, and
+  `GET /api/sync/pending-migrations` asks the schema directly rather than
+  waiting to be refused. It distinguishes a column some migration accounts
+  for from one nothing does; the second is the more worrying case, since it
+  means a machine is sending a field no migration explains.
+
+- **The roster merge was being undone on every pull.** Rain Younger folded
+  into Rain and Shahriar's three spellings into one — on this machine, until
+  the next sync. `aliases` was a local-only field: the shared `people` table
+  has no such column, so the cloud still held the old names and
+  `_apply_people` wrote them back every cycle. The merge looked like it had
+  failed when what had happened is that it had been reverted.
+
+  Aliases travel now (`supabase/08_people_aliases.sql`), unioned rather than
+  last-write-wins, because two people merging different spellings on
+  different machines are both right and neither should erase the other. And
+  a pull no longer re-creates a name this machine has been told is somebody
+  else.
+
+- **The guard against the push/pull write loop had never once fired.**
+  `_apply_people` skips a row that says nothing new, because writing an
+  unchanged record restamps it and a restamped record is pushed back up as
+  an edit — which is how the same eleven people came down and went up again
+  forever, between every pair of machines. The skip read
+  `for p in (self.people.roster() or [])`, and `roster()` returns a *dict*:
+  the loop walked its keys, `"people".get(...)` raised, the bare `except`
+  below set `have = {}`, and it moved on. Measured before the fix: 11 of 11
+  unchanged rows written. After: 0, twice in a row.
+
+  This is the fourth time this loop has been found in this file, and the
+  first time the fix for it was itself broken.
+
+- **The digest was reporting 8 where the answer was 2,018.** It asked for
+  the newest 2,000 rows and *then* discarded this machine's — and PostgREST
+  caps a response at 1,000, so on a busy machine the entire budget went on
+  rows that were thrown away. The exclusion is in the query now and the
+  headline comes from a counted request rather than from `len(rows)`.
+
+  Where the breakdown cannot cover the whole total, the card says so rather
+  than printing two numbers that do not add up. `/api/activity/who` had the
+  same shape of problem and now reports what it counted.
+
+  Worth noting for anyone reading the code: `provenance().machine` is
+  `"Bluebarry"` where `machines.hostname` is `"desktop-4h65ai7-d565"` — the
+  same computer under two names. A check comparing the wrong one passes
+  vacuously, which one of the new harness checks was doing.
+
+- **"Is there anything from the rig at all" could not be answered by the
+  route that exists to answer it.** `/api/activity/who` tallied the two
+  thousand newest rows -- capped to a thousand -- so on an evening when this
+  machine had written the last thousand, it reported **one person and one
+  machine**. The true answer was five of each.
+
+  Both sets are small and known, so they are counted over the whole log now:
+  the machines from every source that knows a machine name, the people from
+  the roster with each of their aliases counted alongside their surviving
+  name. That last part matters — `ilike`, not `eq`, because aliases are
+  stored lower-cased and the log holds the name as it was typed, so a
+  case-sensitive match counted nothing and reported "Rain" and "Rain
+  Younger" as two people all over again.
+
+  The machine list came from the `machines` table alone, which holds the
+  three computers that have registered a heartbeat — while the log also
+  carries `DESKTOP-4H65AI7` (6,847 rows), `BarryLab` (305) and `Blackbarry`
+  (1). It attributed 3,802 of 10,955 rows and said nothing about the rest.
+  Now: 10,954 of 10,955, with the remainder reported rather than buried, and
+  `Rain` at 2,103 — which is 2,095 plus the 8 that were filed under the
+  other spelling.
+
+  The action-kind breakdown is still read off the recent page, because there
+  is no bounded list of action names to iterate and "the shape of the recent
+  work" is a fair thing to read off recent work. The route says which of its
+  numbers are which.
+
+**Still needs somebody with the SQL editor open:** run
+`supabase/07_reference_channels.sql` and `supabase/08_people_aliases.sql`.
+Until then the fissure, ripple and hilus channels for 62 recordings, and the
+roster merge, exist on this machine only. The sync panel will stop mentioning
+them once they are in.
+
+### The test suite could not be run, which is why so much of this was found late
+
+There are 92 harnesses in `web/_dev` and no way to run them together, so they
+were run by hand, a few at a time, whenever something specific was being
+changed. `tools/run_harnesses.py` runs all of them and tallies the result.
+
+Writing it took three attempts, and each failure is worth knowing about
+because each one made the suite look healthier than it was:
+
+- The harnesses report in three different shapes — a `#out` div of plain
+  lines, a `#log` `<pre>` of `<span class="good">ok …`, and a couple that put
+  the verdict in the document title. The first runner understood one of them
+  and reported **"0 ok, 0 fail"** for two thirds of the suite, which reads
+  exactly like a clean run.
+
+- Fifteen harnesses take `?session=<path>` and call `xplore.open()` on it
+  without checking. Run without one, `open(null)` renders nothing and every
+  geometry assertion fails against an empty pane — so thirteen harnesses
+  looked broken and the cause was one missing argument. `master.html` went
+  from five failures and a crash to **12 ok, 0 fail** once it had one.
+
+  This is worth saying plainly: those failures were read as a possible
+  regression in the xplore control strip, and the strip is fine. It renders
+  `Filter`, `Ch 64/64`, `Marks` and `More` exactly as it should.
+
+- But not to all of them. `bank.html` is 47 ok / 0 fail bare and *crashes*
+  with a session; `strata.html` skips cleanly bare and throws on the demo
+  recording, which has no layer sheet. So the argument is passed per
+  harness, and the runner names the two exceptions and why.
+
+- And it never set `--window-size`, so every layout harness was measuring
+  an 800x600 window. `stratacheck.html` reported six failures — rows 1px
+  tall, 0 of 64 rows clickable, 22 buttons off screen — and passes at
+  1600x1000. `typing.html` reported 47 clipped entry names and passes.
+  `chrome.html` went from two failed divider drags to 26 ok. A layout
+  harness run in a 423px window is measuring the window.
+
+One more of the same kind, in a harness rather than the runner:
+`chrome2.html` measured the rail mid-transition. Under
+`--virtual-time-budget` the timer clock fast-forwards and the animation
+clock does not, so a transition sits at its start value for ever — the rail
+animates its width through `@property --rail`, and every reading came back
+190px however many times the burger was clicked. Settled with
+`Animation.finish()`, as `motion.html` already knew to do: **190 → 54
+(`rail-icons`) → 0 (`rail-away`)**, with `#main` growing 787 → 923 → 977 to
+fill the window. The collapse works exactly as specified.
+
+The suite now runs 936 checks passing against 763 before, with 12 harnesses
+still failing rather than 22 — and almost all of that movement was fixing
+the instrument, not the app. It is worth being blunt about that: for most of
+this the harness output was read as evidence about BARRY when it was
+evidence about the runner, and two alarming conclusions drawn from it — that
+this machine's log was stranded from the cloud, and that the xplore control
+strip had stopped rendering — were both wrong.
+
+What is left is concentrated in the session scanner (`scanreg`,
+`housekeeping`), a set of harnesses that need a specific recording rather
+than the demo (`chan64` wants 64 channels, `kilosort` a sortable recording,
+`lineage` an entry with versions, `spancentre` live candidates), and
+`bankback`/`strip2`, which crash on a pane control before their first check.
+`pathprobe` is the interesting one: it asserts every registry path is a
+complete path, and the demo sessions carry pseudo-paths like
+`demo:ds-tutorial` that are not. None of these are in anything this release
+touched, and none of them has been confirmed as a defect rather than as
+drift — that is the next session's work, and it starts from a runner that
+can be trusted.
+
+`uiprobe.html` is fixed too, and had never worked: it read `win().BARRY`, and
+`BARRY` is a top-level `const` in core.js — a binding in that script's scope,
+never a property of `window` — so it printed "MISSING" on a perfectly healthy
+frame and then threw calling a method off undefined. `win().eval(...)` runs
+inside the scope that can see it.
+
+### A note on honesty
+
+The receipt's first version reported **421.7 decisions a minute** for a set
+that had been filled down fourteen at a time. It was not wrong about the
+arithmetic — 738 decisions across 105 seconds really does divide out at
+seven a second — it was wrong about what a timestamp means.
+
+7,655 of the 9,265 decisions in this store were stamped in bulk: a snapshot
+import stamped 1,224 of them at one instant, and fill-down stamps a
+column at a time. So a decision now counts towards a pace only if it has a
+timestamp to itself, and the rest are counted and named as what they are.
+The receipt says "1,224 of them share a single timestamp — an import or a
+fill-down stamped the set all at once, so nobody sat and decided them one by
+one", and quotes no rate. The hall of garbage leads with the same caveat
+before its list, because somebody who reads "5 qualify" and stops has been
+misled about nine thousand decisions.
+
+A card that says nothing is fine. A card that says seven a second is not.
+
+Sixty-one checks in `web/_dev/digest.html` cover this, most of them
+refusals — that the pace is absent where it cannot be known, and that the
+bulk share is said out loud rather than averaged in. The phase sequence a
+sync reports moved out to `tools/check_sync_progress.py`, on the real clock:
+the browser harnesses run under `--virtual-time-budget`, where the page's
+timers fast-forward while the server carries on at the real clock, and every
+attempt to watch a real sync from in there either outran it or lost the lock
+to the background pass.
+
+---
+
 ## 2026.09.08.16 — the history the lab shares
 
 ### Changed

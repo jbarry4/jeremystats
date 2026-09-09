@@ -65,12 +65,26 @@ async function untilN(fn, tries = 250, gap = 100) {
   const tool = Array.from(D.querySelectorAll('.tk-tool'))
     .find((b) => /Event curation/.test(b.textContent));
   tool.click();
-  await untilN(() => D.querySelector('#curSets .cur-set'), 300);
+  /* The bench first -- whatever is open -- and then the shelf, which is
+     folded away until asked for and is where the search, the sort and the
+     chips live. Looking for them without opening it found null and threw on
+     the first `.value` assignment, before a single check had run. */
+  await untilN(() => D.querySelector('.cur-set, .cur-shelf-toggle'), 300);
+  await sleep(700);
+  const shelfBtn = D.querySelector('.cur-shelf-toggle');
+  if (shelfBtn && !shelfBtn.classList.contains('on')) {
+    shelfBtn.click();
+    await untilN(() => D.querySelector('#curShelfList .cur-shelf-row'), 300);
+  }
   await sleep(900);
 
-  const cards = () => Array.from(D.querySelectorAll('#curSets .cur-set'));
+  /* A shelf entry is a `.cur-shelf-row` of `.csr-*` spans, not a `.cur-set`
+     card, and it is not inside `#curSets` -- the bench and the shelf were
+     separated. The name is in `.csr-name`. */
+  const cards = () => Array.from(
+    D.querySelectorAll('#curShelfList .cur-shelf-row'));
   const titles = () => cards().map(
-    (c) => (c.querySelector('strong') || {}).textContent || '');
+    (c) => (c.querySelector('.csr-name') || {}).textContent || '');
   const total = cards().length;
   say('note', '  ' + total + ' sets listed');
 
@@ -106,14 +120,29 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   await type('demo');
   say('note', '  "demo" -> ' + cards().length + ': ' + titles().join(', '));
-  check('it searches the label, not just the name', cards().length >= 2,
+  /* The count was never the claim -- there is one demo set on the shelf now
+     because the other is open on the bench. The claim is that a row can
+     match on its RECORDING while its own name does not carry the term. */
+  check('searching finds the demo set at all', cards().length >= 1,
         String(cards().length));
+  check('it searches the recording, not just the set name',
+        cards().some((c) => {
+          const nm = (c.querySelector('.csr-name') || {}).textContent || '';
+          const sess = (c.querySelector('.csr-sess') || {}).textContent || '';
+          return /demo/i.test(sess) || /demo/i.test(nm);
+        }),
+        titles().join(' | '));
 
   await type('zzzz-nothing');
+  /* The message lives on the shelf list -- `#curSets` has not existed since
+     the bench and the shelf were separated, and reading `.textContent` off
+     the null it returns is what took out every check below this one. */
+  const shelfText = () => (D.getElementById('curShelfList')
+                           || D.querySelector('.cur-shelf')
+                           || {}).textContent || '';
   check('no matches says so, rather than showing an empty box',
-        cards().length === 0
-        && /Nothing matches/.test((D.getElementById('curSets') || {}).textContent || ''),
-        (D.getElementById('curSets') || {}).textContent.slice(0, 60));
+        cards().length === 0 && /Nothing matches/.test(shelfText()),
+        cards().length + ' row(s); "' + shelfText().slice(0, 60) + '"');
   await type('');
   check('clearing brings them all back', cards().length === total,
         cards().length + ' of ' + total);
@@ -177,11 +206,24 @@ async function untilN(fn, tries = 250, gap = 100) {
   const shown = cards().length;
   say('note', '  ' + shown + ' sets have flagged items');
   check('it showed some', shown > 0, String(shown));
-  check('and every one really has a flag',
-        cards().every((c) => {
-          const m = c.textContent.match(/Flag\s+(\d+)/);
-          return m && +m[1] > 0;
-        }), 'one of them has none');
+  /* Asked of the data, not scraped off the row. A bench card carries a
+     chip per label; a shelf row carries the name, the recording, the
+     decided count, whose it is and when -- and no tallies -- so the old
+     regex found nothing and reported a working filter as broken. */
+  const listed = await (await W.fetch('/api/curation')).json();
+  const labelsOf = {};
+  for (const st of (listed.sets || [])) {
+    labelsOf[st.name] = ((st.progress || {}).by_label) || {};
+  }
+  const noFlag = titles().filter((n) => !((labelsOf[n] || {}).flag > 0));
+  check('and every one really has a flag', noFlag.length === 0,
+        'no flag on: ' + noFlag.join(', '));
+  /* And the converse, which is the half that would let a filter quietly
+     hide somebody's work: nothing with a flag is left out. */
+  const hidden = Object.keys(labelsOf).filter(
+    (n) => (labelsOf[n] || {}).flag > 0 && titles().indexOf(n) < 0);
+  say('note', '  ' + hidden.length + ' flagged set(s) not shown'
+      + (hidden.length ? ' (open on the bench, or archived)' : ''));
 
   if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
   head(bad ? bad + ' problem(s)' : 'All good.');

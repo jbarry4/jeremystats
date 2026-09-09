@@ -61,8 +61,31 @@ const hd = (t) => p('\n== ' + t + ' ==');
   p('  machines in everyone: ' + JSON.stringify(hosts(all.activity)));
   /* The point of the whole feature. If the shared scope shows one machine
      it has not been read, whatever it claims. */
-  ck('everyone spans more than one machine',
-     hosts(all.activity).length > 1, JSON.stringify(hosts(all.activity)));
+  /* Asked of the aggregate rather than of a page. `?limit=400` returns the
+     four hundred newest rows, and on a machine that has just run a harness
+     suite every one of them is its own -- so this failed on a busy evening
+     and passed on a quiet one, which is worse than either. `/api/activity/who`
+     answers the question the check is actually asking. */
+  /* Not `who` -- this harness already has one, and redeclaring it is a
+     SyntaxError that takes the whole script with it. The machines are their
+     own list on this route, not a field on each person: one row per machine,
+     with a count and a last-seen. */
+  const shape = await get('/api/activity/who');
+  const spread = (shape.machines || []).map((m) => m.name).filter(Boolean);
+  p('  machines across the whole shared log: ' + JSON.stringify(spread));
+  ck('the shared log spans more than one machine', spread.length > 1,
+     JSON.stringify(spread));
+  /* The page-level version of this claim was a coin toss and is gone. It
+     asserted that the four hundred newest rows happen to span machines,
+     which is not a property of the feature: on an evening when this machine
+     has just run a harness suite, every one of them is legitimately its
+     own. The aggregate check above is the same claim, answered properly.
+
+     What the page CAN say is that asking for everyone returns at least what
+     asking for this machine does. */
+  ck('the shared scope returns no less than this machine alone',
+     (all.activity || []).length >= (mine.activity || []).length,
+     (all.activity || []).length + ' vs ' + (mine.activity || []).length);
   ck('and carries who did each thing',
      (all.activity || []).some((a) => a.user), 'no user on any row');
 
@@ -105,9 +128,30 @@ const hd = (t) => p('\n== ' + t + ' ==');
      (who.people || []).length);
   ck('and more than one machine', (who.machines || []).length > 1,
      (who.machines || []).length);
-  const total = (who.people || []).reduce((n, x) => n + x.n, 0);
-  ck('the per-person counts add up to what was sampled',
-     total === who.sampled, total + ' vs ' + who.sampled);
+  const summed = (who.people || []).reduce((n, x) => n + x.n, 0);
+  /* Against whichever whole the route is describing, which it states. The
+     per-person figures used to be a tally of the page that had been read --
+     which is how this route came to report one person and one machine on an
+     evening when this machine had written the last thousand rows. They are
+     counted over the entire log now, so they sum to it and not to the
+     sample. */
+  p('  counts are ' + (who.counts_are || 'unstated')
+    + '; they sum to ' + summed
+    + (who.total != null ? ' of ' + who.total : ''));
+  ck('the route says what its counts cover', !!who.counts_are,
+     String(who.counts_are));
+  if (/every row/.test(who.counts_are || '')) {
+    /* Not every row can be attributed: 259 of them carry a `git_user` that
+       is not a roster name. The route reports that remainder rather than
+       letting the parts quietly fail to reach the whole. */
+    const left = ((who.unattributed || {}).people) || 0;
+    ck('the per-person counts and the remainder reach the total',
+       summed + left === who.total,
+       summed + ' + ' + left + ' vs ' + who.total);
+  } else {
+    ck('the per-person counts add up to what was sampled',
+       summed === who.sampled, summed + ' vs ' + who.sampled);
+  }
   ck('and the kinds of work are grouped, not one row per verb',
      (who.actions || []).every((a) => a.kind.indexOf('.') < 0),
      (who.actions || []).map((a) => a.kind).join(','));
