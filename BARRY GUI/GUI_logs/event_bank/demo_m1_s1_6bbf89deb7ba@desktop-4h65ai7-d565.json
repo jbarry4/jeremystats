@@ -36,6 +36,10 @@
       "{\"at\": \"2026-09-09T16:19:03-04:00\", \"by\": \"Shahriar\", \"changed\": [\"events\"], \"now_n\": 24, \"was_n\": 24, \"why\": \"re-banked from the curation set\"}": [
         "set",
         "2026-09-09T20:19:03.873004+00:00"
+      ],
+      "{\"at\": \"2026-09-09T16:19:11-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"versions\"], \"why\": \"deleted version 2\"}": [
+        "set",
+        "2026-09-09T20:19:11.319046+00:00"
       ]
     },
     "versions": {
@@ -45,11 +49,11 @@
       ],
       "93fadaffc1fa": [
         "set",
-        "2026-09-09T20:19:03.873004+00:00"
+        "2026-09-09T20:19:10.984036+00:00"
       ],
       "c0216470caf5": [
-        "set",
-        "2026-09-09T20:19:03.873004+00:00"
+        "gone",
+        "2026-09-09T20:19:11.319046+00:00"
       ],
       "v0-7aae8556": [
         "set",
@@ -58,7 +62,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:19:03.873004+00:00",
+    "at": "2026-09-09T20:19:11.319046+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -216,6 +220,14 @@
       "now_n": 24,
       "was_n": 24,
       "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-09T16:19:11-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "versions"
+      ],
+      "why": "deleted version 2"
     }
   ],
   "id": "6bbf89deb7ba",
@@ -373,6 +385,22 @@
         "spike": 24
       },
       "changed": 24,
+      "edits": [
+        {
+          "at": "2026-09-09T16:19:10-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        },
+        {
+          "at": "2026-09-09T16:19:10-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "unarchived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "93fadaffc1fa",
       "lost": 0,
@@ -481,123 +509,6 @@
         ]
       ],
       "v": 1
-    },
-    {
-      "at": "2026-09-09T16:19:01-04:00",
-      "by": "Shahriar",
-      "by_label": {
-        "garbage": 3,
-        "spike": 21
-      },
-      "changed": 3,
-      "gained": 0,
-      "id": "c0216470caf5",
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {
-        "Dentate Spike \u2192 Garbage": 3
-      },
-      "n": 24,
-      "note": "second pass",
-      "snap": [
-        [
-          3.4,
-          "spike"
-        ],
-        [
-          7.9,
-          "spike"
-        ],
-        [
-          8.2,
-          "spike"
-        ],
-        [
-          14.6,
-          "garbage"
-        ],
-        [
-          21.05,
-          "garbage"
-        ],
-        [
-          21.4,
-          "garbage"
-        ],
-        [
-          27.8,
-          "spike"
-        ],
-        [
-          33.2,
-          "spike"
-        ],
-        [
-          33.9,
-          "spike"
-        ],
-        [
-          41.5,
-          "spike"
-        ],
-        [
-          48.0,
-          "spike"
-        ],
-        [
-          55.7,
-          "spike"
-        ],
-        [
-          56.1,
-          "spike"
-        ],
-        [
-          62.4,
-          "spike"
-        ],
-        [
-          69.9,
-          "spike"
-        ],
-        [
-          70.3,
-          "spike"
-        ],
-        [
-          77.2,
-          "spike"
-        ],
-        [
-          84.6,
-          "spike"
-        ],
-        [
-          91.1,
-          "spike"
-        ],
-        [
-          91.8,
-          "spike"
-        ],
-        [
-          98.3,
-          "spike"
-        ],
-        [
-          105.0,
-          "spike"
-        ],
-        [
-          112.7,
-          "spike"
-        ],
-        [
-          118.2,
-          "spike"
-        ]
-      ],
-      "v": 2
     },
     {
       "at": "2026-09-09T16:19:03-04:00",
