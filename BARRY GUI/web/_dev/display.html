@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Harness — unchecked channels and mark visibility</title>
+<title>Harness — channel selection and mark visibility</title>
 <style>
  html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
  #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
@@ -8,18 +8,24 @@
 </style>
 <div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* Two settings in the More tab.
+/* What unchecking a channel means, and how visible marks are.
 
-   Unchecking a channel used to drop it from the request, so it was never
-   read and never drawn. "Keep it, greyed out" needs the row to be IN the
-   image -- which means asking for it and telling the server which rows are
-   not selected. So this checks what actually goes over the wire and what
-   comes back in the pixels, not just that a setting flipped.
+   There was briefly a third thing here: a "keep, greyed out" mode that drew
+   unchecked channels faintly. It is gone, and the reason is worth keeping
+   because it is a trap the next idea like it will fall into as well. To draw
+   an unchecked channel the request has to ASK for it -- and once the data is
+   in the response, every derived number is computed over channels somebody
+   explicitly excluded. The CSD colour scale came out twice as wide; the
+   trace amplitude moved when you unchecked something. Both were fixed, and
+   the list did not obviously end: every future panel would have had to
+   remember that some of its rows were not really selected.
 
-   And marks could not be got out of the way. Hidden marks have to be
-   announced, because a mark you cannot see is indistinguishable from a mark
-   that is not there, and that is how somebody concludes a recording has no
-   events in it. */
+   So the checks below are mostly about absence -- that nothing asks the
+   server to dim, that no pane claims anything is greyed, that the chooser is
+   gone. Absence is the thing that rots quietly.
+
+   Marks visibility stays, because it is genuinely a display choice: a
+   bookmark has never been in anybody's arithmetic. */
 const out = document.getElementById('out');
 const p = (m) => { out.textContent += m + '\n'; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -76,271 +82,67 @@ const hd = (t) => p('\n== ' + t + ' ==');
   await sleep(2200);
   const nAll = val(sessExpr + '.info.channels.length');
 
-  hd('1. Whatever the session arrives in, the notice agrees with it');
-  /* Not "no notice on load".
-
-     Both settings are saved with the session, so a recording somebody left
-     with its marks faded last week opens with them faded and a notice up --
-     which is the feature working, not a failure. This asserted a default it
-     had not established, and duly failed on the recording it was pointed at.
-
-     What holds whatever the session carries: a notice is up exactly when the
-     marks are not fully shown. */
-  p('  the session opens with chanMode '
-    + JSON.stringify(val(sessExpr + '.chanMode')) + ', marksView '
-    + JSON.stringify(val(sessExpr + '.marksView')));
-  const saidMarks = () => !!byText('.pane-warn', /marks (faded|hidden)/);
-  const viewIs = () => val('(' + sessExpr + '.marksView || "show")');
-  ck('a marks notice is up exactly when they are not shown',
-     saidMarks() === (viewIs() !== 'show'),
-     'notice ' + saidMarks() + ' but marksView is ' + viewIs());
-
-  /* Now put it back to the defaults, so the rest of the run starts from a
-     known place rather than from whatever was left behind. */
-  run('(function () { var s = ' + sessExpr + ';'
-    + 's.chanMode = "remove"; s.marksView = "show";'
-    + 'BARRY.views.xplore.render(); })()');
-  await sleep(700);
-  ck('reset to the defaults, unchecked channels are removed',
-     val(sessExpr + '.chanMode') === 'remove');
-  ck('and then nothing is announced, because nothing is hidden',
-     !saidMarks(), 'a marks notice is still up');
-
-  hd('2. Unchecking really removes, to start with');
+  hd('1. Unchecking a channel takes it out of everything');
   run('(function () { var s = ' + sessExpr + ';'
     + 's.sel = new Set([0,1,2,3,4,5,6,7]);'
-    + 'BARRY.views.xplore.refreshAll(); })()');
-  await sleep(2200);
-  run('window.__seen = []');
-  run('BARRY.views.xplore.refreshAll()');
-  await sleep(2400);
-  let spec = (val('window.__seen') || []).filter((x) => x.panel === 'csd').pop();
-  p('  ' + nAll + ' channels in the file; asked for '
-    + ((spec && spec.channels || []).length) + ', dim '
-    + ((spec && spec.dim_channels || []).length));
-  ck('only the checked channels are requested',
-     !!spec && spec.channels.length === 8, spec && spec.channels.length);
-  ck('and none are marked to dim',
-     !!spec && (spec.dim_channels || []).length === 0,
-     JSON.stringify(spec && spec.dim_channels));
-
-  hd('3. "Keep, greyed out" asks for them all and names the faint ones');
-  run('(function () { var s = ' + sessExpr + '; s.chanMode = "dim";'
     + 'BARRY.views.xplore.refreshAll(); })()');
   await sleep(2400);
   run('window.__seen = []');
   run('BARRY.views.xplore.refreshAll()');
   await sleep(2600);
-  spec = (val('window.__seen') || []).filter((x) => x.panel === 'csd').pop();
-  p('  asked for ' + ((spec && spec.channels || []).length) + ', dim '
-    + ((spec && spec.dim_channels || []).length));
-  ck('every channel is now requested',
-     !!spec && spec.channels.length === nAll, spec && spec.channels.length);
-  ck('and the unselected ones are named as dim',
-     !!spec && (spec.dim_channels || []).length === nAll - 8,
-     (spec && (spec.dim_channels || []).length) + ' vs ' + (nAll - 8));
+  const spec = (val('window.__seen') || [])
+    .filter((x) => x.panel === 'csd').pop();
+  p('  ' + nAll + ' channels in the file; asked for '
+    + ((spec && spec.channels || []).length));
+  ck('only the checked channels are requested',
+     !!spec && spec.channels.length === 8, spec && spec.channels.length);
+  ck('and nothing asks the server to dim anything',
+     !!spec && !(spec.dim_channels && spec.dim_channels.length),
+     JSON.stringify(spec && spec.dim_channels));
 
-  hd('4. The server really draws them faint');
+  hd('2. And the mode really is gone, not just unused');
+  ck('no pane claims channels are greyed',
+     !byText('.pane-warn', /greyed/), 'a "greyed" notice is still up');
+  ck('the session carries no channel mode',
+     val(sessExpr + '.chanMode') === undefined,
+     JSON.stringify(val(sessExpr + '.chanMode')));
+  run('BARRY.views.xplore.state.focused = 0');
+  const more = byText('.ctl-menu', /^More/);
+  ck('there is still a More menu', !!more);
+  if (more) {
+    more.click();
+    await untilN(() => byText('.ctl-pop-title', /^Marks/), 60);
+    ck('it no longer offers "Unchecked channels"',
+       !byText('.ctl-pop-title', /Unchecked channels/),
+       'the chooser is still there');
+    ck('and still offers the marks choice',
+       !!byText('.ctl-pop-title', /^Marks/));
+  }
+
+  hd('3. The server draws every row it was given, solid');
   const res = await W().fetch('/api/panel', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(spec),
   }).then((r) => r.json());
   ck('the panel renders', res.ok !== false, res.error);
-  const dimRows = (res.rows || []).filter((r) => r.dim).length;
-  p('  ' + (res.rows || []).length + ' row(s) back, ' + dimRows
-    + ' marked dim');
-  ck('the rows come back marked', dimRows > 0, dimRows);
-
-  /* The pixels, because "marked dim" and "drawn dim" are different claims. */
-  const alphas = await new Promise((done) => {
-    const im = new (W().Image)();
-    im.onload = () => {
-      try {
-        const c = D().createElement('canvas');
-        c.width = im.naturalWidth; c.height = im.naturalHeight;
-        const g = c.getContext('2d');
-        g.drawImage(im, 0, 0);
-        const rows = res.rows.length, hgt = im.naturalHeight;
-        const at = (i) => {
-          const y = Math.min(hgt - 1, Math.floor((i + 0.5) * hgt / rows));
-          return g.getImageData(1, y, 1, 1).data[3];
-        };
-        const keep = res.rows.findIndex((r) => !r.dim);
-        const drop = res.rows.findIndex((r) => r.dim);
-        done({ keep: at(keep), drop: at(drop), keepAt: keep, dropAt: drop });
-      } catch (e) { done(null); }
-    };
-    im.onerror = () => done(null);
-    im.src = res.image;
-  });
-  if (alphas) {
-    p('  row ' + alphas.keepAt + ' (selected) alpha ' + alphas.keep
-      + ';  row ' + alphas.dropAt + ' (unselected) alpha ' + alphas.drop);
-    ck('an unselected row is drawn faint, not solid',
-       alphas.drop > 0 && alphas.drop < alphas.keep * 0.6,
-       alphas.drop + ' vs ' + alphas.keep);
-    ck('and not invisible, because the point is to still see it',
-       alphas.drop > 10, alphas.drop);
-  } else {
-    ck('could decode the image to check the pixels', false, 'decode failed');
-  }
-
-  hd('4b. And the TRACES draw them faint, which the rasters do not cover');
-  /* The gap that let the bug out.
-
-     Dimming lives in two different places because the two panels are drawn
-     in two different places: a raster is rendered by the server and arrives
-     as a PNG, a trace arrives as an envelope and is drawn by the canvas
-     here. Section 4 proved the server dims. It said nothing whatever about
-     the traces, which asked for all sixty-four channels and drew every one
-     of them solid -- "it puts in all 64 channels and prevents me from
-     graying out anything".
-
-     Checked by counting what the canvas is actually told to do, rather than
-     by reading pixels: the traces are drawn with fills and strokes at a set
-     alpha, so the alpha it draws at IS the claim. */
-  /* Instrument the canvas itself, then ask for a real redraw. Measuring the
-     real pane rather than a copy is the point: a copy wired up for the test
-     is a second code path, and a second code path is what went undimmed. */
-  run('window.__alphas = [];'
-    + '(function () { var P = CanvasRenderingContext2D.prototype;'
-    + 'if (P.__wrapped) return; P.__wrapped = true;'
-    + 'var f = P.fill, s = P.stroke;'
-    + 'P.fill = function () { window.__alphas.push(this.globalAlpha);'
-    + '  return f.apply(this, arguments); };'
-    + 'P.stroke = function () { window.__alphas.push(this.globalAlpha);'
-    + '  return s.apply(this, arguments); }; })()');
-  run('(function () { var X = BARRY.views.xplore.state;'
-    + 'X.panes[0].panel = "traces"; BARRY.views.xplore.render();'
-    + 'BARRY.views.xplore.refreshAll(); })()');
-  await sleep(2600);
-
-  /* 0.30 exactly is DIM_ALPHA. The marks draw at .14, .55, .6, .85 and .9,
-     so a narrow band around 0.30 cannot be confused with one of those --
-     which a loose "anything faint" test would have been. */
-  const band = (xs, lo, hi) => xs.filter((x) => x >= lo && x <= hi).length;
-  run('window.__alphas = []');
-  run('BARRY.views.xplore._redrawPane(0)');
-  await sleep(400);
-  const dimHits = val('window.__alphas') || [];
-  p('  dim mode: ' + dimHits.length + ' canvas op(s), '
-    + band(dimHits, 0.25, 0.35) + ' at DIM_ALPHA, '
-    + band(dimHits, 0.95, 1) + ' solid');
-  ck('unchecked trace rows are drawn at DIM_ALPHA',
-     band(dimHits, 0.25, 0.35) > 0,
-     'nothing drawn at 0.30 — the mode never reached the traces');
-  ck('and the checked ones are still solid', band(dimHits, 0.95, 1) > 0,
-     band(dimHits, 0.95, 1));
-
-  run('(function () { var s = ' + sessExpr + '; s.chanMode = "remove";'
-    + 'BARRY.views.xplore.refreshAll(); })()');
-  await sleep(2600);
-  run('window.__alphas = []');
-  run('BARRY.views.xplore._redrawPane(0)');
-  await sleep(400);
-  const rmHits = val('window.__alphas') || [];
-  p('  remove mode: ' + band(rmHits, 0.25, 0.35) + ' at DIM_ALPHA');
-  ck('in remove mode nothing is drawn faint, because nothing extra is drawn',
-     band(rmHits, 0.25, 0.35) === 0, band(rmHits, 0.25, 0.35));
-  run('(function () { var s = ' + sessExpr + '; s.chanMode = "dim";'
-    + 'BARRY.views.xplore.refreshAll(); })()');
-  await sleep(2200);
-
-  hd('4c. A greyed channel is not in the equation');
-  /* The point of the whole mode.
-
-     It used to draw the unchecked channels faintly and then let them set the
-     colour scale: the same sixteen channels came out at ±73,833 with the
-     rest removed and ±143,792 with them greyed. A display setting that
-     changes the picture you are reading by a factor of two is not a display
-     setting, it is a second analysis wearing a disguise.
-
-     So: the rows you kept must come out identical either way. */
-  const sixteen = [];
-  for (let i = 0; i < 16; i++) sixteen.push(i);
-  const allCh = [];
-  for (let i = 0; i < nAll; i++) allCh.push(i);
-  const specFor = (chans, dims) => ({
-    path: sessPath, even_only: false, invert: true, panel: 'csd',
-    t0: 100, t1: 101, px: 800, channels: chans,
-    dim_channels: dims || [],
-  });
-  const ask = (body) => W().fetch('/api/panel', {
+  p('  ' + (res.rows || []).length + ' row(s) back');
+  ck('and none of them comes back marked dim',
+     !(res.rows || []).some((r) => r.dim),
+     (res.rows || []).filter((r) => r.dim).length + ' marked dim');
+  /* An old client, or a stale tab, may still send dim_channels. It must be
+     ignored rather than answered with a traceback. */
+  const legacy = await W().fetch('/api/panel', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(Object.assign({}, spec,
+      { dim_channels: [40, 41, 42] })),
   }).then((r) => r.json());
+  ck('a stale client sending dim_channels is answered, not broken',
+     legacy.ok !== false, legacy.error);
+  ck('and the answer is identical',
+     JSON.stringify(legacy.clim) === JSON.stringify(res.clim),
+     JSON.stringify(legacy.clim) + ' vs ' + JSON.stringify(res.clim));
 
-  const cutRes = await ask(specFor(sixteen));
-  const dimRes = await ask(specFor(allCh, allCh.filter((i) => i >= 16)));
-  p('  clim removed: ' + JSON.stringify(cutRes.clim));
-  p('  clim greyed:  ' + JSON.stringify(dimRes.clim));
-  ck('the colour scale is the same either way',
-     JSON.stringify(cutRes.clim) === JSON.stringify(dimRes.clim),
-     'greyed channels are setting the scale');
-  ck('and so is the scale the auto button would reset to',
-     JSON.stringify(cutRes.clim_auto) === JSON.stringify(dimRes.clim_auto),
-     JSON.stringify(dimRes.clim_auto));
-  const keptNums = (r) => (r.rows || []).filter((x) => !x.dim)
-    .map((x) => x.number).join(',');
-  ck('and the kept rows are the same channels',
-     keptNums(cutRes) === keptNums(dimRes),
-     keptNums(dimRes).slice(0, 60));
-
-  hd('4d. The spectrogram is untouched by any of it');
-  /* A different shape of panel entirely -- one channel, frequency down the
-     rows. `dim_channels` means nothing to it, and the risk is not that it
-     dims the wrong thing but that it fails outright on a field it does not
-     understand. */
-  const spec1 = await ask({
-    path: sessPath, even_only: false, invert: true, panel: 'spectrogram',
-    t0: 100, t1: 101, px: 800, channels: sixteen,
-  });
-  const spec2 = await ask({
-    path: sessPath, even_only: false, invert: true, panel: 'spectrogram',
-    t0: 100, t1: 101, px: 800, channels: allCh,
-    dim_channels: allCh.filter((i) => i >= 16),
-  });
-  ck('it renders with channels removed', spec1.ok !== false, spec1.error);
-  ck('and renders with channels greyed', spec2.ok !== false, spec2.error);
-  p('  spectrogram clim: ' + JSON.stringify(spec1.clim)
-    + ' vs ' + JSON.stringify(spec2.clim));
-  ck('and it is not accidentally dimming its own frequency rows',
-     !(spec2.rows || []).some((r) => r.dim),
-     (spec2.rows || []).filter((r) => r.dim).length + ' rows marked dim');
-
-  hd('4e. The mode is a fact about the recording, so every pane follows');
-  run('(function () { var X = BARRY.views.xplore.state;'
-    + 'if (X.panes.length < 2 && BARRY.views.xplore.fillPanes) {'
-    + '  BARRY.views.xplore.fillPanes(2); } })()');
-  await sleep(1200);
-  run('(function () { var s = ' + sessExpr + '; s.chanMode = "remove";'
-    + 'BARRY.views.xplore.render(); })()');
-  await sleep(600);
-  /* Both panes read the same session object, which is the mechanism -- so
-     the check that matters is that the pane header agrees, not that two
-     copies of a flag were kept in step. */
-  const heads = () => Array.from(D().querySelectorAll('.pane-warn'))
-    .filter((x) => /greyed/.test(x.textContent || '')).length;
-  p('  panes: ' + val('BARRY.views.xplore.state.panes.filter(Boolean).length')
-    + ', "greyed" notices in remove mode: ' + heads());
-  ck('no pane claims channels are greyed when they are removed',
-     heads() === 0, heads());
-  run('(function () { var s = ' + sessExpr + '; s.chanMode = "dim";'
-    + 'BARRY.views.xplore.render(); })()');
-  await sleep(600);
-  p('  "greyed" notices in dim mode: ' + heads());
-  ck('and every pane showing the recording says so once it is on',
-     heads() >= 1, heads());
-
-  hd('5. The header says unchecked channels are being kept');
-  run('BARRY.views.xplore.render()');
-  await sleep(700);
-  const greyed = byText('.pane-warn', /greyed/);
-  ck('a notice says how many are greyed', !!greyed,
-     'nothing in the pane head says so');
-  p('  notice: "' + ((greyed || {}).textContent || '') + '"');
-
-  hd('6. Marks can be faded and hidden, and it is announced');
+  hd('4. Marks can be faded and hidden, and it is announced');
   run('(function () { var s = ' + sessExpr + '; s.marksView = "dim";'
     + 'BARRY.views.xplore.render(); })()');
   await sleep(700);
@@ -361,46 +163,12 @@ const hd = (t) => p('\n== ' + t + ' ==');
   ck('turning it back on clears the notice',
      !byText('.pane-warn', /marks/), 'a marks notice is still up');
 
-  hd('7. Both are facts about the recording, not the pane');
-  const got = val('(function () { var s = ' + sessExpr + ';'
-                + 'return { c: s.chanMode, m: s.marksView }; })()');
-  p('  the session carries ' + JSON.stringify(got));
-  ck('they live on the session, so every pane showing it agrees',
-     got.c === 'dim' && got.m === 'show', JSON.stringify(got));
-  /* Which is what puts them on the broadcast every other window reads. */
-  const pub = val('(function () { var s = ' + sessExpr + ';'
-                + 'return typeof s.chanMode; })()');
-  ck('and are a plain value, so they travel in the facts slot',
-     pub === 'string', pub);
-
-  hd('8. The More menu offers both');
-  run('BARRY.views.xplore.state.focused = 0');
-  const more = byText('.ctl-menu', /^More/);
-  ck('there is a More menu', !!more);
-  if (more) {
-    more.click();
-    await untilN(() => byText('.ctl-pop-title', /Unchecked channels/), 60);
-    ck('it offers the channel choice',
-       !!byText('.ctl-pop-title', /Unchecked channels/));
-    ck('and the marks choice', !!byText('.ctl-pop-title', /^Marks/));
-    const segs = D().querySelectorAll('.ctl-seg');
-    p('  ' + segs.length + ' chooser(s) in the popover');
-    ck('as segmented choosers rather than loose buttons', segs.length >= 2,
-       segs.length);
-    ck('the channel note explains the cost',
-       !!byText('.ctl-pop-note', /read from disk|not read at all/),
-       'no note about what it costs');
-    ck('and the marks note is the disclaimer',
-       !!byText('.ctl-pop-note', /Nothing is hidden|HIDDEN|FADED/),
-       'no disclaimer');
-  }
-
-  hd('9. Hiding marks reaches the dentate-spike marks too');
-  /* Curation marks were deliberately exempt -- the candidate under decision
-     is the job, not an annotation over it -- and that was the wrong call: a
-     setting that quietly spares the one kind you were looking at is worse
-     than one that does nothing. Checked by drawing, because "honours the
-     setting" is a claim about pixels. */
+  hd('5. Hiding marks reaches the dentate-spike marks too');
+  run('(function () { var s = ' + sessExpr + ';'
+    + 's.curationMarks = { index: 0, kind: { id: "ds", labels: ['
+    + '{ id: "ds", name: "Dentate spike", color: "#59c1e8" }] },'
+    + 'events: [{ start: 2, label: "ds" }, { start: 4, label: null },'
+    + '{ start: 6, label: "ds" }] }; })()');
   const drawn = (mode) => val(
     '(function () { var s = ' + sessExpr + '; s.marksView = '
     + JSON.stringify(mode) + ';'
@@ -413,26 +181,24 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + 'return real.apply(g, arguments); };'
     + 'BARRY.views.xplore._drawCuration(g, s, 0, 10, 0, 400, 0, 120);'
     + 'return { n: n, alpha: hits }; })()');
-  run('(function () { var s = ' + sessExpr + ';'
-    + 's.curationMarks = { index: 0, kind: { id: "ds", labels: ['
-    + '{ id: "ds", name: "Dentate spike", color: "#59c1e8" }] },'
-    + 'events: [{ start: 2, label: "ds" }, { start: 4, label: null },'
-    + '{ start: 6, label: "ds" }] }; })()');
   const shown = drawn('show');
   const dimmed = drawn('dim');
   const hidden = drawn('hide');
   p('  strokes — shown ' + shown.n + ', faded ' + dimmed.n
     + ', hidden ' + hidden.n);
-  p('  summed alpha — shown ' + shown.alpha.toFixed(2) + ', faded '
-    + dimmed.alpha.toFixed(2));
   ck('dentate-spike marks are drawn when marks are shown', shown.n > 0,
      shown.n + ' strokes');
-  ck('and are still drawn when faded, just fainter',
+  ck('and still drawn when faded, just fainter',
      dimmed.n === shown.n && dimmed.alpha < shown.alpha * 0.5,
      dimmed.n + ' strokes, alpha ' + dimmed.alpha.toFixed(2));
   ck('and not drawn at all when marks are hidden', hidden.n === 0,
      hidden.n + ' strokes still went out');
   run('(function () { ' + sessExpr + '.marksView = "show"; })()');
+
+  hd('6. Mark visibility is a fact about the recording, not the pane');
+  ck('it lives on the session, so every pane showing it agrees',
+     val(sessExpr + '.marksView') === 'show',
+     JSON.stringify(val(sessExpr + '.marksView')));
 
   p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
   document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'display options';

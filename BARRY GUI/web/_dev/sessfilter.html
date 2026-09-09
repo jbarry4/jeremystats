@@ -1,0 +1,122 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — session filters</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Three filters that answer questions the session list could not:
+
+     which recordings still need layers,
+     which already have them,
+     and which are on a drive this machine can actually reach.
+
+   Checked against the registry's own numbers rather than against constants,
+   so the harness keeps working as the catalogue grows -- and so a filter
+   that quietly matches everything (or nothing) is caught, which a fixed
+   expected count would not do. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+
+  /* What the registry says, which is what the filters ought to reproduce. */
+  const reg = await (await W().fetch('/api/registry')).json();
+  let total = 0, withLayers = 0, reachable = 0;
+  for (const proj of reg.tree || []) {
+    for (const m of proj.mice || []) {
+      for (const s of m.sessions || []) {
+        total += 1;
+        if (((s.has || {}).layers) || 0) withLayers += 1;
+        if ((s.here || []).length) reachable += 1;
+      }
+    }
+  }
+  p('  registry: ' + total + ' sessions, ' + withLayers + ' with layers, '
+    + (total - withLayers) + ' to do, ' + reachable + ' reachable here');
+
+  W().eval("setView('sessions')");
+  await untilN(() => D().querySelectorAll('.sess-card').length, 200);
+  await sleep(1500);
+
+  const chip = (flag) => D().querySelector('#sessFilters .pill[data-flag="'
+                                           + flag + '"]');
+  const shown = () => D().querySelectorAll('.sess-card').length;
+
+  hd('1. The chips are there');
+  for (const flag of ['layers', 'nolayers', 'here']) {
+    ck('there is a "' + flag + '" filter', !!chip(flag));
+  }
+
+  hd('2. They divide the list rather than emptying it');
+  const all = shown();
+  p('  unfiltered: ' + all + ' card(s)');
+  ck('the list has cards to filter', all > 10, all);
+
+  chip('layers').click();
+  await sleep(900);
+  const onlyLayers = shown();
+  p('  Layers labelled: ' + onlyLayers);
+  ck('it shows fewer than everything', onlyLayers < all, onlyLayers);
+  ck('and not none of them', onlyLayers > 0, onlyLayers);
+  chip('layers').click();
+  await sleep(600);
+
+  chip('nolayers').click();
+  await sleep(900);
+  const toDo = shown();
+  p('  Layers to do: ' + toDo);
+  ck('it shows fewer than everything', toDo < all, toDo);
+  /* The two halves must add up. If they do not, one of them is matching on
+     something other than the layer count -- which is the failure that looks
+     like it works. */
+  p('  ' + onlyLayers + ' + ' + toDo + ' = ' + (onlyLayers + toDo)
+    + '  (of ' + all + ' shown)');
+  ck('the two halves account for every card',
+     onlyLayers + toDo === all, (onlyLayers + toDo) + ' vs ' + all);
+  chip('nolayers').click();
+  await sleep(600);
+
+  hd('3. On this machine means reachable now, not merely known');
+  chip('here').click();
+  await sleep(900);
+  const here = shown();
+  p('  On this machine: ' + here + ' of ' + all);
+  ck('some are reachable', here > 0, here);
+  ck('and it is a real filter, not everything',
+     here <= all, here + ' vs ' + all);
+  chip('here').click();
+  await sleep(600);
+  ck('turning it off restores the list', shown() === all,
+     shown() + ' vs ' + all);
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'session filters';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

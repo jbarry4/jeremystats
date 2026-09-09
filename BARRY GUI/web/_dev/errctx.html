@@ -1,0 +1,195 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — error context and devices</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Two things an error log could not tell you.
+
+   What was happening: the card had a message, a traceback and a timestamp,
+   and BARRY writes every filter change and raster switch into the activity
+   log — the two were simply never lined up. So an error was a message, and
+   the answer to "what were you doing" was a message to whoever hit it.
+
+   And which machines are still reporting. `machines.last_seen` has been a
+   heartbeat all along and nothing read it, so "is the rig still sending its
+   logs" was a question you answered by walking down the corridor.
+
+   The checks that matter here are about honesty rather than presence: that
+   the error appears IN the sequence rather than beside it, that a window
+   with nothing in it says so rather than looking empty, and that "online"
+   and "sending" stay separate — a machine can be up and silent, which is
+   the more interesting failure. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const post = async (path, body) => (await W().fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+
+  hd('1. The window is real, and around the right moment');
+  const errs = await (await W().fetch('/api/errors?limit=20')).json();
+  const list = errs.errors || [];
+  p('  ' + list.length + ' error(s) on record');
+  ck('there are errors to look at', list.length > 0, list.length);
+  const e0 = list[0];
+  p('  newest: ' + e0.at + '  ' + e0.where + '  on ' + e0.machine);
+  const ctx = await post('/api/errors/context',
+                         { at: e0.at, machine: e0.machine });
+  ck('the context route answers', ctx && ctx.ok === true,
+     JSON.stringify(ctx).slice(0, 90));
+  p('  window ' + String(ctx.from).slice(11, 19) + ' .. '
+    + String(ctx.to).slice(11, 19) + '  ('
+    + ctx.before_s + 's before, ' + ctx.after_s + 's after)');
+  ck('it is five minutes before', ctx.before_s === 300, ctx.before_s);
+  ck('and a little after, so a recovery can be told from a cascade',
+     ctx.after_s > 0 && ctx.after_s < 300, ctx.after_s);
+  /* Every action must actually be inside the window. A route that returns
+     the whole log and lets the panel sort it out would pass a "not empty"
+     check and be useless. */
+  const acts = ctx.actions || [];
+  p('  ' + acts.length + ' action(s) in it');
+  /* On moments, not strings. The local log writes local time with its
+     offset and the cloud copy writes UTC, so comparing the text is
+     meaningless -- which is exactly the bug this check caught in the route
+     it was testing. */
+  const at = (x) => Date.parse(x);
+  const lo = at(ctx.from), hi = at(ctx.to);
+  const outside = acts.filter((a) => {
+    const t = at(a.at);
+    return !isFinite(t) || t < lo || t > hi;
+  }).length;
+  ck('every action is inside the window', outside === 0,
+     outside + ' outside');
+  const wrongMachine = acts.filter(
+    (a) => a.machine && e0.machine && a.machine !== e0.machine).length;
+  ck('and from the machine that had the error', wrongMachine === 0,
+     wrongMachine + ' from elsewhere');
+
+  hd('2. A window with nothing in it is not the same as a failure');
+  /* A time long before anything was logged. It has to come back ok with an
+     empty list, not an error -- the panel says something different for
+     each, and only one of them is true. */
+  const quiet = await post('/api/errors/context',
+                           { at: '2020-01-01T00:00:00+00:00' });
+  ck('an empty window still answers ok', quiet && quiet.ok === true,
+     JSON.stringify(quiet).slice(0, 80));
+  ck('and returns nothing rather than everything',
+     (quiet.actions || []).length === 0,
+     (quiet.actions || []).length + ' actions in 2020');
+  const bogus = await post('/api/errors/context', { at: 'not a time' });
+  ck('an unreadable time is refused rather than guessed at',
+     bogus && bogus.ok === false, JSON.stringify(bogus).slice(0, 80));
+
+  hd('3. Clicking an error opens it, in the errors view');
+  run("setView('errors')");
+  await untilN(() => D().querySelectorAll('.err-card').length, 200);
+  await sleep(1200);
+  /* The flat list, since the grouped view folds repeats. */
+  const every = Array.from(D().querySelectorAll('.res-toolbar .pill'))
+    .find((b) => /Every entry/.test(b.textContent || ''));
+  if (every) { every.click(); await sleep(900); }
+  const cards = () => Array.from(D().querySelectorAll('.err-card'));
+  p('  ' + cards().length + ' card(s)');
+  ck('the errors view lists them', cards().length > 0, cards().length);
+  const head = cards()[0].querySelector('.ec-top');
+  ck('the header is the handle', !!head && head.classList.contains('ec-click'),
+     head ? head.className : 'no header');
+  head.click();
+  await untilN(() => D().querySelector('.ec-context .ecx-rows')
+                     || D().querySelector('.ec-context .hint'), 120);
+  await sleep(900);
+  const panel = D().querySelector('.ec-context');
+  ck('a context panel opens', !!panel);
+  const rows = D().querySelectorAll('.ec-context .ecx-row').length;
+  p('  ' + rows + ' row(s) in the panel');
+  ck('with the sequence in it', rows > 0, rows);
+  /* The error's own place in the list. Without it the panel is a set of
+     actions with no sign of which side of the failure each one is on. */
+  const here = D().querySelectorAll('.ec-context .ecx-row.here').length;
+  ck('and the error marked in its place in the sequence', here === 1, here);
+  head.click();
+  await sleep(500);
+  ck('clicking again closes it', !D().querySelector('.ec-context'));
+
+  hd('4. Devices: online and sending are different questions');
+  const dev = await (await W().fetch('/api/devices')).json();
+  ck('the devices route answers', dev && dev.ok === true);
+  p('  cloud configured: ' + dev.configured);
+  const ds = dev.devices || [];
+  for (const d of ds) {
+    p('    ' + String(d.hostname || d.id).padEnd(14)
+      + (d.online ? 'ONLINE ' : 'offline')
+      + '  seen ' + Math.round(d.age_s || 0) + 's ago'
+      + '  ' + d.recent_actions + ' actions, ' + d.recent_errors + ' errors'
+      + (d.is_me ? '   (this one)' : ''));
+  }
+  ck('it knows about more than one machine', ds.length > 1, ds.length);
+  ck('and marks exactly one as this machine',
+     ds.filter((d) => d.is_me).length === 1,
+     ds.filter((d) => d.is_me).length);
+  /* The two facts must be independent. If "online" were derived from having
+     sent something, a machine that is up and silent would read as offline
+     and the distinction would be lost. */
+  const upAndQuiet = ds.filter((d) => d.online && !d.recent_actions);
+  p('  online but sending no actions: ' + upAndQuiet.length);
+  ck('online is about the heartbeat, not about having something to say',
+     ds.every((d) => (d.age_s == null) === (d.last_seen == null)),
+     'a machine with a last_seen has no age');
+  ck('every device says when it was last seen',
+     ds.every((d) => d.last_seen), 'one has no last_seen at all');
+
+  hd('5. The devices table is on screen, in the debug view');
+  run("setView('errors')");
+  await sleep(500);
+  const dbg = Array.from(D().querySelectorAll('.res-toolbar .pill, .tab, button'))
+    .find((b) => /^Debug|trace$/i.test((b.textContent || '').trim()));
+  if (dbg) { dbg.click(); await sleep(1400); }
+  const shown = await untilN(() => D().querySelector('.dev-panel'), 80);
+  ck('the panel is rendered', shown >= 0,
+     'no .dev-panel — is the debug tab reachable?');
+  if (shown >= 0) {
+    await untilN(() => D().querySelectorAll('.dev-row').length, 80);
+    const dr = D().querySelectorAll('.dev-row').length;
+    p('  ' + dr + ' device row(s) on screen');
+    ck('with a row per machine', dr === ds.length, dr + ' vs ' + ds.length);
+    ck('and a lit dot for the ones that are online',
+       D().querySelectorAll('.dev-dot.on').length
+         === ds.filter((d) => d.online).length,
+       D().querySelectorAll('.dev-dot.on').length);
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'error context';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

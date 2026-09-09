@@ -15,6 +15,344 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.08.16 — the history the lab shares
+
+### Changed
+
+- **History can show the whole lab, not just this machine.** The log was
+  never the problem — ninety-five distinct actions, and `session.open`
+  already carried the path, the channel count, the sample rate and what was
+  restored. What could not be answered was "who loaded that recording last,
+  and what did they do to it", because the view read this machine's own day
+  files and nothing else, so the answer was available only if it happened to
+  be you.
+
+  A switch between **This machine** and **Everyone**, a filter by kind of
+  work (session, curation, bank, layers, figure, run…), and the rows now
+  carry who did it and what it was done to — the recording's label, or the
+  file, rather than making you open each one to find out.
+
+  The kind filter matches a prefix, so "curation" reaches
+  `curation.enter`, `curation.bank` and `curation.collision` alike. The
+  useful question is about a kind of work, not one verb.
+
+- **`/api/activity/who`** answers the shape rather than the list: who has
+  done how much, from which machine, last seen when. Currently 756 actions
+  from Shahriar Tafti on Bluebarry, 236 from Rain on StrawBarry, 8 from Rain
+  Younger — which is the sort of thing a list of a thousand rows makes you
+  work out for yourself.
+
+- **The activity log is out of git.** Eight tracked files, several thousand
+  lines a week, one per machine per day — and committing them was the only
+  way one person's history reached another, so the repository carried a
+  growing pile of keystroke records and "who loaded this last" was *still*
+  unanswerable until somebody remembered to push. It goes through Supabase
+  now. The files stay on disk as the offline buffer: BARRY records what
+  happened whether or not there is a network, which is exactly when it
+  matters. They are cache, not transport.
+
+The log itself stays push-only, and the reason is unchanged: it is an
+append-only record of what happened on one machine, and pulling somebody
+else's into this machine's day file would be writing their actions into a
+file that says it is mine. The combined history is a query, and now there is
+one.
+
+### A note on honesty
+
+When the shared log is asked for and cannot be read, the answer says so —
+`scope` reports what was actually served and `wanted` echoes what was asked,
+and the view prints the reason above the list. An unlabelled list of your own
+actions is indistinguishable from "nobody else did anything", and somebody
+would believe it.
+
+---
+
+## 2026.09.08.15 — the reference channels
+
+### Added
+
+- **Ripple, fissure and hilus channels on 62 recordings**, from the Toothy
+  workbook (`tools/import_toothy.py`). These are the landmarks every CSD is
+  read against — which channel sits at the fissure is a fact about where the
+  probe ended up — and BARRY had nowhere to put them, so the answer lived in
+  a spreadsheet and was true for whoever had it open.
+
+  Corroborated rather than trusted: the hilus channel the workbook names is
+  labelled HIL in the StrataScope sheet in **57 of 57** cases, and those
+  sheets came from a different spreadsheet imported separately. Two
+  independent sources agreeing is the best evidence either could have.
+
+- **The extraction note, where it was not clean.** 53 read "Success: Clean
+  extraction" and are not shown; the nine that do not are on the card —
+  five bad-channel hits on the ripple, three with no CA1 SP channel at all,
+  one bad channel at the hilus. That last group changes how the recording
+  should be read, and it was only ever visible in a spreadsheet. Three
+  sessions are flagged as still needing processing.
+
+Needs `supabase/07_reference_channels.sql`.
+
+### Not imported, and why
+
+Four of the workbook's six sheets are deliberately left alone. The reasoning
+is in the tool's docstring, and `--reconcile` reports the differences without
+writing anything.
+
+- **DS#, Garbage#, Flag#, Deep Rev.** BARRY holds the decisions these count,
+  one per candidate, with who made each and when. Of the 40 sessions where
+  both exist, 22 agree exactly and 18 do not — and m24 s4 reads spike 4 /
+  garbage 734 in the workbook against spike 738 / garbage 0 here, which looks
+  like two columns swapped in that row. Importing a count that disagrees with
+  the decisions it summarises would give the lab two answers to "how many
+  dentate spikes", one of which cannot be shown event by event.
+- **Channel side and location.** Already imported from the feeder sheet.
+  3,898 of 3,948 agree; the 50 that do not are in four sessions and are
+  systematic rather than scattered — for m11 s10 the workbook says CA1 for
+  channels 8–17 where the sheet says CA1 SP. Two spreadsheets disagreeing
+  about a layer boundary is a question for whoever drew it, not something to
+  settle by picking the file read last.
+- **Manual Vs Auto** and **Data Summary** are results — a comparison of the
+  detector against manual picks, and per-mouse counts with percent change.
+  Putting either in the session record would file a conclusion where
+  measurements go.
+
+### Fixed while surveying
+
+The first pass compared the workbook's DS# against a curation label id of
+`ds` and reported BARRY holding zero dentate spikes everywhere. The label is
+`spike`. A survey that reports a false conflict is worse than one that
+reports nothing, because somebody acts on it — so the comparison now names
+the label ids explicitly, and the channel parse reads the digits out of
+`CSC12.ncs` rather than failing silently and finding nothing to compare.
+
+---
+
+## 2026.09.08.14 — what was happening, and which devices
+
+### Added
+
+- **Click an error to see the five minutes before it.** The card carried a
+  message, a traceback and a timestamp — everything except the part that
+  makes a bug fixable. BARRY already writes every filter change, colormap
+  pick and raster switch into the activity log; the two were simply never
+  lined up, so an error was a message and the answer to "what were you
+  doing" was a message to whoever hit it.
+
+  Five minutes before, and one after — before is where the cause is, and
+  that minute after is how you tell "and then it recovered" from "and then
+  everything broke". The error is drawn **in** the sequence rather than
+  beside it, because a list of actions with no indication which side of the
+  failure each one is on is not much of a list. Other errors in the same
+  window are listed too: one fault often arrives as six and the first is the
+  one worth reading.
+
+  It reads another machine's activity from the cloud, which is the case the
+  shared copy exists for — the log itself stays push-only, because copying
+  somebody else's actions into this machine's day file would be writing
+  their history into a file that says it is mine. If the cloud cannot be
+  reached it says so, because "nothing was happening" and "I could not find
+  out what was happening" look identical in an empty list.
+
+- **A devices table**, in the debug view: every machine that syncs here,
+  whether it still is, and what it has been sending. `machines.last_seen`
+  has been a heartbeat all along and nothing read it, so "is the rig still
+  sending its logs" was a question you answered by walking down the
+  corridor.
+
+  Online and sending are separate columns on purpose. A machine can be
+  reachable and have stopped logging, and that is the more interesting
+  failure of the two — one of the three here is online with three errors and
+  no actions at all.
+
+The debug trace itself stays per-process and in memory. It is what *this*
+browser and *this* server did, and shipping raw request trails between
+machines would be a great deal of volume for very little: nobody debugs by
+reading somebody else's HTTP log. What is worth knowing across machines is
+whether each one is still reporting, which is what the table answers.
+
+### Fixed
+
+- The context window compared ISO strings, and the local log writes local
+  time with its offset while the cloud copy writes UTC — so lexicographic
+  comparison silently dropped every cloud row, which read as "the other
+  machine logged nothing" rather than as a bug. Everything compares moments
+  now, including the harness that caught it.
+
+---
+
+## 2026.09.08.13 — layer sheets in the Event Bank
+
+### Added
+
+- **StrataScope sheets are in the Event Bank**, on a switch beside Events.
+  They are the other output somebody cites in a paper, and they were only
+  reachable through the ToolKit — so "where is the recorded output for m11
+  s10" had two answers depending which output you meant.
+
+  Not as bank entries, though. A bank entry is a set of event *times*, and
+  every invariant in the bank is about times: the snapshots are
+  `[[start, label], …]`, the counts are event counts, the import path expects
+  a time column. A layer sheet is channel → region and has no times at all.
+  Forcing it in would mean either lying in the times field or making all of
+  those invariants optional, and an entry that is only half an entry is worse
+  than a second list. One view, two shapes, neither pretending to be the
+  other.
+
+- **The same version workflow as a banked DS set.** Snapshot a pass and it is
+  frozen as the next version, with a note about what the pass was; every
+  version exports as CSV, read from its snapshot so it cannot disagree with
+  the history panel. A row per channel including the unlabelled ones — a CSV
+  that silently omits them cannot be told from one where they were never
+  offered.
+
+- A sheet is shown as **runs** rather than one row per channel: a probe passes
+  through a layer for a stretch, so where the boundaries fall is the fact
+  worth reading and "CA1" eight times over is not.
+
+### Fixed
+
+- **62 of the 67 layer sheets had no channel list**, so they displayed and
+  exported as empty despite holding sixty-odd labels each — every reader
+  walks that list, and my feeder import never wrote one. The importer now
+  does, the readers fall back to the labelled channels when it is missing,
+  and the existing sheets have been backfilled. A sheet is never invisible
+  just because nobody said how wide it was.
+
+---
+
+## 2026.09.08.12 — labelling layers by pointing at them
+
+### Changed
+
+- **StrataScope: click a channel, then name it.** The rail put a dropdown on
+  every row, and at 64 channels a row is six pixels tall — so labelling asked
+  the mouse to be right twice, once to hit the row and once to work a menu
+  covering the thing being labelled. Reported as "I can't click on individual
+  channels to select anything", which is what a six-pixel target feels like.
+
+  Click selects, shift-click takes a range, drag extends, ctrl-click adds
+  one. Then a layer button — or its number — names everything selected, and
+  `0` unlabels. Precision is needed once, and the second half can be a
+  keystroke. The selection survives being labelled, because finding one
+  channel wrong in a run of twelve is the common case and re-picking the run
+  to fix it is not an answer. Escape drops the selection before it drops the
+  mode.
+
+  The brush stays for anyone used to it: with a layer armed and nothing
+  selected, dragging still paints.
+
+### Fixed
+
+- **The layer overlay drew on nothing but the traces**, which is the one view
+  people do not label against — the CSD is where a boundary is visible, and
+  the four-way view showed no layers at all. It draws on image panels now,
+  aligned to the rows the panel reports rather than to the sheet's own
+  channel order: CSD drops the first and last channel, and laying the sheet
+  over those rows would put every band one off, which is worse than nothing
+  because it looks right.
+- **And it could stop drawing entirely.** The overlay was gated on a flag set
+  on the session object — but entering StrataScope reopens the recording, and
+  a reopen can hand back a different object from the one the flag was set on.
+  It now also accepts "this is the recording under the sheet", which the
+  module already knows.
+
+### Added
+
+- **An overlay strength control** beside Fill down and Clear: Off, Faint,
+  Clear, Solid. The bands show where a boundary fell, and past a point they
+  are in the way of the data that decides where it should have fallen. The
+  selection is drawn whatever the setting — turning the layers down is not a
+  reason to stop showing what you are pointing at.
+- **Session filters: Layers labelled, Layers to do, On this machine.** 387
+  recordings here, 64 labelled, 323 to do, 188 reachable.
+
+  Both filters were wrong on the first pass and the harness caught both: the
+  registry rows are translated into cards, and the translation dropped `has`
+  and `here` — so the layers filter matched nothing at all, and "on this
+  machine" fell back to "has a path", which matched 382 of 387. A filter that
+  matches everything is as broken as one that matches nothing and much harder
+  to notice.
+
+---
+
+## 2026.09.08.11 — removing a name, and the colony sheet
+
+### Added
+
+- **A profile can be removed.** The button was missing; the backend and its
+  route had been there all along. Only names nothing else carries can go —
+  the roster is compiled from the profiles, the decisions, the bank and the
+  assignments, so a name with work behind it is there because the data says
+  so, and a button that appeared to delete it would be lying about what
+  BARRY holds. Those are marked and say how many records hold them.
+
+  The trap, which the harness now guards: the roster counts the hand-added
+  entry itself, so testing that count directly refuses **every** hand-added
+  name — precisely the set that can go, and precisely what a leftover test
+  entry is. Three are removable here; four are held.
+
+- **Mouse details from the colony Google Sheet** (`tools/import_colony.py`).
+  Cage, sex, genotype across all three loci, date of birth, role, alive or
+  perfused, and what was implanted where and when — for the 19 mice BARRY
+  has recordings for. The mouse book has had slots for these all along and
+  nothing to put in them, so every one of those questions was answered by
+  opening the spreadsheet.
+
+  Mouse facts only, deliberately: the sheet also carries session numbers,
+  and recordings are the one thing BARRY should learn from the recordings
+  themselves. A session that exists because a spreadsheet says so is a
+  session nobody can open.
+
+  Read-only, one direction, via the published CSV — no key to store and
+  nothing that stops working when a token expires. It writes only what
+  differs, so a re-run is a clean no-op: the property the roster sync and
+  the layer sync both turned out to lack. Of the sheet's 241 mice the 199
+  with no recordings here are skipped unless `--all` is passed.
+
+  The implant column is the useful surprise — which probe, which hemisphere,
+  what date — and is the only independent check on the hemisphere a
+  recording claims.
+
+---
+
+## 2026.09.08.10 — "keep, greyed out" is gone
+
+### Removed
+
+**The greyed-out channel mode.** It sounded like a display option and was
+really two features in one coat: to draw an unchecked channel the request has
+to ask for it, and once that data is in the response every derived number is
+computed over channels somebody explicitly excluded. It produced a CSD colour
+scale twice as wide as it should have been and a trace amplitude that moved
+when you unchecked something — both invisible unless you went looking, both
+the kind of thing that reaches a figure.
+
+Each was fixable and each was fixed. The trouble is the list did not
+obviously end: every future panel and every future statistic would have had
+to remember that some of its rows were not really selected. A feature that
+adds a caveat to everything downstream costs more than it gives — and what it
+gave, seeing what you are leaving out, is already in the channel list beside
+the plot.
+
+Unchecking means what it always meant: not read, not drawn, not in any sum.
+`rows[].dim` stays in the panel response, always false, so a stale tab that
+still sends `dim_channels` is ignored rather than answered with a traceback.
+
+Marks visibility (show / faded / hidden) stays. A bookmark has never been in
+anybody's arithmetic.
+
+### Fixed
+
+- **Collapsing the menu made the rail taller and gave it a scrollbar**, worst
+  on exactly the screens with least room. Two causes, both mine: labels
+  collapsed with `max-width: 0` kept their full height — the environment
+  block stayed three lines tall while being zero pixels wide — and the icons
+  rule's `padding` shorthand silently overrode the compaction in
+  `@media (max-height: 700px)`, adding six pixels to each of eleven items.
+  Collapsing now never costs more room than it saves, checked at four window
+  heights.
+
+---
+
 ## 2026.09.08.9 — what the spreadsheets knew
 
 Three facts lived in two Excel files and nowhere else, which meant they were

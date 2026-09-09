@@ -1,0 +1,173 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the lab's history</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The log was never the problem. Ninety-five distinct actions, and
+   `session.open` carries the path, the channel count, the sample rate and
+   what was restored. What could not be answered was "who loaded that
+   recording last, and what did they do to it" — the view read this machine's
+   own day files and nothing else, so the answer was available only if it
+   happened to be you.
+
+   So the checks here are about the difference between the two scopes, and
+   about not lying when the shared one is unreachable: an unlabelled list of
+   your own actions looks exactly like "nobody else did anything", and only
+   one of those is a fact. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const get = async (path) => (await W().fetch(path)).json();
+
+  hd('1. Two scopes, and they are different');
+  const mine = await get('/api/activity?limit=400&scope=mine');
+  const all = await get('/api/activity?limit=400&scope=everyone');
+  ck('this machine answers', mine && mine.ok === true);
+  ck('and so does everyone', all && all.ok === true);
+  p('  scope reported: mine="' + mine.scope + '"  everyone="'
+    + all.scope + '"');
+  ck('the shared log was actually reachable', all.scope === 'everyone',
+     'fell back: ' + all.scope_error);
+  const hosts = (rows) => Array.from(new Set(
+    (rows || []).map((a) => a.machine).filter(Boolean)));
+  p('  machines in mine:     ' + JSON.stringify(hosts(mine.activity)));
+  p('  machines in everyone: ' + JSON.stringify(hosts(all.activity)));
+  /* The point of the whole feature. If the shared scope shows one machine
+     it has not been read, whatever it claims. */
+  ck('everyone spans more than one machine',
+     hosts(all.activity).length > 1, JSON.stringify(hosts(all.activity)));
+  ck('and carries who did each thing',
+     (all.activity || []).some((a) => a.user), 'no user on any row');
+
+  hd('2. The detail is what makes it worth having');
+  const opens = (all.activity || []).filter((a) => a.action === 'session.open');
+  p('  ' + opens.length + ' session.open row(s) in the sample');
+  if (opens.length) {
+    const d = opens[0].detail || {};
+    p('  a load: ' + JSON.stringify(d).slice(0, 120));
+    ck('a file load records which file', !!d.path, JSON.stringify(d));
+    ck('and how many channels it had', d.channels != null, d.channels);
+  } else {
+    ck('there is at least one file load to look at', false,
+       'none in the sample');
+  }
+
+  hd('3. Filtering by a kind of work, not by substring');
+  const cur = await get('/api/activity?limit=400&scope=everyone&action=curation');
+  const kinds = Array.from(new Set(
+    (cur.activity || []).map((a) => a.action)));
+  p('  ' + (cur.activity || []).length + ' row(s), actions: '
+    + kinds.slice(0, 6).join(', '));
+  ck('it returns rows', (cur.activity || []).length > 0);
+  /* A prefix, so one filter reaches the whole family of a verb. Matching
+     the exact string would make "curation" find nothing at all. */
+  ck('and every one of them is curation work',
+     kinds.length > 0 && kinds.every((k) => /^curation/.test(k)),
+     kinds.join(', '));
+  ck('including more than one kind of it', kinds.length > 1, kinds.length);
+
+  hd('4. Who did what, as a shape rather than a list');
+  const who = await get('/api/activity/who');
+  ck('the summary answers', who && who.ok === true);
+  p('  sampled ' + who.sampled + ' rows');
+  for (const x of who.people || []) {
+    p('    ' + String(x.name).padEnd(22) + String(x.n).padStart(5)
+      + '  last ' + String(x.last).slice(0, 19));
+  }
+  ck('it names more than one person', (who.people || []).length > 1,
+     (who.people || []).length);
+  ck('and more than one machine', (who.machines || []).length > 1,
+     (who.machines || []).length);
+  const total = (who.people || []).reduce((n, x) => n + x.n, 0);
+  ck('the per-person counts add up to what was sampled',
+     total === who.sampled, total + ' vs ' + who.sampled);
+  ck('and the kinds of work are grouped, not one row per verb',
+     (who.actions || []).every((a) => a.kind.indexOf('.') < 0),
+     (who.actions || []).map((a) => a.kind).join(','));
+
+  hd('5. It never claims to be showing everyone when it is not');
+  /* The failure that matters is a fallback nobody is told about: a list of
+     your own actions, unlabelled, is indistinguishable from "nobody else
+     did anything" -- and somebody would believe it.
+
+     The cloud is reachable from here, so the unreachable branch cannot be
+     provoked honestly. What CAN be checked is the contract that branch
+     relies on: the answer always reports the scope it actually served and
+     echoes the one that was asked for, so the two can be compared. An
+     unrecognised scope exercises the same path with a different reason. */
+  const odd = await get('/api/activity?limit=5&scope=nope');
+  p('  asked for "nope", got scope="' + odd.scope + '", wanted="'
+    + odd.wanted + '"');
+  ck('it reports the scope it actually served',
+     odd.scope === 'mine', odd.scope);
+  ck('and echoes what was asked, so a fallback is detectable',
+     odd.wanted === 'nope', odd.wanted);
+  ck('it does not claim to be everyone', odd.scope !== 'everyone');
+  /* And the success path must be equally explicit, or the comparison above
+     is worthless. */
+  ck('a successful shared read says so and carries no excuse',
+     all.scope === 'everyone' && !all.scope_error,
+     all.scope + ' / ' + all.scope_error);
+
+  hd('6. The view offers both, and labels which it is showing');
+  run("setView('history')");
+  await untilN(() => D().querySelector('#histList'), 200);
+  await sleep(1200);
+  const actTab = Array.from(D().querySelectorAll('.res-toolbar .pill, .pill'))
+    .find((b) => /^Activity/i.test((b.textContent || '').trim()));
+  if (actTab) { actTab.click(); await sleep(1600); }
+  ck('there is a scope switch', !!D().querySelector('.hist-who-bar'),
+     'no scope bar in the activity list');
+  const btn = (name) => Array.from(
+    D().querySelectorAll('.hist-who-bar .mini'))
+    .find((b) => new RegExp(name, 'i').test(b.textContent || ''));
+  ck('with this machine and everyone', !!btn('this machine') && !!btn('everyone'));
+  const sub = () => (D().getElementById('histSub') || {}).textContent || '';
+  p('  sub-line: "' + sub() + '"');
+  ck('and it says whose log is on screen',
+     /this machine|everyone/.test(sub()), sub());
+  if (btn('everyone')) {
+    btn('everyone').click();
+    await sleep(2200);
+    p('  after switching: "' + sub() + '"');
+    ck('switching to everyone is reflected', /everyone/.test(sub()), sub());
+    const whoCells = D().querySelectorAll('#histList .hist-who').length;
+    p('  ' + whoCells + ' row(s) name who did it');
+    ck('and the rows say who', whoCells > 0,
+       'no who column on the shared log');
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'history';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

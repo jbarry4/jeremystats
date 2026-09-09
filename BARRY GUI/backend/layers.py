@@ -315,17 +315,52 @@ class Layers:
             "session_label": rec.get("session_label"),
             "regions": rec.get("regions") or REGIONS,
             "labels": rec.get("labels") or {},
-            "channels": rec.get("channels") or [],
+            "channels": self.covered(rec),
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
             "progress": self.progress(rec),
+            # The history, without the snapshots.
+            #
+            # A snapshot is the whole channel->region mapping, and the list
+            # route returns every sheet: sixty-odd sheets times sixty-four
+            # entries times however many versions is a lot of bytes for a
+            # list that only shows how many there are. The snapshot itself
+            # comes with the single-sheet read, which is when somebody is
+            # actually looking at one.
+            "versions": [
+                {k: v for k, v in ver.items() if k != "snap"}
+                for ver in (rec.get("versions") or [])
+            ],
+            "n_versions": len(rec.get("versions") or []),
         }
+
+    @staticmethod
+    def covered(rec):
+        """Which channels a sheet is about.
+
+        The channel list, when it has one. Sheets written by the first
+        version of the feeder import did not -- and every reader walks this
+        list, so those sheets displayed and exported as empty despite
+        holding sixty-three labels each. Falling back to the labelled
+        channels means a sheet is never invisible just because nobody said
+        how wide it was.
+        """
+        got = [int(c) for c in (rec.get("channels") or [])]
+        if got:
+            return got
+        keys = []
+        for k in (rec.get("labels") or {}):
+            try:
+                keys.append(int(k))
+            except (TypeError, ValueError):
+                continue
+        return sorted(keys)
 
     def rows(self, rec):
         names = {r["id"]: r["name"] for r in (rec.get("regions") or REGIONS)}
         labels = rec.get("labels") or {}
         out = []
-        for i, ch in enumerate(rec.get("channels") or []):
+        for i, ch in enumerate(self.covered(rec)):
             key = str(int(ch))
             out.append({
                 "gid": rec.get("gid"),

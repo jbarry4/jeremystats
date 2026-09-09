@@ -19,3 +19,17 @@ HOF Scripts/Python Visualizer/**/dist/
 # whether or not there is a network, which is exactly when it matters most.
 # They are cache now, not transport.
 BARRY GUI/GUI_logs/errors/
+
+# The activity log, for the same reason and with the same trade.
+#
+# Ninety-five kinds of action, several thousand lines a week, one file per
+# machine per day -- and committing them was the only way one person's
+# history reached another. So the repository carried a growing pile of
+# keystroke records, and "who loaded this recording last" was still
+# unanswerable until somebody remembered to push.
+#
+# It goes through Supabase now, and the History view can query the whole
+# lab's. The files stay on disk as the offline buffer: BARRY records what
+# happened whether or not there is a network, which is exactly when it
+# matters. They are cache, not transport.
+BARRY GUI/GUI_logs/activity/

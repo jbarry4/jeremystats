@@ -6,24 +6,30 @@
     "converted": "2026-09-04T15:57:01.614640+00:00",
     "created": "2026-09-02T23:51:19.829149+00:00",
     "duration_s": "2026-09-04T15:57:01.614640+00:00",
+    "extraction_note": "2026-09-09T01:32:53.942068+00:00",
     "first_seen_by": "2026-09-04T15:57:01.614640+00:00",
+    "fissure_channel": "2026-09-09T01:32:53.942068+00:00",
     "fs": "2026-09-04T15:57:01.614640+00:00",
     "gid": "2026-09-02T23:51:19.829149+00:00",
     "group": "2026-09-04T15:57:01.614640+00:00",
     "hemisphere": "2026-09-09T00:00:26.575948+00:00",
     "hemisphere_source": "2026-09-09T00:00:26.575948+00:00",
+    "hilus_channel": "2026-09-09T01:32:53.942068+00:00",
     "key": "2026-09-04T15:57:01.614640+00:00",
     "label": "2026-09-04T15:57:01.614640+00:00",
     "loose_key": "2026-09-04T15:57:01.614640+00:00",
     "mouse": "2026-09-04T15:57:01.614640+00:00",
     "n_channels": "2026-09-04T15:57:01.614640+00:00",
+    "needs_processing": "2026-09-09T01:32:53.942068+00:00",
     "project": "2026-09-04T15:57:01.614640+00:00",
     "project_source": "2026-09-04T15:57:01.614640+00:00",
+    "reference_channels_source": "2026-09-09T01:32:53.942068+00:00",
     "retired": "2026-09-04T15:57:01.614640+00:00",
+    "ripple_channel": "2026-09-09T01:32:53.942068+00:00",
     "schema": "2026-09-04T15:57:01.614640+00:00",
     "session": "2026-09-04T15:57:01.614640+00:00",
     "start": "2026-09-04T15:57:01.614640+00:00",
-    "updated": "2026-09-09T00:00:26.575948+00:00"
+    "updated": "2026-09-09T01:32:53.942068+00:00"
   },
   "_keys": {
     "paths": {
@@ -64,7 +70,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T00:00:26.575948+00:00",
+    "at": "2026-09-09T01:32:53.942068+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -82,17 +88,21 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 822.5109333333334,
+  "extraction_note": "Success: Clean extraction.",
   "first_seen_by": "scan",
+  "fissure_channel": 21,
   "fs": 30000.0,
   "gid": "s3356c202a8c4",
   "group": "PTEN",
   "hemisphere": "L",
   "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
+  "hilus_channel": 39,
   "key": "m007_s006_2023-08-24_13-49-57",
   "label": "PTEN m7 s6 2023-08-24",
   "loose_key": "m007_s006",
   "mouse": 7,
   "n_channels": 64,
+  "needs_processing": true,
   "paths": [
     "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s6aug24\\2023-08-24_13-49-57",
     "G:\\PTEN\\M7_s6",
@@ -102,7 +112,9 @@
   ],
   "project": "PTEN",
   "project_source": "guessed",
+  "reference_channels_source": "PTEN Toothy Data .xlsx",
   "retired": false,
+  "ripple_channel": 3,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -130,7 +142,7 @@
   "session": 6,
   "start": "2023-08-24T13:49:57",
   "updated": {
-    "at": "2026-09-08T20:00:26-04:00",
+    "at": "2026-09-08T21:32:53-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

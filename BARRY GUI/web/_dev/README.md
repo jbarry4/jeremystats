@@ -41,6 +41,12 @@ live server with no build step and no test framework:
 | `marks.html` | that deleting a bookmark redraws the list rather than stacking another dialog, so the close X closes; and that one click is one request |
 | `motion.html` | the boot overlay is painted before the scripts finish and cannot outlive them; the Menu button carries its three positions; the rail really reaches 54px and 0px; and skeletons are present during a load and gone after, including a failed one |
 | `presence.html` | who is curating what: that a beat carries the counters, that a second machine is seen and reported back, that the workbench treats the set as held, that taking it marks their session rather than deleting it, and that a failed presence read never breaks the bench. Writes to the live table and clears up after itself |
+| `people.html` | that a name carried by the data is refused and a hand-added one goes; and that the removability rule does not use the count that includes the hand-add itself, which would refuse everything |
+| `strata.html` | that selecting a channel writes nothing, that a layer button names everything selected, that the number keys do the same, and that the overlay reaches image panels at every strength |
+| `sessfilter.html` | that the layer and reachability filters divide the list rather than emptying it — the two layer halves must account for every card, which catches a filter matching on the wrong field |
+| `banklayers.html` | that the bank's two kinds stay separate while living in one view, that a sheet shows its runs and history, that a version's CSV comes from that version's snapshot rather than the sheet as it stands, and that snapshotting adds one |
+| `errctx.html` | that an error's context window holds only actions actually inside it (compared as moments, not strings — mixed timezones is what broke it), that an empty window answers ok rather than failing, and that a device being online is independent of its having anything to say |
+| `history.html` | that the shared scope really spans more than one machine, that the kind filter matches a family of actions rather than one verb, that the per-person counts add up, and that the answer never claims to be showing everyone when it is not |
 
 Run them by opening, with the server up:
 

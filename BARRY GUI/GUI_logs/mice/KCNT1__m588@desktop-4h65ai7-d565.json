@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-09-09T00:36:58.876150+00:00",
+    "mouse": "2026-09-09T00:36:58.876150+00:00",
+    "note": "2026-09-09T00:43:34.164432+00:00",
+    "project": "2026-09-09T00:36:58.876150+00:00",
+    "schema": "2026-09-09T00:36:58.876150+00:00",
+    "updated": "2026-09-09T00:43:34.164432+00:00"
+  },
+  "_keys": {
+    "attrs": {
+      "cage": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "dob": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "genotype": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "implant": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "role": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "sex": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ],
+      "status": [
+        "set",
+        "2026-09-09T00:36:58.876150+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-09T00:43:34.164432+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "attrs": {
+    "cage": "CC-29613-1",
+    "dob": "4/6/26",
+    "genotype": "YH hom, PV het",
+    "implant": "headplate 7/21/2026 \u00b7 H3 (L) 7/27/2026 \u00b7 H3 (R) 7/27/2026 \u00b7 H10 (L) 7/27/2026 \u00b7 H10 opto (L) 7/27/2026 \u00b7 H10 opto (R) 7/28/2026",
+    "role": "Stock",
+    "sex": "F",
+    "status": "alive"
+  },
+  "created": {
+    "at": "2026-09-08T20:36:58-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "mouse": 588,
+  "note": "From the colony Google Sheet. Dates are approximate and the implant column records what was planned rather than what a given recording turned out to be \u2014 sessions are checked by hand. Treat as a prompt to go and look, not as the answer.",
+  "project": "KCNT1",
+  "schema": 1,
+  "updated": {
+    "at": "2026-09-08T20:43:34-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

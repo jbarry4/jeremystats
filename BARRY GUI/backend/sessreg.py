@@ -571,6 +571,14 @@ class Registry:
             # are not the same recording.
             "hemisphere": rec.get("hemisphere"),
             "hemisphere_source": rec.get("hemisphere_source"),
+            # The landmarks a CSD is read against, and what the extraction
+            # made of them. On the row rather than behind a click: "no CA1
+            # SP channel" changes how the recording should be read.
+            "ripple_channel": rec.get("ripple_channel"),
+            "fissure_channel": rec.get("fissure_channel"),
+            "hilus_channel": rec.get("hilus_channel"),
+            "extraction_note": rec.get("extraction_note"),
+            "needs_processing": rec.get("needs_processing"),
             "n_channels": rec.get("n_channels"),
             "fs": rec.get("fs"),
             "duration_s": rec.get("duration_s"),

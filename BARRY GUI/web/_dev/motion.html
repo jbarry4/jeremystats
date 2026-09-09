@@ -270,6 +270,54 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + worst.toFixed(1) + 'px');
   ck('the icons are centred in the collapsed rail', worst < 1.5,
      worst.toFixed(1) + 'px off — a gap is being left for a hidden label');
+
+  /* And the rail must still fit.
+
+     Collapsing the labels with `max-width: 0` took them out sideways and
+     left them at full height -- the environment block stayed three lines
+     tall while being zero pixels wide -- so the rail grew taller than the
+     window and sprouted a scrollbar that squashed everything into it.
+     `display: none`, which this replaced, had taken them out in both
+     directions. */
+  const scroller = () => D().querySelector('#rail .rail-scroll') || D().getElementById('rail');
+  const fits = () => {
+    const el = scroller();
+    return { over: el.scrollHeight - el.clientHeight,
+             h: el.scrollHeight, box: el.clientHeight };
+  };
+  run("setRail('full')");
+  await settle(200);
+  const fullFit = fits();
+  run("setRail('icons')");
+  await settle(200);
+  const iconFit = fits();
+  p('  rail content height: full ' + fullFit.h + ' in ' + fullFit.box
+    + ', icons ' + iconFit.h + ' in ' + iconFit.box);
+  /* Two things went wrong here, and only the second was mine to fix.
+
+     The rail has always been able to be longer than a short window -- that
+     is what `.rail-scroll` is for, and on a 600px screen it overflows in
+     every state. What was new is that COLLAPSING it made things worse:
+     labels kept their full height when only their width was collapsed, and
+     the icons rule's `padding` shorthand quietly undid the compaction in
+     `@media (max-height: 700px)`. Eleven items, six pixels each, and a
+     scrollbar exactly when there was least room for one.
+
+     So the invariant is relative, not absolute: collapsing must never cost
+     more room than it saves. */
+  /* Only the overflow, not the content height.
+
+     `scrollHeight` floors at `clientHeight`, so as soon as the collapsed
+     rail stops overflowing it reports the height of its box rather than of
+     its content -- which reads as the content having grown at exactly the
+     moment the problem went away. The overflow is the thing that was
+     actually complained about and the only one of the two that stays
+     comparable across states. */
+  ck('collapsing never overflows more than the full rail does',
+     iconFit.over <= Math.max(1, fullFit.over),
+     'collapsed overflows ' + iconFit.over + 'px, full ' + fullFit.over + 'px');
+  run("setRail('full')");
+  await settle();
   run("setRail('full')");
   await settle();
 

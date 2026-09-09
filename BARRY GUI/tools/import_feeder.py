@@ -349,6 +349,11 @@ def do_layers(store, layers, index, feed, apply_it):
             layers.import_versions(
                 gid, mapping,
                 session_label=rec.get("label"),
+                # Which channels the sheet covers. Left out on the first
+                # run, and a sheet with labels and no channel list cannot
+                # be displayed or exported: every reader walks the channel
+                # list, so it showed as an empty sheet that plainly was not.
+                channels=sorted(int(c) for c in chans),
                 note="Migrated from EEGData_FeederSheet_PTEN_with_DKO.xlsx",
                 by="feeder sheet import")
     say("\n  would create %d   already versioned %d   skipped %d"

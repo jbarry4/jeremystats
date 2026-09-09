@@ -1,215 +1,252 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>strata: running</title>
-<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
-font:11px/1.6 ui-monospace,Consolas,monospace}
-#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
-background:#06100c;white-space:pre-wrap;z-index:9}
-.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
-iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
-height:100vh;border:0}</style></head>
-<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<meta charset="utf-8">
+<title>Harness — labelling layers</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-const L = document.getElementById('log');
-let fails = 0;
-const say = (s, c) => { const n = document.createElement('span');
-  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
-  L.scrollTop = L.scrollHeight; };
-const check = (w, ok, note) => { if (!ok) fails++;
-  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
-      ok ? 'good' : 'bad'); };
+/* Labelling a layer used to need the mouse to be right twice: land on a
+   four-pixel row, then work a dropdown that covered the thing being
+   labelled. Reported as "I can't click on individual channels to select
+   anything", which is exactly what a four-pixel target feels like.
+
+   Now click selects and a tag names, so precision is needed once. The checks
+   below are about that split -- that selecting writes nothing, that naming
+   writes everything selected, and that the keyboard reaches both.
+
+   And the overlay: the four-way view is what people actually label against,
+   because the CSD is where a boundary is visible, and it was the one view
+   with no layers drawn on it at all.
+
+   This writes to a real layer sheet, so it works on a scratch recording and
+   puts back whatever it found. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function until(fn, ms) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < (ms || 12000)) {
-    try { if (fn()) return true; } catch (e) {}
-    await sleep(90);
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
   }
-  return false;
+  return -1;
 }
-const post = (u, b) => fetch(u, { method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(b) }).then((r) => r.json());
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
 
 (async () => {
-  const frame = document.getElementById('app');
-  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
-  const ev = (c) => frame.contentWindow.eval(c);
-  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 30000);
-  const W = frame.contentWindow, D = () => frame.contentDocument;
-  const $ = (s) => D().querySelector(s);
-  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const f = document.getElementById('app');
+  let W = null, gid = null, before = null;
+  const restore = async () => {
+    if (!gid || before === null) return;
+    try {
+      // Clear first, then put back exactly what was there: /set merges, so
+      // without the clear this would leave whatever the harness added.
+      await W().fetch('/api/layers/' + encodeURIComponent(gid) + '/clear', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (before && Object.keys(before).length) {
+        await W().fetch('/api/layers/' + encodeURIComponent(gid) + '/set', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ labels: before }),
+        });
+      }
+    } catch (e) { /* best effort */ }
+  };
 
-  const reg = await (await fetch('/api/registry?backfill=1')).json();
-  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
-  const target = rows.find((s) => s.reachable);
-  check('there is a reachable recording', !!target);
-  if (!target) { document.title = 'strata: FAILED'; return; }
-  const gid = target.gid;
-  say('labelling ' + target.label + '  (' + gid + ')', 'note');
-  await post('/api/layers/' + gid + '/delete', {});
-
-  say('');
-  say('=== the ToolKit offers it ===', 'hd');
-  ev("setView('toolkit')");
-  await sleep(700);
-  const btn = $$('.tk-tool').find((b) => /StrataScope/.test(b.textContent));
-  check('there is a StrataScope tool', !!btn,
-        $$('.tk-tool strong').map((n) => n.textContent).join(' | '));
-  btn.click();
-  await until(() => $('#strataPick'), 12000);
-  await sleep(600);
-  /* The picker used to be a <select>; it is a search field now, because
-     scanning a drive registers hundreds of recordings and a dropdown is the
-     wrong control for that. So count rows, not options. */
-  const pick = $('#strataPick');
-  pick.querySelector('input').focus();
-  await sleep(250);
-  const nRows = pick.querySelectorAll('.sp-row').length;
-  check('it lists the recordings', nRows > 0, nRows + ' row(s)');
-  const legend = $$('.strata-legend .cur-tally').map((n) => n.textContent);
-  say('  layers: ' + legend.join(', '), 'note');
-  check('the layer vocabulary is shown', legend.length >= 10,
-        legend.length + '');
-  check('it includes the hippocampal layers',
-        legend.includes('CA1 SP') && legend.includes('HIL')
-        && legend.includes('DG GCL1'), legend.join(', '));
-
-  say('');
-  say('=== entering the mode ===', 'hd');
-  $('#strataPick').value = gid;
-  $$('.tk-head button').find((b) => /Open/.test(b.textContent)).click();
-  const entered = await until(() => $('#strataRail'), 45000);
-  check('the layer rail appears', entered);
-  await sleep(3000);
-  check('it switched to Xplorefinder', ev('BARRY.state.view') === 'xplore');
-
-  const panels = JSON.parse(ev(
-    'JSON.stringify(BARRY.views.xplore.state.panes.map(p => p && p.panel))'));
-  say('  panes: ' + JSON.stringify(panels), 'note');
-  check('it sets up the four views the old tool made you export',
-        panels.includes('voltage') && panels.includes('csd')
-        && panels.includes('theta') && panels.includes('traces'),
-        JSON.stringify(panels));
-
-  const chans = Number(ev('BARRY.views.xplore.state.sessions['
-    + 'BARRY.views.xplore.state.active].info.channels.length'));
-  const railRows = $$('.strata-row').length;
-  say('  ' + chans + ' channels, ' + railRows + ' rail rows', 'note');
-  check('one rail row per channel', railRows === chans,
-        railRows + ' vs ' + chans);
-
-  /* The point of doing this live: the rail is measured onto the raster's
-     plot box rather than assuming an even split of a cropped image. */
-  say('');
-  say('=== the rail is aligned to the raster, not guessed ===', 'hd');
-  const railBox = $('.strata-rows').getBoundingClientRect();
-  const canvasBox = $('#paneGrid .pane .pane-canvas-host')
-    .getBoundingClientRect();
-  say('  rail rows ' + Math.round(railBox.top) + '..'
-      + Math.round(railBox.bottom) + '   canvas '
-      + Math.round(canvasBox.top) + '..' + Math.round(canvasBox.bottom),
-      'note');
-  check('the rail starts inside the raster box',
-        railBox.top >= canvasBox.top - 2
-        && railBox.top <= canvasBox.top + 30,
-        Math.round(railBox.top - canvasBox.top) + 'px in');
-  check('and ends inside it',
-        railBox.bottom <= canvasBox.bottom + 2,
-        Math.round(canvasBox.bottom - railBox.bottom) + 'px up');
-  check('the rail does not sit on top of the panes',
-        $('#paneGrid').getBoundingClientRect().left
-          >= $('.strata-rail').getBoundingClientRect().right - 2,
-        'grid ' + Math.round($('#paneGrid').getBoundingClientRect().left)
-        + ' rail right '
-        + Math.round($('.strata-rail').getBoundingClientRect().right));
-
-  say('');
-  say('=== labelling ===', 'hd');
-  const brushes = $$('.strata-brush');
-  say('  brushes: ' + brushes.map((b) => b.textContent.trim()).join(' | ')
-      .slice(0, 150), 'note');
-  check('there is a brush per layer', brushes.length >= 11,
-        brushes.length + '');
-  // Pick CA1 SP and paint a few rows.
-  const sp = brushes.find((b) => /CA1 SP/.test(b.textContent));
-  check('CA1 SP is one of them', !!sp);
-  sp.click();
-  await sleep(600);
-  // The bar re-renders on pick, so the old node is detached -- ask again.
-  check('picking a brush marks it',
-        $$('.strata-brush').some(
-          (b) => /CA1 SP/.test(b.textContent) && b.classList.contains('on')),
-        $$('.strata-brush.on').map((b) => b.textContent.trim()).join(', '));
-
-  const rowsEls = $$('.strata-row');
-  rowsEls[2].dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
-  W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
-  await sleep(1200);
-  const st = () => JSON.parse(ev('JSON.stringify(BARRY.strata.state)'));
-  say('  state: ' + JSON.stringify((st() || {}).progress), 'note');
-  check('clicking a row labels that channel',
-        ((st() || {}).progress || {}).labelled === 1,
-        JSON.stringify((st() || {}).progress));
-
-  await sleep(700);
-  const onDisk = await (await fetch('/api/layers/' + gid)).json();
-  check('the label reached the server',
-        Object.keys(onDisk.sheet.labels || {}).length === 1,
-        JSON.stringify(onDisk.sheet.labels));
-  check('and it is keyed by channel number, not row index',
-        Object.keys(onDisk.sheet.labels)[0]
-          === String(JSON.parse(ev('JSON.stringify('
-            + 'BARRY.views.xplore.state.sessions['
-            + 'BARRY.views.xplore.state.active].info.channels[2].number)'))),
-        Object.keys(onDisk.sheet.labels)[0]);
-
-  say('');
-  say('=== fill down ===', 'hd');
-  $$('.strata-bar .mini').find((b) => /Fill down/.test(b.textContent)).click();
-  await sleep(2000);
-  const filled = st().progress;
-  say('  after fill: ' + JSON.stringify(filled), 'note');
-  check('everything below the label inherits it',
-        filled.labelled === chans - 2,
-        filled.labelled + ' of ' + chans + ' (2 above it stay blank)');
-
-  say('');
-  say('=== the overlay reaches the raster ===', 'hd');
-  const painted = ev('(function(){'
-    + 'var c=document.querySelector("#paneGrid .pane canvas");'
-    + 'if(!c) return -1;'
-    + 'var d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;'
-    + 'var n=0; for(var i=3;i<d.length;i+=4){ if(d[i]>30) n++; } return n;})()');
-  check('the raster has the layer wash on it', painted > 1000, String(painted));
-
-  say('');
-  say('=== clear, and leave ===', 'hd');
-  $$('.strata-bar .mini').find((b) => b.textContent === 'Clear').click();
-  await sleep(1500);
-  check('clear empties the sheet', st().progress.labelled === 0,
-        JSON.stringify(st().progress));
-
-  D().body.dispatchEvent(new W.KeyboardEvent('keydown',
-    { key: 'Escape', bubbles: true }));
+  try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
   await sleep(900);
-  check('escape leaves the mode', ev('BARRY.strata.state') === null);
-  check('the rail is gone', !$('#strataRail'));
-  check('and the grid gets its space back',
-        !$('#xfBody').classList.contains('strata-on'),
-        $('#xfBody').className);
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const Q = new URLSearchParams(location.search);
+  const sessPath = Q.get('session');
+  if (!sessPath) { p('give ?session=<a CSC folder>'); document.title = 'no session'; return; }
 
-  say('');
-  say('=== it is reachable only through ToolKit ===', 'hd');
-  check('no rail button for it',
-        !$('.nav-item[data-view="strata"]'));
-  check('but the ToolKit tool is there',
-        (await (await fetch('/api/layers/regions')).json()).ok === true);
+  run("setView('xplore')");
+  await run('BARRY.views.xplore.open(' + JSON.stringify(sessPath) + ')');
+  await sleep(2200);
+  gid = val('BARRY.views.xplore.state.sessions['
+          + 'BARRY.views.xplore.state.order[0]].identity.gid');
+  p('  recording: ' + gid);
+  before = val('(function(){var s=BARRY.views.xplore.state.sessions['
+             + 'BARRY.views.xplore.state.order[0]];'
+             + 'return (s.strata && s.strata.labels) || null;})()');
 
-  await post('/api/layers/' + gid + '/delete', {});
+  await run('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  await untilN(() => D().querySelectorAll('.strata-row').length, 100);
+  await sleep(900);
+  const rows = () => Array.from(D().querySelectorAll('.strata-row'));
+  const picked = () => rows().filter((r) => r.classList.contains('picked'));
+  const st = () => val('BARRY.strata.state') || {};
 
-  say('');
-  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
-  document.title = fails ? 'strata: ' + fails + ' FAILED' : 'strata: passed';
-})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
-                    document.title = 'strata CRASH'; });
-</script></body></html>
+  hd('1. The rail is a column of channels, not of dropdowns');
+  p('  ' + rows().length + ' row(s)');
+  ck('every channel has a row', rows().length > 8, rows().length);
+  ck('and none of them is a dropdown',
+     D().querySelectorAll('.strata-row select').length === 0,
+     D().querySelectorAll('.strata-row select').length + ' selects left');
+  const h = rows()[0].getBoundingClientRect().height;
+  p('  a row is ' + h.toFixed(1) + 'px tall');
+  ck('a row is a plausible click target even when thin', h > 0);
+
+  hd('2. Clicking selects, and writes nothing');
+  const wrote = [];
+  run('window.__w = [];'
+    + '(function(){var f=window.fetch;window.fetch=function(u,o){'
+    + ' if(o&&o.method==="POST"&&String(u).indexOf("/api/layers")>=0)'
+    + '   window.__w.push(String(u));'
+    + ' return f.apply(this,arguments);};})()');
+  /* `new (W().MouseEvent)` and not `new W().MouseEvent` -- the latter
+     parses as constructing W itself, which is a function returning the
+     frame's window and is not a constructor. */
+  const Mouse = W().MouseEvent, Keys = W().KeyboardEvent;
+  rows()[5].dispatchEvent(new Mouse('mousedown', { bubbles: true }));
+  await sleep(400);
+  p('  selected: ' + picked().length
+    + ', layer writes so far: ' + (val('window.__w') || []).length);
+  ck('one channel is selected', picked().length === 1, picked().length);
+  ck('and selecting wrote nothing',
+     (val('window.__w') || []).length === 0,
+     JSON.stringify(val('window.__w')));
+
+  hd('3. Shift-click takes the range between');
+  const ev = (i, opts) => rows()[i].dispatchEvent(
+    new Mouse('mousedown', Object.assign({ bubbles: true }, opts)));
+  ev(12, { shiftKey: true });
+  await sleep(400);
+  p('  selected: ' + picked().length);
+  ck('the whole run is selected', picked().length === 8, picked().length);
+
+  hd('4. A layer button names everything selected');
+  const tags = () => Array.from(D().querySelectorAll('.strata-brush'))
+    .filter((b) => !b.classList.contains('clearone'));
+  p('  ' + tags().length + ' layer button(s)');
+  ck('the bar offers the layers', tags().length > 5, tags().length);
+  const mode = D().querySelector('.strata-mode');
+  p('  the bar says: "' + ((mode || {}).textContent || '') + '"');
+  ck('and says what they will do while a selection is up',
+     !!mode && /selected/.test(mode.textContent || ''),
+     (mode || {}).textContent);
+  const wantName = tags()[1].textContent.replace(/^\d/, '').trim();
+  tags()[1].click();
+  await sleep(1200);
+  const labels = () => (st().labels) || {};
+  const nums = val('BARRY.strata.state.channels').slice(5, 13)
+    .map((c) => String(c.number));
+  const got = nums.map((n) => labels()[n]).filter(Boolean);
+  p('  labelled ' + got.length + ' of ' + nums.length + ' -> '
+    + JSON.stringify(Array.from(new Set(got))));
+  ck('every selected channel took the layer', got.length === nums.length,
+     got.length + '/' + nums.length);
+  ck('and they all took the same one', new Set(got).size === 1,
+     JSON.stringify(got));
+  ck('the selection survives, so one wrong channel can be fixed',
+     picked().length === 8, picked().length);
+
+  hd('5. The number keys do the same thing');
+  const key = (k, opts) => D().dispatchEvent(new Keys('keydown',
+    Object.assign({ key: k, bubbles: true }, opts)));
+  key('3');
+  await sleep(1200);
+  const after = nums.map((n) => labels()[n]).filter(Boolean);
+  ck('pressing a number relabels the selection',
+     new Set(after).size === 1 && after[0] !== got[0],
+     JSON.stringify(Array.from(new Set(after))) + ' was '
+     + JSON.stringify(Array.from(new Set(got))));
+  key('0');
+  await sleep(1200);
+  const cleared = nums.map((n) => labels()[n]).filter(Boolean);
+  ck('and 0 takes the label off', cleared.length === 0,
+     cleared.length + ' still labelled');
+
+  hd('6. Escape drops the selection before it leaves the mode');
+  key('Escape');
+  await sleep(400);
+  ck('the selection is dropped', picked().length === 0, picked().length);
+  ck('but StrataScope is still open', val('BARRY.strata.active') === true,
+     'it left the mode entirely');
+
+  hd('7. The overlay is on the image panels, not just the traces');
+  /* Put some labels back first. Section 5 finished by clearing them, and an
+     overlay with nothing to draw painting nothing is correct rather than
+     broken -- testing it in that state would prove nothing either way. */
+  ev(5, {});
+  await sleep(300);
+  ev(20, { shiftKey: true });
+  await sleep(300);
+  tags()[1].click();
+  await sleep(1400);
+  p('  re-labelled ' + Object.keys((st().labels) || {}).length + ' channel(s)');
+  run('(function(){var X=BARRY.views.xplore.state;'
+    + 'X.panes[0].panel="csd";BARRY.views.xplore.render();'
+    + 'BARRY.views.xplore.refreshAll();})()');
+  await sleep(2600);
+  /* Count what the layer overlay actually paints, by watching fillRect on
+     the real canvas -- the bands are fills and nothing else in the raster
+     path fills that many rectangles. */
+  const fills = (n) => val(
+    '(function(){var c=document.createElement("canvas");'
+    + 'c.width=400;c.height=200;var g=c.getContext("2d");'
+    + 'var n=0;var real=g.fillRect.bind(g);'
+    + 'g.fillRect=function(){n+=1;return real.apply(g,arguments);};'
+    + 'var s=BARRY.views.xplore.state.sessions['
+    + 'BARRY.views.xplore.state.order[0]];'
+    + 'BARRY.strata.draw(g,s,{t0:0,t1:10},0,400,0,200,'
+    + '{accent:"#4bc7f0"},' + n + ');'
+    + 'return n;})()');
+  /* Which guard, if it draws nothing. `draw` refuses without a live sheet
+     AND without `sess.strata` on the session object it is handed -- and a
+     reopen replaces that object, which is what `rebind` exists for. */
+  p('  strata active: ' + val('BARRY.strata.active')
+    + ', sess.strata present: '
+    + val('!!BARRY.views.xplore.state.sessions['
+        + 'BARRY.views.xplore.state.order[0]].strata')
+    + ', labels on it: '
+    + val('Object.keys((BARRY.views.xplore.state.sessions['
+        + 'BARRY.views.xplore.state.order[0]].strata||{}).labels||{}).length'));
+  const withRows = fills('{rows:[{number:1},{number:2},{number:3}]}');
+  p('  fills when the panel reports 3 rows: ' + withRows);
+  ck('the layer overlay draws onto an image panel', withRows > 0,
+     'nothing drawn — the four-way view would show no layers');
+
+  hd('8. The overlay strength is a control, and Off means off');
+  const washes = Array.from(D().querySelectorAll('.strata-wash .mini'));
+  p('  ' + washes.length + ' setting(s): '
+    + washes.map((b) => b.textContent).join(', '));
+  ck('there is a strength control beside Fill down and Clear',
+     washes.length === 4, washes.length);
+  ck('and one of them is on', washes.some((b) => b.classList.contains('on')));
+  const solid = washes.find((b) => /solid/i.test(b.textContent));
+  const off = washes.find((b) => /off/i.test(b.textContent));
+  if (solid && off) {
+    solid.click(); await sleep(600);
+    const strong = fills('null');
+    off.click(); await sleep(600);
+    const none = fills('null');
+    p('  fills: solid ' + strong + ', off ' + none);
+    ck('turning it up paints more than turning it off',
+       strong > none, strong + ' vs ' + none);
+    washes.find((b) => /faint/i.test(b.textContent)).click();
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'strata';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} finally {
+  await restore();
+  p('\n(labels put back)');
+} })();
+</script>

@@ -152,6 +152,13 @@ class Sync:
                 # are different recordings.
                 "hemisphere": rec.get("hemisphere"),
                 "hemisphere_source": rec.get("hemisphere_source"),
+                "ripple_channel": _int(rec.get("ripple_channel")),
+                "fissure_channel": _int(rec.get("fissure_channel")),
+                "hilus_channel": _int(rec.get("hilus_channel")),
+                "extraction_note": rec.get("extraction_note"),
+                "needs_processing": rec.get("needs_processing"),
+                "reference_channels_source":
+                    rec.get("reference_channels_source"),
                 "n_channels": _int(rec.get("n_channels")),
                 "fs": _num(rec.get("fs")),
                 "duration_s": _num(rec.get("duration_s")),
@@ -1018,6 +1025,15 @@ class Sync:
         # desktop, or the two machines disagree about what the recording is.
         ("hemisphere", "hemisphere"),
         ("hemisphere_source", "hemisphere_source"),
+        # The anatomical landmarks every CSD is read against. Two-way like
+        # the rest: somebody correcting a fissure channel on the rig has to
+        # reach the desktop.
+        ("ripple_channel", "ripple_channel"),
+        ("fissure_channel", "fissure_channel"),
+        ("hilus_channel", "hilus_channel"),
+        ("extraction_note", "extraction_note"),
+        ("needs_processing", "needs_processing"),
+        ("reference_channels_source", "reference_channels_source"),
     )
 
     @staticmethod
