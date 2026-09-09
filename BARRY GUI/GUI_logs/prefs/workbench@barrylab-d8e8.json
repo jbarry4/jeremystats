@@ -2,15 +2,15 @@
   "_at": {
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
-    "radio": "2026-09-09T15:07:39.798569+00:00",
-    "recent_scripts": "2026-09-09T14:58:22.730192+00:00",
-    "updated": "2026-09-09T15:17:09.588654+00:00"
+    "radio": "2026-09-09T15:08:44.752142+00:00",
+    "recent_scripts": "2026-09-09T15:17:55.925369+00:00",
+    "updated": "2026-09-09T15:33:56.426615+00:00"
   },
   "_keys": {
     "themes": {
       "BarryLab": [
         "set",
-        "2026-09-04T15:57:01.925044+00:00"
+        "2026-09-09T15:33:56.426615+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
@@ -19,11 +19,15 @@
       "LCOM549913": [
         "set",
         "2026-09-08T17:53:47.145828+00:00"
+      ],
+      "MSI": [
+        "set",
+        "2026-09-09T15:20:28.901605+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:17:09.588654+00:00",
+    "at": "2026-09-09T15:33:56.426615+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -39,7 +43,10 @@
     "volume": 55
   },
   "recent_scripts": [
-    "IED/VoltageRaster_GrandAverage_Spatial_Norm.m",
+    "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
+    "IED/08_Anatomical_Labeling/blank_png_gen.py",
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
+    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
     "IED/03_IED_Detection/vacc_ied_detect.m",
     "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
     "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
@@ -54,5 +61,5 @@
     "DESKTOP-4H65AI7": "horizon-night",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-09T11:17:09-04:00"
+  "updated": "2026-09-09T11:33:56-04:00"
 }
