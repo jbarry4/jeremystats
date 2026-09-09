@@ -337,10 +337,160 @@
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
+/* ---- Jirai Kei: black ground, baby pink, white ----
+
+   The signal colours are the whole difficulty here. `--err` marks a failed
+   run and `--warn` a health note, and in a palette built on pink an error
+   drawn in pink is invisible as a warning. So the accent stays pale
+   (#ff9ec7) and the error is vivid (#ff2d55) -- far enough apart in
+   saturation and lightness to read as different things at a glance -- and
+   `--ok` is mint, which nothing else in this palette uses. */
+:root[data-theme="jirai"] {
+  --bg:        #0c0710;
+  --bg-2:      #140b18;
+  --bg-3:      #1d1024;
+  --bg-hover:  #271633;
+  --line:      #33203d;
+  --line-soft: #241629;
+
+  --text:      #fbeaf3;
+  --text-2:    #d3a8c0;
+  --text-3:    #9c7590;
+
+  --accent:      #ff9ec7;
+  --accent-soft: rgba(255, 158, 199, 0.15);
+  --accent-line: rgba(255, 158, 199, 0.45);
+  --on-accent:   #2b0a1a;
+
+  --ok:      #8fe0b8;
+  --ok-soft: rgba(143, 224, 184, 0.15);
+  /* Amber, deliberately outside the palette: a health note has to stop
+     looking like decoration. */
+  --warn:      #ffd47a;
+  --warn-soft: rgba(255, 212, 122, 0.15);
+  --err:      #ff2d55;
+  --on-err:   #2e0510;
+  --err-soft: rgba(255, 45, 85, 0.16);
+
+  /* The ribbon colour. */
+  --accent-2:      #d9b8ff;
+  --accent-2-soft: rgba(217, 184, 255, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #ff9ec7;
+  --c2: #d9b8ff;
+  --c3: #8fe0b8;
+  --c4: #ffd47a;
+  --c5: #a9819c;
+
+  --trace: #ff9ec7;
+  --event: #d9b8ff;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.62);
+}
+
+/* ---- Jirai Shiro: the white one ----
+
+   Same wardrobe, inverted. The pastel cannot carry text on white -- baby
+   pink on #fffafc is about 1.5:1 -- so the accent is that hue darkened
+   until it clears 4.5:1 and the pastel is kept for `--accent-soft` and the
+   swatch. Warn goes amber-brown rather than rose, or it would be a second
+   shade of the accent. */
+:root[data-theme="jirai-shiro"] {
+  --bg:        #fffafc;
+  --bg-2:      #fdf1f6;
+  --bg-3:      #f8e3ec;
+  --bg-hover:  #f2d5e2;
+  --line:      #e6c3d3;
+  --line-soft: #f4dde8;
+
+  --text:      #2a1622;
+  --text-2:    #6b4457;
+  --text-3:    #9c7387;
+
+  --accent:      #b03a68;
+  --accent-soft: rgba(176, 58, 104, 0.11);
+  --accent-line: rgba(176, 58, 104, 0.40);
+  --on-accent:   #ffffff;
+
+  --ok:      #2f7d63;
+  --ok-soft: rgba(47, 125, 99, 0.12);
+  --warn:      #9a5a12;
+  --warn-soft: rgba(154, 90, 18, 0.12);
+  /* Measured, not chosen by eye: #c0203f against the #b03a68 accent is
+     1.04:1 -- the same lightness, so a failed run looked like an accent.
+     This is 1.62:1 from it and 9.0:1 on the page. */
+  --err:      #8f0f22;
+  --on-err:   #ffffff;
+  --err-soft: rgba(143, 15, 34, 0.11);
+
+  --accent-2:      #6b3fa0;
+  --accent-2-soft: rgba(107, 63, 160, 0.12);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #b03a68;
+  --c2: #6b3fa0;
+  --c3: #2f7d63;
+  --c4: #9a5a12;
+  --c5: #9c7387;
+
+  --trace: #b03a68;
+  --event: #6b3fa0;
+  --shadow: 0 8px 28px rgba(42, 22, 34, 0.14);
+}
+
+/* ---- Jirai Yami: plum, lavender and sick mint ----
+
+   The yami-kawaii end of the same look. Lavender takes the accent, which
+   leaves pink free to be `--accent-2`, and the error can then be a plain
+   pink-red without competing with it. */
+:root[data-theme="jirai-yami"] {
+  --bg:        #120d1c;
+  --bg-2:      #191227;
+  --bg-3:      #221833;
+  --bg-hover:  #2d2142;
+  --line:      #3a2b52;
+  --line-soft: #281d3a;
+
+  --text:      #efe7fb;
+  --text-2:    #bda9d8;
+  --text-3:    #8b78a8;
+
+  --accent:      #c9a7ff;
+  --accent-soft: rgba(201, 167, 255, 0.16);
+  --accent-line: rgba(201, 167, 255, 0.46);
+  --on-accent:   #170d26;
+
+  --ok:      #9ff2d0;
+  --ok-soft: rgba(159, 242, 208, 0.15);
+  --warn:      #ffd166;
+  --warn-soft: rgba(255, 209, 102, 0.15);
+  /* 1.32:1 from the lavender accent was too close to mean anything; this
+     is 1.97:1 from it, 4.8:1 on the page, and 2.8:1 from the amber warn. */
+  --err:      #f42a53;
+  --on-err:   #2d0713;
+  --err-soft: rgba(244, 42, 83, 0.17);
+
+  --accent-2:      #ff9ec7;
+  --accent-2-soft: rgba(255, 158, 199, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #c9a7ff;
+  --c2: #ff9ec7;
+  --c3: #9ff2d0;
+  --c4: #ffd166;
+  --c5: #9184ad;
+
+  --trace: #c9a7ff;
+  --event: #ff9ec7;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+}
+
 /* Native controls and scrollbars follow whichever family the theme is in. */
-:root[data-theme="parchment"], :root[data-theme="horizon"] { color-scheme: light; }
+:root[data-theme="parchment"], :root[data-theme="horizon"],
+:root[data-theme="jirai-shiro"] { color-scheme: light; }
 :root[data-theme="slate"], :root[data-theme="phosphor"],
-:root[data-theme="horizon-night"] { color-scheme: dark; }
+:root[data-theme="horizon-night"], :root[data-theme="jirai"],
+:root[data-theme="jirai-yami"] { color-scheme: dark; }
 
 /* ---- the picker ---- */
 .theme-pop {
@@ -348,6 +498,10 @@
   background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
   padding: 5px; display: flex; flex-direction: column; gap: 2px;
+  /* Ten themes is taller than this was drawn for, and it grows upward from
+     the rail -- so on a short window the top of the list left the screen
+     with no way to reach it. */
+  max-height: calc(100vh - 96px); overflow-y: auto;
 }
 .theme-opt {
   display: flex; align-items: center; gap: 8px; width: 100%;

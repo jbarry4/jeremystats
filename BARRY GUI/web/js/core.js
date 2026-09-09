@@ -2242,6 +2242,15 @@ const THEMES = [
   { id: 'horizon', name: 'Horizon',     swatch: ['#5bcefa', '#f5a9b8', '#ffffff'] },
   { id: 'horizon-night', name: 'Horizon Night',
     swatch: ['#0b1220', '#5bcefa', '#f5a9b8'] },
+  /* Jirai kei: black, baby pink, white lace. Three variants because that
+     is how the palette is actually worn -- the dark one, the white one,
+     and the yami-kawaii one. */
+  { id: 'jirai', name: 'Jirai Kei',
+    swatch: ['#0c0710', '#ff9ec7', '#fbeaf3'] },
+  { id: 'jirai-shiro', name: 'Jirai Shiro',
+    swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
+  { id: 'jirai-yami', name: 'Jirai Yami',
+    swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
