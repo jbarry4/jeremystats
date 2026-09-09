@@ -144,7 +144,13 @@ BARRY.figure = (function () {
             clim: p.clim || (XF.sessions[p.sessionId] || {}).clim,
             ylim: p.ylim != null
               ? p.ylim : (XF.sessions[p.sessionId] || {}).ylim,
-            fmin: p.fmin, fmax: p.fmax,
+            /* Everything a time-frequency panel needs, taken from the
+               request the pane itself would send. Asked for as "if a
+               spectogram is already open, emulate that with the filters,
+               channels selected, etc." -- and the channel list, the mode,
+               the band and the display crop were all being dropped, so a
+               figure of a six-channel stack came out as one channel. */
+            ...tfFrom(i),
           }))
         : [{ panel: 'traces', session_id: sess.id,
              title: labelFor('traces'), row: 0, col: 0,
@@ -278,6 +284,17 @@ BARRY.figure = (function () {
       ]));
     }
 
+    /* The way back. Clicking the faint chips one at a time appends them,
+       so six columns in the order you happened to click them is not the
+       probe's order -- and the renderer's "all of them" fallback IS that
+       order. Without this the way back was a page reload. */
+    const reset = p.probe_columns ? el('button', {
+      class: 'linkish fb-clear', text: 'Back to probe order',
+      title: 'All ' + ids.length + ' columns, laid out as they sit on the '
+           + 'probe: ' + ids.join(', '),
+      onclick: () => commit(ids.slice()),
+    }) : null;
+
     return el('div', {}, [
       el('div', { class: 'section-label', style: 'margin-top:6px',
                   text: 'Probe columns' }),
@@ -288,7 +305,8 @@ BARRY.figure = (function () {
           : chosen.length + ' of ' + ids.length + ' columns: '
             + chosen.join(', ') + '. Click a faint one to bring it back.' }),
       box,
-    ]);
+      reset,
+    ].filter(Boolean));
   }
 
   /* The channel numbers in a column, as a run. Same rule as the grid cells
@@ -297,6 +315,98 @@ BARRY.figure = (function () {
     const got = (c && c.csc) || [];
     if (!got.length) return '';
     return 'CSC ' + ranges(got);
+  }
+
+  /* Which channels a time-frequency panel runs on, and how they combine.
+
+     A single dropdown was the whole control, while the viewer has had
+     multi-channel panels for a while -- so a figure of what was on screen
+     silently became one channel of it. The list and the mode are the same
+     two questions the viewer asks, in the same words. */
+  function tfChannels(p, sess) {
+    const all = ((sess || {}).info || {}).channels || [];
+    const chosen = (p.tf_channels && p.tf_channels.length)
+      ? p.tf_channels.map(Number)
+      : (p.channel != null ? [Number(p.channel)] : []);
+
+    const commit = (next) => {
+      p.tf_channels = next;
+      /* One channel is not a mode. `mean` of one channel is that channel,
+         and `stack` of one is a one-row stack -- the server calls it
+         "single" either way, so the control is only offered when there is
+         something to combine. */
+      if (next.length > 1 && !p.tf_mode) p.tf_mode = 'stack';
+      // Kept in step so anything reading the old single field still agrees.
+      p.channel = next.length ? next[0] : undefined;
+      render(); schedulePreview();
+    };
+
+    const list = el('select', {
+      multiple: 'multiple', size: String(Math.min(8, Math.max(4, all.length))),
+      class: 'tf-chans',
+      onchange: (e) => commit(Array.from(e.target.selectedOptions)
+        .map((o) => Number(o.value))),
+    }, all.map((c) => el('option', {
+      value: String(c.index),
+      text: c.label + (c.bad ? '  (bad)' : ''),
+      selected: chosen.indexOf(Number(c.index)) >= 0 ? 'selected' : null,
+    })));
+
+    const bits = [
+      el('div', { class: 'section-label', style: 'margin-top:6px',
+                  text: 'Channels for this panel' }),
+      el('p', { class: 'hint',
+        text: chosen.length > 1
+          ? chosen.length + ' channels, combined by the mode below.'
+          : (chosen.length === 1
+              ? 'One channel. Pick more to average or stack them.'
+              : 'None picked \u2014 the panel will use the first selected '
+                + 'channel of the recording.') }),
+      list,
+    ];
+
+    if (chosen.length > 1) {
+      bits.push(field('How to combine them', el('select', {
+        onchange: (e) => { p.tf_mode = e.target.value; schedulePreview(); },
+      }, [
+        el('option', { value: 'stack', text: 'Stack \u2014 a band per channel',
+          selected: (p.tf_mode || 'stack') === 'stack' ? 'selected' : null }),
+        el('option', { value: 'mean',
+          text: 'Mean \u2014 one map, averaged',
+          selected: p.tf_mode === 'mean' ? 'selected' : null }),
+      ])));
+    }
+
+    /* And the way back to whatever the viewer has, which is what "emulate
+       the spectrogram that is already open" means once you have edited the
+       panel and want it back. */
+    const from = tfPaneFor(p);
+    if (from >= 0) {
+      bits.push(el('button', {
+        class: 'btn ghost sm', text: 'Match the viewer',
+        title: 'Take the channels, the mode, the band and the display crop '
+             + 'from the ' + (p.panel) + ' pane on screen',
+        onclick: () => {
+          Object.assign(p, tfFrom(from));
+          render(); schedulePreview();
+        },
+      }));
+    }
+    return el('div', {}, bits);
+  }
+
+  /* A pane on screen showing the same kind of panel for the same recording,
+     so "match the viewer" knows which one it means. */
+  function tfPaneFor(p) {
+    const panes = XF.panes || [];
+    for (let i = 0; i < panes.length; i += 1) {
+      const q = panes[i];
+      if (!q) continue;
+      if (q.panel !== p.panel) continue;
+      if (p.session_id && q.sessionId !== p.session_id) continue;
+      return i;
+    }
+    return -1;
   }
 
   function snap() {
@@ -438,6 +548,29 @@ BARRY.figure = (function () {
      A panel carries indices, because that is what the renderer takes, and a
      cell labelled "1" tells you nothing about which of six columns it is.
      This is the answer to "clearly indicate which window is which". */
+  /* The time-frequency half of a pane's request, or nothing.
+
+     Read from `BARRY.views.xplore.panelSpec`, which is what the pane asks
+     the server for -- so the figure is made of the same fields, resolved the
+     same way, including a band that is locked to the recording rather than
+     set on the pane. */
+  function tfFrom(index) {
+    const view = BARRY.views.xplore;
+    if (!view || !view.panelSpec) return {};
+    let spec = null;
+    try { spec = view.panelSpec(index); } catch (e) { spec = null; }
+    if (!spec || !spec.tf_channels) return {};
+    const out = {
+      tf_channels: Array.from(spec.tf_channels),
+      tf_mode: spec.tf_mode,
+      fmin: spec.fmin, fmax: spec.fmax,
+    };
+    for (const k of ['fview_min', 'fview_max', 'stft_mode']) {
+      if (spec[k] != null) out[k] = spec[k];
+    }
+    return out;
+  }
+
   function chanNote(p) {
     if (!p) return '';
     if (p.probe_view) return 'whole probe';
@@ -1092,12 +1225,7 @@ BARRY.figure = (function () {
 
       if (p.panel === 'spectrogram' || p.panel === 'scalogram') {
         const s2 = XF.sessions[p.session_id] || sess;
-        col.appendChild(field('Channel', el('select', {
-          onchange: (e) => { p.channel = +e.target.value; schedulePreview(); },
-        }, s2.info.channels.map((c) => el('option', {
-          value: String(c.index), text: c.label,
-          selected: String(p.channel) === String(c.index) ? 'selected' : null,
-        })))));
+        col.appendChild(tfChannels(p, s2));
         col.appendChild(el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:8px' }, [
           field('f min', num(p.fmin != null ? p.fmin : 20, 5, (v) => { p.fmin = v; schedulePreview(); })),
           field('f max', num(p.fmax != null ? p.fmax : 1000, 50, (v) => { p.fmax = v; schedulePreview(); })),

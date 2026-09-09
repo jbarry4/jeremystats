@@ -820,10 +820,13 @@ BARRY.views.housekeeping = (function () {
           const ok = await BARRY.confirm(
             'Forget ' + (s.label || s.gid) + '?',
             'Its bad channels, notes, project and the paths BARRY has '
-            + 'seen it at go with it. The recording on disk is '
-            + 'untouched \u2014 but opening or scanning it again starts a '
-            + 'fresh record with a NEW permanent id, so anything still '
-            + 'attached to the old one will not find its way back.',
+            + 'seen it at go with it, and it stays gone: a tombstone is '
+            + 'written so a colleague\u2019s registry cannot push it back '
+            + 'and the next scan of that drive will not re-register it. '
+            + 'That is the point \u2014 a scratch copy that creeps back on '
+            + 'every scan has not been forgotten.\n\nThe recording on '
+            + 'disk is untouched. Bringing it back is a deliberate act, '
+            + 'not something a scan does for you.',
             'Forget it');
           if (!ok) return;
           try {

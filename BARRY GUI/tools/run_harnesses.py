@@ -29,6 +29,7 @@ import html
 import os
 import re
 import subprocess
+import time
 import sys
 import urllib.parse
 
@@ -98,15 +99,43 @@ def fake_drive():
     if _FAKE[0]:
         return _FAKE[0]
     import tempfile
-    root = os.path.join(tempfile.gettempdir(), "barry_fakedrive", "fakedrive")
+    # A folder per run.
+    #
+    # `scanreg.html` forgets its recordings when it finishes, and forgetting
+    # is permanent by design -- the tombstone is what stops a scratch copy
+    # creeping back on the next scan. So a fixture reused between runs is a
+    # fixture that can never be registered again, and the harness's own
+    # checks ("recordings nobody opened are registered too", "the scan
+    # brightened what it found") could not pass twice.
+    #
+    # A stamped folder is genuinely new every time, which is what those
+    # checks are about.
+    root = os.path.join(tempfile.gettempdir(), "barry_fakedrive",
+                        "fakedrive_" + time.strftime("%Y%m%d_%H%M%S"))
     # 1044 bytes per Neuralynx record; 512 records is about 8.7 s at 30 kHz
     # with 512 samples per record.
     header_bytes = 16 * 1024
     records = 200
+    # An identity per run, not just a folder per run.
+    #
+    # A recording is identified by its folder names and start time, so three
+    # folders called m1s1/m1s2/m2s1 dated 2026-01-02 are the SAME three
+    # recordings however new the tree above them is -- and `scanreg.html`
+    # forgets them when it finishes, which is permanent. Every run after the
+    # first resolved "exact" to a tombstoned record and registered nothing.
+    #
+    # The mouse number and the dates move with the clock, so each run meets
+    # recordings BARRY has never seen.
+    mouse = 900 + (int(time.strftime("%j")) * 7 + int(time.strftime("%H%M"))
+                   % 90) % 90
+    day = time.strftime("2026-%m-%d")
     sessions = [
-        ("FAKEPROJ", "fake_m1", "m1s1_2026-01-02", "2026-01-02_10-00-00"),
-        ("FAKEPROJ", "fake_m1", "m1s2_2026-01-02", "2026-01-02_11-30-00"),
-        ("FAKEPROJ", "fake_m2", "m2s1_2026-01-03", "2026-01-03_09-15-00"),
+        ("FAKEPROJ", "fake_m%d" % mouse,
+         "m%ds1_%s" % (mouse, day), day + time.strftime("_%H-%M-%S")),
+        ("FAKEPROJ", "fake_m%d" % mouse,
+         "m%ds2_%s" % (mouse, day), day + time.strftime("_%H-%M-") + "45"),
+        ("FAKEPROJ", "fake_m%d" % (mouse + 1),
+         "m%ds1_%s" % (mouse + 1, day), day + time.strftime("_%H-%M-") + "58"),
     ]
     for proj, mouse, sess, stamp in sessions:
         folder = os.path.join(root, proj, mouse, sess, stamp)

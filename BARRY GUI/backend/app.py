@@ -3807,28 +3807,77 @@ def api_curation_export(gid, kind):
 # The session registry -- one record per recording, with a permanent id
 # ==========================================================================
 
-def _attachments(rec):
+def _attach_index():
+    """The figure catalogue and the deck list, read once.
+
+    `_attachments` asked for both per recording, so the housekeeping view
+    read the same two stores five hundred times -- 1.7 s of `list_decks` and
+    6060 directory listings for one request. Passing an index in makes the
+    same answers cost one read.
+
+    Figures are indexed the three ways the matching asks about them. Deck
+    titles are only listed, because the test is "the recording's label
+    appears in this title" and a substring cannot be indexed -- but the cost
+    was the reading, not the test.
+    """
+    # Sets of figure positions, not counts.
+    #
+    # The test is "this figure matches by key OR by label OR by path", and one
+    # figure can match on more than one -- so counting per dimension and
+    # taking the larger under-counts a recording whose figures match on
+    # different fields, and adding them double-counts the ones that match on
+    # two. The union of positions is the same arithmetic the loop did.
+    by_key, by_label, by_path = {}, {}, {}
+    for i, r in enumerate(RESULTS.catalog()):
+        k = r.get("session_key")
+        if k:
+            by_key.setdefault(k, set()).add(i)
+        lab = r.get("session_label")
+        if lab:
+            by_label.setdefault(lab, set()).add(i)
+        pth = r.get("session_path")
+        if pth:
+            by_path.setdefault(pth, set()).add(i)
+    return {
+        "fig_key": by_key, "fig_label": by_label, "fig_path": by_path,
+        "deck_titles": [d.get("title") or "" for d in RESULTS.list_decks()],
+    }
+
+
+def _attachments(rec, idx=None):
     """What is hanging off this recording, counted for the housekeeping view.
 
     Counted rather than listed: the view wants to say "3 figures, 1 deck" at a
     glance and fetch the detail only when a row is opened.
+
+    `idx` is `_attach_index()`, shared across a whole tree. Without one this
+    builds its own, which is what the single-recording routes want.
     """
+    idx = idx or _attach_index()
     key = rec.get("key")
     loose = rec.get("loose_key")
     label = rec.get("label")
     paths = set(rec.get("paths") or [])
 
-    figures = 0
-    for r in RESULTS.catalog():
-        if (r.get("session_key") and r["session_key"] == key) \
-                or (label and r.get("session_label") == label) \
-                or (r.get("session_path") in paths):
-            figures += 1
+    # The same three ways a figure can belong to a recording. Unioned, not
+    # summed and not maxed: the loop this replaces counted each figure once
+    # if it matched by key, by label OR by path, so a figure matching two of
+    # them must not count twice and figures matching different ones must
+    # both count.
+    hit = set()
+    if key:
+        hit |= idx["fig_key"].get(key, set())
+    if label:
+        hit |= idx["fig_label"].get(label, set())
+    for pth in paths:
+        hit |= idx["fig_path"].get(pth, set())
+    figures = len(hit)
 
     decks = 0
-    for d in RESULTS.list_decks():
-        if label and label in (d.get("title") or ""):
-            decks += 1
+    if label:
+        for title in idx["deck_titles"]:
+            if label in title:
+                decks += 1
 
     banked = 0
     try:
@@ -3896,7 +3945,11 @@ def api_registry():
     """Every recording BARRY has met, as a project / mouse / session tree."""
     if request.args.get("backfill"):
         REG.backfill()
-    tree = REG.tree(_attachments)
+    # One index for the whole tree: `_attachments` used to read the figure
+    # catalogue and the deck list once per recording, which is 508 reads of
+    # the same two stores for one request.
+    idx = _attach_index()
+    tree = REG.tree(lambda rec: _attachments(rec, idx))
 
     # Which of these THIS computer has met, marked on the row.
     #
@@ -4102,12 +4155,24 @@ def api_registry_retire():
 
 @app.route("/api/registry/<gid>/forget", methods=["POST"])
 def api_registry_forget(gid):
-    """Drop a record entirely.
+    """Drop a record entirely, and keep it dropped.
 
     For a recording that should never have been registered -- a scratch copy,
     a test tree, a folder that was moved and re-registered under a new name.
     The recording itself is untouched; only what BARRY remembers about it
-    goes. Opening or scanning it again starts a fresh record.
+    goes.
+
+    It stays gone. The record is erased and a tombstone is written against
+    its permanent id, so a colleague's copy of the registry does not push it
+    back and the next scan of that drive does not re-register it. That is the
+    point of the button: a scratch copy that creeps back on every scan has
+    not been forgotten.
+
+    This used to claim that "opening or scanning it again starts a fresh
+    record", which is not what happens -- the scan finds the folder, reports
+    it catalogued, and nothing appears, because the tombstone retires the row
+    the moment it returns. Bringing one back is a deliberate act, not a side
+    effect of walking a drive.
     """
     rec = REG.by_gid(gid)
     if not rec:

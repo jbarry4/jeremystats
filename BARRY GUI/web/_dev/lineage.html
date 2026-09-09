@@ -97,14 +97,25 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   head('Change a decision, then bank again');
   const evs = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.events())'));
-  let i = evs().findIndex((e) => e.label === 'flag');
+  /* A candidate whose decision this will actually change.
+
+     It used to take the first labelled one and assign "garbage" -- which
+     changes nothing when that one is already garbage, and then the second
+     bank correctly makes no new version, because nothing moved. The bank is
+     right to do that: `by_label` is identical, so there is no pass to
+     record. So the harness has to pick something it will really move. */
+  let i = evs().findIndex((e) => e.label && e.label !== 'garbage');
   if (i < 0) i = evs().findIndex((e) => e.label);
+  const was = (evs()[i] || {}).label;
+  const to = was === 'garbage' ? 'spike' : 'garbage';
   await W.eval('BARRY.curate.goTo(' + i + ')');
   await sleep(500);
-  const was = evs()[i].label;
-  await W.eval('BARRY.curate.assign("garbage")');
+  await W.eval('BARRY.curate.assign(' + JSON.stringify(to) + ')');
   await sleep(1200);
-  say('note', '  candidate #' + (i + 1) + ': ' + was + ' -> garbage');
+  const now = (evs()[i] || {}).label;
+  say('note', '  candidate #' + (i + 1) + ': ' + was + ' -> ' + now);
+  check('a decision really changed', now === to && now !== was,
+        was + ' -> ' + now);
 
   const t2 = await bankThrough('second look: one call changed');
   check('the second bank offers a version number',
@@ -128,8 +139,12 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   const pips = () => Array.from(D.querySelectorAll('.ver-pip'));
   say('note', '  lineage: ' + pips().map((p) => p.textContent).join(' '));
+  /* At least the two this harness banked. Not exactly two: an entry
+     legitimately carries version 0 -- the detector's own list, with nothing
+     decided yet -- so v0, v1 and v2 is three pips and correct. Asserting
+     the count was asserting that v0 did not exist. */
   check('there is a lineage strip with a pip per version',
-        pips().length === 2, pips().length + ' pips');
+        pips().length >= 2, pips().length + ' pips');
 
   const notes = Array.from(D.querySelectorAll('.ver-note'))
     .map((n) => n.textContent);
@@ -139,7 +154,12 @@ async function untilN(fn, tries = 250, gap = 100) {
         && notes.some((t) => /second look/.test(t)), JSON.stringify(notes));
 
   head('Opening a version shows what differs');
-  pips()[1].click();
+  /* The last one: the second bank. Index 1 is only the second bank when
+     there is no version 0, and comparing the detector's list against a
+     curated pass is a diff of every decision made -- 24 of them here,
+     which is what "the one decision that changed" was measuring. */
+  const openedAt = pips().length - 1;
+  pips()[openedAt].click();
   await untilN(() => D.querySelector('.ver-open'), 120);
   await sleep(800);
   const open = D.querySelector('.ver-open');
@@ -164,7 +184,10 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   /* Clicking the pip again closes it, and the list on the left must not
      have been destroyed by the repaint. */
-  pips()[1].click();
+  /* The same pip, not pip 1: clicking a different one opens that one
+     instead of closing this one, which is a toggle working correctly and
+     reads as "still open". */
+  pips()[openedAt].click();
   await sleep(600);
   check('clicking it again closes it', !D.querySelector('.ver-open'),
         'still open');

@@ -6518,3 +6518,14 @@ body.aid-window .xf-tabs { display: none !important; }
 .pc-id { font-weight: 600; font-size: 11px; }
 .pc-what { font-size: 9px; color: var(--text-3); }
 .pc-csc { font-size: 9px; color: var(--text-2); }
+
+/* The channel list for a time-frequency panel. A real multi-select rather
+   than a popover: it is a list of sixty-four things where several are
+   picked, which is what the control is for, and it stays keyboard-navigable
+   without any code of ours. */
+.tf-chans {
+  width: 100%; margin-top: 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit; font-size: 11px;
+}
+.tf-chans option { padding: 1px 5px; }

@@ -211,10 +211,14 @@ const untilN = async (fn, n) => {
   ck('a dropped column can be brought back',
      (panelNow().probe_columns || []).length === 4,
      JSON.stringify(panelNow().probe_columns));
-  for (const c of Array.from(D().querySelectorAll('.pc-chip.off'))) {
-    c.click();
-    await sleep(600);
-  }
+  /* Bringing them back one at a time appends them, so the order ends up
+     being the order they were clicked -- which is a real arrangement, not
+     "all of them". The way back to the probe's own order is its own
+     control. */
+  const reset = Array.from(D().querySelectorAll('button'))
+    .find((b) => /back to probe order/i.test(b.textContent || ''));
+  ck('there is a way back to the probe order', !!reset);
+  if (reset) { reset.click(); await sleep(900); }
   /* Back to the probe's own order, not a list that happens to hold all six:
      the renderer's fallback IS that order, and a panel put back should be
      indistinguishable from one never changed. */

@@ -154,8 +154,38 @@ class Registry:
     # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
+    # Every record, rebuilt only when the session files change.
+    _all_sig = None
+    _all_recs = None
+
     def all(self):
-        return self.store.all_sessions()
+        """Every session record, merged from its shards.
+
+        Cached against the shard directory's signature. Reading and merging
+        515 records is 1.35 s, and one `/api/registry` did it three times --
+        once directly, once inside `projects()` and once inside `tree()` --
+        which is most of the eight and a half seconds that request took.
+
+        The signature is the safety: it changes the moment any shard is
+        written, by this machine or by a pull, so this cannot serve a record
+        that has been superseded. `by_gid` below has kept an index the same
+        way for the same reason.
+        """
+        try:
+            sig = self.store.sessions.signature()
+        except Exception:                                  # noqa: BLE001
+            sig = None
+        if sig is None:
+            # No signature to trust, so no cache. Correctness first: this is
+            # the path a store without shard stamps takes.
+            return self.store.all_sessions()
+        if sig != self._all_sig or self._all_recs is None:
+            self._all_recs = self.store.all_sessions()
+            self._all_sig = sig
+        # Copies, because callers edit what they are handed -- `ensure` and
+        # the appliers all do -- and editing this list would be editing the
+        # cache. Shallow is enough: the mutations are top-level fields.
+        return [dict(r) for r in self._all_recs]
 
     # gid -> record, rebuilt only when the session files change.
     _gid_sig = None

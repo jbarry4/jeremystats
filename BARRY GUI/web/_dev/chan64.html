@@ -145,17 +145,30 @@ async function until(fn, ms = 60000) {
   if (b2) { b2.click(); await until(() => wasBad() === before, 15000); }
   check('and it can be cleared again', wasBad() === before);
 
-  head('The rail, at the same channel count');
-  /* The side rail belongs to the raster panels; a traces pane carries its
-     channels as lanes on the plot instead. So this has to switch panel to
-     see it at all -- an earlier version of this harness reported it as
-     "not rendered at this pane width", which was simply wrong. */
+  head('The channel list, at the same channel count');
+  /* Not a side rail any more.
+
+     There used to be a column of channel rows down the right of every
+     raster pane. It went when the selection was consolidated into one
+     control -- it moved and changed shape depending on the panel, which is
+     what "keep it in the same spot with the same formatting" was about --
+     and the list now lives in the pane's own `Ch` menu, in the same place
+     whatever the pane is showing. This harness went on looking for the old
+     markup, and the absence of a thing that was removed on purpose is not
+     a fault. */
   W.eval("BARRY.views.xplore.setPanes([{panel:'voltage'}], {col:0.5,row:0.5})");
   await sleep(1600);
-  await until(() => D.querySelectorAll('.pane-chans .ch-row').length >= 60, 30000);
-  const rows = Array.from(D.querySelectorAll('.pane-chans .ch-row'));
+  const chBtn = Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
+    .find((b) => /^Ch\b/.test(b.textContent.trim()));
+  check('a voltage pane offers the channel menu', !!chBtn,
+        Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (chBtn) chBtn.click();
+  await sleep(500);
+  await until(() => D.querySelectorAll('.ctl-pop .ch-row').length >= 60, 30000);
+  const rows = Array.from(D.querySelectorAll('.ctl-pop .ch-row'));
   if (!rows.length) {
-    say('bad', 'the rail did not render on a voltage pane');
+    say('bad', 'the channel menu listed nothing on a voltage pane');
   } else {
     say('note', '  ' + rows.length + ' rows in the rail');
     const noBtn = rows.filter((r) => !r.querySelector('.badbtn')).length;

@@ -46,11 +46,34 @@ const post = (u, b) => fetch(u, { method: 'POST',
   check('the builder can be reopened on a recipe',
         ev('typeof BARRY.figure.reopen') === 'function');
 
-  /* Find a session on this machine to export a figure from. */
-  const cat = await (await fetch('/api/sessions')).json();
+  /* A recording this machine can actually open.
+
+     Taking the first path out of /api/sessions was the old rule, and it
+     breaks the moment that path is somebody else's mount -- the export then
+     answers "No session could be opened", which is true and is not what
+     this harness is about. The registry already works out what is reachable
+     from here, which is what `bankback.html` was changed to ask. */
   let path = null;
-  for (const s of (cat.sessions || cat.items || [])) {
-    if (s.path) { path = s.path; break; }
+  try {
+    const reg = await (await fetch('/api/registry')).json();
+    const walk = (n) => {
+      if (path) return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      if (n && typeof n === 'object') {
+        if (n.gid && (n.here || []).length && !/^demo-/.test(n.gid)) {
+          path = n.here[0];
+          return;
+        }
+        Object.values(n).forEach(walk);
+      }
+    };
+    walk(reg.tree);
+  } catch (e) { /* fall through to the old rules */ }
+  if (!path) {
+    const cat = await (await fetch('/api/sessions')).json();
+    for (const s of (cat.sessions || cat.items || [])) {
+      if (s.path) { path = s.path; break; }
+    }
   }
   if (!path) {
     const runs = await (await fetch('/api/history')).json();

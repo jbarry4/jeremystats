@@ -19,6 +19,130 @@ This file is the only place the version is written. The app reads it.
 
 ### Fixed
 
+- **Two recordings with the same mouse and session numbers could become
+  one, on a scan.** `ids.match` returned a “strong” match on `loose_key` —
+  mouse plus session — whenever exactly one stored record had it, with no
+  check on when either was recorded. `upsert_session` then patched *that*
+  record and appended the new path to it.
+
+  In this lab the numbering restarts per project, so PTEN m1 s1 and KCNT1
+  m1 s1 are one loose key and two recordings. Found the hard way: a scan
+  fixture with folders named m1s1, m1s2 and m2s1 — the most ordinary
+  numbering there is — took over three real records within minutes,
+
+  ```
+  m001_s001_2026-01-02  ->  m001_s001_2023-10-02_16-49-04
+  m001_s002_2026-01-02  ->  m001_s002_2023-10-02_16-58-03
+  m002_s001_2026-01-03  ->  m002_s001_2024-01-23_14-48-16
+  ```
+
+  and rewrote their paths to the fixture's folders. (Those three records
+  were restored from git, un-tombstoned and verified by key; the fixture
+  now takes its mouse numbers and dates from the clock.)
+
+  A loose match has to agree about *when* now, within six hours — enough
+  slack for one side having read the start from a Neuralynx header and the
+  other from a folder name, nowhere near enough for years. A folder whose
+  name says mouse and session but not when still matches, because that is
+  the case this tier exists for and refusing it would lose the match that
+  makes bad channels follow a recording between machines.
+
+- **Sixty lines of a channel rail that was removed on purpose.** The side
+  column of channel rows down every raster pane went when the selection was
+  consolidated into one control — it moved and changed shape depending on
+  the panel. `paneChannels()` stayed behind, unreachable, for long enough
+  that `chan64.html` went on looking for its markup and reporting the
+  absence as a fault. Both are dealt with: the function is gone and the
+  harness checks the `Ch` menu that replaced it.
+
+
+- **A rebuilt figure quietly reverted to the recording's current state.**
+  Every step of the rebuild reported success — “Restore the channel
+  selection: 6 selected, 1 marked bad”, “Put the event marks back: 2 marks”
+  — and the figure came back with the recording's channels, no bad channels
+  and its own twelve marks. Watched half a second at a time:
+
+  ```
+  t+0.0s  sel 6,  bad [8], 2 marks,  src "figure rebuild"   <- the rebuild
+  t+0.5s  sel 6,  bad [8], 12 marks, src "nev"              <- an import lands
+  t+1.0s  no session                                        <- closed
+  t+1.5s  sel 32, bad [],  12 marks, src "nev"              <- reopened
+  ```
+
+  Two stale writes, both landing after the work they overwrote.
+  `autoImportNev` asked “does this recording have events yet” *before* its
+  round trip and assigned when it came back, so anything that put events
+  there while it waited was replaced — a rebuild's marks, an import, a
+  detector's output. It asks again after the wait now, which is where the
+  question had to be.
+
+  And the session can be closed and reopened a second later, which resets
+  the selection and the bad channels to the file's own. So the plan ends
+  with a step that reads back what it restored, puts back whatever moved,
+  and says which fields it had to put back. A rebuild is a provenance
+  feature: “the figure you exported, drawn again” is either true or the
+  feature is decoration, and the only way to know is to look.
+
+- **Forgetting a recording is permanent, and two places promised otherwise.**
+  The Forget dialog and the route's own docstring both said “opening or
+  scanning it again starts a fresh record”. It does not: forget erases the
+  record and writes a tombstone keyed on its permanent id, so a colleague's
+  registry cannot push it back and the next scan does not re-register it.
+  The scan finds the folder, reports it catalogued, and nothing appears.
+
+  That behaviour is right — a scratch copy that creeps back on every scan
+  has not been forgotten — so the words changed rather than the code.
+  Bringing one back is a deliberate act, not something a scan does for you.
+
+
+- **The ToolKit jumped between modules on its own.** Reported with a request
+  log, which is what made it findable: `/api/registry` at 8.5-9.3 s four
+  times in thirty seconds, `/api/layers` at 4.2-4.6 s, `/api/presence` every
+  ten. Three causes.
+
+  *A slow answer landing after you had clicked elsewhere.* The bad-channel
+  loader has guarded against this all along and its comment says why —
+  “rendering its answer then replaces the pane you just opened — which is
+  the ‘it snaps back to another tool’” — but the guard was never applied
+  to the two slow tools. Click StrataScope while Curation is still loading
+  and Curation painted over it. The renders now refuse to paint a tool that
+  is not the one on screen, in one place rather than at each call site.
+
+  *The presence poll repainted Curation every ten seconds*, whatever you
+  were looking at, for as long as the ToolKit was open. A jump to another
+  module with nothing you did to explain it.
+
+  *And the speed, which is what made the races easy to hit.* Profiled: the
+  session records were read and merged three times per request — once
+  directly, once inside `projects()`, once inside `tree()` — and the
+  attachment counts read the figure catalogue and the deck list **once per
+  recording**, five hundred times over, for 6,060 directory listings in one
+  request. It was O(n²) in recordings, which is why it got worse as the lab
+  collected data rather than being slow from the start.
+
+  Records are cached against the shard directory's signature (a write, by
+  this machine or by a pull, invalidates it — the index `by_gid` has used
+  for the same reason), and the attachment counts are indexed once per view
+  with the answers verified identical on every row. Measured: registry
+  **8.5 s → 4.5 cold, 2.0 warm**, layers 4.6 → 2.5, curation 3.9 → 1.7, and
+  four tool switches now cost at most one registry read instead of four.
+
+  Two harnesses that had been crashing — `bankback` and `strip2` — pass
+  again: they were timing out on those reads, not broken.
+
+- **A spectrogram in a figure was one channel of the one on screen.** The
+  builder offered a single `Channel` dropdown while the viewer has had
+  multi-channel time-frequency panels for a while, and the seeding dropped
+  the channel list, the mode, the analysed band, the display crop and the
+  STFT variant. The filters and the window came through because they live
+  on the layout, which is exactly why this looked half-right.
+
+  It seeds from `panelSpec` now — the request the pane itself sends, which
+  the prewarmer already mirrors so the server's cache key matches. Emulating
+  what is on screen rather than re-deriving the same fields a second way is
+  what stops a figure drifting from the screen it was made from.
+
+
 - **A session record with no permanent id, and the hole that made it.** The
   housekeeping check said “every one has a gid: 1 without”, and it was:
   `Y:\ProcessedPtenData\PTEN_CFCs\VACC\CFC\Other`, created 2026-09-04 on
@@ -217,6 +341,37 @@ This file is the only place the version is written. The app reads it.
 
 ### Changed
 
+- **The harness suite tells the truth about this machine.** Seventeen
+  harnesses were failing at the last full run and most were not reporting
+  faults at all:
+
+  * `check` asserted a frequency band set on the *pane*, when the band is
+    locked to the recording by default — 43/6 to 49/0.
+  * `housekeeping` and `pathprobe` organised and measured the built-in
+    example, which is deliberately not a registry record — 29/10 to 42/0
+    and 10/2 to 13/0.
+  * `probehz` asserted that switching probe *forces* CSD, which was removed
+    on purpose because it silently turned a voltage raster into a CSD. It
+    now picks CSD and checks it survives the switch — and so proves six
+    CSDs of one H10 really render.
+  * `lineage` assigned “garbage” to a candidate that was already garbage,
+    so nothing moved and the bank correctly wrote no version.
+  * `scanreg` had never once been able to pass: it reads its root from
+    `?root=` and the runner never passed one, so it scanned a folder called
+    “null”. It gets a fixture now — three folders with Neuralynx-shaped
+    headers, a fresh identity per run, because forgetting is permanent and a
+    reused fixture can never be registered again — 16/8 to 26/0.
+  * `scancheck`, `snapimport` and `kilosort` required this machine to have
+    a defective recording, an external drive attached, and a missing
+    pip-installable package. All three now say what is missing and keep
+    every assertion for when it is there.
+
+  And the runner itself was under-reporting: it counted one spelling of a
+  passing check, so `figgrid` — 54 checks, every one passing — came back as
+  a single check, and it printed counts without names for a third of the
+  suite, which is why triage needed a re-run per harness.
+
+
 - **StrataScope has event curation's workbench.** It had a flat list of
   every sheet that exists, in one order, with a Delete on each that fired on
   the first click and erased every label on that recording without a word.
@@ -261,6 +416,12 @@ This file is the only place the version is written. The app reads it.
   nothing, where a badge reading `1` does not.
 
 ### Added
+
+- **A channel list for time-frequency panels**, with **Stack** (a band per
+  channel) or **Mean** (one averaged map) once more than one is picked, and
+  a **Match the viewer** button that takes the channels, the mode, the band
+  and the display crop back from the pane on screen.
+
 
 - **A panel spans by having its edge dragged.** Grips on a panel's right
   edge, bottom edge and corner; the cells it would take light up as you go.

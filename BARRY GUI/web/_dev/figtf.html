@@ -1,0 +1,184 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>figure: the spectrogram on screen</title>
+<style>
+  html,body{margin:0;font:12px/1.55 ui-monospace,Consolas,monospace;
+    background:#0c0f14;color:#dfe6ee}
+  #out{padding:12px 14px;width:44vw;box-sizing:border-box;white-space:pre-wrap}
+  .hd{color:#ffb81c;margin-top:12px}
+  .ok{color:#7fe3b0}.bad{color:#ff8a7a}.note{color:#7593a2}
+  iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;
+    border-left:1px solid #243;background:#fff}
+</style></head><body>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* A spectrogram in a figure should be the spectrogram that is on screen.
+ *
+ * Asked for: "For the spectogram in the figure builder have it have a
+ * multichannel selector... and make sure if a spectogram is already is open.
+ * It emmulates that with the filters, channels selected, etc."
+ *
+ * The builder offered one `Channel` dropdown while the viewer has had
+ * multi-channel time-frequency panels for a while, and the seeding dropped
+ * the channel list, the mode, the analysed band and the display crop. The
+ * filters and the window came through because they live on the layout, which
+ * is exactly why this looked half-right.
+ *
+ * Everything here is checked against the pane's own request -- what the pane
+ * asks the server for -- rather than against numbers written down twice.
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const p = (m, c) => { const d = document.createElement('div');
+  if (c) d.className = c; d.textContent = m; out.appendChild(d); };
+const hd = (m) => p(m, 'hd');
+const ck = (what, got, saw) => {
+  if (!got) bad += 1;
+  p((got ? '  PASS ' : '  FAIL ') + what
+    + (got || saw === undefined ? '' : '   [' + saw + ']'), got ? 'ok' : 'bad');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const untilN = async (fn, n) => {
+  for (let i = 0; i < n; i += 1) { if (fn()) return true; await sleep(100); }
+  return false;
+};
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  await untilN(() => typeof W().setView === 'function', 300);
+  await sleep(1200);
+
+  hd('0. A multi-channel scalogram on screen');
+  run("setView('xplore')");
+  const ok = await run('BARRY.views.xplore.open("demo:long-session")');
+  ck('the recording opened', !!ok);
+  await sleep(1800);
+  /* Six channels, stacked, over a band nobody would land on by accident --
+     so every number checked below could only have come from the pane. */
+  run('(function(){var S=BARRY.views.xplore.state;'
+      + 'var s=S.sessions[S.order[0]];'
+      + 'S.nPanes=1;'
+      + 'S.panes[0]={sessionId:s.id,panel:"scalogram",'
+      + 'tfChannels:[0,2,4,6,8,10],tfMode:"stack"};'
+      + 's.fdefault=Object.assign({},s.fdefault||{},'
+      + '{fmin:3,fmax:97,fviewMin:5,fviewMax:60});'
+      + 's.hp=17;s.lp=880;s.notch=60;'
+      + 'BARRY.views.xplore.render();})()');
+  await sleep(2500);
+  const spec = val('BARRY.views.xplore.panelSpec(0)');
+  ck('the pane can say what it is showing', !!spec, JSON.stringify(spec));
+  if (!spec) throw new Error('no spec');
+  p('  the pane asks for: ' + JSON.stringify({
+    tf_channels: spec.tf_channels, tf_mode: spec.tf_mode,
+    fmin: spec.fmin, fmax: spec.fmax,
+    fview: [spec.fview_min, spec.fview_max],
+    filters: [spec.highpass, spec.lowpass, spec.notch],
+  }));
+  ck('six channels', (spec.tf_channels || []).length === 6,
+     JSON.stringify(spec.tf_channels));
+  ck('stacked', spec.tf_mode === 'stack', spec.tf_mode);
+  ck('over the band that was set', spec.fmin === 3 && spec.fmax === 97,
+     spec.fmin + '-' + spec.fmax);
+
+  hd('1. The builder takes all of it');
+  run('BARRY.figure.open(BARRY.views.xplore.state, '
+      + 'BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.order[0]])');
+  await untilN(() => D().querySelector('.grid-map'), 200);
+  await sleep(1400);
+  const L = () => val('BARRY.figure.layout()');
+  const lay = L();
+  const q = (lay.panels || [])[0] || {};
+  p('  the panel carries: ' + JSON.stringify({
+    panel: q.panel, tf_channels: q.tf_channels, tf_mode: q.tf_mode,
+    fmin: q.fmin, fmax: q.fmax, fview: [q.fview_min, q.fview_max],
+  }));
+  ck('it is a scalogram panel', q.panel === 'scalogram', q.panel);
+  /* The whole complaint: a figure of a six-channel stack came out as one
+     channel, because the list was never copied. */
+  ck('the channel list came through',
+     (q.tf_channels || []).join(',') === (spec.tf_channels || []).join(','),
+     JSON.stringify(q.tf_channels));
+  ck('and the mode', q.tf_mode === spec.tf_mode, q.tf_mode);
+  ck('and the analysed band', q.fmin === spec.fmin && q.fmax === spec.fmax,
+     q.fmin + '-' + q.fmax);
+  ck('and the display crop',
+     q.fview_min === spec.fview_min && q.fview_max === spec.fview_max,
+     q.fview_min + '-' + q.fview_max);
+  /* The filters live on the layout because they belong to the recording,
+     not to one panel -- but they still have to be the ones on screen. */
+  ck('the filters are the ones on screen',
+     lay.highpass === spec.highpass && lay.lowpass === spec.lowpass
+     && lay.notch === spec.notch,
+     [lay.highpass, lay.lowpass, lay.notch].join('/') + ' vs '
+     + [spec.highpass, spec.lowpass, spec.notch].join('/'));
+
+  hd('2. And it can be changed in the builder');
+  const list = D().querySelector('.tf-chans');
+  ck('there is a channel list, not a single dropdown', !!list,
+     list ? list.options.length + ' options' : 'missing');
+  if (list) {
+    ck('multiple can be picked at once', list.multiple);
+    const on = Array.from(list.selectedOptions).map((o) => o.value);
+    p('  selected in the list: ' + on.join(','));
+    ck('and the six are shown as picked', on.length === 6, on.length);
+    // Drop two, and see it reach the layout.
+    for (const o of Array.from(list.options)) {
+      o.selected = ['0', '2', '4', '6'].indexOf(o.value) >= 0;
+    }
+    list.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(1000);
+    p('  after picking four: ' + JSON.stringify(L().panels[0].tf_channels));
+    ck('picking fewer changes the panel',
+       (L().panels[0].tf_channels || []).length === 4,
+       JSON.stringify(L().panels[0].tf_channels));
+    ck('and the mode survives', L().panels[0].tf_mode === 'stack',
+       L().panels[0].tf_mode);
+  }
+
+  hd('3. "Match the viewer" puts it back');
+  const back = Array.from(D().querySelectorAll('button'))
+    .find((b) => /match the viewer/i.test(b.textContent || ''));
+  ck('there is a way back to what is on screen', !!back);
+  if (back) {
+    back.click();
+    await sleep(1200);
+    const r = L().panels[0];
+    p('  after matching: ' + JSON.stringify(r.tf_channels));
+    ck('the channels are the viewer’s again',
+       (r.tf_channels || []).join(',') === (spec.tf_channels || []).join(','),
+       JSON.stringify(r.tf_channels));
+    ck('and so is the band', r.fmin === spec.fmin && r.fmax === spec.fmax,
+       r.fmin + '-' + r.fmax);
+  }
+
+  hd('4. It renders, as six channels rather than one');
+  const shot = await run('fetch("/api/figure/preview",{method:"POST",'
+    + 'headers:{"Content-Type":"application/json"},'
+    + 'body:JSON.stringify({layout:BARRY.figure.layout(),sessions:{'
+    + '"' + val('BARRY.views.xplore.state.order[0]') + '":'
+    + '{path:"demo:long-session"}},dpi:70})}).then(function(r){'
+    + 'return r.json()})');
+  ck('the preview renders', !!(shot && shot.ok), shot && shot.error);
+  if (shot && shot.ok) {
+    p('  problems: ' + JSON.stringify(shot.problems || []));
+    ck('with nothing to report', (shot.problems || []).length === 0,
+       JSON.stringify(shot.problems || []));
+    ck('and it is a real picture', (shot.image || '').length > 20000,
+       (shot.image || '').length);
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ')
+    + 'the spectrogram on screen';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack), 'bad');
+  document.title = 'threw';
+} })();
+</script>
+</body></html>

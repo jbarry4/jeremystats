@@ -1,0 +1,279 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}</style></head><body><title>CFC Revival Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#edeeef; --surface:#fcfcfb; --panel:#f7f8f7;
+  --ink:#101316; --ink2:#4c5257; --ink3:#7c848a;
+  --rule:#d7dadd; --rule2:#e6e8ea;
+  --accent:#17539b; --accent-soft:#dbe7f6;
+  --hot:#b8500e; --hot-soft:#f7e6da;
+  --good:#12694a; --good-soft:#dcefe6;
+  --grey:#8a8880; --grey-soft:#e9eaea;
+  --code-bg:#f2f3f1;
+  --sans:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --measure:66ch; --wide:1120px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --ground:#14171a; --surface:#1b1f23; --panel:#1e2327;
+  --ink:#eceef0; --ink2:#a2abb2; --ink3:#79838a;
+  --rule:#2b3137; --rule2:#23282d;
+  --accent:#77aeef; --accent-soft:#16304e;
+  --hot:#e59263; --hot-soft:#3a2415;
+  --good:#54b98c; --good-soft:#123227;
+  --grey:#8b939a; --grey-soft:#24292e;
+  --code-bg:#1f2429;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#14171a; --surface:#1b1f23; --panel:#1e2327;
+  --ink:#eceef0; --ink2:#a2abb2; --ink3:#79838a;
+  --rule:#2b3137; --rule2:#23282d;
+  --accent:#77aeef; --accent-soft:#16304e;
+  --hot:#e59263; --hot-soft:#3a2415;
+  --good:#54b98c; --good-soft:#123227;
+  --grey:#8b939a; --grey-soft:#24292e;
+  --code-bg:#1f2429;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:17px;
+     line-height:1.64;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--wide);margin:0 auto;padding:0 26px 90px}
+.col{max-width:var(--measure)}
+p{margin:0 0 1.05em}
+strong{font-weight:600}
+
+.mast{border-bottom:1px solid var(--rule);padding:44px 0 24px;margin-bottom:34px}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+        color:var(--ink3);margin:0 0 16px}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(34px,5.2vw,56px);line-height:1.03;
+   letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance}
+.standfirst{font-size:19.5px;color:var(--ink2);max-width:58ch;margin:0}
+
+.part{margin:60px 0 0;padding-top:22px;border-top:1px solid var(--rule)}
+.part-n{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+        color:var(--accent);margin:0 0 8px}
+h2{font-family:var(--sans);font-weight:600;font-size:clamp(24px,3.2vw,32px);line-height:1.11;
+   letter-spacing:-.01em;margin:0 0 15px;text-wrap:balance}
+h3{font-family:var(--sans);font-weight:600;font-size:19px;margin:34px 0 9px}
+h4{font-family:var(--sans);font-weight:600;font-size:15.5px;margin:24px 0 6px}
+
+code{font-family:var(--mono);font-size:.85em;background:var(--code-bg);padding:.1em .34em;border-radius:2px}
+.file{font-family:var(--mono);font-size:.85em;color:var(--accent)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 16px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--sans);font-weight:600;
+      font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+.chip i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.c-keep i{background:var(--good)} .c-mod i{background:var(--accent)}
+.c-new i{background:var(--hot)}  .c-ret i{background:var(--grey)}
+
+figure{margin:22px 0 34px}
+.chartbox{background:var(--surface);border:1px solid var(--rule);padding:18px 14px;overflow-x:auto}
+.chartbox svg{display:block;max-width:100%;height:auto;min-width:820px;color:var(--ink)}
+figcaption{font-size:14.5px;color:var(--ink2);margin-top:10px;max-width:86ch}
+
+.tbl-wrap{overflow-x:auto;margin:20px 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:700px}
+th{font-family:var(--sans);font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+   color:var(--ink3);text-align:left;border-bottom:1px solid var(--rule);padding:0 14px 7px 0;vertical-align:bottom}
+td{padding:9px 14px 9px 0;border-bottom:1px solid var(--rule2);vertical-align:top}
+td.m,th.m{font-family:var(--mono);font-size:12.5px}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;font-family:var(--sans);font-weight:600;font-size:10.5px;letter-spacing:.06em;
+     text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.t-keep{background:var(--good-soft);color:var(--good)}
+.t-mod{background:var(--accent-soft);color:var(--accent)}
+.t-new{background:var(--hot-soft);color:var(--hot)}
+.t-ret{background:var(--grey-soft);color:var(--ink2)}
+
+.flag{border-left:2px solid var(--hot);background:var(--hot-soft);padding:14px 18px;margin:22px 0;font-size:16px}
+.flag .h{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+         color:var(--hot);margin-bottom:5px}
+.flag p:last-child{margin-bottom:0}
+.plain{border-left:2px solid var(--accent);background:var(--accent-soft);padding:14px 18px;margin:22px 0;font-size:16.5px}
+.plain .h{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+          color:var(--accent);margin-bottom:5px}
+.plain p:last-child{margin-bottom:0}
+
+.num{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--rule);
+     border:1px solid var(--rule);margin:22px 0}
+.num > div{background:var(--surface);padding:14px 16px}
+.num dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.num dd{margin:0;font-family:var(--sans);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+.num small{display:block;font-family:var(--serif);font-size:13.5px;font-weight:400;color:var(--ink2);margin-top:5px;line-height:1.45}
+
+ul.pl{margin:0 0 1.05em;padding-left:1.15em} ul.pl li{margin-bottom:.5em}
+ol.st{margin:0 0 1.05em;padding-left:1.3em} ol.st li{margin-bottom:.55em}
+
+footer{margin-top:66px;padding-top:20px;border-top:1px solid var(--rule);
+       font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:640px){body{font-size:16px}.wrap{padding:0 16px 70px}}
+</style>
+<div class="wrap">
+
+<header class="mast">
+  <p class="kicker">Reviving CFC · from the CFC Revival Plan</p>
+  <h1>CFC Revival Roadmap</h1>
+  <p class="standfirst">From <span class="file">.ncs</span> to the theta-power heat map: every stage, what already exists, what has to be written, and three things worth settling before any of it gets written.</p>
+</header>
+
+<section class="col">
+  <h3 style="margin-top:0">What the plan changes</h3>
+  <p>The thesis version computed <strong>one comodulogram per channel per recording</strong>, collapsed theta to a 4–12 Hz band, and fed session-level means into a GEE. It works, and it hides three things the plan wants back:</p>
+  <ul class="pl">
+    <li><strong>when</strong> the effect happens — averaging over a whole recording erases the time course</li>
+    <li><strong>which theta frequency</strong> drives it — the 4–12 Hz collapse throws that axis away</li>
+    <li><strong>whether theta power is doing the work</strong> — never measured alongside MI</li>
+  </ul>
+  <p>The fix in the plan is to stop averaging: cut every recording into <strong>6-second epochs</strong>, compute a full comodulogram per epoch, and carry theta power per epoch alongside it. Per channel you end up with an <strong>MI array of θ × γ × epoch</strong> and a <strong>theta-power array of θ × epoch</strong>. Those two feed the new headline figure — gamma on y, theta power on x, MI as colour, one panel per theta frequency, per channel.</p>
+  <div class="plain">
+    <div class="h">The good news, before the caveats</div>
+    <p>Structurally this is a <em>smaller</em> change than it looks. The expensive part of the existing pipeline — filtering the whole recording into two banks and Hilberting them — is exactly what epoching needs, and it happens <em>before</em> any epoch boundary matters. Most of the new work is a loop, a reduction, and a better file format. The measurement core, <span class="file">ModIndex_v2.m</span>, does not change at all.</p>
+  </div>
+</section>
+
+<div class="part">
+  <div class="col">
+    <p class="part-n">The pipeline</p>
+    <h2>CSC in, three figures out</h2>
+    <p>Everything inside the dashed box runs once per channel on the cluster. The three boxes in the middle row are three different reductions of the <em>same</em> two matrices produced in step 4 — that is why adding theta power costs almost nothing.</p>
+  </div>
+  <div class="chips">
+    <span class="chip c-keep"><i></i>reuse as-is</span>
+    <span class="chip c-mod"><i></i>reuse with changes</span>
+    <span class="chip c-new"><i></i>write new</span>
+    <span class="chip c-ret"><i></i>retire</span>
+  </div>
+  <figure>
+    <div class="chartbox"><svg viewBox="0 0 920 1165" role="img" xmlns="http://www.w3.org/2000/svg" aria-label="Flowchart of the revived CFC pipeline. Step 0 compiles the feeder sheet. Inside a SLURM array task run once per session and channel: read the ncs file, clean the continuous trace, detect and mask IEDs, run the filter banks and Hilbert transform on the whole recording, then cut the resulting analytic series into six second epochs. Three parallel reductions follow — modulation index per epoch, theta power per epoch, and surrogate z-scores per epoch — written to one tidy file per channel. Outside the task, everything merges to a long table feeding three outputs: MI over time, MI across theta, and the theta-power by gamma heat map, which feed a clustered model. Boxes are colour coded as reuse as-is, reuse with changes, or write new."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="currentColor" fill-opacity=".45"/></marker></defs><rect x="8" y="136" width="904" height="672" rx="4" fill="none" stroke="var(--accent)" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="6 5"/><rect x="8" y="116" width="404" height="21" rx="2" fill="var(--accent)"/><text x="18" y="131" font-family="IBM Plex Sans Condensed, sans-serif" font-size="11.5" font-weight="600" letter-spacing=".07em" fill="var(--surface)">SLURM ARRAY TASK — ONE PER (SESSION × CHANNEL)</text><text x="424" y="131" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink3)">step02_array_FCSE.sbat + step03_arrayFCSE.m — modify</text><rect x="200" y="40" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="40" width="5" height="62" rx="1.5" fill="var(--accent)"/><text x="216" y="63" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Compile the feeder sheet</text><text x="216" y="81" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">step01_FeederPathCleaner.R  ·  repoint the hardcoded paths</text><text x="216" y="95" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">one row per channel: rat · session · condition · layer · .ncs</text><text x="184" y="63" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">0</text><line x1="460.0" y1="102" x2="460.0" y2="152" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="200" y="160" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="160" width="5" height="62" rx="1.5" fill="var(--good)"/><text x="216" y="183" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Read the .ncs</text><text x="216" y="201" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">read_csc.m  ·  reusable as-is (check decimation + gaps)</text><text x="216" y="215" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">→ 3255 Hz trace + timestamps</text><text x="184" y="183" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">1</text><rect x="200" y="242" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="242" width="5" height="62" rx="1.5" fill="var(--accent)"/><text x="216" y="265" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Clean the continuous trace</text><text x="216" y="283" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">notch code lifted out of newFCSE.m into its own function</text><text x="216" y="297" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">+ timestamp-gap check   + saturation / clipping flags</text><text x="184" y="265" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">2</text><rect x="200" y="324" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="324" width="5" height="62" rx="1.5" fill="var(--hot)"/><text x="216" y="347" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Detect and mask IEDs</text><text x="216" y="365" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">Toothy event detector → event times, per-sample mask</text><text x="216" y="379" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">feeds the epoch table — nothing downstream can fix this</text><text x="184" y="347" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">3</text><rect x="200" y="406" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="406" width="5" height="62" rx="1.5" fill="var(--good)"/><text x="216" y="429" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Filter banks + Hilbert — on the WHOLE recording</text><text x="216" y="447" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">the two parfor loops in newFCSE.m, unchanged</text><text x="216" y="461" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">→ Phase[nθ × T]  and  Amp[nγ × T]</text><text x="184" y="429" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">4</text><rect x="200" y="488" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="488" width="5" height="62" rx="1.5" fill="var(--hot)"/><text x="216" y="511" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Cut the analytic series into 6 s epochs</text><text x="216" y="529" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">epoch table: t0, t1, IED count, artifact flag, n samples</text><text x="216" y="543" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">filter first, THEN cut — a 6 s epoch is too short to filter</text><text x="184" y="511" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">5</text><line x1="460.0" y1="222" x2="460.0" y2="234" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><line x1="460.0" y1="304" x2="460.0" y2="316" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><line x1="460.0" y1="386" x2="460.0" y2="398" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><line x1="460.0" y1="468" x2="460.0" y2="480" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><line x1="460.0" y1="550" x2="460.0" y2="570" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="162.0" y1="570" x2="758.0" y2="570" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><rect x="21" y="596" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="21" y="596" width="5" height="86" rx="1.5" fill="var(--good)"/><text x="37" y="619" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">MI per epoch</text><text x="37" y="637" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">ModIndex_v2.m unchanged — it already takes</text><text x="37" y="651" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">any Phase/Amp vectors. New loop around it.</text><text x="37" y="665" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">→ MI[θ × γ × epoch]</text><text x="291" y="619" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">6</text><line x1="162.0" y1="570" x2="162.0" y2="588" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="319" y="596" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="319" y="596" width="5" height="86" rx="1.5" fill="var(--hot)"/><text x="335" y="619" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Theta power per epoch</text><text x="335" y="637" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">free: reduce the phase bank already built</text><text x="335" y="651" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">in step 4 — no new filtering needed</text><text x="335" y="665" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">→ Pθ[θ × epoch]  for θ = 4…12 Hz</text><text x="589" y="619" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">7</text><line x1="460.0" y1="570" x2="460.0" y2="588" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="617" y="596" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="617" y="596" width="5" height="86" rx="1.5" fill="var(--hot)"/><text x="633" y="619" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Surrogate z per epoch</text><text x="633" y="637" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">shift Amp against Phase inside the epoch,</text><text x="633" y="651" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">×200 per cell — this is what makes</text><text x="633" y="665" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">epochs comparable.  → z[θ × γ × epoch]</text><text x="887" y="619" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">8</text><line x1="758.0" y1="570" x2="758.0" y2="588" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><text x="21" y="562" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink3)">three reductions of the same two matrices — one pass, not three</text><line x1="162.0" y1="682" x2="162.0" y2="702" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="460.0" y1="682" x2="460.0" y2="702" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="758.0" y1="682" x2="758.0" y2="702" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="162.0" y1="702" x2="758.0" y2="702" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="460.0" y1="702" x2="460.0" y2="718" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="200" y="726" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="726" width="5" height="62" rx="1.5" fill="var(--hot)"/><text x="216" y="749" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Write one tidy file per channel</text><text x="216" y="767" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">.mat or .parquet: MI, z, Pθ, epoch table, meta  —  no .fig</text><text x="216" y="781" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">retires CFCFigRipper.m, TRANSpose_comodulograms.m, CFCMatrix.m</text><text x="184" y="749" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">—</text><line x1="460.0" y1="788" x2="460.0" y2="828" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="200" y="836" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="836" width="5" height="62" rx="1.5" fill="var(--accent)"/><text x="216" y="859" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Merge to one long table</text><text x="216" y="877" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">replaces step07_CFCReader.R  ·  keep the join, drop the band slicing</text><text x="216" y="891" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">row = rat · channel · layer · epoch · θ · γ · MI · z · Pθ · IEDs</text><text x="184" y="859" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">9</text><line x1="460.0" y1="898" x2="460.0" y2="918" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="162.0" y1="918" x2="758.0" y2="918" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><rect x="21" y="944" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="21" y="944" width="5" height="86" rx="1.5" fill="var(--hot)"/><text x="37" y="967" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Output A — MI over time</text><text x="37" y="985" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">MI[θ,γ] against epoch number</text><text x="37" y="999" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)"></text><text x="37" y="1013" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">answers: WHEN does it happen</text><text x="291" y="967" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">A</text><line x1="162.0" y1="918" x2="162.0" y2="936" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="319" y="944" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="319" y="944" width="5" height="86" rx="1.5" fill="var(--hot)"/><text x="335" y="967" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Output B — MI across theta</text><text x="335" y="985" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">MI against θ, one line per γ</text><text x="335" y="999" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)"></text><text x="335" y="1013" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">answers: WHICH theta Hz drives it</text><text x="589" y="967" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">B</text><line x1="460.0" y1="918" x2="460.0" y2="936" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="617" y="944" width="282" height="86" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="617" y="944" width="5" height="86" rx="1.5" fill="var(--hot)"/><text x="633" y="967" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Output C — θ-power × γ map</text><text x="633" y="985" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">MI as colour, one panel per θ,</text><text x="633" y="999" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">per channel and layer</text><text x="633" y="1013" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">the headline figure in the plan</text><text x="887" y="967" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" fill="var(--ink3)">C</text><line x1="758.0" y1="918" x2="758.0" y2="936" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><line x1="162.0" y1="1030" x2="162.0" y2="1050" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="460.0" y1="1030" x2="460.0" y2="1050" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="758.0" y1="1030" x2="758.0" y2="1050" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="162.0" y1="1050" x2="758.0" y2="1050" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4"/><line x1="460.0" y1="1050" x2="460.0" y2="1072" stroke="currentColor" stroke-opacity=".45" stroke-width="1.4" marker-end="url(#ah)"/><rect x="200" y="1080" width="520" height="62" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"/><rect x="200" y="1080" width="5" height="62" rx="1.5" fill="var(--accent)"/><text x="216" y="1103" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Model it</text><text x="216" y="1121" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">was: GEE in SPSS on one comodulogram per recording</text><text x="216" y="1135" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink3)">now: epochs are nested and autocorrelated — cluster by animal</text><text x="184" y="1103" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="var(--ink3)">10</text></svg></div>
+    <figcaption>Green is code that already exists and runs. Blue is existing code that needs edits. Orange is new. The two decisions embedded in this drawing — filter before you epoch, and write data rather than figures — are the ones in the next section.</figcaption>
+  </figure>
+</div>
+
+<div class="part">
+  <div class="col">
+    <p class="part-n">The ledger</p>
+    <h2>What you already have</h2>
+    <p>Sorted by how much work each one saves you.</p>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>Existing file</th><th>Status</th><th>What has to happen</th></tr></thead>
+      <tbody>
+        <tr><td>The MI itself</td><td class="m">01_core_tort/ModIndex_v2.m</td><td><span class="tag t-keep">reuse</span></td><td>Nothing. It takes any phase and amplitude vectors, so handing it an epoch slice already works.</td></tr>
+        <tr><td>Bandpass filter</td><td class="m">01_core_tort/eegfilt.m</td><td><span class="tag t-keep">reuse</span></td><td>Nothing, but see the bandwidth note below — the widths it delivers are not the widths the drivers ask for.</td></tr>
+        <tr><td>Filter banks + Hilbert</td><td class="m">step04_newFCSE.m, lines with the two parfor loops</td><td><span class="tag t-keep">reuse</span></td><td>Lift the two loops into their own function. This is 90% of the compute and it is already parallelised and already correct.</td></tr>
+        <tr><td>Read Neuralynx</td><td class="m">lib/read_csc.m</td><td><span class="tag t-keep">reuse</span></td><td>Works. Two things to check first — see "decimation" and "gaps" below.</td></tr>
+        <tr><td>Feeder sheets</td><td class="m">step01_FeederPathCleaner.R</td><td><span class="tag t-mod">modify</span></td><td>Repoint the hardcoded paths. Add nothing else — the columns you need (rat, session, condition, layer, path) are already there.</td></tr>
+        <tr><td>Notch filter</td><td class="m">inline in step04_newFCSE.m</td><td><span class="tag t-mod">modify</span></td><td>Pull it out into a function and pick one setting. Right now it is 59–61 Hz in <span class="file">newFCSE</span> and 55–65 Hz in the PTEN driver, which are two different analyses.</td></tr>
+        <tr><td>Cluster orchestration</td><td class="m">step02_array_FCSE.sbat, step03_arrayFCSE.m</td><td><span class="tag t-mod">modify</span></td><td>Array over (session × channel) instead of session, and skip channels whose output already exists. A failed channel currently kills a four-hour job. Also: <span class="file">step02_2</span> calls <code>arrayFCSETweaks</code>, which does not exist on this machine.</td></tr>
+        <tr><td>Merge to CSV</td><td class="m">step07_CFCReader.R</td><td><span class="tag t-mod">modify</span></td><td>Keep the merge-and-label logic. Drop the band-column slicing — per-frequency is now the point — and read the new tidy files instead of <span class="file">.fig</span>-ripped ones.</td></tr>
+        <tr><td>QC</td><td class="m">step08_CFCQualCheck.R</td><td><span class="tag t-mod">modify</span></td><td>Extend to per-epoch QC: epochs surviving, IED counts, power outliers, z-score distributions.</td></tr>
+        <tr><td>Epoching</td><td class="m">—</td><td><span class="tag t-new">new</span></td><td>Cut the phase/amp matrices into 6 s blocks and build the epoch table. Small, but it is the hinge of the whole redesign.</td></tr>
+        <tr><td>IED detection + mask</td><td class="m">Toothy (elsewhere in the lab stack)</td><td><span class="tag t-new">new</span></td><td>Wire the existing detector in, export event times, mask or flag epochs. Not optional — see risk 3.</td></tr>
+        <tr><td>Theta power per epoch</td><td class="m">—</td><td><span class="tag t-new">new</span></td><td>About ten lines: square the phase-bank envelopes you already have and average within each epoch. No new filtering.</td></tr>
+        <tr><td>Surrogate z per epoch</td><td class="m">—</td><td><span class="tag t-new">new</span></td><td>Circular-shift the amplitude series within the epoch, recompute, ×200. The single highest-value addition on this list.</td></tr>
+        <tr><td>Tidy output writer</td><td class="m">—</td><td><span class="tag t-new">new</span></td><td>One file per channel holding MI, z, theta power, the epoch table and a metadata struct.</td></tr>
+        <tr><td>Outputs A / B / C</td><td class="m">—</td><td><span class="tag t-new">new</span></td><td>Three plotting functions off the long table. C is the one the plan is built around.</td></tr>
+        <tr><td>Figure ripping</td><td class="m">step06_CFCFigRipper.m</td><td><span class="tag t-ret">retire</span></td><td>Only exists because the data was stored in <span class="file">.fig</span> files. Store the data and it has no job.</td></tr>
+        <tr><td>Transposing</td><td class="m">step05_TRANSpose_comodulograms.m</td><td><span class="tag t-ret">retire</span></td><td>Same reason. Also has the fixed-offset filename bug, <code>baseFileName(38:end-4)</code>.</td></tr>
+        <tr><td>Metadata tiling</td><td class="m">lib/CFCMatrix.m</td><td><span class="tag t-ret">retire</span></td><td>Bolting rat/group/layer on as repeated string columns is a workaround for a flat file format. A struct or a long table carries them properly.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="part">
+  <div class="col">
+    <p class="part-n">Decide first</p>
+    <h2>Three things to settle before writing code</h2>
+
+    <h3>1 · Filter the whole recording, then cut. Never the reverse.</h3>
+    <p>This is the one that would be genuinely painful to discover later. <span class="file">eegfilt</span> builds a filter about three cycles of the lower cutoff long, and <code>filtfilt</code> needs at least three times that many samples to run at all. At 3 255 Hz a 1 Hz phase band is a 9 767-tap filter needing roughly <strong>9 seconds</strong> of data — more than a 6-second epoch contains. Even at 4 Hz you are using a filter about 0.75 s long, so the first and last second of any epoch is contaminated by whatever sat next to it.</p>
+    <p>So: filter and Hilbert the continuous trace once, then slice the resulting phase and amplitude series into epochs. The existing <span class="file">newFCSE.m</span> already does the first half of that — it builds <code>PhaseFreqTransformed</code> and <code>AmpFreqTransformed</code> for the whole recording before any MI is computed. You are inserting a loop, not restructuring.</p>
+
+    <h3>2 · Store data, not figures.</h3>
+    <p>The current chain saves a <span class="file">.fig</span> per channel and then rips the numbers back out of it with <span class="file">CFCFigRipper.m</span>. With epochs that becomes untenable — you would be writing a figure per epoch per channel. Write one file per channel containing the arrays and the epoch table, and generate figures on demand from the long table.</p>
+    <p>Size is not a problem. 17 theta × 37 gamma × 100 epochs in single precision is about 250 kB per channel, so a 63-channel session is roughly <strong>16 MB</strong> — smaller than the <span class="file">.fig</span> files it replaces.</p>
+
+    <h3>3 · Pick the grids now, and pick them honestly.</h3>
+    <p>The plan needs theta 4–12 Hz on the phase axis, which is a much smaller sweep than the current 1:0.5:26. That is a real saving — but the amplitude bandwidth needs attention at the same time. <span class="file">eegfilt</span> delivers a passband of roughly <strong>0.30 × the centre frequency</strong> regardless of what the driver asks for, and an amplitude filter narrower than <code>2 × θ</code> physically cannot carry the modulation. At 12 Hz theta that means nothing below about 80 Hz gamma will register, whatever is really there.</p>
+    <p>Setting <code>ampBW = max(10, 2.5*fp)</code> explicitly makes the whole grid comparable instead of only its upper part, and it makes the amplitude axis mean the same thing at every theta frequency — which matters a lot more now that theta frequency is an axis you intend to interpret.</p>
+  </div>
+</div>
+
+<div class="part">
+  <div class="col">
+    <p class="part-n">Risks</p>
+    <h2>Three things that will bite, with numbers</h2>
+    <p>All three are measured on simulated data where the true answer is known, using the same <span class="file">eegfilt</span> + <span class="file">ModIndex_v2</span> arithmetic as the pipeline. Scripts are in <span class="file">05_explainer/</span>.</p>
+
+    <h3>Risk 1 · Short epochs put a slope on the theta axis that isn't real</h3>
+    <p>MI is biased upward when you have less data, and a 6-second epoch holds <strong>24 theta cycles at 4 Hz but 72 at 12 Hz</strong>. So the bias is three times worse at the bottom of the theta axis than at the top — on pure noise with no coupling anywhere.</p>
+  </div>
+  <div class="num">
+    <div><dt>6 s epoch · θ = 4 Hz</dt><dd>0.00138</dd><small>mean MI on pure noise, no coupling present</small></div>
+    <div><dt>6 s epoch · θ = 8 Hz</dt><dd>0.00064</dd><small>same recording, same absence of coupling</small></div>
+    <div><dt>6 s epoch · θ = 12 Hz</dt><dd>0.00035</dd><small>a 4× spread produced entirely by epoch length</small></div>
+    <div><dt>after z-scoring</dt><dd>≈ 0.0</dd><small>within-epoch surrogates flatten it at every theta frequency</small></div>
+  </div>
+  <div class="col">
+    <div class="flag">
+      <div class="h">What to do</div>
+      <p>Do not compare raw MI across theta frequencies at 6 s. Z-score every cell against surrogates built <em>within that epoch</em> — shift the amplitude series against the phase series a couple of hundred times and express MI in standard deviations above that epoch's own chance level. Tested on pure noise, that removes the theta-axis slope completely: raw MI runs 0.00139 → 0.00033 across 4–12 Hz, z runs −0.04 → −0.06.</p>
+    </div>
+
+    <h3>Risk 2 · The theta-power → MI relationship is partly an artefact of measuring theta better</h3>
+    <p>This is the headline analysis in the plan, so it is worth being careful about. A stronger theta rhythm gives a cleaner phase estimate, and a cleaner phase estimate detects more of whatever coupling was already there. Holding the <em>true</em> coupling depth fixed and varying only theta amplitude:</p>
+  </div>
+  <div class="num">
+    <div><dt>theta ×0.25</dt><dd>z = +7.6</dd><small>true coupling depth 0.35</small></div>
+    <div><dt>theta ×1</dt><dd>z = +13.5</dd><small>identical true coupling depth</small></div>
+    <div><dt>theta ×4</dt><dd>z = +14.0</dd><small>identical again — the curve saturates</small></div>
+    <div><dt>true depth = 0</dt><dd>z ≈ 0</dd><small>at every theta amplitude — so it is detectability, not a pure artefact</small></div>
+  </div>
+  <div class="col">
+    <p>Read that carefully, because it cuts both ways. Surrogate z-scoring does <em>not</em> flatten this, and it shouldn't — with no coupling present, z stays at zero no matter how big theta is, so the effect is not spurious signal. It is a real change in how much of a real effect you can see. But it means a rising theta-power → MI curve is ambiguous between "coupling increased" and "we could suddenly measure the coupling that was always there."</p>
+    <div class="flag">
+      <div class="h">What to do</div>
+      <p>Three cheap defences, in order of effort. First, plot the actual distribution of theta power across your epochs — the confound saturates above about unit amplitude, so if your epochs mostly sit in the flat part it barely applies. Second, run the same analysis on epochs matched for theta power across groups, so the comparison is between conditions at equal SNR. Third, generate the null curve: simulate at each observed theta power with coupling held constant, and plot that alongside the data as the "detectability only" expectation. The third one is maybe half a day and it turns an ambiguous figure into a clean one.</p>
+    </div>
+
+    <h3>Risk 3 · Epochs are not independent observations, and IEDs are not noise</h3>
+    <p>Two separate problems that both land in the statistics.</p>
+    <p><strong>Pseudo-replication.</strong> Going from one number per channel to a hundred numbers per channel multiplies your <em>n</em> by a hundred without adding a hundred animals. Consecutive 6-second epochs are also correlated with each other. A GEE that treats them as independent will produce p-values that are not meaningful. Cluster at the animal level and use a working correlation structure that expects autocorrelation — or move to a mixed model with epoch nested in channel nested in session nested in animal.</p>
+    <p><strong>IEDs.</strong> A sharp transient deposits energy in every amplitude band at once, at a consistent slow-band phase, which is exactly the pattern MI is built to detect. Simulated: background noise plus 1.5 transients per second, with no coupling of any kind in the signal, produces a comodulogram peaking at MI 0.0093 — twenty-one times the noise floor. Since your groups are literally IED+ and IED−, an unmasked comparison between them is confounded by construction, and epoching makes it worse rather than better, because a single discharge now dominates the epoch it lands in.</p>
+    <div class="flag">
+      <div class="h">What to do</div>
+      <p>Mask before you epoch, and carry the IED count per epoch through to the long table so it can be a covariate or an exclusion criterion later. Also worth doing deliberately: run the analysis on IED-free epochs from IED+ animals. That separates "this animal has epileptiform activity" from "this six seconds contains a discharge", which is a question the epoched design can answer and the session-average design could not.</p>
+    </div>
+  </div>
+</div>
+
+<div class="part col">
+  <p class="part-n">Order of work</p>
+  <h2>A build order that keeps you testable</h2>
+  <ol class="st">
+    <li><strong>Get one channel running end to end, locally, with no cluster.</strong> One <span class="file">.ncs</span>, filter banks, epoch loop, MI array, tidy file. Everything else is scaling.</li>
+    <li><strong>Validate against the old pipeline.</strong> Average your per-epoch MI array back over all epochs and compare it to the whole-recording comodulogram <span class="file">newFCSE.m</span> produces for the same channel. They will not be identical — different epoch bias — but the blob should be in the same place with a similar shape. If it isn't, stop.</li>
+    <li><strong>Add surrogate z-scoring</strong> and confirm on a shuffled channel that z sits at zero across the whole grid.</li>
+    <li><strong>Add theta power and the epoch table.</strong> Cheap once the loop exists.</li>
+    <li><strong>Wire in IED masking.</strong> Sanity check: MI should drop on IED+ channels, not rise.</li>
+    <li><strong>Then</strong> scale to the array job, and only then write the merge and the three output figures.</li>
+  </ol>
+  <p>Steps 1–3 are where the real risk sits, and they need one channel and a laptop.</p>
+</div>
+
+<footer>
+  Built from Reviving CFC/Revival Pipeline/CFC Revival Plan.pdf and the code in 01_core_tort, 02_barry_lineage and 03_vacc_pipeline. Every quoted number is measured on synthetic data by the scripts in 05_explainer/ — nothing here reads a recording.
+</footer>
+
+</div>
+</body></html>

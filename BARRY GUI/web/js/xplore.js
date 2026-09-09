@@ -4649,66 +4649,19 @@ BARRY.views.xplore = (function () {
   const isImagePanel = (p) => ['voltage', 'csd', 'theta', 'spectrogram', 'scalogram'].includes(p);
   const firstSel = (sess) => (sess.sel.size ? Math.min(...sess.sel) : 0);
 
-  /* ---------- channel list with bad marking ---------- */
-  function paneChannels(index, sess) {
-    const host = el('div', { class: 'pane-chans' });
-    // Fixed-height header: its height is a contract with the canvas (see
-    // CH_HEADER_H), so the rows below it line up with the trace lanes.
-    const top = el('div', { class: 'ch-top' });
-    host.appendChild(top);
-    top.appendChild(el('div', { class: 'ch-head' }, [
-      el('strong', { text: 'Channels' }),
-      el('span', { text: sess.sel.size + '/' + sess.info.channels.length }),
-      el('div', { class: 'spacer' }),
-      collapseArrow('channels', 'left'),
-    ]));
+  /* The side channel rail used to live here: a row per channel down the
+     right of every raster pane, with a bad-marking button on each.
 
-    const quick = el('div', { class: 'ch-quick' });
-    for (const [k, label] of [['all', 'All'], ['none', 'None'], ['even', 'Even'],
-                              ['odd', 'Odd'], ['invert', 'Flip'], ['good', 'Good']]) {
-      quick.appendChild(el('button', {
-        class: 'mini', text: label,
-        title: k === 'good' ? 'Select only channels not marked bad' : '',
-        onclick: () => { quickSelect(sess, k); render(); refreshSession(sess); },
-      }));
-    }
-    top.appendChild(quick);
+     It went when the channel selection was consolidated into one control,
+     because it moved and changed shape depending on the panel -- "The
+     Channel selection moves when it is not a voltage raster, just keep it
+     in the same spot with the same formatting". `channelPop` and `chanList`
+     above are what replaced it: the `Ch` menu in the pane's own strip, in
+     the same place whatever the pane is showing.
 
-    const list = el('div', { class: 'ch-list' });
-    for (const c of sess.info.channels) {
-      const isBad = sess.bad.has(c.number) || c.bad;
-      list.appendChild(el('label', {
-        class: 'ch-row' + (sess.sel.has(c.index) ? '' : ' off') + (isBad ? ' marked-bad' : ''),
-        'data-num': String(c.number),
-        title: c.label + (isBad ? '  (marked bad)' : ''),
-      }, [
-        el('input', {
-          type: 'checkbox', checked: sess.sel.has(c.index) ? 'checked' : null,
-          onchange: (e) => {
-            if (e.target.checked) sess.sel.add(c.index); else sess.sel.delete(c.index);
-            render(); refreshSession(sess);
-            queueSaveState(sess);
-            publishLink(sess.t0, sess.span, sess);
-          },
-        }),
-        el('span', { text: c.label }),
-        el('button', {
-          class: 'badbtn', text: isBad ? 'BAD' : 'ok',
-          title: isBad ? 'Marked bad — click to clear' : 'Mark this channel bad',
-          onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleBad(sess, c.number); },
-        }),
-      ]));
-    }
-    if (sess.identity && sess.identity.mouse == null) {
-      top.appendChild(el('div', {
-        class: 'ch-note',
-        title: 'Rename the folder to include m<N> and s<N> to make these stick.',
-        text: 'No mouse/session id — marks stay local',
-      }));
-    }
-    host.appendChild(list);
-    return host;
-  }
+     The function stayed behind, unreachable, for long enough that a harness
+     went on looking for its markup and reporting the absence as a fault. */
+
 
   function quickSelect(sess, kind) {
     const all = sess.info.channels;
@@ -6174,6 +6127,15 @@ BARRY.views.xplore = (function () {
         path: file.path, session_path: sess.path,
       });
       if (!res.n) return;
+      /* Asked again, after the wait.
+         The guard at the top of this function ran before the round trip, so
+         anything that put events on the recording while it was in flight was
+         replaced when it came back: a figure rebuild's marks, an import, a
+         detector's output. Measured on a rebuild -- two marks became the
+         file's twelve, half a second after the rebuild said it had put them
+         back. An auto-import is a convenience for an empty recording and has
+         no business overruling something somebody did. */
+      if ((sess.events || []).length) return;
       sess.events = res.events;
       sess.eventsMeta = { path: file.path, n: res.n, source: 'nev',
                           relative_to: res.relative_to, labels: res.labels };
@@ -7773,6 +7735,29 @@ BARRY.views.xplore = (function () {
     // Curation mode needs to arrange the panes for its own job, and to move
     // the window to each candidate. Exposed rather than reimplemented, so
     // there is one function that knows how a pane is built.
+    /* What a pane is actually showing, as the request it would send.
+
+       Exported for the figure builder: a figure of a spectrogram has to
+       carry the channel list, the mode, the analysed band and the display
+       crop, and re-deriving those a second way is how a figure comes to
+       differ from the screen it was made from. `panelSpec` is already the
+       one place that answers this -- the pane and the prewarmer both go
+       through it so the server's cache key matches. */
+    panelSpec: (index) => {
+      const pane = XF.panes[index];
+      if (!pane) return null;
+      const sess = XF.sessions[pane.sessionId] || active();
+      return panelSpec(index, pane, sess);
+    },
+    /* The effective frequency band for a pane: the recording's when the
+       band is locked, which it is by default, and the pane's when it is
+       not. Read it rather than reaching for `pane.fmin`, which is empty
+       whenever the band is shared. */
+    bandOf: (index) => {
+      const pane = XF.panes[index];
+      const sess = pane && (XF.sessions[pane.sessionId] || active());
+      return fBand(pane, sess);
+    },
     setPanes: (specs, split) => {
       // Six, not four: an H10-D has six probe columns and each one needs a
       // pane of its own, because a CSD across columns is arithmetic over

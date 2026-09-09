@@ -95,6 +95,36 @@ BARRY.views.toolkit = (function () {
     return p.toString();
   }
 
+  /* The registry, kept rather than re-read.
+
+     It takes eight seconds on this lab's data and both the Curation and
+     StrataScope tools want it, so switching between them paid for it again
+     every time -- and a slow read in flight is what lets a stale answer land
+     on top of the tool you just opened. Held for a minute: a recording
+     appearing mid-session is not what this pane is for, and `forget()` is
+     there for when something really has changed. */
+  let regCache = { at: 0, data: null, inflight: null };
+  const REG_FRESH_MS = 60000;
+
+  async function registry(force) {
+    const now = Date.now();
+    if (!force && regCache.data && now - regCache.at < REG_FRESH_MS) {
+      return regCache.data;
+    }
+    if (regCache.inflight) return regCache.inflight;
+    regCache.inflight = (async () => {
+      try {
+        const got = await api('/api/registry');
+        regCache = { at: Date.now(), data: got, inflight: null };
+        return got;
+      } catch (e) {
+        regCache.inflight = null;
+        throw e;
+      }
+    })();
+    return regCache.inflight;
+  }
+
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
@@ -363,7 +393,7 @@ BARRY.views.toolkit = (function () {
       try {
         const got = await api('/api/curation');
         if (l) l.step('reading the recording registry');
-        got.registry = await api('/api/registry');
+        got.registry = await registry();
         cur = got;
         curStale = false;
       } catch (e) {
@@ -371,7 +401,11 @@ BARRY.views.toolkit = (function () {
       } finally {
         curLoading = null;
       }
-      renderCuration();
+      /* Only if this is still the tool on screen. A four-second answer
+         that lands after you have clicked StrataScope must not paint
+         Curation over it -- the same guard the bad-channel loader has
+         carried all along. */
+      if (q.tool === 'curate') renderCuration();
       return cur;
     })();
     return curLoading;
@@ -475,6 +509,12 @@ BARRY.views.toolkit = (function () {
   function renderCuration() {
     const host = $('#tkResult');
     if (!host) return;
+    /* Belt as well as braces. This is called from the presence poll, from
+       every set action and from the loader, and any of those can happen
+       after the tool has changed -- one place that refuses is worth more
+       than a guard at each call site, because the next call site will not
+       have one. */
+    if (q.tool !== 'curate') return;
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!cur) {
@@ -583,9 +623,13 @@ BARRY.views.toolkit = (function () {
       if (!res || !res.ok) return;
       const before = JSON.stringify(presence.sessions || []);
       presence = res;
-      // Only redraw when it actually changed: this runs every ten seconds
-      // and the shelf is a few hundred nodes.
-      if (andRender && JSON.stringify(res.sessions || []) !== before) {
+      /* Only redraw when it actually changed, and only when the tool it is
+         about is the one on screen. This runs every ten seconds for as long
+         as the ToolKit is open, so without the second condition it repaints
+         Curation over StrataScope, or over Kilosort, on its own -- a jump to
+         another module with nothing you did to explain it. */
+      if (andRender && q.tool === 'curate'
+          && JSON.stringify(res.sessions || []) !== before) {
         renderCuration();
       }
     } catch (e) { /* presence is a courtesy, never an interruption */ }
@@ -1618,10 +1662,13 @@ BARRY.views.toolkit = (function () {
     try {
       strata = await api('/api/layers');
       if (l) l.step('reading the recording registry');
-      strata.registry = await api('/api/registry');
+      strata.registry = await registry();
     } catch (e) {
       strata = { error: e.message, sheets: [], regions: [] };
     }
+    // See `loadCuration`: an eight-second registry read that lands after the
+    // tool has changed must not paint over what is there now.
+    if (q.tool !== 'strata') return;
     renderStrata();
   }
 
@@ -1893,6 +1940,7 @@ BARRY.views.toolkit = (function () {
   function renderStrata() {
     const host = $('#tkResult');
     if (!host) return;
+    if (q.tool !== 'strata') return;   // see renderCuration
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!strata) {

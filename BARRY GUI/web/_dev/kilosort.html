@@ -226,9 +226,25 @@ async function until(fn, ms = 15000) {
     check('a missing package offers a command',
           !!D.querySelector('#tkResult .ks-fix pre'),
           (D.querySelector('#tkResult .ks-fix pre') || {}).textContent);
-    check('and offers to run it',
-          Array.from(D.querySelectorAll('#tkResult .ks-fix button'))
-            .some((b) => /Run it/.test(b.textContent)));
+    /* Only when something failing is something BARRY can install.
+
+       The pane checks the interpreter that is SELECTED, not the default
+       one, and on a machine whose selected Python already has torch,
+       kilosort and phy the only failure left is the GPU advice -- which is
+       not installable, so offering to run something would be the bug. */
+    const fixable = Array.from(D.querySelectorAll('#tkResult .ks-req.bad'))
+      .map((r) => (r.querySelector('strong') || {}).textContent || '')
+      .filter((n) => /PyTorch|Kilosort|Phy/i.test(n));
+    say('note', '  failing and installable: '
+        + (fixable.join(', ') || 'none on this machine'));
+    if (fixable.length) {
+      check('and offers to run it',
+            Array.from(D.querySelectorAll('#tkResult .ks-fix button'))
+              .some((b) => /Run it/.test(b.textContent)));
+    } else {
+      say('note', '  nothing failing here is pip-installable, so there is '
+          + 'nothing to offer to run');
+    }
 
     // Run pane
     const segs = Array.from(D.querySelectorAll('#tkResult .seg button'));
