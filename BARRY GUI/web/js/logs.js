@@ -17,6 +17,18 @@ BARRY.views.history = (function () {
   let mode = 'runs';           // 'runs' | 'activity'
   let showTimeline = true;
 
+  /* Whose history is being shown.
+
+     The log has always been detailed -- ninety-five distinct actions, and
+     `session.open` carries the path, the channel count and what was
+     restored. What it could not answer was "who loaded that recording last
+     and what did they do to it", because the view read this machine's own
+     day files and nothing else, so the answer was only available if it
+     happened to be you. */
+  let who = 'mine';            // 'mine' | 'everyone'
+  let scopeNote = null;        // set when 'everyone' was asked for and failed
+  let actFilter = '';          // a kind of work: curation, bank, figure...
+
   async function load() {
     try {
       const res = await api('/api/history?limit=400');
@@ -26,10 +38,20 @@ BARRY.views.history = (function () {
       runs = [];
     }
     try {
-      const res = await api('/api/activity?limit=800');
+      const q = ['limit=1200', 'scope=' + who];
+      if (actFilter) q.push('action=' + encodeURIComponent(actFilter));
+      const res = await api('/api/activity?' + q.join('&'));
       activity = res.activity || [];
+      /* Said out loud when the shared log was asked for and this machine's
+         came back instead. "Nobody else did anything" and "I could not find
+         out what anybody else did" are different answers, and an unlabelled
+         list of your own actions looks like the first. */
+      scopeNote = (who === 'everyone' && res.scope !== 'everyone')
+        ? (res.scope_error || 'the shared log could not be read')
+        : null;
     } catch (e) {
       activity = [];
+      scopeNote = who === 'everyone' ? e.message : null;
     }
     renderList();
   }
@@ -191,15 +213,205 @@ BARRY.views.history = (function () {
     });
   }
 
+  /* Whose log, and which kind of work. Two controls rather than a search
+     box: "show me what happened to this recording" and "show me what Rain
+     did" are the two questions actually asked of a history, and neither is
+     a substring match. */
+  function whoBar() {
+    const kinds = ['', 'session', 'curation', 'bank', 'layers', 'figure',
+                   'run', 'events', 'bookmark'];
+    return el('div', { class: 'res-toolbar hist-who-bar' }, [
+      el('span', { class: 'ctl-seg' }, [
+        el('button', {
+          class: 'mini' + (who === 'mine' ? ' on' : ''),
+          text: 'This machine',
+          title: 'The log on this computer',
+          onclick: () => { who = 'mine'; load(); },
+        }),
+        el('button', {
+          class: 'mini' + (who === 'everyone' ? ' on' : ''),
+          text: 'Everyone',
+          title: 'The shared log, from every machine that syncs',
+          onclick: () => { who = 'everyone'; load(); },
+        }),
+      ]),
+      el('select', {
+        title: 'A kind of work',
+        onchange: (e) => { actFilter = e.target.value; load(); },
+      }, kinds.map((k) => el('option', {
+        value: k, text: k ? k : 'All kinds',
+        selected: actFilter === k ? 'selected' : null,
+      }))),
+      el('div', { style: 'flex:1' }),
+      el('span', { class: 'hint',
+        text: 'Every action BARRY records, with what it was done to.' }),
+    ]);
+  }
+
+  /* The most useful few words out of a detail blob.
+
+     The whole thing is in the tooltip and in the detail pane; on the row it
+     competes with the action name, and an action name pushed off the row
+     tells you nothing. Which recording, or which file, is nearly always the
+     part worth having. */
+  function rowGist(a) {
+    const d = a.detail || {};
+    const sess = (a.session || {});
+    if (sess.label) return sess.label;
+    if (d.path) return String(d.path).split(/[\/]/).slice(-2).join('/');
+    if (d.file) return String(d.file);
+    if (d.name) return String(d.name);
+    if (d.gid) return String(d.gid);
+    if (d.entry) return 'entry ' + d.entry;
+    if (d.deck) return String(d.deck);
+    return '';
+  }
+
+  /* ==================================================================
+     What changed since you last looked
+     ==================================================================
+     The activity log could always answer this and nothing asked it. The
+     mark is per machine and only moves when somebody presses the button --
+     a digest that clears itself on render cannot be read twice, and the
+     first read is usually the one where you get interrupted.
+     ================================================================== */
+  let digest = null;
+  let digestOpen = true;
+
+  async function loadDigest() {
+    try {
+      digest = await api('/api/digest');
+    } catch (e) {
+      digest = { failed: e.message };
+    }
+    renderList();
+  }
+
+  function digestCard() {
+    if (!digest) { loadDigest(); return null; }
+    if (digest.failed || digest.configured === false) return null;
+    /* Nothing to say is worth saying once, quietly, rather than with an
+       empty panel that looks like a failure to load. */
+    if (!digest.n && !digest.errors) {
+      return el('div', { class: 'digest quiet' }, [
+        el('span', { text: 'Nobody else has done anything since '
+                         + when(digest.since) + '.' }),
+      ]);
+    }
+    const box = el('div', { class: 'digest' + (digestOpen ? '' : ' shut') });
+    box.appendChild(el('div', { class: 'digest-head' }, [
+      el('strong', { text: 'Since you last looked' }),
+      el('span', { class: 'digest-when', text: when(digest.since) }),
+      el('div', { style: 'flex:1' }),
+      el('button', {
+        class: 'linkish', text: digestOpen ? 'hide' : 'show',
+        onclick: () => { digestOpen = !digestOpen; renderList(); },
+      }),
+      /* Marking it read is deliberate and separate. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Mark as seen',
+        title: 'Moves the mark to now. Nothing else changes.',
+        onclick: async () => {
+          try {
+            await apiPost('/api/digest/seen', {});
+            digest = null;
+            loadDigest();
+            toast('Caught up.', 'ok');
+          } catch (e) { toast(e.message, 'err'); }
+        },
+      }),
+    ]));
+    if (!digestOpen) return box;
+
+    const body = el('div', { class: 'digest-body' });
+    body.appendChild(el('div', { class: 'digest-line' }, [
+      el('strong', { text: Number(digest.n).toLocaleString() }),
+      el('span', { text: ' action' + (digest.n === 1 ? '' : 's') + ' by ' }),
+      el('span', { text: (digest.by_person || [])
+        .map((x) => x.who + ' (' + x.n.toLocaleString() + ')').join(', ')
+        || 'nobody' }),
+      digest.errors
+        ? el('span', { class: 'digest-err',
+                       text: '  ·  ' + digest.errors + ' error'
+                           + (digest.errors === 1 ? '' : 's') })
+        : null,
+    ].filter(Boolean)));
+    /* The headline is a real count; the breakdown is computed from as much
+       of it as one page holds. When those differ the card has to say so --
+       "2,018 actions by Rain (999)" is two numbers that plainly do not add
+       up, and a reader can only conclude that one of them is wrong. */
+    if (digest.partial) {
+      body.appendChild(el('div', { class: 'digest-partial',
+        text: 'The names above account for '
+            + Number(digest.counted).toLocaleString() + ' of those — the '
+            + 'most recent page. The total is exact; the split is what fits '
+            + 'in one read.' }));
+    }
+
+    if ((digest.by_kind || []).length) {
+      body.appendChild(el('div', { class: 'digest-kinds' },
+        digest.by_kind.slice(0, 8).map((k) => el('span', {
+          class: 'flagchip sm', text: k.kind + ' ' + k.n,
+        }))));
+    }
+    /* Which recordings, because that is the part somebody acts on -- "Rain
+       has been in m5 s7" is a reason to go and look. */
+    if ((digest.sessions || []).length) {
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Recordings touched' }));
+      for (const s of digest.sessions) {
+        body.appendChild(el('div', { class: 'digest-sess' }, [
+          el('span', { class: 'ds-key', text: s.key }),
+          el('span', { class: 'ds-who', text: s.who.join(', ') }),
+          el('span', { class: 'ds-n', text: s.n + ' action(s)' }),
+        ]));
+      }
+    }
+    box.appendChild(body);
+    return box;
+  }
+
+  function when(iso) {
+    const t = Date.parse(iso);
+    if (!isFinite(t)) return String(iso || '');
+    const secs = (Date.now() - t) / 1000;
+    if (secs < 90) return 'a moment ago';
+    if (secs < 5400) return Math.round(secs / 60) + ' minutes ago';
+    if (secs < 172800) return Math.round(secs / 3600) + ' hours ago';
+    return Math.round(secs / 86400) + ' days ago';
+  }
+
   function renderList() {
     renderTimeline();
     const host = $('#histList');
     host.innerHTML = '';
 
+    /* On arrival, above everything. "What has everybody else been doing"
+       is the question somebody opens this view with, and it used to take
+       reading four hundred rows to answer.
+
+       Its own host, outside the list: it is a summary of the view, and it
+       has to survive the list being re-rendered by a filter keystroke
+       without being rebuilt each time. */
+    const dgHost = $('#histDigest');
+    if (dgHost) {
+      const dg = digestCard();
+      dgHost.innerHTML = '';
+      if (dg) dgHost.appendChild(dg);
+      dgHost.hidden = !dg;
+    }
+
     if (mode === 'activity') {
+      host.appendChild(whoBar());
       const list = visibleActivity();
       $('#histSub').textContent = list.length + ' of ' + activity.length
-        + ' logged action(s)';
+        + ' logged action(s)'
+        + (who === 'everyone' ? '  ·  everyone' : '  ·  this machine');
+      if (scopeNote) {
+        host.appendChild(el('div', { class: 'ecx-warn',
+          text: 'Showing this machine only: ' + scopeNote
+              + '. Somebody else’s actions would be missing.' }));
+      }
       if (!list.length) {
         host.appendChild(el('div', { class: 'tree-empty',
           text: activity.length ? 'Nothing matches that filter.'
@@ -214,9 +426,18 @@ BARRY.views.history = (function () {
         }, [
           el('span', { class: 'st ' + actionClass(a.action) }),
           el('span', { class: 'nm', text: a.action }),
+          /* Who and where, when the list is the whole lab's. Left out on
+             this machine's own log, where the answer is always the same and
+             the column would be a stripe of one repeated name. */
+          who === 'everyone'
+            ? el('span', { class: 'hist-who',
+                           text: a.user || a.machine || '' }) : null,
+          /* The one thing worth reading off the row rather than opening
+             it: which recording. */
+          el('span', { class: 'hist-what', text: rowGist(a) }),
           el('span', { class: 'tm',
             text: (a.at || '').slice(5, 16).replace('T', ' ') }),
-        ]));
+        ].filter(Boolean)));
       }
       return;
     }
@@ -516,6 +737,19 @@ BARRY.views.errors = (function () {
   let days = [];
   let day = '';
   let grouped = true;
+
+  /* Which error is open, and what was happening around it.
+
+     Keyed by error id rather than held as one value: the list can have
+     several open at once, and collapsing one to read another would make
+     comparing two failures a matter of memory. */
+  const ctxOpen = new Set();
+  const ctxData = {};        // error id -> the window, once fetched
+
+  /* The machines that sync here. Read on demand rather than polled: this is
+     a table somebody looks at, not a status light. */
+  let devices = null;
+  let devicesAt = 0;
   let mode = 'errors';        // 'errors' | 'debug' | 'feedback'
   let reports = [];           // what has been filed
   let kinds = [];
@@ -959,12 +1193,22 @@ BARRY.views.errors = (function () {
 
     for (const e of errors) {
       const card = el('div', { class: 'err-card' }, [
-        el('div', { class: 'ec-top' }, [
+        /* The header is the handle. An error is worth reading in the
+           context of what somebody was doing, and that context is one
+           request away -- so opening it should not need a second control
+           to find. */
+        el('div', {
+          class: 'ec-top ec-click' + (ctxOpen.has(e.id) ? ' open' : ''),
+          title: 'What was happening in the five minutes before this',
+          onclick: () => toggleContext(e),
+        }, [
+          el('span', { class: 'ec-caret',
+                       text: ctxOpen.has(e.id) ? '\u25be' : '\u25b8' }),
           el('span', { class: 'ec-where', text: e.where || 'unknown' }),
           el('span', { class: 'flagchip', text: e.id }),
           e.machine ? el('span', { class: 'flagchip', text: e.machine }) : null,
           el('span', { class: 'ec-when', text: (e.at || '').replace('T', ' ').slice(0, 19) }),
-        ]),
+        ].filter(Boolean)),
         el('p', { class: 'ec-msg', text: e.message || '' }),
       ]);
 
@@ -980,6 +1224,7 @@ BARRY.views.errors = (function () {
           el('pre', { text: e.detail }),
         ]));
       }
+      if (ctxOpen.has(e.id)) card.appendChild(contextPanel(e));
       host.appendChild(card);
     }
   }
@@ -990,6 +1235,341 @@ BARRY.views.errors = (function () {
      fold on a signature that ignores paths, timestamps and numbers; marking
      one resolved clears every past repeat and any future one that matches.
      ====================================================================== */
+  /* ==================================================================
+     Which device
+     ==================================================================
+     Shared by Errors and the Debug trace, because "the rig" is one thought
+     and having to pick it twice is two.
+     ================================================================== */
+  let devPick = '';            // '' = all of them
+  let devFeed = null;          // the chosen machine's feed, when Debug wants it
+  let devFeedFor = null;
+
+  function deviceBar(kind) {
+    const known = (devices && devices.devices) || [];
+    /* Every machine the errors mention, plus every machine that syncs. A
+       machine can have errors on record and have stopped syncing, and it
+       would drop off a list built only from the device table. */
+    const seen = new Set(known.map((d) => d.hostname).filter(Boolean));
+    for (const g of groups) {
+      for (const m of (g.machines || [])) seen.add(m);
+    }
+    const names = Array.from(seen).sort();
+    if (!devices) loadDevices();
+
+    const online = (name) => {
+      const d = known.find((x) => x.hostname === name);
+      return d ? d.online : null;
+    };
+    return el('div', { class: 'res-toolbar dev-bar' }, [
+      el('span', { class: 'dev-bar-label', text: 'Device' }),
+      el('span', { class: 'ctl-seg' }, [
+        el('button', {
+          class: 'mini' + (devPick ? '' : ' on'),
+          text: 'All', title: 'Every machine',
+          onclick: () => { devPick = ''; render(); },
+        }),
+      ].concat(names.map((name) => el('button', {
+        class: 'mini' + (devPick === name ? ' on' : ''),
+        title: name + (online(name) === null ? ''
+                       : online(name) ? ' — syncing now'
+                                      : ' — nothing pushed for over 5 minutes'),
+        onclick: () => { devPick = name; render(); },
+      }, [
+        el('span', { class: 'dev-dot'
+                            + (online(name) ? ' on' : '')
+                            + (online(name) === null ? ' unknown' : '') }),
+        el('span', { text: name }),
+      ])))),
+      el('div', { style: 'flex:1' }),
+      kind === 'debug' && devPick
+        ? el('span', { class: 'hint',
+            text: 'Its actions and errors, from the shared log. The request '
+                + 'trail is per-machine and stays where it was made.' })
+        : null,
+    ].filter(Boolean));
+  }
+
+  async function loadDevFeed(machine) {
+    devFeedFor = machine;
+    devFeed = null;
+    render();
+    try {
+      devFeed = await api('/api/devices/feed?limit=140&machine='
+                          + encodeURIComponent(machine));
+    } catch (e) {
+      devFeed = { failed: e.message };
+    }
+    render();
+  }
+
+  /* One machine's recent life, newest first. Errors and actions in one
+     column rather than two, because the useful shape is "these four things
+     happened and then it broke". */
+  function devFeedPanel() {
+    if (devFeedFor !== devPick) { loadDevFeed(devPick); }
+    const box = el('div', { class: 'dev-feed' });
+    if (!devFeed) {
+      box.appendChild(el('div', { class: 'hint', text: 'Reading…' }));
+      return box;
+    }
+    if (devFeed.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read that machine: ' + devFeed.failed }));
+      return box;
+    }
+    const rows = devFeed.feed || [];
+    if (!rows.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Nothing from ' + devPick + ' in the shared log yet. It may '
+            + 'not have synced since it was last used.' }));
+      return box;
+    }
+    for (const r of rows) {
+      box.appendChild(el('div', {
+        class: 'dev-feed-row' + (r.kind === 'error' ? ' err' : ''),
+        title: typeof r.detail === 'object'
+          ? JSON.stringify(r.detail, null, 1) : String(r.detail || ''),
+      }, [
+        el('span', { class: 'dfr-at', text: String(r.at || '').slice(5, 19)
+                                            .replace('T', ' ') }),
+        el('span', { class: 'dfr-kind',
+                     text: r.kind === 'error' ? '!' : '·' }),
+        el('span', { class: 'dfr-what', text: r.what || '' }),
+        el('span', { class: 'dfr-detail',
+          text: typeof r.detail === 'object'
+            ? shortDetail(r.detail) : String(r.detail || '').slice(0, 90) }),
+      ]));
+    }
+    return box;
+  }
+
+  /* ==================================================================
+     What was happening when it broke
+     ================================================================== */
+  async function toggleContext(e) {
+    if (ctxOpen.has(e.id)) {
+      ctxOpen.delete(e.id);
+      render();
+      return;
+    }
+    ctxOpen.add(e.id);
+    render();
+    if (ctxData[e.id]) return;      // already fetched; the panel has it
+    try {
+      ctxData[e.id] = await apiPost('/api/errors/context',
+                                    { at: e.at, machine: e.machine });
+    } catch (err) {
+      ctxData[e.id] = { failed: err.message };
+    }
+    render();
+  }
+
+  function contextPanel(e) {
+    const got = ctxData[e.id];
+    const box = el('div', { class: 'ec-context' });
+    if (!got) {
+      box.appendChild(el('div', { class: 'hint', text: 'Reading the log…' }));
+      return box;
+    }
+    if (got.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the log: ' + got.failed }));
+      return box;
+    }
+
+    const acts = got.actions || [];
+    box.appendChild(el('div', { class: 'ecx-head' }, [
+      el('span', { class: 'section-label',
+        text: 'The ' + Math.round((got.before_s || 300) / 60)
+            + ' minutes before, and ' + (got.after_s || 60) + 's after' }),
+      el('div', { style: 'flex:1' }),
+      el('span', { class: 'hint',
+        text: acts.length + ' action' + (acts.length === 1 ? '' : 's')
+            + (got.machine ? '  ·  ' + got.machine : '') }),
+    ]));
+
+    /* Said out loud when the cloud could not be reached, because "nothing
+       was happening" and "I could not find out what was happening" look
+       identical in an empty list and only one of them means anything. */
+    if (got.cloud_error) {
+      box.appendChild(el('div', { class: 'ecx-warn',
+        text: 'Only this machine’s own log: the shared copy could not '
+            + 'be read (' + got.cloud_error + '). Another machine’s '
+            + 'actions would be missing.' }));
+    }
+
+    if (!acts.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: got.cloud_error
+          ? 'Nothing in this machine’s log for that window.'
+          : 'Nothing was logged in that window — which usually means '
+            + 'the failure happened before anybody touched anything, or on '
+            + 'a machine whose log has not synced yet.' }));
+      return box;
+    }
+
+    const errAt = String(e.at || '');
+    const rows = el('div', { class: 'ecx-rows' });
+    let markPlaced = false;
+    for (const a of acts) {
+      /* The error itself, in its place in the sequence. Without it the list
+         is a set of actions with no indication which side of the failure
+         each one is on -- which is the only thing the list is for. */
+      if (!markPlaced && String(a.at || '') >= errAt) {
+        rows.appendChild(errMarker(e));
+        markPlaced = true;
+      }
+      rows.appendChild(el('div', { class: 'ecx-row' }, [
+        el('span', { class: 'ecx-at', text: String(a.at || '').slice(11, 19) }),
+        el('span', { class: 'ecx-action', text: a.action || '' }),
+        a.view ? el('span', { class: 'flagchip sm', text: a.view }) : null,
+        el('span', { class: 'ecx-detail',
+          text: a.detail ? shortDetail(a.detail) : '' }),
+      ].filter(Boolean)));
+    }
+    if (!markPlaced) rows.appendChild(errMarker(e));
+    box.appendChild(rows);
+
+    /* Other failures in the same window. One fault often arrives as six,
+       and the first of them is the one worth reading. */
+    const others = (got.errors || []).filter((x) => String(x.at) !== errAt);
+    if (others.length) {
+      box.appendChild(el('div', { class: 'section-label',
+        text: others.length + ' other error'
+            + (others.length === 1 ? '' : 's') + ' in the same window' }));
+      for (const o of others) {
+        box.appendChild(el('div', { class: 'ecx-row other' }, [
+          el('span', { class: 'ecx-at', text: String(o.at || '').slice(11, 19) }),
+          el('span', { class: 'ecx-action', text: o.where || '' }),
+          el('span', { class: 'ecx-detail', text: (o.message || '').slice(0, 90) }),
+        ]));
+      }
+    }
+    return box;
+  }
+
+  function errMarker(e) {
+    return el('div', { class: 'ecx-row here' }, [
+      el('span', { class: 'ecx-at', text: String(e.at || '').slice(11, 19) }),
+      el('span', { class: 'ecx-action', text: '◀ ' + (e.where || 'error') }),
+      el('span', { class: 'ecx-detail', text: (e.message || '').slice(0, 90) }),
+    ]);
+  }
+
+  /* A detail blob as one short line. The whole object is in the debug
+     report; here it competes for width with the action name, and an action
+     name that gets pushed off the row tells you nothing at all. */
+  function shortDetail(d) {
+    if (d === null || d === undefined) return '';
+    if (typeof d !== 'object') return String(d).slice(0, 70);
+    const bits = [];
+    for (const [k, v] of Object.entries(d)) {
+      if (v === null || v === undefined || v === '') continue;
+      const txt = typeof v === 'object'
+        ? (Array.isArray(v) ? v.length + ' items' : '{…}')
+        : String(v);
+      bits.push(k + '=' + txt.slice(0, 24));
+      if (bits.length >= 4) break;
+    }
+    return bits.join('  ');
+  }
+
+  /* ==================================================================
+     Which machines sync here, and whether they still do
+     ==================================================================
+     `machines.last_seen` has been a heartbeat all along -- the sync loop
+     stamps it on every push -- and nothing read it. So "is the rig still
+     sending its logs" was a question you answered by walking down the
+     corridor.
+
+     Online and sending are deliberately separate columns. A machine can be
+     reachable and have stopped logging, and that is the more interesting
+     failure of the two.
+     ================================================================== */
+  async function loadDevices(force) {
+    if (devices && !force && Date.now() - devicesAt < 20000) return;
+    try {
+      devices = await api('/api/devices');
+      devicesAt = Date.now();
+    } catch (e) {
+      devices = { failed: e.message };
+    }
+    render();
+  }
+
+  function devicePanel() {
+    const box = el('div', { class: 'dev-panel' });
+    box.appendChild(el('div', { class: 'sec-head' }, [
+      el('div', { class: 'section-label', text: 'Devices' }),
+      el('div', { style: 'flex:1' }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Refresh',
+        onclick: () => loadDevices(true),
+      }),
+    ]));
+
+    if (!devices) {
+      loadDevices();
+      box.appendChild(el('div', { class: 'hint', text: 'Asking…' }));
+      return box;
+    }
+    if (devices.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the device list: ' + devices.failed }));
+      return box;
+    }
+    if (!devices.configured) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'No cloud configured, so there is nothing to compare against '
+            + '— this machine is the only one BARRY can see.' }));
+      return box;
+    }
+
+    const list = devices.devices || [];
+    if (!list.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'No machines have synced yet.' }));
+      return box;
+    }
+    for (const d of list) {
+      box.appendChild(el('div', { class: 'dev-row' + (d.is_me ? ' me' : '') }, [
+        el('span', { class: 'dev-dot' + (d.online ? ' on' : ''),
+          title: d.online ? 'Pushed within the last five minutes'
+                          : 'Nothing pushed for over five minutes' }),
+        el('strong', { class: 'dev-host', text: d.hostname || d.id }),
+        d.is_me ? el('span', { class: 'flagchip sm', text: 'this one' }) : null,
+        el('span', { class: 'dev-user', text: d.user || '' }),
+        el('div', { style: 'flex:1' }),
+        /* Two facts, not one. "Seen" is the sync; "sending" is whether it
+           has anything to say. A machine that is up and silent is the case
+           worth noticing. */
+        el('span', { class: 'dev-col',
+          title: 'When it last pushed anything',
+          text: d.age_s == null ? 'never' : ago(d.age_s) }),
+        el('span', { class: 'dev-col',
+          title: 'Actions in the most recent slice of the shared log',
+          text: d.recent_actions + ' actions' }),
+        el('span', { class: 'dev-col' + (d.recent_errors ? ' warn' : ''),
+          title: 'Errors in the most recent slice',
+          text: d.recent_errors + ' errors' }),
+      ].filter(Boolean)));
+    }
+    box.appendChild(el('p', { class: 'hint',
+      text: 'Online means it pushed within five minutes. The sync loop '
+          + 'pushes at least once a minute, so a machine quiet for longer '
+          + 'has either been closed or has stopped syncing.' }));
+    return box;
+  }
+
+  function ago(sec) {
+    if (sec == null) return 'never';
+    if (sec < 90) return Math.round(sec) + 's ago';
+    if (sec < 5400) return Math.round(sec / 60) + ' min ago';
+    if (sec < 172800) return Math.round(sec / 3600) + ' h ago';
+    return Math.round(sec / 86400) + ' days ago';
+  }
+
   /* ======================================================================
      Debug trace
 
@@ -1001,6 +1581,28 @@ BARRY.views.errors = (function () {
   function renderDebug(host) {
     const client = BARRY.debug.requests();
     const con = BARRY.debug.console();
+
+    host.appendChild(deviceBar('debug'));
+    /* Another machine's feed instead of this one's request trail.
+
+       The trail is this process's own and is not collected from anywhere
+       else -- which is right: nobody debugs by reading somebody else's HTTP
+       log. What a remote machine publishes is its actions and its errors,
+       and that is what this shows. */
+    if (devPick && devPick !== ((devices || {}).machine)) {
+      host.appendChild(devFeedPanel());
+      return;
+    }
+
+    /* Which machines are syncing, above this session's own trace.
+
+       The trace itself is per-process and in memory -- it is what THIS
+       browser and THIS server did, and syncing raw request trails between
+       machines would be a great deal of volume for very little: nobody
+       debugs by reading somebody else's HTTP log. What is worth knowing
+       across machines is whether each one is still reporting at all, which
+       is what the table above answers. */
+    host.appendChild(devicePanel());
 
     host.appendChild(el('div', { class: 'res-toolbar' }, [
       el('span', { class: 'hint',
@@ -1126,7 +1728,11 @@ BARRY.views.errors = (function () {
   }
 
   function renderGroups(host) {
-    const list = groups.filter((g) => !(hideResolved && g.resolved));
+    host.appendChild(deviceBar('errors'));
+    const list = groups.filter((g) => !(hideResolved && g.resolved))
+      .filter((g) => !devPick
+                     || g.machine === devPick
+                     || (g.machines || []).indexOf(devPick) >= 0);
     if (!list.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
         el('svg', { viewBox: '0 0 24 24',
@@ -1139,15 +1745,19 @@ BARRY.views.errors = (function () {
     }
 
     for (const g of list) {
-      const open = openGroups.has(g.signature);
+      // Keyed on `key`, not `signature`: groups are per machine now, and
+      // two machines' rows share a signature. Opening one would have opened
+      // both.
+      const gkey = g.key || g.signature;
+      const open = openGroups.has(gkey);
       const card = el('div', {
         class: 'err-group' + (g.resolved ? ' resolved' : ''),
       });
       card.appendChild(el('div', {
         class: 'err-ghead',
         onclick: () => {
-          if (open) openGroups.delete(g.signature);
-          else openGroups.add(g.signature);
+          if (open) openGroups.delete(gkey);
+          else openGroups.add(gkey);
           render();
         },
       }, [
@@ -1242,8 +1852,13 @@ BARRY.views.errors = (function () {
       if (note === null) note = '';
     }
     try {
+      /* Scoped to the machine the group is for, when it is for one.
+         "Fixed on the rig" and "fixed" are different claims, and the old
+         call could only make the second -- so closing a fault you had
+         only fixed in one place hid it everywhere. */
       await apiPost('/api/errors/resolve',
-                    { signature: g.signature, resolved: on, note });
+                    { signature: g.signature, machine: g.machine || null,
+                      resolved: on, note });
       await load();
       toast(on ? 'Marked resolved' : 'Reopened', 'ok');
     } catch (e) { toast(e.message, 'err'); }

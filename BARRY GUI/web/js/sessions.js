@@ -72,6 +72,24 @@ BARRY.views.sessions = (function () {
       converted: !!r.converted,
       has_video: !!r.has_video,
       has_tracking: false,
+      /* What is attached, and where it can be read from.
+         Carried through rather than dropped: the filters ask about both,
+         and a translation that quietly loses a field makes a filter that
+         matches nothing -- which looks like "none of them qualify" rather
+         than like a bug. */
+      has: r.has || {},
+      here: r.here || [],
+      hemisphere: r.hemisphere || null,
+      hemisphere_source: r.hemisphere_source || null,
+      /* The landmarks a CSD is read against, and what the extraction made
+         of them. `extraction_note` is the one that matters: "Missing: No
+         CA1 SP channel" changes how the recording should be read, and it
+         was only ever visible in a spreadsheet. */
+      fissure_channel: r.fissure_channel,
+      ripple_channel: r.ripple_channel,
+      hilus_channel: r.hilus_channel,
+      extraction_note: r.extraction_note || null,
+      needs_processing: !!r.needs_processing,
       stored: (r.bad_channels || []).length
         ? { bad_channels: r.bad_channels } : null,
     };
@@ -420,6 +438,21 @@ BARRY.views.sessions = (function () {
       const h = health[s.path];
       if (!h || h.level === 'ok') return false;
     }
+    /* Layer state, from the registry's own count rather than by asking the
+       layers store per card: four hundred cards would be four hundred
+       questions, and the registry already knows. */
+    const nLayers = ((s.has || {}).layers) || 0;
+    if (flags.has('layers') && !nLayers) return false;
+    if (flags.has('nolayers') && nLayers) return false;
+    /* Reachable from this machine.
+
+       `here` is the paths that exist right now, which is not the same as
+       the paths BARRY knows: a recording can be remembered from a drive
+       nobody has mounted since, and it still has a path. Falling back to
+       "has a path" made this match almost everything, which is the shape of
+       a filter that is not filtering. */
+    if (flags.has('here')
+        && !((s.here || []).length || s._found || s._reachable)) return false;
     if (!query) return true;
     const q = query.toLowerCase();
     return (s.identity.label || '').toLowerCase().includes(q)
@@ -545,6 +578,37 @@ BARRY.views.sessions = (function () {
         + (s.fs ? Math.round(s.fs) + ' Hz · ' : '')
         + (s.duration_s ? fmtTime(s.duration_s) : '') }),
       el('div', { class: 'sc-flags' }, [
+        /* Which hippocampus. On the card rather than behind a click,
+           because pooling a left and a right recording without noticing is
+           the kind of mistake that survives into a figure. */
+        /* An extraction that did not go cleanly. Only shown when it did
+           not: "Success: Clean extraction" on four hundred cards is noise,
+           and the three that say "No CA1 SP channel" are the point. */
+        (s.extraction_note && !/^success/i.test(s.extraction_note))
+          ? el('span', {
+              class: 'flagchip bad',
+              title: s.extraction_note,
+              text: 'extraction',
+            }) : null,
+        s.needs_processing ? el('span', {
+          class: 'flagchip', title: 'The Toothy workbook has this one down '
+                                  + 'as still needing processing',
+          text: 'to process',
+        }) : null,
+        s.fissure_channel != null ? el('span', {
+          class: 'flagchip hemi',
+          title: 'Reference channels — ripple ' + s.ripple_channel
+               + ', fissure ' + s.fissure_channel
+               + ', hilus ' + s.hilus_channel,
+          text: 'fis ' + s.fissure_channel,
+        }) : null,
+        s.hemisphere ? el('span', {
+          class: 'flagchip hemi',
+          title: 'Recorded in the ' + (s.hemisphere === 'L' ? 'left' : 'right')
+               + ' hippocampus'
+               + (s.hemisphere_source ? '\nfrom ' + s.hemisphere_source : ''),
+          text: s.hemisphere === 'L' ? 'left' : 'right',
+        }) : null,
         s.converted ? el('span', { class: 'flagchip mat', text: '.mat' }) : null,
         s.has_video ? el('span', { class: 'flagchip video', text: 'video' }) : null,
         s.has_tracking ? el('span', { class: 'flagchip', text: 'tracking' }) : null,

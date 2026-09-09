@@ -26,9 +26,38 @@ BARRY.strata = (function () {
   let regions = [];      // the vocabulary
   let sess = null;
   let gid = null;
-  let brush = null;      // the region a click paints, or null to pick per-row
+  let brush = null;      // the region a drag paints, when one is armed
   let hover = -1;
   let saving = 0;
+
+  /* Which channels are picked out, by CSC number.
+
+     The rail used to ask for the mouse to be precise twice: land on a
+     four-pixel row, then read a dropdown that covered the thing being
+     labelled. Selecting first and labelling second needs precision once,
+     and the second half can be a keystroke. */
+  let picked = new Set();
+  let anchor = null;     // for shift-click, the other end of the range
+
+  /* How strongly the layer wash is drawn over the rasters. The bands are
+     there to show where a boundary fell, and at some point they are in the
+     way of the data that decides where it should have fallen -- so this is
+     the reader's to set, not a constant. */
+  const WASHES = [
+    { id: 'off', name: 'Off', alpha: 0, why: 'No wash at all' },
+    { id: 'faint', name: 'Faint', alpha: 0.10,
+      why: 'Just enough to see the boundary' },
+    { id: 'clear', name: 'Clear', alpha: 0.22,
+      why: 'Readable without hiding the trace' },
+    { id: 'solid', name: 'Solid', alpha: 0.42,
+      why: 'For checking the layout at a glance' },
+  ];
+  let wash = 'faint';
+
+  function washAlpha() {
+    const w = WASHES.find((x) => x.id === wash);
+    return w ? w.alpha : 0.10;
+  }
 
   /* ==================================================================
      Entering and leaving
@@ -219,23 +248,48 @@ BARRY.strata = (function () {
        and clicking a dropdown per channel is sixty-four dropdowns. Pick a
        layer, then click or drag down the rail. */
     const brushes = el('div', { class: 'strata-brushes' });
-    brushes.appendChild(el('button', {
-      class: 'strata-brush' + (brush === null ? ' on' : ''),
-      title: 'No brush — each row keeps its own picker',
-      onclick: () => { brush = null; render(); },
-    }, [el('span', { text: 'Pick' })]));
+    /* What the layer buttons do depends on whether anything is selected,
+       and the bar says which it is rather than leaving it to be discovered.
+       With a selection they label it; without one they arm a brush to
+       paint with. */
+    brushes.appendChild(el('span', {
+      class: 'strata-mode',
+      text: picked.size
+        ? picked.size + ' selected — pick a layer'
+        : (brush ? 'drag the rail to paint' : 'click a channel, or pick a layer to paint with'),
+    }));
     regions.forEach((r, i) => {
       brushes.appendChild(el('button', {
-        class: 'strata-brush' + (brush === r.id ? ' on' : ''),
+        class: 'strata-brush' + (brush === r.id ? ' on' : '')
+             + (picked.size ? ' arm' : ''),
         style: '--cat:' + r.color,
-        title: r.name + (r.note ? ' — ' + r.note : '')
+        title: (picked.size
+                 ? 'Label the ' + picked.size + ' selected channel'
+                   + (picked.size === 1 ? '' : 's') + ' ' + r.name
+                 : 'Paint with ' + r.name)
+             + (r.note ? ' — ' + r.note : '')
              + (i < 9 ? '   (' + (i + 1) + ')' : ''),
-        onclick: () => { brush = brush === r.id ? null : r.id; render(); },
+        onclick: async () => {
+          if (await labelPicked(r.id)) return;
+          brush = brush === r.id ? null : r.id;
+          render();
+        },
       }, [
         i < 9 ? el('kbd', { text: String(i + 1) }) : null,
         el('span', { text: r.name }),
       ].filter(Boolean)));
     });
+    /* Taking a label off is as much a decision as putting one on, and it
+       had no button at all -- only ctrl-drag, which nothing said. */
+    brushes.appendChild(el('button', {
+      class: 'strata-brush clearone',
+      title: picked.size
+        ? 'Unlabel the ' + picked.size + ' selected channel'
+          + (picked.size === 1 ? '' : 's') + '   (0)'
+        : 'Select channels first',
+      disabled: picked.size ? null : 'disabled',
+      onclick: () => labelPicked(null),
+    }, [el('kbd', { text: '0' }), el('span', { text: 'Unlabel' })]));
     b.appendChild(brushes);
 
     top.appendChild(el('div', { class: 'cur-nav' }, [
@@ -247,6 +301,23 @@ BARRY.strata = (function () {
       el('button', {
         class: 'mini', text: 'Clear', onclick: clearAll,
       }),
+      /* How strong the layer wash is over the rasters.
+         The bands show where a boundary fell; past a point they are in the
+         way of the data that decides where it should have fallen. That is a
+         judgement per recording and per moment, so it is a control rather
+         than a constant. */
+      el('span', { class: 'strata-wash' }, [
+        el('span', { class: 'strata-wash-label', text: 'Overlay' }),
+        el('span', { class: 'ctl-seg' }, WASHES.map((w) => el('button', {
+          class: 'mini' + (wash === w.id ? ' on' : ''),
+          text: w.name, title: w.why,
+          onclick: () => {
+            wash = w.id;
+            render();
+            if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+          },
+        }))),
+      ]),
       el('span', { class: 'cur-saving', id: 'strataSaving', text: '' }),
       el('div', { style: 'flex:1' }),
       el('button', {
@@ -263,6 +334,60 @@ BARRY.strata = (function () {
      The lane geometry comes from the pane rather than from an assumption of
      even spacing -- the whole reason this beats labelling a PNG is that the
      alignment is measured, not guessed. */
+  /* ---------- selecting channels ----------
+
+     Click picks one. Shift-click takes everything between it and the last
+     one clicked. Ctrl-click adds or removes a single row without disturbing
+     the rest. Dragging extends, which is how a run of twelve channels gets
+     picked without twelve clicks.
+
+     Nothing here writes: selecting is asking a question, and the answer is
+     given separately by naming a layer. That separation is the whole point
+     -- it is why the mouse only has to be accurate once. */
+  function selectAt(i, e) {
+    const chans = channels();
+    const c = chans[i];
+    if (!c) return;
+    if (e && e.shiftKey && anchor != null) {
+      const lo = Math.min(anchor, i), hi = Math.max(anchor, i);
+      picked = new Set();
+      for (let k = lo; k <= hi; k++) picked.add(chans[k].number);
+    } else if (e && (e.ctrlKey || e.metaKey)) {
+      if (picked.has(c.number)) picked.delete(c.number);
+      else picked.add(c.number);
+      anchor = i;
+    } else {
+      // A plain click on the only selected row clears it, so there is a way
+      // out that is not "click somewhere harmless".
+      const only = picked.size === 1 && picked.has(c.number);
+      picked = only ? new Set() : new Set([c.number]);
+      anchor = only ? null : i;
+    }
+    render();
+  }
+
+  function extendTo(i) {
+    if (anchor == null) return;
+    const chans = channels();
+    const lo = Math.min(anchor, i), hi = Math.max(anchor, i);
+    picked = new Set();
+    for (let k = lo; k <= hi; k++) picked.add(chans[k].number);
+    render();
+  }
+
+  /* Give every selected channel a layer. This is what a tag click and a
+     number key both end up calling. */
+  async function labelPicked(regionId) {
+    if (!picked.size) return false;
+    const nums = Array.from(picked);
+    for (const n of nums) await paint(n, regionId);
+    /* The selection stays. Labelling a run and then finding one channel
+       wrong is the common case, and clearing it would mean picking the
+       whole run again to fix one. */
+    render();
+    return true;
+  }
+
   function rail() {
     let r = $('#strataRail');
     const host = $('#paneGrid');
@@ -298,35 +423,32 @@ BARRY.strata = (function () {
       const id = labelOf(c.number);
       const reg = regionOf(id);
       const row = el('div', {
-        class: 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : ''),
+        class: 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : '')
+             + (picked.has(c.number) ? ' picked' : ''),
         style: reg ? '--cat:' + reg.color : '',
         // The row shrinks with the lane, so at 64 channels the tooltip is
         // where the layer name actually lives.
-        title: c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled'),
+        title: c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled')
+             + '\nClick to select · shift-click for a range · then a layer '
+             + 'below, or its number',
         onmouseenter: () => {
           hover = i;
           readout(c.label + (reg ? '  \u2014  ' + reg.name : ''));
+          // Dragging still paints when a layer is armed, for anybody who
+          // has got used to it -- but it is no longer the only way in.
           if (painting && brush) paint(c.number, brush);
+          else if (painting) extendTo(i);
         },
         onmousedown: (e) => {
-          if (!brush) return;
           e.preventDefault();
           painting = true;
-          paint(c.number, e.shiftKey ? null : brush);
+          if (brush && !e.shiftKey) { paint(c.number, e.ctrlKey ? null : brush); return; }
+          selectAt(i, e);
         },
       }, [
         el('span', { class: 'strata-num', text: String(c.number) }),
         el('span', { class: 'strata-sw' }),
-        brush
-          ? el('span', { class: 'strata-name',
-                         text: reg ? reg.name : '—' })
-          : el('select', {
-              onchange: (e) => paint(c.number, e.target.value || null),
-            }, [el('option', { value: '', text: '—' })].concat(
-              regions.map((rg) => el('option', {
-                value: rg.id, text: rg.name,
-                selected: id === rg.id ? 'selected' : null,
-              })))),
+        el('span', { class: 'strata-name', text: reg ? reg.name : '—' }),
       ]);
       list.appendChild(row);
     });
@@ -508,10 +630,30 @@ BARRY.strata = (function () {
   function keys(e) {
     if (!sheet || isTyping(e)) return;
     const k = e.key;
-    if (k === 'Escape') { e.preventDefault(); exit(); return; }
+    if (k === 'Escape') {
+      e.preventDefault();
+      // A selection first: leaving the whole mode because somebody wanted
+      // to drop a selection is a big answer to a small question.
+      if (picked.size) { picked = new Set(); anchor = null; render(); return; }
+      exit();
+      return;
+    }
+    if (k === '0' && picked.size) { e.preventDefault(); labelPicked(null); return; }
+    if (k === 'a' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      picked = new Set(channels().map((c) => c.number));
+      anchor = 0;
+      render();
+      return;
+    }
     const i = parseInt(k, 10);
     if (i >= 1 && i <= 9 && regions[i - 1]) {
       e.preventDefault();
+      /* With a selection the number labels it; without one it arms the
+         brush, which is what the number always did. The same key doing the
+         obvious thing in both states is worth more than two keys each
+         doing one. */
+      if (picked.size) { labelPicked(regions[i - 1].id); return; }
       brush = brush === regions[i - 1].id ? null : regions[i - 1].id;
       render();
     }
@@ -520,24 +662,82 @@ BARRY.strata = (function () {
   /* ==================================================================
      The overlay on the rasters
      ================================================================== */
-  function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
-    if (!s || !s.strata || !sheet) return;
-    const chans = channels();
+  function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes) {
+    if (!s || !sheet) return;
+    /* `s.strata` is how the aid window knows there is a sheet to draw: it is
+       a separate page with its own session objects and no module state.
+
+       In THIS window the module already knows, and gating on the flag alone
+       was fragile -- entering StrataScope reopens the recording, and a
+       reopen can hand back a different session object from the one the flag
+       was set on. The overlay then drew nowhere at all, which is not a
+       subtle failure and took a canvas count to notice. So: the flag, or
+       the recording being the one under the sheet. */
+    const mine = s.identity && s.identity.gid === gid;
+    if (!s.strata && !mine) return;
+    let chans = channels();
     if (!chans.length) return;
+
+    /* An image panel says which rows it actually drew.
+
+       The traces show every selected channel in order, so lanes and
+       channels line up one to one. A raster does not: CSD drops the first
+       and last, and a probe-column pane shows a subset. Laying the sheet's
+       channel order over those rows would put every band one or two
+       channels off -- which is worse than no overlay, because it looks
+       right. So when the panel reports its rows, they are what is used. */
+    if (panelRes && Array.isArray(panelRes.rows) && panelRes.rows.length) {
+      const byNum = new Map(chans.map((c) => [c.number, c]));
+      const got = [];
+      for (const r of panelRes.rows) {
+        const c = byNum.get(r.number);
+        got.push(c || { number: r.number });
+      }
+      chans = got;
+    }
     const lane = plotH / chans.length;
 
+    const alpha = washAlpha();
     ctx.save();
-    ctx.globalAlpha = 0.16;
-    for (let i = 0; i < chans.length; i++) {
-      const reg = regionOf(labelOf(chans[i].number));
-      if (!reg) continue;
-      ctx.fillStyle = reg.color;
-      ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
+    if (alpha > 0) {
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i < chans.length; i++) {
+        const reg = regionOf(labelOf(chans[i].number));
+        if (!reg) continue;
+        ctx.fillStyle = reg.color;
+        ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
+      }
+    }
+
+    /* The selection, on the data rather than only on the rail.
+
+       Which channels are about to be labelled is the question the raster
+       can answer and the rail cannot: the rail says "rows 30 to 41", the
+       raster says whether those rows are the ones where the signal
+       changes. Drawn whatever the wash is set to -- turning the layers down
+       is not a reason to stop showing what you are pointing at. */
+    if (picked.size) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = P.accent || '#4bc7f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < chans.length; i++) {
+        if (!picked.has(chans[i].number)) continue;
+        const top = y0 + i * lane;
+        ctx.globalAlpha = 0.14;
+        ctx.fillStyle = P.accent || '#4bc7f0';
+        ctx.fillRect(x0, top, plotW, Math.ceil(lane));
+        // A tick at the edge, because at 64 channels a lane is a few pixels
+        // and a wash that thin is easy to miss.
+        ctx.globalAlpha = 0.95;
+        ctx.fillRect(x0, top, 3, Math.max(1, Math.ceil(lane)));
+      }
     }
 
     // A firm line where the layer changes: that boundary is the thing being
     // decided, and a wash of colour alone does not show exactly where it fell.
-    ctx.globalAlpha = 0.85;
+    // The boundary line stays unless the wash is off entirely: it is the
+    // thing being decided, and it costs almost no ink.
+    ctx.globalAlpha = alpha > 0 ? 0.85 : 0;
     ctx.lineWidth = 1;
     let prev = null;
     for (let i = 0; i < chans.length; i++) {

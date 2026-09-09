@@ -1,18 +1,19 @@
 {
   "_at": {
+    "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-08T21:54:16.096322+00:00",
-    "radio": "2026-09-08T23:33:04.470473+00:00",
+    "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
+    "radio": "2026-09-09T07:19:37.702056+00:00",
     "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
-    "smoke_probe": "2026-09-08T23:30:56.316211+00:00",
+    "smoke_probe": "2026-09-09T07:22:47.225719+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-08T23:33:10.306421+00:00"
+    "updated": "2026-09-09T07:34:01.514544+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-08T23:30:56.509099+00:00"
+        "2026-09-09T07:22:47.391689+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -35,18 +36,19 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T23:33:10.415141+00:00",
+    "at": "2026-09-09T07:34:01.514544+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "D:/PTEN/PTEN/M11_Pten/HF2_s10jul25/2023-07-25_14-40-32"
+    "session": "demo:long-session"
   },
   "radio": {
     "agreed": true,
     "small": true,
-    "station": "4xDzrJKXOOY",
+    "station": "rFZHOHl-L8A",
     "volume": 55
   },
   "recent_scripts": [
@@ -65,5 +67,5 @@
     "DESKTOP-4H65AI7": "horizon-night",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-08T19:33:10-04:00"
+  "updated": "2026-09-09T03:34:01-04:00"
 }

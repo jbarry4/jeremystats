@@ -1,33 +1,33 @@
 {
   "_at": {
-    "archived": "2026-09-08T23:31:49.026498+00:00",
-    "archived_at": "2026-09-08T23:31:49.026498+00:00",
-    "archived_by": "2026-09-08T23:31:49.026498+00:00",
+    "archived": "2026-09-09T01:47:45.079666+00:00",
+    "archived_at": "2026-09-09T01:47:45.079666+00:00",
+    "archived_by": "2026-09-09T01:47:45.079666+00:00",
     "assignee": "2026-09-08T17:51:31.886221+00:00",
-    "closed_at": "2026-09-08T23:32:13.745458+00:00",
+    "closed_at": "2026-09-09T07:05:48.239253+00:00",
     "created": "2026-09-04T21:16:32.836825+00:00",
     "gid": "2026-09-04T21:16:32.836825+00:00",
     "imports": "2026-09-04T21:16:32.836825+00:00",
     "kind": "2026-09-04T21:16:32.836825+00:00",
     "labels": "2026-09-04T21:16:32.836825+00:00",
     "name": "2026-09-04T21:16:32.836825+00:00",
-    "open": "2026-09-08T23:32:13.745458+00:00",
-    "opened_at": "2026-09-08T23:32:06.561171+00:00",
+    "open": "2026-09-09T07:05:48.239253+00:00",
+    "opened_at": "2026-09-09T07:05:37.272973+00:00",
     "opened_by": "2026-09-08T21:35:40.051520+00:00",
     "schema": "2026-09-04T21:16:32.836825+00:00",
     "session_label": "2026-09-04T21:16:32.836825+00:00",
     "source": "2026-09-04T21:16:32.836825+00:00",
-    "updated": "2026-09-08T23:32:13.745458+00:00"
+    "updated": "2026-09-09T07:05:48.239253+00:00"
   },
   "_keys": {
     "events": {
       "e013a681a3b": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e21c2ed6d2b": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e2bf898c8c4": [
         "set",
@@ -35,51 +35,51 @@
       ],
       "e305ed7527d": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e36d1d701d5": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e42d3b4c0d5": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e45ef63fc8e": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e60231eb0dd": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e8787069b55": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e89e929f8cd": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e933b180137": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e9535f3e5ab": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "e97464c0b16": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "ea003d06b00": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "ea3f84896b5": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "ea9edb49158": [
         "set",
@@ -87,7 +87,7 @@
       ],
       "eb009b57355": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "eb784734746": [
         "set",
@@ -95,7 +95,7 @@
       ],
       "ed549325a3a": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "edb81762c9e": [
         "set",
@@ -103,20 +103,20 @@
       ],
       "ee0b481ba9b": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "ee4e470360f": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ],
       "ef07a0ad7dc": [
         "set",
-        "2026-09-08T17:44:56.708272+00:00"
+        "2026-09-09T02:02:25.778218+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T23:32:13.745458+00:00",
+    "at": "2026-09-09T07:05:48.239253+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -124,7 +124,7 @@
   "archived_at": null,
   "archived_by": null,
   "assignee": "Rain",
-  "closed_at": "2026-09-08T19:32:13-0400",
+  "closed_at": "2026-09-09T03:05:48-0400",
   "created": {
     "at": "2026-09-04T17:16:32-04:00",
     "email": "sakhava1@uvm.edu",
@@ -135,13 +135,13 @@
   "events": [
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e42d3b4c0d5",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -149,13 +149,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e97464c0b16",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -163,13 +163,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ea003d06b00",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -177,13 +177,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e013a681a3b",
       "label": "flag",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -196,13 +196,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e9535f3e5ab",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -210,13 +210,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e933b180137",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -224,13 +224,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ea3f84896b5",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -238,13 +238,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ef07a0ad7dc",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -257,13 +257,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ee0b481ba9b",
       "label": "flag",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -271,13 +271,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e60231eb0dd",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -285,13 +285,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e21c2ed6d2b",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -299,13 +299,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e89e929f8cd",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -318,13 +318,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e36d1d701d5",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -332,13 +332,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ed549325a3a",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -346,13 +346,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e8787069b55",
       "label": "flag",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -360,13 +360,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "eb009b57355",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -379,13 +379,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e45ef63fc8e",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -393,13 +393,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e305ed7527d",
       "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "garbage"
         }
       ],
@@ -407,13 +407,13 @@
     },
     {
       "at": "2026-09-04T17:16:32-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ee4e470360f",
       "label": "spike",
       "reviews": [
         {
           "at": "2026-09-04T17:16:32-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "spike"
         }
       ],
@@ -476,7 +476,7 @@
   ],
   "name": "DEMO m2 s3 (a longer one) (demo set)",
   "open": false,
-  "opened_at": "2026-09-08T19:32:06-0400",
+  "opened_at": "2026-09-09T03:05:37-0400",
   "opened_by": "Shahriar Tafti",
   "schema": 1,
   "session_label": "DEMO m2 s3 (a longer one)",
@@ -485,7 +485,7 @@
     "note": "Made up, and long enough that panning and the overview strip have something to do."
   },
   "updated": {
-    "at": "2026-09-08T19:32:13-04:00",
+    "at": "2026-09-09T03:05:48-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

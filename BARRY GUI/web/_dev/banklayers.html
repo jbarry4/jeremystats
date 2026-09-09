@@ -1,0 +1,174 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — layer sheets in the Event Bank</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Layer sheets are the other thing BARRY produces that somebody cites, and
+   they were only reachable through the ToolKit -- so "where is the recorded
+   output for m11 s10" had two answers depending which output you meant.
+
+   They are NOT bank entries: a bank entry is a set of event times and every
+   invariant in eventbank.py is about times. So this checks the two lists stay
+   separate while living in one view -- that switching to Layers does not show
+   event entries, that the events side is untouched, and that a sheet carries
+   the same history and CSV a banked set does.
+
+   The snapshot writes a real version, so this counts before and after rather
+   than asserting a number, and the version it adds is the harness's own
+   footprint -- noted at the end rather than pretended away. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+
+  const reg = await (await W().fetch('/api/layers')).json();
+  const nSheets = (reg.sheets || []).length;
+  p('  the server holds ' + nSheets + ' layer sheet(s)');
+
+  run("setView('eventbank')");
+  await untilN(() => D().querySelector('.bank-kind'), 200);
+  await sleep(1600);
+
+  const kindBtn = (name) => Array.from(
+    D().querySelectorAll('.bank-kind .mini'))
+    .find((b) => b.textContent.trim() === name);
+
+  hd('1. One view, two kinds');
+  ck('there is an Events / Layers switch', !!D().querySelector('.bank-kind'));
+  ck('with an Events side', !!kindBtn('Events'));
+  ck('and a Layers side', !!kindBtn('Layers'));
+  ck('Events is where it starts',
+     kindBtn('Events').classList.contains('on'),
+     'the bank opened on something other than events');
+  const eventRows = D().querySelectorAll('.bank-row').length;
+  p('  events side: ' + eventRows + ' row(s)');
+  ck('the events side still lists entries', eventRows > 0, eventRows);
+
+  hd('2. The Layers side lists sheets, not entries');
+  kindBtn('Layers').click();
+  await sleep(1200);
+  const rows = () => Array.from(D().querySelectorAll('.bank-row'));
+  p('  layers side: ' + rows().length + ' row(s)');
+  ck('every sheet is listed', rows().length === nSheets,
+     rows().length + ' vs ' + nSheets);
+  /* The distinction that matters: a layer row is a sheet, and no event
+     entry should have leaked across. */
+  const chips = rows().map((r) => {
+    const c = r.querySelector('.hk-chip');
+    return c ? c.textContent.trim() : '?';
+  });
+  ck('and every row is a layer sheet',
+     chips.length > 0 && chips.every((c) => c === 'layers'),
+     Array.from(new Set(chips)).join(', '));
+  ck('the sub-line counts sheets rather than events',
+     /layer sheet/.test((D().getElementById('bankSub') || {}).textContent || ''),
+     (D().getElementById('bankSub') || {}).textContent);
+  ck('the event type filter is gone, being about events',
+     !Array.from(D().querySelectorAll('.res-toolbar select'))
+       .some((s2) => /All types/.test(s2.textContent || '')),
+     'the type filter is still up on the layers side');
+
+  hd('3. A sheet shows its runs and its history');
+  const withHistory = rows().find((r) => /version/.test(r.textContent || ''));
+  ck('at least one sheet reports a history', !!withHistory,
+     'no sheet shows a version count');
+  (withHistory || rows()[0]).click();
+  await untilN(() => D().querySelector('.layer-runs'), 100);
+  await sleep(1200);
+  const runs = D().querySelectorAll('.layer-run').length;
+  p('  ' + runs + ' run(s) of contiguous layer');
+  ck('the sheet is shown as runs, not one row per channel',
+     runs > 0 && runs < 64, runs);
+  await untilN(() => D().querySelectorAll('.ver-row').length, 100);
+  const vers = D().querySelectorAll('.ver-row').length;
+  p('  ' + vers + ' version(s) listed');
+  ck('the history is shown', vers > 0, vers);
+  ck('and every version offers a CSV',
+     D().querySelectorAll('.ver-row .linkish').length === vers,
+     D().querySelectorAll('.ver-row .linkish').length + ' vs ' + vers);
+
+  hd('4. The CSV is that version, not the sheet as it stands');
+  const gid = val('BARRY.views.eventbank._sheetSel()');
+  p('  sheet: ' + gid);
+  const csv = await (await W().fetch(
+    '/api/layers/' + encodeURIComponent(gid) + '/version-export', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ v: 0 }),
+    })).text();
+  const lines = csv.trim().split('\n');
+  p('  v0 export: ' + (lines.length - 1) + ' data row(s)');
+  ck('it exports a row per channel, labelled or not', lines.length - 1 > 8,
+     lines.length - 1);
+  ck('and it carries the recording, not just the numbers',
+     /session_label/.test(lines[0]) && /region_name/.test(lines[0]),
+     lines[0]);
+  /* v0 is the empty sheet, so every region cell should be blank -- which is
+     the check that the export reads the snapshot rather than the sheet as
+     it stands now. */
+  const v0regions = lines.slice(1)
+    .map((l) => l.split(',')[8] || '').filter((x) => x.trim());
+  p('  region names in v0: ' + v0regions.length);
+  ck('v0 exports as unlabelled, so it is reading the snapshot',
+     v0regions.length === 0,
+     v0regions.length + ' labelled rows in what should be the empty version');
+
+  hd('5. Snapshotting adds a version');
+  const before = D().querySelectorAll('.ver-row').length;
+  const snapBtn = Array.from(D().querySelectorAll('.bank-detail .btn'))
+    .find((b) => /Snapshot/.test(b.textContent || ''));
+  ck('there is a snapshot button', !!snapBtn);
+  if (snapBtn) {
+    snapBtn.click();
+    await untilN(() => D().querySelector('.ver-edit textarea'), 60);
+    ck('it asks what the pass was rather than just doing it',
+       !!D().querySelector('.ver-edit textarea'));
+    D().querySelector('.ver-edit textarea').value = 'harness snapshot';
+    Array.from(D().querySelectorAll('.ver-edit .btn'))
+      .find((b) => /^Snapshot$/.test(b.textContent.trim())).click();
+    await sleep(2200);
+    const after = D().querySelectorAll('.ver-row').length;
+    p('  versions: ' + before + ' -> ' + after);
+    ck('a version was added', after === before + 1,
+       before + ' -> ' + after);
+    const top = D().querySelector('.ver-row');
+    ck('and it carries the note that was typed',
+       /harness snapshot/.test((top || {}).textContent || ''),
+       (top || {}).textContent);
+  }
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  p('(this run left one snapshot behind on ' + gid + ' — a version is'
+    + ' history, so it is not something to quietly delete)');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'bank layers';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

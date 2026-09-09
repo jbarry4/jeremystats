@@ -1,52 +1,72 @@
 {
   "_at": {
-    "bad_channels": "2026-09-02T23:51:19.854339+00:00",
-    "bad_channels_note": "2026-09-02T23:51:19.854339+00:00",
-    "condition": "2026-09-02T23:51:19.854339+00:00",
-    "converted": "2026-09-02T23:51:19.854339+00:00",
+    "bad_channels": "2026-09-04T15:57:01.704967+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.704967+00:00",
+    "condition": "2026-09-04T15:57:01.704967+00:00",
+    "converted": "2026-09-04T15:57:01.704967+00:00",
     "created": "2026-09-02T23:51:19.854339+00:00",
-    "duration_s": "2026-09-02T23:51:19.854339+00:00",
-    "first_seen_by": "2026-09-02T23:51:19.854339+00:00",
-    "fs": "2026-09-02T23:51:19.854339+00:00",
+    "duration_s": "2026-09-04T15:57:01.704967+00:00",
+    "extraction_note": "2026-09-09T06:09:15.186854+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.704967+00:00",
+    "fissure_channel": "2026-09-09T06:09:15.186854+00:00",
+    "fs": "2026-09-04T15:57:01.704967+00:00",
     "gid": "2026-09-02T23:51:19.854339+00:00",
-    "group": "2026-09-02T23:51:19.854339+00:00",
-    "key": "2026-09-02T23:51:19.854339+00:00",
-    "label": "2026-09-02T23:51:19.854339+00:00",
-    "loose_key": "2026-09-02T23:51:19.854339+00:00",
-    "mouse": "2026-09-02T23:51:19.854339+00:00",
-    "n_channels": "2026-09-02T23:51:19.854339+00:00",
-    "project": "2026-09-02T23:51:19.854339+00:00",
-    "project_source": "2026-09-02T23:51:19.854339+00:00",
-    "retired": "2026-09-03T13:41:13.284898+00:00",
-    "schema": "2026-09-02T23:51:19.854339+00:00",
-    "session": "2026-09-02T23:51:19.854339+00:00",
-    "start": "2026-09-02T23:51:19.854339+00:00",
-    "updated": "2026-09-03T13:41:13.284898+00:00"
+    "group": "2026-09-04T15:57:01.704967+00:00",
+    "hemisphere": "2026-09-09T00:00:40.892196+00:00",
+    "hemisphere_source": "2026-09-09T00:00:40.892196+00:00",
+    "hilus_channel": "2026-09-09T06:09:15.186854+00:00",
+    "key": "2026-09-04T15:57:01.704967+00:00",
+    "label": "2026-09-04T15:57:01.704967+00:00",
+    "loose_key": "2026-09-04T15:57:01.704967+00:00",
+    "mouse": "2026-09-04T15:57:01.704967+00:00",
+    "n_channels": "2026-09-04T15:57:01.704967+00:00",
+    "needs_processing": "2026-09-09T06:09:15.186854+00:00",
+    "project": "2026-09-04T15:57:01.704967+00:00",
+    "project_source": "2026-09-04T15:57:01.704967+00:00",
+    "reference_channels_source": "2026-09-09T06:09:15.186854+00:00",
+    "retired": "2026-09-04T15:57:01.704967+00:00",
+    "ripple_channel": "2026-09-09T06:09:15.186854+00:00",
+    "schema": "2026-09-04T15:57:01.704967+00:00",
+    "session": "2026-09-04T15:57:01.704967+00:00",
+    "start": "2026-09-04T15:57:01.704967+00:00",
+    "updated": "2026-09-09T06:09:15.186854+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M23_s5\\2024-08-06_15-12-51": [
+        "set",
+        "2026-09-08T18:40:45.972642+00:00"
+      ],
       "D:\\PTEN\\CTL\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51": [
         "set",
-        "2026-09-02T23:51:19.854339+00:00"
+        "2026-09-04T15:57:01.704967+00:00"
       ],
       "G:\\PTEN\\M23_s5": [
         "set",
-        "2026-09-02T23:51:19.854339+00:00"
+        "2026-09-04T15:57:01.704967+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51": [
+        "set",
+        "2026-09-04T15:57:01.704967+00:00"
       ]
     },
     "seen": {
       "BarryLab": [
         "set",
-        "2026-09-02T23:51:19.854339+00:00"
+        "2026-09-04T15:57:01.704967+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-02T23:51:19.854339+00:00"
+        "2026-09-04T15:57:01.704967+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T18:00:52.126207+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T13:41:13.284898+00:00",
+    "at": "2026-09-09T06:09:15.186854+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -63,30 +83,40 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1693.7984,
+  "extraction_note": null,
   "first_seen_by": "scan",
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "sb6ac62bb1055",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
+  "hilus_channel": null,
   "key": "m023_s005_2024-08-06_15-12-51",
   "label": "PTEN m23 s5 2024-08-06",
   "loose_key": "m023_s005",
   "mouse": 23,
   "n_channels": 64,
+  "needs_processing": null,
   "paths": [
     "D:\\PTEN\\CTL\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51",
-    "G:\\PTEN\\M23_s5"
+    "G:\\PTEN\\M23_s5",
+    "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M23_s5\\2024-08-06_15-12-51"
   ],
   "project": "PTEN",
   "project_source": "guessed",
+  "reference_channels_source": null,
   "retired": false,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
     "BarryLab": {
-      "at": "2026-09-02T19:38:02-04:00",
+      "at": "2026-09-04T11:26:36-04:00",
       "by": "barry",
-      "path": "G:\\PTEN\\M23_s5",
-      "root": "G:/PTEN",
-      "scan": "scan_597c4266fa"
+      "path": "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-02T18:50:19-04:00",
@@ -94,14 +124,23 @@
       "path": "D:\\PTEN\\CTL\\m23_ptenblind\\m23s5aug7\\2024-08-06_15-12-51",
       "root": "D:/PTEN",
       "scan": "scan_765fa11e51"
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T14:00:52-04:00",
+      "by": "Rain",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M23_s5\\2024-08-06_15-12-51",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
     }
   },
   "session": 5,
   "start": "2024-08-06T15:12:51",
   "updated": {
-    "at": "2026-09-03T09:41:13-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T02:09:15-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

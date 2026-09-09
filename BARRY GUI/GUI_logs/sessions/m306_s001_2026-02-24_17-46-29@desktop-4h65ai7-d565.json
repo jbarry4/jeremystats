@@ -18,7 +18,7 @@
     "schema": "2026-09-02T23:21:29.172499+00:00",
     "session": "2026-09-02T23:21:29.172499+00:00",
     "start": "2026-09-02T23:21:29.172499+00:00",
-    "updated": "2026-09-03T18:36:59.952720+00:00"
+    "updated": "2026-09-09T07:02:14.547147+00:00"
   },
   "_keys": {
     "paths": {
@@ -28,6 +28,10 @@
       ]
     },
     "seen": {
+      "Bluebarry": [
+        "set",
+        "2026-09-09T07:02:14.547147+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-03T18:36:59.952720+00:00"
@@ -35,7 +39,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-03T18:36:59.952720+00:00",
+    "at": "2026-09-09T07:02:14.547147+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -64,6 +68,13 @@
   "retired": false,
   "schema": 2,
   "seen": {
+    "Bluebarry": {
+      "at": "2026-09-09T03:02:14-04:00",
+      "by": "Shahriar Tafti",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-03T14:36:59-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -75,9 +86,11 @@
   "session": 1,
   "start": "2026-02-24T17:46:29",
   "updated": {
-    "at": "2026-09-03T14:36:59-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T03:02:14-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

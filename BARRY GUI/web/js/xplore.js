@@ -125,7 +125,6 @@ BARRY.views.xplore = (function () {
     if (vs.fdefault) sess.fdefault = vs.fdefault;
     if (vs.flock !== undefined && vs.flock !== null) sess.flock = !!vs.flock;
     if (vs.stft_mode) sess.stftMode = vs.stft_mode;
-    if (vs.chan_mode) sess.chanMode = vs.chan_mode === 'dim' ? 'dim' : 'remove';
     if (vs.marks_view) sess.marksView = vs.marks_view;
     if (Array.isArray(vs.channels) && vs.channels.length) {
       sess.sel = new Set(vs.channels.filter((i) => i < info.channels.length));
@@ -390,16 +389,6 @@ BARRY.views.xplore = (function () {
     return true;
   }
 
-  /* What an unchecked channel does: go, or stay and be faint.
-
-     'remove' is what BARRY has always done and stays the default -- a
-     channel you unchecked is usually one you want out of the way. 'dim'
-     keeps the row, which is what you want when the point of unchecking was
-     to see what you are excluding. */
-  function chanMode(sess) {
-    return (sess && sess.chanMode) === 'dim' ? 'dim' : 'remove';
-  }
-
   /* How visible marks are: shown, faded, or gone. */
   function marksView(sess) {
     const got = sess && sess.marksView;
@@ -411,17 +400,19 @@ BARRY.views.xplore = (function () {
     return v === 'hide' ? 0 : (v === 'dim' ? 0.22 : 1);
   }
 
-  /* Every channel this pane draws -- which in 'dim' mode includes the ones
-     that are not selected, because they have to be read to be shown at all.
+  /* Every channel this pane draws: the ones that are selected.
+
+     There was briefly a mode that also drew the unselected ones faintly, so
+     the request had to ask for every channel -- and then every derived
+     number was computed over channels somebody had explicitly excluded. The
+     colour scale came out twice as wide. Unchecking means not read, not
+     drawn, and not in any sum.
+
      `pane.channels` is the probe-column override and still wins: a column
-     the pane is not showing is not a channel it draws faintly, it is a
-     channel that belongs to another pane. */
+     this pane is not showing belongs to another pane. */
   function paneChans(pane, sess) {
     if (!sess) return [];
-    const dim = chanMode(sess) === 'dim';
-    const base = dim
-      ? sess.info.channels.map((_c, i) => i)
-      : Array.from(sess.sel).sort((a, b) => a - b);
+    const base = Array.from(sess.sel).sort((a, b) => a - b);
     if (!pane || !pane.channels || !pane.channels.length) return base;
     const want = new Set(pane.channels);
     const keep = base.filter((i) => want.has(i));
@@ -429,28 +420,6 @@ BARRY.views.xplore = (function () {
     // would go blank with no explanation, so fall back to the override and
     // let the usual "not in this recording" path speak.
     return keep.length ? keep : pane.channels.slice();
-  }
-
-  /* Of the channels this pane draws, the CSC numbers of the ones nobody
-     selected. Numbers rather than indices, because that is what the server
-     matches rows on. */
-  /* How faint a kept-but-unchecked channel is drawn.
-
-     Must match DIM_ALPHA in backend/analysis.py: the same channel can be a
-     trace in one pane and a raster row in another, and the two panes showing
-     it at different opacities would look like a rendering fault rather than
-     a setting. */
-  const DIM_ALPHA = 0.30;
-
-  function paneDimChans(pane, sess) {
-    if (!sess || chanMode(sess) !== 'dim') return [];
-    const out = [];
-    for (const i of paneChans(pane, sess)) {
-      if (sess.sel.has(i)) continue;
-      const ch = sess.info.channels[i];
-      if (ch) out.push(ch.number);
-    }
-    return out;
   }
 
   function fLocked(sess) {
@@ -1237,15 +1206,6 @@ BARRY.views.xplore = (function () {
              + 'More › Marks turns them back on.',
         text: marksView(sess) === 'hide' ? 'marks hidden' : 'marks faded',
       }) : null,
-      /* And while unchecked channels are being kept, since a faint row is
-         easy to mistake for a bad one. */
-      chanMode(sess) === 'dim' && sess.sel.size < sess.info.channels.length
-        ? el('span', { class: 'pane-warn',
-            title: (sess.info.channels.length - sess.sel.size)
-                 + ' unchecked channel(s) are drawn faintly rather than '
-                 + 'removed. More › Unchecked channels.',
-            text: (sess.info.channels.length - sess.sel.size) + ' greyed' })
-        : null,
       // Which probe column this pane is. Six near-identical rasters are
       // indistinguishable without it, and the CSD in each one is computed
       // over that column alone.
@@ -2561,32 +2521,6 @@ BARRY.views.xplore = (function () {
         text: o.name, title: o.why,
         onclick: () => { if (value !== o.id) onpick(o.id); },
       })));
-
-    rows.push(popRow('Unchecked channels', [
-      choose(chanMode(sess), [
-        { id: 'remove', name: 'Remove',
-          why: 'Not read and not drawn \u2014 the raster is only the '
-             + 'channels you checked' },
-        { id: 'dim', name: 'Keep, greyed out',
-          why: 'Still drawn, faintly, so you can see what you are leaving '
-             + 'out. They are read, so this costs a little more' },
-      ], (v) => {
-        sess.chanMode = v;
-        BARRY.activity.log('display.chanMode', { mode: v }, sess);
-        closeMenu();
-        // Which channels get asked for, so every pane refetches -- and every
-        // other window has to agree, the same as invert and even-only.
-        publishFacts(sess);
-        queueSaveState(sess);
-        refreshSession(sess);
-      }),
-    ]));
-    rows.push(el('p', { class: 'ctl-pop-note',
-      text: chanMode(sess) === 'dim'
-        ? 'Greyed-out channels are read from disk, so a window with most of '
-          + 'them unchecked is no faster than one with all of them on.'
-        : 'Unchecked channels are not read at all, which is what makes a '
-          + 'narrow selection quick.' }));
 
     rows.push(popRow('Marks \u2014 bookmarks, events, spikes', [
       choose(marksView(sess), [
@@ -5026,7 +4960,6 @@ BARRY.views.xplore = (function () {
       // Rows to draw faintly. Sent even when empty so a cached render from
       // the other mode is not collected by mistake -- the server keys its
       // cache on the whole spec.
-      dim_channels: paneDimChans(pane, sess),
       highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
       cmap: pane.cmap || 'jet', spacing_um: sess.spacing,
       bad_channels: Array.from(sess.bad),
@@ -5330,6 +5263,26 @@ BARRY.views.xplore = (function () {
     const sess = sessionOf(pane);
     if (!sess) return;
     const X = (t) => Math.round(((t - t0) / span) * w) + 0.5;
+
+    /* The layer bands, on every image panel and not only on the traces.
+
+       StrataScope draws onto the trace canvas, which meant that opening the
+       four-way view -- the thing people actually label against, because the
+       CSD is where a boundary is visible -- showed no layers at all. The
+       rows of an image panel are the same channels in the same order, so
+       the same overlay belongs on it.
+
+       Before the marks: a layer band is background, and an event line
+       drawn under it would be a mark you cannot see. */
+    if (BARRY.strata && BARRY.strata.draw && sess.strata) {
+      try {
+        BARRY.strata.draw(ctx, sess, { t0: t0, t1: t0 + span },
+                          0, w, 0, h, P, res);
+      } catch (e) {
+        // A decoration must never take the panel down with it.
+        reportClientError('strata.draw', e.message, e.stack);
+      }
+    }
     /* The candidate being curated, on the CSD and the rasters too. These
        panels are half of why the aid window exists -- deciding whether a
        deflection is a dentate spike is done by looking at the CSD next to
@@ -5791,7 +5744,6 @@ BARRY.views.xplore = (function () {
           // Same reasoning: what an unchecked channel does, and how visible
           // the marks are, are facts about this recording's display that
           // every pane and every window showing it should agree on.
-          chanMode: chanMode(sess),
           marksView: marksView(sess),
         },
       });
@@ -5956,17 +5908,10 @@ BARRY.views.xplore = (function () {
         reopenSameView(sess);
       }
 
-      /* What an unchecked channel does, and how visible the marks are.
-
-         Neither changes what is read off disk, so both are a redraw rather
-         than a reopen -- except `chanMode`, which changes which channels are
-         asked for, so it needs the panes refetched. Compared before acting,
-         same as above, or two windows would keep telling each other. */
-      if (v.chanMode !== undefined && v.chanMode !== chanMode(sess)) {
-        sess.chanMode = v.chanMode === 'dim' ? 'dim' : 'remove';
-        refreshSession(sess);
-        touched = true;
-      }
+      /* How visible the marks are. A redraw rather than a reopen: it
+         changes nothing about what is read off disk. Compared before
+         acting, same as above, or two windows would keep telling each
+         other. */
       if (v.marksView !== undefined && v.marksView !== marksView(sess)) {
         sess.marksView = v.marksView;
         touched = true;
@@ -6095,7 +6040,6 @@ BARRY.views.xplore = (function () {
           // Both are display choices somebody made on purpose about this
           // recording; forgetting them on reopen makes the choice feel like
           // it did not take.
-          chan_mode: chanMode(sess),
           marks_view: marksView(sess),
           probe: sess.probe || null,
           fdefault: sess.fdefault || null,
@@ -6301,19 +6245,13 @@ BARRY.views.xplore = (function () {
     // echoes ylim back as robust_max, but the envelope it returns does not
     // depend on it -- so honouring it locally makes the amplitude slider
     // instant instead of one request per pixel of drag.
+    // A pinned amplitude is applied here rather than fetched. The server
+    // echoes ylim back as robust_max, but the envelope it returns does not
+    // depend on it -- so honouring it locally makes the amplitude slider
+    // instant instead of one request per pixel of drag.
     const shared = (sess.ylim != null ? sess.ylim : win.robust_max) || 1;
     const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
     ctx.textAlign = 'right';
-
-    /* The channels being kept but not chosen, by number.
-
-       In 'remove' mode this is empty and every row below is drawn solid,
-       which is what it always did. In 'dim' mode the request asked for every
-       channel -- so the unchecked ones are here, in `win.series`, and it is
-       this loop's job to make them look unchecked. Without that the mode
-       does half of its work: all sixty-four channels arrive and none of them
-       is greyed. */
-    const faintNums = new Set(paneDimChans(pane, sess));
 
     for (let i = 0; i < n; i++) {
       const s = win.series[i];
@@ -6322,13 +6260,11 @@ BARRY.views.xplore = (function () {
       const k = (lane * .44) * sess.gain / scale;
       const isBad = s.bad || sess.bad.has(s.number);
       const color = isBad ? P.warn : P.trace;
-      // Faint enough to read as "not one of yours", solid enough to see.
-      const a = faintNums.has(s.number) ? DIM_ALPHA : 1;
 
-      ctx.strokeStyle = P.grid; ctx.globalAlpha = .45 * a;
+      ctx.strokeStyle = P.grid; ctx.globalAlpha = .45;
       ctx.beginPath(); ctx.moveTo(padL, Math.round(mid) + .5);
       ctx.lineTo(padL + plotW, Math.round(mid) + .5); ctx.stroke();
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = 1;
 
       ctx.fillStyle = color;
       ctx.beginPath();

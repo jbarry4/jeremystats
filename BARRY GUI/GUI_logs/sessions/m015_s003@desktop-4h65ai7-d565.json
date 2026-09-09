@@ -5,6 +5,8 @@
     "first_seen_by": "2026-09-04T15:57:01.674885+00:00",
     "gid": "2026-09-04T15:57:01.674885+00:00",
     "group": "2026-09-04T15:57:01.674885+00:00",
+    "hemisphere": "2026-09-09T00:00:34.531602+00:00",
+    "hemisphere_source": "2026-09-09T00:00:34.531602+00:00",
     "key": "2026-09-04T15:57:01.674885+00:00",
     "label": "2026-09-04T15:57:01.674885+00:00",
     "loose_key": "2026-09-04T15:57:01.674885+00:00",
@@ -14,7 +16,7 @@
     "retired": "2026-09-08T18:35:26.982844+00:00",
     "schema": "2026-09-04T15:57:01.674885+00:00",
     "session": "2026-09-04T15:57:01.674885+00:00",
-    "updated": "2026-09-08T18:35:27.807427+00:00"
+    "updated": "2026-09-09T00:00:34.531602+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,7 +33,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:35:27.807427+00:00",
+    "at": "2026-09-09T00:00:34.531602+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -45,6 +47,8 @@
   "first_seen_by": "scan",
   "gid": "s00bcd86913b7",
   "group": "PTEN_CSDsEtc",
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m015_s003",
   "label": "PTEN_CSDsEtc m15 s3",
   "loose_key": "m015_s003",
@@ -67,11 +71,11 @@
   },
   "session": 3,
   "updated": {
-    "at": "2026-09-08T14:35:27-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T20:00:34-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

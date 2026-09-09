@@ -1,0 +1,166 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the roster</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Removing somebody from the roster.
+
+   The roster is not a list anybody maintains -- it is compiled from the
+   profiles, the curation decisions, the bank and the assignments. So the
+   interesting question is not "does the button work" but "does it refuse
+   when it should", because a delete that appears to succeed on a name
+   stamped across 2,270 decisions would be lying about what BARRY holds.
+
+   The trap this walks into: `total` counts the hand-added entry itself, so
+   testing it directly refuses every hand-added name -- which is exactly the
+   set that CAN go, and exactly what a leftover test entry is. Both cases are
+   checked against the live roster.
+
+   Anything this adds, it removes again. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+const PROBE = 'Harness Probe Person';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  const cleanup = async () => {
+    try {
+      await W().fetch('/api/people/forget', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: PROBE }),
+      });
+    } catch (e) { /* best effort */ }
+  };
+
+  try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const post = async (path, body) => (await W().fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+  const roster = async () => (await W().fetch('/api/people')).json();
+
+  const HAND = 'added by hand';
+  const held = (person) => {
+    let n = 0;
+    for (const [where, count] of Object.entries(person.counts || {})) {
+      if (where !== HAND) n += count;
+    }
+    return n;
+  };
+
+  hd('1. The roster says who is held by the data and who is not');
+  let r = await roster();
+  ck('the roster answers', r && r.ok === true);
+  const people = r.people || [];
+  p('  ' + people.length + ' name(s):');
+  for (const x of people) {
+    p('    ' + (x.name || '').padEnd(34)
+      + (held(x) ? 'held by ' + Object.keys(x.counts || {})
+                     .filter((k) => k !== HAND).join(', ')
+                 : 'hand-added only'));
+  }
+  ck('somebody has work behind them', people.some((x) => held(x) > 0));
+  /* The distinction the button depends on. If every name looked held, the
+     feature would be dead on arrival -- which is what testing `total`
+     would have produced. */
+  ck('and somebody is hand-added only, so removal is reachable',
+     people.some((x) => held(x) === 0),
+     'every name looks held — the delete could never be used');
+
+  hd('2. A name with work behind it is refused');
+  const worked = people.filter((x) => held(x) > 0)
+    .sort((a, b) => held(b) - held(a))[0];
+  p('  trying: ' + worked.name + ' (' + held(worked) + ' records)');
+  /* Compared as a set, not as a count. A count is a race: another harness
+     leaving a `curate@harness` behind moves it for reasons that have
+     nothing to do with this forget, so this passed alone and failed in a
+     suite. What is being claimed is that the forget removed nobody. */
+  const namesOf = (r) => new Set((r.people || []).map((x) => x.name));
+  const beforeSet = namesOf(await roster());
+  await post('/api/people/forget', { name: worked.name });
+  const after = await roster();
+  const afterSet = namesOf(after);
+  const lost = Array.from(beforeSet).filter((n) => !afterSet.has(n));
+  ck('they are still on the roster', afterSet.has(worked.name),
+     'a name carried by the data was removed');
+  ck('and the forget removed nobody', lost.length === 0,
+     'lost: ' + lost.join(', '));
+
+  hd('3. A hand-added name goes');
+  await post('/api/people/add', { name: PROBE, role: 'harness' });
+  r = await roster();
+  const mine = (r.people || []).find((x) => x.name === PROBE);
+  ck('the probe person was added', !!mine);
+  if (mine) {
+    p('  counts: ' + JSON.stringify(mine.counts));
+    ck('and nothing but the hand-add carries them', held(mine) === 0,
+       JSON.stringify(mine.counts));
+    /* The exact trap: `total` is 1 for a name with no work at all. */
+    ck('their total is 1 even though they have done nothing',
+       mine.total === 1,
+       'total=' + mine.total + ' — the removability rule cannot use it');
+  }
+  const gone = await post('/api/people/forget', { name: PROBE });
+  ck('forget reports the removal', gone && gone.removed === true,
+     JSON.stringify(gone && gone.removed));
+  ck('and they are off the roster',
+     !(gone.people || []).some((x) => x.name === PROBE),
+     'still listed after being removed');
+
+  hd('4. The button is on every chip, and reads as refused where it is');
+  W().eval('BARRY.profile.open && BARRY.profile.open()');
+  const opened = await untilN(() => D().querySelectorAll('.prof-chip').length, 80);
+  ck('the profile dialog opens with the roster in it', opened >= 0,
+     'no chips — is the dialog reachable as BARRY.profile.open()?');
+  const chips = Array.from(D().querySelectorAll('.prof-chip'));
+  const dels = Array.from(D().querySelectorAll('.prof-chip-del'));
+  p('  ' + chips.length + ' chip(s), ' + dels.length + ' remove button(s), '
+    + dels.filter((b) => b.classList.contains('held')).length + ' marked held');
+  ck('every chip offers removal', dels.length === chips.length,
+     dels.length + ' vs ' + chips.length);
+  ck('and the ones carried by the data are marked as held',
+     dels.filter((b) => b.classList.contains('held')).length
+       === people.filter((x) => held(x) > 0).length,
+     dels.filter((b) => b.classList.contains('held')).length + ' marked, '
+     + people.filter((x) => held(x) > 0).length + ' expected');
+  const heldBtn = dels.find((b) => b.classList.contains('held'));
+  ck('a held one says how many records hold it',
+     !!heldBtn && /is on \d+ record/.test(heldBtn.title || ''),
+     (heldBtn || {}).title);
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'roster';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} finally {
+  await cleanup();
+  p('\n(probe person cleaned up)');
+} })();
+</script>

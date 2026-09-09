@@ -31,8 +31,16 @@ async function untilN(fn, tries = 200, gap = 100) {
     const w = win();
     p(tag + ':');
     p('   contentWindow      ' + (w ? 'present' : 'MISSING'));
-    p('   .BARRY             ' + (w && w.BARRY ? 'present' : 'MISSING'));
-    p('   .BARRY.refreshSync ' + (w && w.BARRY && typeof w.BARRY.refreshSync));
+    /* `BARRY` is a top-level `const` in core.js, so it is a binding in
+       that script's scope and never a property of `window`. Reading
+       `w.BARRY` reports MISSING however healthy the frame is; `eval` runs
+       inside the scope that can see it. */
+    const inFrame = (expr) => {
+      try { return String(w.eval(expr)); } catch (e) { return 'THREW'; }
+    };
+    p('   BARRY              ' + (w ? inFrame('typeof BARRY') : 'no frame'));
+    p('   BARRY.refreshSync  '
+      + (w ? inFrame('typeof BARRY.refreshSync') : 'no frame'));
     p('   .setView           ' + (w && typeof w.setView));
     p('   location.hash      ' + (w && w.location ? w.location.hash : '?'));
     p('   frame loads so far ' + loads);
@@ -62,7 +70,7 @@ async function untilN(fn, tries = 200, gap = 100) {
 
   p('\n-- call refreshSync --');
   try {
-    await win().BARRY.refreshSync();
+    await win().eval('BARRY.refreshSync()');
     p('   refreshSync returned');
   } catch (e) { p('   THREW: ' + e.message); }
   await sleep(400);

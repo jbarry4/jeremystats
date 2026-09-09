@@ -1,287 +1,316 @@
+# -*- coding: utf-8 -*-
+"""Import the reference channels from the Toothy workbook.
+
+    python tools/import_toothy.py            # say what would change
+    python tools/import_toothy.py --apply
+
+Six sheets in that workbook, and they are not the same kind of thing. This
+imports one of them, and the reasoning about the other five is the more
+useful half of this file.
+
+WHAT IS IMPORTED
+    Toothy Input -- the ripple, fissure and hilus channels, plus the
+    extraction note and whether the session still needs processing.
+
+    These are anatomical landmarks: which channel sits at the fissure is a
+    fact about where the probe ended up, and BARRY had nowhere to put it, so
+    the answer lived in a spreadsheet. All 62 rows match a recording BARRY
+    knows.
+
+    And they are corroborated rather than trusted. The hilus channel the
+    workbook names is labelled HIL in the layer sheet -- which came from a
+    different spreadsheet, imported separately -- in 57 of 57 cases where
+    both exist. Two independent sources agreeing is the best evidence either
+    of them could have.
+
+WHAT IS NOT, AND WHY
+    Recording Sessions: DS#, Garbage#, Flag#, Deep Rev.
+        BARRY holds the decisions these count, one per candidate, with who
+        made each and when. Of the 40 sessions where both exist, 22 agree
+        exactly and 18 do not -- and m24 s4 reads spike 4 / garbage 734 in
+        the workbook against spike 738 / garbage 0 here, which looks like
+        two columns swapped in that row. Importing a count that disagrees
+        with the decisions it is meant to summarise would give the lab two
+        answers to "how many dentate spikes", one of which cannot be shown
+        event by event. Use --reconcile to list the differences instead.
+
+    Channel Data: side and location per channel
+        Already imported, from the feeder sheet. 3,898 of 3,948 agree; the
+        50 that do not are in four sessions (m13 s2, m11 s10, m33 s4,
+        m33 s8) and are systematic rather than scattered -- for m11 s10 the
+        workbook says CA1 for channels 8-17 where the sheet says CA1 SP.
+        That is two spreadsheets disagreeing about a layer boundary, which
+        is a question for whoever drew it and not something to resolve by
+        picking the file that was read last. --reconcile lists these too.
+
+    Manual Vs Auto
+        A comparison of the automatic channel picks against the manual ones,
+        with `Channels Match` reading No on all 52 rows. That is a result
+        about the detector, not a fact about a recording, and putting it in
+        the session record would file a conclusion where measurements go.
+
+    Data Summary
+        Per-mouse DS counts baseline against CNO, with percent change. Also
+        a result, and one computed from the counts above -- so importing it
+        would import the same disagreement one level further from the data.
+
+    Sheet8
+        Three numbers with no header. Nothing to import.
 """
-import_toothy.py -- Mouse info and bad channels out of the Toothy spreadsheet.
-
-The PTEN Toothy workbook is where the lab has been keeping what it knows about
-each animal and each recording. Two parts of it belong in BARRY:
-
-    mouse info      group and subgroup (PTEN / CTL, IED+ / IED-), which are
-                    facts about the animal and so go on the mouse record
-    bad channels    per recording, which is where BARRY already keeps them
-
-Deliberately NOT imported: the curation columns (DS#, Garbage#, Flag#, Deep
-Rev., Curation, Cur_Initials). Curation state has a home of its own with a
-vocabulary and per-event provenance, and copying a tally into it would create
-a set that claims to be curated without anything behind it.
-
-Also not imported here, but available: the "Channel Data" sheet carries a
-layer per channel (CA1, CA1 SP, HIL, ...) for every recording. That is a
-StrataScope sheet, and --layers will bring it in.
-
-    python tools/import_toothy.py                    # dry run
-    python tools/import_toothy.py --write
-    python tools/import_toothy.py --write --layers   # channel layers too
-"""
-from __future__ import annotations
-
 import argparse
+import collections
+import io
 import os
 import re
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.dirname(HERE)
-sys.path.insert(0, APP)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend import ids, layers as layermod, mice, sessreg, store  # noqa: E402
+import openpyxl                                          # noqa: E402
 
-DEFAULT_BOOK = os.path.join(APP, "PTEN Toothy Data .xlsx")
+WORKBOOK = "PTEN Toothy Data .xlsx"
 
-# What each sheet is called, so a renamed tab fails loudly rather than
-# silently importing nothing.
-SHEET_SESSIONS = "Recording Sessions"
-SHEET_TOOTHY = "Toothy Input"
-SHEET_CHANNELS = "Channel Data"
+OUT = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-# The layer names the spreadsheet uses, mapped onto StrataScope's ids. Only
-# an exact match is taken: a name nobody recognises is reported rather than
-# guessed at, because a wrong layer is worse than a missing one.
-LAYER_MAP = {
-    "CA1": "ca1_sr", "CA1 SO": "ca1_so", "CA1 SP": "ca1_sp",
-    "CA1 SLM": "ca1_slm", "SLM": "ca1_slm",
-    "DG OML1": "dg_oml1", "DG MML1": "dg_mml1", "DG GCL1": "dg_gcl1",
-    "HIL": "hil", "HILUS": "hil",
+# The sheet's count column, and the label id BARRY actually uses for it.
+# `DS#` is the one that matters: the label is `spike`, and comparing against
+# an id of "ds" reported BARRY holding zero everywhere, which was a false
+# conflict and very nearly a wrong conclusion.
+COUNTS = [("DS#", "spike"), ("Garbage#", "garbage"),
+          ("Flag#", "flag"), ("Deep Rev.", "review")]
+
+LOCATION_TO_REGION = {
+    "CA1": "ca1_sr", "CA1 SR": "ca1_sr", "CA1 SP": "ca1_sp",
+    "CA1 SO": "ca1_so", "CA1 SLM": "ca1_slm", "DG OML1": "dg_oml1",
+    "DG MML1": "dg_mml1", "DG GCL1": "dg_gcl1", "HIL": "hil",
     "DG GCL2": "dg_gcl2", "DG MML2": "dg_mml2", "DG OML2": "dg_oml2",
-    "DG": "dg", "OUT": "out",
+    "DG": "dg", "THAL": "thal", "DG2": "dg2",
 }
 
-
-def cell(v):
-    if v is None:
-        return ""
-    s = str(v).strip()
-    # openpyxl hands back floats for integer-looking cells: "59.0" is 59.
-    if re.fullmatch(r"-?\d+\.0", s):
-        s = s[:-2]
-    return s
+SOURCE = "PTEN Toothy Data .xlsx"
 
 
-def as_int(v):
-    s = cell(v)
+def say(msg=""):
+    OUT.write(msg + "\n")
+    OUT.flush()
+
+
+def clean(v):
+    v = "" if v is None else str(v).strip()
+    return "" if v.lower() in ("", "none", "nan", "n/a", "#n/a") else v
+
+
+def num(v):
     try:
-        return int(float(s))
+        return int(float(clean(v)))
     except (TypeError, ValueError):
         return None
 
 
-def parse_channels(v):
-    """"59", "41,59" and "[8, 41, 59]" all mean the same thing."""
-    s = cell(v)
-    if not s:
-        return []
-    out = []
-    for tok in re.findall(r"\d+", s):
-        n = int(tok)
-        if n not in out:
-            out.append(n)
-    return sorted(out)
+def sess_key(v):
+    m = re.match(r"^m(\d+)s(\d+)", clean(v).lower().replace(" ", ""))
+    return (int(m.group(1)), int(m.group(2))) if m else None
 
 
-def parse_session_id(v):
-    m = re.fullmatch(r"\s*m(\d+)s(\d+)\s*", cell(v), re.I)
-    return (int(m.group(1)), int(m.group(2))) if m else (None, None)
+def chan_of(v):
+    """The digits out of "CSC12.ncs"."""
+    m = re.search(r"(\d+)", clean(v))
+    return int(m.group(1)) if m else None
+
+
+def open_book():
+    if not os.path.exists(WORKBOOK):
+        say("Cannot find %s in %s" % (WORKBOOK, os.getcwd()))
+        sys.exit(1)
+    return openpyxl.load_workbook(WORKBOOK, read_only=True, data_only=True)
+
+
+def read_sheet(wb, name):
+    got = list(wb[name].iter_rows(values_only=True))
+    if not got:
+        return {}, []
+    head = [clean(c) for c in got[0]]
+    return ({h: i for i, h in enumerate(head) if h},
+            [r for r in got[1:] if any(clean(c) for c in r)])
+
+
+def barry_index(store):
+    by = collections.defaultdict(list)
+    for s in store.all_sessions():
+        try:
+            by[(int(s.get("mouse")), int(s.get("session")))].append(s)
+        except (TypeError, ValueError):
+            continue
+    return by
+
+
+def do_refs(store, index, wb, apply_it):
+    """The ripple, fissure and hilus channels."""
+    idx, body = read_sheet(wb, "Toothy Input")
+    say("\n" + "=" * 70)
+    say("REFERENCE CHANNELS  (ripple, fissure, hilus)")
+    say("=" * 70)
+    same = changed = added = skipped = 0
+    for r in body:
+        key = sess_key(r[idx.get("Session ID", 0)])
+        if not key:
+            continue
+        recs = index.get(key) or []
+        if len(recs) != 1:
+            say("  m%-3d s%-3d  SKIPPED: BARRY has %d recordings for this"
+                % (key[0], key[1], len(recs)))
+            skipped += 1
+            continue
+        rec = recs[0]
+
+        want = {}
+        for col, slot in (("Ripple Channel", "ripple_channel"),
+                          ("Fissure Channel", "fissure_channel"),
+                          ("Hilus Channel", "hilus_channel")):
+            v = num(r[idx[col]]) if col in idx else None
+            if v is not None:
+                want[slot] = v
+        note = clean(r[idx["Notes"]]) if "Notes" in idx else ""
+        if note:
+            want["extraction_note"] = note
+        needs = clean(r[idx["Needs processing"]]) if "Needs processing" in idx else ""
+        if needs:
+            want["needs_processing"] = needs.lower().startswith("t")
+        if not want:
+            continue
+        want["reference_channels_source"] = SOURCE
+
+        diff = {k: v for k, v in want.items()
+                if str(rec.get(k)) != str(v)}
+        if not diff:
+            same += 1
+            continue
+        if any(rec.get(k) is not None for k in diff if k != "reference_channels_source"):
+            changed += 1
+        else:
+            added += 1
+        say("  m%-3d s%-3d  %s"
+            % (key[0], key[1],
+               "  ".join("%s=%s" % (k.replace("_channel", ""), v)
+                         for k, v in sorted(diff.items())
+                         if k not in ("extraction_note",
+                                      "reference_channels_source"))))
+        if diff.get("extraction_note"):
+            say("            %s" % diff["extraction_note"][:66])
+        if apply_it:
+            store.upsert_session(
+                {"gid": rec.get("gid"), "key": rec.get("key"),
+                 "loose_key": rec.get("loose_key"),
+                 "mouse": key[0], "session": key[1],
+                 "label": rec.get("label")},
+                want)
+    say("\n  newly set %d   changed %d   already agree %d   skipped %d"
+        % (added, changed, same, skipped))
+
+
+def do_reconcile(store, index, wb, curate, layers):
+    """Where the workbook and BARRY disagree. Reports; never writes."""
+    say("\n" + "=" * 70)
+    say("RECONCILIATION  (nothing is written by this)")
+    say("=" * 70)
+
+    idx, body = read_sheet(wb, "Recording Sessions")
+    say("\nCuration counts, workbook against BARRY's own decisions:")
+    agree = differ = nocur = 0
+    lines = []
+    for r in body:
+        key = sess_key(r[idx.get("Session ID", 0)])
+        if not key or len(index.get(key) or []) != 1:
+            continue
+        gid = index[key][0].get("gid")
+        rec = curate.get(gid, "ds") if gid else None
+        if not rec:
+            nocur += 1
+            continue
+        by = (curate.progress(rec).get("by_label") or {})
+        bits, bad = [], False
+        for col, lab in COUNTS:
+            want = num(r[idx[col]]) if col in idx else None
+            if want is None:
+                continue
+            got = by.get(lab) or 0
+            bits.append("%s %s/%s" % (lab, want, got))
+            if want != got:
+                bad = True
+        if not bits:
+            continue
+        if bad:
+            differ += 1
+            lines.append("  m%-3d s%-3d  %s" % (key[0], key[1], "  ".join(bits)))
+        else:
+            agree += 1
+    say("  %d agree on every count, %d differ, %d have no curation set"
+        % (agree, differ, nocur))
+    say("  (workbook/BARRY)")
+    for line in lines:
+        say(line)
+
+    idx, body = read_sheet(wb, "Channel Data")
+    say("\nChannel locations, workbook against the imported layer sheets:")
+    same, bad = 0, []
+    for r in body:
+        key = sess_key(r[idx.get("sess", 0)])
+        if not key or len(index.get(key) or []) != 1:
+            continue
+        ch = chan_of(r[idx["file"]]) if "file" in idx else None
+        if ch is None and "eegnum" in idx:
+            ch = num(r[idx["eegnum"]])
+        loc = clean(r[idx["location"]]) if "location" in idx else ""
+        want = LOCATION_TO_REGION.get(loc.upper()) if loc else None
+        if ch is None or want is None:
+            continue
+        sheet = layers.get(index[key][0].get("gid"))
+        if not sheet:
+            continue
+        got = (sheet.get("labels") or {}).get(str(ch))
+        if got == want:
+            same += 1
+        else:
+            bad.append((key, ch, loc, want, got))
+    say("  %d agree, %d differ" % (same, len(bad)))
+    per = collections.Counter((k[0], k[1]) for k, _c, _l, _w, _g in bad)
+    for (m, s2), n in per.most_common():
+        say("    m%-3d s%-3d  %d channel(s)" % (m, s2, n))
+    for key, ch, loc, want, got in bad:
+        say("      m%ds%d ch%-3d workbook %-9s (%s)   sheet %s"
+            % (key[0], key[1], ch, loc, want, got or "unlabelled"))
 
 
 def main():
-    ap = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--book", default=DEFAULT_BOOK)
-    ap.add_argument("--logs", default=os.path.join(APP, "GUI_logs"))
-    ap.add_argument("--write", action="store_true")
-    ap.add_argument("--layers", action="store_true",
-                    help="also import the per-channel layers")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--apply", action="store_true",
+                    help="actually write. Without it, only reports.")
+    ap.add_argument("--reconcile", action="store_true",
+                    help="list where the workbook and BARRY disagree, and "
+                         "write nothing at all")
     args = ap.parse_args()
 
-    import openpyxl
+    import backend.app as A
 
-    if not os.path.isfile(args.book):
-        print("No such workbook: " + args.book)
-        return 2
+    wb = open_book()
+    index = barry_index(A.STORE)
+    say("Reading %s" % WORKBOOK)
+    say("  sheets: %s" % ", ".join(wb.sheetnames))
+    say("  BARRY (mouse, session) keys: %d" % len(index))
 
-    wb = openpyxl.load_workbook(args.book, data_only=True, read_only=True)
-    for want in (SHEET_SESSIONS, SHEET_TOOTHY):
-        if want not in wb.sheetnames:
-            print("The workbook has no %r sheet. Found: %s"
-                  % (want, ", ".join(wb.sheetnames)))
-            return 2
+    if args.reconcile:
+        do_reconcile(A.STORE, index, wb, A.CURATE, A.LAYERS)
+        say("\nNothing was written.")
+        wb.close()
+        return
 
-    st = store.Store(args.logs, auto_stage=False)
-    reg = sessreg.Registry(st)
-    book = mice.MouseBook(args.logs, st)
-    known = st.all_sessions()
-
-    print("Reading  %s" % args.book)
-    print("Mode     %s" % ("WRITE" if args.write else "dry run"))
-    print()
-
-    # ---- mouse info -------------------------------------------------------
-    def rows_of(sheet):
-        it = wb[sheet].iter_rows(values_only=True)
-        head = [cell(h).strip().lower() for h in next(it)]
-        for raw in it:
-            if not any(x is not None and str(x).strip() for x in raw):
-                continue
-            yield dict(zip(head, raw))
-
-    per_mouse = {}
-    bad_by_session = {}
-    conditions = {}
-
-    for r in rows_of(SHEET_SESSIONS):
-        mouse = as_int(r.get("mouse_id") if r.get("mouse_id") is not None
-                       else re.sub(r"\D", "", cell(r.get("mouse_id"))))
-        if mouse is None:
-            m = re.fullmatch(r"m(\d+)", cell(r.get("mouse_id")), re.I)
-            mouse = int(m.group(1)) if m else None
-        if mouse is None:
-            continue
-        grp, sub = cell(r.get("group")), cell(r.get("subgroup"))
-        slot = per_mouse.setdefault(mouse, {})
-        if grp:
-            slot["group"] = grp
-        if sub:
-            slot["subgroup"] = sub
-
-        mo, se = parse_session_id(r.get("session id"))
-        if mo is not None:
-            chans = parse_channels(r.get("bad channel"))
-            if chans:
-                bad_by_session[(mo, se)] = chans
-            cond = cell(r.get("condition"))
-            if cond:
-                conditions[(mo, se)] = cond
-
-    # Toothy Input carries the same bad channels, sometimes more complete.
-    for r in rows_of(SHEET_TOOTHY):
-        mo, se = parse_session_id(r.get("session id"))
-        if mo is None:
-            continue
-        chans = parse_channels(r.get("bad channels"))
-        if chans:
-            have = set(bad_by_session.get((mo, se), []))
-            bad_by_session[(mo, se)] = sorted(have | set(chans))
-
-    print("%d mice with info, %d sessions with bad channels"
-          % (len(per_mouse), len(bad_by_session)))
-
-    # ---- write the mice ---------------------------------------------------
-    # Which project each mouse is in, taken from the registry rather than
-    # guessed: the spreadsheet's "group" is the experimental group (PTEN vs
-    # CTL), which is not the same thing as the project.
-    proj_of = {}
-    for rec in known:
-        m = rec.get("mouse")
-        if m is not None:
-            proj_of.setdefault(m, rec.get("project") or "Unfiled")
-
-    wrote_mice = 0
-    unknown_mice = []
-    for mouse, attrs in sorted(per_mouse.items()):
-        project = proj_of.get(mouse)
-        if not project:
-            unknown_mice.append(mouse)
-            continue
-        if args.write:
-            book.set(project, mouse, attrs)
-        wrote_mice += 1
-
-    # ---- write the bad channels ------------------------------------------
-    wrote_bad = 0
-    unmatched = []
-    for (mouse, session), chans in sorted(bad_by_session.items()):
-        ident = {
-            "mouse": mouse, "session": session,
-            "loose_key": ids.make_loose_key(mouse, session),
-            "key": None, "start": None,
-        }
-        rec, how = ids.match(ident, known)
-        if not rec:
-            unmatched.append((mouse, session, chans))
-            continue
-        if args.write:
-            have = set(rec.get("bad_channels") or [])
-            st.set_bad_channels(
-                {k: rec.get(k) for k in
-                 ("key", "loose_key", "mouse", "session", "start", "label")},
-                sorted(have | set(chans)),
-                note="Bad channels from the Toothy workbook.")
-            cond = conditions.get((mouse, session))
-            if cond:
-                st.upsert_session(
-                    {k: rec.get(k) for k in
-                     ("key", "loose_key", "mouse", "session", "start", "label")},
-                    {"condition": cond})
-        wrote_bad += 1
-
-    # ---- optional: the channel layers ------------------------------------
-    wrote_layers = 0
-    bad_layer_names = {}
-    if args.layers and SHEET_CHANNELS in wb.sheetnames:
-        lay = layermod.Layers(args.logs, st)
-        by_sess = {}
-        for r in rows_of(SHEET_CHANNELS):
-            mo, se = parse_session_id(r.get("sess"))
-            if mo is None:
-                continue
-            num = as_int(r.get("eegnum"))
-            name = cell(r.get("location")).upper()
-            if num is None or not name:
-                continue
-            lid = LAYER_MAP.get(name)
-            if not lid:
-                bad_layer_names[name] = bad_layer_names.get(name, 0) + 1
-                continue
-            by_sess.setdefault((mo, se), {})[num] = lid
-
-        for (mouse, session), mapping in sorted(by_sess.items()):
-            ident = {"mouse": mouse, "session": session,
-                     "loose_key": ids.make_loose_key(mouse, session),
-                     "key": None, "start": None}
-            rec, _ = ids.match(ident, known)
-            if not rec or not rec.get("gid"):
-                continue
-            if args.write:
-                lay.ensure(rec["gid"], session_label=rec.get("label"),
-                           channels=sorted(mapping))
-                lay.set_many(rec["gid"], mapping)
-            wrote_layers += 1
-
-    # ---- report -----------------------------------------------------------
-    print()
-    print("mouse records   %d" % wrote_mice)
-    print("bad channels    %d session(s)" % wrote_bad)
-    if args.layers:
-        print("layer sheets    %d session(s)" % wrote_layers)
-        if bad_layer_names:
-            print("  layer names nobody recognised (left alone):")
-            for k, v in sorted(bad_layer_names.items(), key=lambda kv: -kv[1]):
-                print("     %-12s %d channel(s)" % (k, v))
-    if unknown_mice:
-        print()
-        print("Mice with no registered recording, so no project to file them "
-              "under: " + ", ".join("m%d" % m for m in unknown_mice))
-    if unmatched:
-        print()
-        print("Bad channels for recordings BARRY has not met:")
-        for mouse, session, chans in unmatched[:20]:
-            print("   m%-4d s%-4d %s" % (mouse, session, chans))
-        if len(unmatched) > 20:
-            print("   ... and %d more" % (len(unmatched) - 20))
-    if not args.write:
-        print()
-        print("Nothing written. Re-run with --write.")
-    return 0
+    if not args.apply:
+        say("\n*** DRY RUN -- nothing will be written. Add --apply to do it.")
+    do_refs(A.STORE, index, wb, args.apply)
+    say("\n" + ("Applied." if args.apply
+                else "Nothing was written. Re-run with --apply."))
+    wb.close()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

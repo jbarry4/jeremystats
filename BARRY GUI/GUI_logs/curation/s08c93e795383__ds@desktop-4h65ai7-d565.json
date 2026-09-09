@@ -1,6 +1,6 @@
 {
   "_at": {
-    "assignee": "2026-09-08T18:01:48.351060+00:00",
+    "assignee": "2026-09-09T02:02:25.830364+00:00",
     "created": "2026-09-03T21:07:03.205703+00:00",
     "gid": "2026-09-03T21:07:03.205703+00:00",
     "imports": "2026-09-03T21:07:03.205703+00:00",
@@ -10,7 +10,7 @@
     "schema": "2026-09-03T21:07:03.205703+00:00",
     "session_label": "2026-09-03T21:07:03.205703+00:00",
     "source": "2026-09-03T21:07:03.205703+00:00",
-    "updated": "2026-09-08T18:01:48.351060+00:00"
+    "updated": "2026-09-09T02:02:25.830364+00:00"
   },
   "_keys": {
     "events": {
@@ -480,7 +480,7 @@
       ],
       "e3f37c23783": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "e3fd5d38bb2": [
         "set",
@@ -720,7 +720,7 @@
       ],
       "e584ee0a6e9": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "e58a63e8db2": [
         "set",
@@ -1080,7 +1080,7 @@
       ],
       "e83624fcb2a": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "e83eb15f34c": [
         "set",
@@ -1576,7 +1576,7 @@
       ],
       "ebedf3a8afb": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "ebefebe1806": [
         "set",
@@ -1624,7 +1624,7 @@
       ],
       "ec5c4b39da5": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "ec679e77d3f": [
         "set",
@@ -1724,7 +1724,7 @@
       ],
       "ed2cc347034": [
         "set",
-        "2026-09-08T17:44:56.730470+00:00"
+        "2026-09-09T02:02:25.830364+00:00"
       ],
       "ed37144d08e": [
         "set",
@@ -2001,11 +2001,11 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:01:48.351060+00:00",
+    "at": "2026-09-09T02:02:25.830364+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "assignee": "Shahriar",
+  "assignee": "Shahriar Tafti",
   "created": {
     "at": "2026-09-03T17:07:03-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -2015,14 +2015,14 @@
   "events": [
     {
       "at": "2026-09-04T12:18:21-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ed2cc347034",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:21-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -2030,14 +2030,14 @@
     },
     {
       "at": "2026-09-04T12:18:21-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e3f37c23783",
       "label": "review",
       "note": "Filed under flag and garbage when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:21-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "review"
         }
       ],
@@ -2087,14 +2087,14 @@
     },
     {
       "at": "2026-09-04T12:18:28-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ec5c4b39da5",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:28-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -2144,14 +2144,14 @@
     },
     {
       "at": "2026-09-04T12:18:49-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "ebedf3a8afb",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:49-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -2229,14 +2229,14 @@
     },
     {
       "at": "2026-09-04T12:18:51-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e584ee0a6e9",
       "label": "flag",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:51-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -2244,14 +2244,14 @@
     },
     {
       "at": "2026-09-04T12:18:52-0400",
-      "by": "Shahriar",
+      "by": "Shahriar Tafti",
       "id": "e83624fcb2a",
       "label": "flag",
       "note": "Filed under flag and garbage when sorted, so it needs deciding.",
       "reviews": [
         {
           "at": "2026-09-04T12:18:52-0400",
-          "by": "Shahriar",
+          "by": "Shahriar Tafti",
           "label": "flag"
         }
       ],
@@ -9090,11 +9090,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-08T14:01:48-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T22:02:25-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

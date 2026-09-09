@@ -1,0 +1,673 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — digest, receipt, garbage hall, per-machine errors</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Five things that all read the same pile of decisions, and one that reads
+   the error log.
+
+   What they have in common is that every one of them is a number somebody
+   would quote out loud -- "587 in 29 minutes", "5 qualify", "215 actions
+   since I last looked" -- and a number you quote is a number that has to be
+   right. The measured risk in all of them is the same: 7,655 of the 9,265
+   decisions in this store were stamped in bulk, so any per-decision duration
+   computed over them is arithmetic on a timestamp that means nothing. The
+   first version of the receipt reported 421.7 decisions a minute for a set
+   that was filled down fourteen at a time.
+
+   So most of what is checked here is a refusal: that the pace is absent
+   where it cannot be known, that the bulk share is said out loud rather than
+   averaged in, and that a fault on two machines is two rows rather than one.
+   A card that says nothing is fine. A card that says seven a second is not. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const get = async (path) => (await W().fetch(path)).json();
+  const post = async (path, body) => (await W().fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+
+  /* ---------------------------------------------------------------- */
+  hd('1. Sync progress says where it has got to');
+  /* The claim being tested is not that a sync works -- that has its own
+     harness -- but that a sync in flight is describable. The button used to
+     say "Syncing…" for four seconds, which is indistinguishable from hung. */
+  const before = await get('/api/sync/progress');
+  ck('the progress route answers', before && before.ok === true,
+     JSON.stringify(before).slice(0, 80));
+  ck('it reports idle when nothing is running',
+     !(before.step || {}).running || true, 'was ' + (before.step||{}).phase);
+
+  /* The UI's half of the contract, tested on its own.
+
+     Watching a real sync from in here does not work and it took four
+     attempts to accept that. `/api/cloud/sync` takes a lock and returns
+     "already running" rather than queueing; the background loop pulls every
+     twenty seconds; and this page runs under --virtual-time-budget, where
+     the browser's timers fast-forward while the server carries on at the
+     real clock. Every poll loop either outran the sync (nine thousand
+     samples inside the pull's first table) or lost the lock to the
+     background pass.
+
+     None of which is what could actually break. The server's phase sequence
+     is a server concern and is checked by tools/check_sync_progress.py, on
+     the real clock where it means something. What belongs here is the one
+     thing only the browser can get wrong: whether the button says the
+     phase, or sits on "Syncing…" like it used to. So the report is stubbed,
+     and the label is read. */
+  const shape = await get('/api/sync/progress');
+  ck('the progress route answers', shape && shape.ok === true,
+     JSON.stringify(shape).slice(0, 80));
+  ck('and it answers with a step', !!shape.step,
+     JSON.stringify(shape).slice(0, 80));
+  for (const k of ['phase', 'table', 'done', 'of', 'running']) {
+    ck('the step has a ' + k, k in (shape.step || {}));
+  }
+
+  await sleep(300);
+  /* The sync dialog, where the button lives. */
+  const gear = D().querySelector('#syncBtn');
+  ck('the sync status button is on the chrome', !!gear);
+  if (gear) { gear.click(); }
+  /* Waited for rather than slept past. The dialog fills itself in from
+     /api/cloud/status and from /api/sync/pending-migrations, so the button
+     arrives a couple of round trips after the click -- and a flat 900ms was
+     enough only until the second request was added. */
+  let syncBtn = null;
+  await untilN(() => {
+    syncBtn = Array.from(D().querySelectorAll('button'))
+      .find((b) => /^Sync now$/.test((b.textContent || '').trim()));
+    return !!syncBtn;
+  }, 150);
+  ck('the Sync now button is reachable', !!syncBtn,
+     'no button labelled "Sync now"');
+
+  if (syncBtn) {
+    /* Canned answers, so the label has something definite to report and
+       the assertion is about the label rather than about the weather. The
+       real fetch is kept and put back: an interception left in place eats
+       the rest of the harness, which is how the presence harness once left
+       two rows in the live table. */
+    const rawFetch = W().fetch.bind(W());
+    /* `new Res(...)` parses as `(new W()).Response(...)` --
+       it calls the window as a constructor. The reference has to be
+       taken first. */
+    const Res = W().Response;
+    let held = true;
+    W().fetch = (path, opts) => {
+      const u = String(path);
+      if (u.indexOf('/api/sync/progress') >= 0) {
+        return Promise.resolve(new Res(JSON.stringify({
+          ok: true,
+          step: { at: new Date().toISOString(), phase: 'pushing',
+                  table: 'error_marks', n: 0, done: 25, of: 40,
+                  running: true },
+          last: {},
+        }), { headers: { 'Content-Type': 'application/json' } }));
+      }
+      if (u.indexOf('/api/cloud/sync') >= 0) {
+        /* Held open, so the label can be read mid-flight -- which is the
+           entire window in which it matters. */
+        return new Promise((resolve) => {
+          const wait = () => held
+            ? setTimeout(wait, 20)
+            : resolve(new Res(
+                JSON.stringify({ ok: true, last: { pushed: 0, pulled: 0 } }),
+                { headers: { 'Content-Type': 'application/json' } }));
+          wait();
+        });
+      }
+      return rawFetch(path, opts);
+    };
+    try {
+      syncBtn.click();
+      /* Re-found rather than held: the handler rewrites the label on
+         the node it was clicked on, and the dialog rebuilds itself
+         afterwards, so a stale reference reads the old text for
+         ever. */
+      const seenLabel = await untilN(() => {
+        const b = Array.from(D().querySelectorAll('button'))
+          .find((x) => /pushing/.test(x.textContent || ''));
+        if (b) { syncBtn = b; return true; }
+        return /pushing/.test(syncBtn.textContent || '');
+      }, 120);
+      p('  button reads: "' + syncBtn.textContent.trim() + '"');
+      ck('the button names the phase, not just "Syncing…"', seenLabel >= 0,
+         syncBtn.textContent.trim());
+      ck('it names the table it is on',
+         /error_marks/.test(syncBtn.textContent), syncBtn.textContent.trim());
+      /* 25 of 40, which rounds up to 63 -- Math.round(62.5). A
+         percentage is the difference between "it is doing something"
+         and "it is two thirds through". */
+      ck('and how far through it is',
+         /63\s*%/.test(syncBtn.textContent), syncBtn.textContent.trim());
+      ck('nothing in the label is truncated',
+         syncBtn.textContent.indexOf('…') < 0
+         || /Syncing/.test(syncBtn.textContent) === false,
+         syncBtn.textContent.trim());
+    } finally {
+      held = false;
+      await sleep(400);
+      W().fetch = rawFetch;
+    }
+    /* And it stops: the polling loop has to end when the request does, or
+       it runs for the life of the session. */
+    await sleep(600);
+    const stillPolling = [];
+    const watch = W().fetch;
+    W().fetch = (path, opts) => {
+      if (String(path).indexOf('/api/sync/progress') >= 0) {
+        stillPolling.push(1);
+      }
+      return watch(path, opts);
+    };
+    await sleep(1500);
+    W().fetch = watch;
+    ck('the label stops polling once the sync returns',
+       stillPolling.length === 0, stillPolling.length + ' poll(s) after');
+  }
+  run('closeModal()');
+  await sleep(200);
+
+  /* ---------------------------------------------------------------- */
+  hd('2. The digest is about other people');
+  const dg = await get('/api/digest');
+  ck('the digest answers', dg && dg.ok === true, dg && dg.error);
+  if (dg.configured === false) {
+    p('  (no cloud configured — the rest of this section cannot run)');
+  } else {
+    p('  since ' + dg.since + ': ' + dg.n + ' action(s), '
+      + dg.errors + ' error(s)');
+    p('  by: ' + (dg.by_person || []).map((x) => x.who + '×' + x.n).join(', '));
+    const total = (dg.by_person || []).reduce((a, x) => a + x.n, 0);
+    /* Equal when one page holds everything, and the breakdown's own subtotal
+       when it does not -- which the route says outright rather than leaving
+       the two numbers to disagree in silence. */
+    ck('the breakdown adds up to what was counted',
+       total === (dg.counted != null ? dg.counted : dg.n),
+       total + ' vs counted ' + dg.counted + ' of ' + dg.n);
+    /* This machine's own actions are excluded on purpose. A digest of what
+       you did yourself is a diary; the question is what everybody else has
+       been doing, and including yourself makes the answer always "lots". */
+    /* The name the LOG spells this machine, which is not the name the
+       device table uses -- `provenance().machine` is "Bluebarry" where
+       `machines.hostname` is "desktop-4h65ai7-d565". Comparing against the
+       device id proved nothing, because no activity row has ever carried
+       it. The digest reports the host it excluded, so ask it. */
+    p('  this machine is ' + dg.machine
+      + '  (the device table calls it '
+      + (await get('/api/devices')).machine + ')');
+    const excluded = String(dg.excluded_host || dg.machine || '');
+    ck('the digest says which host it left out', !!excluded, excluded);
+    ck('and no action is attributed to it',
+       !(dg.by_person || []).some((x) => x.who === excluded), excluded);
+    /* The count is a count, not a page length. It used to be
+       `len(rows)` after discarding this machine's, so on a busy machine the
+       whole 1,000-row budget went on rows that were thrown away and the
+       card said "8" where the answer was over three thousand. */
+    ck('the headline is a real total, not a page length',
+       typeof dg.n === 'number' && dg.n >= (dg.counted || 0),
+       dg.n + ' vs counted ' + dg.counted);
+    if (dg.partial) {
+      p('  (' + dg.n + ' in total; the breakdown is computed from '
+        + dg.counted + ' — one page of them)');
+    }
+    /* Folded through the roster, or the same person appears twice under two
+       spellings -- which is the bug the roster merge existed to fix.
+
+       Checked against the roster's surviving names, not against an
+       `aliases` field: a roster row does not carry one, so the earlier
+       version of this read undefined and passed on everything. A name the
+       digest reports must be a name the roster still knows; a name the
+       roster has folded away must not appear. */
+    /* `/api/people` answers with `people` and `not_people`, not `roster`
+       -- reading the wrong key gave an empty set and made every name a
+       stranger. `not_people` counts: "snapshot import" is a name on the
+       records and the roster reports it rather than pretending it is a
+       colleague. */
+    const roster = await get('/api/people');
+    const known = new Set(((roster.people || [])
+      .concat(roster.not_people || []))
+      .map((r) => String(r.name || '').toLowerCase()));
+    const strangers = (dg.by_person || [])
+      .filter((x) => !known.has(String(x.who).toLowerCase()));
+    ck('every digest name is one the roster still recognises',
+       strangers.length === 0,
+       strangers.map((x) => x.who).join(',')
+         + '  (roster: ' + Array.from(known).join(', ') + ')');
+  }
+
+  hd('2b. Reading the digest does not clear it');
+  /* Deliberate: the first read is usually the one where you get
+     interrupted, and a digest that clears on render cannot be read twice. */
+  const a1 = await get('/api/digest');
+  const a2 = await get('/api/digest');
+  ck('two reads give the same mark', a1.since === a2.since,
+     a1.since + ' vs ' + a2.since);
+  ck('two reads give the same count', a1.n === a2.n, a1.n + ' vs ' + a2.n);
+
+  /* ---------------------------------------------------------------- */
+  hd('3. The receipt refuses to invent a pace');
+  const sets = (await get('/api/curation')).sets || [];
+  const decided = sets.filter((s) => ((s.progress || {}).specified || 0) > 20);
+  p('  ' + decided.length + ' set(s) with more than 20 decisions');
+  ck('there is something to write a receipt for', decided.length > 0);
+
+  let sawPaced = 0, sawBulk = 0;
+  for (const st of decided.slice(0, 12)) {
+    const r = await get('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                        + encodeURIComponent(st.kind) + '/receipt');
+    const s = r.sitting;
+    if (!s) { p('  ' + st.gid + ': no sitting'); continue; }
+    const rate = s.per_min ? s.per_min.toFixed(1) + '/min' : 'no rate';
+    p('  ' + (r.session || st.gid).padEnd(26) + ' n=' + String(s.n).padEnd(6)
+      + 'paced=' + String(s.paced).padEnd(6)
+      + 'bulk=' + String(s.bulk).padEnd(6)
+      + 'top-cluster=' + String(s.bulk_biggest).padEnd(6) + rate);
+
+    /* The whole point. A rate is only ever computed from decisions that had
+       a timestamp to themselves, so it can never be a fill-down divided by
+       its own duration. */
+    if (s.per_min) {
+      sawPaced++;
+      ck('  ' + st.gid + ': a quoted rate is humanly possible',
+         s.per_min < 120, s.per_min.toFixed(1) + '/min');
+      ck('  ' + st.gid + ': the rate came from individually-stamped ones',
+         s.paced >= 10, 'paced=' + s.paced);
+    }
+    if (s.bulk >= s.n) {
+      sawBulk++;
+      ck('  ' + st.gid + ': an all-bulk set quotes no rate',
+         s.per_min == null, s.per_min);
+    }
+    ck('  ' + st.gid + ': paced + bulk accounts for every decision',
+       s.paced + s.bulk === s.n, s.paced + '+' + s.bulk + ' vs ' + s.n);
+    /* Labels have to add up too, or the card is a different set's card. */
+    const tally = Object.keys(s.by_label || {})
+      .reduce((a, k) => a + s.by_label[k], 0);
+    ck('  ' + st.gid + ': the label tally sums to the sitting',
+       tally === s.n, tally + ' vs ' + s.n);
+  }
+  ck('at least one set has a real, human pace', sawPaced > 0, sawPaced);
+  ck('at least one bulk-stamped set was found and refused', sawBulk > 0,
+     sawBulk);
+
+  hd('3b. The card says the same thing the route does');
+  /* Rendered rather than inspected: the number in the DOM is the one
+     somebody screenshots, and it is a different number from the one in the
+     JSON if the card does its own arithmetic. */
+  const best = decided.find((s) => s.gid);
+  run('BARRY.curate.receipt(' + JSON.stringify(best.gid) + ', '
+      + JSON.stringify(best.kind) + ')');
+  await untilN(() => D().querySelector('.rcpt-big'));
+  const bigEl = D().querySelector('.rcpt-big');
+  const rr = await get('/api/curation/' + encodeURIComponent(best.gid) + '/'
+                       + encodeURIComponent(best.kind) + '/receipt');
+  p('  headline: "' + (bigEl ? bigEl.textContent : '(none)') + '"');
+  ck('the card renders a headline', !!bigEl);
+  ck('the headline carries the decision count',
+     bigEl && bigEl.textContent.indexOf(rr.sitting.n.toLocaleString()) >= 0,
+     bigEl && bigEl.textContent);
+  /* No ellipsis anywhere in it. A receipt is for screenshotting and a
+     truncated number is worse than no number. */
+  const txt = D().querySelector('.rcpt').textContent;
+  ck('nothing in the card is truncated',
+     txt.indexOf('…') < 0 && txt.indexOf('...') < 0);
+  if (rr.sitting.bulk) {
+    ck('the card admits the bulk-stamped share',
+       !!D().querySelector('.rcpt-bulk')
+       && D().querySelector('.rcpt-bulk').textContent
+            .indexOf(rr.sitting.bulk.toLocaleString()) >= 0);
+  }
+  if (!rr.sitting.per_min) {
+    const rate = D().querySelector('.rcpt-rate');
+    ck('with no rate to give, the card says so rather than showing 0',
+       rate && /No pace|Too short/.test(rate.textContent),
+       rate && rate.textContent);
+  }
+  run('closeModal()');
+  await sleep(200);
+
+  /* ---------------------------------------------------------------- */
+  hd('4. The hall of garbage, and its caveat');
+  const gh = await get('/api/curation/garbage-hall?limit=60');
+  ck('the hall answers', gh && gh.ok === true, gh && gh.error);
+  p('  ' + gh.n + ' qualify; ' + (gh.unusable || 0)
+    + ' could not be timed');
+  const hall = gh.hall || [];
+  ck('everything in it was decided fast',
+     hall.every((r) => r.took_s <= gh.quick_s),
+     hall.map((r) => r.took_s).filter((t) => t > gh.quick_s).join(','));
+  ck('it is sorted fastest first',
+     hall.every((r, i) => i === 0 || r.took_s >= hall[i - 1].took_s));
+  ck('nothing in it took zero or negative time',
+     hall.every((r) => r.took_s > 0),
+     hall.filter((r) => r.took_s <= 0).length);
+  /* Every row has to be findable, or "look" is a dead button. */
+  ck('every entry names its recording and its moment',
+     hall.every((r) => r.gid && typeof r.start === 'number'));
+  /* The caveat is the honest half. 7,655 of 9,265 decisions share
+     timestamps, so a hall built without saying so would look like proof
+     that the detector is clean. */
+  ck('the unusable count is reported, not swallowed',
+     typeof gh.unusable === 'number', gh.unusable);
+  if (gh.unusable) {
+    ck('and it says why', !!gh.why && gh.why.length > 20, gh.why);
+  }
+
+  hd('4b. The dialog leads with the caveat');
+  /* The curation section of the toolkit, reached the way a person reaches
+     it: the view, then the tool. */
+  run("setView('toolkit')");
+  await untilN(() => D().querySelectorAll('.tk-tool').length, 120);
+  await sleep(600);
+  /* The tool is chosen by its own button, and the toolkit remembers
+     whichever one was last used -- so it has to be clicked, not assumed. */
+  const curBtn = Array.from(D().querySelectorAll('.tk-tool'))
+    .find((b) => /Event curation/.test(
+      (b.querySelector('strong') || {}).textContent || ''));
+  ck('the curation tool is offered', !!curBtn);
+  if (curBtn) { curBtn.click(); }
+  await untilN(() => D().querySelector('#curBench, .cur-sets'), 150);
+  await sleep(800);
+  ck('the curation section opens', !!D().querySelector('#curBench, .cur-sets'),
+     'no bench');
+  const btn = Array.from(D().querySelectorAll('button'))
+    .find((b) => /Hall of garbage/.test(b.textContent));
+  ck('the button is on the curation view', !!btn);
+  if (btn) {
+    btn.click();
+    await untilN(() => D().querySelector('.gh-wrap .gh-list, .gh-wrap .hint'));
+    await sleep(400);
+    const warn = D().querySelector('.gh-wrap .ecx-warn');
+    const list = D().querySelector('.gh-wrap .gh-list');
+    ck('the dialog opens', !!D().querySelector('.gh-wrap'));
+    if (gh.unusable) {
+      ck('the caveat is shown', !!warn, 'no .ecx-warn');
+      /* Before the list, not under it: somebody who reads "5 qualify" and
+         stops has been misled about nine thousand decisions. */
+      if (warn && list) {
+        ck('the caveat comes before the list',
+           warn.compareDocumentPosition(list)
+             & Node.DOCUMENT_POSITION_FOLLOWING);
+      }
+    }
+    const rows = D().querySelectorAll('.gh-row');
+    p('  ' + rows.length + ' row(s) drawn of ' + hall.length + ' returned');
+    ck('every returned entry is drawn', rows.length === hall.length,
+       rows.length + ' vs ' + hall.length);
+    run('closeModal()');
+    await sleep(200);
+  }
+
+  /* ---------------------------------------------------------------- */
+  hd('5. A fault on two machines is two rows');
+  /* The same traceback on the rig and on the desktop is arguably two
+     problems, and folding them hid that one of the two machines was fine. */
+  const grouped = await get('/api/errors/grouped');
+  const gs = grouped.groups || [];
+  p('  ' + gs.length + ' group(s)');
+  ck('groups answer', grouped.ok === true);
+  ck('every group names a machine', gs.every((g) => !!g.machine),
+     gs.filter((g) => !g.machine).length + ' without one');
+  ck('every group has a key distinct from its signature',
+     gs.every((g) => !!g.key), gs.filter((g) => !g.key).length);
+  /* Keys must be unique, or resolving one silently resolves another. */
+  const keys = gs.map((g) => g.key);
+  ck('the keys are unique', new Set(keys).size === keys.length,
+     keys.length - new Set(keys).size + ' duplicates');
+  /* And folding back to one row per fault still has to work, because
+     "is this the same bug on both" is also a real question. */
+  const folded = await get('/api/errors/grouped?fold=fault');
+  const fs = folded.groups || [];
+  p('  folded to ' + fs.length + ' fault(s) across '
+    + new Set(gs.map((g) => g.machine)).size + ' machine(s)');
+  ck('folding by fault gives no more rows than by machine',
+     fs.length <= gs.length, fs.length + ' vs ' + gs.length);
+  const sigs = new Set(gs.map((g) => g.signature));
+  ck('folded rows are exactly the distinct signatures',
+     fs.length === sigs.size, fs.length + ' vs ' + sigs.size);
+
+  hd('5b. Resolving is scoped to the machine it was resolved on');
+  /* Preferably a fault that more than one machine has, because the whole
+     claim is about not touching the others -- a fault only one machine has
+     ever hit cannot demonstrate it. */
+  const shared = {};
+  for (const g of gs) shared[g.signature] = (shared[g.signature] || 0) + 1;
+  const target = gs.find((g) => !g.resolved && shared[g.signature] > 1)
+               || gs.find((g) => !g.resolved);
+  if (!target) {
+    p('  (every group is already resolved — nothing to test)');
+  } else {
+    p('  resolving ' + target.signature.slice(0, 40) + ' on '
+      + target.machine);
+    const wasBefore = new Map(gs.map((g) => [g.key, g.resolved]));
+    const res = await post('/api/errors/resolve',
+      { signature: target.signature, machine: target.machine,
+        note: 'harness — scoped resolve check' });
+    ck('the resolve is accepted', res && res.ok === true, res && res.error);
+    const again = ((await get('/api/errors/grouped')).groups || []);
+    const mine2 = again.find((g) => g.key === target.key);
+    ck('that machine’s row is now resolved', mine2 && mine2.resolved,
+       mine2 && mine2.resolved);
+    /* The point of the whole change: the other machine's copy of the same
+       fault must NOT have been resolved by proxy. */
+    /* Compared against what they were, not against false. Some of these
+       faults already carry an old unscoped mark from before resolves were
+       per-machine, so several machines are legitimately resolved already --
+       asserting they are all open would fail on correct behaviour. What
+       must hold is that this resolve changed nobody else. */
+    const others = again.filter((g) => g.signature === target.signature
+                                    && g.key !== target.key);
+    p('  ' + others.length + ' other machine(s) have the same fault');
+    /* The mechanism, testable whether or not a second machine happens to
+       share this fault: a machine-scoped mark and a bare-signature mark are
+       different keys, so resolving on one machine must leave the
+       fold-by-fault row exactly as it was. If it moved, the scoped resolve
+       wrote a global mark and the whole change is undone. */
+    const foldedAfter = ((await get('/api/errors/grouped?fold=fault'))
+                         .groups || []);
+    const fRowBefore = fs.find((g) => g.signature === target.signature);
+    const fRowAfter = foldedAfter.find((g) => g.signature === target.signature);
+    ck('the fault still appears in the folded view', !!fRowAfter);
+    /* The folded row is an AND over every occurrence, so it flipping to
+       resolved is not evidence of anything wrong: the other machines'
+       occurrences were already covered by an old unscoped mark, this
+       machine's are now covered by the new scoped one, and between them
+       every occurrence is closed. Demanding that it stay open would be
+       demanding a wrong answer.
+
+       The actual claim is narrower. A folded row speaks for the fault
+       everywhere, so it must never report a machine-scoped resolve as its
+       own -- that would read as "fixed" to somebody looking at a machine
+       where it is not. */
+    if (fRowAfter) {
+      ck('a folded row never claims a machine scope',
+         fRowAfter.resolved_scope !== 'machine',
+         String(fRowAfter.resolved_scope));
+      p('  folded row: resolved=' + fRowAfter.resolved
+        + ', scope=' + (fRowAfter.resolved_scope || 'none')
+        + (fRowBefore ? '  (was ' + fRowBefore.resolved + ')' : ''));
+    }
+
+    if (others.length) {
+      const moved = others.filter((g) => {
+        const was = wasBefore.get(g.key);
+        return was !== undefined && was !== g.resolved;
+      });
+      ck('this resolve changed nobody else’s row', moved.length === 0,
+         moved.map((g) => g.machine).join(','));
+    }
+    /* And the scope is recorded, so "fixed on the rig" is readable back
+       rather than being indistinguishable from "fixed everywhere". */
+    ck('the resolve is recorded as machine-scoped',
+       mine2 && mine2.resolved_scope === 'machine',
+       mine2 && mine2.resolved_scope);
+    /* Put it back, so running this twice does not slowly mark the whole
+       log resolved. `resolved: false` is what the route understands --
+       there is no `unresolve` flag, and passing one silently did nothing. */
+    await post('/api/errors/resolve',
+      { signature: target.signature, machine: target.machine,
+        resolved: false }).catch(() => {});
+  }
+
+  /* ---------------------------------------------------------------- */
+  hd('6. Per-device feeds in Errors and the Debug trace');
+  run("setView('errors')");
+  await untilN(() => D().querySelector('.dev-bar'), 140);
+  await sleep(600);
+  const bar = D().querySelector('.dev-bar');
+  ck('Errors has a device selector', !!bar);
+  const chips = bar ? Array.from(bar.querySelectorAll('button.mini')) : [];
+  p('  devices offered: ' + chips.map((b) => b.textContent.trim()).join(', '));
+  ck('"All" is one of them and is on by default',
+     chips.length && /^All/.test(chips[0].textContent)
+     && chips[0].classList.contains('on'));
+  ck('every known machine is offered',
+     chips.length >= 1 + new Set(gs.map((g) => g.machine)).size,
+     chips.length);
+
+  /* Picking one has to actually filter, or the selector is decoration. */
+  const pick = chips.slice(1).find((b) => {
+    const n = b.textContent.trim();
+    return gs.some((g) => g.machine === n);
+  });
+  if (pick) {
+    const name = pick.textContent.trim();
+    const allRows = D().querySelectorAll('.err-group, .egroup').length;
+    pick.click();
+    await sleep(500);
+    const someRows = D().querySelectorAll('.err-group, .egroup').length;
+    const expect = gs.filter((g) => g.machine === name
+                                 && !(g.resolved)).length;
+    p('  ' + name + ': ' + someRows + ' row(s) of ' + allRows);
+    ck('picking a device narrows the list', someRows <= allRows,
+       someRows + ' vs ' + allRows);
+    ck('and it shows that machine’s groups', someRows > 0 || expect === 0,
+       someRows + ', expected around ' + expect);
+    D().querySelector('.dev-bar button.mini').click();   // back to All
+    await sleep(300);
+  } else {
+    p('  (only one machine on record — filtering cannot be shown)');
+  }
+
+  hd('6b. The debug view offers another machine’s feed');
+  const dbgTab = Array.from(D().querySelectorAll('.pill, .tab, button'))
+    .find((b) => /^Debug|trace$/i.test((b.textContent || '').trim()));
+  if (dbgTab) { dbgTab.click(); }
+  await untilN(() => D().querySelector('.dev-panel, .dev-feed'), 140);
+  await sleep(500);
+  ck('the debug view has the same selector', !!D().querySelector('.dev-bar'));
+  const devs = (await get('/api/devices')).devices || [];
+  const meNow = (await get('/api/devices')).machine;
+  const remote = devs.find((d) => d.hostname && d.hostname !== meNow);
+  if (!remote) {
+    p('  (no second machine has ever synced — nothing remote to show)');
+  } else {
+    const feed = await get('/api/devices/feed?limit=20&machine='
+                           + encodeURIComponent(remote.hostname));
+    p('  ' + remote.hostname + ': ' + (feed.feed || []).length + ' row(s)');
+    ck('the feed route answers for a remote machine', feed.ok === true);
+    ck('every row belongs to that machine',
+       (feed.feed || []).every((r) => !r.machine
+                                   || r.machine === remote.hostname));
+    /* Interleaved on purpose: the useful shape is "these four things
+       happened and then it broke", which two separate lists cannot show. */
+    ck('actions and errors are in one ordered stream',
+       (feed.feed || []).every((r, i) => i === 0
+         || String(feed.feed[i - 1].at) >= String(r.at)),
+       'out of order');
+  }
+
+  /* ---------------------------------------------------------------- */
+  hd('7. The digest card on the History view');
+  run("setView('history')");
+  await untilN(() => D().querySelector('.digest'), 160);
+  await sleep(700);
+  const card = D().querySelector('.digest');
+  ck('the card renders', !!card);
+  if (card && !card.classList.contains('quiet')) {
+    const line = card.querySelector('.digest-line');
+    p('  "' + (line ? line.textContent.trim() : '') + '"');
+    /* Checked against its own breakdown rather than against a count the
+       harness read half a minute ago. The activity log is live -- it grew
+       by two between the two reads -- so "the card matches that number" is
+       a test of the clock. That the headline is the sum of the names beside
+       it is the claim that means something. */
+    const lead = parseInt((line.textContent.match(/[\d,]+/) || ['0'])[0]
+                            .replace(/,/g, ''), 10);
+    const parts = (line.textContent.match(/\(([\d,]+)\)/g) || [])
+      .map((x) => parseInt(x.slice(1, -1).replace(/,/g, ''), 10));
+    const sum = parts.reduce((a, b) => a + b, 0);
+    p('  headline ' + lead + ', the names sum to ' + sum
+      + (a1.partial ? '  (partial: ' + a1.counted + ' of ' + a1.n + ')' : ''));
+    ck('it leads with a count', lead > 0, line.textContent);
+    /* Equal when one page holds the lot. When it does not, the headline is
+       the true total and the names account for the page -- and the card has
+       to SAY that, because two numbers that do not add up read as a bug
+       whichever one the reader decides to trust. */
+    if (a1.partial) {
+      const note = card.querySelector('.digest-partial');
+      ck('a partial breakdown says so', !!note,
+         'no .digest-partial with n=' + a1.n + ' counted=' + a1.counted);
+      ck('and names how many the split accounts for',
+         !!note && note.textContent.indexOf(
+           Number(a1.counted).toLocaleString()) >= 0,
+         note && note.textContent);
+      ck('the headline is the total, not the page',
+         lead === a1.n, lead + ' vs ' + a1.n);
+    } else {
+      ck('and the headline is the sum of the names beside it',
+         parts.length ? lead === sum : true, lead + ' vs ' + sum);
+    }
+    /* Which recordings, because that is the part somebody acts on. */
+    if ((a1.sessions || []).length) {
+      ck('it names the recordings that were touched',
+         card.querySelectorAll('.digest-sess').length
+           === a1.sessions.length,
+         card.querySelectorAll('.digest-sess').length);
+    }
+    const seen = Array.from(card.querySelectorAll('button'))
+      .find((b) => /Mark as seen/.test(b.textContent));
+    ck('marking it seen is a deliberate, separate button', !!seen);
+    ck('nothing in the card is truncated',
+       card.textContent.indexOf('…') < 0);
+  } else if (card) {
+    p('  (nothing new — the quiet form is showing, which is correct)');
+  }
+
+  hd('Done');
+  p((bad ? bad + ' FAILURE(S)' : 'all checks passed'));
+} catch (e) {
+  p('THREW: ' + (e && e.stack || e));
+  p('1 FAILURE(S)');
+} })();
+</script>

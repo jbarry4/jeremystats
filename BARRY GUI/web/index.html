@@ -412,6 +412,17 @@
             <button class="pill" data-flag="good" title="Flagged good for analysis">Marked good</button>
             <button class="pill" data-flag="exclude" title="Hide anything flagged exclude">Hide excluded</button>
             <button class="pill" data-flag="unhealthy" title="Only sessions the health check flagged">Health notes</button>
+            <!-- Layer state. Which recordings still need StrataScope is a
+                 question with sixty-odd sheets behind it now, and scrolling
+                 four hundred cards looking for the gaps is not an answer. -->
+            <button class="pill" data-flag="layers"
+                    title="Recordings that have a StrataScope sheet with labels on it">Layers labelled</button>
+            <button class="pill" data-flag="nolayers"
+                    title="Recordings with no layer labels yet — the ones still to do">Layers to do</button>
+            <!-- Reachable from here, so it opens on a click rather than
+                 after finding out which drive it was on. -->
+            <button class="pill" data-flag="here"
+                    title="Only recordings on a drive this machine can reach right now">On this machine</button>
           </div>
         </div>
 
@@ -434,6 +445,11 @@
         </div>
       </header>
       <div class="pad" style="padding-bottom:0"><div class="tl-wrap" id="histTimeline"></div></div>
+      <!-- "Since you last looked". Above the split and the full
+           width of it: it summarises the view rather than being a
+           row in the list, and inside the 300px runs column it
+           wrapped "24 hours ago" over three lines. -->
+      <div class="pad hist-digest-host" id="histDigest"></div>
       <div class="split">
         <aside class="split-left">
           <div class="search-wrap">

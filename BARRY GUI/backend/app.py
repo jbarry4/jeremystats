@@ -9,6 +9,7 @@ code runs on Windows and macOS.
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import shutil
@@ -1514,6 +1515,18 @@ def api_spikes_delete():
 # ==========================================================================
 @app.route("/api/activity", methods=["GET", "POST"])
 def api_activity():
+    """This machine's log, or the whole lab's.
+
+    `scope=everyone` reads the shared copy instead. The log stays push-only
+    -- an append-only record of what happened on one machine, which is why
+    copying somebody else's into this machine's day file would be writing
+    their actions into a file that says it is mine. The combined history is
+    a query, and this is it.
+
+    Falls back to the local log if the cloud cannot be reached, and says
+    which it gave you: "nobody else did anything" and "I could not find out
+    what anybody else did" are different answers.
+    """
     if request.method == "POST":
         body = request.get_json(force=True) or {}
         entries = body.get("entries")
@@ -1521,14 +1534,227 @@ def api_activity():
             entries = body.get("entry") or []
         n = STORE.record_activity(entries)
         return jsonify({"ok": True, "written": n})
+
+    limit = int(request.args.get("limit", 500))
+    scope = (request.args.get("scope") or "mine").lower()
+    action = request.args.get("action") or None
+    session_key = request.args.get("session") or None
+    machine = request.args.get("machine") or None
+
+    if scope == "everyone" and CLOUD.cloud.configured:
+        bits = ["order=at.desc"]
+        if action:
+            # A prefix, so "curation" finds curation.enter and curation.bank
+            # -- the useful question is about a kind of work, not one verb.
+            bits.append("action=like.%s*" % action)
+        if session_key:
+            bits.append("session_key=eq.%s" % session_key)
+        if machine:
+            bits.append("machine=eq.%s" % machine)
+        try:
+            rows = CLOUD.cloud.select("activity", query="&".join(bits),
+                                      limit=min(limit, 2000)) or []
+            return jsonify({
+                "ok": True, "scope": "everyone",
+                "activity": [{
+                    "id": r.get("id"), "at": r.get("at"),
+                    "action": r.get("action"), "detail": r.get("detail"),
+                    "view": r.get("view"), "machine": r.get("machine"),
+                    "user": r.get("git_user"),
+                    "session": {"key": r.get("session_key"),
+                                "gid": r.get("gid")},
+                } for r in rows],
+                "days": STORE.activity_days(),
+            })
+        except Exception as exc:                         # noqa: BLE001
+            # Not fatal, but not silent either: what came back is this
+            # machine's own log, and saying so is the difference between
+            # "nobody else did anything" and "I could not find out".
+            return jsonify({
+                "ok": True, "scope": "mine",
+                "wanted": "everyone",
+                "scope_error": str(exc)[:200],
+                "activity": STORE.list_activity(
+                    limit=limit, day=request.args.get("day") or None,
+                    action=action, session_key=session_key),
+                "days": STORE.activity_days(),
+            })
+
     return jsonify({
         "ok": True,
+        "scope": "mine",
+        "wanted": scope,
+        "scope_error": ("no cloud configured"
+                        if scope == "everyone" else None),
         "activity": STORE.list_activity(
-            limit=int(request.args.get("limit", 500)),
+            limit=limit,
             day=request.args.get("day") or None,
-            action=request.args.get("action") or None,
-            session_key=request.args.get("session") or None),
+            action=action,
+            session_key=session_key),
         "days": STORE.activity_days(),
+    })
+
+
+@app.route("/api/activity/who")
+def api_activity_who():
+    """Who has done what, and where -- the shape of the shared log.
+
+    Two counts per person and per machine rather than a list: the list is
+    the view above, and what this answers is "is there anything from the rig
+    at all", which a page of rows makes you work out for yourself.
+    """
+    if not CLOUD.cloud.configured:
+        return jsonify({"ok": True, "configured": False,
+                        "people": [], "machines": []})
+    try:
+        rows = CLOUD.cloud.select("activity", query="order=at.desc",
+                                  limit=2000) or []
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+
+    people, machines, actions = {}, {}, {}
+    for r in rows:
+        # Folded through the roster, like the digest. The log keeps whatever
+        # name the machine believed at the time -- deliberately, it is a
+        # record of what happened -- so every reader has to fold, or two
+        # readers disagree about who exists.
+        for bucket, key in ((people, _alias(r.get("git_user") or "unknown")),
+                            (machines, r.get("machine") or "unknown")):
+            slot = bucket.setdefault(key, {"n": 0, "last": None})
+            slot["n"] += 1
+            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+                slot["last"] = r.get("at")
+        # Grouped by the part before the dot: "curation" rather than
+        # "curation.enter", because the shape of somebody's week is about
+        # kinds of work.
+        kind = str(r.get("action") or "").split(".")[0] or "other"
+        actions[kind] = actions.get(kind, 0) + 1
+
+    def listed(bucket):
+        return sorted(
+            [{"name": k, "n": v["n"], "last": v["last"]}
+             for k, v in bucket.items()],
+            key=lambda x: -x["n"])
+
+    try:
+        total = CLOUD.cloud.count("activity")
+    except Exception:                                    # noqa: BLE001
+        total = None
+
+    # Counted over the whole log, not tallied from a page.
+    #
+    # This route exists to answer "is there anything from the rig at all",
+    # and a page cannot answer it: the thousand newest rows on a machine that
+    # has just run a harness suite are all its own, so the tally said one
+    # machine where the answer was five. Both sets are small and known -- the
+    # machines from the device table, the people from the roster -- so an
+    # exact count is a bounded number of requests that fetch no rows.
+    def tally(field, names):
+        out = []
+        for shown, spellings in names:
+            got, last = 0, None
+            # Case-folded and de-duplicated: "Rain" and an alias "rain" are
+            # the same `ilike` and would otherwise be added twice.
+            spellings = list({str(x).strip().lower(): str(x).strip()
+                              for x in spellings if x}.values())
+            for spelling in spellings:
+                if not spelling:
+                    continue
+                try:
+                    # `ilike`, not `eq`. Aliases are stored lower-cased and
+                    # the log holds the name as it was typed -- "rain
+                    # younger" against "Rain Younger" -- so a case-sensitive
+                    # match counted nothing and reported the two spellings as
+                    # two people, which is the very thing the merge fixed.
+                    got += CLOUD.cloud.count(
+                        "activity",
+                        query="%s=ilike.%s" % (field, _q(spelling)))
+                except Exception:                        # noqa: BLE001
+                    continue
+            if not got:
+                continue
+            # The last-seen still comes off the sample: it is only wrong when
+            # somebody has not been active recently, and then the sample says
+            # nothing rather than something false.
+            for bucket in (people, machines):
+                if shown in bucket:
+                    last = bucket[shown].get("last")
+                    break
+            out.append({"name": shown, "n": got, "last": last})
+        return sorted(out, key=lambda x: -x["n"])
+
+    # A person is counted under every spelling the log might hold, because
+    # the log keeps what each machine believed at the time -- deliberately --
+    # and the roster is what says those are the same person.
+    who_names = []
+    try:
+        got = PEOPLE.roster() or {}
+        for row in ((got.get("people") or [])
+                    + (got.get("not_people") or [])):
+            nm = row.get("name")
+            who_names.append((nm, [nm] + list(row.get("aliases") or [])))
+    except Exception:                                    # noqa: BLE001
+        who_names = [(k, [k]) for k in people]
+
+    # Every source that knows a machine name, unioned. No single one is
+    # complete: the `machines` table holds the computers that have registered
+    # a heartbeat (three of them here), while the log carries six -- a
+    # machine can have written activity and never synced since, or synced
+    # under a name it no longer uses. The device picker in Errors already
+    # unions these; this route counted from the first one alone and
+    # attributed 3,802 of 10,955 rows.
+    hosts = set()
+    try:
+        for d in (CLOUD.cloud.select("machines", limit=200) or []):
+            if d.get("hostname"):
+                hosts.add(d["hostname"])
+    except Exception:                                    # noqa: BLE001
+        pass
+    hosts.update(k for k in machines if k and k != "unknown")
+    try:
+        for r in (CLOUD.cloud.select(
+                "errors", query="order=at.desc", limit=600) or []):
+            if r.get("machine"):
+                hosts.add(r["machine"])
+    except Exception:                                    # noqa: BLE001
+        pass
+    host_names = [(h, [h]) for h in sorted(hosts)]
+
+    exact_people = tally("git_user", who_names)
+    exact_machines = tally("machine", host_names)
+
+    return jsonify({
+        "ok": True, "configured": True,
+        "sampled": len(rows),
+        "total": total,
+        "people": exact_people or listed(people),
+        "machines": exact_machines or listed(machines),
+        # So the arithmetic can be checked rather than trusted. Anything not
+        # attributed is a machine or a name nothing here knows about, which
+        # is a fact about the log worth surfacing rather than a rounding
+        # error to bury.
+        "attributed": {
+            "people": sum(x["n"] for x in exact_people),
+            "machines": sum(x["n"] for x in exact_machines),
+        },
+        "unattributed": ({
+            "people": max(0, (total or 0)
+                          - sum(x["n"] for x in exact_people)),
+            "machines": max(0, (total or 0)
+                            - sum(x["n"] for x in exact_machines)),
+        } if isinstance(total, int) else None),
+        # Exact where it matters, and said so. `people` and `machines` are
+        # counted over the whole log; the action kinds are not, because there
+        # is no bounded list of action names to iterate -- and "the shape of
+        # the recent work" is a fair thing to read off recent work.
+        "counts_are": "every row" if exact_people else (
+            "the most recent %d row(s)" % len(rows)),
+        "actions": sorted(
+            [{"kind": k, "n": v} for k, v in actions.items()],
+            key=lambda x: -x["n"]),
+        "actions_are": "the most recent %d row(s)" % len(rows),
+        "partial": bool(isinstance(total, int) and total > len(rows)
+                        and not exact_people),
     })
 
 
@@ -1848,8 +2074,98 @@ def api_layers_get(gid):
     rec = LAYERS.get(gid)
     if not rec:
         return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
-    return jsonify({"ok": True, "sheet": LAYERS.summary(rec),
+    out = LAYERS.summary(rec)
+    # With the snapshots, unlike the list: somebody reading one sheet wants
+    # to see what a version held, and that is the only place it can come
+    # from. The list leaves them out because sixty-odd of them is a lot of
+    # bytes for a count.
+    out["versions"] = [dict(v) for v in (rec.get("versions") or [])]
+    return jsonify({"ok": True, "sheet": out,
                     "session": _session_by_gid(gid)})
+
+
+@app.route("/api/layers/<gid>/snapshot", methods=["POST"])
+def api_layers_snapshot(gid):
+    """Freeze the sheet as it stands as the next version.
+
+    The same act as banking a curated set: a pass is finished, and what it
+    said should still be readable after somebody starts the next one. Named
+    rather than automatic -- a version per keystroke would be a log, and the
+    thing worth keeping is the moment somebody decided they were done.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = LAYERS.snapshot(gid, note=body.get("note"),
+                              by=(PROFILE.effective() or {}).get("user"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{
+        "action": "layers.snapshot",
+        "detail": {"gid": gid,
+                   "v": (rec.get("versions") or [{}])[-1].get("v"),
+                   "n": len(rec.get("labels") or {})},
+    }])
+    out = LAYERS.summary(rec)
+    out["versions"] = [dict(v) for v in (rec.get("versions") or [])]
+    return jsonify({"ok": True, "sheet": out})
+
+
+@app.route("/api/layers/<gid>/version-export", methods=["POST"])
+def api_layers_version_export(gid):
+    """One version of a layer sheet, as CSV.
+
+    Straight out of the snapshot rather than replayed: the same reason the
+    event bank exports a version from its snapshot. An export that
+    reconstructs the same thing by a different route is one that can
+    disagree with the history panel.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    rec = LAYERS.get(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No layer sheet."}), 404
+    want = body.get("v")
+    version = None
+    for v in (rec.get("versions") or []):
+        if want is None or int(v.get("v", -1)) == int(want):
+            version = v
+            if want is not None:
+                break
+    if version is None:
+        return jsonify({"ok": False,
+                        "error": "That sheet has no v%s." % want}), 404
+
+    names = {r["id"]: r["name"]
+             for r in (rec.get("regions") or layers.REGIONS)}
+    notes = {r["id"]: r.get("note") for r in (rec.get("regions") or layers.REGIONS)}
+    snap = version.get("snap") or {}
+    sess = _session_by_gid(gid) or {}
+    rows = []
+    # Every channel the sheet covers, labelled or not: a CSV that silently
+    # omits the unlabelled ones cannot be told from one where they were
+    # never offered.
+    for ch in LAYERS.covered(rec):
+        key = str(int(ch))
+        region = snap.get(key)
+        rows.append({
+            "project": sess.get("project"),
+            "mouse": sess.get("mouse"),
+            "session": sess.get("session"),
+            "session_label": rec.get("session_label"),
+            "gid": gid,
+            "version": version.get("v"),
+            "channel": int(ch),
+            "region": region or "",
+            "region_name": names.get(region, "") if region else "",
+            "region_note": notes.get(region, "") if region else "",
+            "labelled_by": version.get("by"),
+            "version_at": version.get("at"),
+            "version_note": version.get("note"),
+        })
+    text = extras.to_csv(rows)
+    name = body.get("name") or ("layers-%s-v%s.csv" % (gid, version.get("v")))
+    return Response(
+        text, mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="%s"' % name})
 
 
 @app.route("/api/layers/<gid>/start", methods=["POST"])
@@ -2487,6 +2803,306 @@ def api_people_forget():
                     **PEOPLE.roster(CURATE, BANK)})
 
 
+# ==========================================================================
+# What a sitting actually was
+# ==========================================================================
+def _sitting_of(rec, who=None, gap_s=1800):
+    """Group one set's decisions into sittings, and describe the last.
+
+    A "sitting" is decisions with no gap longer than half an hour. Somebody
+    who curates for forty minutes, goes to lunch and comes back has done two
+    of them, and averaging across the lunch would report a rate nobody
+    achieved.
+
+    A decision that shares its timestamp with others was not individually
+    timed -- it came from a fill-down, or from a snapshot import that stamped
+    the whole set at once. Those are counted separately and kept out of the
+    pace, because the alternative is arithmetic: 738 decisions across 100
+    timestamps really does divide out at seven a second, and nobody has ever
+    curated at seven a second.
+
+    Nothing here is measured, only grouped. Every decision already carries
+    its author and its time.
+    """
+    rows = []
+    for ev in (rec.get("events") or []):
+        at = presencemod._parse(ev.get("at"))
+        if not at or not ev.get("label"):
+            continue
+        if who and str(ev.get("by") or "") != who:
+            continue
+        rows.append((at, ev.get("label"), ev.get("by"), ev.get("at")))
+    rows.sort(key=lambda r: r[0])
+    if not rows:
+        return None
+
+    # How many decisions share each raw stamp. A stamp held by one decision
+    # is a moment somebody pressed a key; a stamp held by fourteen is one
+    # operation that touched fourteen candidates.
+    crowd = {}
+    for r in rows:
+        crowd[r[3]] = crowd.get(r[3], 0) + 1
+
+    sittings, cur = [], [rows[0]]
+    for prev, row in zip(rows, rows[1:]):
+        if (row[0] - prev[0]).total_seconds() > gap_s:
+            sittings.append(cur)
+            cur = [row]
+        else:
+            cur.append(row)
+    sittings.append(cur)
+
+    last = sittings[-1]
+    by_label = {}
+    for row in last:
+        by_label[row[1]] = by_label.get(row[1], 0) + 1
+    people = sorted({r[2] for r in last if r[2]})
+
+    # Only the individually-stamped ones can say anything about pace.
+    paced = [r for r in last if crowd.get(r[3], 0) == 1]
+    bulk = len(last) - len(paced)
+    biggest = max([crowd.get(r[3], 0) for r in last] or [0])
+
+    span = (last[-1][0] - last[0][0]).total_seconds()
+    paced_span = ((paced[-1][0] - paced[0][0]).total_seconds()
+                  if len(paced) > 1 else 0.0)
+    # Ten decisions and half a minute before a rate is worth quoting. Two
+    # decisions a second apart divide out at thirty a minute, which is a
+    # number rather than a fact.
+    per_min = ((len(paced) / (paced_span / 60.0))
+               if (len(paced) >= 10 and paced_span > 30) else None)
+
+    return {
+        "n": len(last),
+        "seconds": span,
+        # What the pace was actually computed from, so the card can say so.
+        "paced": len(paced),
+        "paced_seconds": paced_span,
+        "bulk": bulk,
+        "bulk_biggest": biggest if bulk else 0,
+        "per_min": per_min,
+        "started": last[0][0].isoformat(),
+        "ended": last[-1][0].isoformat(),
+        "by_label": by_label,
+        "who": [_alias(p) for p in people],
+        "sittings": len(sittings),
+        "total_decided": len(rows),
+    }
+
+
+@app.route("/api/curation/<gid>/<kind>/receipt")
+def api_curation_receipt(gid, kind):
+    """What the last sitting on this set came to.
+
+    Worth having for two unrelated reasons: it is pleasant to see what an
+    afternoon added up to, and it is the only place the pace of curation is
+    visible -- which matters, because a set decided at forty a minute and a
+    set decided at four are not the same evidence.
+    """
+    rec = CURATE.get(gid, kind)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    pr = CURATE.progress(rec)
+    sitting = _sitting_of(rec, who=request.args.get("who") or None)
+    return jsonify({
+        "ok": True,
+        "gid": gid, "kind": kind,
+        "name": rec.get("name"),
+        "session": rec.get("session_label") or rec.get("name"),
+        "progress": pr,
+        "labels": rec.get("labels") or [],
+        "sitting": sitting,
+    })
+
+
+# ==========================================================================
+# The hall of garbage
+# ==========================================================================
+# How quickly a decision has to be made to count as an easy one. Anything
+# under a couple of seconds was not deliberated over -- the candidate was
+# obvious on sight, which is exactly what makes it worth showing a newcomer.
+QUICK_S = 2.5
+
+
+@app.route("/api/curation/garbage-hall")
+def api_garbage_hall():
+    """The most obviously-rejected candidates in the whole store.
+
+    "Confidently" is defined as: rejected, decided quickly, never flagged,
+    and never revisited. That is measurable from what is already recorded --
+    each decision carries its author, its time, and its review trail -- and
+    it picks out the candidates nobody had to think about.
+
+    Which makes it a teaching set. The fastest way to explain what garbage
+    looks like is forty examples that nobody hesitated over.
+    """
+    want = int(request.args.get("limit", 40))
+    rows = []
+    bulk = 0        # decisions whose timing cannot mean anything
+    for st in CURATE.all():
+        gid, kind = st.get("gid"), st.get("kind")
+        rec = CURATE.get(gid, kind)
+        if not rec:
+            continue
+
+        # Which timestamps were written in bulk rather than as somebody
+        # worked.
+        #
+        # 8,831 decisions were stamped by a backfill after the fact, all
+        # sharing one `at` -- so the gap between them is zero and says
+        # nothing about how long anybody took. Counting those as "decided
+        # instantly" would fill this list with the least considered
+        # candidates in the store and present them as the most obvious.
+        #
+        # A timestamp shared by more than a handful of decisions did not
+        # come from a person making them one at a time.
+        stamps = {}
+        for ev in (rec.get("events") or []):
+            if ev.get("label") and ev.get("at"):
+                stamps[ev["at"]] = stamps.get(ev["at"], 0) + 1
+        crowded = {at for at, n in stamps.items() if n > 3}
+        bulk += sum(n for at, n in stamps.items() if at in crowded)
+        # Which of this set's labels mean "not an event". A set carries its
+        # own vocabulary, so this cannot be hard-coded to "garbage".
+        reject = {l.get("id") for l in (rec.get("labels") or [])
+                  if l.get("id") in ("garbage",) or l.get("rejects")}
+        if not reject:
+            continue
+        evs = rec.get("events") or []
+        prev = None
+        for ev in evs:
+            at = presencemod._parse(ev.get("at"))
+            if ev.get("label") not in reject or not at:
+                prev = at
+                continue
+            # Revisited, or flagged on the way: somebody hesitated, so it is
+            # not an example of the obvious.
+            if len(ev.get("reviews") or []) > 1:
+                prev = at
+                continue
+            took = (at - prev).total_seconds() if prev else None
+            prev = at
+            if ev.get("at") in crowded:
+                continue
+            if took is None or took > QUICK_S or took <= 0:
+                continue
+            rows.append({
+                "gid": gid, "kind": kind,
+                "session": rec.get("session_label") or rec.get("name"),
+                "id": ev.get("id"),
+                "start": ev.get("start"),
+                "label": ev.get("label"),
+                "by": _alias(ev.get("by")),
+                "at": ev.get("at"),
+                "took_s": round(took, 2),
+            })
+    rows.sort(key=lambda r: r["took_s"])
+    return jsonify({
+        "ok": True, "quick_s": QUICK_S,
+        "n": len(rows), "hall": rows[:want],
+        # Said out loud, because a short hall and an empty one have very
+        # different causes and only one of them is about the curation.
+        "unusable": bulk,
+        # Deliberately not leading with the number: whoever shows this
+        # states the count itself, and a sentence that repeats it reads as
+        # two different figures.
+        "why": ("They were stamped in bulk rather than one at a time, so how "
+                "long anybody took over them is not recorded and they cannot "
+                "qualify.") if bulk else None,
+    })
+
+
+# ==========================================================================
+# Groundwork for ordering candidates by how hard they look
+#
+# NOT a classifier. This is the dataset it would need, exported in a form
+# something else can train on, plus the slot a score would be written back
+# into.
+#
+# Deliberately stopping there. The moment a model exists somebody will be
+# tempted to let it decide, and the entire value of this system is that a
+# person did -- every decision in here has a name and a time against it. The
+# useful thing a model can do is change the ORDER: put the obvious garbage
+# last so the hard cases get looked at while people are still fresh.
+# ==========================================================================
+@app.route("/api/curation/dataset")
+def api_curation_dataset():
+    """Every human decision, as rows something else can learn from.
+
+    One row per decided candidate: which recording, when in it, what it was
+    called, by whom, how long they took, and whether anybody revisited it.
+    The last two are the interesting columns -- they are a rough measure of
+    how hard the call was, which is the thing worth predicting.
+    """
+    rows = []
+    for st in CURATE.all():
+        gid, kind = st.get("gid"), st.get("kind")
+        rec = CURATE.get(gid, kind)
+        if not rec:
+            continue
+        prev = None
+        for ev in (rec.get("events") or []):
+            at = presencemod._parse(ev.get("at"))
+            if not ev.get("label"):
+                prev = at or prev
+                continue
+            took = ((at - prev).total_seconds()
+                    if (at and prev) else None)
+            prev = at or prev
+            rows.append({
+                "gid": gid, "kind": kind,
+                "session": rec.get("session_label"),
+                "event_id": ev.get("id"),
+                "start_s": ev.get("start"),
+                "label": ev.get("label"),
+                "decided_by": _alias(ev.get("by")),
+                "decided_at": ev.get("at"),
+                # How long the person took, and how many times the label
+                # changed. Hesitation is the signal; the label is the target.
+                "took_s": round(took, 3) if took and 0 < took < 600 else None,
+                "revisions": max(0, len(ev.get("reviews") or []) - 1),
+            })
+    fmt = (request.args.get("format") or "json").lower()
+    if fmt == "csv":
+        return Response(
+            extras.to_csv(rows), mimetype="text/csv",
+            headers={"Content-Disposition":
+                     'attachment; filename="curation-dataset.csv"'})
+    return jsonify({"ok": True, "n": len(rows),
+                    "rows": rows[:int(request.args.get("limit", 500))]})
+
+
+@app.route("/api/curation/<gid>/<kind>/order", methods=["POST"])
+def api_curation_order(gid, kind):
+    """Set the order candidates are visited in.
+
+    The slot a model would write into, and usable without one: `hardest`
+    puts the candidates somebody hesitated over first, which is worth having
+    on its own for a review pass.
+
+    Stored on the set rather than applied to it. Re-ordering the events
+    themselves would change what `index` means in every other window, in
+    every saved view, and in the aid window -- and the order somebody wants
+    to work in is a preference, not a property of the data.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    how = (body.get("order") or "time").strip()
+    if how not in ("time", "hardest", "scored"):
+        return jsonify({"ok": False,
+                        "error": "Order must be time, hardest or scored."}), 400
+    scores = body.get("scores") or None
+    try:
+        rec = CURATE.set_order(gid, kind, how, scores=scores)
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    STORE.record_activity([{
+        "action": "curation.order",
+        "detail": {"gid": gid, "kind": kind, "order": how,
+                   "scored": len(scores or {})},
+    }])
+    return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
 @app.route("/api/curation/close-all", methods=["POST"])
 def api_curation_close_all():
     """Clear the workbench. Nothing is archived, deleted or unbanked."""
@@ -2527,7 +3143,13 @@ def api_curation_delete(gid, kind):
 
 @app.route("/api/curation/<gid>/<kind>/bank", methods=["POST"])
 def api_curation_bank(gid, kind):
-    """Send the curated events to the Event Bank, one entry per category."""
+    """Send the curated events to the Event Bank, as one versioned entry.
+
+    One entry for the whole set, not one per category -- see the paragraph
+    below on `prior`. It used to be one per category; those get folded into
+    this one and removed, because every event in them came from this set and
+    is being written again right now.
+    """
     body = request.get_json(force=True) or {}
     rec = CURATE.get(gid, kind)
     if not rec:
@@ -3814,15 +4436,28 @@ def api_errors_grouped():
     # that came back after being fixed was filed under a resolved group and
     # never shown again -- which is the one case where you most want to see
     # it. A recurrence reopens the group and says when it started again.
+    # Split per machine unless asked not to. The same fault in two places
+    # is two things to chase, and folding them said only "twice".
+    per_machine = request.args.get("fold") != "fault"
+
     for r in recs:
-        mark = book.get(extras.signature(r))
+        # A mark for this machine specifically, or one for the fault
+        # everywhere. Machine-scoped wins where both exist: it is the more
+        # specific statement, and "fixed on the rig" is a real thing to say.
+        mark = (book.get(extras.mark_key(extras.signature(r),
+                                         extras.host_of(r)))
+                or book.get(extras.signature(r)))
         r["resolved"] = bool(mark) and (r.get("at") or "") <= (mark.get("at") or "")
 
-    groups = extras.group_errors(recs)
+    groups = extras.group_errors(recs, per_machine=per_machine)
     for g in groups:
-        mark = book.get(g["signature"])
+        mark = (book.get(g["key"]) if g.get("machine") else None)
+        scope = "machine" if mark else "everywhere"
+        if not mark:
+            mark = book.get(g["signature"])
         if not mark:
             continue
+        g["resolved_scope"] = scope
         g["resolved_at"] = mark.get("at")
         g["resolved_by"] = mark.get("by")
         g["resolved_note"] = mark.get("note")
@@ -3845,12 +4480,18 @@ def api_errors_resolve():
     sigs = body.get("signatures") or ([body["signature"]]
                                       if body.get("signature") else [])
     resolved = body.get("resolved", True)
+    # Where the fix applies. Without a machine this behaves exactly as it
+    # always did -- the fault is closed everywhere -- which is what every
+    # existing mark means and what "Resolved" should keep meaning by
+    # default. With one, the claim is only about that computer.
+    machine = body.get("machine") or None
     for sig in sigs:
-        STORE.resolve_error(sig, bool(resolved), body.get("note"))
+        STORE.resolve_error(extras.mark_key(sig, machine),
+                            bool(resolved), body.get("note"))
     STORE.record_activity([{
         "action": "error.resolve",
         "detail": {"n": len(sigs), "resolved": bool(resolved),
-                   "note": body.get("note")},
+                   "machine": machine, "note": body.get("note")},
     }])
     return jsonify({"ok": True, "resolved": STORE.resolved_errors()})
 
@@ -3901,6 +4542,575 @@ def _recent_window(seconds=REPORT_WINDOW_S):
         reqs = []
     return {"window_s": seconds, "actions": acts, "errors": errs,
             "requests": reqs}
+
+
+# How much of the log an error comes with. Five minutes before, because
+# that is where the cause is, and one after, because "and then it recovered"
+# and "and then everything broke" are different bugs.
+CONTEXT_BEFORE_S = 300
+CONTEXT_AFTER_S = 60
+
+
+def _ctx_when(at):
+    """One timestamp as an aware datetime, or None.
+
+    Everything here compares MOMENTS, never the strings that spell them.
+    The local activity log writes local time with its offset (-04:00) and
+    the cloud copy writes UTC (+00:00), so a lexicographic comparison
+    between the two is meaningless -- it silently dropped every cloud row
+    from the window, which looked like "the other machine logged nothing"
+    rather than like a bug.
+    """
+    text = str(at or "").strip().replace("Z", "+00:00")
+    try:
+        when = datetime.datetime.fromisoformat(text)
+    except (ValueError, TypeError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=datetime.timezone.utc)
+    return when
+
+
+def _ctx_window(at):
+    """(from, to) as aware datetimes around a timestamp."""
+    when = _ctx_when(at)
+    if when is None:
+        return None, None
+    return (when - datetime.timedelta(seconds=CONTEXT_BEFORE_S),
+            when + datetime.timedelta(seconds=CONTEXT_AFTER_S))
+
+
+@app.route("/api/errors/context", methods=["POST"])
+def api_errors_context():
+    """What was happening around one error.
+
+    Local first: this machine's own activity log is on disk and needs no
+    network. Then the cloud, which is the only place another machine's
+    activity can be read from -- the log is push-only by design, because
+    copying somebody else's actions into this machine's day file would be
+    writing their history into a file that says it is mine.
+
+    Both sources are merged and de-duplicated by id, so a run with the cloud
+    unreachable degrades to "what this machine remembers" rather than to an
+    error.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    at = body.get("at")
+    machine = body.get("machine")
+    if not at:
+        return jsonify({"ok": False, "error": "Need the time of the error."}), 400
+    lo, hi = _ctx_window(at)
+    if lo is None:
+        return jsonify({"ok": False, "error": "Could not read that time."}), 400
+
+    rows, seen = [], set()
+
+    def take(entry, where):
+        key = entry.get("id") or (str(entry.get("at")) + str(entry.get("action")))
+        if key in seen:
+            return
+        seen.add(key)
+        rows.append({
+            "at": entry.get("at"),
+            "action": entry.get("action"),
+            "detail": entry.get("detail"),
+            "view": entry.get("view"),
+            "machine": entry.get("machine"),
+            "user": entry.get("git_user") or entry.get("user"),
+            "from": where,
+        })
+
+    # This machine's own log. Cheap, offline, and the common case: most
+    # errors are read on the machine that had them.
+    try:
+        for entry in (STORE.list_activity(limit=4000) or []):
+            when = _ctx_when(entry.get("at"))
+            if when is not None and lo <= when <= hi:
+                take(entry, "local")
+    except Exception:                                    # noqa: BLE001
+        pass
+
+    # And the cloud, for everyone else's.
+    cloud_error = None
+    if CLOUD.cloud.configured:
+        try:
+            q = "at=gte.%s&at=lte.%s&order=at.asc" % (
+                lo.isoformat(), hi.isoformat())
+            if machine:
+                q += "&machine=eq.%s" % machine
+            for entry in (CLOUD.cloud.select("activity", query=q,
+                                             limit=2000) or []):
+                # Filtered again on this side. PostgREST compares the
+                # moments correctly, but a row that slipped through a
+                # paging edge would otherwise be reported as being in a
+                # window it is not in.
+                when = _ctx_when(entry.get("at"))
+                if when is not None and lo <= when <= hi:
+                    take(entry, "cloud")
+        except Exception as exc:                         # noqa: BLE001
+            # Not fatal: what this machine remembers is still worth showing.
+            cloud_error = str(exc)[:200]
+
+    if machine:
+        rows = [r for r in rows
+                if not r.get("machine") or r.get("machine") == machine]
+    # Sorted on the moment, for the same reason: two machines' strings do
+    # not order against each other even when their times do.
+    rows.sort(key=lambda r: _ctx_when(r.get("at"))
+              or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc))
+
+    # Other errors in the same window, because one fault often arrives as
+    # six and the first of them is the one worth reading.
+    nearby = []
+    try:
+        for err in (STORE.list_errors(limit=2000) or []):
+            when = _ctx_when(err.get("at"))
+            if when is not None and lo <= when <= hi:
+                nearby.append({
+                    "at": err.get("at"), "where": err.get("where"),
+                    "message": err.get("message"),
+                    "machine": err.get("machine"),
+                })
+    except Exception:                                    # noqa: BLE001
+        pass
+    nearby.sort(key=lambda r: _ctx_when(r.get("at"))
+                or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc))
+
+    return jsonify({
+        "ok": True, "at": at, "machine": machine,
+        "from": lo.isoformat(), "to": hi.isoformat(),
+        "before_s": CONTEXT_BEFORE_S, "after_s": CONTEXT_AFTER_S,
+        "actions": rows, "errors": nearby,
+        "cloud_error": cloud_error,
+    })
+
+
+# ==========================================================================
+# Sync progress
+#
+# A full sync is three or four seconds and the registry read alone is five,
+# and the button said nothing for all of it -- so the honest reading of the
+# interface was that nothing had happened. The loop already accepts an
+# `on_progress`; nothing was listening.
+#
+# Held in memory rather than written down: it describes a sync that is
+# happening now, and a progress record that outlives the thing it describes
+# is worse than none.
+# ==========================================================================
+def _q(value):
+    """A value safe to drop into a PostgREST filter.
+
+    Bare, not quoted. Double quotes are how PostgREST is told that a value
+    contains reserved characters, and they cannot be used here: `_safe_query`
+    percent-encodes them on the way out, so `machine=neq."Bluebarry"` arrives
+    as `machine=neq.%22Bluebarry%22` and is compared against a string that
+    includes the quote marks. It is never equal, so `neq` silently matches
+    every row -- measured as the same 1,000 rows and the same count as no
+    filter at all.
+
+    `_safe_query` already encodes the spaces and the characters a URL cannot
+    carry, which is what a name like "Rig 2 (Barry lab)" actually needs. A
+    comma in a hostname would still confuse the filter; no machine in this
+    lab has one, and a wrong count is the failure mode rather than a wrong
+    row, so this is not worth a quoting scheme that does not work.
+    """
+    return str(value).replace(",", " ")
+
+
+def _alias(name):
+    """A name folded onto the person it belongs to, via the roster."""
+    try:
+        for row in ((PEOPLE.book.read("people") or {}).get("added") or []):
+            keep = row.get("name") or row.get("id")
+            for other in (row.get("aliases") or []):
+                if str(other).strip().lower() == str(name).strip().lower():
+                    return keep
+    except Exception:                                    # noqa: BLE001
+        pass
+    return name
+
+
+def _this_host():
+    """What this machine calls itself, as the logs spell it.
+
+    The activity and error rows carry the hostname, not the machine id, so
+    filtering "not me" has to compare the same thing they store.
+    """
+    try:
+        return (STORE.provenance() or {}).get("machine")
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+_sync_step = {"at": None, "phase": None, "table": None, "n": 0,
+              "done": 0, "of": 0, "running": False}
+
+
+def _sync_note(phase, table=None, n=0, of=0, done=None):
+    _sync_step.update({
+        "at": cloudmod.now(), "phase": phase, "table": table, "n": n,
+        "of": of or _sync_step.get("of") or 0,
+        "running": phase != "idle",
+    })
+    if done is not None:
+        _sync_step["done"] = done
+    # The denominator is an estimate -- counting exactly would mean walking
+    # every table first, which is most of the work the bar is reporting on --
+    # and some tables are fetched twice (curation is a set list and an event
+    # list). So it stretches rather than letting the bar run past its end,
+    # which reads as a bug in a way that a slightly slow bar does not.
+    if _sync_step["done"] > _sync_step["of"]:
+        _sync_step["of"] = _sync_step["done"]
+
+
+# Which migration adds which column, so the answer is "run this file"
+# rather than "a column is missing". Only the ones added after the first
+# release need saying; anything older than 05 has been run everywhere for
+# months.
+COLUMN_MIGRATIONS = {
+    "hemisphere": "06_hemisphere.sql",
+    "hemisphere_source": "06_hemisphere.sql",
+    "ripple_channel": "07_reference_channels.sql",
+    "fissure_channel": "07_reference_channels.sql",
+    "hilus_channel": "07_reference_channels.sql",
+    "extraction_note": "07_reference_channels.sql",
+    "needs_processing": "07_reference_channels.sql",
+    "reference_channels_source": "07_reference_channels.sql",
+    "aliases": "08_people_aliases.sql",
+}
+
+
+# Answers from the schema probe below, cached: {(table, column): present}.
+# A schema does not change while nobody is looking, and this is read by a
+# dialog rather than by a loop.
+_SCHEMA_SEEN = {}
+
+# Which table each migration column belongs to, so the probe knows where to
+# look. Kept beside COLUMN_MIGRATIONS rather than derived from it: a column
+# name alone does not say which table wants it.
+COLUMN_TABLES = {
+    "hemisphere": "sessions",
+    "hemisphere_source": "sessions",
+    "ripple_channel": "sessions",
+    "fissure_channel": "sessions",
+    "hilus_channel": "sessions",
+    "extraction_note": "sessions",
+    "needs_processing": "sessions",
+    "reference_channels_source": "sessions",
+    "aliases": "people",
+}
+
+
+def _probe_schema():
+    """Which migration columns the database is missing, asked directly.
+
+    The alternative is waiting to be refused, and a refusal only happens
+    when something changes: `sessions` is pushed when a recording changes, so
+    a machine could sit for days with a migration un-run and never be told.
+    """
+    if not CLOUD.cloud.configured:
+        return {}
+    missing = {}
+    for col, table in COLUMN_TABLES.items():
+        key = (table, col)
+        if key not in _SCHEMA_SEEN:
+            try:
+                CLOUD.cloud.select(table, query="select=%s" % col, limit=1)
+                _SCHEMA_SEEN[key] = True
+            except Exception as exc:                     # noqa: BLE001
+                # Only a missing COLUMN counts. A table that is not there at
+                # all, or a network that is down, is a different problem and
+                # saying "run this migration" about it would be a guess.
+                text = str(exc)
+                _SCHEMA_SEEN[key] = not ("42703" in text
+                                         or "does not exist" in text)
+        if not _SCHEMA_SEEN[key]:
+            missing.setdefault(table, set()).add(col)
+    return missing
+
+
+@app.route("/api/sync/pending-migrations")
+def api_pending_migrations():
+    """Columns this machine has tried to send and the database has not got.
+
+    Worth a route of its own because the consequence used to be invisible
+    and total: `sessions` is first in the push order, so one column it did
+    not recognise aborted the push before any other table was reached, and
+    the lab simply stopped syncing. It degrades now -- the field is dropped
+    and the rest goes up -- which makes saying so the only way anybody finds
+    out.
+    """
+    # What was actually refused, plus what the schema says it has not got.
+    # The first is proof, the second is warning; both go in the same list
+    # because the consequence is identical.
+    found = {}
+    for table, cols in (cloudmod.PENDING_COLUMNS or {}).items():
+        found.setdefault(table, set()).update(cols)
+    for table, cols in _probe_schema().items():
+        found.setdefault(table, set()).update(cols)
+    pend = {t: sorted(c) for t, c in found.items() if c}
+    files = sorted({COLUMN_MIGRATIONS[c]
+                    for cols in pend.values() for c in cols
+                    if c in COLUMN_MIGRATIONS})
+    unknown = sorted({c for cols in pend.values() for c in cols
+                      if c not in COLUMN_MIGRATIONS})
+    return jsonify({
+        "ok": True,
+        "pending": pend,
+        "run": files,
+        # A column nobody can name a file for is the more worrying case: it
+        # means this machine is sending something no migration accounts for.
+        "unaccounted": unknown,
+        "note": ("Those fields are being dropped on the way up, so the rest "
+                 "of the sync works. Run the file(s) in supabase/ and they "
+                 "will travel on the next full push.") if pend else None,
+    })
+
+
+@app.route("/api/sync/progress")
+def api_sync_progress():
+    """Where a running sync has got to.
+
+    Polled while the button spins. Cheap on purpose -- it reads a dict --
+    because the alternative to a cheap poll is a spinner that lies.
+    """
+    return jsonify({"ok": True, "step": dict(_sync_step),
+                    "last": dict(_cloud_last)})
+
+
+@app.route("/api/devices/feed")
+def api_devices_feed():
+    """One machine's recent life: what it did, and what went wrong.
+
+    Errors and actions interleaved rather than in two lists, because the
+    useful shape is "these four things happened and then it broke". Per
+    machine, because "the rig has been quiet since four" is a different
+    observation from anything the combined list can show.
+
+    The debug trace itself stays local -- it is this process's own request
+    trail and is not collected from anywhere else -- so a remote machine's
+    feed is its actions and its errors, which is what it actually publishes.
+    """
+    machine = request.args.get("machine") or None
+    limit = int(request.args.get("limit", 120))
+    if not CLOUD.cloud.configured:
+        return jsonify({"ok": True, "configured": False, "feed": []})
+
+    rows = []
+
+    def pull(table, kind):
+        q = ["order=at.desc"]
+        if machine:
+            q.append("machine=eq.%s" % machine)
+        try:
+            got = CLOUD.cloud.select(table, query="&".join(q),
+                                     limit=limit) or []
+        except Exception:                                # noqa: BLE001
+            return
+        for r in got:
+            rows.append({
+                "kind": kind,
+                "at": r.get("at"),
+                "machine": r.get("machine"),
+                "user": r.get("git_user"),
+                "what": (r.get("action") if kind == "action"
+                         else r.get("where_") or r.get("where")),
+                "detail": (r.get("detail") if kind == "action"
+                           else r.get("message")),
+                "view": r.get("view"),
+            })
+
+    pull("activity", "action")
+    pull("errors", "error")
+    rows.sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+    return jsonify({"ok": True, "configured": True,
+                    "machine": machine, "feed": rows[:limit]})
+
+
+@app.route("/api/digest")
+def api_digest():
+    """What changed since you last looked.
+
+    The mark is per machine and stored in prefs, so "since I last looked"
+    means what it says rather than "since midnight". Reading the digest does
+    not move it -- `POST /api/digest/seen` does -- because a digest that
+    clears itself the moment it is rendered cannot be read twice, and the
+    first read is usually the one where you get interrupted.
+    """
+    since = request.args.get("since")
+    if not since:
+        try:
+            since = (STORE.get_prefs() or {}).get("digest_seen") or None
+        except Exception:                                # noqa: BLE001
+            since = None
+    if not since:
+        # First run: a day, so it says something rather than everything --
+        # and written down, so it stays put. Recomputing "a day ago" on every
+        # read made the window slide, which meant two reads a second apart
+        # covered two different days and "since I last looked" was really
+        # "in the last 24 hours" until somebody pressed the button once.
+        since = presencemod._iso_ago(86400)
+        try:
+            STORE.set_prefs({"digest_seen": since})
+        except Exception:                                # noqa: BLE001
+            pass
+
+    mine = shards.machine_id()
+    out = {"ok": True, "since": since, "machine": mine,
+           "by_person": [], "by_kind": [], "sessions": [], "errors": 0,
+           "n": 0, "configured": bool(CLOUD.cloud.configured)}
+    if not CLOUD.cloud.configured:
+        return jsonify(out)
+
+    # This machine is excluded in the QUERY, not afterwards. Asking for the
+    # newest two thousand rows and then discarding this machine's spends the
+    # whole budget -- capped at a thousand by PostgREST -- on rows that do
+    # not count: measured at 1,000 fetched and 8 kept, so the card said
+    # "8 actions" where the answer was over a thousand.
+    mine_q = ("&machine=neq.%s" % _q(_this_host())) if _this_host() else ""
+    try:
+        rows = CLOUD.cloud.select(
+            "activity", query="at=gt.%s%s&order=at.desc" % (since, mine_q),
+            limit=1000) or []
+        # And the headline comes from a count, not from len(rows). A page is
+        # not a total, and one that has been capped looks exactly like one
+        # that has not.
+        total = CLOUD.cloud.count(
+            "activity", query="at=gt.%s%s" % (since, mine_q))
+    except Exception as exc:                             # noqa: BLE001
+        out["error"] = str(exc)[:200]
+        return jsonify(out)
+
+    people, kinds, sessions = {}, {}, {}
+    for r in rows:
+        # Belt and braces: the query already excludes this machine, and a row
+        # with no machine at all should still not be attributed to it.
+        if r.get("machine") and r.get("machine") == _this_host():
+            continue
+        who = r.get("git_user") or r.get("machine") or "somebody"
+        # Folded through the roster's aliases, like the roster itself. The
+        # activity log keeps whatever name the machine believed at the time
+        # -- deliberately, it is a record of what happened -- so the folding
+        # has to happen wherever it is read.
+        who = _alias(who)
+        people[who] = people.get(who, 0) + 1
+        kind = str(r.get("action") or "").split(".")[0] or "other"
+        kinds[kind] = kinds.get(kind, 0) + 1
+        key = r.get("session_key")
+        if key:
+            slot = sessions.setdefault(key, {"key": key, "n": 0,
+                                             "who": set(), "last": None})
+            slot["n"] += 1
+            slot["who"].add(who)
+            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+                slot["last"] = r.get("at")
+
+    try:
+        # Counted, and excluded in the query, for the same reason.
+        out["errors"] = CLOUD.cloud.count(
+            "errors", query="at=gt.%s%s" % (since, mine_q)) or 0
+    except Exception:                                    # noqa: BLE001
+        pass
+
+    # The true total, with the breakdown computed from as much of it as one
+    # page holds. Said out loud when those differ, rather than letting a
+    # breakdown that adds up to less than the headline look like an
+    # arithmetic mistake.
+    seen = sum(people.values())
+    out["n"] = total if isinstance(total, int) else seen
+    out["counted"] = seen
+    out["partial"] = bool(isinstance(total, int) and total > seen)
+    # Which host it left out, by the name the LOG spells it. That is not the
+    # name the device table uses -- provenance().machine is "Bluebarry" where
+    # machines.hostname is "desktop-4h65ai7-d565" for the same computer --
+    # and anything checking the exclusion has to compare the same one.
+    out["excluded_host"] = _this_host()
+    out["by_person"] = sorted(
+        [{"who": k, "n": v} for k, v in people.items()], key=lambda x: -x["n"])
+    out["by_kind"] = sorted(
+        [{"kind": k, "n": v} for k, v in kinds.items()], key=lambda x: -x["n"])
+    out["sessions"] = sorted(
+        [{"key": s["key"], "n": s["n"], "who": sorted(s["who"]),
+          "last": s["last"]} for s in sessions.values()],
+        key=lambda x: -x["n"])[:12]
+    return jsonify(out)
+
+
+@app.route("/api/digest/seen", methods=["POST"])
+def api_digest_seen():
+    """Move the "last looked" mark to now. Only ever called deliberately."""
+    stamp = cloudmod.now()
+    try:
+        STORE.set_prefs({"digest_seen": stamp})
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 500
+    return jsonify({"ok": True, "seen": stamp})
+
+
+@app.route("/api/devices")
+def api_devices():
+    """Every machine that syncs here, and whether it still is.
+
+    `machines.last_seen` is already a heartbeat -- the sync loop stamps it on
+    every push -- so there is nothing new to write. What this adds is the
+    reading: online or not, and whether it is actually sending anything,
+    which are different questions. A machine can be reachable and have
+    stopped logging.
+    """
+    if not CLOUD.cloud.configured:
+        return jsonify({"ok": True, "configured": False, "devices": []})
+    try:
+        machines = CLOUD.cloud.select("machines", limit=200) or []
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+
+    # The newest thing each machine has sent, per kind. Two small queries
+    # rather than one per machine: the point is a table, and a table should
+    # not cost a request per row.
+    newest = {}
+    for table, key in (("activity", "actions"), ("errors", "errors")):
+        try:
+            rows = CLOUD.cloud.select(
+                table, query="order=at.desc", limit=600) or []
+        except Exception:                                # noqa: BLE001
+            rows = []
+        for r in rows:
+            who = r.get("machine")
+            if not who:
+                continue
+            slot = newest.setdefault(who, {})
+            if key not in slot:
+                slot[key] = {"at": r.get("at"), "n": 0}
+            slot[key]["n"] += 1
+
+    mine = shards.machine_id()
+    out = []
+    for m in machines:
+        seen = presencemod._age_s(m.get("last_seen"))
+        host = m.get("hostname")
+        got = newest.get(host) or {}
+        out.append({
+            "id": m.get("id"),
+            "hostname": host,
+            "os": m.get("os"),
+            "user": m.get("git_user"),
+            "first_seen": m.get("first_seen"),
+            "last_seen": m.get("last_seen"),
+            "age_s": seen,
+            # Online means "pushed recently". The sync loop pushes at least
+            # once a minute, so a machine quiet for five has either been
+            # closed or has stopped syncing -- and both of those are things
+            # somebody would want to know.
+            "online": seen is not None and seen <= 300,
+            "is_me": m.get("id") == mine,
+            "last_action_at": (got.get("actions") or {}).get("at"),
+            "recent_actions": (got.get("actions") or {}).get("n") or 0,
+            "last_error_at": (got.get("errors") or {}).get("at"),
+            "recent_errors": (got.get("errors") or {}).get("n") or 0,
+        })
+    out.sort(key=lambda d: (d.get("age_s") is None, d.get("age_s") or 0))
+    return jsonify({"ok": True, "configured": True, "machine": mine,
+                    "devices": out})
 
 
 @app.route("/api/errors/bundle", methods=["POST"])
@@ -5040,15 +6250,33 @@ def cloud_sync_once(push=True, pull=True, files=False):
         _cloud_last["running"] = True
         _cloud_results()
         out = {"pushed": 0, "pulled": 0}
+        # Roughly how many steps, so the bar has a denominator. Approximate
+        # on purpose: a precise count would mean walking every table first,
+        # which is most of the work the bar is meant to be reporting on.
+        steps = (len(cloudsync.ORDER) if pull else 0) + (
+            len(cloudsync.ORDER) + len(cloudsync.PUSH_ONLY) if push else 0)
+        _sync_note("starting", of=steps, done=0)
+        seen = [0]
+
+        def step(phase):
+            def note(table, n=0):
+                seen[0] += 1
+                _sync_note(phase, table=table, n=n, done=seen[0])
+            return note
+
         if pull:
-            got = CLOUD.pull()
+            _sync_note("pulling", of=steps, done=seen[0])
+            got = CLOUD.pull(on_progress=None, on_table=step("pulling"))
             out["pulled"] = sum(v for v in (got.get("applied") or {}).values()
                                 if isinstance(v, int))
+            _sync_note("pulled", n=out["pulled"], of=steps, done=seen[0])
         if push:
             # Deletions first: a push that re-sends a row we have locally
             # deleted would undo the tombstone it is about to write.
+            _sync_note("tombstones", of=steps, done=seen[0])
             out["deleted"] = CLOUD.push_deletions().get("marked", 0)
-            sent = CLOUD.push(include_history=True)
+            sent = CLOUD.push(include_history=True,
+                              on_progress=step("pushing"))
             out["pushed"] = sent.get("sent", 0)
         if files:
             # Up first, then down: a figure this machine made should reach
@@ -5091,6 +6319,10 @@ def cloud_sync_once(push=True, pull=True, files=False):
             STORE.record_error("cloud.sync", exc)
     finally:
         _cloud_last["running"] = False
+        # Back to idle whatever happened. A progress record that outlives
+        # the sync it describes is worse than none: the bar would sit at
+        # 80% forever and nobody would trust the next one.
+        _sync_note("idle")
         _cloud_lock.release()
     return dict(_cloud_last)
 

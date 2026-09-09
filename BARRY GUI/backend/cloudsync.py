@@ -146,6 +146,19 @@ class Sync:
                 "bad_channels": sorted({int(b) for b in
                                         (rec.get("bad_channels") or [])}),
                 "bad_channels_note": rec.get("bad_channels_note"),
+                # Which hippocampus. Carried in the lab's feeder sheet all
+                # along, which meant it was true only for whoever had the
+                # spreadsheet open -- and a left and a right CA1 recording
+                # are different recordings.
+                "hemisphere": rec.get("hemisphere"),
+                "hemisphere_source": rec.get("hemisphere_source"),
+                "ripple_channel": _int(rec.get("ripple_channel")),
+                "fissure_channel": _int(rec.get("fissure_channel")),
+                "hilus_channel": _int(rec.get("hilus_channel")),
+                "extraction_note": rec.get("extraction_note"),
+                "needs_processing": rec.get("needs_processing"),
+                "reference_channels_source":
+                    rec.get("reference_channels_source"),
                 "n_channels": _int(rec.get("n_channels")),
                 "fs": _num(rec.get("fs")),
                 "duration_s": _num(rec.get("duration_s")),
@@ -315,6 +328,10 @@ class Sync:
                 "session_label": rec.get("session_label"),
                 "channels": [int(c) for c in (rec.get("channels") or [])],
                 "regions": rec.get("regions") or [],
+                # The history, as a snapshot per version. Without it a
+                # colleague pulling this sheet gets the labels but no way to
+                # tell an import from a correction.
+                "versions": rec.get("versions") or [],
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -535,6 +552,12 @@ class Sync:
                 "email": row.get("email"),
                 "is_person": bool(row.get("is_person")),
                 "seen": row.get("counts") or {},
+                # The other spellings that are this same person. Local-only
+                # until now, which meant a merge held until the next pull and
+                # then came apart: the shared roster still had the old name,
+                # so `_apply_people` wrote it back every cycle and the merge
+                # looked like it had failed.
+                "aliases": sorted(row.get("aliases") or []) or None,
                 "last_seen": cloud.now(),
                 "updated_at": cloud.now(),
             })
@@ -773,7 +796,7 @@ class Sync:
     # ==================================================================
     # Pull
     # ==================================================================
-    def pull(self, since=None, on_progress=None):
+    def pull(self, since=None, on_progress=None, on_table=None):
         """Bring down what other machines have changed, and apply it locally.
 
         Runs, activity and the raw error log stay push-only, and for a
@@ -798,6 +821,12 @@ class Sync:
         applied, newest = {}, since
 
         def fetch(table):
+            # Said before the request, not after it: the point of announcing
+            # a table is that it is the one currently taking the time. The
+            # pull is the slow half of a sync -- fifteen round trips -- and
+            # it used to report the single word "pulling" for all of them.
+            if on_table:
+                on_table(table)
             rows = self.cloud.select_all(table, q)
             for r in rows:
                 got = r.get("updated_at")
@@ -883,17 +912,49 @@ class Sync:
             # The roster compiles counts from local data as well, which is
             # more work than this needs -- but it is the only reader, and a
             # wrong skip would be worse than a slow one.
-            for p in (self.people.roster() or []):
-                have[(p.get("name") or "").strip().lower()] = p
+            #
+            # `roster()` returns a DICT of {people, not_people, me}, and
+            # iterating it walks the keys -- so this loop used to bind `row`
+            # to the string "people", raise AttributeError on `.get`, hit the
+            # except below, and leave `have` empty. Which meant the skip
+            # never skipped, and the write loop this guard exists to stop was
+            # still running: 11 of 11 unchanged rows written on every cycle.
+            got = self.people.roster() or {}
+            listed = ((got.get("people") or [])
+                      + (got.get("not_people") or [])
+                      if isinstance(got, dict) else list(got))
+            for row in listed:
+                have[(row.get("name") or "").strip().lower()] = row
         except Exception:                            # noqa: BLE001
             have = {}
 
+        # Every spelling this machine has been told is somebody else. Built
+        # once: a row per cloud person and a lookup per row would re-read the
+        # roster file for each of them.
+        aliased = {}
+        for row in have.values():
+            for other in (row.get("aliases") or []):
+                aliased[str(other).strip().lower()] = row.get("name")
+
+        self.merge_reverts = 0
         for r in (rows or []):
             name = (r.get("name") or "").strip()
             if not name:
                 continue
+            # The old spelling of somebody who has been merged. Writing it
+            # would re-create the entry the merge removed, which is exactly
+            # what used to happen on every cycle.
+            keep = aliased.get(name.lower())
+            if keep and keep.strip().lower() != name.lower():
+                self.merge_reverts += 1
+                continue
             want = {"email": r.get("email"), "role": r.get("role"),
                     "initials": r.get("initials"), "orcid": r.get("orcid")}
+            # Aliases are unioned, not overwritten. Two people merging
+            # different spellings on different machines are both right, and
+            # last-write-wins would have one of them silently undo the
+            # other.
+            theirs = [a for a in (r.get("aliases") or []) if a]
             mine = have.get(name.lower())
             if mine is not None:
                 # Only the fields this row actually carries, and only when
@@ -906,14 +967,42 @@ class Sync:
                             != str(v or "").strip()):
                         same = False
                         break
+                # An alias this machine has not got is news even when every
+                # other field matches.
+                if same and theirs:
+                    here = {str(a).strip().lower()
+                            for a in (mine.get("aliases") or [])}
+                    if any(str(a).strip().lower() not in here
+                           for a in theirs):
+                        same = False
                 if same:
                     continue
+            merged = None
+            if theirs:
+                have_now = {str(a).strip().lower(): str(a).strip()
+                            for a in ((mine or {}).get("aliases") or [])}
+                for a in theirs:
+                    have_now.setdefault(str(a).strip().lower(),
+                                        str(a).strip())
+                merged = sorted(have_now.values())
             try:
                 self.people.add(name, r.get("email"), None,
                                 role=r.get("role"),
                                 initials=r.get("initials"),
-                                orcid=r.get("orcid"))
+                                orcid=r.get("orcid"),
+                                **({"aliases": merged} if merged else {}))
                 n += 1
+            except TypeError:
+                # A People without the `aliases` field. The rest of the row
+                # is still worth applying.
+                try:
+                    self.people.add(name, r.get("email"), None,
+                                    role=r.get("role"),
+                                    initials=r.get("initials"),
+                                    orcid=r.get("orcid"))
+                    n += 1
+                except Exception:                    # noqa: BLE001
+                    continue
             except Exception:                        # noqa: BLE001
                 continue
         return n
@@ -1003,6 +1092,20 @@ class Sync:
         ("label", "label"), ("note", "note"), ("condition", "condition"),
         ("bad_channels", "bad_channels"),
         ("bad_channels_note", "bad_channels_note"), ("retired", "retired"),
+        # Which hippocampus, and where that was learned. Two-way like the
+        # rest: somebody correcting a side on the rig has to reach the
+        # desktop, or the two machines disagree about what the recording is.
+        ("hemisphere", "hemisphere"),
+        ("hemisphere_source", "hemisphere_source"),
+        # The anatomical landmarks every CSD is read against. Two-way like
+        # the rest: somebody correcting a fissure channel on the rig has to
+        # reach the desktop.
+        ("ripple_channel", "ripple_channel"),
+        ("fissure_channel", "fissure_channel"),
+        ("hilus_channel", "hilus_channel"),
+        ("extraction_note", "extraction_note"),
+        ("needs_processing", "needs_processing"),
+        ("reference_channels_source", "reference_channels_source"),
     )
 
     @staticmethod
@@ -1162,10 +1265,26 @@ class Sync:
                 continue
             self.layers.ensure(gid, s.get("session_label"),
                                channels=s.get("channels") or [])
+            mine = self.layers.get(gid) or {}
+
             mapping = {k: v for k, v in (by_gid.get(gid) or {}).items() if v}
-            if mapping:
-                self.layers.set_many(gid, mapping)
-                n += len(mapping)
+            # Only what actually differs. Writing the same labels back on
+            # every pull restamps the sheet, and a restamped sheet is pushed
+            # up as though it were an edit -- the same loop the roster was
+            # stuck in, passing identical rows between machines forever.
+            have = mine.get("labels") or {}
+            changed = {k: v for k, v in mapping.items() if have.get(k) != v}
+            if changed:
+                self.layers.set_many(gid, changed)
+                n += len(changed)
+
+            # The history, when this machine has less of it than the cloud.
+            # Never the other way: a sheet that has been versioned here and
+            # not there is this machine being ahead, not behind.
+            theirs = s.get("versions") or []
+            if theirs and len(theirs) > len(mine.get("versions") or []):
+                self.layers.adopt_versions(gid, theirs)
+                n += 1
         return n
 
     def _apply_results(self, rows):

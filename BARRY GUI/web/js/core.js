@@ -965,6 +965,31 @@ function cloudNote() {
     }
     const last = c.last || {};
     const when = last.at ? new Date(last.at).toLocaleTimeString() : 'not yet';
+    /* A schema a migration behind. Worth saying loudly and worth saying
+       here: a column the database has not got is dropped on the way up so
+       that the rest of the sync survives, and the cost of that kindness is
+       that the field silently never travels. */
+    api('/api/sync/pending-migrations').then((m) => {
+      if (!m || !m.run || !m.run.length) return;
+      const cols = Object.keys(m.pending || {}).map(
+        (t) => t + ': ' + m.pending[t].join(', '));
+      box.insertBefore(el('div', { class: 'cloud-err mig-pending' }, [
+        el('strong', { text: 'The shared database is behind this copy of '
+                           + 'BARRY. ' }),
+        el('span', { text: 'Run ' }),
+        el('code', { text: m.run.join(' and ') }),
+        el('span', { text: ' from supabase/ in the SQL editor. Until then '
+                         + 'these fields are dropped on the way up and stay '
+                         + 'on this machine only — everything else syncs '
+                         + 'normally.' }),
+        el('div', { class: 'mig-cols', text: cols.join('   ·   ') }),
+        m.unaccounted && m.unaccounted.length
+          ? el('div', { class: 'mig-cols',
+              text: 'No migration accounts for: '
+                  + m.unaccounted.join(', ') + '. That is worth looking at.' })
+          : null,
+      ].filter(Boolean)), box.firstChild);
+    }).catch(() => { /* an older server has no such route */ });
     box.appendChild(el('div', { class: 'cloud-line' }, [
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
@@ -978,7 +1003,31 @@ function cloudNote() {
         disabled: last.running ? 'disabled' : null,
         onclick: async (e) => {
           e.target.disabled = true;
-          e.target.textContent = 'Syncing…';
+          /* Say where it has got to, rather than nothing for four seconds.
+
+             A full sync is three or four seconds and the registry read
+             alone is five, and the button used to sit there saying
+             "Syncing…" for all of it -- which is indistinguishable from
+             hung. The server has always known which table it was on; the
+             button simply never asked. */
+          const label = e.target;
+          let stop = false;
+          const watch = async () => {
+            while (!stop) {
+              try {
+                const p = await api('/api/sync/progress');
+                const st = (p && p.step) || {};
+                if (st.running) {
+                  const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+                  label.textContent = (st.phase || 'syncing')
+                    + (st.table ? ' ' + st.table : '')
+                    + (pct != null ? '  ' + pct + '%' : '');
+                }
+              } catch (err) { /* the sync itself is what matters */ }
+              await new Promise((r) => setTimeout(r, 350));
+            }
+          };
+          watch();
           try {
             const r = await apiPost('/api/cloud/sync', {});
             const l = r.last || {};
@@ -987,6 +1036,7 @@ function cloudNote() {
                   + (l.downloaded ? ', downloaded ' + l.downloaded + ' file(s)'
                      : '') + '.', l.ok === false ? 'err' : 'ok', 7000);
           } catch (err) { toast(err.message, 'err', 8000); }
+          stop = true;
           showSync();
         },
       }),
@@ -1532,6 +1582,68 @@ BARRY.profile = (function () {
       paintKnown();
     };
 
+    /* Remove, and then say what actually happened.
+
+       `forget` takes off the hand-added entry; whether the name then
+       disappears depends on whether anything else in the store still
+       carries it. Rather than predict that, this asks the server and
+       compares the roster it gets back — so the message is a report and
+       never a guess. */
+    /* What holds a name here, apart from somebody having typed it.
+
+       `total` counts the hand-added entry itself, so testing it directly
+       would refuse to remove every hand-added name — which is precisely the
+       set that CAN go, and precisely what a leftover test entry is. What
+       matters is whether anything else carries it: a decision, a banked
+       set, an assignment, a profile. */
+    const HAND = 'added by hand';
+    const heldBy = (person) => {
+      let n = 0;
+      const what = [];
+      for (const [where, count] of Object.entries(person.counts || {})) {
+        if (where === HAND) continue;
+        n += count;
+        what.push(where);
+      }
+      return { n, what };
+    };
+
+    const removePerson = async (person) => {
+      const held = heldBy(person);
+      if (held.n) {
+        await BARRY.confirm(
+          person.name + ' cannot be removed',
+          person.name + ' is on ' + held.n + ' record'
+          + (held.n === 1 ? '' : 's')
+          + ' — ' + held.what.join(', ')
+          + '.\n\nThe roster is compiled from the work itself, not from a '
+          + 'list anybody keeps, so this name is here because the data says '
+          + 'so. Taking it off could not un-say it, and a button that looked '
+          + 'like it had would be lying about what BARRY holds.',
+          null);
+        return;
+      }
+      const ok = await BARRY.confirm(
+        'Remove ' + person.name + ' from the roster?',
+        'They have no decisions, no banked sets and no layer sheets, so '
+        + 'nothing is lost. They can be added again at any time.',
+        'Remove');
+      if (!ok) return;
+      try {
+        const res = await apiPost('/api/people/forget', { name: person.name });
+        roster = res;
+        paintKnown();
+        const still = (res.people || []).some((x) => x.name === person.name);
+        toast(still
+          ? person.name + ' is still listed: something in the store carries '
+            + 'the name, so the roster reports it.'
+          : person.name + ' removed from the roster.',
+          still ? null : 'ok', still ? 8000 : 4000);
+      } catch (e) {
+        toast('Could not remove ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
     const paintKnown = () => {
       known.innerHTML = '';
       const rows = (roster && roster.people) || [];
@@ -1572,6 +1684,31 @@ BARRY.profile = (function () {
                     + 'the roster \u2014 it does not change who this machine '
                     + 'credits work to.', null, 7000);
             },
+          }),
+          /* Taking a name off.
+
+             The roster is not a list somebody maintains -- it is compiled
+             from the profiles, the curation decisions and the bank. A name
+             with work behind it therefore cannot be removed: it is stamped
+             on those records whether the roster lists it or not, and a
+             button that appeared to delete it would be lying about what
+             BARRY holds. Only the hand-added ones can go, which is exactly
+             what a leftover test entry is.
+
+             The count is in the tooltip rather than the button being
+             hidden: an affordance that is silently absent teaches nothing,
+             and "why can I remove that one and not this one" is the
+             question this has to answer. */
+          el('button', {
+            class: 'prof-chip-del' + (heldBy(p).n ? ' held' : ''),
+            title: heldBy(p).n
+              ? p.name + ' is on ' + heldBy(p).n + ' record'
+                + (heldBy(p).n === 1 ? '' : 's')
+                + ' (' + heldBy(p).what.join(', ') + '). '
+                + 'Names the data carries cannot be removed.'
+              : 'Remove ' + p.name + ' from the roster',
+            text: '\u00d7',
+            onclick: () => removePerson(p),
           }),
         ]));
       }

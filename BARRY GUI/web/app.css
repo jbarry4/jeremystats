@@ -4651,14 +4651,23 @@ body.splitting .pane-split { pointer-events: auto !important; }
 #app.rail-icons .env {
   max-width: 0; opacity: 0; overflow: hidden;
   white-space: nowrap;
+  /* Height as well as width.
+     `display: none` took a label out of the layout in both directions.
+     `max-width: 0` only takes it out sideways -- the element keeps its full
+     height, so the environment block stayed three lines tall while being
+     zero pixels wide, and the rail grew taller than the window and sprouted
+     a scrollbar. Nothing in the collapsed rail sets its own row height:
+     every one of these sits beside an icon that is taller than it. */
+  max-height: 0;
   /* So a long label does not push the rail wide on the way out. */
   padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0;
   pointer-events: none;
 }
 .nav-item span, .nav-item kbd, .rail-toggle > span:not(.rail-pips),
 .brand-text, .chip-btn span, .env {
-  max-width: 240px; opacity: 1;
+  max-width: 240px; max-height: 200px; opacity: 1;
   transition: max-width var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
+              max-height var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
               opacity .18s ease;
 }
 /* `gap: 0` matters as much as the centring.
@@ -4667,10 +4676,22 @@ body.splitting .pane-split { pointer-events: auto !important; }
    can animate -- but a zero-width flex item is still a flex item, and the
    10px gap meant to sit between an icon and its label was still being
    inserted. Every icon sat half a gap left of centre. */
+/* Horizontal padding only.
+
+   This used to say `padding: 8px 6px`, and the shorthand set the vertical
+   padding too -- which quietly undid `@media (max-height: 700px)`, where
+   `.nav-item` is compacted to 5px. Being an id-and-two-classes selector it
+   won against the media query whatever the window height, so collapsing the
+   rail on a short screen made every item 6px TALLER: eleven items, 66px, and
+   a scrollbar exactly when there was least room for one.
+
+   Vertical padding is left to whoever else has an opinion about it. */
 #app.rail-icons .nav-item,
 #app.rail-icons .rail-toggle,
 #app.rail-icons .chip-btn {
-  justify-content: center; padding: 8px 6px; gap: 0;
+  justify-content: center;
+  padding-left: 6px; padding-right: 6px;
+  gap: 0;
 }
 #app.rail-icons .who-chip,
 #app.rail-icons .brand { gap: 0; justify-content: center; }
@@ -5705,4 +5726,359 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cur-live-dot { animation: none; }
+}
+
+/* Taking a name off the roster. Quiet until hovered: removing somebody is
+   rarer than picking them, and a red × on every chip would read as the
+   point of the list. */
+.prof-chip-del {
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--text-3); font-size: 13px; line-height: 1;
+  padding: 2px 5px; border-radius: 4px; opacity: .55;
+}
+.prof-chip:hover .prof-chip-del { opacity: 1; }
+.prof-chip-del:hover { background: var(--err-soft); color: var(--err); }
+/* On a name the data carries, so it reads as "not for you" before it is
+   clicked rather than after. */
+.prof-chip-del.held { opacity: .3; cursor: help; }
+.prof-chip-del.held:hover { background: var(--bg-3); color: var(--text-3); }
+
+/* ==========================================================================
+   StrataScope: selecting channels, then naming them
+   ==========================================================================
+   The rail used to put a dropdown on every row. At 64 channels a row is
+   about four pixels tall, so that asked for precision twice — hit the row,
+   then read a menu covering the thing being labelled. Click selects, a tag
+   names. Only the first half needs the mouse anywhere in particular.
+   ========================================================================== */
+.strata-row.picked {
+  background: var(--accent-soft, rgba(75, 199, 240, .16));
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.strata-row.picked .strata-num { color: var(--accent); font-weight: 600; }
+/* The rail is a column of hit targets now, so say so. */
+.strata-row { cursor: pointer; }
+.strata-rows { user-select: none; }
+
+/* What the layer buttons will do, in words, because it depends on whether
+   anything is selected and guessing wrong costs a mislabelled channel. */
+.strata-mode {
+  font-size: 10.5px; color: var(--text-3); align-self: center;
+  padding: 0 8px 0 2px; white-space: nowrap;
+}
+/* Armed: something is selected, so these label rather than pick up a brush. */
+/* Armed: something is selected, so these label it rather than pick up a
+   brush.
+
+   NOT via `border-color`. The layer's own colour lives in
+   `border-left: 3px solid var(--cat)`, and the shorthand overrides the
+   left side along with the other three -- so arming every button wiped the
+   colour off all fifteen of them, which is most of how they are told apart.
+   A ring outside the border says the same thing and touches nothing. */
+.strata-brush.arm {
+  box-shadow: 0 0 0 1px var(--accent-line, rgba(75, 199, 240, .45));
+}
+.strata-brush.arm:hover {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.strata-brush.clearone { opacity: .8; }
+.strata-brush.clearone:disabled { opacity: .35; cursor: default; }
+
+/* How strong the layer wash is over the rasters. */
+.strata-wash { display: flex; align-items: center; gap: 6px; }
+.strata-wash-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3);
+}
+
+/* ==========================================================================
+   Layer sheets in the Event Bank
+   ==========================================================================
+   Shown as runs rather than as sixty-four rows: a probe passes through a
+   layer for a stretch of channels, so where the boundaries fall is the fact
+   worth reading and "CA1" eight times over is not.
+   ========================================================================== */
+.bank-kind { margin-right: 4px; flex: none; }
+
+.layer-runs {
+  display: flex; flex-direction: column; gap: 2px;
+  margin: 4px 0 12px;
+}
+.layer-run {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border-left: 3px solid var(--cat, var(--line));
+  font-size: 11px;
+}
+.layer-run.none { border-left-color: var(--line); opacity: .6; }
+.layer-run-ch {
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
+  min-width: 52px;
+}
+.layer-run-name { color: var(--text); font-weight: 550; }
+.layer-run.none .layer-run-name { color: var(--text-3); font-weight: 400; }
+.layer-run-n {
+  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ==========================================================================
+   An error, opened onto what was happening
+   ==========================================================================
+   The card carried a message, a traceback and a time — everything except the
+   half-minute before, which is the part that makes a bug fixable.
+   ========================================================================== */
+.ec-top.ec-click { cursor: pointer; border-radius: var(--radius-sm); }
+.ec-top.ec-click:hover { background: var(--bg-3); }
+.ec-caret {
+  color: var(--text-3); font-size: 10px; width: 10px; flex: none;
+  transition: color .12s;
+}
+.ec-top.open .ec-caret { color: var(--accent); }
+
+.ec-context {
+  margin: 8px 0 2px; padding: 8px 10px;
+  border-left: 2px solid var(--accent);
+  background: var(--bg-2); border-radius: var(--radius-sm);
+}
+.ecx-head { display: flex; align-items: baseline; gap: 8px; }
+.ecx-warn {
+  font-size: 10.5px; color: var(--warn); margin: 4px 0 6px;
+}
+.ecx-rows { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; }
+.ecx-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 4px; border-radius: 3px;
+}
+.ecx-row:hover { background: var(--bg-3); }
+.ecx-at { color: var(--text-3); flex: none; }
+.ecx-action { color: var(--text); min-width: 150px; }
+.ecx-detail { color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
+              white-space: nowrap; }
+/* The error's own place in the sequence. Without it the list is a set of
+   actions with no sign of which side of the failure each one is on. */
+.ecx-row.here {
+  background: var(--err-soft); color: var(--err);
+  box-shadow: inset 2px 0 0 var(--err);
+}
+.ecx-row.here .ecx-at, .ecx-row.here .ecx-action,
+.ecx-row.here .ecx-detail { color: var(--err); }
+.ecx-row.other { color: var(--warn); }
+.ecx-row.other .ecx-action { color: var(--warn); }
+
+/* ==========================================================================
+   Devices
+   ==========================================================================
+   Online and sending are separate columns on purpose: a machine can be
+   reachable and have stopped logging, and that is the more interesting
+   failure of the two.
+   ========================================================================== */
+.dev-panel { margin: 0 0 14px; }
+.dev-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-2);
+  margin-bottom: 3px; font-size: 11.5px;
+}
+.dev-row.me { border-color: var(--accent-line, rgba(75, 199, 240, .35)); }
+.dev-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--text-3);
+}
+.dev-dot.on { background: var(--ok, #3fb950); }
+.dev-host { color: var(--text); }
+.dev-user { color: var(--text-2); font-size: 10.5px; }
+.dev-col {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  min-width: 84px; text-align: right;
+}
+.dev-col.warn { color: var(--warn); }
+
+/* ==========================================================================
+   History, lab-wide
+   ==========================================================================
+   The log has always been detailed. What it could not answer was "who loaded
+   that recording last, and what did they do to it" — the view read this
+   machine's own day files, so the answer was only available if it was you.
+   ========================================================================== */
+.hist-who-bar { margin-bottom: 6px; }
+/* Who, and what it was done to. Both are on the row rather than behind a
+   click, because scanning for "the recording I care about" is the reason
+   anybody opens a history. */
+.hist-who {
+  font-size: 10.5px; color: var(--accent);
+  min-width: 96px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hist-what {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ==========================================================================
+   Which device
+   ==========================================================================
+   Errors group per machine now, and the Debug view can show a remote
+   machine's feed instead of this one's request trail. One selector, shared,
+   because "the rig" is one thought.
+   ========================================================================== */
+.dev-bar { margin-bottom: 6px; }
+.dev-bar-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); margin-right: 2px;
+}
+.dev-bar .mini { display: flex; align-items: center; gap: 5px; }
+/* Unknown is not offline. A machine with errors on record but no row in the
+   device table has never synced from here, which is a third state. */
+.dev-dot.unknown { background: var(--line); }
+
+.dev-feed { display: flex; flex-direction: column; gap: 1px; }
+.dev-feed-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 5px; border-radius: 3px;
+}
+.dev-feed-row:hover { background: var(--bg-3); }
+.dev-feed-row.err { background: var(--err-soft); color: var(--err); }
+.dfr-at { color: var(--text-3); flex: none; }
+.dev-feed-row.err .dfr-at { color: var(--err); }
+.dfr-kind { color: var(--text-3); width: 8px; flex: none; }
+.dev-feed-row.err .dfr-kind { color: var(--err); font-weight: 700; }
+.dfr-what { color: var(--text); min-width: 150px; }
+.dev-feed-row.err .dfr-what { color: var(--err); }
+.dfr-detail {
+  color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   What changed since you last looked
+   -------------------------------------------------------------------------- */
+.digest {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-2);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.digest.quiet {
+  border-left-color: var(--line);
+  padding: 8px 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  background: none;
+}
+.digest-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.digest.shut .digest-head { border-bottom: none; }
+.digest-when { color: var(--text-3); font-size: 12px; }
+.digest-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.digest-line { font-size: 13px; }
+.digest-err { color: var(--err); font-weight: 600; }
+.digest-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.digest-sess {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 10px; align-items: baseline;
+  font-size: 12px; padding: 2px 0;
+  border-top: 1px dotted var(--line);
+}
+.digest-sess .ds-key { font-family: var(--mono); }
+.digest-sess .ds-who { color: var(--accent); }
+.digest-sess .ds-n { color: var(--text-3); }
+
+/* --------------------------------------------------------------------------
+   Session receipt
+
+   A card, deliberately -- the headline is meant to be readable from across
+   a room and screenshottable without cropping.
+   -------------------------------------------------------------------------- */
+.rcpt { display: flex; flex-direction: column; gap: 12px; min-width: 340px; }
+.rcpt-big {
+  font-size: 30px; font-weight: 700; line-height: 1.15;
+  letter-spacing: -0.4px;
+}
+.rcpt-sub { color: var(--text-3); font-size: 12px; }
+.rcpt-rate {
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--bg-3); border-left: 3px solid var(--accent);
+  font-size: 15px;
+}
+.rcpt-rate strong { font-size: 20px; }
+.rcpt-rate-note { color: var(--text-3); font-size: 12px; }
+.rcpt-rate.quiet {
+  border-left-color: var(--line);
+  color: var(--text-3); font-size: 12px;
+}
+.rcpt-labs { display: flex; flex-direction: column; gap: 3px; }
+.rcpt-lab {
+  display: grid; grid-template-columns: 10px 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 3px 0; border-top: 1px dotted var(--line);
+}
+.rcpt-lab i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+.rcpt-lab .rl-n { font-family: var(--mono); }
+.rcpt-foot { color: var(--text-3); font-size: 12px; }
+
+/* --------------------------------------------------------------------------
+   Hall of garbage
+   -------------------------------------------------------------------------- */
+.gh-wrap { min-width: 560px; }
+.gh-list { display: flex; flex-direction: column; gap: 1px; margin-top: 8px; }
+.gh-row {
+  display: grid;
+  /* The recording name takes what it needs and the rest sit next to it,
+     rather than the name taking a whole free column and leaving the last
+     two floating out at the far edge with a hand's width of nothing in
+     between. */
+  grid-template-columns: 34px 52px auto 62px minmax(80px, max-content) 40px 1fr;
+  gap: 10px; align-items: baseline;
+  padding: 4px 6px; font-size: 12px;
+  border-radius: 4px;
+}
+.gh-row:nth-child(odd) { background: var(--bg-2); }
+.gh-rank { color: var(--text-3); font-family: var(--mono); }
+.gh-took { font-family: var(--mono); font-weight: 700; color: var(--err); }
+.gh-at { font-family: var(--mono); color: var(--text-3); }
+.gh-by { color: var(--accent); overflow: hidden; text-overflow: clip; }
+.gh-foot { margin-top: 8px; }
+.rcpt-bulk {
+  font-size: 12px; color: var(--text-2);
+  padding: 7px 10px; border-radius: 6px;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+
+/* The digest's host: full width, above the split, and taking no room at all
+   when there is nothing to say. */
+.hist-digest-host { padding-top: 8px; padding-bottom: 0; }
+.hist-digest-host:empty { display: none; }
+.hist-digest-host .digest { margin-bottom: 0; }
+.hist-digest-host .digest-sess { grid-template-columns: 320px auto 1fr; }
+.hist-digest-host .digest-sess .ds-n { text-align: right; }
+
+/* A schema a migration behind. Warn rather than error: the sync is working,
+   one field is not travelling. */
+.mig-pending {
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+.mig-pending code {
+  background: var(--bg-3); padding: 1px 5px; border-radius: 3px;
+  font-family: var(--mono);
+}
+.mig-cols {
+  margin-top: 6px; font-family: var(--mono); font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.digest-partial {
+  font-size: 11.5px; color: var(--text-3);
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
 }

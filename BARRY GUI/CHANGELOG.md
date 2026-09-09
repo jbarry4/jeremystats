@@ -15,6 +15,740 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.08.17 — numbers you can quote
+
+Six things, and one thread running through all of them: every one of these
+produces a number somebody would say out loud — "587 in twenty-nine
+minutes", "213 actions since I last looked", "five qualify" — and a number
+you quote is a number that has to be right.
+
+### Added
+
+- **A session receipt.** What a sitting came to, in a card: how many
+  decided, over how long, at what pace, split by label. On the way out of a
+  set when there was a sitting worth reporting, and from the **Receipt**
+  button on the workbench whenever the question arrives later.
+
+  It exists for two unrelated reasons. It is pleasant to see the afternoon
+  add up. And the pace is the only thing anywhere in BARRY that says
+  something about the *deciding* rather than about the data — a set decided
+  at twenty a minute and a set decided at four are not the same evidence,
+  and nothing in the interface used to show which one you had.
+
+- **A hall of garbage** — the candidates nobody had to think about:
+  rejected, decided in under two and a half seconds, never flagged, never
+  revisited. It is a teaching set, because the fastest way to explain what
+  garbage looks like is forty examples that nobody hesitated over, and it is
+  a sanity check on the detector, since a detector producing mostly obvious
+  garbage is saying something about its threshold. **look** opens the
+  recording at that moment rather than entering curation: looking at an
+  example is not deciding it, and entering the set would take it off
+  whoever has it.
+
+- **"Since you last looked."** A card at the top of History: how many
+  actions, by whom, on which recordings, and how many errors — since the
+  last time you pressed **Mark as seen** on this machine. It leaves your own
+  actions out, because a digest of what you did yourself is a diary, and the
+  question is what everybody else has been doing.
+
+  Reading it does not clear it. The first read is usually the one where you
+  get interrupted, and a digest that clears itself on render cannot be read
+  twice.
+
+- **The dataset, and the slot a model would write into.**
+  `/api/curation/dataset?format=csv` is all 9,265 human decisions as rows —
+  which recording, when in it, what it was called, by whom, how long they
+  took and whether anybody revisited it. The last two columns are the
+  interesting ones: hesitation is the signal.
+
+  And `POST /api/curation/<gid>/<kind>/order` sets the order candidates are
+  visited in — `hardest` puts the ones somebody hesitated over first, which
+  is worth having on its own for a review pass.
+
+  This is deliberately where it stops. No classifier. The moment a model
+  exists somebody will be tempted to let it decide, and the whole value of
+  this store is that a person did: every decision in it has a name and a
+  time against it. The useful thing a model can do here is change the
+  *order*, so the hard cases get looked at while people are still fresh.
+
+### Changed
+
+- **A fault on two machines is now two rows.** The same traceback on the rig
+  and on the desktop used to arrive as one group with a count of two — and
+  "happened twice" is a different fact from "happens on both machines", the
+  second of which tells you it is not something about one computer.
+  Resolving is scoped the same way: **Resolved** on the rig now says fixed
+  on the rig. `?fold=fault` folds them back to one row per fault, because
+  "is this the same bug in both places" is also a real question.
+
+  The fault's own signature is unchanged. Twenty-two triage marks were
+  keyed on it before this, and they all still apply.
+
+- **Errors and the Debug trace have a device picker.** Errors filters to one
+  machine's groups. Debug swaps this machine's request trail for the chosen
+  machine's feed — its actions and its errors, interleaved, because the
+  useful shape is "these four things happened and then it broke". The
+  request trail itself stays local and should: nobody debugs by reading
+  somebody else's HTTP log.
+
+- **The Sync button says where it has got to.** It used to read "Syncing…"
+  for three or four seconds, which is indistinguishable from hung. Both
+  halves now name the table they are on and how far through they are — the
+  pull especially, which is the slow half at fifteen round trips and used to
+  report the single word "pulling" for all of them.
+
+  The bar's denominator is an estimate, and it stretches rather than
+  overrunning: counting exactly would mean walking every table first, which
+  is most of the work the bar is meant to be reporting on.
+
+- **Four names became two.** `theexaminedexistence@gmail.com`, `Shahriar`
+  and `Shahriar Tafti` were one person; `Rain` and `Rain Younger` were
+  another. 423 decisions, 430 reviews, 38 assignments and 118 bank fields
+  now carry the name their author actually goes by.
+
+  Seven bank entries were left alone on purpose. `added.by` is immutable
+  across the shard merge — provenance is not an editable field — so those
+  fold at read time instead, through aliases stored on the roster. The
+  activity and error logs were not touched at all: they record what each
+  machine believed at the time, which is the point of a log.
+
+### Fixed
+
+- **The StrataScope layer buttons got their colours back.** A
+  `border-color:` shorthand on the armed-brush style was overriding the
+  `border-left: 3px solid var(--cat)` that carries each layer's colour, so
+  all fifteen went grey the moment anything was selected. It is a
+  `box-shadow` ring now, which cannot touch the border.
+
+### The sync was quietly broken, and this is what it took to find out
+
+All four of these were found by checking whether the two SQL files from
+earlier had been run. 06 had; 07 had not; and the consequences went a long
+way past "one field does not sync".
+
+- **One un-run migration was stopping the whole lab's sync.** `sessions`
+  carries six columns that `supabase/07_reference_channels.sql` adds, so
+  every upsert of a changed recording came back
+
+  ```
+  HTTP 400 PGRST204  Could not find the 'extraction_note' column
+                     of 'sessions' in the schema cache
+  ```
+
+  and because `sessions` is first in the push order, that exception aborted
+  the push before it reached any other table. Curation, layers, the bank,
+  the error triage: none of it went up, from the moment a recording changed.
+
+  It hid because it was intermittent in the worst possible way. A push with
+  no session changes in it skips the table and succeeds, so the sync looked
+  fine most of the time. The repair push sent **26,327 rows**.
+
+  A column the database has not got is now dropped on the way up and the
+  rest of the push carries on — and because that means nothing visibly
+  breaks, the sync panel says which file to run, and
+  `GET /api/sync/pending-migrations` asks the schema directly rather than
+  waiting to be refused. It distinguishes a column some migration accounts
+  for from one nothing does; the second is the more worrying case, since it
+  means a machine is sending a field no migration explains.
+
+- **The roster merge was being undone on every pull.** Rain Younger folded
+  into Rain and Shahriar's three spellings into one — on this machine, until
+  the next sync. `aliases` was a local-only field: the shared `people` table
+  has no such column, so the cloud still held the old names and
+  `_apply_people` wrote them back every cycle. The merge looked like it had
+  failed when what had happened is that it had been reverted.
+
+  Aliases travel now (`supabase/08_people_aliases.sql`), unioned rather than
+  last-write-wins, because two people merging different spellings on
+  different machines are both right and neither should erase the other. And
+  a pull no longer re-creates a name this machine has been told is somebody
+  else.
+
+- **The guard against the push/pull write loop had never once fired.**
+  `_apply_people` skips a row that says nothing new, because writing an
+  unchanged record restamps it and a restamped record is pushed back up as
+  an edit — which is how the same eleven people came down and went up again
+  forever, between every pair of machines. The skip read
+  `for p in (self.people.roster() or [])`, and `roster()` returns a *dict*:
+  the loop walked its keys, `"people".get(...)` raised, the bare `except`
+  below set `have = {}`, and it moved on. Measured before the fix: 11 of 11
+  unchanged rows written. After: 0, twice in a row.
+
+  This is the fourth time this loop has been found in this file, and the
+  first time the fix for it was itself broken.
+
+- **The digest was reporting 8 where the answer was 2,018.** It asked for
+  the newest 2,000 rows and *then* discarded this machine's — and PostgREST
+  caps a response at 1,000, so on a busy machine the entire budget went on
+  rows that were thrown away. The exclusion is in the query now and the
+  headline comes from a counted request rather than from `len(rows)`.
+
+  Where the breakdown cannot cover the whole total, the card says so rather
+  than printing two numbers that do not add up. `/api/activity/who` had the
+  same shape of problem and now reports what it counted.
+
+  Worth noting for anyone reading the code: `provenance().machine` is
+  `"Bluebarry"` where `machines.hostname` is `"desktop-4h65ai7-d565"` — the
+  same computer under two names. A check comparing the wrong one passes
+  vacuously, which one of the new harness checks was doing.
+
+- **"Is there anything from the rig at all" could not be answered by the
+  route that exists to answer it.** `/api/activity/who` tallied the two
+  thousand newest rows -- capped to a thousand -- so on an evening when this
+  machine had written the last thousand, it reported **one person and one
+  machine**. The true answer was five of each.
+
+  Both sets are small and known, so they are counted over the whole log now:
+  the machines from every source that knows a machine name, the people from
+  the roster with each of their aliases counted alongside their surviving
+  name. That last part matters — `ilike`, not `eq`, because aliases are
+  stored lower-cased and the log holds the name as it was typed, so a
+  case-sensitive match counted nothing and reported "Rain" and "Rain
+  Younger" as two people all over again.
+
+  The machine list came from the `machines` table alone, which holds the
+  three computers that have registered a heartbeat — while the log also
+  carries `DESKTOP-4H65AI7` (6,847 rows), `BarryLab` (305) and `Blackbarry`
+  (1). It attributed 3,802 of 10,955 rows and said nothing about the rest.
+  Now: 10,954 of 10,955, with the remainder reported rather than buried, and
+  `Rain` at 2,103 — which is 2,095 plus the 8 that were filed under the
+  other spelling.
+
+  The action-kind breakdown is still read off the recent page, because there
+  is no bounded list of action names to iterate and "the shape of the recent
+  work" is a fair thing to read off recent work. The route says which of its
+  numbers are which.
+
+**Still needs somebody with the SQL editor open:** run
+`supabase/07_reference_channels.sql` and `supabase/08_people_aliases.sql`.
+Until then the fissure, ripple and hilus channels for 62 recordings, and the
+roster merge, exist on this machine only. The sync panel will stop mentioning
+them once they are in.
+
+### The test suite could not be run, which is why so much of this was found late
+
+There are 92 harnesses in `web/_dev` and no way to run them together, so they
+were run by hand, a few at a time, whenever something specific was being
+changed. `tools/run_harnesses.py` runs all of them and tallies the result.
+
+Writing it took three attempts, and each failure is worth knowing about
+because each one made the suite look healthier than it was:
+
+- The harnesses report in three different shapes — a `#out` div of plain
+  lines, a `#log` `<pre>` of `<span class="good">ok …`, and a couple that put
+  the verdict in the document title. The first runner understood one of them
+  and reported **"0 ok, 0 fail"** for two thirds of the suite, which reads
+  exactly like a clean run.
+
+- Fifteen harnesses take `?session=<path>` and call `xplore.open()` on it
+  without checking. Run without one, `open(null)` renders nothing and every
+  geometry assertion fails against an empty pane — so thirteen harnesses
+  looked broken and the cause was one missing argument. `master.html` went
+  from five failures and a crash to **12 ok, 0 fail** once it had one.
+
+  This is worth saying plainly: those failures were read as a possible
+  regression in the xplore control strip, and the strip is fine. It renders
+  `Filter`, `Ch 64/64`, `Marks` and `More` exactly as it should.
+
+- But not to all of them. `bank.html` is 47 ok / 0 fail bare and *crashes*
+  with a session; `strata.html` skips cleanly bare and throws on the demo
+  recording, which has no layer sheet. So the argument is passed per
+  harness, and the runner names the two exceptions and why.
+
+- And it never set `--window-size`, so every layout harness was measuring
+  an 800x600 window. `stratacheck.html` reported six failures — rows 1px
+  tall, 0 of 64 rows clickable, 22 buttons off screen — and passes at
+  1600x1000. `typing.html` reported 47 clipped entry names and passes.
+  `chrome.html` went from two failed divider drags to 26 ok. A layout
+  harness run in a 423px window is measuring the window.
+
+One more of the same kind, in a harness rather than the runner:
+`chrome2.html` measured the rail mid-transition. Under
+`--virtual-time-budget` the timer clock fast-forwards and the animation
+clock does not, so a transition sits at its start value for ever — the rail
+animates its width through `@property --rail`, and every reading came back
+190px however many times the burger was clicked. Settled with
+`Animation.finish()`, as `motion.html` already knew to do: **190 → 54
+(`rail-icons`) → 0 (`rail-away`)**, with `#main` growing 787 → 923 → 977 to
+fill the window. The collapse works exactly as specified.
+
+The suite now runs 936 checks passing against 763 before, with 12 harnesses
+still failing rather than 22 — and almost all of that movement was fixing
+the instrument, not the app. It is worth being blunt about that: for most of
+this the harness output was read as evidence about BARRY when it was
+evidence about the runner, and two alarming conclusions drawn from it — that
+this machine's log was stranded from the cloud, and that the xplore control
+strip had stopped rendering — were both wrong.
+
+What is left is concentrated in the session scanner (`scanreg`,
+`housekeeping`), a set of harnesses that need a specific recording rather
+than the demo (`chan64` wants 64 channels, `kilosort` a sortable recording,
+`lineage` an entry with versions, `spancentre` live candidates), and
+`bankback`/`strip2`, which crash on a pane control before their first check.
+`pathprobe` is the interesting one: it asserts every registry path is a
+complete path, and the demo sessions carry pseudo-paths like
+`demo:ds-tutorial` that are not. None of these are in anything this release
+touched, and none of them has been confirmed as a defect rather than as
+drift — that is the next session's work, and it starts from a runner that
+can be trusted.
+
+`uiprobe.html` is fixed too, and had never worked: it read `win().BARRY`, and
+`BARRY` is a top-level `const` in core.js — a binding in that script's scope,
+never a property of `window` — so it printed "MISSING" on a perfectly healthy
+frame and then threw calling a method off undefined. `win().eval(...)` runs
+inside the scope that can see it.
+
+### A note on honesty
+
+The receipt's first version reported **421.7 decisions a minute** for a set
+that had been filled down fourteen at a time. It was not wrong about the
+arithmetic — 738 decisions across 105 seconds really does divide out at
+seven a second — it was wrong about what a timestamp means.
+
+7,655 of the 9,265 decisions in this store were stamped in bulk: a snapshot
+import stamped 1,224 of them at one instant, and fill-down stamps a
+column at a time. So a decision now counts towards a pace only if it has a
+timestamp to itself, and the rest are counted and named as what they are.
+The receipt says "1,224 of them share a single timestamp — an import or a
+fill-down stamped the set all at once, so nobody sat and decided them one by
+one", and quotes no rate. The hall of garbage leads with the same caveat
+before its list, because somebody who reads "5 qualify" and stops has been
+misled about nine thousand decisions.
+
+A card that says nothing is fine. A card that says seven a second is not.
+
+Sixty-one checks in `web/_dev/digest.html` cover this, most of them
+refusals — that the pace is absent where it cannot be known, and that the
+bulk share is said out loud rather than averaged in. The phase sequence a
+sync reports moved out to `tools/check_sync_progress.py`, on the real clock:
+the browser harnesses run under `--virtual-time-budget`, where the page's
+timers fast-forward while the server carries on at the real clock, and every
+attempt to watch a real sync from in there either outran it or lost the lock
+to the background pass.
+
+---
+
+## 2026.09.08.16 — the history the lab shares
+
+### Changed
+
+- **History can show the whole lab, not just this machine.** The log was
+  never the problem — ninety-five distinct actions, and `session.open`
+  already carried the path, the channel count, the sample rate and what was
+  restored. What could not be answered was "who loaded that recording last,
+  and what did they do to it", because the view read this machine's own day
+  files and nothing else, so the answer was available only if it happened to
+  be you.
+
+  A switch between **This machine** and **Everyone**, a filter by kind of
+  work (session, curation, bank, layers, figure, run…), and the rows now
+  carry who did it and what it was done to — the recording's label, or the
+  file, rather than making you open each one to find out.
+
+  The kind filter matches a prefix, so "curation" reaches
+  `curation.enter`, `curation.bank` and `curation.collision` alike. The
+  useful question is about a kind of work, not one verb.
+
+- **`/api/activity/who`** answers the shape rather than the list: who has
+  done how much, from which machine, last seen when. Currently 756 actions
+  from Shahriar Tafti on Bluebarry, 236 from Rain on StrawBarry, 8 from Rain
+  Younger — which is the sort of thing a list of a thousand rows makes you
+  work out for yourself.
+
+- **The activity log is out of git.** Eight tracked files, several thousand
+  lines a week, one per machine per day — and committing them was the only
+  way one person's history reached another, so the repository carried a
+  growing pile of keystroke records and "who loaded this last" was *still*
+  unanswerable until somebody remembered to push. It goes through Supabase
+  now. The files stay on disk as the offline buffer: BARRY records what
+  happened whether or not there is a network, which is exactly when it
+  matters. They are cache, not transport.
+
+The log itself stays push-only, and the reason is unchanged: it is an
+append-only record of what happened on one machine, and pulling somebody
+else's into this machine's day file would be writing their actions into a
+file that says it is mine. The combined history is a query, and now there is
+one.
+
+### A note on honesty
+
+When the shared log is asked for and cannot be read, the answer says so —
+`scope` reports what was actually served and `wanted` echoes what was asked,
+and the view prints the reason above the list. An unlabelled list of your own
+actions is indistinguishable from "nobody else did anything", and somebody
+would believe it.
+
+---
+
+## 2026.09.08.15 — the reference channels
+
+### Added
+
+- **Ripple, fissure and hilus channels on 62 recordings**, from the Toothy
+  workbook (`tools/import_toothy.py`). These are the landmarks every CSD is
+  read against — which channel sits at the fissure is a fact about where the
+  probe ended up — and BARRY had nowhere to put them, so the answer lived in
+  a spreadsheet and was true for whoever had it open.
+
+  Corroborated rather than trusted: the hilus channel the workbook names is
+  labelled HIL in the StrataScope sheet in **57 of 57** cases, and those
+  sheets came from a different spreadsheet imported separately. Two
+  independent sources agreeing is the best evidence either could have.
+
+- **The extraction note, where it was not clean.** 53 read "Success: Clean
+  extraction" and are not shown; the nine that do not are on the card —
+  five bad-channel hits on the ripple, three with no CA1 SP channel at all,
+  one bad channel at the hilus. That last group changes how the recording
+  should be read, and it was only ever visible in a spreadsheet. Three
+  sessions are flagged as still needing processing.
+
+Needs `supabase/07_reference_channels.sql`.
+
+### Not imported, and why
+
+Four of the workbook's six sheets are deliberately left alone. The reasoning
+is in the tool's docstring, and `--reconcile` reports the differences without
+writing anything.
+
+- **DS#, Garbage#, Flag#, Deep Rev.** BARRY holds the decisions these count,
+  one per candidate, with who made each and when. Of the 40 sessions where
+  both exist, 22 agree exactly and 18 do not — and m24 s4 reads spike 4 /
+  garbage 734 in the workbook against spike 738 / garbage 0 here, which looks
+  like two columns swapped in that row. Importing a count that disagrees with
+  the decisions it summarises would give the lab two answers to "how many
+  dentate spikes", one of which cannot be shown event by event.
+- **Channel side and location.** Already imported from the feeder sheet.
+  3,898 of 3,948 agree; the 50 that do not are in four sessions and are
+  systematic rather than scattered — for m11 s10 the workbook says CA1 for
+  channels 8–17 where the sheet says CA1 SP. Two spreadsheets disagreeing
+  about a layer boundary is a question for whoever drew it, not something to
+  settle by picking the file read last.
+- **Manual Vs Auto** and **Data Summary** are results — a comparison of the
+  detector against manual picks, and per-mouse counts with percent change.
+  Putting either in the session record would file a conclusion where
+  measurements go.
+
+### Fixed while surveying
+
+The first pass compared the workbook's DS# against a curation label id of
+`ds` and reported BARRY holding zero dentate spikes everywhere. The label is
+`spike`. A survey that reports a false conflict is worse than one that
+reports nothing, because somebody acts on it — so the comparison now names
+the label ids explicitly, and the channel parse reads the digits out of
+`CSC12.ncs` rather than failing silently and finding nothing to compare.
+
+---
+
+## 2026.09.08.14 — what was happening, and which devices
+
+### Added
+
+- **Click an error to see the five minutes before it.** The card carried a
+  message, a traceback and a timestamp — everything except the part that
+  makes a bug fixable. BARRY already writes every filter change, colormap
+  pick and raster switch into the activity log; the two were simply never
+  lined up, so an error was a message and the answer to "what were you
+  doing" was a message to whoever hit it.
+
+  Five minutes before, and one after — before is where the cause is, and
+  that minute after is how you tell "and then it recovered" from "and then
+  everything broke". The error is drawn **in** the sequence rather than
+  beside it, because a list of actions with no indication which side of the
+  failure each one is on is not much of a list. Other errors in the same
+  window are listed too: one fault often arrives as six and the first is the
+  one worth reading.
+
+  It reads another machine's activity from the cloud, which is the case the
+  shared copy exists for — the log itself stays push-only, because copying
+  somebody else's actions into this machine's day file would be writing
+  their history into a file that says it is mine. If the cloud cannot be
+  reached it says so, because "nothing was happening" and "I could not find
+  out what was happening" look identical in an empty list.
+
+- **A devices table**, in the debug view: every machine that syncs here,
+  whether it still is, and what it has been sending. `machines.last_seen`
+  has been a heartbeat all along and nothing read it, so "is the rig still
+  sending its logs" was a question you answered by walking down the
+  corridor.
+
+  Online and sending are separate columns on purpose. A machine can be
+  reachable and have stopped logging, and that is the more interesting
+  failure of the two — one of the three here is online with three errors and
+  no actions at all.
+
+The debug trace itself stays per-process and in memory. It is what *this*
+browser and *this* server did, and shipping raw request trails between
+machines would be a great deal of volume for very little: nobody debugs by
+reading somebody else's HTTP log. What is worth knowing across machines is
+whether each one is still reporting, which is what the table answers.
+
+### Fixed
+
+- The context window compared ISO strings, and the local log writes local
+  time with its offset while the cloud copy writes UTC — so lexicographic
+  comparison silently dropped every cloud row, which read as "the other
+  machine logged nothing" rather than as a bug. Everything compares moments
+  now, including the harness that caught it.
+
+---
+
+## 2026.09.08.13 — layer sheets in the Event Bank
+
+### Added
+
+- **StrataScope sheets are in the Event Bank**, on a switch beside Events.
+  They are the other output somebody cites in a paper, and they were only
+  reachable through the ToolKit — so "where is the recorded output for m11
+  s10" had two answers depending which output you meant.
+
+  Not as bank entries, though. A bank entry is a set of event *times*, and
+  every invariant in the bank is about times: the snapshots are
+  `[[start, label], …]`, the counts are event counts, the import path expects
+  a time column. A layer sheet is channel → region and has no times at all.
+  Forcing it in would mean either lying in the times field or making all of
+  those invariants optional, and an entry that is only half an entry is worse
+  than a second list. One view, two shapes, neither pretending to be the
+  other.
+
+- **The same version workflow as a banked DS set.** Snapshot a pass and it is
+  frozen as the next version, with a note about what the pass was; every
+  version exports as CSV, read from its snapshot so it cannot disagree with
+  the history panel. A row per channel including the unlabelled ones — a CSV
+  that silently omits them cannot be told from one where they were never
+  offered.
+
+- A sheet is shown as **runs** rather than one row per channel: a probe passes
+  through a layer for a stretch, so where the boundaries fall is the fact
+  worth reading and "CA1" eight times over is not.
+
+### Fixed
+
+- **62 of the 67 layer sheets had no channel list**, so they displayed and
+  exported as empty despite holding sixty-odd labels each — every reader
+  walks that list, and my feeder import never wrote one. The importer now
+  does, the readers fall back to the labelled channels when it is missing,
+  and the existing sheets have been backfilled. A sheet is never invisible
+  just because nobody said how wide it was.
+
+---
+
+## 2026.09.08.12 — labelling layers by pointing at them
+
+### Changed
+
+- **StrataScope: click a channel, then name it.** The rail put a dropdown on
+  every row, and at 64 channels a row is six pixels tall — so labelling asked
+  the mouse to be right twice, once to hit the row and once to work a menu
+  covering the thing being labelled. Reported as "I can't click on individual
+  channels to select anything", which is what a six-pixel target feels like.
+
+  Click selects, shift-click takes a range, drag extends, ctrl-click adds
+  one. Then a layer button — or its number — names everything selected, and
+  `0` unlabels. Precision is needed once, and the second half can be a
+  keystroke. The selection survives being labelled, because finding one
+  channel wrong in a run of twelve is the common case and re-picking the run
+  to fix it is not an answer. Escape drops the selection before it drops the
+  mode.
+
+  The brush stays for anyone used to it: with a layer armed and nothing
+  selected, dragging still paints.
+
+### Fixed
+
+- **The layer overlay drew on nothing but the traces**, which is the one view
+  people do not label against — the CSD is where a boundary is visible, and
+  the four-way view showed no layers at all. It draws on image panels now,
+  aligned to the rows the panel reports rather than to the sheet's own
+  channel order: CSD drops the first and last channel, and laying the sheet
+  over those rows would put every band one off, which is worse than nothing
+  because it looks right.
+- **And it could stop drawing entirely.** The overlay was gated on a flag set
+  on the session object — but entering StrataScope reopens the recording, and
+  a reopen can hand back a different object from the one the flag was set on.
+  It now also accepts "this is the recording under the sheet", which the
+  module already knows.
+
+### Added
+
+- **An overlay strength control** beside Fill down and Clear: Off, Faint,
+  Clear, Solid. The bands show where a boundary fell, and past a point they
+  are in the way of the data that decides where it should have fallen. The
+  selection is drawn whatever the setting — turning the layers down is not a
+  reason to stop showing what you are pointing at.
+- **Session filters: Layers labelled, Layers to do, On this machine.** 387
+  recordings here, 64 labelled, 323 to do, 188 reachable.
+
+  Both filters were wrong on the first pass and the harness caught both: the
+  registry rows are translated into cards, and the translation dropped `has`
+  and `here` — so the layers filter matched nothing at all, and "on this
+  machine" fell back to "has a path", which matched 382 of 387. A filter that
+  matches everything is as broken as one that matches nothing and much harder
+  to notice.
+
+---
+
+## 2026.09.08.11 — removing a name, and the colony sheet
+
+### Added
+
+- **A profile can be removed.** The button was missing; the backend and its
+  route had been there all along. Only names nothing else carries can go —
+  the roster is compiled from the profiles, the decisions, the bank and the
+  assignments, so a name with work behind it is there because the data says
+  so, and a button that appeared to delete it would be lying about what
+  BARRY holds. Those are marked and say how many records hold them.
+
+  The trap, which the harness now guards: the roster counts the hand-added
+  entry itself, so testing that count directly refuses **every** hand-added
+  name — precisely the set that can go, and precisely what a leftover test
+  entry is. Three are removable here; four are held.
+
+- **Mouse details from the colony Google Sheet** (`tools/import_colony.py`).
+  Cage, sex, genotype across all three loci, date of birth, role, alive or
+  perfused, and what was implanted where and when — for the 19 mice BARRY
+  has recordings for. The mouse book has had slots for these all along and
+  nothing to put in them, so every one of those questions was answered by
+  opening the spreadsheet.
+
+  Mouse facts only, deliberately: the sheet also carries session numbers,
+  and recordings are the one thing BARRY should learn from the recordings
+  themselves. A session that exists because a spreadsheet says so is a
+  session nobody can open.
+
+  Read-only, one direction, via the published CSV — no key to store and
+  nothing that stops working when a token expires. It writes only what
+  differs, so a re-run is a clean no-op: the property the roster sync and
+  the layer sync both turned out to lack. Of the sheet's 241 mice the 199
+  with no recordings here are skipped unless `--all` is passed.
+
+  The implant column is the useful surprise — which probe, which hemisphere,
+  what date — and is the only independent check on the hemisphere a
+  recording claims.
+
+---
+
+## 2026.09.08.10 — "keep, greyed out" is gone
+
+### Removed
+
+**The greyed-out channel mode.** It sounded like a display option and was
+really two features in one coat: to draw an unchecked channel the request has
+to ask for it, and once that data is in the response every derived number is
+computed over channels somebody explicitly excluded. It produced a CSD colour
+scale twice as wide as it should have been and a trace amplitude that moved
+when you unchecked something — both invisible unless you went looking, both
+the kind of thing that reaches a figure.
+
+Each was fixable and each was fixed. The trouble is the list did not
+obviously end: every future panel and every future statistic would have had
+to remember that some of its rows were not really selected. A feature that
+adds a caveat to everything downstream costs more than it gives — and what it
+gave, seeing what you are leaving out, is already in the channel list beside
+the plot.
+
+Unchecking means what it always meant: not read, not drawn, not in any sum.
+`rows[].dim` stays in the panel response, always false, so a stale tab that
+still sends `dim_channels` is ignored rather than answered with a traceback.
+
+Marks visibility (show / faded / hidden) stays. A bookmark has never been in
+anybody's arithmetic.
+
+### Fixed
+
+- **Collapsing the menu made the rail taller and gave it a scrollbar**, worst
+  on exactly the screens with least room. Two causes, both mine: labels
+  collapsed with `max-width: 0` kept their full height — the environment
+  block stayed three lines tall while being zero pixels wide — and the icons
+  rule's `padding` shorthand silently overrode the compaction in
+  `@media (max-height: 700px)`, adding six pixels to each of eleven items.
+  Collapsing now never costs more room than it saves, checked at four window
+  heights.
+
+---
+
+## 2026.09.08.9 — what the spreadsheets knew
+
+Three facts lived in two Excel files and nowhere else, which meant they were
+true only for whoever had the file open. `tools/import_feeder.py` brings them
+in; it reports and writes nothing unless given `--apply`, because the first
+version of any importer is wrong in a way you only see in the diff.
+
+### Added
+
+- **Hemisphere, on 64 recordings** — 36 left, 28 right, from the feeder
+  sheet's `side` column. Shown on the session card, because pooling a left
+  and a right CA1 recording without noticing is a mistake that survives into
+  a figure. Two-way through Supabase, and it records where the value came
+  from so a wrong one can be traced rather than argued about.
+- **Layer sheets for 64 recordings, with a v0/v1 history** — 4,076 channels
+  labelled from the sheet's `location` column. v0 is the empty sheet and v1
+  is the import, mirroring the event bank: a layer sheet is evidence, and
+  evidence with no history cannot be cited. v0 looks pointless until you need
+  to answer "was this channel ever unlabelled", which is exactly the question
+  that comes up when a migration turns out to have been wrong.
+- Two layer regions the vocabulary lacked: **THAL** (twelve deep channels of
+  m2s3 — thalamus, and emphatically not "out of brain", which was the only
+  other place it could have gone) and **DG2** (m30's lower blade with no
+  sublayer given). Appended, so every id already written keeps its meaning.
+
+### Not applied, on purpose
+
+**The bad-channel column would only have removed things.** Against what BARRY
+already holds from the Toothy workbook it adds nothing: all eleven differences
+are channels BARRY calls bad and the sheet does not — 13 flags in total,
+including m24 s4 dropping 24 and 25.
+
+Un-flagging is not a neutral edit. A channel marked bad is left out of what
+people look at and of what they compute, so clearing the mark puts whatever
+was wrong with it back into the analysis, quietly, in recordings somebody may
+already have drawn conclusions from. The importer reports it and writes
+nothing; `--bad-mode union` adds without ever removing, and `--bad-mode
+replace` treats the sheet as authoritative. Which of those is right is a
+judgement about the data, not about the code.
+
+### Fixed while there
+
+- The layer applier rewrote every label on every pull, restamping sheets that
+  had not changed and pushing them straight back up — the same write loop the
+  roster was stuck in. It now writes only what differs.
+
+Needs `supabase/06_hemisphere.sql`.
+
+---
+
+## 2026.09.08.8 — a greyed channel is not in the equation
+
+### Fixed
+
+- **"Keep, greyed out" was letting the greyed channels set the colour
+  scale.** Measured on m11 s10 with sixteen channels checked: the CSD came
+  back at ±73,833 with the rest removed and ±143,792 with them greyed — the
+  same sixteen channels, drawn through a colour map twice as wide, because a
+  display setting had been changed. A setting that alters the picture you are
+  reading is not a display setting; it is a second analysis wearing a
+  disguise. The scale now comes from the channels you actually chose, and so
+  does the value the "auto" button resets to.
+- **The traces had it too, by the same route.** Every trace is scaled by
+  `robust_max`, which the server computes over every channel the request
+  asked for — and in this mode that is all of them, so unchecking a quiet
+  channel while a loud one stayed greyed rescaled everything on screen. The
+  greyed ones no longer get a say in the axis.
+
+The rule, now asserted: **an unchecked channel in "keep, greyed out" is a
+reference image and influences no number.** The testable form is exact — the
+rows you kept come out identical whether the unchecked ones are removed or
+greyed — and the harness checks the colour scale, the reset value, and the
+row identities against each other rather than against a remembered constant.
+
+Also checked, because they were asked about and neither was obvious: the
+spectrogram is unaffected either way (it has one channel and frequency down
+the rows, so `dim_channels` means nothing to it — the risk was that it
+failed on a field it did not understand, and it does not), and the mode
+remains a fact about the recording rather than the pane, so every pane
+showing it agrees.
+
+---
+
 ## 2026.09.08.7 — who is curating what, right now
 
 ### Added

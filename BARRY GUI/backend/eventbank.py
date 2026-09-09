@@ -631,6 +631,55 @@ class EventBank:
         return rec
 
     @shards.atomic
+    def rename_person(self, old, new):
+        """Re-credit an entry from one spelling of a name to another.
+
+        `update` refuses this on purpose -- "provenance is not one of them" --
+        and that guard is right: nobody editing a description should be able
+        to change who added the events. But a person whose name is recorded
+        three ways has three partial histories, and reconciling that is a
+        different act from editing a caption. So it gets its own method,
+        narrow enough to read at a glance, rather than a hole in the other
+        one.
+
+        Recorded in the entry's history, because a silent re-credit is
+        indistinguishable from the record having always said this.
+        """
+        old_l = str(old or "").strip().lower()
+        if not old_l or not new:
+            return 0
+        n = 0
+        for rec in list(self.all()):
+            eid = rec.get("id")
+            live = self.get(eid)
+            if not live:
+                continue
+            hit = 0
+            added = live.get("added") or {}
+            if str(added.get("by") or "").strip().lower() == old_l:
+                added["by"] = new
+                live["added"] = added
+                hit += 1
+            for v in (live.get("versions") or []):
+                if str(v.get("by") or "").strip().lower() == old_l:
+                    v["by"] = new
+                    hit += 1
+            if not hit:
+                continue
+            live.setdefault("history", []).append({
+                "at": _now(),
+                "by": (self.store.provenance().get("user")
+                       if self.store else None),
+                "renamed": {"from": old, "to": new, "fields": hit},
+            })
+            base = self._base_for_id(eid)
+            if base:
+                self.book.write(base, live)
+            self._cache = None
+            n += hit
+        return n
+
+    @shards.atomic
     def edit_version(self, entry_id, v, patch):
         """Change what a version says about itself, not what it holds."""
         rec = self.get(entry_id)

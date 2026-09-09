@@ -21,10 +21,28 @@ BARRY.views.eventbank = (function () {
   let projectFilter = '';
   let selected = null;        // the entry id shown in the detail pane
 
+  /* Which kind of banked thing the view is showing.
+
+     Layer sheets are the other output somebody cites, and they were only
+     reachable from the ToolKit -- so "where is the recorded output for m11
+     s10" had two answers depending on which output you meant. They are not
+     bank entries, because a bank entry is a set of event TIMES and a layer
+     sheet has none; they are the same view over a different list. */
+  let kind = 'events';        // 'events' | 'layers'
+  let sheets = [];            // layer sheets, when kind === 'layers'
+  let sheetSel = null;        // the gid shown in the detail pane
+  let sheetOne = null;        // that sheet, with its snapshots
+
   async function load() {
     // Nothing on screen yet means an empty panel for the length of the read.
     const bones = entries.length
       ? null : BARRY.skeleton.into($('#bankBody'), 'row', 7);
+    /* Both lists, in parallel. The switch between them has to be instant --
+       it is a switch, not a navigation -- and the sheets are a single small
+       read. */
+    const alsoSheets = api('/api/layers')
+      .then((r) => { sheets = (r && r.sheets) || []; })
+      .catch(() => { sheets = []; });
     try {
       const res = await api('/api/bank');
       tree = res.tree || [];
@@ -35,6 +53,7 @@ BARRY.views.eventbank = (function () {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
     } finally {
+      try { await alsoSheets; } catch (e) { /* the events still render */ }
       // In a finally, so a failed read does not leave the bones behind.
       if (bones) bones();
     }
@@ -67,7 +86,14 @@ BARRY.views.eventbank = (function () {
 
     const list = visible();
     const sub = $('#bankSub');
-    if (sub) {
+    if (sub && kind === 'layers') {
+      const done = sheets.filter((x) => (x.progress || {}).labelled).length;
+      sub.textContent = sheets.length
+        ? sheets.length + ' layer sheet(s)  ·  ' + done + ' with labels  ·  '
+          + sheets.reduce((n, x) => n + ((x.progress || {}).labelled || 0), 0)
+          + ' channels labelled'
+        : 'No layer sheets yet.';
+    } else if (sub) {
       sub.textContent = entries.length
         ? list.length + ' of ' + entries.length + ' entr(ies)  ·  '
           + tree.length + ' project(s)  ·  '
@@ -76,6 +102,8 @@ BARRY.views.eventbank = (function () {
     }
 
     host.appendChild(toolbar());
+
+    if (kind === 'layers') { renderLayers(host); return; }
 
     if (!entries.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
@@ -99,6 +127,23 @@ BARRY.views.eventbank = (function () {
   function toolbar() {
     const bar = el('div', { class: 'res-toolbar' });
 
+    /* Which kind of banked output. A switch rather than two views: the
+       question "what has been recorded for this session" should have one
+       place to ask it, even though the two answers have different shapes. */
+    bar.appendChild(el('span', { class: 'ctl-seg bank-kind' }, [
+      el('button', {
+        class: 'mini' + (kind === 'events' ? ' on' : ''),
+        text: 'Events', title: 'Banked event sets — times and labels',
+        onclick: () => { kind = 'events'; render(); },
+      }),
+      el('button', {
+        class: 'mini' + (kind === 'layers' ? ' on' : ''),
+        text: 'Layers',
+        title: 'StrataScope sheets — which layer each channel sits in',
+        onclick: () => { kind = 'layers'; render(); },
+      }),
+    ]));
+
     bar.appendChild(el('div', { class: 'search-wrap inline' }, [
       el('svg', { viewBox: '0 0 20 20', class: 'search-icon',
         html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
@@ -111,7 +156,7 @@ BARRY.views.eventbank = (function () {
     ]));
 
     const projects = Array.from(new Set(entries.map((e) => e.project || 'Unfiled')));
-    if (projects.length > 1) {
+    if (kind === 'events' && projects.length > 1) {
       bar.appendChild(el('select', {
         title: 'Filter by project',
         onchange: (e) => { projectFilter = e.target.value; render(); },
@@ -122,7 +167,7 @@ BARRY.views.eventbank = (function () {
     }
 
     const used = Array.from(new Set(entries.map((e) => e.type)));
-    if (used.length > 1) {
+    if (kind === 'events' && used.length > 1) {
       bar.appendChild(el('select', {
         title: 'Filter by event type',
         onchange: (e) => { typeFilter = e.target.value; render(); },
@@ -136,6 +181,271 @@ BARRY.views.eventbank = (function () {
     bar.appendChild(el('div', { style: 'flex:1' }));
     bar.appendChild(el('span', { class: 'hint', text: meta.root || '' }));
     return bar;
+  }
+
+  /* ==================================================================
+     Layer sheets
+     ================================================================== */
+  function renderLayers(host) {
+    const q = query.trim().toLowerCase();
+    const list = sheets.filter(function (x) {
+      if (!q) return true;
+      const sess = x.session || {};
+      return [x.session_label, x.gid, sess.project,
+              'm' + sess.mouse, 's' + sess.session]
+        .join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+
+    if (!sheets.length) {
+      host.appendChild(el('div', { class: 'empty-state' }, [
+        el('svg', { viewBox: '0 0 24 24',
+          html: '<rect x="3" y="4" width="18" height="16" rx="2"/>'
+              + '<path d="M3 9h18M3 14h18"/>' }),
+        el('p', { text: 'No layer sheets yet. Open a recording in the '
+                      + 'ToolKit under StrataScope and label which layer '
+                      + 'each channel sits in — the sheet is filed here.' }),
+      ]));
+      return;
+    }
+
+    host.appendChild(el('div', { class: 'bank-split' }, [
+      layerList(list),
+      layerDetail(),
+    ]));
+  }
+
+  function layerList(list) {
+    const box = el('div', { class: 'bank-tree' });
+    /* Grouped the way the events side groups: project, then mouse. The
+       sheets arrive sorted by how much is labelled, which is a useful order
+       for seeing what is left and the wrong one for finding a given
+       recording. */
+    const byProject = new Map();
+    list.forEach(function (x) {
+      const proj = (x.session || {}).project || 'Unfiled';
+      if (!byProject.has(proj)) byProject.set(proj, []);
+      byProject.get(proj).push(x);
+    });
+    Array.from(byProject.keys()).sort().forEach(function (proj) {
+      const rows = byProject.get(proj).slice().sort(function (a, b) {
+        const am = (a.session || {}).mouse || 0;
+        const bm = (b.session || {}).mouse || 0;
+        if (am !== bm) return am - bm;
+        return ((a.session || {}).session || 0) - ((b.session || {}).session || 0);
+      });
+      box.appendChild(el('div', { class: 'grp-head' }, [
+        el('span', { text: proj }),
+        el('span', { class: 'count', text: rows.length + ' sheet(s)' }),
+      ]));
+      rows.forEach(function (x) { box.appendChild(sheetRow(x)); });
+    });
+    return box;
+  }
+
+  function sheetRow(x) {
+    const pr = x.progress || {};
+    const done = pr.total && pr.left === 0;
+    const nv = x.n_versions || (x.versions || []).length;
+    return el('div', {
+      class: 'bank-row' + (sheetSel === x.gid ? ' on' : ''),
+      onclick: function () { selectSheet(x.gid); },
+    }, [
+      el('div', { class: 'bank-row-top' }, [
+        el('strong', { text: x.session_label || x.gid }),
+        el('span', { class: 'hk-chip', text: 'layers' }),
+        el('div', { style: 'flex:1' }),
+        el('span', { class: 'bank-n',
+          text: (pr.labelled || 0) + ' / ' + (pr.total || 0)
+              + (done ? '  ✓' : '') }),
+      ]),
+      el('div', { class: 'bank-row-sub' }, [
+        /* How many passes there have been. This is the whole reason the
+           sheets are here rather than only in the ToolKit: a sheet with a
+           history is a thing that can be cited. */
+        el('span', { text: nv
+          ? nv + ' version' + (nv === 1 ? '' : 's')
+          : 'no history yet' }),
+        el('span', { text: '  ·  ' }),
+        el('span', { text: ((x.updated || {}).by) || 'unknown' }),
+      ]),
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+    ]);
+  }
+
+  async function selectSheet(gid) {
+    sheetSel = gid;
+    sheetOne = null;
+    render();
+    try {
+      /* The single-sheet read, because it is the only one carrying the
+         snapshots -- the list leaves them out, and without them the history
+         can say how many versions there are but not what any of them held. */
+      const got = await api('/api/layers/' + encodeURIComponent(gid));
+      sheetOne = got.sheet || null;
+    } catch (e) {
+      toast('Could not read that sheet: ' + e.message, 'err');
+    }
+    render();
+  }
+
+  function layerDetail() {
+    const box = el('div', { class: 'bank-detail' });
+    if (!sheetSel) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Pick a sheet to see its history and export it.' }));
+      return box;
+    }
+    const x = sheets.filter(function (s2) { return s2.gid === sheetSel; })[0] || {};
+    const pr = x.progress || {};
+
+    box.appendChild(el('div', { class: 'mh' }, [
+      el('h3', { text: x.session_label || sheetSel }),
+      el('span', { class: 'sub',
+                   text: (pr.labelled || 0) + ' of ' + (pr.total || 0)
+                       + ' channels' }),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Open in StrataScope',
+        title: 'Label or correct this sheet',
+        onclick: function () { BARRY.strata.enter(sheetSel); },
+      }),
+    ]));
+
+    /* What it says now, as a run per layer rather than a row per channel:
+       sixty-four rows reading "CA1" is the same fact eight times over, and
+       where the boundaries fall is the thing worth seeing. */
+    box.appendChild(el('div', { class: 'section-label', text: 'As it stands' }));
+    box.appendChild(runsOf(x));
+
+    box.appendChild(el('div', { class: 'sec-head' }, [
+      el('div', { class: 'section-label', text: 'History' }),
+      el('div', { style: 'flex:1' }),
+      /* The same act as banking a curated set: a pass is finished, and what
+         it said should still be readable after somebody starts the next. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Snapshot this pass…',
+        title: 'Freeze the sheet as it stands as the next version',
+        onclick: function () { snapshotSheet(x); },
+      }),
+    ]));
+
+    const vs = (sheetOne && sheetOne.versions) || x.versions || [];
+    if (!vs.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: sheetOne
+          ? 'No versions yet. Snapshot the pass to make one.'
+          : 'Reading…' }));
+      return box;
+    }
+    vs.slice().reverse().forEach(function (v) {
+      const n = v.n != null ? v.n : Object.keys(v.snap || {}).length;
+      box.appendChild(el('div', { class: 'ver-row' }, [
+        el('div', { class: 'ver-top' }, [
+          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-when',
+            text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+          el('span', { class: 'ver-who', text: v.by || 'unknown' }),
+          el('span', { class: 'ver-count', text: n + ' labelled' }),
+          el('span', { class: 'ver-ops' }, [
+            el('button', {
+              class: 'linkish', text: 'CSV',
+              title: 'Export this version as a CSV, as it was at this pass',
+              onclick: function () {
+                BARRY.download(
+                  '/api/layers/' + encodeURIComponent(sheetSel)
+                    + '/version-export', { v: v.v },
+                  'layers-' + String(x.session_label || sheetSel)
+                    .replace(/[^A-Za-z0-9.-]+/g, '_') + '-v' + v.v + '.csv');
+              },
+            }),
+          ]),
+        ]),
+        v.note ? el('div', { class: 'ver-note', text: v.note }) : null,
+      ].filter(Boolean)));
+    });
+    return box;
+  }
+
+  /* Contiguous stretches of the same layer, which is how a probe actually
+     passes through them. */
+  function runsOf(x) {
+    const runs = [];
+    const labels = x.labels || {};
+    const names = {};
+    (x.regions || []).forEach(function (r) { names[r.id] = r; });
+    (x.channels || []).forEach(function (ch) {
+      const id = labels[String(ch)] || null;
+      const last = runs[runs.length - 1];
+      if (last && last.id === id) last.to = ch;
+      else runs.push({ id: id, from: ch, to: ch });
+    });
+    const box = el('div', { class: 'layer-runs' });
+    runs.forEach(function (r) {
+      const reg = names[r.id];
+      box.appendChild(el('div', {
+        class: 'layer-run' + (reg ? '' : ' none'),
+        style: reg ? '--cat:' + reg.color : '',
+      }, [
+        el('span', { class: 'layer-run-ch',
+          text: r.from === r.to ? String(r.from) : r.from + '–' + r.to }),
+        el('span', { class: 'layer-run-name',
+          text: reg ? reg.name : 'unlabelled',
+          title: (reg && reg.note) ? reg.note : '' }),
+        el('span', { class: 'layer-run-n', text: (r.to - r.from + 1) + ' ch' }),
+      ]));
+    });
+    return box;
+  }
+
+  /* Freezing a pass. Its own modal rather than a generic prompt, matching
+     editVersion above -- the note is the thing that makes a version worth
+     having, and a one-line box says so better than a browser prompt. */
+  function snapshotSheet(x) {
+    const pr = x.progress || {};
+    const wrap = el('div', { class: 'modal ver-edit' });
+    const note = el('textarea', {
+      class: 'ver-note-input', rows: '3',
+      placeholder: 'e.g. checked against the CSD, moved the GCL up two',
+    });
+    wrap.appendChild(el('div', { class: 'modal-head' }, [
+      el('h2', { text: 'Snapshot this layer sheet' }),
+      el('p', { class: 'sub', text: x.session_label || x.gid }),
+    ]));
+    wrap.appendChild(el('p', { class: 'confirm-msg',
+      text: 'It freezes the ' + (pr.labelled || 0) + ' label'
+          + ((pr.labelled === 1) ? '' : 's')
+          + ' as they stand as the next version, so a later correction does '
+          + 'not overwrite what this pass said. Nothing on the sheet '
+          + 'changes.' }));
+    wrap.appendChild(el('div', { class: 'section-label', text: 'What this pass was' }));
+    wrap.appendChild(note);
+    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
+      el('button', {
+        class: 'btn', text: 'Snapshot',
+        onclick: async function () {
+          closeModal();
+          try {
+            const res = await apiPost('/api/layers/'
+              + encodeURIComponent(x.gid) + '/snapshot',
+              { note: (note.value || '').trim() || null });
+            sheetOne = res.sheet || sheetOne;
+            // The list carries the version count, so re-read it too.
+            const got = await api('/api/layers');
+            sheets = (got && got.sheets) || sheets;
+            render();
+            const made = ((sheetOne || {}).versions || []).slice(-1)[0] || {};
+            toast('Snapshotted as v' + made.v, 'ok');
+          } catch (e) {
+            toast('Could not snapshot: ' + e.message, 'err');
+          }
+        },
+      }),
+    ]));
+    showModal(wrap, { replace: true });
   }
 
   /* ---------- left: project / mouse / session ---------- */
@@ -1036,6 +1346,10 @@ BARRY.views.eventbank = (function () {
     init,
     onShow: load,
     reload: load,
+    /* For web/_dev/banklayers.html: which sheet the detail pane is showing.
+       The harness needs it to ask the server for the same version the panel
+       is offering, rather than assuming which sheet it landed on. */
+    _sheetSel: () => sheetSel,
     types: () => types,
     /* Used by Xplorefinder's "Bank…" dialog so it offers the same list. */
     typeList: () => types,

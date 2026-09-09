@@ -407,15 +407,54 @@ def signature(rec):
                          msg.strip()[:180])
 
 
-def group_errors(records):
-    """Fold a flat error list into groups: unresolved first, then newest."""
+# Separates a fault signature from the machine it happened on, in the key
+# of a machine-scoped triage mark. Two at-signs because a hostname can
+# contain one and a signature contains almost anything.
+MARK_SEP = "@@"
+
+
+def mark_key(sig, machine=None):
+    """The key a resolve mark is stored under.
+
+    Without a machine this is the signature itself, unchanged -- which is
+    what every mark written before this existed is keyed on, and why they
+    all still work.
+    """
+    return "%s%s%s" % (sig, MARK_SEP, machine) if machine else sig
+
+
+def host_of(rec):
+    return (rec.get("machine")
+            or (rec.get("context") or {}).get("host")
+            or "unknown")
+
+
+def group_errors(records, per_machine=True):
+    """Fold a flat error list into groups: unresolved first, then newest.
+
+    Split per machine by default. The same fault on the rig and on the
+    desktop used to arrive as one group with a count of two, and "happened
+    twice" is a different fact from "happens on both machines" -- the second
+    one tells you it is not something about one computer.
+
+    `signature` on each group stays the identity of the FAULT, not of the
+    fault-on-this-machine: it is what the triage marks are keyed on, and
+    twenty-two of them existed before this change.
+    """
     groups = {}
     for rec in records:
         sig = signature(rec)
-        g = groups.get(sig)
+        host = host_of(rec)
+        key = (sig, host) if per_machine else (sig, None)
+        g = groups.get(key)
         if not g:
-            g = groups[sig] = {
-                "signature": sig, "count": 0, "first": None, "last": None,
+            g = groups[key] = {
+                "signature": sig,
+                # Unique per row of the list, so the client can key on one
+                # thing whichever way the folding went.
+                "key": mark_key(sig, host if per_machine else None),
+                "machine": host if per_machine else None,
+                "count": 0, "first": None, "last": None,
                 "where": rec.get("where"), "message": rec.get("message"),
                 "type": rec.get("type"), "records": [], "resolved": True,
                 "machines": [],

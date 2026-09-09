@@ -6,25 +6,37 @@
     "converted": "2026-09-04T15:57:01.654953+00:00",
     "created": "2026-09-02T23:51:19.839533+00:00",
     "duration_s": "2026-09-04T15:57:01.654953+00:00",
+    "extraction_note": "2026-09-09T06:08:48.860723+00:00",
     "first_seen_by": "2026-09-04T15:57:01.654953+00:00",
+    "fissure_channel": "2026-09-09T06:08:48.860723+00:00",
     "fs": "2026-09-04T15:57:01.654953+00:00",
     "gid": "2026-09-02T23:51:19.839533+00:00",
     "group": "2026-09-04T15:57:01.654953+00:00",
+    "hemisphere": "2026-09-09T00:00:31.579838+00:00",
+    "hemisphere_source": "2026-09-09T00:00:31.579838+00:00",
+    "hilus_channel": "2026-09-09T06:08:48.860723+00:00",
     "key": "2026-09-04T15:57:01.654953+00:00",
     "label": "2026-09-04T15:57:01.654953+00:00",
     "loose_key": "2026-09-04T15:57:01.654953+00:00",
     "mouse": "2026-09-04T15:57:01.654953+00:00",
     "n_channels": "2026-09-04T15:57:01.654953+00:00",
+    "needs_processing": "2026-09-09T06:08:48.860723+00:00",
     "project": "2026-09-04T15:57:01.654953+00:00",
     "project_source": "2026-09-04T15:57:01.654953+00:00",
+    "reference_channels_source": "2026-09-09T06:08:48.860723+00:00",
     "retired": "2026-09-04T15:57:01.654953+00:00",
+    "ripple_channel": "2026-09-09T06:08:48.860723+00:00",
     "schema": "2026-09-04T15:57:01.654953+00:00",
     "session": "2026-09-04T15:57:01.654953+00:00",
     "start": "2026-09-04T15:57:01.654953+00:00",
-    "updated": "2026-09-08T15:42:08.127525+00:00"
+    "updated": "2026-09-09T06:08:48.860723+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M11_s11\\2023-07-25_16-10-46": [
+        "set",
+        "2026-09-08T18:40:24.535402+00:00"
+      ],
       "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s11jul25\\2023-07-25_16-10-46": [
         "set",
         "2026-09-04T15:57:01.654953+00:00"
@@ -57,12 +69,12 @@
       ],
       "StrawBarry": [
         "set",
-        "2026-09-08T15:42:08.127525+00:00"
+        "2026-09-08T18:00:52.044557+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T15:42:08.127525+00:00",
+    "at": "2026-09-09T06:08:48.860723+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -79,25 +91,34 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 2870.1525333333334,
+  "extraction_note": null,
   "first_seen_by": "scan",
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "s9a24ec997705",
   "group": "PTEN",
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
+  "hilus_channel": null,
   "key": "m011_s011_2023-07-25_16-10-46",
   "label": "PTEN m11 s11 2023-07-25",
   "loose_key": "m011_s011",
   "mouse": 11,
   "n_channels": 64,
+  "needs_processing": null,
   "paths": [
     "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s11jul25\\2023-07-25_16-10-46",
     "G:\\PTEN\\M11_s11",
     "G:\\PTEN\\M11_s11\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M11_Pten\\HF2_s11jul25\\2023-07-25_16-10-46",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M11_s11_CNO"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M11_s11_CNO",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M11_s11\\2023-07-25_16-10-46"
   ],
   "project": "PTEN",
   "project_source": "guessed",
+  "reference_channels_source": null,
   "retired": false,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -115,21 +136,21 @@
       "scan": "scan_a9e7e27d1a"
     },
     "StrawBarry": {
-      "at": "2026-09-08T11:42:08-04:00",
+      "at": "2026-09-08T14:00:52-04:00",
       "by": "Rain",
-      "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s11jul25\\2023-07-25_16-10-46",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_66e751fc99"
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M11_s11\\2023-07-25_16-10-46",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
     }
   },
   "session": 11,
   "start": "2023-07-25T16:10:46",
   "updated": {
-    "at": "2026-09-08T11:42:08-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T02:08:48-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }
