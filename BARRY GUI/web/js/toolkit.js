@@ -1625,6 +1625,271 @@ BARRY.views.toolkit = (function () {
     renderStrata();
   }
 
+  /* How the shelf is being looked at. Held here, not read off the DOM, so a
+     re-render cannot lose a half-typed search. */
+  const strataQ = { text: '', show: 'all', shelf: false };
+
+  const STRATA_SHOWS = [
+    ['all', 'All'],
+    ['left', 'Unfinished'],
+    ['done', 'Finished'],
+    ['mine', 'Mine'],
+    ['archived', 'Archived'],
+  ];
+
+  const strataSheets = () => (strata && strata.sheets) || [];
+  const strataOpen = () => strataSheets()
+    .filter((sh) => sh.open && !sh.archived);
+
+  /* The sheets on the shelf that match what is being asked for. Everything
+     not on the bench, the finished ones included -- being done is a reason
+     not to be in the way, not a reason to be hidden. */
+  function strataShelf() {
+    const me = (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+      || '';
+    const q = strataQ.text.trim().toLowerCase();
+    const words = q ? q.split(/\s+/) : [];
+    return strataSheets().filter((sh) => {
+      if (sh.open && !sh.archived) return false;
+      const pr = sh.progress || {};
+      if (strataQ.show === 'left' && !(pr.left > 0)) return false;
+      if (strataQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) {
+        return false;
+      }
+      if (strataQ.show === 'mine'
+          && (sh.assignee || '').toLowerCase() !== me.toLowerCase()) {
+        return false;
+      }
+      /* Archived sheets are out of the way unless asked for. Archiving still
+         means "I am done thinking about this at all", which is a stronger
+         statement than putting it down. */
+      if (strataQ.show === 'archived') {
+        if (!sh.archived) return false;
+      } else if (sh.archived) {
+        return false;
+      }
+      if (!words.length) return true;
+      const hay = [sh.name, sh.session_label, sh.gid, sh.assignee]
+        .filter(Boolean).join(' ').toLowerCase();
+      return words.every((w) => hay.indexOf(w) >= 0);
+    });
+  }
+
+  async function strataAct(gid, what, body) {
+    try {
+      const got = await apiPost('/api/layers/' + encodeURIComponent(gid)
+                                + '/' + what, body || {});
+      if (got && got.sheet) {
+        const at = strataSheets().findIndex((x) => x.gid === gid);
+        if (at >= 0) Object.assign(strata.sheets[at], got.sheet);
+      }
+      renderStrata();
+      return got;
+    } catch (e) {
+      toast(e.message, 'err', 6000);
+      return null;
+    }
+  }
+
+  const pickUpSheet = (sh, andOpen) => strataAct(sh.gid, 'open', { on: true })
+    .then((got) => { if (got && andOpen) BARRY.strata.enter(sh.gid); });
+  const putDownSheet = (sh) => strataAct(sh.gid, 'open', { on: false });
+
+  async function archiveSheet(sh) {
+    if (!sh.archived) {
+      const ok = await BARRY.confirm(
+        'File away the layer sheet for ' + (sh.session_label || sh.gid) + '?',
+        'It comes off the bench and off the shelf, so it stops being offered. '
+        + 'Nothing is lost: the labels, the version history and the snapshots '
+        + 'all stay, and it can be taken back out at any time.',
+        'File it away');
+      if (!ok) return;
+    }
+    strataAct(sh.gid, 'archive', { on: !sh.archived });
+  }
+
+  async function unarchiveAndPickUp(sh) {
+    const ok = await BARRY.confirm(
+      'Take ' + (sh.session_label || sh.gid) + ' back out?',
+      'It is archived. Picking it up puts it back on the bench and takes it '
+      + 'out of the archive.',
+      'Take it out and pick it up');
+    if (!ok) return;
+    strataAct(sh.gid, 'open', { on: true, unarchive: true });
+  }
+
+  /* The name, edited where it is shown.
+
+     There is no text-prompt helper in this codebase and one field does not
+     justify inventing a dialog for it, so the title becomes an input and
+     goes back to being a title. Empty means "call it after the
+     recording". */
+  function nameCell(sh) {
+    const shown = sh.name || sh.session_label || sh.gid;
+    const strong = el('strong', {
+      class: 'sheet-name', text: shown, tabindex: '0',
+      title: 'Click to name this work set. A sheet is about a recording, but '
+           + 'the work is not always "the recording" — it can be the '
+           + 'second pass after the probe map was fixed.',
+      onclick: (e) => edit(e.currentTarget),
+      onkeydown: (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          edit(e.currentTarget);
+        }
+      },
+    });
+
+    function edit(node) {
+      const box = el('input', {
+        class: 'inp sm sheet-name-edit', value: sh.name || '',
+        placeholder: sh.session_label || sh.gid,
+      });
+      let done = false;
+      const finish = (save) => {
+        if (done) return;
+        done = true;
+        const want = box.value.trim();
+        if (save && want !== (sh.name || '')) {
+          strataAct(sh.gid, 'rename', { name: want });
+        } else {
+          renderStrata();
+        }
+      };
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      });
+      box.addEventListener('blur', () => finish(true));
+      node.replaceWith(box);
+      box.focus();
+      box.select();
+    }
+
+    return strong;
+  }
+  /* There is no delete here.
+
+     There was, and it took a confirmation dialog three paragraphs long to
+     explain everything it would not destroy -- which is the tell. The
+     labelling IS the data; a work set is a statement about who is working
+     on what. So the verbs are Close (off the bench) and File away (off the
+     shelf as well), and neither touches a label, a version or a snapshot.
+
+     `/api/layers/<gid>/delete` still exists, because an import that landed
+     a sheet on the wrong recording has to be undoable. It is not something
+     a card offers you in passing. */
+
+  async function closeAllSheets() {
+    const n = strataOpen().length;
+    const ok = await BARRY.confirm(
+      'Clear the bench?',
+      'Closes all ' + n + ' open work set' + (n === 1 ? '' : 's') + '. '
+      + 'Nothing is archived, deleted or unlabelled — every label was '
+      + 'written as it was made. Each one goes back on the shelf.',
+      'Close them all');
+    if (!ok) return;
+    try {
+      await apiPost('/api/layers/close-all', {});
+      strata = null;
+      loadStrata();
+    } catch (e) { toast(e.message, 'err', 6000); }
+  }
+
+  /* One sheet, as a card. The same shape as a curation set, because it is
+     the same kind of thing: a pile of decisions about one recording that
+     somebody is or is not working on. */
+  function sheetCard(sh, onBench) {
+    const pr = sh.progress || {};
+    const done = pr.left === 0 && pr.total > 0;
+    const reach = sh.session && sh.session.reachable;
+    const when = curWhen(onBench ? sh.opened_at : (sh.updated || {}).at);
+
+    const acts = [
+      el('button', {
+        class: 'btn sm',
+        text: pr.left ? 'Continue…' : 'Review…',
+        disabled: reach ? null : 'disabled',
+        title: reach ? 'Open it in StrataScope'
+          : 'The folder for this recording is not reachable from this '
+            + 'computer',
+        onclick: () => BARRY.strata.enter(sh.gid),
+      }),
+    ];
+    if (onBench) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        title: 'Closes the work set: it comes off the bench and goes back '
+             + 'on the shelf. It changes no labels, no versions and no '
+             + 'snapshots \u2014 every label was written the moment you '
+             + 'made it.',
+        onclick: () => putDownSheet(sh),
+      }));
+    } else if (sh.archived) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Take it out…',
+        title: 'Un-archive it and put it on the bench',
+        onclick: () => unarchiveAndPickUp(sh),
+      }));
+    } else {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick it up',
+        title: 'Puts it on the bench. Opening the recording is separate — '
+             + 'this is just saying you are working on it.',
+        onclick: () => pickUpSheet(sh, false),
+      }));
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick up and open',
+        disabled: reach ? null : 'disabled',
+        onclick: () => pickUpSheet(sh, true),
+      }));
+    }
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: 'Export CSV',
+      onclick: () => window.open('/api/layers/'
+        + encodeURIComponent(sh.gid) + '/export', '_blank'),
+    }));
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: sh.archived ? 'Unarchive' : 'File away',
+      title: sh.archived
+        ? 'Put it back on the shelf'
+        : 'Off the shelf as well as off the bench. Nothing is lost.',
+      onclick: () => archiveSheet(sh),
+    }));
+
+    return el('div', {
+      class: 'cur-set' + (done ? ' done' : '') + (onBench ? ' on-bench' : ''),
+      'data-gid': sh.gid,
+    }, [
+      el('div', { class: 'cur-set-top' }, [
+        nameCell(sh),
+        el('span', { class: 'hk-chip', text: 'layers' }),
+        sh.name && sh.session_label
+          ? el('span', { class: 'hint', text: sh.session_label }) : null,
+        sh.archived
+          ? el('span', { class: 'hk-chip', text: 'archived' }) : null,
+        el('div', { style: 'flex:1' }),
+        sh.assignee
+          ? el('span', { class: 'csr-who', text: sh.assignee }) : null,
+        el('span', { class: 'cur-set-n',
+          text: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels' }),
+      ].filter(Boolean)),
+      when ? el('div', { class: 'hint',
+        text: (onBench ? 'picked up ' : 'last touched ') + when
+          + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '') }) : null,
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+      el('div', { class: 'cur-set-tally' },
+         (sh.regions || []).filter(
+           (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
+             class: 'cur-tally', style: '--cat:' + r.color,
+             text: r.name + '  ' + pr.by_region[r.id],
+           }))),
+      el('div', { class: 'cur-set-acts' }, acts),
+    ].filter(Boolean));
+  }
+
   function renderStrata() {
     const host = $('#tkResult');
     if (!host) return;
@@ -1638,7 +1903,7 @@ BARRY.views.toolkit = (function () {
     }
 
     const rows = ((strata.registry || {}).tree || [])
-      .flatMap((p) => p.mice.flatMap((m) => m.sessions));
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
     // Same search field as the curation importer, for the same reason.
     let strataGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
     const pick = BARRY.pickSession({
@@ -1648,80 +1913,96 @@ BARRY.views.toolkit = (function () {
     });
     pick.id = 'strataPick';
 
+    const open = strataOpen();
+
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
         el('h2', { text: 'StrataScope' }),
         el('p', { class: 'sub',
-          text: 'Which anatomical layer each channel is sitting in \u2014 '
-              + 'labelled against the live voltage, CSD and theta rasters, so '
-              + 'there is nothing to crop and the rows cannot drift off the '
-              + 'channels.' }),
+          text: open.length
+            ? 'What you have open. It stays here until you put it down.'
+            : 'Which anatomical layer each channel is sitting in. Pick a '
+              + 'recording up below, or start a new sheet on the right — '
+              + 'it stays on the bench until you put it down.' }),
       ]),
       el('div', { class: 'spacer' }),
+      open.length > 1 ? el('button', {
+        class: 'btn ghost sm', text: 'Clear the bench',
+        title: 'Closes every open work set. Nothing is archived, deleted or '
+             + 'unlabelled.',
+        onclick: closeAllSheets,
+      }) : null,
       pick,
       el('button', {
-        class: 'btn', text: 'Open\u2026',
+        class: 'btn', text: 'Open…',
         disabled: rows.length ? null : 'disabled',
+        title: 'Opens the recording in StrataScope, making a sheet if there '
+             + 'is not one yet',
         onclick: () => {
           if (!strataGid) { toast('Pick a recording first.', 'err'); return; }
           BARRY.strata.enter(strataGid);
         },
       }),
-    ]));
+    ].filter(Boolean)));
 
-    const sheets = strata.sheets || [];
-    if (!sheets.length) {
-      host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'No layer sheets yet. Pick a recording above and open it '
-            + '\u2014 a sheet is made the first time.' }));
+    /* ---- the bench ---- */
+    const bench = el('div', { class: 'cur-sets cur-bench', id: 'strataBench' });
+    if (open.length) {
+      for (const sh of open) bench.appendChild(sheetCard(sh, true));
     } else {
-      const list = el('div', { class: 'cur-sets' });
-      for (const sh of sheets) {
-        const pr = sh.progress || {};
-        const reach = sh.session && sh.session.reachable;
-        list.appendChild(el('div', {
-          class: 'cur-set' + (pr.left === 0 && pr.total ? ' done' : ''),
-        }, [
-          el('div', { class: 'cur-set-top' }, [
-            el('strong', { text: sh.session_label || sh.gid }),
-            el('span', { class: 'hk-chip', text: 'layers' }),
-            el('div', { style: 'flex:1' }),
-            el('span', { class: 'cur-set-n',
-              text: pr.labelled + ' / ' + pr.total + ' channels' }),
-          ]),
-          el('div', { class: 'cur-prog small' }, [
-            el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-          ]),
-          el('div', { class: 'cur-set-tally' },
-             (sh.regions || []).filter(
-               (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
-                 class: 'cur-tally', style: '--cat:' + r.color,
-                 text: r.name + '  ' + pr.by_region[r.id],
-               }))),
-          el('div', { class: 'cur-set-acts' }, [
-            el('button', {
-              class: 'btn sm',
-              text: pr.left ? 'Continue\u2026' : 'Review\u2026',
-              disabled: reach ? null : 'disabled',
-              onclick: () => BARRY.strata.enter(sh.gid),
-            }),
-            el('button', {
-              class: 'btn ghost sm', text: 'Export CSV',
-              onclick: () => window.open('/api/layers/'
-                + encodeURIComponent(sh.gid) + '/export', '_blank'),
-            }),
-            el('button', {
-              class: 'btn ghost sm danger', text: 'Delete',
-              onclick: async () => {
-                await apiPost('/api/layers/' + encodeURIComponent(sh.gid)
-                              + '/delete', {});
-                loadStrata();
-              },
-            }),
-          ]),
-        ]));
-      }
-      host.appendChild(list);
+      bench.appendChild(el('div', { class: 'cur-bench-empty' }, [
+        el('p', { text: 'Nothing open.' }),
+        el('p', { class: 'hint',
+          text: strataSheets().length
+            ? 'Pick one up below and it stays on the bench until you put it '
+              + 'down. Putting a sheet down neither saves nor loses '
+              + 'anything — every label was written the moment you made it.'
+            : 'No layer sheets yet. Pick a recording above and open it — a '
+              + 'sheet is made the first time.' }),
+      ]));
+    }
+    host.appendChild(bench);
+
+    /* ---- the shelf, folded away until wanted ---- */
+    const nShelf = strataSheets().filter((sh) => !sh.open && !sh.archived)
+      .length;
+    const nArch = strataSheets().filter((sh) => sh.archived).length;
+    if (strataSheets().length) {
+      host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+        el('button', {
+          class: 'cur-shelf-toggle' + (strataQ.shelf ? ' on' : ''),
+          text: (strataQ.shelf ? '▾  ' : '▸  ')
+              + (open.length ? 'Pick up another sheet' : 'Pick up a sheet')
+              + '  ·  ' + nShelf + ' put down'
+              + (nArch ? '  ·  ' + nArch + ' archived' : ''),
+          onclick: () => { strataQ.shelf = !strataQ.shelf; renderStrata(); },
+        }),
+      ]));
+    }
+
+    if (strataQ.shelf) {
+      const shelf = el('div', { class: 'cur-shelf', id: 'strataShelf' });
+      shelf.appendChild(el('div', { class: 'cur-filter' }, [
+        el('input', {
+          class: 'inp sm', id: 'strataSearch', type: 'search',
+          placeholder: 'Search the sheets…', value: strataQ.text,
+          oninput: (e) => {
+            strataQ.text = e.target.value;
+            const box = $('#strataShelfList');
+            if (box) fillStrataShelf(box);
+          },
+        }),
+        el('select', {
+          title: 'Which of them',
+          onchange: (e) => { strataQ.show = e.target.value; renderStrata(); },
+        }, STRATA_SHOWS.map(([v, t]) => el('option', {
+          value: v, text: t,
+          selected: strataQ.show === v ? 'selected' : null }))),
+      ]));
+      const list = el('div', { class: 'cur-sets', id: 'strataShelfList' });
+      fillStrataShelf(list);
+      shelf.appendChild(list);
+      host.appendChild(shelf);
     }
 
     host.appendChild(el('div', { class: 'section-label', text: 'The layers' }));
@@ -1730,6 +2011,21 @@ BARRY.views.toolkit = (function () {
         class: 'cur-tally', style: '--cat:' + r.color,
         title: r.note || '', text: r.name,
       }))));
+  }
+
+  /* The shelf list on its own, so typing in the search box repaints the rows
+     and not the box the cursor is in. */
+  function fillStrataShelf(box) {
+    box.innerHTML = '';
+    const rows = strataShelf();
+    if (!rows.length) {
+      box.appendChild(el('div', { class: 'hint tk-empty',
+        text: strataQ.text
+          ? 'Nothing matches “' + strataQ.text + '”.'
+          : 'Nothing here under that filter.' }));
+      return;
+    }
+    for (const sh of rows) box.appendChild(sheetCard(sh, false));
   }
 
   /* ==================================================================

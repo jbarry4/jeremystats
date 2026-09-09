@@ -433,6 +433,18 @@ class People:
         # business to make the totals disagree with the records.
         HAND_SOURCE = self.HAND
         put_away = self.archived()
+        # The hand-written details, from the stored entry.
+        #
+        # A roster row is compiled -- name, email, counts, where they were
+        # seen -- and the details somebody types are not compiled from
+        # anything, so they were simply absent. Which meant the sync built
+        # its payload from these rows and had nothing to send: an edited
+        # role never left the machine it was typed on.
+        typed = {}
+        for row in self._extra():
+            key = _clean(row.get("name") or row.get("id"))
+            if key:
+                typed[key.lower()] = row
         for r in rows:
             r["me"] = bool(me and r["name"] == me)
             got = sorted(folded.get(r["name"]) or [])
@@ -440,6 +452,16 @@ class People:
                 r["aliases"] = got
             if r["name"].lower() in put_away:
                 r["archived"] = True
+            mine = typed.get(r["name"].lower())
+            if mine:
+                for k in ("role", "initials", "orcid", "note"):
+                    if mine.get(k):
+                        r[k] = mine[k]
+                # An alias written on this entry, even when nothing has been
+                # folded through it yet -- the sync has to carry the
+                # statement, not just its effect.
+                if mine.get("aliases") and not r.get("aliases"):
+                    r["aliases"] = sorted(mine["aliases"])
         rows.sort(key=lambda r: (not r["me"], not r["is_person"],
                                  -r["total"], r["name"].lower()))
         return {

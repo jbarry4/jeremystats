@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#SBATCH --job-name=arrayFCSE
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+### Number of workers for Matlab
+#SBATCH --cpus-per-task=8
+### Should be 4 * cpus-per-task
+#SBATCH --mem=25g
+#SBATCH --time=4:00:00
+#SBATCH --array=1-9
+module purge 
+module load matlab/R2023b
+
+my_job_header
+
+echo -n "Array variable for this job:  "
+env | grep '^SLURM_ARRAY_TASK_ID='
+
+#---- Begin real job work here
+
+cd /gpfs1/home/s/y/syounger/VACC_CFC_Input/VACCQuickstart
+
+# Make a directory for the job's data
+mkdir -p ${HOME}/scratch/matlabdata/${SLURM_JOBID}
+sleep 5
+
+matlab -softwareopengl -nodesktop -r "step03_1_arrayFCSEcsv('$SLURM_ARRAY_TASK_ID') ; exit"
+
+echo "If this job succeded, remember to delete"
+echo "   ${HOME}/scratch/matlabdata/${SLURM_JOB}"

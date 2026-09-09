@@ -62,31 +62,57 @@ const hd = (t) => p('\n== ' + t + ' ==');
   await untilN(() => D().querySelectorAll('.sess-card').length, 200);
   await sleep(1500);
 
-  const chip = (flag) => D().querySelector('#sessFilters .pill[data-flag="'
-                                           + flag + '"]');
-  const shown = () => D().querySelectorAll('.sess-card').length;
+  /* One button and a popover, not nine pills.
 
-  hd('1. The chips are there');
-  for (const flag of ['layers', 'nolayers', 'here']) {
-    ck('there is a "' + flag + '" filter', !!chip(flag));
+     Everything is re-queried after every click, because the popover
+     repaints itself in place so that turning three filters on is three
+     clicks and not three clicks and two re-opens. A held reference is a
+     detached node. */
+  const shown = () => D().querySelectorAll('.sess-card').length;
+  const pop = () => D().querySelector('.ctl-pop');
+  const openFilters = async () => {
+    if (pop()) return;
+    const b = D().querySelector('#sessFilterBar .filter-open');
+    ck('there is one Filter button', !!b);
+    if (!b) return;
+    b.click();
+    await sleep(500);
+  };
+  const box = (flag) => pop()
+    && pop().querySelector('[data-flag="' + flag + '"] input');
+  const avail = (id) => pop()
+    && pop().querySelector('[data-avail="' + id + '"] input');
+  const chipFor = (flag) =>
+    D().querySelector('#sessFilterBar .fb-chip[data-flag="' + flag + '"]');
+  const toggle = async (flag) => {
+    await openFilters();
+    box(flag).click();
+    await sleep(900);
+  };
+
+  hd('1. The filters are reachable');
+  await openFilters();
+  for (const flag of ['layers', 'nolayers', 'video', 'bad']) {
+    ck('there is a "' + flag + '" filter', !!box(flag));
   }
+  ck('and the two availability choices', !!avail('all') && !!avail('open'));
 
   hd('2. They divide the list rather than emptying it');
   const all = shown();
   p('  unfiltered: ' + all + ' card(s)');
   ck('the list has cards to filter', all > 10, all);
 
-  chip('layers').click();
-  await sleep(900);
+  await toggle('layers');
   const onlyLayers = shown();
   p('  Layers labelled: ' + onlyLayers);
   ck('it shows fewer than everything', onlyLayers < all, onlyLayers);
   ck('and not none of them', onlyLayers > 0, onlyLayers);
-  chip('layers').click();
-  await sleep(600);
+  /* The chip is the whole cost of collapsing the pills: compactness must
+     not cost you knowing what is on once the popover is shut. */
+  ck('a chip says it is on', !!chipFor('layers'));
+  await toggle('layers');
 
-  chip('nolayers').click();
-  await sleep(900);
+  await toggle('nolayers');
   const toDo = shown();
   p('  Layers to do: ' + toDo);
   ck('it shows fewer than everything', toDo < all, toDo);
@@ -97,21 +123,81 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + '  (of ' + all + ' shown)');
   ck('the two halves account for every card',
      onlyLayers + toDo === all, (onlyLayers + toDo) + ' vs ' + all);
-  chip('nolayers').click();
-  await sleep(600);
+  await toggle('nolayers');
 
-  hd('3. On this machine means reachable now, not merely known');
-  chip('here').click();
-  await sleep(900);
+  hd('3. "Only what opens here" means openable now, not merely known');
+  await openFilters();
+  avail('open').click();
+  await sleep(1200);
   const here = shown();
-  p('  On this machine: ' + here + ' of ' + all);
-  ck('some are reachable', here > 0, here);
-  ck('and it is a real filter, not everything',
-     here <= all, here + ' vs ' + all);
-  chip('here').click();
-  await sleep(600);
+  p('  opens here: ' + here + ' of ' + all);
+  ck('some can be opened', here > 0, here);
+  ck('and it is a real filter, not everything', here <= all,
+     here + ' vs ' + all);
+  ck('a chip says it is on', !!chipFor('open'));
+  await openFilters();
+  avail('all').click();
+  await sleep(1200);
   ck('turning it off restores the list', shown() === all,
      shown() + ' vs ' + all);
+
+  hd('4. Clear all puts everything back at once');
+  await toggle('layers');
+  await openFilters();
+  box('video').click();
+  await sleep(900);
+  const nChips = D().querySelectorAll('#sessFilterBar .fb-chip').length;
+  ck('two filters on, two chips', nChips === 2, nChips);
+  const clear = D().querySelector('#sessFilterBar .fb-clear');
+  ck('Clear all appears once more than one is on', !!clear);
+  if (clear) {
+    clear.click();
+    await sleep(1200);
+    ck('no chips left',
+       D().querySelectorAll('#sessFilterBar .fb-chip').length === 0);
+    ck('and the whole list is back', shown() === all, shown() + ' vs ' + all);
+  }
+  hd('5. The scan’s own settings are behind one button too');
+  /* "Read headers" and "Depth" were a checkbox and a number box sharing a
+     line with the recent-roots list -- the other half of "make the
+     filtering/selection more centralizied clean and compact". */
+  const optsBtn = () => D().querySelector('#rootOptsBar .filter-open');
+  ck('there is one Scan options button', !!optsBtn());
+  if (optsBtn()) {
+    ck('and nothing else is left loose in that row',
+       !D().querySelector('#rootHeaders') && !D().querySelector('#rootDepth'),
+       'headers box: ' + !!D().querySelector('#rootHeaders')
+       + ', depth box: ' + !!D().querySelector('#rootDepth'));
+    optsBtn().click();
+    await sleep(500);
+    const box = D().querySelector('.ctl-pop');
+    ck('it opens a popover', !!box);
+    const cb = box && box.querySelector('input[type="checkbox"]');
+    const num = box && box.querySelector('input[type="number"]');
+    ck('with the header choice in it', !!cb);
+    ck('and the depth', !!num, num && num.value);
+    /* The button has to say when the settings are not standard -- a changed
+       depth is the usual explanation for a scan that found nothing, and a
+       setting you cannot see is worse than a box in the way. */
+    ck('the button is unmarked at the defaults',
+       !optsBtn().classList.contains('on'));
+    if (num) {
+      num.value = '2';
+      num.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+      await sleep(600);
+      ck('changing the depth marks the button',
+         !!optsBtn() && optsBtn().classList.contains('on'));
+      const badge = optsBtn().querySelector('.fb-count');
+      ck('and it says what changed, not how many things changed',
+         !!badge && /depth\s*2/.test(badge.textContent || ''),
+         badge && badge.textContent);
+      /* And it is the state the scan will actually use, not just a label. */
+      const asked = W().eval('BARRY.views.sessions._scanOpts '
+        + '? JSON.stringify(BARRY.views.sessions._scanOpts()) : "no seam"');
+      p('  the scan would be told: ' + asked);
+    }
+  }
+
 
   p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
   document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'session filters';

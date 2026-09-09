@@ -201,7 +201,7 @@ async function untilN(fn, tries = 250, gap = 100) {
      so leaving it to the default made the rest of this section test
      whichever session happened to sort first. */
   const label = (info.session || {}).label || '';
-  const mouse = (label.match(/m(\d+)/i) || [])[1];
+  const mouse = (label.match(/\bm(\d+)\b/i) || [])[1];
   const sessInput = sessField && sessField.querySelector('input');
   if (sessInput && mouse) {
     sessInput.focus();

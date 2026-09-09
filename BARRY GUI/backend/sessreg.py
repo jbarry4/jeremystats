@@ -33,7 +33,7 @@ import os
 import re
 import uuid
 
-from . import ids
+from . import ids, shards
 
 SCHEMA = 2
 
@@ -245,11 +245,44 @@ class Registry:
     def _seen_patch(self, rec, where, scan_id=None, root=None):
         """This machine's sighting, merged with whatever other machines wrote."""
         prov = self.store.provenance() if self.store else {}
-        who = prov.get("machine") or "unknown"
         seen = dict((rec or {}).get("seen") or {})
+        # Keyed on the machine id, not the label.
+        #
+        # `provenance().machine` is the name somebody typed into the device
+        # field. It changes, and it is not unique: this one computer has
+        # sightings filed under "Bluebarry", "DESKTOP-4H65AI7" and
+        # "Strawbarrry", so asking "has this machine seen it" matched
+        # nothing. The id is the hostname slug plus a hash of the MAC.
+        #
+        # The label rides along, because a human reading the table wants
+        # "Bluebarry" and not "desktop-4h65ai7-d565".
+        who = shards.machine_id()
         seen[who] = {"at": prov.get("at"), "by": prov.get("user"),
-                     "path": where, "root": root, "scan": scan_id}
+                     "path": where, "root": root, "scan": scan_id,
+                     "machine": prov.get("machine")}
         return seen
+
+    def seen_by(self, rec, names):
+        """Has any of `names` seen this recording?
+
+        `names` is every spelling one computer answers to -- its id, its
+        current label, its real hostname, and the older labels it used. All
+        of them, because the sightings already on record are keyed on
+        whatever the label was at the time and those years are not being
+        rewritten: guessing which old label belonged to which computer is
+        how two people's machines were merged once already.
+        """
+        want = {str(n).strip().lower() for n in (names or []) if n}
+        if not want:
+            return False
+        for key, got in ((rec or {}).get("seen") or {}).items():
+            if str(key).strip().lower() in want:
+                return True
+            # A newer sighting is keyed on the id and carries the label.
+            label = (got or {}).get("machine") if isinstance(got, dict) else None
+            if label and str(label).strip().lower() in want:
+                return True
+        return False
 
     def _durable_patch(self, rec, ident, facts, first_seen_by="scan"):
         """Only what is worth a tracked write, or None for "nothing changed".

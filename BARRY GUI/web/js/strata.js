@@ -116,6 +116,24 @@ BARRY.strata = (function () {
     sheet = started.sheet;
     regions = sheet.regions || [];
 
+    /* Opening it is what puts it on the bench, the same as event curation.
+       Nothing else does: a sheet that exists because a scan made one is not
+       work in progress, it is a row. */
+    apiPost('/api/layers/' + encodeURIComponent(gid) + '/open', { on: true })
+      .then((res) => { if (res && res.sheet) sheet.assignee = res.sheet.assignee; })
+      .catch((e) => {
+        /* An archived sheet is not put on the bench by being labelled --
+           that would un-archive it as a side effect of looking at it, which
+           is the thing archiving is meant to survive. Labelling still
+           works and still saves. */
+        if (/archived/i.test((e && e.message) || '')) {
+          toast('This sheet is archived, so it is not on the bench. '
+                + 'Labelling it still works and still saves; take it out of '
+                + 'the archive from the ToolKit if you want it back in the '
+                + 'list.', null, 8000);
+        }
+      });
+
     // Said in the shell, not just in a toolbar: a mode you can be in
     // without noticing is one you make mistakes in.
     setMode('strata', exit);

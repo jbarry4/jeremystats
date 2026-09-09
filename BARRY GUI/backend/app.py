@@ -2240,6 +2240,68 @@ def api_layers_clear(gid):
     return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
 
 
+@app.route("/api/layers/<gid>/open", methods=["POST"])
+def api_layers_open(gid):
+    """Put a sheet on the workbench, or take it off."""
+    body = request.get_json(silent=True) or {}
+    on = bool(body.get("on", True))
+    try:
+        rec = LAYERS.open_set(gid, on, who=body.get("who"),
+                              unarchive=bool(body.get("unarchive")))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.open",
+                            "detail": {"gid": gid, "on": on}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/archive", methods=["POST"])
+def api_layers_archive(gid):
+    body = request.get_json(silent=True) or {}
+    on = bool(body.get("on", True))
+    try:
+        rec = LAYERS.archive(gid, on)
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.archive",
+                            "detail": {"gid": gid, "on": on}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/assign", methods=["POST"])
+def api_layers_assign(gid):
+    body = request.get_json(silent=True) or {}
+    try:
+        rec = LAYERS.assign(gid, body.get("who"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.assign",
+                            "detail": {"gid": gid,
+                                       "who": body.get("who")}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/rename", methods=["POST"])
+def api_layers_rename(gid):
+    body = request.get_json(silent=True) or {}
+    try:
+        rec = LAYERS.rename(gid, body.get("name"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.rename",
+                            "detail": {"gid": gid,
+                                       "name": body.get("name")}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/close-all", methods=["POST"])
+def api_layers_close_all():
+    gone = LAYERS.close_all()
+    STORE.record_activity([{"action": "layers.close_all",
+                            "detail": {"n": len(gone)}}])
+    return jsonify({"ok": True, "closed": gone})
+
+
 @app.route("/api/layers/<gid>/delete", methods=["POST"])
 def api_layers_delete(gid):
     return jsonify({"ok": LAYERS.delete(gid)})
@@ -3835,6 +3897,30 @@ def api_registry():
     if request.args.get("backfill"):
         REG.backfill()
     tree = REG.tree(_attachments)
+
+    # Which of these THIS computer has met, marked on the row.
+    #
+    # Not a machine-id lookup: sightings are keyed on the label a machine
+    # was using at the time, so this one computer's are filed under three
+    # different names and an id lookup matched none of 476 recordings.
+    names = _my_names()
+    seen_n = [0]
+
+    def mark(node):
+        if isinstance(node, dict):
+            if node.get("gid") and "paths" in node:
+                got = REG.seen_by(node, names)
+                node["seen_here"] = got
+                if got:
+                    seen_n[0] += 1
+            for v in node.values():
+                mark(v)
+        elif isinstance(node, list):
+            for v in node:
+                mark(v)
+
+    mark(tree)
+
     if not request.args.get("no_demo"):
         # Last, so real data is what you see first -- but always there, so
         # a machine with nothing mounted is not an empty application.
@@ -3847,6 +3933,10 @@ def api_registry():
         "demo_paths": [demomod.path_for(s)
                        for s in demomod.SESSIONS.values()],
         "total": len([r for r in REG.all() if not r.get("retired")]),
+        # How many this computer has actually met, so the local view can say
+        # what it is showing rather than looking like a shorter catalogue.
+        "seen_here": seen_n[0],
+        "my_names": sorted(names),
         # So the tree can branch on any of them without a second round trip.
         "mice": MICE.index(),
         "attributes": MICE.attributes(),
@@ -5114,6 +5204,10 @@ COLUMN_MIGRATIONS = {
     "archived": "09_people_archived.sql",
     "versions": "11_bank_versions.sql",
     "version": "11_bank_versions.sql",
+    "orcid": "12_people_orcid.sql",
+    "is_open": "13_layer_bench.sql",
+    "opened_at": "13_layer_bench.sql",
+    "opened_by": "13_layer_bench.sql",
 }
 
 
@@ -5138,6 +5232,10 @@ COLUMN_TABLES = {
     "archived": "people",
     "versions": "bank_entries",
     "version": "bank_entries",
+    "orcid": "people",
+    "is_open": "layer_sheets",
+    "opened_at": "layer_sheets",
+    "opened_by": "layer_sheets",
 }
 
 
@@ -5527,6 +5625,42 @@ def _by_label(machines):
         if name and m.get("id"):
             out.setdefault(name, set()).add(m["id"])
     return out
+
+
+def _my_names():
+    """Every spelling this computer answers to.
+
+    Its id, the label it is called now, the hostname it reports, and the
+    older labels the logs have it under. Used wherever "did THIS machine do
+    this" has to be answered against records keyed on a label that changes.
+    """
+    out = set()
+    mid = shards.machine_id()
+    out.add(mid)
+    real = _real_host(mid)
+    if real:
+        out.add(real)
+    try:
+        got = DEVICE.get(PROFILE) or {}
+        for k in ("name", "real"):
+            if got.get(k):
+                out.add(got[k])
+    except Exception:                                    # noqa: BLE001
+        pass
+    try:
+        if (STORE.provenance() or {}).get("machine"):
+            out.add(STORE.provenance()["machine"])
+    except Exception:                                    # noqa: BLE001
+        pass
+    # And whatever the device table says this id has been called.
+    if CLOUD.cloud.configured:
+        try:
+            for m in (CLOUD.cloud.select("machines", limit=200) or []):
+                if m.get("id") == mid and m.get("hostname"):
+                    out.add(m["hostname"])
+        except Exception:                                # noqa: BLE001
+            pass
+    return {n for n in out if n}
 
 
 def _real_host(machine_id):

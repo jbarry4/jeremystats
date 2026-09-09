@@ -291,14 +291,67 @@ def ts(value):
     s = s.replace(" ", "T", 1) if re.match(r"^\d{4}-\d\d-\d\d ", s) else s
     s = _OFFSET.sub(r"\1:\2", s)          # -0400 -> -04:00
     try:
-        datetime.fromisoformat(s.replace("Z", "+00:00"))
-        return s
+        got = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
+    # Normalised to UTC, not handed back as written.
+    #
+    # A timestamptz column stores an instant, so the offset in the text was
+    # never information the database kept -- but it WAS information the
+    # incremental push compared, as text, against a UTC "since". Vermont is
+    # UTC-4, so "2026-09-09T14:55:51-04:00" -- written four minutes ago --
+    # sorted before "2026-09-09T18:55:06+00:00" and the row was dropped as
+    # older than the last push. Every edit made during a working day was
+    # invisible to the incremental push and travelled only on a full one.
+    if got.tzinfo is None:
+        # Naive means a Neuralynx header or an old shard write, both of
+        # which are local wall-clock time on the machine that wrote them.
+        got = got.astimezone()
+    return got.astimezone(timezone.utc).isoformat()
 
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def _one_per_key(rows, on_conflict):
+    """Collapse rows that share a conflict key, keeping the last.
+
+    Postgres refuses a batch that would touch one row twice -- "ON CONFLICT DO
+    UPDATE command cannot affect row a second time" -- and it is right to:
+    it cannot know which of the two duplicates was meant, and applying both
+    in one statement would make the answer depend on arrival order.
+
+    So the choice is made here, where the order is known: the builders append
+    in the order they read their shards, so the later row is the newer fact.
+
+    Without a stated conflict key the primary key is the target, and here
+    that is `id` on every table that has one -- which is where this actually
+    bit: `errors` is keyed on `id`, is not in the ON_CONFLICT map, and two
+    shards holding the same failure produced two rows with one id.
+    """
+    keys = [k.strip() for k in str(on_conflict or "").split(",") if k.strip()]
+    if not keys:
+        if all(isinstance(r, dict) and r.get("id") is not None for r in rows):
+            keys = ["id"]
+        else:
+            return rows
+    seen = {}
+    order = []
+    for r in rows:
+        ident = tuple(r.get(k) for k in keys)
+        if any(v is None for v in ident):
+            # Not identifiable, so not a duplicate of anything; let the
+            # database decide what to do with it.
+            order.append(("keep", r))
+            continue
+        if ident not in seen:
+            order.append(("key", ident))
+        seen[ident] = r
+    out = []
+    for kind, val in order:
+        out.append(val if kind == "keep" else seen[val])
+    return out
 
 
 # ==========================================================================
@@ -420,6 +473,7 @@ class Cloud:
         rows = [r for r in (rows or []) if r]
         if not rows:
             return 0
+        rows = _one_per_key(rows, on_conflict)
         prefer = "resolution=merge-duplicates,return=minimal"
         sent = 0
         # A column the database has not got yet is dropped and the batch

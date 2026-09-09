@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import os
 
+from datetime import datetime
+
 from . import cloud, shards
 
 BUCKET = "results"
@@ -116,6 +118,83 @@ def _num(v):
         return f if f == f and abs(f) != float("inf") else None
     except (TypeError, ValueError):
         return None
+
+
+def _now_iso():
+    return cloud.now()
+
+
+def _newer_in(stamp, since):
+    """Is an incoming `stamp` newer than what is already here?
+
+    The pull-side twin of `_after`, with the opposite bias about a stamp it
+    cannot read. `_after` says yes, because on the push a needless upsert is
+    cheap and a dropped row is somebody's lost edit. Here a yes means
+    overwriting what is on this machine, so an unreadable or missing stamp
+    is not enough: no evidence, no overwrite.
+    """
+    if not stamp or not since:
+        return bool(stamp) and not since
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return False
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return False
+
+
+def _decision_wins(theirs_at, ours_at, our_label, ours_cleared=None):
+    """Should an incoming decision replace the one already here?
+
+    This had no rule at all: any differing label was taken, so a pull could
+    undo today's curation with a row from last January -- measured, on a
+    real set, before this existed. A curation decision is the most expensive
+    thing in this application to redo, because it is a judgement somebody
+    made once while looking at a waveform.
+
+    A decision beats no decision. Past that, the newer one wins. An incoming
+    row with no stamp cannot overturn a decision that has one: on the push
+    side an unreadable stamp means "send it and let the database sort it
+    out", which is cheap, and on the pull side it would mean "overwrite
+    somebody's judgement on no evidence", which is not.
+    """
+    undecided = (our_label or "unspecified") == "unspecified"
+    # Only an event nobody has ever ruled on yields automatically. An undo
+    # that carries a time is a decision about the candidate and is defended
+    # like one -- otherwise a colleague's older label would arrive, find the
+    # label empty, and undo the undo.
+    if undecided and not ours_cleared:
+        return True
+    ours_at = ours_at or (ours_cleared if undecided else None)
+    if not theirs_at:
+        return False
+    if not ours_at:
+        return True
+    return _newer_in(theirs_at, ours_at)
+
+
+def _after(stamp, since):
+    """Is `stamp` newer than `since`? Compared as times, not as text.
+
+    This was `str(stamp) > since`, which is only true if both are in the same
+    offset -- and they were not. A row stamped in Vermont local time sorted
+    before a UTC "since" from the same afternoon, so the incremental push
+    dropped it.
+
+    An unparseable stamp counts as newer. Sending a row that did not need
+    sending costs one upsert the database discards; dropping one that did
+    loses somebody's edit, silently, until a full push happens to run.
+    """
+    if not stamp:
+        return True
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return True
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return True
 
 
 class Sync:
@@ -350,10 +429,29 @@ class Sync:
                     "end_s": _num(ev.get("end")),
                     "channel": _int(ev.get("channel")),
                     "amplitude": _num(ev.get("amplitude")),
+                    # The word, because `curation_events.label` is NOT
+                    # NULL -- the shared table has no way to write "nobody
+                    # has decided", so the word is that encoding and this
+                    # line is not the careless `or` it looks like. I tried
+                    # sending null here and Postgres refused it:
+                    # 23502, null value in column "label".
+                    #
+                    # The bug this looked like was real but was on the way
+                    # back IN: the applier wrote the word as a local label
+                    # and `progress` counted it as a decision, so seven
+                    # untouched candidates read as done and `left` was 0.
+                    # Both of those are fixed where they belong.
                     "label": ev.get("label") or "unspecified",
                     "decided_by": ev.get("by"),
-                    "decided_at": at,
-                    "updated_at": at or cloud.ts(cr.get("at")) or cloud.now(),
+                    # Or when it was un-decided. `decided_at` on the wire
+                    # means "when this row's state was set", which is true
+                    # of a decision and of taking one back -- and without a
+                    # time on the undo it could not be ordered, so it
+                    # stopped at the machine that made it while a
+                    # colleague's copy kept the decision and pushed it back.
+                    "decided_at": at or cloud.ts(ev.get("cleared_at")),
+                    "updated_at": (at or cloud.ts(ev.get("cleared_at"))
+                                   or cloud.ts(cr.get("at")) or cloud.now()),
                 })
                 for r in (ev.get("reviews") or []):
                     who = (r.get("by") or "").strip()
@@ -390,6 +488,18 @@ class Sync:
                 # colleague pulling this sheet gets the labels but no way to
                 # tell an import from a correction.
                 "versions": rec.get("versions") or [],
+                # The workbench half. A bench that exists on one computer
+                # answers "what am I working on"; the shared one answers
+                # "what is anybody working on", which is the question that
+                # stops two people labelling the same recording twice.
+                "name": rec.get("name"),
+                "assignee": rec.get("assignee"),
+                "is_open": bool(rec.get("open")),
+                "opened_at": cloud.ts(rec.get("opened_at")),
+                "opened_by": rec.get("opened_by"),
+                "archived": bool(rec.get("archived")),
+                "archived_at": cloud.ts(rec.get("archived_at")),
+                "archived_by": rec.get("archived_by"),
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -608,6 +718,15 @@ class Sync:
             out.append({
                 "name": row.get("name"),
                 "email": row.get("email"),
+                # The details somebody actually typed. These were missing,
+                # and they are the only part of a roster entry that is not
+                # compiled from the data -- so they were the only part that
+                # never travelled. An edited role stayed on the machine it
+                # was edited on, which is exactly what was reported.
+                "role": row.get("role") or None,
+                "initials": row.get("initials") or None,
+                "orcid": row.get("orcid") or None,
+                "note": row.get("note") or None,
                 "is_person": bool(row.get("is_person")),
                 "seen": row.get("counts") or {},
                 # The other spellings that are this same person. Local-only
@@ -692,9 +811,7 @@ class Sync:
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
             if since:
-                batch = [r for r in batch
-                         if not r.get("updated_at")
-                         or str(r["updated_at"]) > since]
+                batch = [r for r in batch if _after(r.get("updated_at"), since)]
             report[table] = len(batch)
             if on_progress:
                 on_progress(table, len(batch))
@@ -1028,7 +1145,8 @@ class Sync:
                 self.merge_reverts += 1
                 continue
             want = {"email": r.get("email"), "role": r.get("role"),
-                    "initials": r.get("initials"), "orcid": r.get("orcid")}
+                    "initials": r.get("initials"), "orcid": r.get("orcid"),
+                    "note": r.get("note")}
             # Aliases are unioned, not overwritten. Two people merging
             # different spellings on different machines are both right, and
             # last-write-wins would have one of them silently undo the
@@ -1080,7 +1198,7 @@ class Sync:
             if put_away is not None:
                 more["archived"] = bool(put_away)
             try:
-                self.people.add(name, r.get("email"), None,
+                self.people.add(name, r.get("email"), r.get("note"),
                                 role=r.get("role"),
                                 initials=r.get("initials"),
                                 orcid=r.get("orcid"), **more)
@@ -1089,7 +1207,7 @@ class Sync:
                 # A People without the `aliases` field. The rest of the row
                 # is still worth applying.
                 try:
-                    self.people.add(name, r.get("email"), None,
+                    self.people.add(name, r.get("email"), r.get("note"),
                                     role=r.get("role"),
                                     initials=r.get("initials"),
                                     orcid=r.get("orcid"))
@@ -1145,9 +1263,12 @@ class Sync:
             if not sig:
                 continue
             mine = have.get(sig) or {}
-            theirs_at = r.get("updated_at") or ""
-            mine_at = cloud.ts(mine.get("at")) or ""
-            if mine and mine_at >= theirs_at:
+            # Compared as times. `mine.get("at")` is local ("14:05-04:00")
+            # and `updated_at` is the cloud's UTC ("18:05+00:00"), so as text
+            # a mark made locally this afternoon sorted BEFORE a remote one
+            # from this morning -- and re-triaging an error here was undone
+            # by the next pull. Same fault as the push filter had.
+            if mine and not _newer_in(r.get("updated_at"), mine.get("at")):
                 continue
             if r.get("resolved"):
                 if not mine:
@@ -1358,12 +1479,34 @@ class Sync:
                 cur = mine.get(e.get("event_id"))
                 if not cur:
                     continue
-                if (e.get("label") or "unspecified") != cur.get("label"):
-                    cur["label"] = e.get("label") or "unspecified"
+                # Normalised both ways: the string "unspecified" and an
+                # empty label mean the same thing -- nobody has decided --
+                # and the difference between them is not news.
+                theirs = e.get("label") or None
+                if theirs == "unspecified":
+                    theirs = None
+                ours = cur.get("label") or None
+                if ours == "unspecified":
+                    ours = None
+                if theirs == ours:
+                    continue
+                if not _decision_wins(e.get("decided_at"), cur.get("at"),
+                                      ours or "unspecified",
+                                      cur.get("cleared_at")):
+                    continue
+                cur["label"] = theirs
+                if theirs is None:
+                    cur.pop("by", None)
+                    cur.pop("at", None)
+                    # When it became undecided, from the row that said so --
+                    # without it the next pull of that same old decision
+                    # would find an unstamped blank and take the shortcut.
+                    cur["cleared_at"] = e.get("decided_at") or _now_iso()
+                else:
                     cur["by"] = e.get("decided_by")
                     cur["at"] = e.get("decided_at")
-                    touched = True
-                    n += 1
+                touched = True
+                n += 1
             if touched:
                 self.curate._write(rec)
         return n
@@ -1393,6 +1536,35 @@ class Sync:
             if changed:
                 self.layers.set_many(gid, changed)
                 n += len(changed)
+
+            # Whose it is, whether it is on a bench and whether it has been
+            # filed away -- written only when they actually differ. Writing
+            # them back unconditionally restamps the sheet, and a restamped
+            # sheet is pushed up as though it were an edit: the loop the
+            # roster was stuck in, passing identical rows between machines
+            # forever.
+            if s.get("name") and s.get("name") != mine.get("name"):
+                self.layers.rename(gid, s["name"])
+                mine = self.layers.get(gid) or {}
+            if s.get("assignee") and s.get("assignee") != mine.get("assignee"):
+                self.layers.assign(gid, s["assignee"])
+                mine = self.layers.get(gid) or {}
+            if bool(s.get("archived")) != bool(mine.get("archived")):
+                self.layers.archive(gid, bool(s.get("archived")))
+                mine = self.layers.get(gid) or {}
+            # `is_open` is a claim about right now, so the later claim wins
+            # rather than the remote one always winning: putting a sheet down
+            # here should not be undone by a colleague's older pull.
+            if bool(s.get("is_open")) != bool(mine.get("open")):
+                ours = mine.get("opened_at") or mine.get("closed_at")
+                if not mine.get("archived") and (
+                        not ours or _newer_in(s.get("opened_at"), ours)):
+                    try:
+                        self.layers.open_set(gid, bool(s.get("is_open")),
+                                             who=s.get("opened_by"))
+                    except Exception:                          # noqa: BLE001
+                        pass
+                    mine = self.layers.get(gid) or {}
 
             # The history, when this machine has less of it than the cloud.
             # Never the other way: a sheet that has been versioned here and

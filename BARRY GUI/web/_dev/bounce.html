@@ -87,9 +87,15 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
  p('  gaps: ' + JSON.stringify(gaps.slice(0, 8)) + ' ms');
  ck('every bounce recorded a gap', gaps.length === mine.length,
     gaps.length + ' of ' + mine.length);
- ck('and every gap is inside the three-second window',
-    gaps.every((g) => g >= 0 && g <= 3000),
-    JSON.stringify(gaps.filter((g) => g > 3000)));
+ /* Ten seconds, since the watcher was widened: "snaps to event curation
+    and snaps back, and back again" describes something happening over
+    seconds, and a bounce with a four-second leg was outside the old window
+    and went unrecorded. The contract is the same -- nothing is reported
+    whose two halves are further apart than the window -- and this is the
+    check that would catch the window being widened by accident. */
+ ck('and every gap is inside the ten-second window',
+    gaps.every((g) => g >= 0 && g <= 10000),
+    JSON.stringify(gaps.filter((g) => g > 10000)));
 
  /* Resolve what this filed. Running the harness proves the detector
     works, and the proof is a handful of real-looking errors in the real

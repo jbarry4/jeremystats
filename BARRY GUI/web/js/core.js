@@ -1526,7 +1526,19 @@ function setMode(kind, leave) {
       modeNow = kind;
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
-      BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      /* How long since the last click or keypress.
+
+         A mode change is meant to be something a person does, so one that
+         happens seconds after the last input is worth being able to see
+         afterwards. Not an error -- entering StrataScope waits on a
+         session opening and that legitimately takes seconds -- but the
+         difference between "the user did this" and "something did this"
+         is exactly what was missing when StrataScope was reported to snap
+         into curation on its own. */
+      BARRY.activity.log('mode.change', {
+        from: from, to: to, via: stack,
+        since_gesture_ms: _lastGesture ? (Date.now() - _lastGesture) : null,
+      });
       noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
@@ -1571,6 +1583,21 @@ function wireMode() {
    ========================================================================== */
 BARRY.profile = (function () {
   let prof = null;
+  /* What this lab actually is. Free text is how one lab ends up with
+     "undergrad", "Undergraduate" and "Undergraduate Student" as three
+     different roles, and a roster that groups by role then reports three
+     people where there is one kind of person.
+
+     A value already on record that is not in this list is kept and offered
+     -- see `roleField`. The list is a suggestion about the future, not a
+     verdict on what somebody already typed. */
+  const ROLES = [
+    'PI',
+    'Graduate Student',
+    'Undergraduate Student',
+    'Medical Student',
+    'Medical Resident',
+  ];
 
   async function load() {
     try {
@@ -1629,6 +1656,16 @@ BARRY.profile = (function () {
 
   async function open() {
     const cur = prof || {};
+    /* Asked now, not remembered.
+
+       This line used to be built from whatever `/api/profile` last
+       reported, so renaming the computer under Errors -> Device left the
+       dialog claiming the old name until the page was refreshed. It is one
+       request and it is the only thing here that another view can change. */
+    try {
+      const got = await api('/api/device');
+      if (got && got.device) cur.device_name = got.device.name;
+    } catch (e) { /* the note falls back to the hostname */ }
     const f = {};
     /* `mine` marks a field that is about this COMPUTER rather than about a
        person, so it can be taken off screen when the form is about somebody
@@ -1674,8 +1711,20 @@ BARRY.profile = (function () {
     let creating = false;
 
     const fill = (d, asMe) => {
-      for (const k of ['name', 'email', 'role', 'initials']) {
+      for (const k of ['name', 'email', 'initials']) {
         if (f[k]) f[k].value = (d && d[k]) || '';
+      }
+      /* The role is a select, and assigning a value it has no option for
+         silently leaves it blank -- which would then be saved as "no role"
+         over somebody's actual one. So the option is made first. */
+      if (f.role) {
+        const want = ((d && d.role) || '').trim();
+        if (want && !Array.from(f.role.options)
+              .some((o) => o.value.toLowerCase() === want.toLowerCase())) {
+          f.role.appendChild(el('option', {
+            value: want, text: want + '  (as recorded)' }));
+        }
+        f.role.value = want;
       }
       editing = asMe ? null : (d && d.name) || null;
       creating = false;
@@ -1695,6 +1744,37 @@ BARRY.profile = (function () {
       paintMode();
       paintKnown();
       if (f.name) f.name.focus();
+    };
+
+    /* The role, as a list, without overwriting anything.
+
+       `cur.role` may be something nobody would pick today -- "Undergraduate"
+       is on this roster and is not in ROLES. A plain select would have
+       silently changed it to the first option the moment the form was
+       opened, so the current value is added as its own option and said to
+       be an old one. */
+    const roleField = () => {
+      const now = (cur.role || '').trim();
+      const known = ROLES.some((r) => r.toLowerCase() === now.toLowerCase());
+      const opts = ROLES.slice();
+      if (now && !known) opts.unshift(now);
+      f.role = el('select', { class: 'prof-role' },
+        [el('option', { value: '', text: '\u2014 not set \u2014' })]
+          .concat(opts.map((r) => el('option', {
+            value: r,
+            text: r + (now && !known && r === now ? '  (as recorded)' : ''),
+            selected: r.toLowerCase() === now.toLowerCase()
+              ? 'selected' : null,
+          }))));
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Role' }),
+        f.role,
+        now && !known
+          ? el('span', { class: 'hint',
+              text: '"' + now + '" is what is on record for them. Leaving it '
+                  + 'alone keeps it; picking another changes it.' })
+          : null,
+      ].filter(Boolean));
     };
 
     const modeLine = el('p', { class: 'prof-mode' });
@@ -1960,7 +2040,7 @@ BARRY.profile = (function () {
         }),
         el('span', { text: ' and switching profiles leaves it alone.' }),
       ]),
-      field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
+      roleField(),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
     ]);
@@ -2185,7 +2265,12 @@ function noticeBounce(from, to, via) {
      "snaps to StrataScope and snaps back", and the same fault entering
      curation would be the same bug. */
   const reversed = prev.to === from && prev.from === to;
-  if (!reversed || gap > 3000) return;
+  /* Ten seconds, not three. "Snaps to event curation and snaps back, and
+     back again" describes something happening over seconds; a bounce with a
+     four-second leg was outside the window and went unrecorded, which is
+     the likeliest reason this watcher has caught nothing but my own
+     harness. */
+  if (!reversed || gap > 10000) return;
   /* A person doing it deliberately is not a fault. Anything within a
      second of a click or a key is theirs. */
   if (now - _lastGesture < 1000) return;
@@ -2203,6 +2288,12 @@ function noticeBounce(from, to, via) {
         second: { from: from, to: to, via: via },
         ms_since_input: now - _lastGesture,
         view: BARRY.state && BARRY.state.view,
+        /* What else was happening. Without this the report says a mode
+           changed twice and nothing about the load, the sync or the pane
+           rebuild that might have done it -- and by the time anybody looks,
+           the page has been reloaded. */
+        just_before: (BARRY.activity && BARRY.activity.recent
+          ? BARRY.activity.recent().slice(-8) : null),
       },
     }).catch(() => { /* it is a report about a glitch, not a transaction */ });
   } catch (e) { /* never let the watcher break the thing it watches */ }

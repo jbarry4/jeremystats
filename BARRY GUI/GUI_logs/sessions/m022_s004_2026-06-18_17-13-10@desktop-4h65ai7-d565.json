@@ -1,12 +1,12 @@
 {
   "_at": {
-    "bad_channels": "2026-09-09T14:14:24.028151+00:00",
+    "bad_channels": "2026-09-09T19:47:18.609310+00:00",
     "bad_channels_note": "2026-09-03T13:20:13.060390+00:00",
     "cohort": "2026-09-03T13:20:13.060390+00:00",
     "condition": "2026-09-03T13:20:13.060390+00:00",
     "created": "2026-09-02T23:51:19.849758+00:00",
     "duration_s": "2026-09-04T15:57:01.695046+00:00",
-    "event_classes": "2026-09-09T14:26:34.700772+00:00",
+    "event_classes": "2026-09-09T20:14:40.589493+00:00",
     "first_seen_by": "2026-09-04T15:57:01.695046+00:00",
     "fs": "2026-09-04T15:57:01.695046+00:00",
     "gid": "2026-09-03T00:10:40.126938+00:00",
@@ -24,11 +24,11 @@
     "retired": "2026-09-04T15:57:01.695046+00:00",
     "schema": "2026-09-04T15:57:01.695046+00:00",
     "session": "2026-09-04T15:57:01.695046+00:00",
-    "spike_labels": "2026-09-09T07:24:50.173178+00:00",
+    "spike_labels": "2026-09-09T20:15:00.351423+00:00",
     "split_from": "2026-09-03T00:10:40.126938+00:00",
     "start": "2026-09-04T15:57:01.695046+00:00",
-    "updated": "2026-09-09T16:05:36.649678+00:00",
-    "view_state": "2026-09-09T14:27:28.984158+00:00"
+    "updated": "2026-09-09T20:16:34.632857+00:00",
+    "view_state": "2026-09-09T20:08:16.742670+00:00"
   },
   "_keys": {
     "paths": {
@@ -69,11 +69,15 @@
       "Strawbarrry": [
         "set",
         "2026-09-09T14:27:20.761055+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-09T20:16:34.632857+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T16:05:36.649678+00:00",
+    "at": "2026-09-09T20:16:34.632857+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -104,6 +108,16 @@
     "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).": {
       "color": "#FFB81C",
       "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
+      "visible": true
+    },
+    "flow harness sd": {
+      "color": "#c9a6ff",
+      "name": "flow harness sd",
+      "visible": true
+    },
+    "flow harness uv": {
+      "color": "#f59fb4",
+      "name": "flow harness uv",
       "visible": true
     }
   },
@@ -178,6 +192,14 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
       "root": null,
       "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-09T16:16:34-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
     }
   },
   "session": 4,
@@ -186,7 +208,7 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-09T12:05:36-04:00",
+    "at": "2026-09-09T16:16:34-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -241,9 +263,9 @@
     "notch": 0,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 12.8,
     "stft_mode": null,
-    "t0": 13.3,
+    "t0": 110.783,
     "ylim": 2133.0312426885184
   }
 }

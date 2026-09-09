@@ -1,0 +1,163 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>session modes: running</title>
+<style>
+  html,body{margin:0;font:12px/1.6 ui-monospace,Consolas,monospace;
+    background:#0c0f14;color:#dfe6ee}
+  #out{padding:10px 12px;width:44vw;box-sizing:border-box;white-space:pre-wrap}
+  .hd{color:#8fd3ff;margin-top:9px}
+  .ok{color:#8ce99a}.no{color:#ff8f8f}
+  iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;
+    background:#fff}
+</style></head><body>
+<div id="out"></div><iframe id="app" src="/"></iframe>
+<script>
+/* The two session views answer two different questions.
+ *
+ * "Scan a drive" is this computer's own view: what it has been exposed to,
+ * read off the registry on this disk. "Everything BARRY knows" is the shared
+ * catalogue -- every recording any machine has met, which is what travels
+ * through Supabase.
+ *
+ * Both were seeded from the same full registry, so the two buttons were two
+ * routes to one answer. Checked here: that they differ, that the local one is
+ * a subset rather than a different set, that the count line agrees with the
+ * list it sits above, and that a row nobody answered for is not silently
+ * treated as an answer of "no".
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const p = (m, c) => { const d = document.createElement('div');
+  if (c) d.className = c; d.textContent = m; out.appendChild(d); };
+const hd = (m) => p(m, 'hd');
+const ck = (what, got, saw) => {
+  if (!got) bad += 1;
+  p((got ? '  PASS ' : '  FAIL ') + what
+    + (got || saw === undefined ? '' : '   [' + saw + ']'), got ? 'ok' : 'no');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const untilN = async (fn, n) => {
+  for (let i = 0; i < n; i += 1) { if (fn()) return true; await sleep(100); }
+  return false;
+};
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const $ = (q) => D().querySelector(q);
+  const $$ = (q) => Array.from(D().querySelectorAll(q));
+  await untilN(() => typeof W().setView === 'function', 300);
+  await sleep(1200);
+
+  hd('0. What the server says this computer has met');
+  const reg = await W().fetch('/api/registry').then((r) => r.json());
+  const rows = [];
+  (function walk(n) {
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n && typeof n === 'object') {
+      if (n.gid && n.paths) rows.push(n);
+      Object.values(n).forEach(walk);
+    }
+  })(reg.tree);
+  const met = rows.filter((r) => r.seen_here === true).length;
+  const unsaid = rows.filter((r) => r.seen_here === undefined).length;
+  p('  rows: ' + rows.length + ',  met here: ' + met
+    + ',  unanswered: ' + unsaid + ',  catalogue: ' + reg.total);
+  ck('the rows carry a seen_here mark',
+     rows.length - unsaid > 100, rows.length - unsaid);
+  ck('some have been met here', met > 0, met);
+  ck('but not all of them -- the catalogue is bigger than this disk',
+     met < rows.length, met + ' of ' + rows.length);
+  ck('and the count is reported', reg.seen_here === met,
+     reg.seen_here + ' vs ' + met);
+  /* Sightings are keyed on the label a machine was using at the time, so one
+     computer answers to several names. Matching only the id matched none of
+     476 recordings. */
+  p('  answers to: ' + (reg.my_names || []).join(', '));
+  ck('this computer knows every name it answers to',
+     (reg.my_names || []).length >= 2, (reg.my_names || []).length);
+
+  W().eval("setView('sessions')");
+  await untilN(() => $$('.sess-card').length, 300);
+  await sleep(2500);
+
+  const shown = () => $$('.sess-card').length;
+  const sub = () => (($('#sessSub') || {}).textContent || '').trim();
+  const modeBtn = (m) => $$('#sessModeSeg button')
+    .find((b) => b.dataset.mode === m);
+
+  hd('1. Scan a drive shows this computer only');
+  const local = shown();
+  p('  showing: ' + local);
+  p('  ' + sub());
+  ck('it shows what this computer has met', local > 0, local);
+  ck('and says where that comes from',
+     /on this computer/.test(sub()) && /registry on this disk/.test(sub()),
+     sub().slice(0, 70));
+  /* The line read "188 of 185" -- the filter passed three rows nobody had
+     answered for and the denominator did not count them. A count that
+     contradicts the list above it is worse than no count. */
+  const num = sub().match(/^(\d+) of (\d+)/);
+  ck('the line agrees with the list it sits above',
+     !!num && Number(num[1]) === local && Number(num[2]) === local,
+     num ? num[1] + ' of ' + num[2] + ', showing ' + local : sub());
+  ck('and it does not advertise the catalogue it is not showing',
+     !/remembered/.test(sub()), sub().slice(0, 80));
+
+  hd('2. Everything BARRY knows shows the lab');
+  ck('there is a mode switch', !!modeBtn('housekeeping'));
+  modeBtn('housekeeping').click();
+  await sleep(3000);
+  const all = shown();
+  p('  showing: ' + all);
+  p('  ' + sub());
+  /* The switch used to toggle two panels and leave the list alone, so both
+     modes rendered the same 188 cards. */
+  ck('the shared view is bigger than the local one', all > local,
+     all + ' vs ' + local);
+  ck('and says it is the shared one',
+     /shared catalogue/.test(sub()), sub().slice(0, 70));
+  ck('it holds everything this computer has met', all >= met, all);
+
+  hd('3. The local view is a subset, not a different set');
+  ck('every locally met recording is in both',
+     local >= met && local <= all, met + ' <= ' + local + ' <= ' + all);
+  /* Not an equality. A recording on record at two paths in two projects
+     draws a card in each, so the cards are at least the rows and measured
+     at 188 for 187 -- one recording filed twice. The direction is what
+     matters: nothing local is missing, and nothing foreign is included. */
+  ck('at least every local row is on screen', local >= met + unsaid,
+     local + ' cards for ' + (met + unsaid) + ' rows');
+  ck('and not the whole catalogue over again', local < rows.length,
+     local + ' of ' + rows.length);
+
+  hd('4. Nothing is lost to a row nobody answered for');
+  /* The demo project is appended after the walk that marks the rows, so its
+     rows carry no answer -- and `!!undefined` is false, which would have
+     hidden the tour session from the scan view. */
+  ck('there are rows nobody answered for', unsaid > 0, unsaid);
+  modeBtn('scan').click();
+  await sleep(3000);
+  ck('the list is the local one again', shown() === local,
+     shown() + ' vs ' + local);
+  /* Named, not counted: the demo paths come from the payload, so this asks
+     whether the tour session in particular survived the filter rather than
+     whether some number came out right. */
+  const bs = String.fromCharCode(92);
+  const norm = (t) => String(t || '').split(bs).join('/').toLowerCase();
+  const titles = $$('.sess-card').map((c) => norm(c.getAttribute('title')));
+  const demo = (reg.demo_paths || [])
+    .filter((q) => titles.some((t) => t.indexOf(norm(q)) === 0));
+  p('  demo paths on screen: ' + demo.length
+    + ' of ' + (reg.demo_paths || []).length);
+  ck('the tour session is still there', demo.length > 0, demo.length);
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'session modes';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack), 'no');
+  document.title = 'threw';
+} })();
+</script>
+</body></html>

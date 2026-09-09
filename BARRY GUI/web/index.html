@@ -400,9 +400,12 @@
             <button class="btn" id="rootGo">Scan</button>
             <button class="btn ghost" id="rootBrowse">Browse…</button>
           </div>
+          <!-- The scan's two settings live behind this button, and the
+               button says so when they are not at their defaults. They used
+               to sit here as a checkbox and a number box beside the recent
+               roots: three unrelated things on one line. -->
           <div class="rb-opts">
-            <label class="toggle sm"><input type="checkbox" id="rootHeaders" checked><span>Read headers (exact IDs)</span></label>
-            <label class="mini-field">Depth <input type="number" id="rootDepth" value="6" min="1" max="12"></label>
+            <div id="rootOptsBar"></div>
             <span class="recent-label">Recent:</span>
             <span id="rootRecent" class="recent-list"></span>
           </div>

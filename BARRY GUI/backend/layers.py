@@ -290,6 +290,104 @@ class Layers:
         return bool(self.book.erase(self.base(gid)))
 
     # ------------------------------------------------------------------
+    @shards.atomic
+    def open_set(self, gid, on=True, who=None, unarchive=False):
+        """Put a sheet on the workbench, or take it off.
+
+        Closing is not archiving and it is not finishing: nothing is hidden,
+        nothing is required first, and the labels are already saved. It says
+        whether this is something anybody is labelling right now.
+
+        Opening also claims the sheet if nobody has claimed it, for the same
+        reason curation does: an unowned pile is a pile.
+        """
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("No layer sheet for that recording.")
+        who = (who or "").strip() or \
+            (self.store.provenance() if self.store else {}).get("user")
+        if on:
+            rec["open"] = True
+            rec["opened_at"] = _now()
+            rec["opened_by"] = who
+            rec.pop("closed_at", None)
+            # Archived and open must never both be true: the bench is the
+            # open sheets and the shelf is the rest, so a sheet that is both
+            # belongs to neither and disappears off both.
+            if rec.get("archived"):
+                if not unarchive:
+                    raise LayerError(
+                        "That sheet is archived. Picking it up would "
+                        "un-archive it, so say so on purpose rather than by "
+                        "picking it up.")
+                for k in ("archived", "archived_at", "archived_by"):
+                    rec.pop(k, None)
+            if not (rec.get("assignee") or "").strip() and who:
+                rec["assignee"] = who
+        else:
+            rec["open"] = False
+            rec["closed_at"] = _now()
+        return self._write(rec)
+
+    @shards.atomic
+    def archive(self, gid, on=True):
+        """File a sheet away, or take it back out.
+
+        Not deletion: the labels, the versions and the snapshots all stay.
+        This is for the recording you have decided not to think about again,
+        which the shelf should not keep offering you.
+        """
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("No layer sheet for that recording.")
+        who = (self.store.provenance() if self.store else {}).get("user")
+        if on:
+            rec["archived"] = True
+            rec["archived_at"] = _now()
+            rec["archived_by"] = who
+            # Off the bench as well, or it would be on a bench nobody can
+            # see.
+            rec["open"] = False
+        else:
+            for k in ("archived", "archived_at", "archived_by"):
+                rec.pop(k, None)
+        return self._write(rec)
+
+    @shards.atomic
+    def assign(self, gid, who):
+        """Say whose sheet this is. Empty hands it back to nobody."""
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("No layer sheet for that recording.")
+        rec["assignee"] = (who or "").strip() or None
+        rec["assigned_at"] = _now()
+        return self._write(rec)
+
+    @shards.atomic
+    def rename(self, gid, name):
+        """What this work set is called.
+
+        A sheet is about a recording, but the work is not always "the
+        recording": it can be the second pass after the probe map was
+        fixed. A name is how you tell those apart in a list.
+        """
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("No layer sheet for that recording.")
+        rec["name"] = (name or "").strip() or None
+        return self._write(rec)
+
+    def close_all(self):
+        """Clear the bench. Nothing else changes."""
+        out = []
+        for rec in self.all():
+            if not rec.get("open"):
+                continue
+            self.open_set(rec["gid"], False)
+            out.append({"gid": rec["gid"],
+                        "name": rec.get("name") or rec.get("session_label")})
+        return out
+
     @staticmethod
     def progress(rec, channels=None):
         order = [str(int(c)) for c in
@@ -313,6 +411,18 @@ class Layers:
         return {
             "gid": rec.get("gid"),
             "session_label": rec.get("session_label"),
+            # The workbench half: which sheets somebody is working on, whose
+            # they are, and which have been filed away. Without these the
+            # list can only be "every sheet that exists", which is what it
+            # was.
+            "name": rec.get("name"),
+            "open": bool(rec.get("open")),
+            "opened_at": rec.get("opened_at"),
+            "opened_by": rec.get("opened_by"),
+            "closed_at": rec.get("closed_at"),
+            "assignee": rec.get("assignee"),
+            "archived": bool(rec.get("archived")),
+            "archived_at": rec.get("archived_at"),
             "regions": rec.get("regions") or REGIONS,
             "labels": rec.get("labels") or {},
             "channels": self.covered(rec),

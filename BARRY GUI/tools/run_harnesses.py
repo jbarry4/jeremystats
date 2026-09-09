@@ -51,6 +51,12 @@ ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
 # reachable, and nothing driving it can touch real curation data.
 SESSION = "demo:long-session"
 
+# `scanreg.html` takes `?root=` and covers the scan-to-registry path: what a
+# scan writes down, what it can see without opening a file, and which records
+# it brightens. Passed nothing, it scanned a folder named "null" and failed
+# eight checks every run.
+NEEDS_ROOT = {"scanreg.html"}
+
 # Harnesses measured to be WORSE with it. Both treat the parameter as
 # optional and take a different path when it is present.
 # A known limitation, recorded so nobody chases it: `smoke.html` gets the
@@ -71,6 +77,62 @@ NO_SESSION = {
 TAG = re.compile(r"<[^>]+>")
 OK = re.compile(r"(?m)^\s*(?:ok|OK|PASS|\u2713)\b")
 BAD = re.compile(r"(?m)^\s*(?:FAIL|BAD|ERROR|\u2717|\u2718)\b")
+
+
+_FAKE = [None]
+
+
+def fake_drive():
+    """A throwaway drive with recordings on it, for the scan harness.
+
+    The scanner calls a folder a recording when it holds a `csc*.ncs` file,
+    and reads the sampling rate out of the first 16 KB of one. So each
+    session folder here gets two CSC files with a Neuralynx-shaped ASCII
+    header and enough bytes after it to give a plausible duration -- the
+    scan divides file size by the record size, so the length is real
+    arithmetic rather than a number written down.
+
+    Under the system temp directory, rebuilt once per run, and named
+    `fakedrive` because that is the pattern `scanreg.html` cleans up by.
+    """
+    if _FAKE[0]:
+        return _FAKE[0]
+    import tempfile
+    root = os.path.join(tempfile.gettempdir(), "barry_fakedrive", "fakedrive")
+    # 1044 bytes per Neuralynx record; 512 records is about 8.7 s at 30 kHz
+    # with 512 samples per record.
+    header_bytes = 16 * 1024
+    records = 200
+    sessions = [
+        ("FAKEPROJ", "fake_m1", "m1s1_2026-01-02", "2026-01-02_10-00-00"),
+        ("FAKEPROJ", "fake_m1", "m1s2_2026-01-02", "2026-01-02_11-30-00"),
+        ("FAKEPROJ", "fake_m2", "m2s1_2026-01-03", "2026-01-03_09-15-00"),
+    ]
+    for proj, mouse, sess, stamp in sessions:
+        folder = os.path.join(root, proj, mouse, sess, stamp)
+        os.makedirs(folder, exist_ok=True)
+        for ch in (1, 2):
+            path = os.path.join(folder, "CSC%d.ncs" % ch)
+            if os.path.exists(path):
+                continue
+            head = (
+                "######## Neuralynx Data File Header\n"
+                "-FileType CSC\n"
+                "-FileVersion 3.4\n"
+                "-RecordSize 1044\n"
+                "-TimeCreated %s\n"
+                "-SamplingFrequency 30000\n"
+                "-ADBitVolts 0.000000036621093749999997\n"
+                "-ADChannel %d\n"
+                "-AcqEntName CSC%d\n"
+                % (stamp.replace("_", " ").replace("-", "/", 2), ch - 1, ch)
+            ).encode("latin-1")
+            with open(path, "wb") as fh:
+                fh.write(head)
+                fh.write(b"\x00" * (header_bytes - len(head)))
+                fh.write(b"\x00" * (1044 * records))
+    _FAKE[0] = root
+    return root
 
 
 def strip(doc):
@@ -96,6 +158,10 @@ def main():
         url = "%s/_dev/%s" % (BASE, name)
         if name not in NO_SESSION:
             url += "?session=" + urllib.parse.quote(SESSION, safe="")
+        if name in NEEDS_ROOT:
+            root = fake_drive()
+            url += ("&" if "?" in url else "?") + "root=" \
+                + urllib.parse.quote(root, safe="")
         try:
             raw = subprocess.run(
                 [EDGE, "--headless=new", "--disable-gpu",
@@ -124,9 +190,13 @@ def main():
         # passing.
         ok = len(OK.findall(text))
         bad = len(BAD.findall(text))
-        # Marker inside a span, so a line-anchored match sees the tag.
-        span_ok = len(re.findall(r'class="good"', raw))
-        span_bad = len(re.findall(r'class="bad"', raw))
+        # Marker inside a tag, so a line-anchored match sees the tag rather
+        # than the text. Three spellings, because the harnesses were written
+        # over months: `good`, `ok` and `pass` all mean one check passed.
+        # Counting only `good` is why figgrid.html -- sixty-three checks,
+        # every one passing -- was reported as a single check.
+        span_ok = len(re.findall(r'class="(?:good|ok|pass)"', raw))
+        span_bad = len(re.findall(r'class="(?:bad|no|fail)"', raw))
         ok, bad = max(ok, span_ok), max(bad, span_bad)
         # And the ones that report only in the title.
         m = re.search(r"(\d+)\s*pass\D+(\d+)\s*fail", title or "")
@@ -140,7 +210,19 @@ def main():
         titled_pass = bool(re.search(r":\s*passed\s*$", (title or "").strip()))
         if titled_pass and not ok:
             ok = 1
-        fails = [l.strip() for l in text.split("\n") if BAD.match(l)][:8]
+        fails = [l.strip() for l in text.split("\n") if BAD.match(l)]
+        if not fails:
+            # The other style marks a failure with a class and lets CSS write
+            # the word, so the stripped text of a failing check reads exactly
+            # like a passing one. The count already came from these tags; the
+            # names may as well.
+            fails = [html.unescape(re.sub(r"<[^>]+>", " ", m))
+                     .strip().replace("\n", " ")
+                     for m in re.findall(
+                         r'class="(?:bad|no|fail)"[^>]*>(.*?)</',
+                         raw, re.S)]
+            fails = [re.sub(r"\s+", " ", f) for f in fails if f.strip()]
+        fails = fails[:8]
         threw = "THREW" in text or "CRASH" in (title or "")
         note = ""
         if threw:
