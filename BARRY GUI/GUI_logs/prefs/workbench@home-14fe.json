@@ -1,0 +1,40 @@
+{
+  "_at": {
+    "pipeline_folders": "2026-09-02T23:21:29.293258+00:00",
+    "recent_scripts": "2026-09-02T23:21:29.293258+00:00",
+    "updated": "2026-09-05T18:45:25.854788+00:00"
+  },
+  "_keys": {
+    "themes": {
+      "BarryLab": [
+        "set",
+        "2026-09-03T00:08:57.246596+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "gone",
+        "2026-09-03T00:08:57.246596+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-05T18:45:25.854788+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "fav_scripts": [],
+  "pipeline_folders": {
+    "session": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"
+  },
+  "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m"
+  ],
+  "themes": {
+    "BarryLab": "light",
+    "Home": "dark"
+  },
+  "updated": "2026-09-05T14:45:25-04:00"
+}
