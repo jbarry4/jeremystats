@@ -6173,3 +6173,20 @@ body.aid-window .xf-tabs { display: none !important; }
   font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
   color: var(--err);
 }
+
+/* Which of three jobs the profile dialog's Save is doing. On screen because
+   it used to be worked out from string comparison, and getting it wrong
+   rewrote this computer's identity. */
+.prof-mode {
+  margin: 0 0 10px; padding: 7px 10px; border-radius: 6px;
+  font-size: 12px; color: var(--text-2);
+  background: var(--bg-2); border-left: 3px solid var(--line);
+}
+.prof-mode.editing {
+  background: var(--accent-soft); border-left-color: var(--accent);
+  color: var(--text);
+}
+.prof-mode.creating {
+  background: var(--ok-soft); border-left-color: var(--ok);
+  color: var(--text);
+}

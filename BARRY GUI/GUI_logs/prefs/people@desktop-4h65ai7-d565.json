@@ -8,7 +8,7 @@
       ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-09T14:01:26.344914+00:00"
+        "2026-09-09T15:09:17.015193+00:00"
       ],
       "Isabella Piatek": [
         "set",
@@ -16,11 +16,11 @@
       ],
       "Rain": [
         "set",
-        "2026-09-09T14:22:46.800996+00:00"
+        "2026-09-09T15:09:21.659088+00:00"
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T13:38:41.345782+00:00"
+        "2026-09-09T13:41:55.408098+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,11 +28,15 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-09T14:22:59.315212+00:00"
+        "2026-09-09T15:06:08.629162+00:00"
       ],
       "TEST": [
         "set",
-        "2026-09-09T14:22:43.707379+00:00"
+        "2026-09-09T14:23:28.610811+00:00"
+      ],
+      "ZZ probe": [
+        "gone",
+        "2026-09-09T15:00:39.515682+00:00"
       ],
       "bankback@harness": [
         "set",
@@ -57,20 +61,35 @@
       "unknown": [
         "set",
         "2026-09-09T13:38:41.369698+00:00"
+      ],
+      "zz edit probe": [
+        "gone",
+        "2026-09-09T15:13:28.000823+00:00"
+      ],
+      "zz edit probe renamed": [
+        "gone",
+        "2026-09-09T15:13:21.967374+00:00"
+      ],
+      "zz probe A": [
+        "gone",
+        "2026-09-09T15:12:58.213405+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T14:22:59.315212+00:00",
+    "at": "2026-09-09T15:13:28.000823+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": [
     {
+      "aliases": [
+        "rain younger"
+      ],
       "archived": true,
-      "at": "2026-09-09T14:21:41.424451+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T14:22:46.800847+00:00",
+      "at": "2026-09-09T15:09:21.658575+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T15:09:21.658585+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain",
       "name": "Rain"
@@ -128,16 +147,6 @@
       "role": "Graduate Student"
     },
     {
-      "at": "2026-09-08T21:24:06.731205+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T13:38:41.345781+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Gradstudent"
-    },
-    {
       "at": "2026-09-08T18:54:41.436836+00:00",
       "by": "Rain Younger",
       "edited_at": "2026-09-09T13:38:41.353783+00:00",
@@ -162,29 +171,35 @@
       "name": "unknown"
     },
     {
-      "archived": true,
-      "at": "2026-09-09T14:22:31.698615+00:00",
-      "by": "TEST",
-      "edited_at": "2026-09-09T14:22:43.707200+00:00",
-      "email": null,
-      "id": "TEST",
-      "initials": null,
-      "name": "TEST",
-      "role": null
-    },
-    {
       "aliases": [
         "shahriar",
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T14:22:59.314179+00:00",
+      "by": "zz edit probe renamed",
+      "edited_at": "2026-09-09T15:06:08.628694+00:00",
       "email": "Shahriar.Akhavan-Tafti@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
       "role": "Gradstudent"
+    },
+    {
+      "at": "2026-09-08T21:24:06.731205+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-09-09T13:41:55.408097+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
+      "role": "Gradstudent"
+    },
+    {
+      "at": "2026-09-09T14:23:28.606785+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-09-09T14:23:28.606786+00:00",
+      "id": "TEST",
+      "name": "TEST"
     }
   ]
 }

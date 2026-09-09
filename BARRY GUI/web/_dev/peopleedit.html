@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — editing somebody does not duplicate them</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Reported as "editing an existing person creates a duplicate", and the
+   mechanism was worse than that.
+
+   Save decided what to do by comparing the name in the form with the name
+   being edited. Change the name at all -- a rename, a corrected capital, a
+   trailing space -- and the comparison failed, so it fell through to the
+   branch that sets THIS COMPUTER's own profile to that name and then added
+   the name to the roster beside the old row.
+
+   Two claims, and the second is the one that matters more: editing writes
+   only to the roster, and it never writes to the profile. A test for the
+   duplicate alone would pass on a version that still hijacked the machine's
+   identity.
+
+   Everything is done against a probe person created and removed here, so a
+   failure cannot leave a stray name on the real roster. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 200, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+const PROBE = 'zz edit probe';
+const RENAMED = 'zz edit probe renamed';
+
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const get = async (path) => (await W().fetch(path)).json();
+  const post = async (path, body) => (await W().fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+
+  const namesOf = (r) => ((r.people || []).concat(r.not_people || []))
+    .map((x) => x.name);
+  const countOf = async (name) => namesOf(await get('/api/people'))
+    .filter((n) => (n || '').toLowerCase() === name.toLowerCase()).length;
+
+  try {
+    hd('1. The profile this computer uses, before anything');
+    const before = await get('/api/profile');
+    const wasMe = (before.profile || {}).name || null;
+    p('  this computer credits work to: ' + JSON.stringify(wasMe));
+    ck('there is a profile to protect', wasMe !== undefined);
+
+    hd('2. A probe person, added the way the dialog adds one');
+    await post('/api/people/add', { name: PROBE, role: 'harness' });
+    ck('the probe is on the roster once', (await countOf(PROBE)) === 1,
+       String(await countOf(PROBE)));
+
+    hd('3. Editing them, with the name left alone');
+    run('BARRY.profile.open()');
+    await untilN(() => D().querySelector('.prof-chip'), 200);
+    await sleep(700);
+    /* Through the pencil, as a person would. */
+    const chip = Array.from(D().querySelectorAll('.prof-chip'))
+      .find((c) => (c.textContent || '').indexOf(PROBE) >= 0);
+    ck('the probe has a chip', !!chip,
+       Array.from(D().querySelectorAll('.prof-chip-name'))
+         .map((b) => b.textContent).join(' | '));
+    if (!chip) throw new Error('no chip to edit');
+    chip.querySelector('.prof-chip-edit').click();
+    await sleep(700);
+
+    const mode = D().querySelector('.prof-mode');
+    p('  mode says: "' + (mode ? mode.textContent.trim().slice(0, 76) : '') + '"');
+    ck('the dialog says it is editing, not setting this computer',
+       !!mode && /Editing/.test(mode.textContent)
+       && /roster only/.test(mode.textContent),
+       mode ? mode.textContent.trim() : 'no mode line');
+
+    const field = (k) => D().querySelector('.prof-form [data-k="' + k + '"]')
+      || Array.from(D().querySelectorAll('.prof-form input'))
+        .find((i) => (i.placeholder || '').toLowerCase().indexOf(k) >= 0);
+    const role = Array.from(D().querySelectorAll('.prof-form input'))
+      .find((i) => /undergraduate|role/i.test(i.placeholder || ''));
+    if (role) { role.value = 'edited by harness'; }
+    const saveBtn = Array.from(D().querySelectorAll('button'))
+      .find((b) => (b.textContent || '').trim() === 'Save');
+    ck('there is a Save', !!saveBtn);
+    saveBtn.click();
+    await sleep(1600);
+
+    ck('the probe is still on the roster exactly once',
+       (await countOf(PROBE)) === 1, String(await countOf(PROBE)));
+    const nowMe = ((await get('/api/profile')).profile || {}).name || null;
+    ck('and this computer still credits work to whoever it did',
+       nowMe === wasMe, JSON.stringify(wasMe) + ' -> ' + JSON.stringify(nowMe));
+
+    hd('4. Editing them and changing the name');
+    /* The case that produced the duplicate. A rename cannot be done -- the
+       name is stamped on every decision -- so it must be refused rather
+       than half-applied, and it must not touch the profile either. */
+    run('BARRY.profile.open()');
+    await untilN(() => D().querySelector('.prof-chip'), 200);
+    await sleep(700);
+    const chip2 = Array.from(D().querySelectorAll('.prof-chip'))
+      .find((c) => (c.textContent || '').indexOf(PROBE) >= 0);
+    chip2.querySelector('.prof-chip-edit').click();
+    await sleep(700);
+    const nameIn = Array.from(D().querySelectorAll('.prof-form input'))
+      .find((i) => i.value === PROBE);
+    ck('the name field holds the person being edited', !!nameIn,
+       Array.from(D().querySelectorAll('.prof-form input'))
+         .map((i) => i.value).join(' | '));
+    nameIn.value = RENAMED;
+    const save2 = Array.from(D().querySelectorAll('button'))
+      .find((b) => (b.textContent || '').trim() === 'Save');
+    save2.click();
+    await sleep(900);
+
+    /* It should ask, not act. Declining must leave everything alone. */
+    const asked = Array.from(D().querySelectorAll('.confirm-msg, .mb'))
+      .some((n) => /Renam|separate person/i.test(n.textContent || ''));
+    p('  asked about the rename: ' + asked);
+    ck('a rename is questioned rather than performed', asked);
+    /* Inside the dialog, and matched exactly.
+
+       `/^(Cancel|No|Keep)/i` across the whole document found "Notebooks" --
+       it starts with "No" -- so this clicked a script filter behind the
+       modal, never dismissed the confirm, and then measured a roster that
+       was still mid-decision. The app was right the whole time. */
+    const box = D().getElementById('bigModalBox');
+    const cancel = Array.from(box.querySelectorAll('button'))
+      .find((b) => (b.textContent || '').trim() === 'Cancel');
+    ck('the confirm offers a way out', !!cancel,
+       Array.from(box.querySelectorAll('button'))
+         .map((b) => b.textContent.trim()).join(' | '));
+    if (cancel) { cancel.click(); await sleep(900); }
+
+    ck('declining leaves the original alone',
+       (await countOf(PROBE)) === 1, String(await countOf(PROBE)));
+    ck('and creates nothing under the new name',
+       (await countOf(RENAMED)) === 0, String(await countOf(RENAMED)));
+    const stillMe = ((await get('/api/profile')).profile || {}).name || null;
+    ck('and still does not touch this computer',
+       stillMe === wasMe, JSON.stringify(wasMe) + ' -> ' + JSON.stringify(stillMe));
+
+    hd('5. Adding somebody is its own button');
+    run('closeAllModals()');
+    await sleep(300);
+    run('BARRY.profile.open()');
+    await untilN(() => D().querySelector('.prof-chip'), 200);
+    await sleep(700);
+    const add = Array.from(D().querySelectorAll('button'))
+      .find((b) => /^Add somebody/.test((b.textContent || '').trim()));
+    ck('there is an Add somebody button', !!add,
+       Array.from(D().querySelectorAll('.mf button'))
+         .map((b) => b.textContent.trim()).join(' | '));
+    if (add) {
+      add.click();
+      await sleep(500);
+      const m2 = D().querySelector('.prof-mode');
+      ck('it says it is adding, not setting this computer',
+         !!m2 && /Adding somebody new/.test(m2.textContent),
+         m2 ? m2.textContent.trim().slice(0, 70) : 'no mode line');
+      /* Only the fields that are on screen. "What the lab calls this
+         machine" is about the computer, not the person, and is hidden in
+         this mode -- a hidden input still holds its value, and asserting
+         it is empty would be asserting the wrong thing. */
+      const shown = Array.from(D().querySelectorAll('.prof-form .field'))
+        .filter((b) => !b.hidden)
+        .map((b) => b.querySelector('input'))
+        .filter(Boolean);
+      const blank = shown.every((i) => !i.value);
+      ck('and the form is empty, not somebody else’s details', blank,
+         shown.map((i) => i.value).filter(Boolean).join(' | '));
+      ck('the machine’s own name is not on the form when adding a person',
+         Array.from(D().querySelectorAll('.prof-form .field'))
+           .some((b) => b.hidden));
+    }
+    run('closeAllModals()');
+  } catch (e) {
+    p('THREW: ' + (e && e.stack || e));
+    bad++;
+  } finally {
+    /* Whatever happened, take the probes back off -- from the shared
+       roster as well as from here. Removing them locally is not enough: a
+       push during the run sends them up and the next pull writes them
+       back, which happened twice while this was being written. */
+    try {
+      await post('/api/people/_test_purge', { names: [PROBE, RENAMED] });
+    } catch (e) {
+      for (const n of [PROBE, RENAMED]) {
+        try { await post('/api/people/forget', { name: n }); } catch (e2) { }
+      }
+    }
+    const left = namesOf(await get('/api/people'))
+      .filter((n) => /zz edit probe/i.test(n || ''));
+    ck('the harness left nothing behind', left.length === 0,
+       left.join(', '));
+  }
+
+  hd('Done');
+  p(bad ? bad + ' FAILURE(S)' : 'all checks passed');
+})();
+</script>
