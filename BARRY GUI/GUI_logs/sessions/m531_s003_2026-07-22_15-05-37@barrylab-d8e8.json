@@ -1,0 +1,111 @@
+{
+  "_at": {
+    "created": "2026-09-02T23:51:19.956813+00:00",
+    "duration_s": "2026-09-02T23:51:19.956813+00:00",
+    "first_seen_by": "2026-09-02T23:51:19.956813+00:00",
+    "fs": "2026-09-02T23:51:19.956813+00:00",
+    "gid": "2026-09-02T23:51:19.956813+00:00",
+    "group": "2026-09-02T23:51:19.956813+00:00",
+    "has_video": "2026-09-02T23:51:19.956813+00:00",
+    "key": "2026-09-02T23:51:19.956813+00:00",
+    "label": "2026-09-02T23:51:19.956813+00:00",
+    "loose_key": "2026-09-02T23:51:19.956813+00:00",
+    "mouse": "2026-09-02T23:51:19.956813+00:00",
+    "n_channels": "2026-09-02T23:51:19.956813+00:00",
+    "project": "2026-09-02T23:51:19.956813+00:00",
+    "project_source": "2026-09-02T23:51:19.956813+00:00",
+    "retired": "2026-09-09T04:59:59.371498+00:00",
+    "schema": "2026-09-02T23:51:19.956813+00:00",
+    "session": "2026-09-02T23:51:19.956813+00:00",
+    "start": "2026-09-02T23:51:19.956813+00:00",
+    "updated": "2026-09-09T04:59:59.371498+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ],
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-02T23:51:19.956813+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-09T04:59:59.371498+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-02T18:50:52-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1784.7466666666667,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s33970a523516",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m531_s003_2026-07-22_15-05-37",
+  "label": "KCNT1 m531 s3 2026-07-22",
+  "loose_key": "m531_s003",
+  "mouse": 531,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:40:02-04:00",
+      "by": "barry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11",
+      "root": "Y:/Jeremy3/KCNT1/Summer'26",
+      "scan": "scan_ff32bceba3"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:52-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-35-11",
+      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
+      "scan": "scan_94ff1eb81c"
+    }
+  },
+  "session": 3,
+  "start": "2026-07-22T15:05:37",
+  "updated": {
+    "at": "2026-09-09T00:59:59-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarrry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

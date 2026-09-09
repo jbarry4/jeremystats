@@ -22,8 +22,8 @@
     "schema": "2026-09-02T23:51:19.871687+00:00",
     "session": "2026-09-02T23:51:19.871687+00:00",
     "start": "2026-09-02T23:51:19.871687+00:00",
-    "updated": "2026-09-08T21:01:03.295133+00:00",
-    "view_state": "2026-09-08T21:01:03.295133+00:00"
+    "updated": "2026-09-09T13:38:02.016028+00:00",
+    "view_state": "2026-09-08T22:48:52.060240+00:00"
   },
   "_keys": {
     "paths": {
@@ -53,6 +53,10 @@
         "set",
         "2026-09-04T19:01:08.241585+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-08T23:36:03.512788+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T20:37:13.365963+00:00"
@@ -60,11 +64,15 @@
       "StrawBarry": [
         "set",
         "2026-09-08T19:57:15.016680+00:00"
+      ],
+      "Strawbarrry": [
+        "set",
+        "2026-09-09T13:38:02.016028+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T21:01:03.295133+00:00",
+    "at": "2026-09-09T13:38:02.016028+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -111,6 +119,13 @@
       "root": null,
       "scan": null
     },
+    "Bluebarry": {
+      "at": "2026-09-08T19:36:03-04:00",
+      "by": "Shahriar Tafti",
+      "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+      "root": null,
+      "scan": null
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T16:37:12-04:00",
       "by": "Shahriar",
@@ -124,23 +139,32 @@
       "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
       "root": null,
       "scan": null
+    },
+    "Strawbarrry": {
+      "at": "2026-09-09T09:38:02-04:00",
+      "by": "Rain Younger",
+      "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+      "root": null,
+      "scan": null
     }
   },
   "session": 8,
   "start": "2024-06-14T14:16:58",
   "updated": {
-    "at": "2026-09-08T17:01:03-04:00",
+    "at": "2026-09-09T09:38:02-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarrry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
   },
   "view_state": {
+    "chan_mode": "remove",
     "channels": [
       1,
       3,
       5,
+      7,
       9,
       11,
       13,
@@ -178,6 +202,7 @@
     "hp": 5,
     "invert": true,
     "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": null,
