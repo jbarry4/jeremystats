@@ -1,8 +1,9 @@
 {
   "_at": {
-    "pipeline_folders": "2026-09-03T14:08:40.159829+00:00",
+    "pipeline_folders": "2026-09-08T21:54:16.096322+00:00",
+    "radio": "2026-09-08T23:33:04.470473+00:00",
     "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
-    "updated": "2026-09-08T22:13:16.568052+00:00"
+    "updated": "2026-09-09T13:38:01.477977+00:00"
   },
   "_keys": {
     "themes": {
@@ -21,13 +22,19 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T22:13:16.568052+00:00",
+    "at": "2026-09-09T13:38:01.477977+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
+    "session": "D:/PTEN/PTEN/M11_Pten/HF2_s10jul25/2023-07-25_14-40-32"
+  },
+  "radio": {
+    "agreed": true,
+    "small": true,
+    "station": "4xDzrJKXOOY",
+    "volume": 55
   },
   "recent_scripts": [
     "IED/03_IED_Detection/vacc_ied_detect.m",
@@ -44,5 +51,5 @@
     "DESKTOP-4H65AI7": "horizon-night",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-08T18:13:16-04:00"
+  "updated": "2026-09-09T09:38:01-04:00"
 }
