@@ -549,6 +549,21 @@
       <div class="pad" id="tkBody"></div>
     </section>
 
+    <!-- ---------- COMODULOGRAM ----------
+         Its own view because it lives in its own window: CFCScope opens
+         /?role=comod#comod, and comparing two maps means keeping them both
+         up, which a dialog cannot do. -->
+    <section class="view" id="view-comod">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Comodulogram</h1>
+          <p class="sub">Phase-amplitude coupling for one window of one
+            channel.</p>
+        </div>
+      </header>
+      <div class="pad" id="comodBody"></div>
+    </section>
+
     <!-- ---------- MISC ---------- -->
     <section class="view" id="view-misc">
       <header class="view-head">
@@ -626,6 +641,8 @@
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/strata.js"></script>
+<script src="js/cfcscope.js"></script>
+<script src="js/comod.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/tourmodules.js"></script>
 <script src="js/radio.js"></script>

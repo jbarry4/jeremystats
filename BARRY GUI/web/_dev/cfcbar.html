@@ -1,0 +1,168 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cfcbar — is the CFCScope bar actually on the screen</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">"It just opens a voltage trace." A traces pane IS what
+CFCScope's layout asks for — so the question is whether the bar carrying the
+Comodulogram button is on the screen, not whether it is in the DOM.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const errs = [];
+
+(async () => { try {
+  await until(() => W().BARRY);
+  W().addEventListener('error', (e) => errs.push('error: ' + e.message));
+  W().addEventListener('unhandledrejection',
+                       (e) => errs.push('rejected: ' + e.reason));
+
+  /* A real recording, picked the way the ToolKit picks one: the first the
+     registry says is reachable here. The harness that already covers
+     CFCScope uses the demo session, and the demo is not what is being
+     reported. */
+  const reg = await (await fetch('/api/registry')).json();
+  let gid = null, label = null;
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        if ((s.here || []).length) {
+          gid = s.gid; label = s.key || s.label; break outer;
+        }
+      }
+    }
+  }
+  ck('a reachable recording to open', !!gid, 'none');
+  if (!gid) return;
+  say('note', '  ' + label + '  (' + gid + ')');
+
+  say('note', 'BARRY.cfc: ' + W().eval('typeof BARRY.cfc'));
+  say('note', 'popOutPanes: '
+      + W().eval('typeof BARRY.views.xplore.popOutPanes'));
+
+  /* Exactly what the ToolKit button does. */
+  const got = await W().eval('BARRY.cfc.enter(' + JSON.stringify(gid) + ')');
+  ck('enter() reports success', got === true, String(got));
+  await sleep(2500);
+
+  const panes = W().eval(
+    'JSON.stringify((BARRY.views.xplore.state.panes||[]).map(p=>p&&p.panel))');
+  say('note', '  panes: ' + panes);
+
+  const barIn = !!D().getElementById('cfcBar');
+  ck('the bar is in the DOM', barIn);
+
+  if (barIn) {
+    const r = W().eval("(function(){var b=document.getElementById('cfcBar');"
+      + "var q=b.getBoundingClientRect();var cs=getComputedStyle(b);"
+      + "return JSON.stringify({top:Math.round(q.top),bottom:Math.round(q.bottom),"
+      + "h:Math.round(q.height),w:Math.round(q.width),display:cs.display,"
+      + "vis:cs.visibility,vh:window.innerHeight,"
+      + "parent:b.parentElement&&b.parentElement.id,"
+      + "offsetParent:!!b.offsetParent});})()");
+    say('note', '  bar box: ' + r);
+    const q = JSON.parse(r);
+    ck('the bar has height', q.h > 10, q.h + 'px');
+    ck('the bar is inside the window', q.bottom <= q.vh + 1 && q.top >= 0,
+        'top ' + q.top + ', bottom ' + q.bottom + ', viewport ' + q.vh);
+    ck('the bar is rendered (has an offsetParent)', q.offsetParent);
+
+    /* The button people are looking for. */
+    const btn = W().eval("(function(){var b=document.getElementById('cfcBar');"
+      + "if(!b)return 'no bar';var m=Array.from(b.querySelectorAll('button'))"
+      + ".map(function(x){var q=x.getBoundingClientRect();"
+      + "return x.textContent.trim()+'@'+Math.round(q.top)+'x'"
+      + "+Math.round(q.width)+'w';});return m.join(' | ');})()");
+    say('note', '  buttons: ' + btn);
+    ck('a Comodulogram button is there', /Comodulogram/.test(btn), btn);
+  }
+
+  /* Does it SURVIVE?
+
+     It is there two seconds in. The report is from somebody who has the
+     mode open and cannot find the button, and the obvious difference
+     between this and a real session is that a real session keeps
+     rendering -- the link poller, a pane refresh, the second window
+     connecting. XploreFinder rebuilds #xfBody when it renders, and the bar
+     is a child of #xfBody. */
+  const alive = () => {
+    const b = D().getElementById('cfcBar');
+    if (!b) return 'gone from the DOM';
+    const q = b.getBoundingClientRect();
+    return 'h' + Math.round(q.height) + ' top' + Math.round(q.top);
+  };
+  say('note', '  after 2.5s:  ' + alive());
+
+  W().eval('BARRY.views.xplore.render && BARRY.views.xplore.render()');
+  await sleep(600);
+  const afterRender = alive();
+  say('note', '  after render(): ' + afterRender);
+  ck('the bar survives a re-render', !/gone/.test(afterRender), afterRender);
+
+  W().eval('BARRY.views.xplore.refreshAll && BARRY.views.xplore.refreshAll()');
+  await sleep(900);
+  const afterRefresh = alive();
+  say('note', '  after refreshAll(): ' + afterRefresh);
+  ck('the bar survives refreshAll', !/gone/.test(afterRefresh), afterRefresh);
+
+  /* Changing the pane layout is the other thing that rebuilds the body --
+     and somebody in this mode who wants a second pane will do it. */
+  W().eval("BARRY.views.xplore.setPanes([{panel:'traces'},"
+           + "{panel:'bandpower'}],{col:2,row:1})");
+  await sleep(1200);
+  const afterPanes = alive();
+  say('note', '  after setPanes(2): ' + afterPanes);
+  ck('the bar survives a layout change', !/gone/.test(afterPanes),
+     afterPanes);
+
+  await sleep(9000);
+  const afterWait = alive();
+  say('note', '  after 9 more seconds: ' + afterWait);
+  ck('the bar is still there a few seconds later', !/gone/.test(afterWait),
+     afterWait);
+
+  /* And the thing exit() undoes but enter() never did. */
+  const bb = W().eval(
+    "getComputedStyle(document.documentElement).getPropertyValue('--bottom-bar')");
+  say('note', '  --bottom-bar: ' + JSON.stringify(String(bb).trim()));
+  ck('space is reserved for the bar, as StrataScope does',
+     String(bb).trim() !== '', 'unset, so toasts sit on top of it');
+
+  if (errs.length) {
+    say('note', 'thrown while entering:');
+    errs.forEach((m) => say('bad', '  ' + m));
+  }
+  say('note', bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'cfcbar: ' + bad + ' FAILED' : 'cfcbar: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'cfcbar: harness CRASH';
+} })();
+</script>

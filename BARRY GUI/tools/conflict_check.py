@@ -33,12 +33,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
 sys.path.insert(0, APP)
 
-from backend import shards  # noqa: E402
+from backend import feedback, shards  # noqa: E402
 
 # Files created once and never touched again. A run record is written when the
 # run starts and completed by the same process moments later; no other machine
 # has any reason to open it.
-WRITE_ONCE = ("runs/",)
+# A feedback screenshot is an attachment, not a record: only `add()` writes
+# shots, only the machine filing a report calls it, and the name carries that
+# report's own id. Nobody edits one afterwards.
+WRITE_ONCE = ("runs/", "feedback/screenshots/")
 
 # Not written by code at all.
 INERT = ("README.md", ".gitignore")
@@ -63,6 +66,13 @@ def classify(rel, name):
     if shards.SIGIL in stem:
         machine = stem.rsplit(shards.SIGIL, 1)[1]
         return "per-machine", "only " + machine + " writes this"
+    # A feedback overlay -- `<id>~<machine>.json` -- is per-machine too. It
+    # carries a different sigil so the shard layer cannot mistake it for
+    # another machine's copy of the report, but the machine name is in the
+    # name and only that machine ever writes it.
+    if feedback.OVERLAY_SIGIL in stem:
+        machine = stem.rsplit(feedback.OVERLAY_SIGIL, 1)[1]
+        return "per-machine", "only " + machine + " writes this overlay"
     return "SHARED", "no machine tag: two people can both edit it"
 
 

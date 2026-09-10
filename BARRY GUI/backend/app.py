@@ -23,7 +23,8 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
-from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
+from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
+               compose, csc,
                device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
@@ -51,6 +52,10 @@ STORE = store.Store(LOGS_DIR, auto_stage=False)
 # rule as everything else that gets edited, so two people never write the
 # same file.
 FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
+# How fast this machine is at each stage of a comodulogram, remembered between
+# runs so the progress estimate is right on the rig as well as here. A cache of
+# timings, nothing more -- deleting the file costs one wrong estimate.
+cfcmod.configure(LOGS_DIR)
 # Who you are, said once. Everything attributed -- curation, banking, layer
 # sheets, figures, runs -- goes through STORE.provenance(), which prefers
 # this over the git identity. Wired after the Store exists because it needs
@@ -991,6 +996,165 @@ def api_panel_cache():
     return jsonify({"ok": True, "cache": prewarm.stats()})
 
 
+# ==========================================================================
+# Cross-frequency coupling
+#
+# A comodulogram is not a panel. A panel is a fraction of a second and
+# redraws when the window moves; this is two seconds without surrogates and
+# half a minute with them, so it cannot happen inside the request that asked
+# for it and it has to be able to say where it has got to.
+#
+# Hence a job: POST starts one and gets an id back at once, the client polls
+# the id, and the result is fetched when the job says it is done. The same
+# shape as /api/job/<id> for script runs, deliberately, so the client's
+# polling is one idiom rather than two.
+# ==========================================================================
+def _cfc_spec(body, sess):
+    """Fill a request out into the full spec the cache is keyed on.
+
+    Every default lives here rather than in the renderer, so the cache key and
+    the thing that ran can never be built from different numbers -- which is
+    how a cache returns somebody else's answer.
+    """
+    spec = {
+        "path": sess.get("path"),
+        "channel": body.get("channel"),
+        "t0": float(body.get("t0", 0) or 0),
+        "t1": float(body.get("t1", 0) or 0),
+        "slow_lo": float(body.get("slow_lo", 4) or 4),
+        "slow_hi": float(body.get("slow_hi", 12) or 12),
+        "slow_step": float(body.get("slow_step", 0.5) or 0.5),
+        "slow_bw": float(body.get("slow_bw", 0.5) or 0.5),
+        "fast_lo": float(body.get("fast_lo", 20) or 20),
+        "fast_hi": float(body.get("fast_hi", 200) or 200),
+        "fast_step": float(body.get("fast_step", 5) or 5),
+        "fast_bw": float(body.get("fast_bw", 10) or 10),
+        "nsurr": int(body.get("nsurr", 0) or 0),
+        "seed": int(body.get("seed", 42) or 42),
+        "nbin": int(body.get("nbin", cfcmod.NBIN) or cfcmod.NBIN),
+        "target_fs": float(body.get("target_fs", 3000) or 3000),
+        "highpass": float(body.get("highpass", 0) or 0),
+        "lowpass": float(body.get("lowpass", 0) or 0),
+        "notch": float(body.get("notch", 0) or 0),
+        "cmap": body.get("cmap", "seqblue"),
+        "invert": bool(body.get("invert", True)),
+    }
+    if spec["channel"] is None:
+        picked = body.get("channels") or []
+        spec["channel"] = int(picked[0]) if picked else 0
+    spec["channel"] = int(spec["channel"])
+    return spec
+
+
+@app.route("/api/cfc/estimate", methods=["POST"])
+def api_cfc_estimate():
+    """What that run would cost, before anybody commits to it.
+
+    Shown next to the surrogate checkbox. Turning surrogates on multiplies the
+    wait by about ten, and a number there is the difference between a decision
+    and a surprise. The rates behind it are what this machine actually
+    measured on its last run, not a guess.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    spec = _cfc_spec(body, sess)
+    out = cfcmod.estimate(spec)
+    out["ok"] = True
+    out["cached"] = cfcmod.cache_get(cfcmod.cache_key(spec)) is not None
+    return jsonify(out)
+
+
+@app.route("/api/cfc/comodulogram", methods=["POST"])
+def api_cfc_comodulogram():
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    spec = _cfc_spec(body, sess)
+
+    key = cfcmod.cache_key(spec)
+    hit = cfcmod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        # Comparing two windows means going back and forth between them, and
+        # paying half a minute again for a map already made is the difference
+        # between a tool somebody uses and one they use once.
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    n_slow = len(cfcmod.grid(spec["slow_lo"], spec["slow_hi"], spec["slow_step"]))
+    n_fast = len(cfcmod.grid(spec["fast_lo"], spec["fast_hi"], spec["fast_step"]))
+    plan = [("read", 1), ("decimate", 1),
+            ("slow bank", n_slow), ("fast bank", n_fast),
+            ("modulation index", n_slow * n_fast)]
+    if spec["nsurr"]:
+        plan.append(("surrogates", n_slow * spec["nsurr"]))
+    plan.append(("draw", 1))
+
+    def work(job):
+        out = analysis.run_comodulogram(sess, spec, job)
+        cfcmod.cache_put(key, out)
+        return out
+
+    # How big the window is, so the progress estimate is comparable between a
+    # ten-second look and a two-minute one.
+    job = cfcmod.start(spec, plan, work, cfcmod.msamples(spec))
+    STORE.record_activity([{
+        "action": "cfc.comodulogram",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channel": spec["channel"], "nsurr": spec["nsurr"],
+                   "cells": n_slow * n_fast},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
+
+
+@app.route("/api/cfc/cache")
+def api_cfc_cache():
+    """What the comodulogram cache is holding. Diagnostic; ?clear=1 empties it.
+
+    Same shape as /api/panel/cache, and there for the same two reasons: to be
+    able to see whether a repeat really was a repeat, and to be able to force
+    a recompute without editing the request. A harness needs the second one --
+    a run that comes back cached never shows a progress display, so checks
+    aimed at the progress display fail on a feature that works.
+    """
+    if request.args.get("clear"):
+        cfcmod.cache_clear()
+    return jsonify({"ok": True, "cleared": bool(request.args.get("clear"))})
+
+
+@app.route("/api/cfc/job/<job_id>")
+def api_cfc_job(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run. It may have "
+                                              "finished long enough ago to "
+                                              "have been dropped."}), 404
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/cfc/job/<job_id>/cancel", methods=["POST"])
+def api_cfc_cancel(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    job.cancel()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/cfc/result/<job_id>")
+def api_cfc_result(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    snap = job.snapshot()
+    if snap["status"] != "done":
+        return jsonify({"ok": False, "status": snap["status"],
+                        "error": snap.get("error")
+                                 or "That run has not finished."}), 409
+    return jsonify({"ok": True, "result": job.result, "job": snap})
+
+
 @app.route("/api/figure/recipe/<run_id>")
 def api_figure_recipe(run_id):
     """What it would take to rebuild this figure, and what stands in the way.
@@ -1637,7 +1801,12 @@ def api_activity_who():
                             (machines, r.get("machine") or "unknown")):
             slot = bucket.setdefault(key, {"n": 0, "last": None})
             slot["n"] += 1
-            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+            # As a moment, not as text. These rows do not share an
+            # offset -- what came from the shared table is UTC and what was
+            # written here is local -- so the string test this replaces
+            # could hold a row that is not the latest one.
+            if not slot["last"] or extras.marked_after(slot["last"],
+                                                       r.get("at")):
                 slot["last"] = r.get("at")
         # Grouped by the part before the dot: "curation" rather than
         # "curation.enter", because the shape of somebody's week is about
@@ -3807,7 +3976,7 @@ def api_curation_export(gid, kind):
 # The session registry -- one record per recording, with a permanent id
 # ==========================================================================
 
-def _attach_index():
+def _attach_index(bulk=False):
     """The figure catalogue and the deck list, read once.
 
     `_attachments` asked for both per recording, so the housekeeping view
@@ -3838,10 +4007,63 @@ def _attach_index():
         pth = r.get("session_path")
         if pth:
             by_path.setdefault(pth, set()).add(i)
-    return {
+    idx = {
         "fig_key": by_key, "fig_label": by_label, "fig_path": by_path,
         "deck_titles": [d.get("title") or "" for d in RESULTS.list_decks()],
     }
+    if bulk:
+        idx.update(_bulk_index())
+    return idx
+
+
+def _bulk_index():
+    """The bank, the curation sets and the layer sets, read once each.
+
+    Only worth building for a whole tree. `_attachments` asked each of these
+    stores per recording, which over 526 records was 950 ms of re-scanning
+    the same 66 banked entries, 585 ms of curation reads and 153 ms of layer
+    reads. In bulk the same answers are one read apiece.
+
+    A single recording does NOT use this -- three direct reads for one record
+    are cheaper than reading every store to answer about one.
+    """
+    # The bank, indexed the five ways `for_session` asks about it.
+    #
+    # Sets of entry positions, unioned. `for_session` is an elif-chain, so
+    # every entry falls into exactly one of exact/strong/weak and the count
+    # is "entries matching any of the five tests" -- which is the union, and
+    # is the same arithmetic as the length of the three lists together.
+    bank = {"gid": {}, "key": {}, "loose": {}, "ms": {}, "mouse": {}}
+    for i, r in enumerate(BANK.summaries()):
+        for slot, val in (("gid", r.get("gid")),
+                          ("key", r.get("session_key")),
+                          ("loose", r.get("session_loose_key")),
+                          ("ms", (r.get("mouse"), r.get("session"))),
+                          ("mouse", r.get("mouse"))):
+            if slot in ("ms", "mouse"):
+                # Matched with `is not None`, as the chain does -- a mouse
+                # numbered 0 is a mouse.
+                if val is None or (slot == "ms" and None in val):
+                    continue
+            elif not val:
+                continue
+            bank[slot].setdefault(val, set()).add(i)
+
+    # How many events are curated against each recording, summed over kinds
+    # the way the count wants it. Curation records carry their own gid.
+    cur = {}
+    for r in CURATE.all():
+        gid = r.get("gid")
+        if gid:
+            cur[gid] = cur.get(gid, 0) + (CURATE.progress(r).get("total")
+                                          or 0)
+
+    layers = {}
+    for r in LAYERS.all():
+        gid = r.get("gid")
+        if gid:
+            layers[gid] = len(r.get("labels") or {})
+    return {"bank": bank, "cur_total": cur, "layer_n": layers}
 
 
 def _attachments(rec, idx=None):
@@ -3881,12 +4103,28 @@ def _attachments(rec, idx=None):
 
     banked = 0
     try:
-        banked = len(BANK.for_session({
-            "gid": rec.get("gid"),
-            "key": key, "loose_key": loose,
-            "mouse": rec.get("mouse"), "session": rec.get("session"),
-            "start": rec.get("start"),
-        }) or [])
+        if "bank" in idx:
+            # The same five tests as `for_session`, answered from the index.
+            bidx, mouse = idx["bank"], rec.get("mouse")
+            got = set()
+            if rec.get("gid"):
+                got |= bidx["gid"].get(rec["gid"], set())
+            if key:
+                got |= bidx["key"].get(key, set())
+            if loose:
+                got |= bidx["loose"].get(loose, set())
+            if mouse is not None and rec.get("session") is not None:
+                got |= bidx["ms"].get((mouse, rec.get("session")), set())
+            if mouse is not None:
+                got |= bidx["mouse"].get(mouse, set())
+            banked = len(got)
+        else:
+            banked = len(BANK.for_session({
+                "gid": rec.get("gid"),
+                "key": key, "loose_key": loose,
+                "mouse": rec.get("mouse"), "session": rec.get("session"),
+                "start": rec.get("start"),
+            }) or [])
     except Exception:                              # noqa: BLE001
         banked = 0
 
@@ -3897,8 +4135,15 @@ def _attachments(rec, idx=None):
         "decks": decks,
         "banked": banked,
         "spike_sets": len(spikes),
-        "layers": len((LAYERS.get(rec.get("gid")) or {}).get("labels") or {}),
-        "ds": sum((CURATE.progress(c).get("total") or 0) for c in [CURATE.get(rec.get("gid"), k) for k in curation.KINDS] if c),
+        "layers": (idx["layer_n"].get(rec.get("gid"), 0)
+                   if "layer_n" in idx
+                   else len((LAYERS.get(rec.get("gid")) or {}).get("labels")
+                            or {})),
+        "ds": (idx["cur_total"].get(rec.get("gid"), 0)
+               if "cur_total" in idx
+               else sum((CURATE.progress(c).get("total") or 0)
+                        for c in [CURATE.get(rec.get("gid"), k)
+                                  for k in curation.KINDS] if c)),
         "note": bool(rec.get("note")),
     }
 
@@ -3948,7 +4193,7 @@ def api_registry():
     # One index for the whole tree: `_attachments` used to read the figure
     # catalogue and the deck list once per recording, which is 508 reads of
     # the same two stores for one request.
-    idx = _attach_index()
+    idx = _attach_index(bulk=True)
     tree = REG.tree(lambda rec: _attachments(rec, idx))
 
     # Which of these THIS computer has met, marked on the row.
@@ -4911,7 +5156,12 @@ def api_errors_grouped():
         mark = (book.get(extras.mark_key(extras.signature(r),
                                          extras.host_of(r)))
                 or book.get(extras.signature(r)))
-        r["resolved"] = bool(mark) and (r.get("at") or "") <= (mark.get("at") or "")
+        # Compared as times, not as text: an error pulled from the shared
+        # table is UTC and a mark written here is local, so the string test
+        # this replaces called an error newer than the mark that resolved
+        # it and left it red for good.
+        r["resolved"] = bool(mark) and extras.marked_after(
+            r.get("at"), mark.get("at"))
 
     groups = extras.group_errors(recs, per_machine=per_machine)
 
@@ -4928,6 +5178,16 @@ def api_errors_grouped():
                     known[m["id"]] = m["hostname"]
         except Exception:                                # noqa: BLE001
             known = {}
+    # ...except for this computer, which knows its own name better than the
+    # table does. `machines.hostname` is only as fresh as the last successful
+    # push, so a rename that has not been pushed yet -- and somebody renaming
+    # a machine while the sync is failing is exactly that -- left every error
+    # here labelled with the name before last, with nothing on screen saying
+    # why. The local record changes the moment the name is saved.
+    my_id = shards.machine_id()
+    my_name = ((STORE.provenance() or {}).get("machine") or "").strip()
+    if my_id and my_name:
+        known[my_id] = my_name
 
     for g in groups:
         mid = g.get("machine")
@@ -4953,9 +5213,13 @@ def api_errors_grouped():
         if not g["resolved"]:
             # It was closed and has happened again since.
             g["reopened"] = True
+            # "Since the mark" compared as a time, for the same reason the
+            # resolved test above is: an error from the shared table is UTC
+            # and a mark written here is local, so as text a row from this
+            # afternoon can sort either side of a mark from this evening.
             g["reopened_at"] = next(
                 (r.get("at") for r in reversed(g["records"])
-                 if (r.get("at") or "") > (mark.get("at") or "")),
+                 if not extras.marked_after(r.get("at"), mark.get("at"))),
                 g.get("last"))
     return jsonify({"ok": True, "groups": groups, "days": STORE.error_days(),
                     "total": len(recs),
@@ -5505,7 +5769,12 @@ def api_digest():
                                              "who": set(), "last": None})
             slot["n"] += 1
             slot["who"].add(who)
-            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+            # As a moment, not as text. These rows do not share an
+            # offset -- what came from the shared table is UTC and what was
+            # written here is local -- so the string test this replaces
+            # could hold a row that is not the latest one.
+            if not slot["last"] or extras.marked_after(slot["last"],
+                                                       r.get("at")):
                 slot["last"] = r.get("at")
 
     try:
@@ -5600,18 +5869,34 @@ def api_devices():
         seen = presencemod._age_s(m.get("last_seen"))
         host = m.get("hostname")
         real = _real_host(m.get("id"))
+        # What to call it. For every other machine that is the table, which
+        # is the only thing here that has heard of them. For this one it is
+        # the local record: the table is only as fresh as the last successful
+        # push, so while the sync is down this row would keep showing the
+        # name before last -- including in the panel somebody opens to rename
+        # it. `host` stays what it was, because the counts below and the
+        # also-known-as matching are keyed on the name the log rows carry.
+        shown = host
+        if m.get("id") == mine:
+            shown = ((STORE.provenance() or {}).get("machine")
+                     or "").strip() or host
         # Rows written under this machine's other names. Matched on the
         # friendly name or the real hostname and nothing looser -- a fuzzy
         # match here would have folded StrawBarry into Strawbarry, and they
         # are two people's computers.
         aka = sorted(
             n for n in log_names
-            if n and n.lower() in {(host or "").lower(), (real or "").lower()}
-            and n != host)
+            if n and n.lower() in {(host or "").lower(), (real or "").lower(),
+                                   (shown or "").lower()} - {""}
+            and n != shown)
         claimed.update(aka)
-        if host:
-            claimed.add(host)
-        got = newest.get(host) or {}
+        for name in (host, shown):
+            if name:
+                claimed.add(name)
+        # Keyed on the name being shown, not on the table's copy of it: rows
+        # written since a rename carry the new name, and `aka` deliberately
+        # leaves that one out.
+        got = newest.get(shown) or {}
         # Counted under every name it has answered to.
         for other in aka:
             more = newest.get(other) or {}
@@ -5621,9 +5906,13 @@ def api_devices():
                     got[key] = more[key]
         out.append({
             "id": m.get("id"),
-            "hostname": host,
+            "hostname": shown,
             # What to put on screen: "Bluebarry (DESKTOP-4H65AI7)".
-            "label": _machine_label(host, m.get("id")),
+            "label": _machine_label(shown, m.get("id")),
+            # What the shared table still has, when this machine has been
+            # renamed and the new name has not reached it. The panel says so
+            # rather than showing two names and leaving it a mystery.
+            "pushed_name": host if shown != host else None,
             "real_host": real,
             "also_known_as": aka,
             "archived": bool(m.get("archived")),
@@ -6929,10 +7218,29 @@ def _cloud_results():
 def cloud_sync_once(push=True, pull=True, files=False):
     """One round trip. Never raises: a sync that fails is a status line,
     not an interruption to whatever someone is doing."""
+    # `ok=False` explicitly on both of these. They return a copy of the LAST
+    # sync's record, and that record's `ok` belongs to a run that already
+    # finished -- so a refusal after a good sync came back saying ok, and the
+    # button reported the previous run's "sent 5, brought back 3" as though
+    # this press had done something.
     if not CLOUD.cloud.configured:
-        return dict(_cloud_last, error="not configured")
+        return dict(_cloud_last, ok=False, error="not configured")
     if not _cloud_lock.acquire(blocking=False):
-        return dict(_cloud_last, error="a sync is already running")
+        # Which step, and how long it has been on it. Pressing the button
+        # again is what somebody does when a sync looks stuck, so this is
+        # the moment to say what it is actually doing -- and a step that has
+        # been going for a minute is the difference between "wait" and "it
+        # is hung on a request that will not time out for another fifty
+        # seconds", which nothing on screen could tell you before.
+        step = dict(_sync_step)
+        where = " ".join(str(x) for x in (step.get("phase"), step.get("table"))
+                         if x) or "running"
+        age = presencemod._age_s(step.get("at"))
+        return dict(_cloud_last, ok=False, error=(
+            "A sync is already running (%s%s), so this one did nothing. If "
+            "that does not move, it is stuck on that step."
+            % (where, "" if age is None else ", %ds on that step"
+               % int(age))))
     try:
         _cloud_last["running"] = True
         _cloud_results()
@@ -7233,7 +7541,16 @@ def api_cloud_sync():
     res = cloud_sync_once(push=body.get("push", True),
                           pull=body.get("pull", True),
                           files=body.get("files", True))
-    return jsonify({"ok": bool(res.get("ok")), "last": res})
+    out = {"ok": bool(res.get("ok")), "last": res}
+    # The reason at the top level, where the client's `api()` looks for it.
+    # It only reads `error` there, so a failure whose reason sat one level
+    # down in `last` was thrown away and reported as "Request failed (200)"
+    # -- which is how a bug report about the sync arrived saying nothing at
+    # all about why it failed.
+    if not out["ok"]:
+        out["error"] = (res.get("error")
+                        or "The sync did not finish and did not say why.")
+    return jsonify(out)
 
 
 @app.route("/api/cloud/key", methods=["POST"])

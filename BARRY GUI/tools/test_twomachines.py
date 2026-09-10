@@ -23,6 +23,8 @@ sys.path.insert(0, APP)
 
 from backend import shards  # noqa: E402
 
+import conflict_check  # noqa: E402
+
 FAILED = []
 
 
@@ -147,16 +149,21 @@ def main():
                        if d not in (".cache", "__pycache__")
                        and not d.startswith(".")]
             for name in files:
-                stem = name.rsplit(".", 1)[0]
                 # Dotfiles are configuration, not records: .cloud.json holds
                 # this machine's Supabase key, is gitignored, and so cannot
                 # conflict -- it has no business carrying a machine tag.
                 if name.startswith("."):
                     continue
-                if shards.SIGIL not in stem and "runs" not in folder \
-                        and not name.endswith(".md"):
-                    clash.append(os.path.relpath(
-                        os.path.join(folder, name), logs))
+                # Asked of `conflict_check.classify`, not re-implemented.
+                # This loop used to have its own copy of the rule and the two
+                # drifted: the copy did not know that a feedback overlay
+                # (`<id>~<machine>.json`) is per-machine, so it called four
+                # of them conflicts.
+                rel = os.path.relpath(os.path.join(folder, name),
+                                      logs).replace("\\", "/")
+                kind, _why = conflict_check.classify(rel, name)
+                if kind == "SHARED":
+                    clash.append(rel)
         check("no file without a machine tag", clash, [])
 
         res = subprocess.run(

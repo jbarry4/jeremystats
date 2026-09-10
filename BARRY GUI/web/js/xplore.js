@@ -1774,6 +1774,130 @@ BARRY.views.xplore = (function () {
     ['gamma', 30, 100], ['ripple', 100, 250], ['all', null, null],
   ];
 
+  /* ======================================================================
+     The band axis, for the band-resolved power panel
+
+     Not the same thing as f min / f max above, and kept apart from them on
+     purpose. Those crop a transform that was computed over a fixed band;
+     these decide which filters get designed, so moving them changes the
+     numbers rather than the view. Two controls that look alike and mean
+     different things is how somebody reports a band they never analysed.
+     ====================================================================== */
+  const BAND_DEFAULT = { lo: 4, hi: 12, step: 0.5, bw: 0, scale: 'log' };
+
+  const BAND_PRESETS = [
+    ['Theta', 4, 12, 0.5],
+    ['Delta-theta', 1, 12, 0.5],
+    ['Slow', 1, 30, 1],
+    ['Gamma', 30, 100, 5],
+  ];
+
+  function bandSet(pane) {
+    const b = Object.assign({}, BAND_DEFAULT, (pane && pane.band) || {});
+    // A bandwidth of 0 means "as wide as the step", which is the contiguous
+    // arrangement newFCSE.m uses and the only one where the bands tile.
+    b.bw = b.bw || b.step;
+    return b;
+  }
+
+  function setBandAxis(index, pane, patch) {
+    pane.band = Object.assign(bandSet(pane), patch);
+    refreshPane(index);
+  }
+
+  /* What the filter is really going to do, worked out in the browser.
+
+     `eegfilt` designs its order from the low cutoff -- 3 * fix(fs / f1) taps
+     -- and the width that comes out is about 0.30 * f1 however narrow you
+     asked. So the 0.5 Hz bands across theta are really 1.1 Hz wide at the
+     bottom and 3.4 Hz at the top, and they overlap.
+
+     That is not a defect to hide. It is the single most misleading thing
+     about a band axis, and the panel that would otherwise imply seventeen
+     independent measurements is the one that has to say it. The server
+     measures it properly from the frequency response and sends the numbers
+     back; this is the same arithmetic, done before the request, so the
+     control can warn while you are still typing. */
+  function roughBW(lo) { return 0.30 * lo; }
+
+  function bandControl(index, pane, sess) {
+    const b = bandSet(pane);
+    const res = pane._panelData || {};
+    const n = Math.max(Math.round((b.hi - b.lo) / b.step) + 1, 1);
+
+    const num = (key, value, title, min, max, stepAttr) => el('input', {
+      type: 'number', class: 'mini-num', value: value, min: min, max: max,
+      step: stepAttr, title: title,
+      onchange: (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isFinite(v)) { e.target.value = value; return; }
+        setBandAxis(index, pane, { [key]: v });
+      },
+    });
+
+    // Measured if the panel has answered, predicted if it has not. Saying
+    // which is the difference between a readout and a guess.
+    const lowW = res.realised_bw_range ? res.realised_bw_range[0]
+                                       : roughBW(b.lo);
+    const hiW = res.realised_bw_range ? res.realised_bw_range[1]
+                                      : roughBW(b.hi);
+    const measured = !!res.realised_bw_range;
+    const overlap = lowW > b.step * 1.25;
+
+    return el('div', { class: 'band-ctl' }, [
+      el('div', { class: 'band-row' }, [
+        el('span', { class: 'hint', text: 'Hz' }),
+        num('lo', b.lo, 'Bottom of the lowest band', 0.5, 400, 0.5),
+        el('span', { class: 'hint', text: 'to' }),
+        num('hi', b.hi, 'Bottom of the highest band', 1, 500, 0.5),
+        el('span', { class: 'hint', text: 'step' }),
+        num('step', b.step, 'Spacing between band edges', 0.1, 50, 0.1),
+        el('span', { class: 'band-count', text: n + ' bands' }),
+      ]),
+      el('div', { class: 'band-row' },
+         BAND_PRESETS.map(([name, lo, hi, step]) => el('button', {
+           class: 'mini' + (b.lo === lo && b.hi === hi && b.step === step
+                            ? ' on' : ''),
+           text: name,
+           title: lo + '-' + hi + ' Hz in ' + step + ' Hz steps',
+           onclick: () => setBandAxis(index, pane, { lo, hi, step, bw: 0 }),
+         })).concat([
+           el('div', { style: 'flex:1' }),
+           el('button', {
+             class: 'mini' + (b.scale === 'linear' ? '' : ' on'),
+             text: b.scale === 'linear' ? 'uV²' : 'dB',
+             title: b.scale === 'linear'
+               ? 'Linear power, the units ThetaPower.m reports. Click for dB.'
+               : 'Log power. Theta spans decades within one window, so this '
+                 + 'is usually the readable one. Click for linear uV².',
+             onclick: () => setBandAxis(index, pane, {
+               scale: b.scale === 'linear' ? 'log' : 'linear' }),
+           }),
+         ])),
+      /* The line this panel exists to be able to print. */
+      el('p', {
+        class: 'hint band-truth' + (overlap ? ' warn' : ''),
+        title: 'eegfilt designs 3*fix(fs/f1) taps from the LOW cutoff, so the '
+             + 'realised width is about 0.30 x that however narrow a band you '
+             + 'ask for. The rows of this panel overlap, and reading them as '
+             + 'independent measurements is the mistake this line exists to '
+             + 'stop.',
+        text: (measured ? 'Really ' : 'Will be about ')
+            + lowW.toFixed(2) + '–' + hiW.toFixed(2) + ' Hz wide, '
+            + 'not ' + b.step + '. '
+            + (overlap ? 'The bands overlap — this is a smooth read of '
+                       + 'where the rhythm sits, not ' + n + ' separate '
+                       + 'measurements.'
+                       : 'Wide enough apart to read separately.'),
+      }),
+      res.peak_band ? el('p', { class: 'hint',
+        text: 'Strongest in this window: ' + res.peak_band.toFixed(2) + ' Hz'
+            + (res.peak_power ? '  ·  ' + res.peak_power.toPrecision(3)
+                                + ' uV²' : ''),
+      }) : null,
+    ].filter(Boolean));
+  }
+
   function freqViewControl(index, pane, sess) {
     const res = pane._panelData || {};
 
@@ -2368,6 +2492,10 @@ BARRY.views.xplore = (function () {
       const band = trimNum(fb.fmin) + '–' + trimNum(fb.fmax);
       return n > 1 ? n + ' ch  ' + band : band;
     }
+    if (pane.panel === 'bandpower') {
+      const b = bandSet(pane);
+      return trimNum(b.lo) + '–' + trimNum(b.hi) + '  /' + trimNum(b.step);
+    }
     if (pane.panel === 'csd') return trimNum(sess.spacing) + ' µm';
     return pane.cmap || 'jet';
   }
@@ -2514,6 +2642,10 @@ BARRY.views.xplore = (function () {
       rows.push(popRow(null, [freqViewControl(index, pane, sess)]));
     }
 
+    if (pane.panel === 'bandpower') {
+      rows.push(popRow('Bands', [bandControl(index, pane, sess)]));
+    }
+
     if (isImagePanel(pane.panel)) {
       rows.push(popRow('Colormap', [
         el('select', {
@@ -2594,7 +2726,26 @@ BARRY.views.xplore = (function () {
           },
         }),
         el('span', { class: 'cc-n', text: String(c.number) }),
-        isBad ? el('span', { class: 'cc-bad', text: 'bad' }) : null,
+        /* Mark it bad from here.
+
+           The side rail this popover replaced had a toggle on every row,
+           and only the selection came across -- so on a voltage, CSD or
+           theta pane, where there are no lanes on the plot to click, there
+           was no way to mark a channel bad at all. A raster is exactly
+           where a dead channel is obvious. */
+        el('button', {
+          class: 'badbtn' + (isBad ? ' on' : ''),
+          text: isBad ? 'bad' : 'ok',
+          title: isBad ? c.label + ' is marked bad \u2014 click to clear'
+                       : 'Mark ' + c.label + ' bad',
+          'aria-label': (isBad ? 'Clear the bad mark on ' : 'Mark bad: ')
+                        + c.label,
+          onclick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleBad(sess, c.number);
+          },
+        }),
       ].filter(Boolean)));
     }
     return box;
@@ -4646,7 +4797,8 @@ BARRY.views.xplore = (function () {
     refreshAll();
   }
 
-  const isImagePanel = (p) => ['voltage', 'csd', 'theta', 'spectrogram', 'scalogram'].includes(p);
+  const isImagePanel = (p) => ['voltage', 'csd', 'theta', 'bandpower',
+                             'spectrogram', 'scalogram'].includes(p);
   const firstSel = (sess) => (sess.sel.size ? Math.min(...sess.sel) : 0);
 
   /* The side channel rail used to live here: a row per channel down the
@@ -5033,6 +5185,23 @@ BARRY.views.xplore = (function () {
       max_cols: 1800,
       clim: pane.clim || sess.clim || null,
     };
+    if (pane.panel === 'bandpower') {
+      /* One channel, and the band axis rather than a frequency range.
+
+         Deliberately not reusing fmin/fmax. Those crop a transform that was
+         computed over a fixed band; these decide which filters get designed,
+         so changing them changes the numbers. Two controls that look alike
+         and mean different things is how somebody ends up reporting a band
+         they never analysed. */
+      spec.channel = pane.channel != null ? pane.channel : firstSel(sess);
+      const b = bandSet(pane);
+      spec.band_lo = b.lo;
+      spec.band_hi = b.hi;
+      spec.band_step = b.step;
+      spec.band_bw = b.bw;
+      spec.band_scale = b.scale;
+      spec.cmap = pane.cmap || 'jet';
+    }
     if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
       // Multi-channel: an explicit list wins, else the pane's single
       // channel, else whatever is selected in the session.
@@ -5293,7 +5462,78 @@ BARRY.views.xplore = (function () {
       }
     }
 
+    if (pane.panel === 'bandpower') drawBandProfile(ctx, res, w, h, P);
+
     drawOverlayMarks(ctx, pane, res, w, h, t0, span, P);
+  }
+
+  /* The marginal: mean power in each band over the window on screen.
+
+     Drawn here as vector rather than baked into the panel image, so it stays
+     crisp at any pane height and sits on exactly the same vertical axis as
+     the heatmap beside it -- which is the only reason it is worth having.
+     The heatmap says when the rhythm moved; this says where it sits, and the
+     two have to share a y axis or the reader has to do the alignment.
+
+     Linear, always, even when the image is in dB: the question this answers
+     is "which band is loudest", and a log axis flattens exactly the
+     difference being looked for. */
+  function drawBandProfile(ctx, res, w, h, P) {
+    const prof = res.profile;
+    if (!prof || prof.length < 2 || !res.centers) return;
+
+    const width = Math.min(Math.max(w * 0.16, 34), 92);
+    const x0 = w - width;
+    let top = 0;
+    for (let i = 0; i < prof.length; i++) if (prof[i] > top) top = prof[i];
+    if (!(top > 0)) return;
+
+    ctx.save();
+    // A backing wash, or the curve is unreadable over the warm end of jet.
+    ctx.fillStyle = P.bg;
+    ctx.globalAlpha = 0.82;
+    ctx.fillRect(x0, 0, width, h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = P.grid || 'rgba(128,128,128,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0 + 0.5, 0);
+    ctx.lineTo(x0 + 0.5, h);
+    ctx.stroke();
+
+    // Row centres, top row first -- the image is drawn low-frequency-down.
+    const n = prof.length;
+    const yOf = (i) => h * (1 - (i + 0.5) / n);
+    const xOf = (v) => x0 + 4 + (width - 10) * (v / top);
+
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = xOf(prof[i]);
+      const y = yOf(i);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = P.accent || '#2a78d6';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // The peak, marked and named. It is the number people come here for.
+    let peak = 0;
+    for (let i = 1; i < n; i++) if (prof[i] > prof[peak]) peak = i;
+    const py = yOf(peak);
+    ctx.beginPath();
+    ctx.arc(xOf(prof[peak]), py, 2.6, 0, 2 * Math.PI);
+    ctx.fillStyle = P.accent || '#2a78d6';
+    ctx.fill();
+    ctx.font = '10px ' + MONO;
+    ctx.fillStyle = P.text || '#111';
+    ctx.textBaseline = 'middle';
+    const label = res.centers[peak].toFixed(2) + ' Hz';
+    const lw = ctx.measureText(label).width;
+    // Inside the strip if it fits, otherwise to the left of it -- a label
+    // running off the pane is worse than one over the data.
+    ctx.fillText(label, Math.min(xOf(prof[peak]) + 6, w - lw - 3),
+                 Math.max(7, Math.min(py, h - 7)));
+    ctx.restore();
   }
 
   /* Candidate frequencies for a y axis, finest first in each decade.
@@ -5554,6 +5794,12 @@ BARRY.views.xplore = (function () {
       recentring = true;
       try { BARRY.curate.recentre(); } finally { recentring = false; }
     }
+
+    /* CFCScope's bar reads out the window, and the comodulogram form fills
+       itself in from it. Told rather than polled -- this is the one place
+       the window changes, and a form that quietly went stale would be a
+       form that runs the wrong window. */
+    if (BARRY.cfc && BARRY.cfc.active && BARRY.cfc.refresh) BARRY.cfc.refresh();
   }
 
   function pan(index, frac) {
@@ -5851,7 +6097,17 @@ BARRY.views.xplore = (function () {
           // Which channels are shown is part of the view, so a linked pane in
           // another window should be looking at the same ones.
           channels: Array.from(sess.sel).sort((a, b) => a - b),
-          bad: Array.from(sess.bad).sort((a, b) => a - b),
+          /* The bad list does NOT belong here.
+
+             It used to be sent with the view, and this channel is only
+             published while the windows are linked -- so clearing a mark
+             updated the facts channel and left this one holding the old
+             list for good. Any window that applied the stale view update
+             marked the channel bad again and saved it back, which is how a
+             mark somebody had cleared came back on its own.
+
+             Bad channels travel on the facts channel, which is published
+             whatever the link mode. */
         },
       });
       // Record our own version so the poller does not echo it back at us.
@@ -5887,7 +6143,9 @@ BARRY.views.xplore = (function () {
       const n = sess.info.channels.length;
       sess.sel = new Set(v.channels.filter((i) => i >= 0 && i < n));
     }
-    if (Array.isArray(v.bad)) sess.bad = new Set(v.bad.map(Number));
+    /* No bad list from a view update -- see `publishLink`. A view update
+       can be minutes old and says nothing about whether a channel is
+       broken; the facts channel is where that lives. */
 
     // A remote change is a session-level move, so per-pane overrides go.
     XF.panes.forEach((p) => {
@@ -7648,6 +7906,10 @@ BARRY.views.xplore = (function () {
     init,
     open: openSession,
     popOutPanes,
+    /* Whatever recording is on screen. CFCScope's `enter()` with no argument
+       means "this one", which is what somebody already looking at a window
+       and wanting a closer look is asking for. */
+    current: () => active(),
     addBankedEvents,
     /* Placing a bookmark and opening the Marks list, from outside. The
        command palette has reason to offer both, and web/_dev/newfeat.html
@@ -7672,6 +7934,25 @@ BARRY.views.xplore = (function () {
       const sess = sessionOf(XF.panes[i]);
       const bm = (sess && sess.bookmarks || []).find((x) => x.name === name);
       return bm ? dropBookmark(i, sess, bm) : null;
+    },
+    /* One pane, and the word on its own Panel button.
+
+       For web/_dev/cfc.html, and they exist because of a bug that seventy-two
+       passing checks walked straight past. A block of panelSpec's code had
+       been pasted into panelWord() by an edit whose anchor was not unique,
+       where the variable it assigns to does not exist -- so naming a
+       bandpower pane threw a ReferenceError on every render. Nothing in the
+       harness had rendered a pane header in the main window, because the
+       mode puts its panels in a pop-out with the headers folded away.
+
+       `_panelWord` calls the real function rather than reimplementing it,
+       which is the only version of this check worth having. */
+    _pane: (index) => XF.panes[index == null ? XF.focused : index] || null,
+    _panelWord: (index) => {
+      const i = index == null ? XF.focused : index;
+      const pane = XF.panes[i];
+      const sess = pane && sessionOf(pane);
+      return (pane && sess) ? panelWord(pane, sess) : null;
     },
     /* Redraw one pane on demand.
 

@@ -15,9 +15,240 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.10.1 — CFCScope
+
+### Added
+
+- **CFCScope, in the Toolkit.** A third mode beside DS curation and
+  StrataScope, and the first that decides nothing: it opens a recording in
+  Xplorefinder, puts band-resolved theta power in a second window, and
+  puts a comodulogram of the window on screen one keystroke away. No sets,
+  no bench, no decisions — the banner says so and `web/_dev/cfc.html`
+  checks it, by reading the activity log for writes after entering and
+  leaving.
+
+  The MATLAB beta run in `Reviving CFC/Revival Pipeline` answers "does this
+  channel have phase–amplitude coupling", offline, in minutes. What it
+  cannot answer is "does *this* window", which is the question somebody
+  scrolling has. The arithmetic here is a copy of that pipeline's own
+  Python port (`05_explainer/cfc_core.py`), and `tools/cfc_check.py`
+  re-runs the explainer's assertions against the copy so it cannot drift:
+  the modulation index matches `ModIndex_v2.m` to 1e-12.
+
+- **A theta power panel that says which theta.** The existing `theta` panel
+  bandpasses 4–12 Hz in one go, which answers how much and cannot answer
+  which. This one is seventeen narrow bands in 0.5 Hz steps, each the mean
+  squared envelope of its own analytic signal — the `ThetaPower.m`
+  definition, from the same filter bank the coupling measure uses, so the
+  two panels can never be quietly talking about different bands. A marginal
+  curve down the right names the loudest band in the window.
+
+  It also prints the thing a band axis never admits: `eegfilt` sets its
+  order from the *lower* cutoff, so a band comes out about 0.30 × that
+  wide however narrow you asked. The 0.5 Hz theta bands are really
+  1.1–3.4 Hz and they overlap; a nominal 10 Hz band at 200 Hz is nearly
+  60 Hz of spectrum. Measured from the filter's own frequency response and
+  shown in the panel, because seventeen overlapping rows presented as
+  seventeen measurements is the trap this panel was built to avoid.
+
+- **A comodulogram you can afford to ask for.** Its own window, so two maps
+  can be compared, which is most of what one is for. Measured on this
+  machine, a 60 s window over the `params.m` grid: 3.3 s for the filter
+  banks, 0.3 s for the 629 modulation indices, and 16 s or 32 s more for 50
+  or 100 surrogates. So the null is off by default and the form says what
+  turning it on will cost before you commit.
+
+  It reports the permutation p, not z. The beta measured the surrogate null
+  to be centred but over-dispersed — SD 1.4, and it does not shrink as
+  surrogates are added — so a nominal |z| > 3 behaves like 2.2. The map
+  outlines cells at p ≤ 0.05 and says how many chance alone would have
+  given, because "31 cells significant" means nothing until you know that
+  31 is what an empty map looks like.
+
+- **A loading display that is not a spinner.** Seven named stages, each
+  counting in its own unit — bands, cells, surrogates — with the overall
+  bar weighted by what each stage actually costs rather than by stage
+  count. On a 100-surrogate run the surrogates are seven eighths of the
+  work, so seven equal steps would sit at 71% with nearly everything left
+  to do. The estimate waits until it has three ticks to estimate from, and
+  the per-stage rates are remembered per machine, so the second run's
+  estimate is right on the rig as well as on a laptop. Cancel lands in
+  0.11 s, measured.
+
+### Changed
+
+- **Samples are anti-aliased before the filter bank.** `read_csc.m`
+  decimates with `Samples(1:10:end)` and no low-pass, so content above the
+  new Nyquist folds into the 20–200 Hz amplitude axis — a caveat the beta's
+  README flags as a real risk needing a decision. CFCScope uses
+  `scipy.signal.decimate`, which filters first. Its numbers are therefore
+  better than the legacy pipeline's and **not** bit-comparable with
+  `newFCSE` output; every panel and every caption says which was used.
+
+- **A sequential colormap, offered and defaulted to for coupling maps.**
+  `jet` remains the default everywhere else, because it is what the
+  existing figures use. It is the wrong choice for a comodulogram
+  specifically: `fig11_colour_lies.py` in the explainer shows the same
+  no-coupling recording three ways, and a rainbow autoscaled to its own
+  range invents a story the numbers do not support. The map always prints
+  its own maximum, and Lock scale holds the scale across every map in the
+  window so two of them can actually be compared.
+
+---
+
 ## 2026.09.09.2 — one probe, one panel
 
 ### Fixed
+
+- **`conflict_check` called four conflict-proof files conflicts.** The tool
+  that proves no file in `GUI_logs` can produce a git conflict flagged the
+  feedback triage overlays — and the reason those exist is the very rule it
+  enforces: triaging a report somebody else filed used to edit *their*
+  shard, so it writes `<id>~<this machine>.json` instead. The machine name
+  is in the name, just after `~` rather than `@`, because an overlay must
+  not be read as a shard of the base report. The tool tested the spelling,
+  not the rule. A feedback screenshot was flagged too; it is an attachment,
+  written once by the machine that filed the report.
+
+  `test_twomachines.py` had its own copy of the classification, which is
+  exactly why the two drifted apart — it now asks `conflict_check.classify`,
+  so there is one answer to “can this file conflict”. The sigil is a named
+  constant in `feedback.py` instead of a `"~"` in two files that have to
+  agree. All four `tools/test_*.py` pass, and the check reports 1259
+  per-machine files and nothing shared.
+
+
+- **A bad channel you had cleared came back by itself.** Bad channels travel
+  between windows on their own “facts” channel, which is published whatever
+  the link mode — a channel is broken or it is not, and that does not depend
+  on whether the second window happens to be following the first. But the
+  time/view channel carried the list as well, and that one is only published
+  while the windows are linked:
+
+  ```
+  mark CSC4 bad while linked   ->  facts: [4]   time: [4]
+  unlink, or close the other window
+  clear CSC4                   ->  facts: []    time: [4]   <- stranded
+  any window applies that view update -> CSC4 is bad again
+  ```
+
+  Measured on this machine, with the store and the facts channel both
+  clear, the view channel still said `bad: [4]` — so every window that
+  opened that recording came up with CSC4 marked, and the next save wrote
+  it back to the store. That is how a mark somebody had deliberately
+  cleared returns, and it is the reason `badsync` kept finding a leftover
+  mark before every run however cleanly the previous one had finished.
+
+  The view channel no longer carries a bad list or applies one. A view
+  update can be minutes old and says nothing about whether a channel is
+  broken. There is a harness for it (`badstale.html`) that marks a channel,
+  clears it, then publishes exactly the stale view update the old code
+  left behind — it fails on the old code and passes on the new.
+
+- **`badsync` was measuring the opposite of what it says.** It assumed the
+  channel it tests starts unmarked, so once a mark was left behind its first
+  click cleared instead of marked and all five of its remaining checks
+  reported backwards. It now clears the channel first if it finds it marked,
+  and says so. Its checks also asked whether the joined list “1,4,14”
+  *contains* “4”, which is true of 14 and 40 — a recording with CSC14
+  marked would have passed the whole harness without CSC4 being touched.
+  Membership is now asked of the set.
+
+
+- **Five lists were ordered by comparing timestamps as text.** Having fixed
+  six comparisons, I went through every remaining one in the application.
+  What was left was ordering — the deck list and the report list “newest
+  first”, the notes on a report oldest first, the curation shelf's “recent”
+  order — plus one more decision, in the fold of the old shared sidecar
+  file, which kept the older copy of a result's curation whenever the two
+  stamps were written in different offsets.
+
+  Every one of those lists holds both offsets at once, so “newest first”
+  could put a row from 20:41 local below one from 00:37 UTC that is four
+  minutes older. Eleven places in one day, from one habit.
+
+  There is now a `tools/test_times.py` that covers the comparison, the sort
+  key and the feedback merge — fifteen checks. Two of them fail if the
+  string comparisons are put back, which is the only reason to trust the
+  other thirteen.
+
+
+- **Feedback could show the wrong state, and the wrong copy of a report.**
+  Having found the same fault four times, I went looking for the rest of it.
+  Six more comparisons of a timestamp as text: four in feedback and two in
+  the activity fold.
+
+  Feedback decided three things this way — which machine's copy of a report
+  is the original, which overlay holds the newest state, and whether an
+  incoming state is newer than the one held here. A report acknowledged on
+  one machine this evening could lose to one marked on another this
+  afternoon, because the second stamp read as larger. All three now compare
+  moments.
+
+- **“Last active” could name a time that was not the latest one.** The
+  per-person, per-machine and per-session folds keep the most recent stamp
+  by taking a maximum over text. Activity written here carries this
+  machine's offset and activity pulled from the shared table is UTC, so the
+  maximum was over two different scales and the answer could be an older
+  row.
+
+
+- **An error you had just resolved stayed red.** Whether an error counts as
+  handled was a string comparison of when it happened against when somebody
+  marked it:
+
+  ```
+  error at 2026-09-10T00:37:57+00:00    (UTC, from the shared table)
+  mark  at 2026-09-09T20:40:45-04:00    (local, written here)
+  ```
+
+  The same afternoon — the mark is three minutes *after* the error — but as
+  text “2026-09-10” sorts after “2026-09-09”, so the error read as newer
+  than the mark that resolved it, and stayed unresolved however many times
+  it was resolved. The “came back since” count beside it had the same test.
+
+  This is the fourth place today the same fault has turned up: the
+  incremental push dropping every edit made during a working day, the error
+  triage letting an older remote mark overwrite a newer local one, the
+  curation decisions, and this. Comparing two timestamps as text is only
+  right while they share an offset, and in this application they do not —
+  anything that came down from Supabase is UTC and anything written here
+  carries this machine's.
+
+- **The error-context panel could put the failure in the wrong place.** The
+  panel lists what was happening either side of an error, and marks the
+  error's own position in the sequence — decided by the same string test, so
+  with a UTC row beside a local one the marker could land at the top of a
+  list it belongs in the middle of. Showing which side of the failure each
+  action is on is the only thing that list is for.
+
+
+- **A channel could not be marked bad on any raster pane.** The side channel
+  rail carried two things — which channels are drawn, and a bad/ok toggle on
+  each — and when it was collapsed into the pane's `Ch` menu, only the first
+  came across. On a traces pane the lanes on the plot still have their own
+  toggle; on voltage, CSD and theta there are no lanes, so there was no way
+  to mark a channel bad at all — and a raster is exactly where a dead
+  channel is obvious. The toggle is back, in the menu the selection now
+  lives in.
+
+  Sixty lines of the removed rail were still in the file, unreachable, which
+  is why a harness went on looking for its markup and reporting the absence
+  as a fault.
+
+- **Every figure rebuild was restoring into a session nobody was looking
+  at.** `figrebuild` binds the session once, at its open step, and the
+  recording can be re-opened after that — so every later step wrote to an
+  object no longer in `XF.sessions`, and the “Check it matches the recipe”
+  step confirmed a state that was not on screen. Which is worse than not
+  checking: it reports success about the wrong thing.
+
+  Measured: the steps reported “6 of 32 channels selected; CSC 8 marked
+  bad” and “2 marks put back”, and the recording on screen had all 32
+  channels, no bad channels and the file's own 12 marks. The check now takes
+  the session that is actually active, repairs that one, and restores the
+  window and the filters too when the two had diverged.
+
 
 - **Two recordings with the same mouse and session numbers could become
   one, on a scan.** `ids.match` returned a “strong” match on `loose_key` —
@@ -340,6 +571,66 @@ This file is the only place the version is written. The app reads it.
   why the suite looked dead in places.
 
 ### Changed
+
+- **The housekeeping view opens in about a second.** It was nine, then two,
+  now 1.3. What was left after the figure index was three more stores read
+  once per recording — measured over the real 526:
+
+  ```
+  the event bank      950 ms   (66 entries, rescanned 526 times)
+  curation sets       585 ms
+  layer sets          153 ms
+  ```
+
+  Read in bulk instead they are 330 ms for all three, once. The bank count
+  survives the change exactly because the matching is an elif-chain: every
+  entry lands in one tier, so the count is the size of a union rather than
+  a sum. Checked by running both paths over all 526 recordings and
+  comparing field for field — 502 banked entries, 4075 layer labels and
+  9222 curated events, and every recording agrees.
+
+  Opening a single recording still reads the three stores directly, because
+  reading every store to answer about one is slower than the thing it
+  replaces. That route is 83 ms.
+
+
+- **The suite went from 1,746 checks with 60 failures to 1,935 with none**,
+  and almost all of the movement was the suite learning to tell a fault from
+  this machine. What the seventeen failing harnesses were really saying:
+
+  * **Three crashed on each other.** `bankback` and `strip2` both opened a
+    menu whose popover was already open — left by the harness before them —
+    so the click closed it instead, and the next line dereferenced null:
+    “Cannot read properties of undefined (reading 'click')”. A menu that
+    toggles is correct; a test that assumes it starts closed is not. They
+    dismiss anything open first, wait for their own popover rather than
+    sleeping at it, and check each control before clicking it — so a missing
+    one is a named failure instead of a crash forty lines later.
+
+  * **Five asked for data this machine does not have**: a defective
+    recording to audit, an external drive of sorted snapshots, a missing
+    pip-installable package, a recording with event marks, a collection with
+    something in it. Each now says what is missing and keeps every assertion
+    for when it is there.
+
+  * **Four measured the built-in example** — organising it, checking its
+    path shape, exporting a figure from it — and it is deliberately not a
+    registry record and not a folder.
+
+  * **Three asserted behaviour that was deliberately removed**: nine filter
+    pills, a side channel rail, and switching probe forcing CSD.
+
+  * **`cloudkey`** wanted a button reading “Sync now” and found “Syncing…”,
+    because a sync another harness started was still in flight.
+
+  * **`scanreg` had never once been able to pass** — it reads its root from
+    `?root=` and the runner never passed one, so for its whole life it
+    scanned a folder named “null”.
+
+  Two of the seventeen were real faults in the application, and both are
+  above: a channel could not be marked bad on any raster pane, and every
+  figure rebuild restored into a session nobody was looking at.
+
 
 - **The harness suite tells the truth about this machine.** Seventeen
   harnesses were failing at the last full run and most were not reporting

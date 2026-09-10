@@ -8,11 +8,11 @@
       ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-09T20:07:33.851232+00:00"
+        "2026-09-10T01:58:24.090526+00:00"
       ],
       "Isabella Piatek": [
         "set",
-        "2026-09-09T18:46:56.258312+00:00"
+        "2026-09-09T20:37:36.088405+00:00"
       ],
       "Rain": [
         "gone",
@@ -20,7 +20,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T20:07:33.076101+00:00"
+        "2026-09-10T01:58:23.325856+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,11 +28,11 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-09T19:54:55.322439+00:00"
+        "2026-09-10T00:17:27.577596+00:00"
       ],
       "Sylvia Clouse": [
         "set",
-        "2026-09-09T18:46:56.242825+00:00"
+        "2026-09-09T20:37:36.155211+00:00"
       ],
       "TEST": [
         "set",
@@ -44,7 +44,7 @@
       ],
       "a colleague": [
         "set",
-        "2026-09-09T20:26:21.768278+00:00"
+        "2026-09-09T20:26:47.358238+00:00"
       ],
       "bankback@harness": [
         "set",
@@ -76,7 +76,7 @@
       ],
       "zz edit probe": [
         "gone",
-        "2026-09-09T20:07:40.100409+00:00"
+        "2026-09-10T01:58:31.046998+00:00"
       ],
       "zz edit probe renamed": [
         "gone",
@@ -89,7 +89,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:26:21.768278+00:00",
+    "at": "2026-09-10T01:58:31.046998+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -137,16 +137,6 @@
       "role": null
     },
     {
-      "at": "2026-09-08T21:23:16.555182+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T18:46:56.257453+00:00",
-      "email": "Isabella.Piatek@uvm.edu",
-      "id": "Isabella Piatek",
-      "initials": "IP",
-      "name": "Isabella Piatek",
-      "role": "Graduate Student"
-    },
-    {
       "at": "2026-09-08T18:54:41.436836+00:00",
       "by": "Rain Younger",
       "edited_at": "2026-09-09T13:38:41.353783+00:00",
@@ -171,19 +161,6 @@
       "name": "unknown"
     },
     {
-      "aliases": [
-        "rain"
-      ],
-      "at": "2026-09-09T20:07:32.742428+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T20:07:33.075137+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Graduate Student"
-    },
-    {
       "archived": true,
       "at": "2026-09-09T14:23:28.606785+00:00",
       "by": "Rain Younger",
@@ -192,14 +169,22 @@
       "name": "TEST"
     },
     {
-      "at": "2026-09-09T15:29:28.090683+00:00",
+      "archived": true,
+      "at": "2026-09-09T19:31:52.332901+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T18:46:56.241976+00:00",
-      "email": "seclouse@uvm.edu",
-      "id": "Sylvia Clouse",
-      "initials": "SC",
-      "name": "Sylvia Clouse",
-      "role": "Undergraduate"
+      "edited_at": "2026-09-09T20:26:47.358237+00:00",
+      "id": "a colleague",
+      "name": "a colleague"
+    },
+    {
+      "at": "2026-09-08T21:23:16.555182+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T20:37:36.088404+00:00",
+      "email": "Isabella.Piatek@uvm.edu",
+      "id": "Isabella Piatek",
+      "initials": "IP",
+      "name": "Isabella Piatek",
+      "role": "Graduate Student"
     },
     {
       "aliases": [
@@ -208,7 +193,7 @@
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
       "by": "zz probe person",
-      "edited_at": "2026-09-09T19:54:55.319048+00:00",
+      "edited_at": "2026-09-10T00:17:27.576623+00:00",
       "email": "Shahriar.Akhavan-Tafti@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
@@ -216,12 +201,27 @@
       "role": "Graduate Student"
     },
     {
-      "archived": true,
-      "at": "2026-09-09T19:32:04.558346+00:00",
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-10T01:58:22.914382+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T20:26:21.767966+00:00",
-      "id": "a colleague",
-      "name": "a colleague"
+      "edited_at": "2026-09-10T01:58:23.324745+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
+      "role": "Graduate Student"
+    },
+    {
+      "at": "2026-09-09T15:29:28.090683+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T20:37:36.155210+00:00",
+      "email": "seclouse@uvm.edu",
+      "id": "Sylvia Clouse",
+      "initials": "SC",
+      "name": "Sylvia Clouse",
+      "role": "Undergraduate"
     }
   ]
 }

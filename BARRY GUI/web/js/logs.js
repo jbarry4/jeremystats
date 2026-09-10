@@ -1461,14 +1461,37 @@ BARRY.views.errors = (function () {
       return box;
     }
 
+    /* When, as a moment rather than as text.
+
+       These stamps are not all in one offset: an activity row that came
+       down from the shared table is UTC, and one written here is local. As
+       text "2026-09-10T00:37+00:00" sorts after "2026-09-09T20:40-04:00"
+       though it is three minutes earlier, so the marker could land at the
+       top of a list it belongs in the middle of -- and showing which side
+       of the failure each action is on is the only thing this list is
+       for. */
+    const moment = (t) => {
+      const raw = String(t || '').trim();
+      if (!raw) return null;
+      const fixed = raw.replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/,
+                                                  '$1:$2');
+      const ms = Date.parse(fixed);
+      return isFinite(ms) ? ms : null;
+    };
     const errAt = String(e.at || '');
+    const errMs = moment(errAt);
+    const notBefore = (at) => {
+      const a = moment(at);
+      if (a === null || errMs === null) return String(at || '') >= errAt;
+      return a >= errMs;
+    };
     const rows = el('div', { class: 'ecx-rows' });
     let markPlaced = false;
     for (const a of acts) {
       /* The error itself, in its place in the sequence. Without it the list
          is a set of actions with no indication which side of the failure
          each one is on -- which is the only thing the list is for. */
-      if (!markPlaced && String(a.at || '') >= errAt) {
+      if (!markPlaced && notBefore(a.at)) {
         rows.appendChild(errMarker(e));
         markPlaced = true;
       }
@@ -1601,6 +1624,19 @@ BARRY.views.errors = (function () {
         el('strong', { class: 'dev-host', text: d.label || d.hostname || d.id,
           title: 'Known to BARRY as ' + d.id }),
         d.is_me ? el('span', { class: 'flagchip sm', text: 'this one' }) : null,
+        /* Renamed here, but the shared table has not heard about it. The
+           name on screen is this computer's own record, which changes the
+           moment it is saved; the table only changes on a successful push.
+           Said out loud because the difference is otherwise invisible, and
+           the state it points at -- a rename that cannot be pushed -- is
+           the sync being down, which is worth knowing. */
+        d.pushed_name
+          ? el('span', { class: 'flagchip sm bad',
+              title: 'Saved here. Until this machine pushes, the other '
+                   + 'computers still call it ' + d.pushed_name + '. If that '
+                   + 'does not clear in a minute, the sync is not getting '
+                   + 'through -- press Sync now and read what it says.',
+              text: 'not shared yet' }) : null,
         /* The names it used to answer to, so old log rows are accounted
            for rather than looking like a fourth machine. */
         (d.also_known_as || []).length
