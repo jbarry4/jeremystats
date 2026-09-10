@@ -419,6 +419,29 @@ BARRY.figrebuild = (function () {
            well, and checked here, because the next late write will not be
            either of those two. */
         need();
+        /* A moment first.
+
+           The writes this step exists to catch land after the open, not
+           during it: a .nev auto-import that was in flight before the
+           steps began, and the session being closed and reopened. Checked
+           immediately, this step saw the state it had just set and passed,
+           and the overwrite arrived half a second later -- which is how a
+           rebuild reported success and handed over the recording's current
+           channels and marks anyway. */
+        await new Promise((r) => setTimeout(r, 2200));
+
+        /* The session on screen, not the one this module opened.
+
+           `sess` is bound once, at the open step. If the recording has been
+           re-opened since, every step after that wrote to an object nobody
+           is looking at, and this step confirmed a state that was not on
+           screen -- which is worse than not checking. So the repair goes
+           where the user is, and says when the two had diverged. */
+        const XS = BARRY.views.xplore.state;
+        const live = XS.sessions[XS.active] || sess;
+        const swapped = live !== sess;
+        if (swapped) sess = live;
+
         const want = plan.recipe || {};
         const moved = [];
 
@@ -452,12 +475,32 @@ BARRY.figrebuild = (function () {
           moved.push('the event marks');
         }
 
+        /* The window, the filters and the gain live on the session too, and
+           a session opened since the steps ran has the file's own rather
+           than the figure's. */
+        if (swapped) {
+          if (isFinite(want.t0)) sess.t0 = want.t0;
+          if (isFinite(want.t1) && isFinite(want.t0)) {
+            sess.span = Math.max(0.001, want.t1 - want.t0);
+          }
+          sess.hp = want.highpass || 0;
+          sess.lp = want.lowpass || 0;
+          sess.notch = want.notch || 0;
+          if (want.gain) sess.gain = want.gain;
+          moved.push('the window and the filters');
+        }
+
         if (moved.length) BARRY.views.xplore.refreshAll();
-        return moved.length
-          ? 'Put back ' + moved.join(', ') + ' \u2014 something had changed '
-            + 'them since the steps above ran.'
-          : 'The window, filters, channels, marks and panels all match the '
-            + 'recipe.';
+        if (!moved.length) {
+          return 'The window, filters, channels, marks and panels all match '
+               + 'the recipe.';
+        }
+        return 'Put back ' + moved.join(', ')
+          + (swapped
+              ? '. The recording had been re-opened since the steps above '
+                + 'ran, so they had been applied to a session that is no '
+                + 'longer on screen.'
+              : '. Something had changed them since the steps above ran.');
       }
 
       case 'panels': {

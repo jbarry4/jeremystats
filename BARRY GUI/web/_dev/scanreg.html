@@ -49,8 +49,27 @@ const post = (u, b) => fetch(u, { method: 'POST',
   for (const p of (wipe.tree || [])) {
     for (const m of p.mice) {
       for (const sn of m.sessions) {
-        if ((sn.paths || []).some((x) => /fakedrive/i.test(x))) {
+        const paths = sn.paths || [];
+        /* Both conditions, because forgetting is permanent.
+
+           Matching /fakedrive/ alone was enough until a fixture recording
+           resolved to a real record by mouse and session -- the real record
+           then HELD a fakedrive path, matched, and was erased across every
+           machine's shard. Three real recordings went that way.
+
+           So: every path must be under the fixture folder (one real path
+           and it is not ours, whatever else it has picked up), and the key
+           must be one the fixture mints. Either alone would have stopped
+           it; both mean this line cannot name a real record even if the
+           identity matching goes wrong again. */
+        const allFake = paths.length
+          && paths.every((x) => /barry_fakedrive/i.test(x));
+        const ourKey = /^m9\d\d_s\d/.test(String(sn.key || ''));
+        if (allFake && ourKey) {
           await post('/api/registry/' + sn.gid + '/forget', {});
+        } else if (allFake || (paths.some((x) => /barry_fakedrive/i.test(x)))) {
+          say('  leaving ' + (sn.key || sn.gid) + ' alone \u2014 it is not '
+              + 'purely this harness\u2019s fixture', 'note');
         }
       }
     }
@@ -110,7 +129,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
         beforeGids.size + ' -> ' + afterRows.length);
 
   /* The point: recordings nobody opened are now in the registry. */
-  const fresh = afterRows.filter((s) => !beforeGids.has(s.gid));
+  /* New because the SCAN found them, not merely new.
+
+     The runner opens a recording of its own through `?session=`, and
+     opening one registers it -- so it turned up here as a row the scan had
+     never seen, with `first_seen_by: "opened"`, and failed a check about
+     what a scan writes down. Only rows under the root that was scanned can
+     answer for the scan. */
+  const underRoot = (sn) => (sn.paths || []).some(
+    (x) => String(x).toLowerCase().indexOf(String(root).toLowerCase()) === 0);
+  const fresh = afterRows.filter(
+    (s) => !beforeGids.has(s.gid) && underRoot(s));
   say('  new from the scan: ' + fresh.map((s) => s.label).join(', ')
       .slice(0, 180), 'note');
   check('recordings nobody opened are registered too', fresh.length > 0,
@@ -222,6 +251,40 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const n2 = (twice.tree || [])
     .flatMap((p) => p.mice.flatMap((m) => m.sessions)).length;
   check('the count is unchanged', n2 === n1, n1 + ' -> ' + n2);
+
+  /* Leave the registry as it was found.
+
+     The fixture has a fresh identity per run, so without this each run adds
+     three two-channel, 200 KB recordings -- which the registry audit rightly
+     calls suspect, and `scancheck.html` then reports as failures. Same two
+     conditions as the sweep at the top: every path under the fixture folder,
+     and a key this harness mints. */
+  say('');
+  say('=== putting the registry back ===', 'hd');
+  const tidyReg = await (await fetch('/api/registry')).json();
+  let cleared = 0;
+  for (const p of (tidyReg.tree || [])) {
+    for (const m of p.mice) {
+      for (const sn of m.sessions) {
+        const paths = sn.paths || [];
+        const allFake = paths.length
+          && paths.every((x) => /barry_fakedrive/i.test(x));
+        const ourKey = /^m9\d\d_s\d/.test(String(sn.key || ''));
+        if (allFake && ourKey) {
+          await post('/api/registry/' + sn.gid + '/forget', {});
+          cleared += 1;
+        }
+      }
+    }
+  }
+  say('  fixture recordings cleared: ' + cleared, 'note');
+  const end = await (await fetch('/api/registry')).json();
+  const stillOurs = (end.tree || []).flatMap((p) => p.mice.flatMap(
+    (m) => m.sessions)).filter(
+      (sn) => (sn.paths || []).some((x) => /barry_fakedrive/i.test(x)));
+  check('nothing of this harness is left in the registry',
+        stillOurs.length === 0,
+        stillOurs.map((sn) => sn.key).join(', '));
 
   say('');
   say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');

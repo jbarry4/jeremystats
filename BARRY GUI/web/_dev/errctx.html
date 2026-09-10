@@ -128,12 +128,15 @@ const hd = (t) => p('\n== ' + t + ' ==');
   await sleep(900);
   const panel = D().querySelector('.ec-context');
   ck('a context panel opens', !!panel);
-  const rows = D().querySelectorAll('.ec-context .ecx-row').length;
+  /* Counted inside the panel just opened, not across the document. A
+     panel left open by an earlier section put a second "here" marker on
+     the page, and this read them both. */
+  const rows = panel ? panel.querySelectorAll('.ecx-row').length : 0;
   p('  ' + rows + ' row(s) in the panel');
   ck('with the sequence in it', rows > 0, rows);
   /* The error's own place in the list. Without it the panel is a set of
      actions with no sign of which side of the failure each one is on. */
-  const here = D().querySelectorAll('.ec-context .ecx-row.here').length;
+  const here = panel ? panel.querySelectorAll('.ecx-row.here').length : 0;
   ck('and the error marked in its place in the sequence', here === 1, here);
   head.click();
   await sleep(500);

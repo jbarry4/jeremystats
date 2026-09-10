@@ -24,7 +24,7 @@ import os
 import time
 import uuid
 
-from . import shards
+from . import extras, shards
 from datetime import datetime, timezone
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
@@ -325,8 +325,13 @@ class Results:
                 for k, v in (json.load(fh) or {}).items():
                     key = k if not os.path.isabs(k) else self.rel_key(k)
                     prev = out.get(key)
-                    if prev and (prev.get("updated") or {}).get("at", "") \
-                            > (v.get("updated") or {}).get("at", ""):
+                    # Newer wins, compared as a time. The legacy file was
+                    # shared, so two machines' stamps sit in it in two
+                    # different offsets and the text comparison this
+                    # replaces could keep the older copy.
+                    if prev and not extras.marked_after(
+                            (prev.get("updated") or {}).get("at"),
+                            (v.get("updated") or {}).get("at")):
                         continue
                     out[key] = v
         except (OSError, json.JSONDecodeError):
@@ -667,7 +672,8 @@ class Results:
                 # list before you have even opened one.
                 "thumb": self._first_image(d),
             })
-        out.sort(key=lambda x: x.get("updated") or "", reverse=True)
+        out.sort(key=lambda x: extras.moment_key(x.get("updated")),
+                 reverse=True)
         return out
 
     def get_deck(self, deck_id):

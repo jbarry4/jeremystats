@@ -89,6 +89,15 @@ async function until(fn, ms = 40000) {
     + 'var s=S.sessions[S.active];'
     + 'return s?Array.from(s.bad).sort(function(a,b){return a-b;}).join(","):"?";'
     + '})()';
+  /* Membership, asked of the set.
+
+     Every check below asked whether the joined list "1,4,14" CONTAINS the
+     number as text, which is true of 14 and 40 when the number is 4 -- so a
+     recording with CSC14 already marked would have passed this harness
+     without CSC4 ever being touched. */
+  const HAS = (n) => '(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active];'
+    + 'return !!s && s.bad.has(' + n + ');})()';
   const MODE = 'BARRY.views.xplore.state.linkMode';
   const NUM = '(function(){var S=BARRY.views.xplore.state;'
     + 'var s=S.sessions[S.active];return s.info.channels[3].number;})()';
@@ -111,6 +120,27 @@ async function until(fn, ms = 40000) {
         wa.eval(MODE) + ' / ' + wb.eval(MODE));
 
   const num = wa.eval(NUM);
+
+  /* Whatever an earlier run left.
+
+     This test is "marking it bad makes it bad", which only means anything
+     if it starts NOT bad. A run that fails partway leaves its mark behind,
+     and then the next run's first click clears instead of marks and every
+     check reads inverted -- which is exactly how this harness failed after
+     passing five times. Cleared through the UI, which is the path the test
+     itself uses, so both windows and the store start level. */
+  if (wa.eval(HAS(num))) {
+    say('note', '  CSC' + num + ' was already marked (left by an earlier '
+        + 'run) -- clearing it first');
+    const pre = [...A.contentDocument.querySelectorAll('.badbtn')];
+    if (pre.length > 3) pre[3].click();
+    else wa.eval('BARRY.views.xplore.toggleBad(' + num + ')');
+    const went = await until(() => !wa.eval(HAS(num)), 15000);
+    check('the leftover mark could be cleared', went !== null,
+          'still ' + wa.eval(BADS));
+    await sleep(600);
+  }
+
   say('note', '  marking CSC' + num + ' bad in the top window');
   /* The BAD buttons live in the on-canvas channel overlay, not the side
      rail -- the rail is hidden at this pane width. Click the real one, so
@@ -128,11 +158,11 @@ async function until(fn, ms = 40000) {
   say('note', '  marked via ' + how);
   check('there is a way to mark it', !!how);
 
-  const gotA = await until(() => wa.eval(BADS).includes(String(num))
+  const gotA = await until(() => wa.eval(HAS(num))
     ? wa.eval(BADS) : null, 15000);
   check('the window it was clicked in marks it', !!gotA, wa.eval(BADS));
 
-  const gotB = await until(() => wb.eval(BADS).includes(String(num))
+  const gotB = await until(() => wb.eval(HAS(num))
     ? wb.eval(BADS) : null, 20000);
   check('and the OTHER window picks it up', !!gotB,
         'other window has [' + wb.eval(BADS) + ']');

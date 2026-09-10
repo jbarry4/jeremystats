@@ -13,17 +13,21 @@
     "n_channels": "2026-09-04T15:57:01.561821+00:00",
     "project": "2026-09-04T15:57:01.561821+00:00",
     "project_source": "2026-09-04T15:57:01.561821+00:00",
-    "retired": "2026-09-08T18:33:25.619641+00:00",
+    "retired": "2026-09-09T21:54:47.496587+00:00",
     "schema": "2026-09-04T15:57:01.561821+00:00",
     "session": "2026-09-04T15:57:01.561821+00:00",
     "start": "2026-09-04T15:57:01.561821+00:00",
-    "updated": "2026-09-09T20:25:16.174931+00:00"
+    "updated": "2026-09-09T21:56:30.157906+00:00"
   },
   "_keys": {
     "paths": {
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00": [
         "set",
         "2026-09-09T20:25:16.174931+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00": [
+        "set",
+        "2026-09-09T21:56:30.157906+00:00"
       ],
       "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens1oct2\\2023-10-02_16-49-04": [
         "set",
@@ -38,7 +42,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:25:16.174931+00:00",
+    "at": "2026-09-09T21:56:30.157906+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -60,11 +64,12 @@
   "n_channels": 64,
   "paths": [
     "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens1oct2\\2023-10-02_16-49-04",
-    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00"
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s1_2026-01-02\\2026-01-02_10-00-00"
   ],
   "project": "PTEN",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -78,8 +83,8 @@
   "session": 1,
   "start": "2023-10-02T16:49:04",
   "updated": {
-    "at": "2026-09-09T16:25:16-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "at": "2026-09-09T17:56:30-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",

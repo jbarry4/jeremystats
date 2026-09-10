@@ -13,14 +13,22 @@
     "n_channels": "2026-09-04T15:57:01.566636+00:00",
     "project": "2026-09-04T15:57:01.566636+00:00",
     "project_source": "2026-09-04T15:57:01.566636+00:00",
-    "retired": "2026-09-08T18:33:25.849149+00:00",
+    "retired": "2026-09-09T21:54:41.614919+00:00",
     "schema": "2026-09-04T15:57:01.566636+00:00",
     "session": "2026-09-04T15:57:01.566636+00:00",
     "start": "2026-09-04T15:57:01.566636+00:00",
-    "updated": "2026-09-08T18:33:25.849149+00:00"
+    "updated": "2026-09-09T21:56:38.229293+00:00"
   },
   "_keys": {
     "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m2\\m2s1_2026-01-03\\2026-01-03_09-15-00": [
+        "set",
+        "2026-09-09T21:56:38.229293+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m2\\m2s1_2026-01-03\\2026-01-03_09-15-00": [
+        "set",
+        "2026-09-09T21:56:38.229293+00:00"
+      ],
       "Y:\\ProcessedPtenData\\M2_CTL\\M2Ctls1jan23\\2024-01-23_14-48-16": [
         "set",
         "2026-09-04T15:57:01.566636+00:00"
@@ -34,7 +42,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:33:25.849149+00:00",
+    "at": "2026-09-09T21:56:38.229293+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -55,11 +63,13 @@
   "mouse": 2,
   "n_channels": 64,
   "paths": [
-    "Y:\\ProcessedPtenData\\M2_CTL\\M2Ctls1jan23\\2024-01-23_14-48-16"
+    "Y:\\ProcessedPtenData\\M2_CTL\\M2Ctls1jan23\\2024-01-23_14-48-16",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m2\\m2s1_2026-01-03\\2026-01-03_09-15-00",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m2\\m2s1_2026-01-03\\2026-01-03_09-15-00"
   ],
   "project": "PTEN",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -73,11 +83,11 @@
   "session": 1,
   "start": "2024-01-23T14:48:16",
   "updated": {
-    "at": "2026-09-08T14:33:25-04:00",
+    "at": "2026-09-09T17:56:38-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

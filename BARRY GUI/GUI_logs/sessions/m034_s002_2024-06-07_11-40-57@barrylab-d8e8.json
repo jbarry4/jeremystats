@@ -18,7 +18,7 @@
     "schema": "2026-09-04T15:57:01.794823+00:00",
     "session": "2026-09-04T15:57:01.794823+00:00",
     "start": "2026-09-04T15:57:01.794823+00:00",
-    "updated": "2026-09-09T20:37:10.455050+00:00",
+    "updated": "2026-09-10T13:37:56.870704+00:00",
     "view_state": "2026-09-09T20:37:10.455050+00:00"
   },
   "_keys": {
@@ -40,11 +40,15 @@
       "Strawbarry": [
         "set",
         "2026-09-09T17:38:53.246091+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-10T13:37:56.870704+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:37:10.455050+00:00",
+    "at": "2026-09-10T13:37:56.870704+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -93,13 +97,21 @@
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-10T09:37:55-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
   "start": "2024-06-07T11:40:57",
   "updated": {
-    "at": "2026-09-09T16:37:10-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "at": "2026-09-10T09:37:56-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",

@@ -108,9 +108,15 @@ async function until(fn, ms = 12000) {
           /svyy|Supabase/.test(panel.textContent)
           && !D.querySelector('.cloud-ask'),
           panel.textContent.slice(0, 90));
+    /* "Sync now" or "Syncing...": the same button, labelled for what it is
+       doing. A sync started by whatever ran before leaves it mid-flight,
+       which failed this check in the suite and never alone -- and a button
+       that says it is syncing is better evidence than one offering to. */
     check('with a way to sync now',
           Array.from(D.querySelectorAll('.cloud-note button'))
-            .some((b) => /Sync now/.test(b.textContent)));
+            .some((b) => /Sync now|Syncing/.test(b.textContent)),
+          Array.from(D.querySelectorAll('.cloud-note button'))
+            .map((b) => b.textContent.trim()).join(' | '));
     check('and it says when it last synced',
           /Last sync/.test(panel.textContent));
   }

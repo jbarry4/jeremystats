@@ -2,9 +2,9 @@
   "_at": {
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
-    "radio": "2026-09-09T15:08:44.752142+00:00",
-    "recent_scripts": "2026-09-09T15:17:55.925369+00:00",
-    "updated": "2026-09-09T17:38:53.207645+00:00"
+    "radio": "2026-09-09T20:08:24.883478+00:00",
+    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "updated": "2026-09-10T18:22:03.865859+00:00"
   },
   "_keys": {
     "themes": {
@@ -15,6 +15,10 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-08T15:39:52.477222+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
       ],
       "LCOM549913": [
         "set",
@@ -27,7 +31,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T17:38:53.207645+00:00",
+    "at": "2026-09-10T18:22:03.865859+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -38,16 +42,16 @@
   },
   "radio": {
     "agreed": true,
-    "small": false,
-    "station": "DA7wDV4MbNo",
+    "small": true,
+    "station": "rFZHOHl-L8A",
     "volume": 55
   },
   "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m",
     "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
     "IED/08_Anatomical_Labeling/blank_png_gen.py",
     "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
     "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
-    "IED/03_IED_Detection/vacc_ied_detect.m",
     "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
     "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
     "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
@@ -59,7 +63,8 @@
   "themes": {
     "BarryLab": "horizon-night",
     "DESKTOP-4H65AI7": "horizon-night",
+    "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-09T13:38:53-04:00"
+  "updated": "2026-09-10T14:22:03-04:00"
 }

@@ -1343,7 +1343,7 @@ BARRY.setErrorCount = function setErrorCount(n) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit'];
+               'toolkit', 'comod'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -1485,6 +1485,15 @@ const MODES = {
     name: 'StrataScope',
     what: 'Labelling layers · drag on the rail to set a boundary '
         + '· the aids are in the second window',
+  },
+  cfc: {
+    name: 'CFCScope',
+    /* The banner is the promise. The other two modes take a set off
+       somebody, move a bench, write decisions; this one reads. Saying so
+       where it cannot be missed is cheaper than anyone having to wonder,
+       and it is the only reason this mode has a `what` worth the room. */
+    what: 'Looking only · nothing here is saved · C for a '
+        + 'comodulogram of the window',
   },
   curate: {
     name: 'DS curation',
@@ -2819,6 +2828,10 @@ BARRY.init = async function init() {
   });
 
   BARRY.boot.say('opening the workspace');
+  /* A window opened for one thing should not offer to navigate away from
+     it. Same idea as `aid-window` for the panel pop-outs: the app is the
+     whole app, it just has no rail here. */
+  if (params.get('role') === 'comod') document.body.classList.add('solo-window');
   setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();

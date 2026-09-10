@@ -23,7 +23,7 @@
     "type": "2026-09-02T23:21:29.319930+00:00",
     "type_name": "2026-09-02T23:21:29.319930+00:00",
     "units": "2026-09-02T23:21:29.319930+00:00",
-    "version": "2026-09-08T18:35:58.097316+00:00"
+    "version": "2026-09-10T17:45:43.647273+00:00"
   },
   "_keys": {
     "history": {
@@ -44,11 +44,15 @@
       "v1-7bee693f": [
         "set",
         "2026-09-09T02:03:39.079537+00:00"
+      ],
+      "{\"at\": \"2026-09-10T13:44:37-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 4}, \"machine\": \"BarryLab\", \"n\": 4, \"note\": \"GUI final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-10T17:45:43.647273+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T02:03:39.079537+00:00",
+    "at": "2026-09-10T17:45:43.647273+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -124,7 +128,7 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 1,
+  "version": 2,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -200,6 +204,18 @@
         ]
       ],
       "v": 1
+    },
+    {
+      "at": "2026-09-10T13:44:37-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 4
+      },
+      "machine": "BarryLab",
+      "n": 4,
+      "note": "GUI final curation\n-RY",
+      "snap_elsewhere": true,
+      "v": 2
     }
   ]
 }
