@@ -1315,9 +1315,18 @@ BARRY.views.sessions = (function () {
     if (preset) { $('#rootPath').value = preset; setTimeout(() => start(preset), 60); }
     else if (recents().length) { $('#rootPath').value = recents()[0]; }
 
-    // Reopen what was last being looked at, unless this window was launched
-    // with its own target (a pop-out, or a deep link).
-    if (!params.get('csc') && !preset) {
+    /* Reopen what was last being looked at, unless this window was
+       launched with its own target (a pop-out, or a deep link).
+
+       `role` as well as `csc`. A pane pop-out names the recording it is
+       showing, so `csc` caught it -- but the comodulogram window is opened
+       as `/?role=comod#comod` and names no recording, because it reads the
+       window and the channel from its opener. It fell through this test,
+       and 250 ms after it opened, `restoreLast` reopened the last recording
+       and finished with `setView('xplore')`: the form somebody had just
+       been given was replaced by a voltage trace, with "Reopening…" and
+       "view restored" as the only clue. Every pop-out sets a role. */
+    if (!params.get('csc') && !params.get('role') && !preset) {
       const last = lastOpen();
       if (last.length) setTimeout(() => restoreLast(last), 250);
     }

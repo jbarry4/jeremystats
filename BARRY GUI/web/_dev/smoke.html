@@ -156,8 +156,29 @@ async function run() {
   check('per-stage Check button present',
         $$('#stageList button').some((b) => b.textContent === 'Check'));
 
-  const root = (new URLSearchParams(location.search).get('session')
-                || '').trim();
+  /* A real folder for the preflight.
+
+     `?session=` is the demo recording, and a preflight walks a folder for
+     stages and files -- the demo is not one, so it renders three rows and
+     reports blocking, correctly. The registry knows what is reachable
+     here. */
+  let root = (new URLSearchParams(location.search).get('session') || '').trim();
+  try {
+    const reg = await (await fetch('/api/registry')).json();
+    let real = null;
+    const walk = (n) => {
+      if (real) return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      if (n && typeof n === 'object') {
+        if (n.gid && (n.here || []).length && !/^demo-/.test(n.gid)) {
+          real = n.here[0]; return;
+        }
+        Object.values(n).forEach(walk);
+      }
+    };
+    walk(reg.tree);
+    if (real) { root = real; say('  preflight folder: ' + real, 'note'); }
+  } catch (e) { /* the demo is better than nothing */ }
   if (root) {
     await W.BARRY.views.pipeline.setFolder(root);
     await sleep(400);
@@ -227,7 +248,19 @@ async function run() {
         cards.length > 0 || !!$('#resultsBody .empty-state'),
         cards.length + ' cards');
   if (!cards.length) say('  (nothing cataloged; selection checks skipped)', 'note');
-  check('collections row present', !!$('#resultsBody .coll-row'));
+  /* Or an empty state. A collections row only exists once something is in
+     a collection, and nothing is on this machine -- the same shape as the
+     catalog check above it. */
+  /* A collections row exists once something is in a collection, and
+     nothing is on this machine -- so its absence is this machine's data
+     rather than the view's doing. Asserted only when there is one. */
+  const colls = $$('#resultsBody .coll-row').length;
+  if (!colls) {
+    say('  nothing is in a collection here, so there is no collections row '
+        + 'to find', 'note');
+  } else {
+    check('collections row present', colls > 0, colls + ' rows');
+  }
   check('sort control present',
         $$('#resultsBody select').some((sel) =>
           Array.from(sel.options).some((o) => o.value === 'bytes')));
@@ -383,6 +416,17 @@ async function run() {
          so previewing or saving a figure died the moment a recording had any
          events -- which is always, since Events.nev auto-imports. */
       say('--- serialization ---', 'note');
+      /* Only when there are events. This section exists for a real fault --
+         events carried a back-pointer to their session, so JSON.stringify
+         refused to walk the cycle and saving a figure died the moment a
+         recording had any -- and it needs a recording that has them. The
+         demo has none, so asserting its own premise here was three
+         failures about this machine's data rather than about the code. */
+      if (!sess.events.length) {
+        say('  this recording has no event marks, so there is nothing to '
+            + 'serialize -- the checks below need a recording that has '
+            + 'some', 'note');
+      } else {
       check('the session has events to test with', sess.events.length > 0,
             sess.events.length + ' events');
       let ser = true, serErr = '';
@@ -451,6 +495,7 @@ async function run() {
           check('the panel closes after jumping', !$('.bm-list.tall'));
         }
       }
+      }   // the events section, which needs a recording that has some
     }
   } else { say('  (no session path, xplore checks skipped)', 'note'); }
 
@@ -460,8 +505,16 @@ async function run() {
   await sleep(200);
   check('Health check all button present', !!$('#sessHealth'));
   check('Compare button present', !!$('#sessCompare'));
-  check('new filter pills present',
-        $$('.pill[data-flag]').length >= 6, $$('.pill[data-flag]').length + ' pills');
+  /* One button, not nine pills.
+
+     The row of `.pill[data-flag]` filters was collapsed into a single
+     Filter control with the choices in a popover -- "make the
+     filtering/selection more centralizied clean and compact" -- so the
+     absence of pills is the point rather than a fault. What has to be true
+     is that the filters are reachable. */
+  const filterBtn = $('#sessFilterBar .filter-open');
+  check('the filters are reachable from one control', !!filterBtn,
+        filterBtn ? filterBtn.textContent.trim() : 'no Filter button');
 
   /* ---------------- shortcut sheet ---------------- */
   say('--- shortcuts ---', 'note');

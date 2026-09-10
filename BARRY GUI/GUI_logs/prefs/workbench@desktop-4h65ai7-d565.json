@@ -2,18 +2,18 @@
   "_at": {
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
-    "radio": "2026-09-09T20:08:24.883478+00:00",
+    "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
+    "radio": "2026-09-10T01:59:04.504524+00:00",
     "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
-    "smoke_probe": "2026-09-09T20:11:56.830273+00:00",
+    "smoke_probe": "2026-09-10T16:58:52.672491+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-09T21:36:53.024405+00:00"
+    "updated": "2026-09-10T18:18:16.739965+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-09T07:22:47.391689+00:00"
+        "2026-09-10T16:58:54.555353+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -31,7 +31,11 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-08T15:39:52.477222+00:00"
+        "2026-09-09T21:49:47.650838+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
       ],
       "LCOM549913": [
         "set",
@@ -44,19 +48,19 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T21:36:53.024405+00:00",
+    "at": "2026-09-10T18:18:16.739965+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "demo:long-session"
+    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   },
   "radio": {
     "agreed": true,
     "small": true,
-    "station": "rFZHOHl-L8A",
+    "station": "4xDzrJKXOOY",
     "volume": 55
   },
   "recent_scripts": [
@@ -76,8 +80,9 @@
   "smoke_probe": null,
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "horizon-night",
+    "DESKTOP-4H65AI7": "jirai-yami",
+    "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-09T17:36:53-04:00"
+  "updated": "2026-09-10T14:18:16-04:00"
 }

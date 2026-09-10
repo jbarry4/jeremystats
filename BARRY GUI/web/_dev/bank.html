@@ -278,11 +278,29 @@ const post = async (p, b) => (await fetch(p, {
        refuses until all of them say what produced them -- correctly -- so
        filling only the first looks like "banking does nothing". A recording
        that has been worked on has more than one set on it. */
+    /* This harness's entries from earlier runs, cleared first.
+
+       The count below is "everything banked under this harness's pipeline",
+       which is exactly right for one run and grows by one entry per run
+       after that -- 22 events across 6 entries, when the selection was 4.
+       Nothing else in the application writes this pipeline string, so this
+       cannot reach anybody's data. */
+    const OURS = 'harness: BARRY threshold detector';
+    try {
+      const had = await (await fetch('/api/bank')).json();
+      const stale = (had.entries || []).filter(
+        (e) => (e.source || {}).pipeline === OURS);
+      for (const e of stale) await post('/api/bank/' + e.id + '/delete', {});
+      if (stale.length) {
+        say('  cleared ' + stale.length + ' entr(ies) this harness left '
+            + 'behind on an earlier run', 'note');
+      }
+    } catch (e) { /* the count below will say so */ }
+
     for (const row of $$('.bank-entry-row')) {
       const inp = Array.from(row.querySelectorAll('.field')).find(
         (d) => (d.querySelector('label') || {}).textContent === 'Produced by');
-      if (inp) type(inp.querySelector('input'),
-                    'harness: BARRY threshold detector');
+      if (inp) type(inp.querySelector('input'), OURS);
     }
     type(fieldFor('Added by'), 'harness@test');
     // Say what the dialog is actually working with, so "nothing happened"

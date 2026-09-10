@@ -128,6 +128,7 @@ BARRY.views.toolkit = (function () {
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
+    if (q.tool === 'cfc') { await loadCFC(); return; }
     /* Kilosort has nothing to do with bad channels.
 
        It used to fall through to the query below, which fetched the whole
@@ -185,6 +186,10 @@ BARRY.views.toolkit = (function () {
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
+        toolButton('cfc', 'CFCScope',
+                   'Band-resolved theta power and phase-amplitude coupling, '
+                   + 'against the live recording. Looks only — nothing '
+                   + 'in it is saved.'),
         toolButton('kilosort', 'Kilosort',
                    'Check this machine can sort, run a sort against a '
                    + 'recording, then open it in Phy.'),
@@ -202,7 +207,7 @@ BARRY.views.toolkit = (function () {
             bad-channel query's, and means nothing to the others -- the
             snapshot importer was showing it and asking which recordings to
             scope a folder read to. */
-         (q.tool === 'curate' || q.tool === 'strata'
+         (q.tool === 'curate' || q.tool === 'strata' || q.tool === 'cfc'
           || q.tool === 'kilosort' || q.tool === 'snapshots')
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
@@ -487,15 +492,29 @@ BARRY.views.toolkit = (function () {
     });
 
     const num = (v) => (isFinite(v) ? Number(v) : -1);
-    const cmp = {
+    /* A stamp as a number, for the sorts. "-0400" without its colon is
+     written by some of the stores and `Date.parse` will not take it. */
+  const momentOf = (t) => {
+    const raw = String(t || '').trim();
+    if (!raw) return 0;
+    const ms = Date.parse(raw.replace(' ', 'T')
+                             .replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+    return isFinite(ms) ? ms : 0;
+  };
+  const cmp = {
       left: (a, b) => ((b.progress || {}).left || 0)
                     - ((a.progress || {}).left || 0),
       flag: (a, b) => (by(b).flag || 0) - (by(a).flag || 0),
       name: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
       size: (a, b) => ((b.progress || {}).total || 0)
                     - ((a.progress || {}).total || 0),
-      recent: (a, b) => String(b.opened_at || (b.updated || {}).at || '')
-        .localeCompare(String(a.opened_at || (a.updated || {}).at || '')),
+      /* Newest first, by time. These stamps are not all in one offset --
+         a set opened here carries this machine's, one that came down from
+         the shared table is UTC -- so comparing them as text sorted a set
+         opened at 20:41 local below one from 00:37 UTC that is four
+         minutes older. */
+      recent: (a, b) => momentOf(b.opened_at || (b.updated || {}).at)
+                      - momentOf(a.opened_at || (a.updated || {}).at),
       mouse: (a, b) => {
         const sa = a.session || {}, sb = b.session || {};
         return (num(sa.mouse) - num(sb.mouse))
@@ -1937,6 +1956,98 @@ BARRY.views.toolkit = (function () {
     ].filter(Boolean));
   }
 
+  /* ==================================================================
+     CFCScope
+
+     The one tool here that decides nothing. It opens a recording in
+     XploreFinder with the band-resolved power panel up, and puts a
+     comodulogram of whatever window you are looking at one keystroke away.
+
+     No bench and no sets, so this pane is a chooser and nothing else --
+     there is no state to come back to, because looking does not leave any.
+     ================================================================== */
+  let cfcReg = null;
+
+  async function loadCFC() {
+    renderCFC();
+    cfcReg = await registry();
+    renderCFC();
+  }
+
+  let cfcGid = null;
+
+  function renderCFC() {
+    const host = $('#tkResult');
+    if (!host) return;
+    if (q.tool !== 'cfc') return;      // see renderCuration
+    host.style.opacity = '1';
+    host.innerHTML = '';
+    if (!cfcReg) {
+      host.appendChild(el('div', { class: 'tk-loading' }, [
+        stepLoader('CFCScope', ['reading the recording registry'])]));
+      return;
+    }
+
+    const rows = ((cfcReg || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
+    if (!cfcGid) cfcGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    const pick = BARRY.pickSession({
+      rows, value: cfcGid,
+      placeholder: 'Which recording? Type a mouse, session or date…',
+      onpick: (r) => { cfcGid = r.gid; },
+    });
+
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      el('div', {}, [
+        el('h2', { text: 'CFCScope' }),
+        el('p', { class: 'sub',
+          text: 'Theta, resolved into the bands it is actually made of, and '
+              + 'phase-amplitude coupling for a window you choose.' }),
+      ]),
+    ]));
+
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                 text: 'Open a recording' }));
+    card.appendChild(pick);
+    card.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn', text: 'Open in CFCScope',
+        onclick: () => { if (cfcGid) BARRY.cfc.enter(cfcGid); },
+      }),
+      el('span', { class: 'hint',
+        text: 'Opens in XploreFinder with a second window for the panels.' }),
+    ]));
+    host.appendChild(card);
+
+    /* What it does, said once, here. The two panels it opens are not
+       obvious from their names and the second one is the whole reason the
+       mode exists. */
+    const what = el('div', { class: 'card' });
+    what.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                 text: 'What it gives you' }));
+    what.appendChild(el('dl', { class: 'tk-what' }, [
+      el('dt', { text: 'Theta power, band by band' }),
+      el('dd', { text: 'Not one 4–12 Hz filter. Seventeen narrow bands '
+                     + 'in 0.5 Hz steps, each one the mean squared envelope '
+                     + 'of its own analytic signal — the same '
+                     + 'definition ThetaPower.m uses in the CFC pipeline. A '
+                     + 'rhythm that moves from 7 Hz to 9 Hz during a session '
+                     + 'is visible as a thing that moved, which a single '
+                     + 'wide filter cannot show you.' }),
+      el('dt', { text: 'A comodulogram, when you ask for one' }),
+      el('dd', { text: 'Phase-amplitude coupling across a grid of band '
+                     + 'pairs, for the window on screen. Seconds without a '
+                     + 'null, half a minute with one, so it opens its own '
+                     + 'window and tells you the cost before it starts.' }),
+      el('dt', { text: 'Nothing written down' }),
+      el('dd', { text: 'No set is claimed, no decision is recorded, nothing '
+                     + 'goes on anybody’s bench. Leave whenever you '
+                     + 'like; there is nothing to put down.' }),
+    ]));
+    host.appendChild(what);
+  }
+
   function renderStrata() {
     const host = $('#tkResult');
     if (!host) return;
@@ -2249,6 +2360,7 @@ BARRY.views.toolkit = (function () {
       return;
     }
     if (q.tool === 'strata') { renderStrata(); return; }
+    if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
     if (!host) return;

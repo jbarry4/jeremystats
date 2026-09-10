@@ -73,16 +73,33 @@ async function until(fn, ms = 60000) {
 
   W.eval("setView('xplore')");
   await sleep(250);
-  const sess = await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  /* Even-only off, explicitly.
+
+     A 64-channel recording opened even-only draws 32 -- the list keeps all
+     64 but the window request drops the odd ones, so the pane shows half of
+     them and the control reads "Ch32/64". This harness is about all
+     sixty-four being on screen at once, which is only a question when they
+     all are. */
+  const sess = await W.eval('BARRY.views.xplore.open('
+    + JSON.stringify(path) + ', {evenOnly:false})');
   await until(() => D.querySelector('.pane-canvas-host canvas'));
+  /* Let the open settle before rearranging the panes.
+
+     Selecting every channel a moment after `setPanes` raced the open: the
+     pane redrew from a selection that was still being restored, and the
+     draw that landed carried half the channels. With the open settled
+     first, all sixty-four are listed, selected, requested and drawn --
+     measured at every one of those points. */
+  await sleep(2500);
   W.eval("BARRY.views.xplore.setPanes([{panel:'traces'}], {col:0.5,row:0.5})");
+  await sleep(1200);
   // Every channel on screen at once, which is the state being complained
   // about.
   W.eval('(function(){var s=BARRY.views.xplore.state;'
        + 'var o=s.sessions[s.active];o.info.channels.forEach(function(c){'
        + 'o.sel.add(c.index);});})()');
   W.eval('BARRY.views.xplore.render(); BARRY.views.xplore.refreshAll();');
-  await sleep(2500);
+  await sleep(6000);
   await until(() => D.querySelectorAll('.ch-overlay .ch-lane').length >= 60);
   await sleep(600);
 
@@ -159,14 +176,21 @@ async function until(fn, ms = 60000) {
   W.eval("BARRY.views.xplore.setPanes([{panel:'voltage'}], {col:0.5,row:0.5})");
   await sleep(1600);
   const chBtn = Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
-    .find((b) => /^Ch\b/.test(b.textContent.trim()));
+    /* The menu renders its value straight after its name --
+       "Ch32/64" -- so there is no word boundary after "Ch" to
+       anchor on, and /^Ch\b/ never matched. */
+    .find((b) => /^Ch[0-9\s]/.test(b.textContent.trim()));
   check('a voltage pane offers the channel menu', !!chBtn,
         Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
           .map((b) => b.textContent.trim()).join(' | '));
   if (chBtn) chBtn.click();
   await sleep(500);
-  await until(() => D.querySelectorAll('.ctl-pop .ch-row').length >= 60, 30000);
-  const rows = Array.from(D.querySelectorAll('.ctl-pop .ch-row'));
+  /* `.ctl-chan`, not `.ch-row`: the popover has its own row class, and
+     `ch-row` belonged to the side rail this replaced (and to the lane
+     overlay on the plot). */
+  await until(() => D.querySelectorAll('.ctl-pop .ctl-chan').length >= 60,
+              30000);
+  const rows = Array.from(D.querySelectorAll('.ctl-pop .ctl-chan'));
   if (!rows.length) {
     say('bad', 'the channel menu listed nothing on a voltage pane');
   } else {

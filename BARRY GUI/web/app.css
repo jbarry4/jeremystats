@@ -6529,3 +6529,163 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--bg); color: var(--text); font: inherit; font-size: 11px;
 }
 .tf-chans option { padding: 1px 5px; }
+
+/* The bad/ok toggle in the channel popover. Small, because the row is a
+   checkbox, a number and this -- and it has to stay hittable, which is why
+   there is a minimum size rather than padding alone. */
+.ctl-chan .badbtn {
+  margin-left: auto; min-width: 26px; min-height: 16px;
+  padding: 0 4px; font-size: 9px; line-height: 15px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg-2); color: var(--text-3); cursor: pointer;
+}
+.ctl-chan .badbtn:hover { border-color: var(--accent); color: var(--text); }
+.ctl-chan .badbtn.on {
+  border-color: var(--err); color: var(--err); font-weight: 600;
+}
+
+/* ==========================================================================
+   CFCScope, and the comodulogram window
+   ========================================================================== */
+/* The mode bar. Same shape as StrataScope's -- it sits in the same place and
+   does the same job -- but no brushes, because there is nothing to paint. */
+.cfc-bar {
+  flex: none; display: flex; flex-direction: column; align-items: stretch;
+  gap: 5px;
+  padding: 9px 14px; border-top: 2px solid var(--accent);
+  background: var(--bg-2);
+  max-height: 22vh; overflow-y: auto;
+  position: relative; z-index: 8;
+}
+.cfc-bar-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cfc-where {
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+  white-space: nowrap;
+}
+.cfc-note { margin: 0; font-size: 11px; }
+.cfc-go { font-weight: 600; }
+
+/* The band axis control, in a panel's own strip. */
+.band-ctl { display: flex; flex-direction: column; gap: 5px; min-width: 260px; }
+.band-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.band-row .mini-num {
+  width: 62px; font: 11.5px ui-monospace, Consolas, monospace;
+  padding: 2px 5px; border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); border: 1px solid var(--line);
+}
+.band-count { font-size: 11px; color: var(--text-3); margin-left: auto; }
+/* The line about realised bandwidth. Not styled as a warning by default --
+   overlapping bands are the normal case here and the panel is still correct,
+   so it is a fact first and a caution only when the overlap is large. */
+.band-truth { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; }
+.band-truth.warn { color: var(--warn); }
+
+/* ---- the comodulogram window ---- */
+.comod-form .comod-row {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.comod-field { display: flex; flex-direction: column; gap: 3px; }
+.comod-field > span { font-size: 10.5px; color: var(--text-3); }
+.comod-field input, .comod-field select {
+  font: 12px ui-monospace, Consolas, monospace;
+  padding: 3px 6px; border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); border: 1px solid var(--line);
+}
+.comod-field input[type=number] { width: 84px; }
+.comod-axis {
+  width: 74px; font-size: 11px; color: var(--text-2); font-weight: 600;
+}
+.comod-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.comod-est {
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+}
+.comod-truth {
+  margin: 4px 0 0; font-size: 10.5px; line-height: 1.5;
+  border-left: 2px solid var(--line); padding-left: 8px;
+}
+.comod-go { margin-top: 10px; align-items: center; }
+
+/* ---- the stage list ----
+   The loading display. Rows are a fixed grid so the counts and the times line
+   up down the column: a list whose numbers jog left and right as they fill in
+   is a list nobody can read at a glance, which is the only thing it is for. */
+.comod-run-head {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.comod-stages { display: flex; flex-direction: column; gap: 2px; }
+.comod-stage {
+  display: grid;
+  grid-template-columns: 16px minmax(180px, 1fr) 168px 110px 58px;
+  align-items: center; gap: 8px;
+  padding: 3px 6px; border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--text-3);
+}
+.comod-stage.done { color: var(--text-2); }
+.comod-stage.on { color: var(--text); background: var(--bg-hover); }
+.comod-stage.bad { color: var(--warn); }
+.comod-tick { text-align: center; font-size: 11px; }
+.comod-stage.done .comod-tick { color: var(--ok); }
+.comod-stage.on .comod-tick { color: var(--accent); }
+.comod-stage-count, .comod-stage-time {
+  font: 11px ui-monospace, Consolas, monospace; text-align: right;
+}
+.comod-stage-time { color: var(--text-3); }
+/* The per-stage bar sits in its own column, so it appears without shoving
+   the time out of line. */
+.comod-mini {
+  height: 4px; border-radius: 2px; background: var(--line-soft);
+  overflow: hidden;
+}
+.comod-mini-fill {
+  height: 100%; background: var(--accent); transition: width .18s linear;
+}
+.comod-total { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.comod-bar {
+  flex: 1; height: 6px; border-radius: 3px; background: var(--line-soft);
+  overflow: hidden;
+}
+.comod-bar-fill {
+  height: 100%; background: var(--accent); width: 0;
+  transition: width .25s linear;
+}
+.comod-eta {
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+  white-space: nowrap; min-width: 170px; text-align: right;
+}
+
+/* ---- the map ---- */
+.comod-map-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.comod-canvas-wrap { display: flex; flex-direction: column; gap: 4px; }
+.comod-canvas {
+  width: 100%; height: 460px; display: block;
+  border-radius: var(--radius-sm);
+}
+.comod-readout {
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+  min-height: 17px;
+}
+.comod-caption { margin: 8px 0 2px; line-height: 1.55; }
+.comod-strip { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px; }
+.tk-what { margin: 0; }
+.tk-what dt { font-weight: 600; font-size: 12.5px; margin-top: 10px; }
+.tk-what dt:first-child { margin-top: 0; }
+.tk-what dd {
+  margin: 3px 0 0; font-size: 12px; color: var(--text-2); line-height: 1.55;
+}
+
+/* A window opened for one thing: no rail, because there is nowhere else in
+   it to go. Same idea as `aid-window` on the panel pop-outs. */
+body.solo-window #rail { display: none !important; }
+body.solo-window #app { grid-template-columns: 1fr !important; }
+
+/* The CFCScope pane's action row. `tk-actions` was used before it existed,
+   so the button and the sentence explaining it ran together with no space. */
+.tk-actions {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 10px;
+}

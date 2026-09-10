@@ -11,6 +11,7 @@ import csv
 import io
 import os
 import re
+from datetime import datetime
 import shutil
 import threading
 import time
@@ -421,6 +422,65 @@ def mark_key(sig, machine=None):
     all still work.
     """
     return "%s%s%s" % (sig, MARK_SEP, machine) if machine else sig
+
+
+# "-0400" -> "-04:00", which `fromisoformat` needs.
+_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
+def marked_after(at, mark_at):
+    """Did the mark come at or after the thing it is marking?
+
+    Compared as times. This was `(at or "") <= (mark_at or "")`, a string
+    test that is only right while both stamps carry the same offset -- and
+    an error pulled from the shared table is UTC while a mark written here
+    is local, so an error at "2026-09-10T00:37:57+00:00" read as newer than
+    a mark made three minutes later at "2026-09-09T20:40:45-04:00" and
+    stayed red however many times it was resolved.
+
+    A stamp that cannot be parsed falls back to the string comparison,
+    which is what the old code did with all of them.
+    """
+    if not mark_at:
+        return False
+    if not at:
+        return True
+    a, b = _instant(at), _instant(mark_at)
+    if a is None or b is None:
+        return str(at) <= str(mark_at)
+    return a <= b
+
+
+def _instant(stamp):
+    """An ISO-ish stamp as a comparable moment, or None."""
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    text = _OFFSET_RE.sub(r"\1:\2", text.replace(" ", "T", 1))
+    try:
+        got = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if got.tzinfo is None:
+        # A stamp with no offset is this machine's wall clock, which is what
+        # wrote it.
+        got = got.astimezone()
+    return got
+
+
+def moment_key(stamp):
+    """A stamp as a number to sort on.
+
+    The lists that use this hold a mix of offsets -- what came from Supabase
+    is UTC, what was written here is local -- so sorting them as text put a
+    row from "2026-09-09T20:41-04:00" below one from "2026-09-10T00:37+00:00"
+    that is four minutes older.
+
+    Unreadable or missing sorts as the epoch, which is where the empty
+    string this replaces already sorted it.
+    """
+    got = _instant(stamp)
+    return got.timestamp() if got is not None else 0.0
 
 
 def host_of(rec):

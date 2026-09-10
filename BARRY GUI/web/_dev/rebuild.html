@@ -53,6 +53,14 @@ const post = (u, b) => fetch(u, { method: 'POST',
      answers "No session could be opened", which is true and is not what
      this harness is about. The registry already works out what is reachable
      from here, which is what `bankback.html` was changed to ask. */
+  /* A real recording this machine can open.
+
+     It has to be real: a rebuild plan locates the recording on disk, and
+     the demo is not a folder -- the plan comes back "missing" and the whole
+     walkthrough is skipped. So this harness borrows one, and puts it back
+     at the end: everything BARRY does is saved by default, and leaving a
+     real recording holding a figure's six-channel selection is what made
+     `chan64.html` find 32 of its 64 channels selected. */
   let path = null;
   try {
     const reg = await (await fetch('/api/registry')).json();
@@ -96,6 +104,12 @@ const post = (u, b) => fetch(u, { method: 'POST',
     // inventory rather than inventing one.
     const opened = await post('/api/csc/open',
       { path, even_only: true, invert: true });
+    /* How this recording was being looked at before the harness touched it.
+       Written back at the end -- see the last section. */
+    var wasIdentity = opened.identity || {};
+    var wasState = opened.view_state || {};
+    say('  saved view state to put back afterwards: '
+        + JSON.stringify(Object.keys(wasState)), 'note');
     badCsc = ((opened.channels || [])[3] || {}).number;
     say('  bad channel for the test: CSC ' + badCsc, 'note');
     const layout = {
@@ -241,6 +255,27 @@ const post = (u, b) => fetch(u, { method: 'POST',
        ------------------------------------------------------------------ */
     say('');
     say('=== the session really was restored ===', 'hd');
+    /* The gap between the last step and this readback is where the state
+       has been going missing: the verify step says everything matches, and
+       a second later it does not. Sampled, so the moment and the values are
+       on the record rather than inferred. */
+    const shot = () => ev('(function(){var S=BARRY.views.xplore.state;'
+      + 'var a=S.sessions[S.active];if(!a)return "no active session";'
+      + 'return JSON.stringify({id:a.id,active:S.active,'
+      + 'n:Object.keys(S.sessions).length,sel:a.sel.size,'
+      + 'bad:Array.from(a.bad),ev:(a.events||[]).length,'
+      + 'src:(a.eventsMeta||{}).source||null});}())');
+    let was = shot();
+    say('  t+0.0s  ' + was, 'note');
+    for (let i = 1; i <= 12; i += 1) {
+      await sleep(200);
+      const now = shot();
+      if (now !== was) {
+        say('  t+' + (i * 0.2).toFixed(1) + 's  ' + now
+            + '   <-- changed', 'note');
+        was = now;
+      }
+    }
     await sleep(900);
     const s = ev('BARRY.views.xplore.state.sessions['
                  + 'BARRY.views.xplore.state.active]');
@@ -292,6 +327,21 @@ const post = (u, b) => fetch(u, { method: 'POST',
 
     say('');
     say('  harness run left behind for the caller to clear: ' + runId, 'note');
+
+    /* Put the recording back the way it was found.
+
+       This harness restores a figure's selection, a bad channel and two
+       marks into a real recording, and BARRY saves that -- so without this
+       the next harness to open it gets the figure's state instead of the
+       recording's, which is exactly what happened to `chan64.html`. */
+    try {
+      const back = await post('/api/session/state',
+                              { identity: wasIdentity, state: wasState });
+      check('the recording was put back as it was found',
+            back && back.ok !== false, JSON.stringify(back).slice(0, 80));
+    } catch (e) {
+      check('the recording was put back as it was found', false, e.message);
+    }
   }
 
   say('');
