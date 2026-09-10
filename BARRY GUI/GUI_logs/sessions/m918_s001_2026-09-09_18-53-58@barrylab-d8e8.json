@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-09T22:54:25.627090+00:00",
+    "gid": "2026-09-09T22:54:25.627090+00:00",
+    "group": "2026-09-09T22:54:25.627090+00:00",
+    "key": "2026-09-09T22:54:25.627090+00:00",
+    "label": "2026-09-09T22:54:25.627090+00:00",
+    "loose_key": "2026-09-09T22:54:25.627090+00:00",
+    "mouse": "2026-09-09T22:54:25.627090+00:00",
+    "project": "2026-09-09T22:54:25.627090+00:00",
+    "project_source": "2026-09-09T22:54:25.627090+00:00",
+    "retired": "2026-09-09T22:55:29.468399+00:00",
+    "schema": "2026-09-09T22:54:25.627090+00:00",
+    "session": "2026-09-09T22:54:25.627090+00:00",
+    "start": "2026-09-09T22:54:25.627090+00:00",
+    "updated": "2026-09-09T22:55:29.468399+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_185300\\FAKEPROJ\\fake_m918\\m918s1_2026-09-09\\2026-09-09_18-53-58": [
+        "set",
+        "2026-09-09T22:54:29.249966+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-09T22:55:29.468399+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-09T18:54:25-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s32c20a0dfe09",
+  "group": null,
+  "key": "m918_s001_2026-09-09_18-53-58",
+  "label": "m918 s1 2026-09-09",
+  "loose_key": "m918_s001",
+  "mouse": 918,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_185300\\FAKEPROJ\\fake_m918\\m918s1_2026-09-09\\2026-09-09_18-53-58"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-09T22:53:58+00:00",
+  "updated": {
+    "at": "2026-09-09T18:55:29-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -24,10 +24,16 @@
     "schema": "2026-09-04T15:57:01.625038+00:00",
     "session": "2026-09-04T15:57:01.625038+00:00",
     "start": "2026-09-04T15:57:01.625038+00:00",
-    "updated": "2026-09-09T17:31:52.477230+00:00",
-    "view_state": "2026-09-09T15:29:43.088273+00:00"
+    "updated": "2026-09-10T14:52:39.894535+00:00",
+    "view_state": "2026-09-10T14:52:39.894535+00:00"
   },
   "_keys": {
+    "bookmarks": {
+      "545aca1e": [
+        "set",
+        "2026-09-10T14:49:49.565538+00:00"
+      ]
+    },
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M8_s9\\2024-02-09_16-43-46": [
         "set",
@@ -70,11 +76,15 @@
       "Strawbarry": [
         "set",
         "2026-09-09T17:31:52.477230+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-10T13:52:15.131195+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T17:31:52.477230+00:00",
+    "at": "2026-09-10T14:52:39.894535+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -82,6 +92,23 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "bookmarks": [
+    {
+      "color": "#ec4899",
+      "id": "545aca1e",
+      "name": "Beginning of some spikes that seem offset a large amount",
+      "saved": {
+        "at": "2026-09-10T10:49:48-04:00",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
+      },
+      "span": 1.22,
+      "t": 1765.0051556662518
+    }
+  ],
   "condition": "cno",
   "converted": true,
   "created": {
@@ -149,17 +176,25 @@
       "path": "Y:\\ProcessedPtenData\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-10T09:52:13-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+      "root": null,
+      "scan": null
     }
   },
   "session": 9,
   "start": "2024-02-09T16:43:46",
   "updated": {
-    "at": "2026-09-09T13:31:52-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "at": "2026-09-10T10:52:39-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
@@ -209,9 +244,9 @@
     "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 1,
+    "span": 1.22,
     "stft_mode": null,
-    "t0": 76.188,
+    "t0": 1841.951,
     "ylim": null
   }
 }
