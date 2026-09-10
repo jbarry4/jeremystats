@@ -1021,14 +1021,15 @@ def _cfc_spec(body, sess):
         "channel": body.get("channel"),
         "t0": float(body.get("t0", 0) or 0),
         "t1": float(body.get("t1", 0) or 0),
-        "slow_lo": float(body.get("slow_lo", 4) or 4),
-        "slow_hi": float(body.get("slow_hi", 12) or 12),
-        "slow_step": float(body.get("slow_step", 0.5) or 0.5),
-        "slow_bw": float(body.get("slow_bw", 0.5) or 0.5),
-        "fast_lo": float(body.get("fast_lo", 20) or 20),
-        "fast_hi": float(body.get("fast_hi", 200) or 200),
-        "fast_step": float(body.get("fast_step", 5) or 5),
-        "fast_bw": float(body.get("fast_bw", 10) or 10),
+        # Tort's grid unless the caller names another. See cfc.TORT_*.
+        "slow_lo": float(body.get("slow_lo") or cfcmod.TORT_PHASE[0]),
+        "slow_hi": float(body.get("slow_hi") or cfcmod.TORT_PHASE[1]),
+        "slow_step": float(body.get("slow_step") or cfcmod.TORT_PHASE[2]),
+        "slow_bw": float(body.get("slow_bw") or cfcmod.TORT_PHASE_BW),
+        "fast_lo": float(body.get("fast_lo") or cfcmod.TORT_AMP[0]),
+        "fast_hi": float(body.get("fast_hi") or cfcmod.TORT_AMP[1]),
+        "fast_step": float(body.get("fast_step") or cfcmod.TORT_AMP[2]),
+        "fast_bw": float(body.get("fast_bw") or cfcmod.TORT_AMP_BW),
         "nsurr": int(body.get("nsurr", 0) or 0),
         "seed": int(body.get("seed", 42) or 42),
         "nbin": int(body.get("nbin", cfcmod.NBIN) or cfcmod.NBIN),
@@ -1036,7 +1037,9 @@ def _cfc_spec(body, sess):
         "highpass": float(body.get("highpass", 0) or 0),
         "lowpass": float(body.get("lowpass", 0) or 0),
         "notch": float(body.get("notch", 0) or 0),
-        "cmap": body.get("cmap", "seqblue"),
+        # Jet: MATLAB's default when CallerRoutine.m was written, so a
+        # map from here reads like a map from the paper.
+        "cmap": body.get("cmap") or "jet",
         "invert": bool(body.get("invert", True)),
     }
     if spec["channel"] is None:

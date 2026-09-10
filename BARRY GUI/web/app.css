@@ -6597,6 +6597,21 @@ body.aid-window .xf-tabs { display: none !important; }
   width: 74px; font-size: 11px; color: var(--text-2); font-weight: 600;
 }
 .comod-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+
+/* The grid, stated rather than offered. The vector is set in monospace
+   because it IS a MATLAB expression -- `2:2:50` reads as a range only in
+   that face, and reading as a range is the whole point of printing it. */
+.comod-grid-fixed {
+  margin: 2px 0 8px; padding: 8px 10px;
+  border-left: 2px solid var(--accent-line); background: var(--bg-2);
+}
+.comod-grid-fixed .comod-row { margin: 0 0 4px; align-items: baseline; }
+.comod-grid-fixed code {
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--bg-3); color: var(--accent);
+  font: 12px ui-monospace, Consolas, monospace;
+}
+.comod-grid-fixed > p { margin: 6px 0 0; max-width: 66ch; }
 .comod-est {
   font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
 }
@@ -6688,4 +6703,129 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .tk-actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-top: 10px;
+}
+
+
+/* ---------- the (i) beside a line that needs a chapter ---------- */
+/* Quiet in the sentence, obvious on hover. `vertical-align` rather than a
+   flex parent because it sits inside a paragraph of running text. */
+.why {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 6px; padding: 0;
+  border: 1px solid var(--line); border-radius: 50%;
+  background: transparent; color: var(--text-3);
+  font: 600 10px/1 ui-sans-serif, system-ui, sans-serif;
+  font-style: italic;
+  cursor: pointer; vertical-align: 1px;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.why:hover, .why:focus-visible {
+  color: var(--accent); border-color: var(--accent-line);
+  background: var(--accent-soft); outline: none;
+}
+.band-truth.warn .why { border-color: var(--warn-line, var(--line)); }
+
+/* ---------- the explainer ---------- */
+.cfcg { width: min(1080px, 96vw); }
+.cfcg .mh h3 { margin: 0; }
+.cfcg .mh .sub { margin-left: 10px; }
+
+/* The chapter list. Wraps rather than scrolls: twelve chapters is a table of
+   contents, and a table of contents you have to scroll to read is a menu. */
+.cfcg-nav {
+  flex: none; display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 8px 14px; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+.cfcg-nav .mini { font-size: 11px; }
+
+.cfcg-body { padding: 14px 18px 20px; }
+.cfcg-h {
+  margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text);
+}
+.cfcg-p {
+  margin: 0 0 10px; max-width: 74ch;
+  font-size: 12.5px; line-height: 1.65; color: var(--text);
+}
+.cfcg-sm {
+  margin: 8px 0 12px; max-width: 74ch;
+  font-size: 11.5px; line-height: 1.6; color: var(--text-2);
+}
+
+/* Sliders. One row, wrapping, with the value in a fixed-width slot so the
+   row does not jog sideways as a number changes width. */
+.cfcg-bar {
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+  margin: 12px 0 14px; padding: 10px 12px;
+  border: 1px solid var(--line-soft); border-radius: 8px;
+  background: var(--bg-2);
+}
+.cfcg-slider { display: flex; align-items: center; gap: 8px; }
+.cfcg-slabel {
+  font-size: 11px; color: var(--text-2); white-space: nowrap;
+}
+.cfcg-slider input[type="range"] { width: 132px; accent-color: var(--accent); }
+.cfcg-val {
+  min-width: 68px; font: 11px ui-monospace, Consolas, monospace;
+  color: var(--accent);
+}
+.cfcg-gap { flex: 1; }
+
+.cfcg-fig { margin: 12px 0 6px; }
+.cfcg-cv {
+  display: block; width: 100%;
+  border: 1px solid var(--line-soft); border-radius: 6px;
+  background: var(--bg-2);
+}
+.cfcg-cap {
+  margin: 6px 0 0; max-width: 78ch;
+  font-size: 11px; line-height: 1.55; color: var(--text-3);
+}
+
+/* The measured numbers, given room. These are the point of chapter 6, so
+   they are set larger than the prose rather than buried in it. */
+.cfcg-cost {
+  display: flex; flex-wrap: wrap; gap: 10px 26px;
+  margin: 12px 0; padding: 10px 12px;
+  border-left: 2px solid var(--accent-line); background: var(--bg-2);
+}
+.cfcg-costrow { display: flex; align-items: baseline; gap: 8px; }
+.cfcg-costrow > span:last-child {
+  font-size: 11.5px; color: var(--text-2); max-width: 46ch;
+}
+.cfcg-big {
+  font: 600 15px/1.2 ui-monospace, Consolas, monospace;
+  color: var(--accent); white-space: nowrap;
+}
+
+.cfcg-tbl {
+  border-collapse: collapse; margin: 10px 0 4px; font-size: 11.5px;
+}
+.cfcg-tbl th, .cfcg-tbl td {
+  padding: 4px 14px 4px 0; text-align: right;
+  border-bottom: 1px solid var(--line-soft);
+}
+.cfcg-tbl th:first-child, .cfcg-tbl td:first-child { text-align: left; }
+.cfcg-tbl th {
+  font-weight: 500; color: var(--text-3); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.cfcg-tbl td { font-family: ui-monospace, Consolas, monospace; }
+.cfcg-tbl td.strong { color: var(--accent); font-weight: 600; }
+
+.cfcg-dl { margin: 10px 0 4px; max-width: 78ch; }
+.cfcg-dl dt {
+  margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--text);
+}
+.cfcg-dl dd {
+  margin: 2px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--text-2);
+}
+
+/* Narrow: the sliders stack and the canvases keep their height, because a
+   200px-tall plot squeezed to 90px is not a smaller plot, it is an
+   unreadable one. */
+@media (max-width: 720px) {
+  .cfcg-bar { gap: 8px 12px; }
+  .cfcg-slider input[type="range"] { width: 104px; }
+  .cfcg-body { padding: 12px 12px 18px; }
 }

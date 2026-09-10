@@ -174,7 +174,11 @@ const hd = (t) => p('\n== ' + t + ' ==');
                         { path: SESSION, channel: 0, t0: 100, t1: 140, nsurr: 0 });
   const e50 = await post('/api/cfc/estimate',
                          { path: SESSION, channel: 0, t0: 100, t1: 140, nsurr: 50 });
-  ck('the grid size is known up front', e0.cells === 629, String(e0.cells));
+  /* 25 phase bands x 39 amplitude bands. Tort's grid, which is now what
+     the server defaults to as well as what the window sends -- an estimate
+     built from a different grid from the one that runs is an estimate of
+     something else. */
+  ck('the grid size is known up front', e0.cells === 975, String(e0.cells));
   ck('surrogates are shown to cost much more',
      e50.seconds > e0.seconds * 2,
      e0.seconds + ' s -> ' + e50.seconds + ' s');
@@ -231,20 +235,37 @@ const hd = (t) => p('\n== ' + t + ' ==');
   /* ---------------------------------------------------------------- */
   hd('the map');
   const res = (await get('/api/cfc/result/' + jid)).result;
-  ck('the grid is 17 phase by 37 amplitude',
-     res.mi.length === 17 && res.mi[0].length === 37,
+  /* Tort's grid: PhaseFreqVector 2:2:50 is 25 bands, AmpFreqVector
+     10:5:200 is 39. Asserted as the numbers AND against the axes the
+     result carries, so a grid change shows up here as a disagreement
+     rather than as a harness that quietly measures something else. */
+  ck('the grid is Tort’s 25 phase by 39 amplitude',
+     res.mi.length === 25 && res.mi[0].length === 39,
      res.mi.length + 'x' + res.mi[0].length);
+  ck('the matrix matches the axes it came with',
+     res.mi.length === res.slow.centers.length
+     && res.mi[0].length === res.fast.centers.length,
+     res.slow.centers.length + 'x' + res.fast.centers.length);
+  /* Somewhere on the axes, read off the axes. The phase axis is no longer
+     theta-only, so bounds written in by hand would be a second copy of the
+     grid. */
+  const sC = res.slow.centers, fC = res.fast.centers;
   ck('the peak sits on the axes',
-     res.peak.slow >= 4.25 && res.peak.slow <= 12.25,
-     res.peak.slow.toFixed(2) + ' Hz / ' + Math.round(res.peak.fast) + ' Hz');
+     res.peak.slow >= sC[0] && res.peak.slow <= sC[sC.length - 1]
+     && res.peak.fast >= fC[0] && res.peak.fast <= fC[fC.length - 1],
+     res.peak.slow.toFixed(2) + ' Hz / ' + Math.round(res.peak.fast) + ' Hz'
+     + '  (axes ' + sC[0] + '-' + sC[sC.length - 1] + ' / '
+     + fC[0] + '-' + fC[fC.length - 1] + ')');
   ck('the realised widths of both axes are reported',
-     res.slow.realised_bw.length === 17 && res.fast.realised_bw.length === 37);
+     res.slow.realised_bw.length === sC.length
+     && res.fast.realised_bw.length === fC.length,
+     res.slow.realised_bw.length + '/' + res.fast.realised_bw.length);
   /* The one a reader is most likely to get wrong: the top amplitude row is
      labelled 205 Hz and is about 60 Hz of spectrum. */
+  const topBW = res.fast.realised_bw[res.fast.realised_bw.length - 1];
   ck('the top amplitude band is admitted to be far wider than nominal',
-     res.fast.realised_bw[36] > 5 * res.fast.nominal_bw,
-     res.fast.realised_bw[36].toFixed(1) + ' Hz, asked for '
-       + res.fast.nominal_bw);
+     topBW > 5 * res.fast.nominal_bw,
+     topBW.toFixed(1) + ' Hz, asked for ' + res.fast.nominal_bw);
   ck('how many slow cycles were in the window is reported',
      res.cycles > 100, String(res.cycles));
   ck('no null was claimed when none was run', res.p === undefined);
@@ -487,7 +508,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
   });
   const estTxt = (W().document.getElementById('comodEst') || {}).textContent
     || '';
-  ck('the cost is shown before anything is pressed', /629 cells/.test(estTxt),
+  ck('the cost is shown before anything is pressed', /975 cells/.test(estTxt),
      estTxt);
 
   await ev('BARRY.views.comod.run()');

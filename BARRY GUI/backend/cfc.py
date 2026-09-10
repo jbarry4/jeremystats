@@ -78,6 +78,19 @@ MIN_FILTORDER = 15
 TRANS = 0.15          # fractional width of the transition zones
 NBIN = 18             # 20 degree phase bins, the Tort convention
 
+# The reference grid, from `Reviving CFC/01_core_tort/CallerRoutine.m`:
+#
+#     PhaseFreqVector = 2:2:50;      PhaseFreq_BandWidth = 4;
+#     AmpFreqVector   = 10:5:200;    AmpFreq_BandWidth   = 10;
+#
+# Low edge, top edge, step -- the band runs UPWARD from each vector value
+# (`Pf2 = Pf1 + BandWidth`), so both axes overlap themselves by half and the
+# figure is labelled at the centres. 25 x 39 = 975 cells.
+TORT_PHASE = (2.0, 50.0, 2.0)
+TORT_PHASE_BW = 4.0
+TORT_AMP = (10.0, 200.0, 5.0)
+TORT_AMP_BW = 10.0
+
 
 def eegfilt_order(fs, locutoff):
     """The order eegfilt.m picks for you: 3 * fix(fs / locutoff)."""
