@@ -1,0 +1,221 @@
+{
+  "_at": {
+    "added": "2026-09-09T02:03:39.079537+00:00",
+    "by_label": "2026-09-08T18:35:58.097316+00:00",
+    "events": "2026-09-02T23:21:29.319930+00:00",
+    "gid": "2026-09-02T23:21:29.319930+00:00",
+    "id": "2026-09-02T23:21:29.319930+00:00",
+    "label_names": "2026-09-08T18:35:58.097316+00:00",
+    "mouse": "2026-09-02T23:21:29.319930+00:00",
+    "n": "2026-09-02T23:21:29.319930+00:00",
+    "name": "2026-09-02T23:21:29.319930+00:00",
+    "note": "2026-09-02T23:21:29.319930+00:00",
+    "project": "2026-09-02T23:21:29.319930+00:00",
+    "recording_start": "2026-09-02T23:21:29.319930+00:00",
+    "schema": "2026-09-02T23:21:29.319930+00:00",
+    "session": "2026-09-02T23:21:29.319930+00:00",
+    "session_key": "2026-09-02T23:21:29.319930+00:00",
+    "session_label": "2026-09-02T23:21:29.319930+00:00",
+    "session_loose_key": "2026-09-02T23:21:29.319930+00:00",
+    "session_path": "2026-09-02T23:21:29.319930+00:00",
+    "source": "2026-09-02T23:21:29.319930+00:00",
+    "specified": "2026-09-02T23:21:29.319930+00:00",
+    "type": "2026-09-02T23:21:29.319930+00:00",
+    "type_name": "2026-09-02T23:21:29.319930+00:00",
+    "units": "2026-09-02T23:21:29.319930+00:00",
+    "version": "2026-09-10T17:48:48.742011+00:00"
+  },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-09-08T22:02:26-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-09T02:02:26.732157+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:39-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-09T02:03:39.079537+00:00"
+      ]
+    },
+    "versions": {
+      "v0-68550494": [
+        "set",
+        "2026-09-09T02:03:39.079537+00:00"
+      ],
+      "v1-7bee693f": [
+        "set",
+        "2026-09-09T02:03:39.079537+00:00"
+      ],
+      "{\"at\": \"2026-09-10T13:44:37-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 4}, \"machine\": \"BarryLab\", \"n\": 4, \"note\": \"GUI final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-10T17:48:48.742011+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T17:48:48.742011+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "garbage": 4
+  },
+  "events": [
+    {
+      "start": 531.35
+    },
+    {
+      "start": 547.079
+    },
+    {
+      "start": 625.815
+    },
+    {
+      "start": 1548.814
+    }
+  ],
+  "gid": "s72df5edc7210",
+  "history": [
+    {
+      "at": "2026-09-08T22:02:26-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:39-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
+    }
+  ],
+  "id": "340307eba315",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
+  "mouse": 11,
+  "n": 4,
+  "name": "DS candidates (ETS)",
+  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "project": "PTEN",
+  "recording_start": "2023-07-25T14:40:32",
+  "schema": 1,
+  "session": 10,
+  "session_key": "m011_s010_2023-07-25_14-40-32",
+  "session_label": "PTEN m11 s10 2023-07-25",
+  "session_loose_key": "m011_s010",
+  "session_path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m11s10_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 2,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 4
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-68550494",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 4,
+      "note": "Imported from ETS dentate-spike export. 4 candidates, none decided yet.",
+      "snap": [
+        [
+          531.35,
+          null
+        ],
+        [
+          547.079,
+          null
+        ],
+        [
+          625.815,
+          null
+        ],
+        [
+          1548.814,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "garbage": 4
+      },
+      "changed": 4,
+      "gained": 0,
+      "id": "v1-7bee693f",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 garbage": 4
+      },
+      "n": 4,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 4 of 4 decided.",
+      "rebuilt_from": {
+        "folder": "M11_HF2_s10jul25",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          531.35,
+          "garbage"
+        ],
+        [
+          547.079,
+          "garbage"
+        ],
+        [
+          625.815,
+          "garbage"
+        ],
+        [
+          1548.814,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "at": "2026-09-10T13:44:37-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 4
+      },
+      "machine": "BarryLab",
+      "n": 4,
+      "note": "GUI final curation\n-RY",
+      "snap_elsewhere": true,
+      "v": 2
+    }
+  ]
+}
