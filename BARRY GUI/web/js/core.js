@@ -2469,6 +2469,8 @@ function applyTheme(theme, remember) {
   paintFavicon();
   // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  // Same for the explainer's figures, if it happens to be open.
+  if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own

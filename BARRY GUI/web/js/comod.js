@@ -32,20 +32,33 @@ BARRY.views.comod = (function () {
   const q = {
     channel: null,
     t0: 0, t1: 0,
-    /* Step and bandwidth are different numbers and the amplitude axis is
-       where that bites. params.m is `fastVec = 20:5:200` with `fastBW = 10`:
-       bands 10 Hz wide, stepped by 5, so they OVERLAP by half -- that is the
-       newFCSE convention, not an oversight. Defaulting the width to the step
-       made 5 Hz bands, which put the centres on 22.5, 27.5 ... instead of
-       25, 30 ... and quietly reported a different grid from the one the lab
-       has been running for years.
+    /* Tort's grid, from `01_core_tort/CallerRoutine.m`:
 
-       The phase axis happens to be contiguous (0.5 step, 0.5 wide), which is
-       why the mistake only showed up in the amplitude readout. */
-    slow_lo: 4, slow_hi: 12, slow_step: 0.5, slow_bw: 0.5,
-    fast_lo: 20, fast_hi: 200, fast_step: 5, fast_bw: 10,
+           PhaseFreqVector = 2:2:50;    PhaseFreq_BandWidth = 4;
+           AmpFreqVector   = 10:5:200;  AmpFreq_BandWidth   = 10;
+
+       Not offered as a choice. These are the reference implementation's
+       numbers and a map drawn on them is comparable with every figure in
+       the literature that used them; a map drawn on a grid somebody typed
+       into eight fields is comparable with nothing.
+
+       Step and bandwidth are different numbers on BOTH axes here, and
+       deliberately: 4 Hz bands stepped by 2, and 10 Hz bands stepped by 5,
+       so each axis overlaps itself by half. That is Tort's convention. The
+       band runs upward from the vector value -- `Pf2 = Pf1 + BandWidth` --
+       and the figure is labelled at the centre, `v + bw/2`, which is what
+       `cfc.centers` gives.
+
+       25 x 39 = 975 cells. */
+    slow_lo: 2, slow_hi: 50, slow_step: 2, slow_bw: 4,
+    fast_lo: 10, fast_hi: 200, fast_step: 5, fast_bw: 10,
     nsurr: 0, surrN: 50,
-    cmap: 'seqblue',
+    /* Jet, because MATLAB's default was jet when that routine was written
+       and a map from here should read like a map from the paper. The
+       argument against a rainbow has not gone away -- it is in
+       `fig11_colour_lies.py` and the picker still offers Sequential -- but
+       the default matches the reference. */
+    cmap: 'jet',
   };
 
   let ctx = null;         // the opener's live state
@@ -68,18 +81,6 @@ BARRY.views.comod = (function () {
      eight-stop approximation of the real one. This is a separate window; it
      asks the server itself. */
   let cmaps = [];
-
-  /* name, phase lo/hi/step/bw, amplitude lo/hi/step/bw, why. */
-  const GRIDS = [
-    ['Theta (beta run)', 4, 12, 0.5, 0.5, 20, 200, 5, 10,
-     'The params.m grid: theta phase against 20-200 Hz amplitude, 10 Hz '
-     + 'bands stepped by 5. 629 cells.'],
-    ['Full lab sweep', 1, 26, 0.5, 0.5, 20, 200, 5, 10,
-     'What newFCSE.m ran: 1-26 Hz phase. 51 x 37 = 1887 cells, three times '
-     + 'the wait.'],
-    ['Quick look', 4, 12, 1, 1, 20, 160, 10, 10,
-     'Coarse, for deciding whether a window is worth the full grid.'],
-  ];
 
   /* ==================================================================
      Talking to the window that opened us
@@ -343,39 +344,33 @@ BARRY.views.comod = (function () {
     }
 
     // ---- the grid ----
-    box.appendChild(el('div', { class: 'section-label', text: 'The grid' }));
-    box.appendChild(el('div', { class: 'comod-row' },
-      GRIDS.map(([name, sl, sh, ss, sb, fl, fh, fp, fb, why]) => el('button', {
-        class: 'pill' + (q.slow_lo === sl && q.slow_hi === sh
-                         && q.slow_step === ss && q.fast_lo === fl
-                         && q.fast_hi === fh && q.fast_step === fp
-                         && q.fast_bw === fb ? ' active' : ''),
-        text: name, title: why,
-        onclick: () => {
-          Object.assign(q, { slow_lo: sl, slow_hi: sh, slow_step: ss,
-                             slow_bw: sb, fast_lo: fl, fast_hi: fh,
-                             fast_step: fp, fast_bw: fb });
-          refreshEstimate(); render();
-        },
-      }))));
+    /* The grid, stated rather than offered.
 
-    box.appendChild(el('div', { class: 'comod-row' }, [
-      el('span', { class: 'comod-axis', text: 'Phase' }),
-      num('slow_lo', 'from', 'Lowest phase band', { step: 0.5, min: 0.5 }),
-      num('slow_hi', 'to', 'Highest phase band', { step: 0.5, min: 1 }),
-      num('slow_step', 'step', 'Spacing of the phase bands', { step: 0.1, min: 0.1 }),
-      num('slow_bw', 'width', 'How wide each band is. Equal to the step means '
-          + 'they tile; wider means they overlap.', { step: 0.1, min: 0.1 }),
-      el('span', { class: 'hint', text: axisNote('slow') }),
-    ]));
-    box.appendChild(el('div', { class: 'comod-row' }, [
-      el('span', { class: 'comod-axis', text: 'Amplitude' }),
-      num('fast_lo', 'from', 'Lowest amplitude band', { step: 5, min: 5 }),
-      num('fast_hi', 'to', 'Highest amplitude band', { step: 5, min: 10 }),
-      num('fast_step', 'step', 'Spacing of the amplitude bands', { step: 1, min: 1 }),
-      num('fast_bw', 'width', 'How wide each band is. newFCSE.m uses 10 Hz '
-          + 'bands stepped by 5, so they overlap by half.', { step: 1, min: 1 }),
-      el('span', { class: 'hint', text: axisNote('fast') }),
+       There were eight number fields and three preset buttons here, which
+       made the first thing anybody met a decision about a grid they had no
+       way to make yet -- and two of those presets were this lab's own
+       sweeps rather than the reference one. It runs Tort's grid. */
+    box.appendChild(el('div', { class: 'section-label', text: 'The grid' }));
+    box.appendChild(el('div', { class: 'comod-grid-fixed' }, [
+      el('div', { class: 'comod-row' }, [
+        el('span', { class: 'comod-axis', text: 'Phase' }),
+        el('code', { text: '2:2:50 Hz' }),
+        el('span', { class: 'hint',
+                     text: '4 Hz bands, stepped by 2 — ' + axisNote('slow')
+                         + ', overlapping by half' }),
+      ]),
+      el('div', { class: 'comod-row' }, [
+        el('span', { class: 'comod-axis', text: 'Amplitude' }),
+        el('code', { text: '10:5:200 Hz' }),
+        el('span', { class: 'hint',
+                     text: '10 Hz bands, stepped by 5 — ' + axisNote('fast')
+                         + ', overlapping by half' }),
+      ]),
+      el('p', { class: 'hint',
+        text: 'Tort’s defaults, from CallerRoutine.m — '
+            + 'PhaseFreqVector 2:2:50 with a 4 Hz bandwidth, AmpFreqVector '
+            + '10:5:200 with 10, and 18 phase bins. Fixed, so a map from '
+            + 'here is comparable with a map from the paper.' }),
     ]));
 
     /* The thing a comodulogram axis never says about itself.
@@ -389,9 +384,9 @@ BARRY.views.comod = (function () {
       text: 'Band edges are nominal. eegfilt designs its filter from the '
           + 'lower cutoff, so every band comes out about 0.30 × that wide — '
           + 'the ' + q.fast_hi + ' Hz amplitude row is roughly '
-          + Math.round(0.3 * q.fast_hi) + ' Hz of spectrum, not '
-          + q.fast_step + '. The map shows the measured widths once it has '
-          + 'run.' }));
+          + Math.round(0.3 * q.fast_hi) + ' Hz of spectrum, not the '
+          + q.fast_bw + ' Hz it is labelled. The map shows the measured '
+          + 'widths once it has run.' }));
 
     // ---- surrogates ----
     box.appendChild(el('div', { class: 'section-label', text: 'Significance' }));

@@ -17,7 +17,82 @@ This file is the only place the version is written. The app reads it.
 
 ## 2026.09.10.1 — CFCScope
 
+### Fixed
+
+- **The leftover-clearing added yesterday broke `bank.html`'s own count.**
+  It clears the entries earlier runs left behind, and that clearing landed
+  between the point where the harness counted the bank and the point where it
+  compared — so every leftover deleted counted against the entry about to
+  be banked, and the check read "77 -> 74". Counted from where banking
+  actually starts now, and it passes three runs back to back, which is the
+  case that broke it.
+
+- **The comodulogram window snapped to a voltage trace a moment after it
+  opened.** It is opened as `/?role=comod#comod` and names no recording,
+  because it reads the window and the channel from its opener. The boot-time
+  "reopen what was last open" guard says it skips a window "launched with its
+  own target (a pop-out, or a deep link)" — but it tested only for
+  `?csc=`, which pane pop-outs pass and this one cannot. So it fell through:
+  the window drew its form, and 250 ms later `restoreLast()` reopened the
+  last recording and finished with `setView('xplore')`. The three toasts were
+  the only clue — "Reopening…", "view restored", "Loaded 2 events from
+  Events.nev". The guard now excludes any window carrying a `role`, which is
+  what "a pop-out" means here; every pop-out sets one.
+
+- **The Comodulogram button spent its first seconds under a stack of
+  toasts.** `cfcscope.js` removed the `--bottom-bar` variable on exit and
+  never set it, so nothing reserved the height its bar occupies — and
+  toasts are pinned bottom-right above exactly that spot, three of them on
+  entering the mode. StrataScope sets the same variable and says why:
+  "without this one covers Export CSV whenever anything is saved."
+
+- **A typo in a band field asked the server for 60 GiB.** `0.05` typed where
+  `5` was meant is a 180000-tap filter, and `firls` designs one by solving a
+  least-squares system the size of the order — reported to the browser as
+  numpy's complaint about an array shape. There is now a 1 GiB design budget
+  in `cfc.eegfilt_taps`, so it covers the comodulogram as well as the panel,
+  and it refuses in a sentence naming the number to change. A 4 Hz band
+  (2250 taps) and 1 Hz delta (9000) design exactly as before.
+
+- **`badsync` was measuring the opposite of what it says.** It assumed the
+  channel it tests starts unmarked, so once a mark was left behind its first
+  click cleared instead of marked and all five of its remaining checks
+  reported backwards — which is how a harness passes five runs and then
+  reports five failures pointing at the wrong thing. It now clears the
+  channel first if it finds it marked, and says so. Its checks also asked
+  whether the joined list "1,4,14" *contains* "4", which is true of 14 and
+  40.
+
 ### Added
+
+- **An explainer behind the bandwidth line, opened by the (i) beside it.**
+  The band-power panel prints "Really 1.14–3.42 Hz wide, not 0.5. The bands
+  overlap — this is a smooth read of where the rhythm sits, not 17
+  separate measurements." The line is true and short, and short is what makes
+  it repeatable — but it is a fact about filter length that takes a chapter
+  to earn, and anyone meeting it for the first time had nowhere to go. There
+  is now an (i) in that sentence, and it opens the chapter.
+
+  Twelve chapters, from "a recording is a voltage over time" to "what not to
+  claim": frequency, filtering, amplitude and phase, band-resolved theta, the
+  bandwidth and what overlap costs, coupling, the modulation index, the
+  comodulogram, surrogates, the controls mapped one by one, and the ways the
+  arithmetic produces a number that means nothing.
+
+  Nothing in it is a picture. One synthetic recording is built from sliders at
+  the top and carried through every chapter — spectrum, filter, envelope,
+  phase, band raster, comodulogram, surrogate histogram — so moving the
+  coupling slider in chapter 7 changes chapter 9's map for the same reason it
+  changes a real one. The comodulogram there is 195 live modulation indices,
+  recomputed as you drag. A guide made of screenshots cannot be interrogated.
+
+  Chapter 6 is where the (i) lands. It draws every row of the panel as the
+  width it actually covers, and prints what the overlap costs: at three
+  cycles the seventeen rows carry about 3.5 independent numbers. Drag the
+  filter length to 24 and the bands narrow to 0.17–0.50 Hz and all seventeen
+  rows become independent — and the filter now holds six seconds of
+  recording, so chapter 5's drifting rhythm loses its slope. That trade is
+  the whole reason the line exists.
 
 - **CFCScope, in the Toolkit.** A third mode beside DS curation and
   StrataScope, and the first that decides nothing: it opens a recording in

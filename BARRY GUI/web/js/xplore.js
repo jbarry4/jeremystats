@@ -1874,7 +1874,18 @@ BARRY.views.xplore = (function () {
                scale: b.scale === 'linear' ? 'log' : 'linear' }),
            }),
          ])),
-      /* The line this panel exists to be able to print. */
+      /* The line this panel exists to be able to print -- and a way in to
+         why it is true.
+
+         The line is short, and short is what makes it repeatable. But "the
+         bands overlap" is a fact about filter length that takes a chapter to
+         earn, and somebody meeting it for the first time has nowhere to go
+         from here. The (i) opens that chapter, with the eleven around it for
+         anyone who wants the whole story rather than this one line's worth.
+
+         Inside the paragraph, after the sentence: a button after the
+         paragraph would sit on its own line, and this belongs to the
+         sentence. */
       el('p', {
         class: 'hint band-truth' + (overlap ? ' warn' : ''),
         title: 'eegfilt designs 3*fix(fs/f1) taps from the LOW cutoff, so the '
@@ -1882,14 +1893,29 @@ BARRY.views.xplore = (function () {
              + 'ask for. The rows of this panel overlap, and reading them as '
              + 'independent measurements is the mistake this line exists to '
              + 'stop.',
-        text: (measured ? 'Really ' : 'Will be about ')
-            + lowW.toFixed(2) + '–' + hiW.toFixed(2) + ' Hz wide, '
-            + 'not ' + b.step + '. '
-            + (overlap ? 'The bands overlap — this is a smooth read of '
-                       + 'where the rhythm sits, not ' + n + ' separate '
-                       + 'measurements.'
-                       : 'Wide enough apart to read separately.'),
-      }),
+      }, [
+        el('span', {
+          text: (measured ? 'Really ' : 'Will be about ')
+              + lowW.toFixed(2) + '–' + hiW.toFixed(2) + ' Hz wide, '
+              + 'not ' + b.step + '. '
+              + (overlap ? 'The bands overlap — this is a smooth read of '
+                         + 'where the rhythm sits, not ' + n + ' separate '
+                         + 'measurements.'
+                         : 'Wide enough apart to read separately.'),
+        }),
+        el('button', {
+          class: 'why',
+          text: 'i',
+          'aria-label': 'Why the bands are wider than the step you asked for',
+          title: 'Why 0.5 Hz is not 0.5 Hz — and what theta power and '
+               + 'the comodulogram are doing, from the beginning',
+          onclick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            BARRY.cfcGuide.open('width');
+          },
+        }),
+      ]),
       res.peak_band ? el('p', { class: 'hint',
         text: 'Strongest in this window: ' + res.peak_band.toFixed(2) + ' Hz'
             + (res.peak_power ? '  ·  ' + res.peak_power.toPrecision(3)

@@ -309,6 +309,15 @@ const post = async (p, b) => (await fetch(p, {
         + ',  produced-by = ' + JSON.stringify(pipeIn.value)
         + ',  added-by = ' + JSON.stringify(fieldFor('Added by').value),
         'note');
+    /* Counted again, here.
+
+       `nBefore` was taken before this harness cleared the entries earlier
+       runs left behind, and the clearing happens in between -- so every
+       leftover deleted counted against the one entry about to be banked,
+       and the check read "77 -> 74". Banking adds an entry; that is the
+       claim, and it has to be measured from the state banking starts
+       from. */
+    const nClean = (await (await fetch('/api/bank')).json()).entries.length;
     const toasts = [];
     const origToast = W.toast;
     W.toast = function (m, k) { toasts.push(k + ': ' + m); return origToast.apply(this, arguments); };
@@ -317,8 +326,8 @@ const post = async (p, b) => (await fetch(p, {
     const after = await (await fetch('/api/bank')).json();
     W.toast = origToast;
     if (toasts.length) say('  toasts: ' + toasts.join(' // '), 'note');
-    check('the entry is banked', after.entries.length > nBefore,
-          nBefore + ' -> ' + after.entries.length);
+    check('the entry is banked', after.entries.length > nClean,
+          nClean + ' -> ' + after.entries.length);
     /* One entry per set, so the selection is spread across all of them.
        Checking only the first was fine when a recording had one set on it
        and wrong the moment it had two. */
