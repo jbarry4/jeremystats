@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "digest_seen": "2026-09-09T02:30:43.953785+00:00",
+    "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
+    "radio": "2026-09-09T20:08:24.883478+00:00",
+    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "updated": "2026-09-10T00:05:07.512643+00:00"
+  },
+  "_keys": {
+    "themes": {
+      "BarryLab": [
+        "set",
+        "2026-09-09T15:33:56.426615+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-08T15:39:52.477222+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-09-08T17:53:47.145828+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T00:05:07.512643+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "digest_seen": "2026-09-08T02:30:43.952468+00:00",
+  "fav_scripts": [],
+  "pipeline_folders": {
+    "session": "demo:long-session"
+  },
+  "radio": {
+    "agreed": true,
+    "small": true,
+    "station": "rFZHOHl-L8A",
+    "volume": 55
+  },
+  "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m",
+    "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
+    "IED/08_Anatomical_Labeling/blank_png_gen.py",
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
+    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
+    "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
+    "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
+    "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
+    "IED/05_Session_Pipeline/components/SolidSputterAvgStack.m",
+    "IED/02_CSC_Conversion/CSC2microVoltPatchCode.m",
+    "IED/03_IED_Detection/Analyze_MatFile_Start.m",
+    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
+  ],
+  "themes": {
+    "BarryLab": "horizon-night",
+    "DESKTOP-4H65AI7": "horizon-night",
+    "Home": "dark",
+    "LCOM549913": "dark"
+  },
+  "updated": "2026-09-09T20:05:07-04:00"
+}
