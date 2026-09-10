@@ -6,31 +6,31 @@
     "converted": "2026-09-02T23:51:19.871687+00:00",
     "created": "2026-09-02T23:51:19.871687+00:00",
     "duration_s": "2026-09-02T23:51:19.871687+00:00",
-    "extraction_note": "2026-09-09T01:33:17.550077+00:00",
+    "extraction_note": "2026-09-09T05:58:20.319775+00:00",
     "first_seen_by": "2026-09-02T23:51:19.871687+00:00",
-    "fissure_channel": "2026-09-09T01:33:17.550077+00:00",
+    "fissure_channel": "2026-09-09T05:58:20.319775+00:00",
     "fs": "2026-09-02T23:51:19.871687+00:00",
     "gid": "2026-09-02T23:51:19.871687+00:00",
     "group": "2026-09-02T23:51:19.871687+00:00",
     "has_video": "2026-09-02T23:51:19.871687+00:00",
     "hemisphere": "2026-09-09T00:00:51.440469+00:00",
     "hemisphere_source": "2026-09-09T00:00:51.440469+00:00",
-    "hilus_channel": "2026-09-09T01:33:17.550077+00:00",
+    "hilus_channel": "2026-09-09T05:58:20.319775+00:00",
     "key": "2026-09-02T23:51:19.871687+00:00",
     "label": "2026-09-02T23:51:19.871687+00:00",
     "loose_key": "2026-09-02T23:51:19.871687+00:00",
     "mouse": "2026-09-02T23:51:19.871687+00:00",
     "n_channels": "2026-09-02T23:51:19.871687+00:00",
-    "needs_processing": "2026-09-09T01:33:17.550077+00:00",
+    "needs_processing": "2026-09-09T05:58:20.319775+00:00",
     "project": "2026-09-02T23:51:19.871687+00:00",
     "project_source": "2026-09-02T23:51:19.871687+00:00",
-    "reference_channels_source": "2026-09-09T01:33:17.550077+00:00",
+    "reference_channels_source": "2026-09-09T05:58:20.319775+00:00",
     "retired": "2026-09-03T13:40:37.791451+00:00",
-    "ripple_channel": "2026-09-09T01:33:17.550077+00:00",
+    "ripple_channel": "2026-09-09T05:58:20.319775+00:00",
     "schema": "2026-09-02T23:51:19.871687+00:00",
     "session": "2026-09-02T23:51:19.871687+00:00",
     "start": "2026-09-02T23:51:19.871687+00:00",
-    "updated": "2026-09-09T01:33:17.550077+00:00",
+    "updated": "2026-09-09T13:48:21.648035+00:00",
     "view_state": "2026-09-08T21:01:03.295133+00:00"
   },
   "_keys": {
@@ -57,6 +57,10 @@
         "set",
         "2026-09-04T19:01:08.241585+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:21.648035+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T20:37:13.365963+00:00"
@@ -68,7 +72,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T01:33:17.550077+00:00",
+    "at": "2026-09-09T13:48:21.648035+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -87,22 +91,22 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1863.0485333333334,
-  "extraction_note": "Bad channel hit (8) for Ripple (CA1 SP) -> moving below.",
+  "extraction_note": null,
   "first_seen_by": "scan",
-  "fissure_channel": 24,
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "s0a1cd99454b9",
   "group": "PTEN",
   "has_video": true,
   "hemisphere": "R",
   "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
-  "hilus_channel": 44,
+  "hilus_channel": null,
   "key": "m033_s008_2024-06-14_14-16-58",
   "label": "PTEN m33 s8 2024-06-14",
   "loose_key": "m033_s008",
   "mouse": 33,
   "n_channels": 64,
-  "needs_processing": false,
+  "needs_processing": null,
   "paths": [
     "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
     "G:\\PTEN\\M33_s8",
@@ -111,9 +115,9 @@
   ],
   "project": "PTEN",
   "project_source": "guessed",
-  "reference_channels_source": "PTEN Toothy Data .xlsx",
+  "reference_channels_source": null,
   "retired": false,
-  "ripple_channel": 9,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -122,6 +126,13 @@
       "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
       "root": null,
       "scan": null
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:21-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T16:37:12-04:00",
@@ -141,7 +152,7 @@
   "session": 8,
   "start": "2024-06-14T14:16:58",
   "updated": {
-    "at": "2026-09-08T21:33:17-04:00",
+    "at": "2026-09-09T09:48:21-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

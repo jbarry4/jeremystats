@@ -337,10 +337,160 @@
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
+/* ---- Jirai Kei: black ground, baby pink, white ----
+
+   The signal colours are the whole difficulty here. `--err` marks a failed
+   run and `--warn` a health note, and in a palette built on pink an error
+   drawn in pink is invisible as a warning. So the accent stays pale
+   (#ff9ec7) and the error is vivid (#ff2d55) -- far enough apart in
+   saturation and lightness to read as different things at a glance -- and
+   `--ok` is mint, which nothing else in this palette uses. */
+:root[data-theme="jirai"] {
+  --bg:        #0c0710;
+  --bg-2:      #140b18;
+  --bg-3:      #1d1024;
+  --bg-hover:  #271633;
+  --line:      #33203d;
+  --line-soft: #241629;
+
+  --text:      #fbeaf3;
+  --text-2:    #d3a8c0;
+  --text-3:    #9c7590;
+
+  --accent:      #ff9ec7;
+  --accent-soft: rgba(255, 158, 199, 0.15);
+  --accent-line: rgba(255, 158, 199, 0.45);
+  --on-accent:   #2b0a1a;
+
+  --ok:      #8fe0b8;
+  --ok-soft: rgba(143, 224, 184, 0.15);
+  /* Amber, deliberately outside the palette: a health note has to stop
+     looking like decoration. */
+  --warn:      #ffd47a;
+  --warn-soft: rgba(255, 212, 122, 0.15);
+  --err:      #ff2d55;
+  --on-err:   #2e0510;
+  --err-soft: rgba(255, 45, 85, 0.16);
+
+  /* The ribbon colour. */
+  --accent-2:      #d9b8ff;
+  --accent-2-soft: rgba(217, 184, 255, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #ff9ec7;
+  --c2: #d9b8ff;
+  --c3: #8fe0b8;
+  --c4: #ffd47a;
+  --c5: #a9819c;
+
+  --trace: #ff9ec7;
+  --event: #d9b8ff;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.62);
+}
+
+/* ---- Jirai Shiro: the white one ----
+
+   Same wardrobe, inverted. The pastel cannot carry text on white -- baby
+   pink on #fffafc is about 1.5:1 -- so the accent is that hue darkened
+   until it clears 4.5:1 and the pastel is kept for `--accent-soft` and the
+   swatch. Warn goes amber-brown rather than rose, or it would be a second
+   shade of the accent. */
+:root[data-theme="jirai-shiro"] {
+  --bg:        #fffafc;
+  --bg-2:      #fdf1f6;
+  --bg-3:      #f8e3ec;
+  --bg-hover:  #f2d5e2;
+  --line:      #e6c3d3;
+  --line-soft: #f4dde8;
+
+  --text:      #2a1622;
+  --text-2:    #6b4457;
+  --text-3:    #9c7387;
+
+  --accent:      #b03a68;
+  --accent-soft: rgba(176, 58, 104, 0.11);
+  --accent-line: rgba(176, 58, 104, 0.40);
+  --on-accent:   #ffffff;
+
+  --ok:      #2f7d63;
+  --ok-soft: rgba(47, 125, 99, 0.12);
+  --warn:      #9a5a12;
+  --warn-soft: rgba(154, 90, 18, 0.12);
+  /* Measured, not chosen by eye: #c0203f against the #b03a68 accent is
+     1.04:1 -- the same lightness, so a failed run looked like an accent.
+     This is 1.62:1 from it and 9.0:1 on the page. */
+  --err:      #8f0f22;
+  --on-err:   #ffffff;
+  --err-soft: rgba(143, 15, 34, 0.11);
+
+  --accent-2:      #6b3fa0;
+  --accent-2-soft: rgba(107, 63, 160, 0.12);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #b03a68;
+  --c2: #6b3fa0;
+  --c3: #2f7d63;
+  --c4: #9a5a12;
+  --c5: #9c7387;
+
+  --trace: #b03a68;
+  --event: #6b3fa0;
+  --shadow: 0 8px 28px rgba(42, 22, 34, 0.14);
+}
+
+/* ---- Jirai Yami: plum, lavender and sick mint ----
+
+   The yami-kawaii end of the same look. Lavender takes the accent, which
+   leaves pink free to be `--accent-2`, and the error can then be a plain
+   pink-red without competing with it. */
+:root[data-theme="jirai-yami"] {
+  --bg:        #120d1c;
+  --bg-2:      #191227;
+  --bg-3:      #221833;
+  --bg-hover:  #2d2142;
+  --line:      #3a2b52;
+  --line-soft: #281d3a;
+
+  --text:      #efe7fb;
+  --text-2:    #bda9d8;
+  --text-3:    #8b78a8;
+
+  --accent:      #c9a7ff;
+  --accent-soft: rgba(201, 167, 255, 0.16);
+  --accent-line: rgba(201, 167, 255, 0.46);
+  --on-accent:   #170d26;
+
+  --ok:      #9ff2d0;
+  --ok-soft: rgba(159, 242, 208, 0.15);
+  --warn:      #ffd166;
+  --warn-soft: rgba(255, 209, 102, 0.15);
+  /* 1.32:1 from the lavender accent was too close to mean anything; this
+     is 1.97:1 from it, 4.8:1 on the page, and 2.8:1 from the amber warn. */
+  --err:      #f42a53;
+  --on-err:   #2d0713;
+  --err-soft: rgba(244, 42, 83, 0.17);
+
+  --accent-2:      #ff9ec7;
+  --accent-2-soft: rgba(255, 158, 199, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #c9a7ff;
+  --c2: #ff9ec7;
+  --c3: #9ff2d0;
+  --c4: #ffd166;
+  --c5: #9184ad;
+
+  --trace: #c9a7ff;
+  --event: #ff9ec7;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+}
+
 /* Native controls and scrollbars follow whichever family the theme is in. */
-:root[data-theme="parchment"], :root[data-theme="horizon"] { color-scheme: light; }
+:root[data-theme="parchment"], :root[data-theme="horizon"],
+:root[data-theme="jirai-shiro"] { color-scheme: light; }
 :root[data-theme="slate"], :root[data-theme="phosphor"],
-:root[data-theme="horizon-night"] { color-scheme: dark; }
+:root[data-theme="horizon-night"], :root[data-theme="jirai"],
+:root[data-theme="jirai-yami"] { color-scheme: dark; }
 
 /* ---- the picker ---- */
 .theme-pop {
@@ -348,6 +498,10 @@
   background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
   padding: 5px; display: flex; flex-direction: column; gap: 2px;
+  /* Ten themes is taller than this was drawn for, and it grows upward from
+     the rail -- so on a short window the top of the list left the screen
+     with no way to reach it. */
+  max-height: calc(100vh - 96px); overflow-y: auto;
 }
 .theme-opt {
   display: flex; align-items: center; gap: 8px; width: 100%;
@@ -5424,12 +5578,6 @@ body.aid-window .xf-tabs { display: none !important; }
   padding: 0 8px; background: var(--bg-2);
   border-bottom: 1px solid var(--line);
 }
-/* Said before it is used, not after: these reach every pane at once. */
-.xf-master-tag {
-  flex: none; font-size: 9.5px; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .05em;
-  padding-right: 8px; border-right: 1px solid var(--line-soft);
-}
 .pane-ctl.is-master {
   flex: 1; min-width: 0; border-bottom: 0; background: transparent;
 }
@@ -5439,11 +5587,6 @@ body.aid-window .xf-tabs { display: none !important; }
    strips that are no longer there. */
 .pane-grid.panes-6 .pane-head { padding: 4px 8px; }
 .pane-grid.panes-6 .pane-head .pane-meta { display: inline; }
-
-@media (max-width: 1100px) {
-  /* The tag is the first thing to go: the controls are the point. */
-  .xf-master-tag { display: none; }
-}
 
 /* A standing notice in a pane head: something is not being drawn the way it
    normally is. In the header rather than only in the menu that set it,
@@ -5767,7 +5910,20 @@ body.aid-window .xf-tabs { display: none !important; }
   padding: 0 8px 0 2px; white-space: nowrap;
 }
 /* Armed: something is selected, so these label rather than pick up a brush. */
-.strata-brush.arm { border-color: var(--accent-line, rgba(75, 199, 240, .4)); }
+/* Armed: something is selected, so these label it rather than pick up a
+   brush.
+
+   NOT via `border-color`. The layer's own colour lives in
+   `border-left: 3px solid var(--cat)`, and the shorthand overrides the
+   left side along with the other three -- so arming every button wiped the
+   colour off all fifteen of them, which is most of how they are told apart.
+   A ring outside the border says the same thing and touches nothing. */
+.strata-brush.arm {
+  box-shadow: 0 0 0 1px var(--accent-line, rgba(75, 199, 240, .45));
+}
+.strata-brush.arm:hover {
+  box-shadow: 0 0 0 1px var(--accent);
+}
 .strata-brush.clearone { opacity: .8; }
 .strata-brush.clearone:disabled { opacity: .35; cursor: default; }
 
@@ -5903,3 +6059,473 @@ body.aid-window .xf-tabs { display: none !important; }
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ==========================================================================
+   Which device
+   ==========================================================================
+   Errors group per machine now, and the Debug view can show a remote
+   machine's feed instead of this one's request trail. One selector, shared,
+   because "the rig" is one thought.
+   ========================================================================== */
+.dev-bar { margin-bottom: 6px; }
+.dev-bar-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); margin-right: 2px;
+}
+.dev-bar .mini { display: flex; align-items: center; gap: 5px; }
+/* Unknown is not offline. A machine with errors on record but no row in the
+   device table has never synced from here, which is a third state. */
+.dev-dot.unknown { background: var(--line); }
+
+.dev-feed { display: flex; flex-direction: column; gap: 1px; }
+.dev-feed-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 2px 5px; border-radius: 3px;
+}
+.dev-feed-row:hover { background: var(--bg-3); }
+.dev-feed-row.err { background: var(--err-soft); color: var(--err); }
+.dfr-at { color: var(--text-3); flex: none; }
+.dev-feed-row.err .dfr-at { color: var(--err); }
+.dfr-kind { color: var(--text-3); width: 8px; flex: none; }
+.dev-feed-row.err .dfr-kind { color: var(--err); font-weight: 700; }
+.dfr-what { color: var(--text); min-width: 150px; }
+.dev-feed-row.err .dfr-what { color: var(--err); }
+.dfr-detail {
+  color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   What changed since you last looked
+   -------------------------------------------------------------------------- */
+.digest {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-2);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.digest.quiet {
+  border-left-color: var(--line);
+  padding: 8px 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  background: none;
+}
+.digest-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.digest.shut .digest-head { border-bottom: none; }
+.digest-when { color: var(--text-3); font-size: 12px; }
+.digest-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.digest-line { font-size: 13px; }
+.digest-err { color: var(--err); font-weight: 600; }
+.digest-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.digest-sess {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 10px; align-items: baseline;
+  font-size: 12px; padding: 2px 0;
+  border-top: 1px dotted var(--line);
+}
+.digest-sess .ds-key { font-family: var(--mono); }
+.digest-sess .ds-who { color: var(--accent); }
+.digest-sess .ds-n { color: var(--text-3); }
+
+/* --------------------------------------------------------------------------
+   Session receipt
+
+   A card, deliberately -- the headline is meant to be readable from across
+   a room and screenshottable without cropping.
+   -------------------------------------------------------------------------- */
+.rcpt { display: flex; flex-direction: column; gap: 12px; min-width: 340px; }
+.rcpt-big {
+  font-size: 30px; font-weight: 700; line-height: 1.15;
+  letter-spacing: -0.4px;
+}
+.rcpt-sub { color: var(--text-3); font-size: 12px; }
+.rcpt-rate {
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--bg-3); border-left: 3px solid var(--accent);
+  font-size: 15px;
+}
+.rcpt-rate strong { font-size: 20px; }
+.rcpt-rate-note { color: var(--text-3); font-size: 12px; }
+.rcpt-rate.quiet {
+  border-left-color: var(--line);
+  color: var(--text-3); font-size: 12px;
+}
+.rcpt-labs { display: flex; flex-direction: column; gap: 3px; }
+.rcpt-lab {
+  display: grid; grid-template-columns: 10px 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 3px 0; border-top: 1px dotted var(--line);
+}
+.rcpt-lab i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+.rcpt-lab .rl-n { font-family: var(--mono); }
+.rcpt-foot { color: var(--text-3); font-size: 12px; }
+
+/* --------------------------------------------------------------------------
+   Hall of garbage
+   -------------------------------------------------------------------------- */
+.gh-wrap { min-width: 560px; }
+.gh-list { display: flex; flex-direction: column; gap: 1px; margin-top: 8px; }
+.gh-row {
+  display: grid;
+  /* The recording name takes what it needs and the rest sit next to it,
+     rather than the name taking a whole free column and leaving the last
+     two floating out at the far edge with a hand's width of nothing in
+     between. */
+  grid-template-columns: 34px 52px auto 62px minmax(80px, max-content) 40px 1fr;
+  gap: 10px; align-items: baseline;
+  padding: 4px 6px; font-size: 12px;
+  border-radius: 4px;
+}
+.gh-row:nth-child(odd) { background: var(--bg-2); }
+.gh-rank { color: var(--text-3); font-family: var(--mono); }
+.gh-took { font-family: var(--mono); font-weight: 700; color: var(--err); }
+.gh-at { font-family: var(--mono); color: var(--text-3); }
+.gh-by { color: var(--accent); overflow: hidden; text-overflow: clip; }
+.gh-foot { margin-top: 8px; }
+.rcpt-bulk {
+  font-size: 12px; color: var(--text-2);
+  padding: 7px 10px; border-radius: 6px;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+
+/* The digest's host: full width, above the split, and taking no room at all
+   when there is nothing to say. */
+.hist-digest-host { padding-top: 8px; padding-bottom: 0; }
+.hist-digest-host:empty { display: none; }
+.hist-digest-host .digest { margin-bottom: 0; }
+.hist-digest-host .digest-sess { grid-template-columns: 320px auto 1fr; }
+.hist-digest-host .digest-sess .ds-n { text-align: right; }
+
+/* A schema a migration behind. Warn rather than error: the sync is working,
+   one field is not travelling. */
+.mig-pending {
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+}
+.mig-pending code {
+  background: var(--bg-3); padding: 1px 5px; border-radius: 3px;
+  font-family: var(--mono);
+}
+.mig-cols {
+  margin-top: 6px; font-family: var(--mono); font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.digest-partial {
+  font-size: 11.5px; color: var(--text-3);
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Archived profiles
+
+   Dimmed rather than hidden, and never struck through: they are still on
+   every record they are on, and a line through the name would say otherwise.
+   -------------------------------------------------------------------------- */
+.prof-chip.archived { opacity: 0.55; }
+.prof-chip.archived .prof-chip-name { font-style: italic; }
+.prof-chip-arch {
+  border: 0; background: none; cursor: pointer;
+  color: var(--text-3); padding: 0 4px; font-size: 12px;
+}
+.prof-chip-arch:hover { color: var(--accent); }
+.prof-chip-arch.on { color: var(--accent); }
+.prof-arch-toggle {
+  border: 1px dashed var(--line); background: none; cursor: pointer;
+  color: var(--text-3); font-size: 11.5px;
+  padding: 3px 9px; border-radius: 999px;
+}
+.prof-arch-toggle:hover { border-color: var(--accent-line); }
+.prof-arch-toggle.on { border-style: solid; color: var(--text-2); }
+
+/* Archived computers, and the names they used to answer to. */
+.dev-row.archived { opacity: 0.55; }
+.dev-aka { color: var(--text-3); font-size: 11px; font-style: italic; }
+.dev-arch {
+  border: 0; background: none; cursor: pointer;
+  color: var(--text-3); padding: 0 4px; font-size: 12px;
+}
+.dev-arch:hover, .dev-arch.on { color: var(--accent); }
+.dev-unclaimed {
+  margin-top: 6px; padding: 7px 10px; border-radius: 6px;
+  background: var(--bg-2); border-left: 2px solid var(--line);
+}
+
+/* --------------------------------------------------------------------------
+   One filter control
+
+   Nine pills in a row read as wallpaper: nothing grouped them and nothing
+   said how many were on. The button carries the count, the chips carry the
+   state, and the grouping lives in the popover.
+   -------------------------------------------------------------------------- */
+.filter-bar {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; padding: 6px 0;
+}
+.filter-open { display: inline-flex; align-items: center; gap: 6px; }
+.filter-open.on { border-color: var(--accent-line); color: var(--text); }
+.fb-ico {
+  width: 13px; height: 13px; fill: none; stroke: currentColor;
+  stroke-width: 1.6; stroke-linecap: round;
+}
+.fb-count {
+  min-width: 16px; padding: 0 4px; border-radius: 999px;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 10px; font-weight: 700; text-align: center;
+}
+.fb-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 4px 2px 9px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  font-size: 11.5px;
+}
+.fb-chip-x {
+  border: 0; background: none; cursor: pointer; color: var(--text-3);
+  padding: 0 3px; font-size: 13px; line-height: 1;
+}
+.fb-chip-x:hover { color: var(--err); }
+.fb-clear { font-size: 11.5px; }
+.ctl-pop-opt {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 4px; border-radius: 5px; cursor: pointer;
+  font-size: 12.5px;
+}
+.ctl-pop-opt:hover { background: var(--bg-hover); }
+.ctl-pop-opt.on { color: var(--text); }
+.ctl-pop-opt input { margin: 0; }
+
+/* The channel list, inside the Ch popover.
+
+   Two columns, because sixty-four single-file rows is a lot of scrolling
+   for something you are usually only glancing at. */
+.ctl-chans {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px 10px;
+  max-height: 300px; overflow-y: auto;
+  border-top: 1px solid var(--line-soft); padding-top: 6px;
+}
+.ctl-chan {
+  display: flex; align-items: center; gap: 6px;
+  padding: 1px 3px; border-radius: 4px; cursor: pointer;
+  font-size: 11.5px; font-family: var(--mono);
+}
+.ctl-chan:hover { background: var(--bg-hover); }
+.ctl-chan.off { color: var(--text-3); }
+.ctl-chan input { margin: 0; }
+.ctl-chan .cc-n { min-width: 22px; text-align: right; }
+.ctl-chan.marked-bad .cc-n { color: var(--err); }
+.ctl-chan .cc-bad {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--err);
+}
+
+/* Which of three jobs the profile dialog's Save is doing. On screen because
+   it used to be worked out from string comparison, and getting it wrong
+   rewrote this computer's identity. */
+.prof-mode {
+  margin: 0 0 10px; padding: 7px 10px; border-radius: 6px;
+  font-size: 12px; color: var(--text-2);
+  background: var(--bg-2); border-left: 3px solid var(--line);
+}
+.prof-mode.editing {
+  background: var(--accent-soft); border-left-color: var(--accent);
+  color: var(--text);
+}
+.prof-mode.creating {
+  background: var(--ok-soft); border-left-color: var(--ok);
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Managing the computers
+
+   Reached from the word DEVICE above the error list. Everything in here is
+   about machines and nothing about people -- they used to share a record.
+   -------------------------------------------------------------------------- */
+.dev-bar-label.as-button {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 999px; padding: 2px 9px; cursor: pointer;
+  color: var(--text-3); font: inherit;
+}
+.dev-bar-label.as-button:hover {
+  border-color: var(--accent-line); color: var(--text-2);
+}
+.dev-bar-caret { font-size: 11px; opacity: 0.75; }
+.dev-mgr-wrap { min-width: 560px; }
+.dev-mgr { display: flex; flex-direction: column; gap: 10px; }
+.dev-mgr-me {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: 8px;
+  background: var(--bg-2); border-left: 3px solid var(--accent);
+}
+.dev-mgr-row { display: flex; gap: 8px; align-items: center; }
+.dev-name-in {
+  flex: 1; min-width: 0; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit;
+}
+.dev-mgr-id { font-family: var(--mono); font-size: 11px; }
+.dev-mgr-other {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; font-size: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.dev-mgr-other.archived { opacity: 0.55; }
+.prof-device-note { line-height: 1.7; }
+
+/* Sync now, and the panel that explains it -- two acts, one row. */
+.rail-sync { display: flex; gap: 4px; align-items: stretch; }
+.rail-sync .sync-go { flex: 1; min-width: 0; }
+.rail-sync .sync-go span {
+  overflow: hidden; text-overflow: clip; white-space: nowrap;
+}
+.rail-sync .sync-info { flex: none; padding-left: 8px; padding-right: 8px; }
+.chip-btn.busy { border-color: var(--accent-line); color: var(--accent); }
+.chip-btn.busy svg { animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Collapsed to icons, the label goes and the two chips stack. */
+#app.rail-icons .rail-sync { flex-direction: column; }
+#app.rail-icons .rail-sync .sync-info { display: none; }
+
+/* --------------------------------------------------------------------------
+   The JSON backup
+
+   Read-only, and it should look it: nothing here is a control that changes
+   anything, so nothing here is styled like one.
+   -------------------------------------------------------------------------- */
+.bk-folder {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 9px; margin-top: 4px; cursor: pointer;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); color: var(--text-2);
+  font: inherit; text-align: left;
+}
+.bk-folder:hover { border-color: var(--accent-line); }
+.bk-folder.on { background: var(--bg-3); color: var(--text); }
+.bk-caret { width: 10px; color: var(--text-3); }
+.bk-what { color: var(--text-3); font-size: 11.5px; }
+.bk-col { color: var(--text-3); font-size: 11px; font-family: var(--mono); }
+.bk-files { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 6px; }
+.bk-file {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  padding: 3px 9px 3px 27px; cursor: pointer;
+  background: none; border: 0; border-radius: 4px;
+  color: var(--text-2); font: inherit; font-size: 12px; text-align: left;
+}
+.bk-file:hover { background: var(--bg-hover); }
+.bk-file.on { background: var(--accent-soft); color: var(--accent); }
+.bk-name { font-family: var(--mono); }
+.bk-machine { color: var(--text-3); font-size: 11px; }
+.bk-machine.mine { color: var(--accent); }
+.bk-view {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.bk-json {
+  margin: 8px 0 0; max-height: 46vh; overflow: auto;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--text-2); white-space: pre;
+}
+
+/* The role, as a list. Matched to the text inputs beside it so the form does
+   not look like two different forms. */
+.prof-role {
+  width: 100%; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit;
+}
+
+/* ---- the figure grid: edges you can grab, and a bin -------------------- */
+
+/* A cell says which panel it is and what that panel draws. The channel note
+   is the part that distinguishes six panels of one probe from each other, so
+   it is the part that must not be cut off -- it wraps instead. */
+.grid-cell { position: relative; }
+.grid-cell .gc-n { font-weight: 600; }
+.grid-cell .gc-ch {
+  display: block; font-size: 9px; line-height: 1.15; color: var(--text-3);
+  margin-top: 2px; word-break: break-word;
+}
+.grid-cell.filled .gc-ch { color: var(--text-2); }
+
+/* The handles. Wide enough to hit with a mouse without hunting, invisible
+   until the cell is under the pointer so the grid stays a grid. */
+.gc-grip {
+  position: absolute; opacity: 0; transition: opacity .12s;
+  background: var(--accent); border-radius: 2px;
+}
+.grid-cell:hover .gc-grip, .grid-cell.sel .gc-grip { opacity: .55; }
+.gc-grip:hover { opacity: 1 !important; }
+.gc-grip.e { top: 22%; bottom: 22%; right: -3px; width: 6px;
+             cursor: ew-resize; }
+.gc-grip.s { left: 22%; right: 22%; bottom: -3px; height: 6px;
+             cursor: ns-resize; }
+.gc-grip.se { right: -4px; bottom: -4px; width: 10px; height: 10px;
+              cursor: nwse-resize; border-radius: 3px; }
+
+.grid-bin {
+  margin: 8px 0 2px; padding: 8px 10px; text-align: center;
+  border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  color: var(--text-3); font-size: 11px;
+}
+.grid-bin.over {
+  border-color: var(--err); color: var(--err);
+  background: color-mix(in srgb, var(--err) 8%, transparent);
+}
+
+/* ---- the StrataScope workbench ---------------------------------------- */
+
+/* The work set's name, edited in place. It has to look editable without
+   looking like an input, or the card turns into a form. */
+.sheet-name { cursor: text; border-bottom: 1px dashed transparent; }
+.sheet-name:hover, .sheet-name:focus {
+  border-bottom-color: var(--line); outline: none;
+}
+.sheet-name-edit { max-width: 22ch; }
+
+/* A sheet on the bench, marked the way a curation set on the bench is. */
+.cur-set.on-bench { border-left: 3px solid var(--accent); }
+
+/* ---- which columns of the probe a panel draws ------------------------- */
+
+/* Laid out in the order they will be drawn, so the control reads like the
+   picture it controls. Wrapping rather than scrolling: six chips fit two
+   rows in the side column at any sensible width. */
+.probe-cols {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px;
+}
+.pc-chip {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 4px 7px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); min-width: 72px;
+}
+.pc-chip:hover { border-color: var(--accent); }
+/* A dropped column stays visible: bringing one back should not require
+   remembering that it existed. */
+.pc-chip.off { opacity: .45; border-style: dashed; cursor: pointer; }
+.pc-id { font-weight: 600; font-size: 11px; }
+.pc-what { font-size: 9px; color: var(--text-3); }
+.pc-csc { font-size: 9px; color: var(--text-2); }
+
+/* The channel list for a time-frequency panel. A real multi-select rather
+   than a popover: it is a list of sixty-four things where several are
+   picked, which is what the control is for, and it stays keyboard-navigable
+   without any code of ours. */
+.tf-chans {
+  width: 100%; margin-top: 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font: inherit; font-size: 11px;
+}
+.tf-chans option { padding: 1px 5px; }

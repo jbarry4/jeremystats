@@ -1,0 +1,145 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>toolkit: staying put</title>
+<style>
+  html,body{margin:0;font:12px/1.55 ui-monospace,Consolas,monospace;
+    background:#0c0f14;color:#dfe6ee}
+  #out{padding:12px 14px;width:44vw;box-sizing:border-box;white-space:pre-wrap}
+  .hd{color:#ffb81c;margin-top:12px}
+  .ok{color:#7fe3b0}.bad{color:#ff8a7a}.note{color:#7593a2}
+  iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;
+    border-left:1px solid #243;background:#fff}
+</style></head><body>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The ToolKit jumping between modules on its own.
+ *
+ * Reported as "something is very buggy about the ToolKit's UI where it jumps
+ * around different modules", with a request log showing /api/registry at
+ * 8.5-9.3 s, four times in thirty seconds, /api/layers at 4.2-4.6 s, and
+ * /api/presence every ten.
+ *
+ * Three causes, and the first was already solved once in that file -- the
+ * bad-channel loader guards against its own answer landing late, and its
+ * comment says "which is the 'it snaps back to another tool'". The two slow
+ * tools never got the guard, and the presence poll repainted Curation every
+ * ten seconds whatever was on screen.
+ *
+ * So the checks are: a slow answer cannot paint over the tool you moved to,
+ * a presence tick cannot either, and switching back and forth does not pay
+ * for the registry again.
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const p = (m, c) => { const d = document.createElement('div');
+  if (c) d.className = c; d.textContent = m; out.appendChild(d); };
+const hd = (m) => p(m, 'hd');
+const ck = (what, got, saw) => {
+  if (!got) bad += 1;
+  p((got ? '  PASS ' : '  FAIL ') + what
+    + (got || saw === undefined ? '' : '   [' + saw + ']'), got ? 'ok' : 'bad');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const untilN = async (fn, n) => {
+  for (let i = 0; i < n; i += 1) { if (fn()) return true; await sleep(100); }
+  return false;
+};
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const $$ = (q) => Array.from(D().querySelectorAll(q));
+  const run = (src) => W().eval(src);
+  await untilN(() => typeof W().setView === 'function', 300);
+  await sleep(1200);
+
+  /* Every request the page makes, counted, so "it fetches the registry
+     again on every switch" is a number rather than an impression. */
+  run('(function(){window.__hits=[];var f=window.fetch;'
+      + 'window.fetch=function(u,o){try{window.__hits.push(String(u))}'
+      + 'catch(e){};return f.apply(this,arguments)};}())');
+  const hits = (re) => (run('window.__hits') || [])
+    .filter((u) => re.test(u)).length;
+
+  const tool = (name) => $$('.tk-tool').find(
+    (b) => new RegExp(name, 'i').test(b.textContent || ''));
+  const showing = () => (D().querySelector('#strataBench') ? 'strata'
+    : (D().querySelector('#curBench') ? 'curate'
+      : (D().querySelector('#tkResult') ? 'other' : 'none')));
+
+  hd('0. The ToolKit, and its two slow tools');
+  run("setView('toolkit')");
+  await untilN(() => $$('.tk-tool').length, 200);
+  await sleep(900);
+  ck('the tools are listed', $$('.tk-tool').length >= 4,
+     $$('.tk-tool').length);
+  ck('Event curation is one of them', !!tool('Event curation'));
+  ck('StrataScope is another', !!tool('StrataScope'));
+
+  hd('1. A slow answer cannot paint over the tool you moved to');
+  /* Click the slow one, then immediately move on -- which is exactly what
+     somebody does when a pane takes four seconds to arrive. */
+  tool('Event curation').click();
+  await sleep(150);
+  tool('StrataScope').click();
+  p('  clicked Curation, then StrataScope 150 ms later');
+  await untilN(() => showing() === 'strata', 300);
+  await sleep(5000);          // long enough for the curation read to land
+  p('  showing after 5 s: ' + showing());
+  ck('StrataScope is still what is on screen', showing() === 'strata',
+     showing());
+  ck('and the curation bench is not on the page',
+     !D().querySelector('#curBench'));
+
+  hd('2. A presence tick cannot either');
+  /* The poll runs every ten seconds for as long as the ToolKit is open and
+     called renderCuration() on any change. Driven directly here, because
+     waiting for a colleague to open something is not a test. */
+  const before = showing();
+  run('BARRY.views.toolkit._presence({sessions:[{gid:"zz-probe",'
+      + 'who:"a colleague",at:new Date().toISOString()}],'
+      + 'machine:"probe",ttl_s:150})');
+  await sleep(1200);
+  p('  after a presence change: ' + showing());
+  ck('the tool on screen is unchanged', showing() === before,
+     before + ' -> ' + showing());
+
+  hd('3. Switching back and forth does not re-read the registry');
+  const n0 = hits(/\/api\/registry/);
+  p('  registry reads so far: ' + n0);
+  for (const name of ['Event curation', 'StrataScope', 'Event curation',
+                      'StrataScope']) {
+    tool(name).click();
+    await sleep(1400);
+  }
+  const n1 = hits(/\/api\/registry/);
+  p('  after four switches:   ' + n1 + '  (' + (n1 - n0) + ' more)');
+  /* It is eight seconds cold on this lab's data and both tools want it, so
+     paying for it per switch is most of what made the races easy to hit. */
+  ck('four switches cost at most one more read', n1 - n0 <= 1,
+     (n1 - n0) + ' reads');
+  ck('and the pane still shows the tool that was clicked last',
+     showing() === 'strata', showing());
+
+  hd('4. The reads themselves are not what they were');
+  const t0 = Date.now();
+  await run('fetch("/api/registry").then(function(r){return r.json()})');
+  const ms = Date.now() - t0;
+  p('  /api/registry took ' + ms + ' ms');
+  /* Measured at 8505, 8877, 8822 and 9283 ms in the report. The session
+     records were being read and merged three times per request -- once
+     directly, once inside projects() and once inside tree() -- and the
+     attachment counts read the figure catalogue and the deck list once per
+     recording, five hundred times over. */
+  ck('a registry read is under four seconds', ms < 4000, ms + ' ms');
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'toolkit stays put';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack), 'bad');
+  document.title = 'threw';
+} })();
+</script>
+</body></html>

@@ -8,30 +8,30 @@
     "created": "2026-09-02T23:51:19.837770+00:00",
     "duration_s": "2026-09-04T15:57:01.645060+00:00",
     "event_classes": "2026-09-08T21:56:25.333946+00:00",
-    "extraction_note": "2026-09-09T01:32:59.554163+00:00",
-    "fissure_channel": "2026-09-09T01:32:59.554163+00:00",
+    "extraction_note": "2026-09-09T06:08:45.235062+00:00",
+    "fissure_channel": "2026-09-09T06:08:45.235062+00:00",
     "fs": "2026-09-04T15:57:01.645060+00:00",
     "gid": "2026-09-02T23:51:19.837770+00:00",
     "group": "2026-09-04T15:57:01.645060+00:00",
     "hemisphere": "2026-09-09T00:00:03.609662+00:00",
     "hemisphere_source": "2026-09-09T00:00:03.609662+00:00",
-    "hilus_channel": "2026-09-09T01:32:59.554163+00:00",
+    "hilus_channel": "2026-09-09T06:08:45.235062+00:00",
     "key": "2026-09-04T15:57:01.645060+00:00",
     "label": "2026-09-04T15:57:01.645060+00:00",
     "loose_key": "2026-09-04T15:57:01.645060+00:00",
     "mouse": "2026-09-04T15:57:01.645060+00:00",
     "n_channels": "2026-09-04T15:57:01.645060+00:00",
-    "needs_processing": "2026-09-09T01:32:59.554163+00:00",
+    "needs_processing": "2026-09-09T06:08:45.235062+00:00",
     "note": "2026-09-03T13:20:12.910354+00:00",
     "project": "2026-09-04T15:57:01.645060+00:00",
     "project_source": "2026-09-04T15:57:01.645060+00:00",
-    "reference_channels_source": "2026-09-09T01:32:59.554163+00:00",
+    "reference_channels_source": "2026-09-09T06:08:45.235062+00:00",
     "retired": "2026-09-04T15:57:01.645060+00:00",
-    "ripple_channel": "2026-09-09T01:32:59.554163+00:00",
+    "ripple_channel": "2026-09-09T06:08:45.235062+00:00",
     "schema": "2026-09-04T15:57:01.645060+00:00",
     "session": "2026-09-04T15:57:01.645060+00:00",
     "start": "2026-09-04T15:57:01.645060+00:00",
-    "updated": "2026-09-09T01:50:19.171448+00:00",
+    "updated": "2026-09-09T13:48:17.736515+00:00",
     "view_state": "2026-09-09T01:50:19.171448+00:00"
   },
   "_keys": {
@@ -154,7 +154,7 @@
       ],
       "Bluebarry": [
         "set",
-        "2026-09-09T01:50:16.342943+00:00"
+        "2026-09-09T13:48:17.736515+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
@@ -167,7 +167,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T01:50:19.171448+00:00",
+    "at": "2026-09-09T13:48:17.736515+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -197,20 +197,20 @@
       "visible": true
     }
   },
-  "extraction_note": "Success: Clean extraction.",
-  "fissure_channel": 25,
+  "extraction_note": null,
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "s72df5edc7210",
   "group": "PTEN",
   "hemisphere": "L",
   "hemisphere_source": "test",
-  "hilus_channel": 43,
+  "hilus_channel": null,
   "key": "m011_s010_2023-07-25_14-40-32",
   "label": "PTEN m11 s10 2023-07-25",
   "loose_key": "m011_s010",
   "mouse": 11,
   "n_channels": 64,
-  "needs_processing": false,
+  "needs_processing": null,
   "paths": [
     "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
     "G:\\PTEN\\M11_s10",
@@ -220,9 +220,9 @@
   ],
   "project": "PTEN",
   "project_source": "guessed",
-  "reference_channels_source": "PTEN Toothy Data .xlsx",
+  "reference_channels_source": null,
   "retired": false,
-  "ripple_channel": 6,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -233,11 +233,11 @@
       "scan": "scan_894736ef4e"
     },
     "Bluebarry": {
-      "at": "2026-09-08T21:50:16-04:00",
+      "at": "2026-09-09T09:48:17-04:00",
       "by": "Shahriar Tafti",
       "path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
-      "root": null,
-      "scan": null
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
@@ -257,7 +257,7 @@
   "session": 10,
   "start": "2023-07-25T14:40:32",
   "updated": {
-    "at": "2026-09-08T21:50:19-04:00",
+    "at": "2026-09-09T09:48:17-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

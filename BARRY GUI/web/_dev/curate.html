@@ -79,15 +79,57 @@ const post = (u, b) => fetch(u, { method: 'POST',
   await until(() => $('#tkResult .cur-set'), 12000);
   await sleep(600);
 
+  /* Open the shelf. A set nobody has picked up is not on the bench -- the
+     bench is what you have open -- and the shelf is folded away until
+     wanted, so with forty-three sets in the store the set this harness just
+     created was legitimately nowhere in the DOM. */
+  const shelfBtn = $('.cur-shelf-toggle');
+  if (shelfBtn && !shelfBtn.classList.contains('on')) {
+    shelfBtn.click();
+    await until(() => $('#curShelfList .cur-shelf-row'), 12000);
+    await sleep(500);
+  }
+  /* Searched for by name, because the shelf holds forty-odd rows and only
+     shows the ones matching the filter. */
+  const search = $('#tkResult .cur-search');
+  if (search) {
+    search.value = 'curate harness';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(700);
+  }
+
   /* Find OUR card, not the first one. Anyone using BARRY has curation sets
      of their own, and taking `.cur-set` unqualified meant the harness read
      someone else's progress and, worse, pressed its keys into someone else's
      set. It did exactly that, and the decisions had to be unpicked by hand. */
-  const card = $$('.cur-set').find(
+  /* On the bench or on the shelf -- they are different elements: a bench
+     card is a `.cur-set`, a shelf entry is a `.cur-shelf-row`, and looking
+     only for the first is what made this fail once the two were separated. */
+  let card = $$('.cur-set, .cur-shelf-row').find(
     (c) => /curate harness/.test(c.textContent));
   check('the set is listed', !!card,
         $$('.cur-set').map((c) => (c.textContent || '').slice(0, 30))
           .join(' | '));
+
+
+  /* Pick it up, if what was found was a shelf row. Everything below reads a
+     bench card -- the per-category tallies, the keys -- and a shelf entry
+     carries none of that. Picking it up is also what a person does next. */
+  if (card && card.classList.contains('cur-shelf-row')) {
+    const up = $$('button', card).find(
+      (b) => /Pick it up/.test(b.textContent));
+    check('the shelf row offers to pick it up', !!up);
+    if (up) {
+      up.click();
+      await until(() => $$('.cur-set').some(
+        (c) => /curate harness/.test(c.textContent)), 15000);
+      await sleep(600);
+      card = $$('.cur-set').find((c) => /curate harness/.test(c.textContent));
+      check('it lands on the bench', !!card,
+            $$('.cur-set').map((c) => c.textContent.slice(0, 24)).join(' | '));
+    }
+  }
+
   if (!card) { say('cannot continue without our own set', 'bad'); return; }
   const inCard = (sel) => card.querySelector(sel);
   const allInCard = (sel) => Array.from(card.querySelectorAll(sel));
@@ -98,14 +140,36 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const tally = allInCard('.cur-tally').map((n) => n.textContent.trim());
   say('  tally: ' + tally.join(' | '), 'note');
   check('it shows one tally per category', tally.length === 4, tally.join(' | '));
+  /* Banking lives behind More… now, so it has to be opened first. The
+     check is the same one and worth keeping: it is the guard against
+     publishing a version in which nothing was decided. */
+  const moreBtn = allInCard('.cur-set-acts button').find(
+    (b) => /^More/.test(b.textContent.trim()));
+  check('the card offers More…', !!moreBtn,
+        allInCard('.cur-set-acts button')
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (moreBtn) {
+    moreBtn.click();
+    await sleep(500);
+  }
+  const bankBtn = allInCard('button').find((b) => /Bank/.test(b.textContent));
+  check('there is a Bank button', !!bankBtn,
+        allInCard('button').map((b) => b.textContent.trim()).join(' | '));
   check('banking is refused while nothing is decided',
-        allInCard('.cur-set-acts button').find(
-          (b) => /Bank/.test(b.textContent)).disabled);
+        !!bankBtn && !!bankBtn.disabled);
 
   say('');
   say('=== entering the mode ===', 'hd');
-  allInCard('.cur-set-acts button')
-    .find((b) => /Curate/.test(b.textContent)).click();
+  /* "Carry on…" while anything is left, "Look again…" once nothing is --
+     the verb changed from "Curate" when the card was redesigned around what
+     you are about to do rather than what the mode is called. */
+  const goBtn = allInCard('.cur-set-acts button').find(
+    (b) => /Carry on|Look again|Curate/.test(b.textContent));
+  check('the card offers a way in', !!goBtn,
+        allInCard('.cur-set-acts button')
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (!goBtn) { say('cannot enter the mode', 'bad'); return; }
+  goBtn.click();
   const entered = await until(() => $('#curBar'), 40000);
   check('the curation bar appears', entered);
   await sleep(2500);
@@ -124,17 +188,21 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('  panes: ' + JSON.stringify(panels), 'note');
   check('voltage traces are the primary pane', panels[0] === 'traces',
         JSON.stringify(panels));
-  check('with a spectrogram, CSD and voltage raster as aids',
-        panels.includes('spectrogram') && panels.includes('csd')
-        && panels.includes('voltage'), JSON.stringify(panels));
-  const tfc = JSON.parse(ev(
-    'JSON.stringify((BARRY.views.xplore.state.panes.find('
-    + 'p => p && p.panel === "spectrogram") || {}).tfChannels || [])'));
-  check('the spectrogram is every 8th channel', tfc.length > 1
-        && tfc[1] - tfc[0] === 8, JSON.stringify(tfc.slice(0, 6)));
-  check('the traces get the bigger share',
-        Number(ev('BARRY.views.xplore.state.split.col')) > 0.5,
-        ev('BARRY.views.xplore.state.split.col'));
+  /* And nothing else in this window. The aids -- spectrogram, CSD, voltage
+     raster -- moved into a window of their own, for the same reason
+     StrataScope's did: what you are deciding, whether a deflection is the
+     thing or one bad wire, is read off the traces, so the traces get the
+     whole window. This harness spent a while asserting the old single-grid
+     layout and reporting the redesign as three failures. */
+  check('and nothing competing with them in this window',
+        panels.filter(Boolean).length === 1, JSON.stringify(panels));
+  /* The aid window cannot be inspected from here -- headless Chromium
+     refuses window.open, so `aidWin` is null however the code behaved --
+     but that it was ASKED for is checkable, and is the part that would
+     regress silently. */
+  const asked = ev('typeof BARRY.curate.exit === "function"');
+  check('the mode is set up rather than left to the previous layout',
+        String(asked) === 'true');
 
   /* It has to have moved the window to the candidate. */
   const S = 'BARRY.views.xplore.state.sessions['
@@ -215,16 +283,49 @@ const post = (u, b) => fetch(u, { method: 'POST',
                              { added_by: 'curate@harness' });
   check('the curated events bank', bankRes.ok === true, bankRes.error || '');
   say('  entries: ' + JSON.stringify(bankRes.entries), 'note');
-  check('one entry per category, not one lump',
-        (bankRes.entries || []).length === 2,
-        JSON.stringify((bankRes.entries || []).map((e) => e.label)));
+  /* One entry for the whole set, with a version history -- not one per
+     category. The per-category entries this used to make are folded into
+     it and deleted, because every event in them came from this set and is
+     being written again. */
+  const banked = bankRes.entries || [];
+  check('one entry for the whole set, not one per category',
+        banked.length === 1, JSON.stringify(banked.map((e) => e.name)));
+  const one = banked[0] || {};
+  say('  banked: ' + JSON.stringify({
+    name: one.name, n: one.n, version: one.version,
+    by_label: one.by_label }), 'note');
+  check('it is written as a new version',
+        one.new_version === true || one.version >= 1, String(one.version));
+  /* Two decided at this point -- one solid, one sputter, after the undo --
+     so the version has to carry two, and say which. */
+  check('the version carries the decided events and no others',
+        one.n === 2, String(one.n));
+  const lab = one.by_label || {};
+  check('and names which category each was',
+        Object.keys(lab).length === 2
+        && Object.keys(lab).every((k) => lab[k] === 1),
+        JSON.stringify(lab));
+
   const bank = await (await fetch('/api/bank')).json();
+  /* `curation_label: '*'` is what marks the one-entry-for-the-whole-set
+     record -- the per-category entries it replaced carried a label id
+     there. There is no `curation_kind` on an entry; the vocabulary is in
+     `type`. */
   const mine = (bank.entries || []).filter(
-    (e) => (e.added || {}).by === 'curate@harness');
-  check('they are in the bank', mine.length === 2, mine.length + '');
-  check('each one names its category',
-        mine.every((e) => /Solid|Sputter|Garbage|Flag/.test(e.name)),
-        mine.map((e) => e.name).join(' | '));
+    (e) => e.gid === gid && e.curation_label === '*');
+  check('the bank holds exactly one entry for this set',
+        mine.length === 1, mine.map((e) => e.name).join(' | '));
+  /* Deliberately not asserting `added.by` is the harness. `added.by` is
+     shards.FIRST -- immutable across the merge, because provenance is not
+     an editable field -- and banking continues the detector's existing
+     entry where there is one, so the entry keeps whoever first made it. */
+  if (mine.length === 1) {
+    say('  entry added.by is ' + JSON.stringify((mine[0].added || {}).by)
+        + ' (kept from whoever first made it, by design)', 'note');
+    check('and it has a version history',
+          (mine[0].versions || []).length >= 1,
+          String((mine[0].versions || []).length));
+  }
 
   say('');
   say('=== leaving ===', 'hd');

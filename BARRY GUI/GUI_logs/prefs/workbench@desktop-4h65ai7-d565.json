@@ -1,28 +1,33 @@
 {
   "_at": {
+    "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-08T21:54:16.096322+00:00",
-    "radio": "2026-09-09T01:49:33.742856+00:00",
-    "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
-    "smoke_probe": "2026-09-09T01:45:47.666020+00:00",
+    "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
+    "radio": "2026-09-09T20:08:24.883478+00:00",
+    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "smoke_probe": "2026-09-09T20:11:56.830273+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-09T01:50:13.045350+00:00"
+    "updated": "2026-09-09T21:36:53.024405+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-09T01:45:47.861586+00:00"
+        "2026-09-09T07:22:47.391689+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
         "2026-09-08T17:57:22.389722+00:00"
+      ],
+      "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m": [
+        "gone",
+        "2026-09-09T20:11:56.968885+00:00"
       ]
     },
     "themes": {
       "BarryLab": [
         "set",
-        "2026-09-04T15:57:01.925044+00:00"
+        "2026-09-09T15:33:56.426615+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
@@ -31,17 +36,22 @@
       "LCOM549913": [
         "set",
         "2026-09-08T17:53:47.145828+00:00"
+      ],
+      "MSI": [
+        "gone",
+        "2026-09-09T15:29:08.445863+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T01:50:13.045350+00:00",
+    "at": "2026-09-09T21:36:53.024405+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "D:/PTEN/PTEN/M11_Pten/HF2_s10jul25/2023-07-25_14-40-32"
+    "session": "demo:long-session"
   },
   "radio": {
     "agreed": true,
@@ -51,6 +61,10 @@
   },
   "recent_scripts": [
     "IED/03_IED_Detection/vacc_ied_detect.m",
+    "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
+    "IED/08_Anatomical_Labeling/blank_png_gen.py",
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
+    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
     "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
     "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
     "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
@@ -65,5 +79,5 @@
     "DESKTOP-4H65AI7": "horizon-night",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-08T21:50:13-04:00"
+  "updated": "2026-09-09T17:36:53-04:00"
 }

@@ -407,6 +407,59 @@ BARRY.figrebuild = (function () {
              + ' put back on the trace.';
       }
 
+      case 'verify': {
+        /* Read back what the earlier steps restored, and put back whatever
+           has moved since.
+
+           Every step above reports what it was asked to do. Two writes were
+           landing afterwards -- a .nev auto-import that had been in flight
+           since the open, and the session being closed and reopened -- so a
+           rebuild could report success and hand over the recording's
+           current state instead of the figure's. Fixed at the source as
+           well, and checked here, because the next late write will not be
+           either of those two. */
+        need();
+        const want = plan.recipe || {};
+        const moved = [];
+
+        const wantSel = Array.isArray(s.channels) && s.channels.length
+          ? s.channels.filter((i) => i >= 0 && i < sess.info.channels.length)
+          : null;
+        if (wantSel) {
+          const now = Array.from(sess.sel).sort((a, b) => a - b).join(',');
+          if (now !== wantSel.slice().sort((a, b) => a - b).join(',')) {
+            sess.sel = new Set(wantSel);
+            moved.push('the channel selection');
+          }
+        }
+
+        const wantBad = (s.bad_channels || []).map(Number);
+        if (wantBad.length) {
+          const now = Array.from(sess.bad).map(Number).sort((a, b) => a - b);
+          if (now.join(',') !== wantBad.slice().sort((a, b) => a - b)
+              .join(',')) {
+            sess.bad = new Set(wantBad);
+            moved.push('the bad channels');
+          }
+        }
+
+        const wantEv = want.events || [];
+        if ((sess.events || []).length !== wantEv.length) {
+          sess.events = wantEv;
+          sess.eventsMeta = { source: 'figure rebuild',
+                              name: (plan.run || {}).label || 'figure',
+                              n: wantEv.length };
+          moved.push('the event marks');
+        }
+
+        if (moved.length) BARRY.views.xplore.refreshAll();
+        return moved.length
+          ? 'Put back ' + moved.join(', ') + ' \u2014 something had changed '
+            + 'them since the steps above ran.'
+          : 'The window, filters, channels, marks and panels all match the '
+            + 'recipe.';
+      }
+
       case 'panels': {
         need();
         const XF = BARRY.views.xplore.state;

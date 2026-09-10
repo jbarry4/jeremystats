@@ -236,6 +236,11 @@ BARRY.curate = (function () {
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
     setMode(null);
+    /* What the sitting came to, on the way out -- but only if there was a
+       sitting. `quiet` makes it say nothing for a set somebody opened,
+       looked at and left, which is most of the times this runs. Fired
+       without awaiting: leaving must not wait on a fetch. */
+    receipt(set_.gid, set_.kind, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
       BARRY.views.toolkit.curationChanged();
     }
@@ -686,6 +691,146 @@ BARRY.curate = (function () {
      Resolves to the note, or to null if it is called off. */
   /* `at` is the set as it was when Bank was clicked -- gid, kind and name.
      Passed in rather than read off `set_`, which may be null by now. */
+  /* ==================================================================
+     The receipt
+     ==================================================================
+     What a sitting came to, in a card. Worth having for two unrelated
+     reasons: it is pleasant to see the afternoon add up, and the pace is
+     the only thing here that says anything about the deciding rather than
+     the data. A set decided at forty a minute and a set decided at four
+     are not the same evidence, and nothing in the interface used to show
+     which one you had.
+
+     Shown on the way out when the sitting was long enough to be worth a
+     card, and on demand from the workbench.
+     ================================================================== */
+  const RECEIPT_MIN = 8;         // fewer decisions than this is not a sitting
+
+  async function receipt(gid, kind, opts) {
+    const o = opts || {};
+    let r;
+    try {
+      r = await api('/api/curation/' + encodeURIComponent(gid) + '/'
+                    + encodeURIComponent(kind) + '/receipt'
+                    + (o.who ? '?who=' + encodeURIComponent(o.who) : ''));
+    } catch (e) {
+      if (!o.quiet) toast(e.message, 'err');
+      return null;
+    }
+    const s = r.sitting;
+    /* On the way out this is silent when there is nothing worth a card --
+       a modal for three decisions is an interruption, not a reward. */
+    if (o.quiet && (!s || s.n < RECEIPT_MIN)) return null;
+    if (!s) {
+      toast('Nothing has been decided on this set yet.', 'warn');
+      return null;
+    }
+
+    const pr = r.progress || {};
+    /* The headline is the sentence somebody would say out loud. Everything
+       under it is the same fact broken down, for anybody who wants it.
+
+       The duration is only claimed when it is one. A snapshot import stamps
+       the whole set at one instant, and "1,224 decided in 0 seconds" reads
+       as a bug rather than as the truth about an import. */
+    const timed = s.seconds >= 60 && s.bulk < s.n;
+    const head = s.n.toLocaleString() + ' decided'
+      + (timed ? ' in ' + spellSpan(s.seconds) : '');
+
+    const labels = (r.labels || []).map((l) => {
+      const n = (s.by_label || {})[l.id] || 0;
+      return n ? el('div', { class: 'rcpt-lab' }, [
+        el('i', { style: 'background:' + (l.color || '#888') }),
+        el('span', { class: 'rl-name', text: l.name || l.id }),
+        el('strong', { class: 'rl-n', text: String(n) }),
+      ]) : null;
+    }).filter(Boolean);
+
+    showModal(el('div', { class: 'rcpt-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Session receipt' }),
+        el('span', { class: 'sub', text: r.session || r.name || gid }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('div', { class: 'rcpt' }, [
+          el('div', { class: 'rcpt-big', text: head }),
+          el('div', { class: 'rcpt-sub', text: (r.name || kind)
+            + (s.who && s.who.length ? '  ·  ' + s.who.join(', ') : '') }),
+          /* Pace, and only when it means something. A rate off two
+             decisions in one second is a number, not a fact, and the
+             server declines to produce one -- so this has nothing to
+             say rather than something wrong. */
+          s.per_min
+            ? el('div', { class: 'rcpt-rate' }, [
+                el('strong', { text: s.per_min.toFixed(1) }),
+                el('span', { text: ' a minute' }),
+                el('span', { class: 'rcpt-rate-note',
+                  text: '  ·  about ' + spellSpan(60 / s.per_min)
+                      + ' on each one'
+                      + (s.bulk ? ', over the ' + s.paced.toLocaleString()
+                                  + ' decided one at a time' : '') }),
+              ])
+            : el('div', { class: 'rcpt-rate quiet',
+                text: s.bulk >= s.n
+                  ? 'No pace to report: these were all stamped together.'
+                  : 'Too short a stretch to put a rate on.' }),
+          /* Said plainly rather than folded into the average. Fourteen
+             candidates on one timestamp is one fill-down, and counting it
+             as fourteen keystrokes is how you get a receipt claiming seven
+             decisions a second. */
+          s.bulk
+            ? el('div', { class: 'rcpt-bulk' }, [
+                el('strong', { text: s.bulk.toLocaleString() + ' of them ' }),
+                el('span', { text: s.bulk >= s.n
+                  ? 'share a single timestamp — an import or a fill-down '
+                    + 'stamped the set all at once, so nobody sat and '
+                    + 'decided them one by one.'
+                  : 'came in groups on one timestamp'
+                    + (s.bulk_biggest > 1
+                        ? ' (up to ' + s.bulk_biggest + ' at a time)' : '')
+                    + ', so they are left out of the pace above.' }),
+              ])
+            : null,
+          labels.length ? el('div', { class: 'rcpt-labs' }, labels) : null,
+          el('div', { class: 'rcpt-foot' }, [
+            el('span', { text: pr.specified + ' of ' + pr.total
+                             + ' decided altogether' }),
+            pr.left ? el('span', { text: '  ·  ' + pr.left + ' left' }) : null,
+            s.sittings > 1
+              ? el('span', { text: '  ·  ' + s.sittings
+                                 + ' sittings on this set' })
+              : null,
+          ].filter(Boolean)),
+        ].filter(Boolean)),
+      ]),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        /* No Cancel. There is nothing to cancel -- it is a statement of
+           what already happened. */
+        el('button', { class: 'btn', text: 'Done', onclick: closeModal }),
+      ]),
+    ]), { replace: !!o.replace });
+    return r;
+  }
+
+  /* "38 minutes", "2h 14m", "4 seconds" -- whichever reads as a duration
+     rather than as a measurement. */
+  function spellSpan(sec) {
+    if (!isFinite(sec)) return '';
+    if (sec < 1) return Math.round(sec * 1000) + ' ms';
+    if (sec < 90) {
+      const n = sec < 10 ? sec.toFixed(1) : String(Math.round(sec));
+      return n + ' second' + (Math.round(sec) === 1 ? '' : 's');
+    }
+    const m = Math.round(sec / 60);
+    if (m < 90) return m + ' minute' + (m === 1 ? '' : 's');
+    return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  }
+
   function bankDialog(entry, who, at) {
     return new Promise((resolve) => {
       const labs = (kind && kind.labels)
@@ -755,7 +900,8 @@ BARRY.curate = (function () {
               v.imported ? el('span', { class: 'flagchip',
                                         text: 'the import' }) : null,
               el('span', { class: 'ver-when',
-                           text: (v.at || '').replace('T', ' ').slice(0, 16) }),
+                           title: BARRY.whenRaw(v.at),
+                           text: BARRY.when(v.at, 'minute') }),
               el('span', { class: 'ver-who', text: v.by || 'unknown' }),
               el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
             ]),
@@ -1161,7 +1307,7 @@ BARRY.curate = (function () {
   }
 
   return {
-    enter, exit, draw,
+    enter, exit, draw, receipt,
     // Diagnostics for the marker: what the last paint saw and drew.
     lastDraw: () => lastDraw,
     at: () => index,

@@ -476,11 +476,11 @@ let codeStaleShown = false;
 function showCodeStaleBanner(files, startedAt) {
   if (codeStaleShown) return;
   codeStaleShown = true;
-  const when = (startedAt || '').replace('T', ' ').slice(0, 16);
+  const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
     el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
-                     + 'server started' + (when ? ' at ' + when : '')
+                     + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
                      + 'old thing \u2014 so a fix you are expecting may '
                      + 'appear not to work.' }),
@@ -965,6 +965,31 @@ function cloudNote() {
     }
     const last = c.last || {};
     const when = last.at ? new Date(last.at).toLocaleTimeString() : 'not yet';
+    /* A schema a migration behind. Worth saying loudly and worth saying
+       here: a column the database has not got is dropped on the way up so
+       that the rest of the sync survives, and the cost of that kindness is
+       that the field silently never travels. */
+    api('/api/sync/pending-migrations').then((m) => {
+      if (!m || !m.run || !m.run.length) return;
+      const cols = Object.keys(m.pending || {}).map(
+        (t) => t + ': ' + m.pending[t].join(', '));
+      box.insertBefore(el('div', { class: 'cloud-err mig-pending' }, [
+        el('strong', { text: 'The shared database is behind this copy of '
+                           + 'BARRY. ' }),
+        el('span', { text: 'Run ' }),
+        el('code', { text: m.run.join(' and ') }),
+        el('span', { text: ' from supabase/ in the SQL editor. Until then '
+                         + 'these fields are dropped on the way up and stay '
+                         + 'on this machine only — everything else syncs '
+                         + 'normally.' }),
+        el('div', { class: 'mig-cols', text: cols.join('   ·   ') }),
+        m.unaccounted && m.unaccounted.length
+          ? el('div', { class: 'mig-cols',
+              text: 'No migration accounts for: '
+                  + m.unaccounted.join(', ') + '. That is worth looking at.' })
+          : null,
+      ].filter(Boolean)), box.firstChild);
+    }).catch(() => { /* an older server has no such route */ });
     box.appendChild(el('div', { class: 'cloud-line' }, [
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
@@ -978,7 +1003,31 @@ function cloudNote() {
         disabled: last.running ? 'disabled' : null,
         onclick: async (e) => {
           e.target.disabled = true;
-          e.target.textContent = 'Syncing…';
+          /* Say where it has got to, rather than nothing for four seconds.
+
+             A full sync is three or four seconds and the registry read
+             alone is five, and the button used to sit there saying
+             "Syncing…" for all of it -- which is indistinguishable from
+             hung. The server has always known which table it was on; the
+             button simply never asked. */
+          const label = e.target;
+          let stop = false;
+          const watch = async () => {
+            while (!stop) {
+              try {
+                const p = await api('/api/sync/progress');
+                const st = (p && p.step) || {};
+                if (st.running) {
+                  const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+                  label.textContent = (st.phase || 'syncing')
+                    + (st.table ? ' ' + st.table : '')
+                    + (pct != null ? '  ' + pct + '%' : '');
+                }
+              } catch (err) { /* the sync itself is what matters */ }
+              await new Promise((r) => setTimeout(r, 350));
+            }
+          };
+          watch();
           try {
             const r = await apiPost('/api/cloud/sync', {});
             const l = r.last || {};
@@ -987,6 +1036,7 @@ function cloudNote() {
                   + (l.downloaded ? ', downloaded ' + l.downloaded + ' file(s)'
                      : '') + '.', l.ok === false ? 'err' : 'ok', 7000);
           } catch (err) { toast(err.message, 'err', 8000); }
+          stop = true;
           showSync();
         },
       }),
@@ -1043,6 +1093,79 @@ function conflictNote(c) {
   ]);
 }
 
+
+/* Sync, from anywhere, with the phase on the button.
+
+   The same request the dialog's "Sync now" makes -- there is one sync and
+   one lock -- but reachable in one click and reporting into the rail rather
+   than into a modal that has to be open to be read.
+
+   `/api/sync/progress` is polled while the request is in flight because a
+   full round trip is three or four seconds and the pull alone is fifteen
+   round trips. A button that says nothing for that long is indistinguishable
+   from a button that did nothing. */
+let _syncing = false;
+
+async function globalSync(btn) {
+  if (_syncing) return;
+  _syncing = true;
+  const label = document.getElementById('syncNowLabel');
+  const was = label ? label.textContent : 'Sync now';
+  if (btn) btn.classList.add('busy');
+
+  let stop = false;
+  const watch = async () => {
+    while (!stop) {
+      try {
+        const got = await api('/api/sync/progress');
+        const st = (got && got.step) || {};
+        /* `stop` is re-checked AFTER the await. Setting it only stops the
+           next iteration; a request already in flight would otherwise
+           write its phase over the label the `finally` had just put
+           back -- which left the chip reading "pushing error_marks 93%"
+           for ever. */
+        if (stop) break;
+        if (st.running && label) {
+          const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+          label.textContent = (st.phase || 'syncing')
+            + (st.table ? ' ' + st.table : '')
+            + (pct != null ? '  ' + pct + '%' : '');
+        }
+      } catch (e) { /* the sync is what matters, not the commentary */ }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  };
+  watch();
+
+  try {
+    const res = await apiPost('/api/cloud/sync', {});
+    const last = (res && res.last) || {};
+    if (last.error) {
+      toast('Sync: ' + last.error, 'err', 8000);
+    } else {
+      /* What actually moved, not "done". "Sent 0, brought back 0" is a
+         useful answer -- it means everybody is already level. */
+      toast('Sent ' + (last.pushed || 0) + ', brought back '
+            + (last.pulled || 0)
+            + (last.downloaded ? ', downloaded ' + last.downloaded + ' file(s)'
+               : '') + '.', 'ok', 6000);
+    }
+    /* Whatever came down should be on screen without a second thought. */
+    try { await BARRY.refreshSync(); } catch (e) { /* status only */ }
+    const v = BARRY.views[BARRY.state.view];
+    if (v && v.reload) { try { v.reload(); } catch (e) { /* leave it */ } }
+    else if (v && v.onShow) { try { v.onShow(); } catch (e) { /* leave it */ } }
+  } catch (e) {
+    toast('Could not sync: ' + e.message, 'err', 9000);
+  } finally {
+    stop = true;
+    _syncing = false;
+    if (btn) btn.classList.remove('busy');
+    if (label) label.textContent = was;
+  }
+}
+
+BARRY.syncNow = globalSync;
 
 function showSync() {
   const d = BARRY.sync || {};
@@ -1154,7 +1277,7 @@ BARRY.notes = (function () {
       body.appendChild(el('p', { class: 'confirm-sub' + (run.dirty ? ' warn' : ''),
         text: 'This machine is running ' + run.commit
             + (run.branch ? ' on ' + run.branch : '')
-            + (run.at ? ', committed ' + run.at.replace('T', ' ').slice(0, 16)
+            + (run.at ? ', committed ' + fmtWhen(run.at, 'minute')
                       : '')
             + (run.dirty
                 ? ' — with uncommitted changes, so it may not match what the '
@@ -1403,7 +1526,20 @@ function setMode(kind, leave) {
       modeNow = kind;
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
-      BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      /* How long since the last click or keypress.
+
+         A mode change is meant to be something a person does, so one that
+         happens seconds after the last input is worth being able to see
+         afterwards. Not an error -- entering StrataScope waits on a
+         session opening and that legitimately takes seconds -- but the
+         difference between "the user did this" and "something did this"
+         is exactly what was missing when StrataScope was reported to snap
+         into curation on its own. */
+      BARRY.activity.log('mode.change', {
+        from: from, to: to, via: stack,
+        since_gesture_ms: _lastGesture ? (Date.now() - _lastGesture) : null,
+      });
+      noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
 
@@ -1447,6 +1583,21 @@ function wireMode() {
    ========================================================================== */
 BARRY.profile = (function () {
   let prof = null;
+  /* What this lab actually is. Free text is how one lab ends up with
+     "undergrad", "Undergraduate" and "Undergraduate Student" as three
+     different roles, and a roster that groups by role then reports three
+     people where there is one kind of person.
+
+     A value already on record that is not in this list is kept and offered
+     -- see `roleField`. The list is a suggestion about the future, not a
+     verdict on what somebody already typed. */
+  const ROLES = [
+    'PI',
+    'Graduate Student',
+    'Undergraduate Student',
+    'Medical Student',
+    'Medical Resident',
+  ];
 
   async function load() {
     try {
@@ -1505,31 +1656,142 @@ BARRY.profile = (function () {
 
   async function open() {
     const cur = prof || {};
+    /* Asked now, not remembered.
+
+       This line used to be built from whatever `/api/profile` last
+       reported, so renaming the computer under Errors -> Device left the
+       dialog claiming the old name until the page was refreshed. It is one
+       request and it is the only thing here that another view can change. */
+    try {
+      const got = await api('/api/device');
+      if (got && got.device) cur.device_name = got.device.name;
+    } catch (e) { /* the note falls back to the hostname */ }
     const f = {};
-    const field = (key, label, placeholder, hint) => {
+    /* `mine` marks a field that is about this COMPUTER rather than about a
+       person, so it can be taken off screen when the form is about somebody
+       else. Only `device` is one, and it matters: that field is what
+       `provenance().machine` reads, and it stamps every error and activity
+       row. Leaving it editable while filling in a colleague's details is
+       how one computer ends up filing under five names. */
+    const mineOnly = [];
+
+    const field = (key, label, placeholder, hint, mine) => {
       f[key] = el('input', {
         type: 'text', value: cur[key] || '', placeholder: placeholder || '',
       });
-      return el('div', { class: 'field' }, [
+      const box = el('div', { class: 'field' }, [
         el('label', { text: label }),
         f[key],
         hint ? el('span', { class: 'hint', text: hint }) : null,
       ]);
+      if (mine) mineOnly.push(box);
+      return box;
     };
+    /* Nothing is machine-only in this form any more -- the one field that
+       was has moved out entirely. The mechanism stays: the next field that
+       is about the computer rather than the person must not be editable
+       while somebody else's details are in the form. */
 
     /* Who is already here. A row fills the form; the pencil opens that
        person for editing without making them the person at this keyboard,
        because filling in a colleague's role is a different act from
        becoming them. */
     const known = el('div', { class: 'prof-known' });
-    let editing = null;          // whose details are in the form, if not me
+    /* Which of three jobs Save is doing.
+
+         null      set who THIS COMPUTER credits work to
+         a name    edit that person's roster entry, and nothing else
+         'new'     put somebody new on the roster
+
+       Held explicitly rather than worked out from whether the name in the
+       form still matches. That comparison is what let editing somebody
+       fall through to the profile branch and rewrite this machine's
+       identity. */
+    let editing = null;
+    let creating = false;
 
     const fill = (d, asMe) => {
-      for (const k of ['name', 'email', 'role', 'initials']) {
+      for (const k of ['name', 'email', 'initials']) {
         if (f[k]) f[k].value = (d && d[k]) || '';
       }
+      /* The role is a select, and assigning a value it has no option for
+         silently leaves it blank -- which would then be saved as "no role"
+         over somebody's actual one. So the option is made first. */
+      if (f.role) {
+        const want = ((d && d.role) || '').trim();
+        if (want && !Array.from(f.role.options)
+              .some((o) => o.value.toLowerCase() === want.toLowerCase())) {
+          f.role.appendChild(el('option', {
+            value: want, text: want + '  (as recorded)' }));
+        }
+        f.role.value = want;
+      }
       editing = asMe ? null : (d && d.name) || null;
+      creating = false;
+      paintMode();
       paintKnown();
+    };
+
+    /* Start a new one. Clears the form rather than inheriting whoever was
+       in it -- a create that arrives pre-filled with somebody else's email
+       is how two people end up sharing one. */
+    const startNew = () => {
+      for (const k of ['name', 'email', 'role', 'initials']) {
+        if (f[k]) f[k].value = '';
+      }
+      editing = null;
+      creating = true;
+      paintMode();
+      paintKnown();
+      if (f.name) f.name.focus();
+    };
+
+    /* The role, as a list, without overwriting anything.
+
+       `cur.role` may be something nobody would pick today -- "Undergraduate"
+       is on this roster and is not in ROLES. A plain select would have
+       silently changed it to the first option the moment the form was
+       opened, so the current value is added as its own option and said to
+       be an old one. */
+    const roleField = () => {
+      const now = (cur.role || '').trim();
+      const known = ROLES.some((r) => r.toLowerCase() === now.toLowerCase());
+      const opts = ROLES.slice();
+      if (now && !known) opts.unshift(now);
+      f.role = el('select', { class: 'prof-role' },
+        [el('option', { value: '', text: '\u2014 not set \u2014' })]
+          .concat(opts.map((r) => el('option', {
+            value: r,
+            text: r + (now && !known && r === now ? '  (as recorded)' : ''),
+            selected: r.toLowerCase() === now.toLowerCase()
+              ? 'selected' : null,
+          }))));
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Role' }),
+        f.role,
+        now && !known
+          ? el('span', { class: 'hint',
+              text: '"' + now + '" is what is on record for them. Leaving it '
+                  + 'alone keeps it; picking another changes it.' })
+          : null,
+      ].filter(Boolean));
+    };
+
+    const modeLine = el('p', { class: 'prof-mode' });
+
+    const paintMode = () => {
+      /* Off screen when the form is not about this computer. */
+      for (const box of mineOnly) box.hidden = !!(editing || creating);
+      modeLine.className = 'prof-mode'
+        + (editing ? ' editing' : (creating ? ' creating' : ''));
+      modeLine.textContent = editing
+        ? 'Editing ' + editing + '. Save writes to the roster only \u2014 '
+          + 'it does not change who this computer credits work to.'
+        : (creating
+          ? 'Adding somebody new to the roster. Save puts them on it; it '
+            + 'does not change who this computer credits work to.'
+          : 'This is who this computer credits work to. Save applies it to '
+            + 'everything BARRY records here from now on.');
     };
 
     /* Remove, and then say what actually happened.
@@ -1594,17 +1856,62 @@ BARRY.profile = (function () {
       }
     };
 
+    /* Off the pickers, without pretending to be off the record.
+
+       This is the one that works on a name the data carries -- which is the
+       case that matters, because somebody who has left the lab has two
+       thousand decisions behind them and removal is refused for exactly
+       that reason. Nothing is deleted, no count moves, and their name stays
+       on every record it is on. */
+    const archivePerson = async (person, yes) => {
+      const held = heldBy(person);
+      if (yes) {
+        const ok = await BARRY.confirm(
+          'Archive ' + person.name + '?',
+          (held.n
+            ? person.name + ' stays on ' + held.n + ' record'
+              + (held.n === 1 ? '' : 's') + ' — ' + held.what.join(', ')
+              + ', all still counted for them. '
+            : '')
+          + 'Archiving only stops them being offered as an owner for new '
+          + 'work. Nothing is deleted, no number changes, and it can be '
+          + 'undone at any time.'
+          + '\n\nIt applies everywhere, not just on this computer — being '
+          + 'offered work is a lab-wide question.',
+          'Archive');
+        if (!ok) return;
+      }
+      try {
+        const res = await apiPost('/api/people/archive',
+                                  { name: person.name, archived: !!yes });
+        roster = res;
+        paintKnown();
+        toast(yes ? person.name + ' archived — still on every record, no '
+                    + 'longer offered for new work.'
+                  : person.name + ' is back on the roster.', 'ok', 5000);
+      } catch (e) {
+        toast('Could not archive ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
+    let showArchived = false;
+
     const paintKnown = () => {
       known.innerHTML = '';
-      const rows = (roster && roster.people) || [];
-      if (!rows.length) {
+      const all = (roster && roster.people) || [];
+      const rows = all.filter((x) => !x.archived);
+      const away = all.filter((x) => x.archived);
+      if (!rows.length && !away.length) {
         known.appendChild(el('span', { class: 'hint',
           text: 'Nobody else on record yet.' }));
         return;
       }
-      for (const p of rows) {
+      const chip = (p) => {
         const mine = (f.name && f.name.value.trim()) === p.name;
-        known.appendChild(el('span', { class: 'prof-chip' + (mine ? ' on' : '') }, [
+        return el('span', {
+          class: 'prof-chip' + (mine ? ' on' : '')
+                 + (p.archived ? ' archived' : ''),
+        }, [
           el('button', {
             class: 'prof-chip-name',
             title: 'Use ' + p.name + ' as who this machine credits work to',
@@ -1649,22 +1956,58 @@ BARRY.profile = (function () {
              hidden: an affordance that is silently absent teaches nothing,
              and "why can I remove that one and not this one" is the
              question this has to answer. */
+          /* And the one that always works. Beside the × on purpose: the
+             × is refused for anybody the data carries, and the answer to
+             "then how do I get them out of my pickers" should not be
+             somewhere else. */
+          el('button', {
+            class: 'prof-chip-arch' + (p.archived ? ' on' : ''),
+            title: p.archived
+              ? p.name + ' is archived — not offered for new work. '
+                + 'Click to put them back.'
+              : 'Archive ' + p.name + ': off the pickers, still on every '
+                + 'record they are on. Reversible.',
+            text: p.archived ? '\u21ba' : '\u25f4',
+            onclick: () => archivePerson(p, !p.archived),
+          }),
           el('button', {
             class: 'prof-chip-del' + (heldBy(p).n ? ' held' : ''),
             title: heldBy(p).n
               ? p.name + ' is on ' + heldBy(p).n + ' record'
                 + (heldBy(p).n === 1 ? '' : 's')
                 + ' (' + heldBy(p).what.join(', ') + '). '
-                + 'Names the data carries cannot be removed.'
+                + 'Names the data carries cannot be removed — archive them '
+                + 'instead, which takes them off the pickers and leaves the '
+                + 'records alone.'
               : 'Remove ' + p.name + ' from the roster',
             text: '\u00d7',
             onclick: () => removePerson(p),
           }),
-        ]));
+        ]);
+      };
+
+      for (const p of rows) known.appendChild(chip(p));
+
+      /* The archived, folded away. Counted in the heading rather than
+         hidden without trace: "where did that name go" is the question a
+         silent filter creates. */
+      if (away.length) {
+        known.appendChild(el('button', {
+          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
+          text: (showArchived ? '\u25be  ' : '\u25b8  ')
+                + away.length + ' archived',
+          title: 'Archived people are still on every record they are on, '
+               + 'and still counted. They are only kept out of the pickers.',
+          onclick: () => { showArchived = !showArchived; paintKnown(); },
+        }));
+        if (showArchived) {
+          for (const p of away) known.appendChild(chip(p));
+        }
       }
     };
 
     const body = el('div', { class: 'prof-form' }, [
+      modeLine,
       el('p', { class: 'confirm-msg',
         text: 'Everything BARRY records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
@@ -1678,11 +2021,26 @@ BARRY.profile = (function () {
             'What appears under a figure and against every decision.'),
       field('email', 'Email', 'you@uvm.edu',
             'So a decision can be asked about later.'),
-      field('device', 'What the lab calls this machine',
-            (cur.machine || 'this computer'),
-            'The real hostname (' + (cur.machine || '?') + ') is kept as '
-            + 'well, so "which computer" is still answerable.'),
-      field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
+      /* The machine's name is not a field here any more. It belongs to
+         the computer, and while it sat in this form every path that saved
+         a profile could rename the machine -- which is how one computer
+         came to file errors under five names. It lives under Device, in
+         Errors. */
+      el('p', { class: 'hint prof-device-note' }, [
+        el('span', { text: 'This computer is called ' }),
+        el('strong', { text: (cur.device_name || cur.machine || 'unnamed') }),
+        el('span', { text: '. That belongs to the computer rather than to '
+                         + 'you, so it is set under ' }),
+        el('button', {
+          class: 'linkish', text: 'Errors \u2192 Device',
+          onclick: () => {
+            closeModal();
+            setView('errors');
+          },
+        }),
+        el('span', { text: ' and switching profiles leaves it alone.' }),
+      ]),
+      roleField(),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
     ]);
@@ -1694,14 +2052,96 @@ BARRY.profile = (function () {
         try {
           const patch = {};
           for (const k of Object.keys(f)) patch[k] = f[k].value;
+          /* Belt and braces. The field is hidden in these modes, and a
+             hidden input still submits its value -- so the value is
+             dropped here too rather than trusted not to arrive. */
+          if (editing || creating) delete patch.device;
 
-          /* Editing somebody else writes only to the roster. Saving their
-             name into this machine's profile would credit everything this
-             computer does from now on to a person who is not sitting at
-             it -- which is the opposite of what the pencil is for. */
-          if (editing && (patch.name || '').trim() === editing) {
+          /* Editing somebody writes to the roster and nowhere else.
+
+             Decided by the mode, not by whether the name still matches.
+             It used to fall through to the profile branch the moment the
+             name differed at all -- which set THIS MACHINE's identity to
+             the person being edited, and then added their new name to the
+             roster beside the old row rather than in place of it. One
+             duplicate, and a computer credited to somebody who was not
+             sitting at it. */
+          /* Somebody new. The roster and nothing else -- adding a
+             colleague is not a statement about which computer this is. */
+          if (creating) {
+            const typed = (patch.name || '').trim();
+            if (!typed) {
+              toast('A person needs a name.', 'err', 4000);
+              save.disabled = null;
+              return;
+            }
+            const clash = ((roster && roster.people) || [])
+              .concat((roster && roster.not_people) || [])
+              .find((x) => (x.name || '').toLowerCase() === typed.toLowerCase());
+            if (clash) {
+              /* Not refused -- editing them is a reasonable thing to have
+                 meant. But it must not silently create a second row, which
+                 is what the old path did. */
+              save.disabled = null;
+              const go = await BARRY.confirm(
+                clash.name + ' is already on the roster',
+                'BARRY can update their details instead of adding a second '
+                + clash.name + '. Two entries with the same name cannot be '
+                + 'told apart on any record.',
+                'Update ' + clash.name);
+              if (!go) return;
+            }
             await apiPost('/api/people/add', {
-              name: patch.name, email: patch.email,
+              name: clash ? clash.name : typed, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            });
+            roster = null;
+            closeModal();
+            toast(clash ? 'Updated ' + clash.name + '.'
+                        : typed + ' added to the roster.', 'ok', 6000);
+            BARRY.activity.log(clash ? 'people.edit' : 'people.add',
+                               { name: clash ? clash.name : typed });
+            return;
+          }
+
+          if (editing) {
+            const typed = (patch.name || '').trim();
+
+            /* A rename, which is not a thing that can be done. `name` is
+               the key every decision, banked set and layer sheet is
+               stamped with, so changing it here would leave all of them
+               pointing at a person the roster no longer lists. Said
+               plainly, with the two real options offered. */
+            if (typed && typed !== editing) {
+              save.disabled = null;
+              const asNew = await BARRY.confirm(
+                'Rename ' + editing + ' to ' + typed + '?',
+                editing + ' is the name stamped on their decisions, their '
+                + 'banked sets and their layer sheets. Renaming the roster '
+                + 'entry cannot rename those, so they would be left '
+                + 'crediting somebody the roster no longer lists.'
+                + '\n\nBARRY can add ' + typed + ' as a separate person '
+                + 'instead, leaving ' + editing + ' exactly as they are. If '
+                + 'they really are the same person, archive one and add the '
+                + 'other as an alias — that folds the old name without '
+                + 'rewriting anything.',
+                'Add ' + typed + ' as a new person');
+              if (!asNew) return;
+              await apiPost('/api/people/add', {
+                name: typed, email: patch.email,
+                role: patch.role, initials: patch.initials,
+              });
+              roster = null;
+              closeModal();
+              toast(typed + ' added. ' + editing + ' is unchanged.',
+                    'ok', 6000);
+              BARRY.activity.log('people.add', { name: typed,
+                                                 from_edit: editing });
+              return;
+            }
+
+            await apiPost('/api/people/add', {
+              name: editing, email: patch.email,
               role: patch.role, initials: patch.initials,
             });
             roster = null;
@@ -1746,12 +2186,27 @@ BARRY.profile = (function () {
       ]),
       el('div', { class: 'mb' }, [body]),
       el('div', { class: 'mf' }, [
+        /* On the left, away from Save: adding somebody is a different job
+           from saving the form, and putting them together is how one gets
+           pressed for the other. */
+        el('button', {
+          class: 'btn ghost', text: 'Add somebody\u2026',
+          title: 'Put a new person on the roster. Does not change who this '
+               + 'computer credits work to.',
+          onclick: startNew,
+        }),
+        editing || creating ? el('button', {
+          class: 'btn ghost', text: 'Back to me',
+          title: 'Put your own details back in the form',
+          onclick: () => fill(prof, true),
+        }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: closeModal }),
         save,
-      ]),
+      ].filter(Boolean)),
     ]));
+    paintMode();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);
@@ -1779,6 +2234,180 @@ function setView(name) {
   if (v && v.onShow) v.onShow();
 }
 
+/* A mode change that undoes itself, filed as an error.
+
+   The activity log already records every transition with the stack that
+   caused it, and that is the right place for the ordinary ones -- but it has
+   thousands of rows and hundreds of mode changes, so the one that matters
+   is unfindable. This watches for the shape of the reported fault instead:
+   into a mode and back out within three seconds, with nothing in between
+   that a person did.
+
+   `lastGesture` is the test that makes it worth reporting. Somebody who
+   clicks StrataScope, looks, and clicks away has done exactly the same
+   transitions -- what they have not done is do it with no input at all. */
+let _lastMode = { at: 0, from: null, to: null, via: '' };
+let _lastGesture = 0;
+
+document.addEventListener('pointerdown', () => { _lastGesture = Date.now(); },
+                          true);
+document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
+                          true);
+
+function noticeBounce(from, to, via) {
+  const now = Date.now();
+  const prev = _lastMode;
+  _lastMode = { at: now, from: from, to: to, via: via };
+  if (!prev.at) return;
+
+  const gap = now - prev.at;
+  /* Reversed: A -> B then B -> A. Either direction counts; the report was
+     "snaps to StrataScope and snaps back", and the same fault entering
+     curation would be the same bug. */
+  const reversed = prev.to === from && prev.from === to;
+  /* Ten seconds, not three. "Snaps to event curation and snaps back, and
+     back again" describes something happening over seconds; a bounce with a
+     four-second leg was outside the window and went unrecorded, which is
+     the likeliest reason this watcher has caught nothing but my own
+     harness. */
+  if (!reversed || gap > 10000) return;
+  /* A person doing it deliberately is not a fault. Anything within a
+     second of a click or a key is theirs. */
+  if (now - _lastGesture < 1000) return;
+
+  try {
+    apiPost('/api/errors/client', {
+      where: 'mode.bounce',
+      message: 'The mode changed to ' + (prev.to || 'none') + ' and back to '
+             + (to || 'none') + ' in ' + gap + 'ms with no click or '
+             + 'keypress. Nothing in the code accounts for this; both '
+             + 'stacks are below.',
+      context: {
+        gap_ms: gap,
+        first: { from: prev.from, to: prev.to, via: prev.via },
+        second: { from: from, to: to, via: via },
+        ms_since_input: now - _lastGesture,
+        view: BARRY.state && BARRY.state.view,
+        /* What else was happening. Without this the report says a mode
+           changed twice and nothing about the load, the sync or the pane
+           rebuild that might have done it -- and by the time anybody looks,
+           the page has been reloaded. */
+        just_before: (BARRY.activity && BARRY.activity.recent
+          ? BARRY.activity.recent().slice(-8) : null),
+      },
+    }).catch(() => { /* it is a report about a glitch, not a transaction */ });
+  } catch (e) { /* never let the watcher break the thing it watches */ }
+}
+
+/* ==========================================================================
+   One clock on screen
+
+   The stores keep two. A local shard stamp carries this machine's offset
+   ("2026-09-08T14:17:31-0400"); a row pulled from Supabase is in UTC
+   ("2026-09-09T04:03:12.146+00:00"). Slicing the string -- which is what
+   every timestamp on screen used to do -- prints whichever digits are in it
+   and discards the offset, so cloud rows read four hours off all summer and
+   a list mixing the two looked out of order.
+
+   Parsed and shown in the reader's own time instead. `whenRaw` is for the
+   tooltip: the mix of clocks was impossible to see, and anybody who wonders
+   should be able to check what was actually written down.
+   ========================================================================== */
+function _pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+/* `form`:
+     'stamp'   09-08 14:17          compact, for log rows
+     'minute'  2026-09-08 14:17     the default
+     'second'  2026-09-08 14:17:31
+     'time'    14:17:31             when the date is already established
+   An unparseable value comes back unchanged -- an odd-looking string beats
+   "Invalid Date" where a time should be. */
+function fmtWhen(iso, form) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const Y = d.getFullYear();
+  const M = _pad2(d.getMonth() + 1);
+  const D = _pad2(d.getDate());
+  const h = _pad2(d.getHours());
+  const m = _pad2(d.getMinutes());
+  const sec = _pad2(d.getSeconds());
+  if (form === 'stamp') return M + '-' + D + ' ' + h + ':' + m;
+  if (form === 'second') {
+    return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + sec;
+  }
+  if (form === 'time') return h + ':' + m + ':' + sec;
+  return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
+}
+
+/* What was actually written down. Names the clock, because that is the part
+   nobody could see. */
+function whenRaw(iso) {
+  if (!iso) return '';
+  const raw = String(iso);
+  const utc = /(\+00:?00|Z)$/.test(raw);
+  return 'Shown in your time. Recorded as ' + raw + (utc ? ' (UTC)' : '');
+}
+
+BARRY.when = fmtWhen;
+BARRY.whenRaw = whenRaw;
+
+/* ==========================================================================
+   A popover hung off a button
+
+   xplore.js has its own copy of this, entangled with pane state, and it is
+   staying there -- but anything else that needs a grouped set of controls
+   should not grow a tenth variation. Fixed-positioned and parented to
+   <body> on purpose: a popover inside a scroller gets clipped by it and
+   slides away from its own button.
+   ========================================================================== */
+let _openPop = null;
+
+function closePopover() {
+  if (!_openPop) return;
+  const { node, button, away, esc } = _openPop;
+  document.removeEventListener('mousedown', away, true);
+  document.removeEventListener('keydown', esc, true);
+  window.removeEventListener('resize', closePopover);
+  if (node && node.parentNode) node.parentNode.removeChild(node);
+  if (button) button.classList.remove('active');
+  _openPop = null;
+}
+
+/* `build` is called on open, not on wiring, so the popover shows the state
+   as it is now rather than as it was when the button was drawn. */
+function openPopover(button, build) {
+  const wasMine = _openPop && _openPop.button === button;
+  closePopover();
+  if (wasMine) return;                    // a second click closes it
+
+  const node = el('div', { class: 'ctl-pop' }, [build(closePopover)]);
+  document.body.appendChild(node);
+  button.classList.add('active');
+
+  const r = button.getBoundingClientRect();
+  const w = node.offsetWidth;
+  node.style.left = Math.max(8, Math.min(
+    r.left, window.innerWidth - w - 8)) + 'px';
+  const h = node.offsetHeight;
+  node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+    ? (r.top - h - 6) + 'px'
+    : (r.bottom + 6) + 'px';
+
+  const away = (ev) => {
+    if (!node.contains(ev.target) && !button.contains(ev.target)) {
+      closePopover();
+    }
+  };
+  const esc = (ev) => { if (ev.key === 'Escape') closePopover(); };
+  _openPop = { node, button, away, esc };
+  setTimeout(() => {
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('keydown', esc, true);
+    window.addEventListener('resize', closePopover);
+  }, 0);
+}
+
 /* ==========================================================================
    Themes
 
@@ -1794,6 +2423,15 @@ const THEMES = [
   { id: 'horizon', name: 'Horizon',     swatch: ['#5bcefa', '#f5a9b8', '#ffffff'] },
   { id: 'horizon-night', name: 'Horizon Night',
     swatch: ['#0b1220', '#5bcefa', '#f5a9b8'] },
+  /* Jirai kei: black, baby pink, white lace. Three variants because that
+     is how the palette is actually worn -- the dark one, the white one,
+     and the yami-kawaii one. */
+  { id: 'jirai', name: 'Jirai Kei',
+    swatch: ['#0c0710', '#ff9ec7', '#fbeaf3'] },
+  { id: 'jirai-shiro', name: 'Jirai Shiro',
+    swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
+  { id: 'jirai-yami', name: 'Jirai Yami',
+    swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
@@ -2071,6 +2709,8 @@ BARRY.init = async function init() {
   $('#themeToggle').addEventListener('click', showThemePicker);
 
   $('#syncBtn').addEventListener('click', showSync);
+  const goBtn = $('#syncNowBtn');
+  if (goBtn) goBtn.addEventListener('click', () => globalSync(goBtn));
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));

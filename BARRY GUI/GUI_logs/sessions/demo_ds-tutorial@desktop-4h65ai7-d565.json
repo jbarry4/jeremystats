@@ -13,11 +13,11 @@
     "schema": "2026-09-08T15:34:19.666455+00:00",
     "session": "2026-09-04T16:08:28.899424+00:00",
     "start": "2026-09-04T16:08:28.899424+00:00",
-    "updated": "2026-09-08T21:05:11.416406+00:00",
-    "view_state": "2026-09-08T21:05:11.416406+00:00"
+    "updated": "2026-09-09T21:35:48.423473+00:00",
+    "view_state": "2026-09-09T21:34:52.040629+00:00"
   },
   "_shard": {
-    "at": "2026-09-08T21:05:11.416406+00:00",
+    "at": "2026-09-09T21:35:48.423473+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -40,12 +40,12 @@
   "session": 1,
   "start": "2020-01-01T00:00:00",
   "updated": {
-    "at": "2026-09-08T17:05:11-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T17:35:48-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
     "channels": [
@@ -90,13 +90,14 @@
     "hp": 0,
     "invert": true,
     "lp": 0,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 0,
     "probe": null,
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 32.7,
+    "t0": 20.9,
     "ylim": null
   }
 }

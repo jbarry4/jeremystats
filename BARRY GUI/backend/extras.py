@@ -407,15 +407,124 @@ def signature(rec):
                          msg.strip()[:180])
 
 
-def group_errors(records):
-    """Fold a flat error list into groups: unresolved first, then newest."""
+# Separates a fault signature from the machine it happened on, in the key
+# of a machine-scoped triage mark. Two at-signs because a hostname can
+# contain one and a signature contains almost anything.
+MARK_SEP = "@@"
+
+
+def mark_key(sig, machine=None):
+    """The key a resolve mark is stored under.
+
+    Without a machine this is the signature itself, unchanged -- which is
+    what every mark written before this existed is keyed on, and why they
+    all still work.
+    """
+    return "%s%s%s" % (sig, MARK_SEP, machine) if machine else sig
+
+
+def host_of(rec):
+    """Which COMPUTER this record came from.
+
+    `shard` first, and that is the whole point. `machine` is
+    `provenance().machine`, which is the `device` field of a profile -- free
+    text somebody types, changed whenever they feel like it, and not unique:
+    measured on this store, one computer had filed errors under five
+    different labels (Bluebarry, DESKTOP-4H65AI7, StrawBarry, Strawbarrry,
+    "Rig 2 (Barry lab)") while two different computers had both filed as
+    "StrawBarry". Grouping by it turned one machine into five rows and two
+    machines into one.
+
+    `shard` is `machine_id()` -- the hostname slug plus four hex of the MAC
+    -- derived rather than typed, and unique per computer by construction.
+
+    Older records have no shard. They fall back to the label, which is the
+    best that can be said about them; `host_named` marks them so a reader
+    knows the difference.
+    """
+    return (rec.get("shard")
+            or rec.get("machine")
+            or (rec.get("context") or {}).get("host") or "unknown")
+
+
+def host_named(rec):
+    """The label this record carried, for display, and whether it is all
+    there is. Returns (label, from_shard)."""
+    label = (rec.get("machine")
+             or (rec.get("context") or {}).get("host") or None)
+    return label, bool(rec.get("shard"))
+
+
+def real_host(machine_id):
+    """The computer's own name out of its shard id.
+
+    The id is the hostname slug, "-", four hex characters. Anything that
+    does not look like that comes back as it came: an unfamiliar id beats a
+    hostname invented by chopping one.
+    """
+    got = str(machine_id or "")
+    if "-" not in got:
+        return got.upper() or None
+    head, tag = got.rsplit("-", 1)
+    if len(tag) == 4 and all(c in "0123456789abcdef" for c in tag.lower()):
+        return head.upper() or None
+    return got.upper() or None
+
+
+def label_for(machine_id, records):
+    """"Bluebarry (DESKTOP-4H65AI7)" -- the newest label, and the real name.
+
+    The newest, because the label changes: this computer has been called
+    four things and the current one is what somebody will recognise. The
+    real hostname in brackets because the label is not unique and the
+    hostname is.
+    """
+    newest, when = None, ""
+    for rec in records or []:
+        if host_of(rec) != machine_id:
+            continue
+        got = rec.get("machine")
+        at = str(rec.get("at") or "")
+        if got and at >= when:
+            newest, when = got, at
+    real = real_host(machine_id)
+    if not newest:
+        return real or str(machine_id)
+    if not real or real.lower() == newest.lower():
+        return newest
+    return "%s (%s)" % (newest, real)
+
+
+def group_errors(records, per_machine=True):
+    """Fold a flat error list into groups: unresolved first, then newest.
+
+    Split per machine by default. The same fault on the rig and on the
+    desktop used to arrive as one group with a count of two, and "happened
+    twice" is a different fact from "happens on both machines" -- the second
+    one tells you it is not something about one computer.
+
+    `signature` on each group stays the identity of the FAULT, not of the
+    fault-on-this-machine: it is what the triage marks are keyed on, and
+    twenty-two of them existed before this change.
+    """
     groups = {}
     for rec in records:
         sig = signature(rec)
-        g = groups.get(sig)
+        host = host_of(rec)
+        key = (sig, host) if per_machine else (sig, None)
+        g = groups.get(key)
         if not g:
-            g = groups[sig] = {
-                "signature": sig, "count": 0, "first": None, "last": None,
+            g = groups[key] = {
+                "signature": sig,
+                # Unique per row of the list, so the client can key on one
+                # thing whichever way the folding went.
+                "key": mark_key(sig, host if per_machine else None),
+                # The identity, and separately what to put on screen.
+                "machine": host if per_machine else None,
+                "machine_label": (label_for(host, records)
+                                  if per_machine else None),
+                "machine_real": real_host(host) if per_machine else None,
+                "count": 0, "first": None, "last": None,
                 "where": rec.get("where"), "message": rec.get("message"),
                 "type": rec.get("type"), "records": [], "resolved": True,
                 "machines": [],

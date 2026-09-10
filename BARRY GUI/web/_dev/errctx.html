@@ -180,10 +180,15 @@ const hd = (t) => p('\n== ' + t + ' ==');
     const dr = D().querySelectorAll('.dev-row').length;
     p('  ' + dr + ' device row(s) on screen');
     ck('with a row per machine', dr === ds.length, dr + ' vs ' + ds.length);
+    /* Scoped to the panel. The Debug view now also carries a device
+       picker, and a chip per machine lights the same way -- both correctly,
+       so counting `.dev-dot.on` across the document counted each online
+       machine twice. This assertion was always about the panel. */
     ck('and a lit dot for the ones that are online',
-       D().querySelectorAll('.dev-dot.on').length
+       D().querySelectorAll('.dev-panel .dev-dot.on').length
          === ds.filter((d) => d.online).length,
-       D().querySelectorAll('.dev-dot.on').length);
+       D().querySelectorAll('.dev-panel .dev-dot.on').length + ' in the panel, '
+         + D().querySelectorAll('.dev-dot.on').length + ' on the page');
   }
 
   p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));

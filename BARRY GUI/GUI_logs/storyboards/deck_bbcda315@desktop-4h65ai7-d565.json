@@ -1,24 +1,24 @@
 {
   "_at": {
-    "created": "2026-09-08T19:01:23.609962+00:00",
-    "id": "2026-09-08T19:01:23.609962+00:00",
-    "schema": "2026-09-08T19:01:23.609962+00:00",
-    "slides": "2026-09-08T19:01:23.609962+00:00",
-    "title": "2026-09-08T19:01:23.609962+00:00",
-    "updated": "2026-09-08T19:01:23.609962+00:00"
+    "created": "2026-09-09T06:24:42.466182+00:00",
+    "id": "2026-09-09T06:24:42.466182+00:00",
+    "schema": "2026-09-09T06:24:42.466182+00:00",
+    "slides": "2026-09-09T06:24:42.466182+00:00",
+    "title": "2026-09-09T06:24:42.466182+00:00",
+    "updated": "2026-09-09T06:24:42.466182+00:00"
   },
   "_shard": {
-    "at": "2026-09-08T19:01:23.609962+00:00",
+    "at": "2026-09-09T06:24:42.466182+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-08T15:01:23-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T02:24:42-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "id": "deck_bbcda315",
   "schema": 1,
@@ -140,11 +140,11 @@
   ],
   "title": "For Angelina!",
   "updated": {
-    "at": "2026-09-08T15:01:23-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-09T02:24:42-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

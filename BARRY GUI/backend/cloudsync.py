@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import os
 
+from datetime import datetime
+
 from . import cloud, shards
 
 BUCKET = "results"
@@ -55,6 +57,49 @@ PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 UNSTAMPED = "1970-01-01T00:00:00+00:00"
 
 
+def _slim_versions(versions):
+    """Version metadata, with the snapshots left behind.
+
+    `snap` is the copy that makes a version restorable and it is the bulk of
+    the record. It stays in the JSON shard; this is what travels.
+    """
+    out = []
+    for v in (versions or []):
+        if not isinstance(v, dict):
+            continue
+        row = {k: v.get(k) for k in
+               ("v", "at", "by", "n", "note", "by_label", "machine",
+                "imported")
+               if v.get(k) is not None}
+        if row.get("v") is not None:
+            # Said on the row rather than inferred later: a reader needs to
+            # know this copy cannot be restored from.
+            row["snap_here"] = bool(v.get("snap"))
+            out.append(row)
+    return out
+
+
+def _bank_touched(rec):
+    """When this entry last changed.
+
+    The newest of: when it was added, the newest version, and the newest
+    history line. Using only `added.at` meant an edited entry looked
+    unchanged for ever and the incremental push skipped it.
+    """
+    stamps = []
+    added = _prov(rec, "added")
+    if added.get("at"):
+        stamps.append(cloud.ts(added["at"]))
+    for v in (rec.get("versions") or []):
+        if isinstance(v, dict) and v.get("at"):
+            stamps.append(cloud.ts(v["at"]))
+    for h in (rec.get("history") or []):
+        if isinstance(h, dict) and h.get("at"):
+            stamps.append(cloud.ts(h["at"]))
+    stamps = [x for x in stamps if x]
+    return max(stamps) if stamps else None
+
+
 def _prov(rec, key="updated"):
     p = rec.get(key) or {}
     return p if isinstance(p, dict) else {}
@@ -73,6 +118,83 @@ def _num(v):
         return f if f == f and abs(f) != float("inf") else None
     except (TypeError, ValueError):
         return None
+
+
+def _now_iso():
+    return cloud.now()
+
+
+def _newer_in(stamp, since):
+    """Is an incoming `stamp` newer than what is already here?
+
+    The pull-side twin of `_after`, with the opposite bias about a stamp it
+    cannot read. `_after` says yes, because on the push a needless upsert is
+    cheap and a dropped row is somebody's lost edit. Here a yes means
+    overwriting what is on this machine, so an unreadable or missing stamp
+    is not enough: no evidence, no overwrite.
+    """
+    if not stamp or not since:
+        return bool(stamp) and not since
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return False
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return False
+
+
+def _decision_wins(theirs_at, ours_at, our_label, ours_cleared=None):
+    """Should an incoming decision replace the one already here?
+
+    This had no rule at all: any differing label was taken, so a pull could
+    undo today's curation with a row from last January -- measured, on a
+    real set, before this existed. A curation decision is the most expensive
+    thing in this application to redo, because it is a judgement somebody
+    made once while looking at a waveform.
+
+    A decision beats no decision. Past that, the newer one wins. An incoming
+    row with no stamp cannot overturn a decision that has one: on the push
+    side an unreadable stamp means "send it and let the database sort it
+    out", which is cheap, and on the pull side it would mean "overwrite
+    somebody's judgement on no evidence", which is not.
+    """
+    undecided = (our_label or "unspecified") == "unspecified"
+    # Only an event nobody has ever ruled on yields automatically. An undo
+    # that carries a time is a decision about the candidate and is defended
+    # like one -- otherwise a colleague's older label would arrive, find the
+    # label empty, and undo the undo.
+    if undecided and not ours_cleared:
+        return True
+    ours_at = ours_at or (ours_cleared if undecided else None)
+    if not theirs_at:
+        return False
+    if not ours_at:
+        return True
+    return _newer_in(theirs_at, ours_at)
+
+
+def _after(stamp, since):
+    """Is `stamp` newer than `since`? Compared as times, not as text.
+
+    This was `str(stamp) > since`, which is only true if both are in the same
+    offset -- and they were not. A row stamped in Vermont local time sorted
+    before a UTC "since" from the same afternoon, so the incremental push
+    dropped it.
+
+    An unparseable stamp counts as newer. Sending a row that did not need
+    sending costs one upsert the database discards; dropping one that did
+    loses somebody's edit, silently, until a full push happens to run.
+    """
+    if not stamp:
+        return True
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return True
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return True
 
 
 class Sync:
@@ -243,7 +365,22 @@ class Sync:
                 "added_machine": added.get("machine"),
                 "history": rec.get("history") or [],
                 "events": rec.get("events") or [],
-                "updated_at": cloud.ts(added.get("at")) or cloud.now(),
+                # The version history, without the snapshots.
+                #
+                # Measured on this store: 110 versions are 44 KB of metadata
+                # and 0.5 MB of snapshots. The metadata is what makes a
+                # version visible on another machine -- who, when, how many,
+                # the label mix -- and the snapshot is what lets it be
+                # restored. So the metadata comes here and the snapshots stay
+                # in the JSON shard, which is the redundancy copy.
+                "versions": _slim_versions(rec.get("versions")),
+                "version": _int(rec.get("version")),
+                # The newest thing that happened to it, not the moment it was
+                # created. This was `added.at`, so an entry that was edited
+                # afterwards never looked new to the incremental push and
+                # stopped travelling the moment it existed -- which is most
+                # of why a new version needed a git pull.
+                "updated_at": _bank_touched(rec) or cloud.now(),
                 "updated_by": added.get("by") or self.machine,
             })
         return {"bank_entries": out}
@@ -292,10 +429,29 @@ class Sync:
                     "end_s": _num(ev.get("end")),
                     "channel": _int(ev.get("channel")),
                     "amplitude": _num(ev.get("amplitude")),
+                    # The word, because `curation_events.label` is NOT
+                    # NULL -- the shared table has no way to write "nobody
+                    # has decided", so the word is that encoding and this
+                    # line is not the careless `or` it looks like. I tried
+                    # sending null here and Postgres refused it:
+                    # 23502, null value in column "label".
+                    #
+                    # The bug this looked like was real but was on the way
+                    # back IN: the applier wrote the word as a local label
+                    # and `progress` counted it as a decision, so seven
+                    # untouched candidates read as done and `left` was 0.
+                    # Both of those are fixed where they belong.
                     "label": ev.get("label") or "unspecified",
                     "decided_by": ev.get("by"),
-                    "decided_at": at,
-                    "updated_at": at or cloud.ts(cr.get("at")) or cloud.now(),
+                    # Or when it was un-decided. `decided_at` on the wire
+                    # means "when this row's state was set", which is true
+                    # of a decision and of taking one back -- and without a
+                    # time on the undo it could not be ordered, so it
+                    # stopped at the machine that made it while a
+                    # colleague's copy kept the decision and pushed it back.
+                    "decided_at": at or cloud.ts(ev.get("cleared_at")),
+                    "updated_at": (at or cloud.ts(ev.get("cleared_at"))
+                                   or cloud.ts(cr.get("at")) or cloud.now()),
                 })
                 for r in (ev.get("reviews") or []):
                     who = (r.get("by") or "").strip()
@@ -332,6 +488,18 @@ class Sync:
                 # colleague pulling this sheet gets the labels but no way to
                 # tell an import from a correction.
                 "versions": rec.get("versions") or [],
+                # The workbench half. A bench that exists on one computer
+                # answers "what am I working on"; the shared one answers
+                # "what is anybody working on", which is the question that
+                # stops two people labelling the same recording twice.
+                "name": rec.get("name"),
+                "assignee": rec.get("assignee"),
+                "is_open": bool(rec.get("open")),
+                "opened_at": cloud.ts(rec.get("opened_at")),
+                "opened_by": rec.get("opened_by"),
+                "archived": bool(rec.get("archived")),
+                "archived_at": cloud.ts(rec.get("archived_at")),
+                "archived_by": rec.get("archived_by"),
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -550,8 +718,27 @@ class Sync:
             out.append({
                 "name": row.get("name"),
                 "email": row.get("email"),
+                # The details somebody actually typed. These were missing,
+                # and they are the only part of a roster entry that is not
+                # compiled from the data -- so they were the only part that
+                # never travelled. An edited role stayed on the machine it
+                # was edited on, which is exactly what was reported.
+                "role": row.get("role") or None,
+                "initials": row.get("initials") or None,
+                "orcid": row.get("orcid") or None,
+                "note": row.get("note") or None,
                 "is_person": bool(row.get("is_person")),
                 "seen": row.get("counts") or {},
+                # The other spellings that are this same person. Local-only
+                # until now, which meant a merge held until the next pull and
+                # then came apart: the shared roster still had the old name,
+                # so `_apply_people` wrote it back every cycle and the merge
+                # looked like it had failed.
+                "aliases": sorted(row.get("aliases") or []) or None,
+                # Whether they should still be offered work. Shared, because
+                # that is a lab-wide question -- and because a local-only
+                # flag would be written back by the next pull.
+                "archived": bool(row.get("archived")) or None,
                 "last_seen": cloud.now(),
                 "updated_at": cloud.now(),
             })
@@ -624,9 +811,7 @@ class Sync:
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
             if since:
-                batch = [r for r in batch
-                         if not r.get("updated_at")
-                         or str(r["updated_at"]) > since]
+                batch = [r for r in batch if _after(r.get("updated_at"), since)]
             report[table] = len(batch)
             if on_progress:
                 on_progress(table, len(batch))
@@ -790,7 +975,7 @@ class Sync:
     # ==================================================================
     # Pull
     # ==================================================================
-    def pull(self, since=None, on_progress=None):
+    def pull(self, since=None, on_progress=None, on_table=None):
         """Bring down what other machines have changed, and apply it locally.
 
         Runs, activity and the raw error log stay push-only, and for a
@@ -815,6 +1000,12 @@ class Sync:
         applied, newest = {}, since
 
         def fetch(table):
+            # Said before the request, not after it: the point of announcing
+            # a table is that it is the one currently taking the time. The
+            # pull is the slow half of a sync -- fifteen round trips -- and
+            # it used to report the single word "pulling" for all of them.
+            if on_table:
+                on_table(table)
             rows = self.cloud.select_all(table, q)
             for r in rows:
                 got = r.get("updated_at")
@@ -900,17 +1091,73 @@ class Sync:
             # The roster compiles counts from local data as well, which is
             # more work than this needs -- but it is the only reader, and a
             # wrong skip would be worse than a slow one.
-            for p in (self.people.roster() or []):
-                have[(p.get("name") or "").strip().lower()] = p
+            #
+            # `roster()` returns a DICT of {people, not_people, me}, and
+            # iterating it walks the keys -- so this loop used to bind `row`
+            # to the string "people", raise AttributeError on `.get`, hit the
+            # except below, and leave `have` empty. Which meant the skip
+            # never skipped, and the write loop this guard exists to stop was
+            # still running: 11 of 11 unchanged rows written on every cycle.
+            got = self.people.roster() or {}
+            listed = ((got.get("people") or [])
+                      + (got.get("not_people") or [])
+                      if isinstance(got, dict) else list(got))
+            for row in listed:
+                have[(row.get("name") or "").strip().lower()] = row
         except Exception:                            # noqa: BLE001
             have = {}
 
+        # Every spelling this machine has been told is somebody else. Built
+        # once: a row per cloud person and a lookup per row would re-read the
+        # roster file for each of them.
+        aliased = {}
+        for row in have.values():
+            for other in (row.get("aliases") or []):
+                aliased[str(other).strip().lower()] = row.get("name")
+
+        # Names this machine has retired. Checked as well as the aliases
+        # because the aliases are not enough: the same push that resurrects
+        # a merged-away name also unions its old alias back the other way,
+        # so the alias that was supposed to suppress it disappears. A
+        # tombstone cannot be argued with by an incoming row.
+        retired = set()
+        try:
+            retired = self.people.retired()
+        except Exception:                            # noqa: BLE001
+            retired = set()
+
+        self.merge_reverts = 0
         for r in (rows or []):
             name = (r.get("name") or "").strip()
             if not name:
                 continue
+            # The old spelling of somebody who has been merged. Writing it
+            # would re-create the entry the merge removed, which is exactly
+            # what used to happen on every cycle.
+            if name.lower() in retired:
+                # Removed here on purpose. The other machine will stop
+                # sending it once it pulls; until then this is what keeps it
+                # from coming back every twenty seconds.
+                self.merge_reverts += 1
+                continue
+            keep = aliased.get(name.lower())
+            if keep and keep.strip().lower() != name.lower():
+                self.merge_reverts += 1
+                continue
             want = {"email": r.get("email"), "role": r.get("role"),
-                    "initials": r.get("initials"), "orcid": r.get("orcid")}
+                    "initials": r.get("initials"), "orcid": r.get("orcid"),
+                    "note": r.get("note")}
+            # Aliases are unioned, not overwritten. Two people merging
+            # different spellings on different machines are both right, and
+            # last-write-wins would have one of them silently undo the
+            # other.
+            theirs = [a for a in (r.get("aliases") or []) if a]
+            # Last-write-wins, unlike aliases: "she is back" is a correction
+            # of "she has left", not a second opinion to be unioned with it.
+            # `None` means the row says nothing, which is not the same as
+            # saying False -- a machine that has not run migration 09 sends
+            # nothing here and must not un-archive anybody.
+            put_away = r.get("archived")
             mine = have.get(name.lower())
             if mine is not None:
                 # Only the fields this row actually carries, and only when
@@ -923,14 +1170,50 @@ class Sync:
                             != str(v or "").strip()):
                         same = False
                         break
+                # A different archive state is news.
+                if same and put_away is not None:
+                    if bool(mine.get("archived")) != bool(put_away):
+                        same = False
+                # An alias this machine has not got is news even when every
+                # other field matches.
+                if same and theirs:
+                    here = {str(a).strip().lower()
+                            for a in (mine.get("aliases") or [])}
+                    if any(str(a).strip().lower() not in here
+                           for a in theirs):
+                        same = False
                 if same:
                     continue
+            merged = None
+            if theirs:
+                have_now = {str(a).strip().lower(): str(a).strip()
+                            for a in ((mine or {}).get("aliases") or [])}
+                for a in theirs:
+                    have_now.setdefault(str(a).strip().lower(),
+                                        str(a).strip())
+                merged = sorted(have_now.values())
+            more = {}
+            if merged:
+                more["aliases"] = merged
+            if put_away is not None:
+                more["archived"] = bool(put_away)
             try:
-                self.people.add(name, r.get("email"), None,
+                self.people.add(name, r.get("email"), r.get("note"),
                                 role=r.get("role"),
                                 initials=r.get("initials"),
-                                orcid=r.get("orcid"))
+                                orcid=r.get("orcid"), **more)
                 n += 1
+            except TypeError:
+                # A People without the `aliases` field. The rest of the row
+                # is still worth applying.
+                try:
+                    self.people.add(name, r.get("email"), r.get("note"),
+                                    role=r.get("role"),
+                                    initials=r.get("initials"),
+                                    orcid=r.get("orcid"))
+                    n += 1
+                except Exception:                    # noqa: BLE001
+                    continue
             except Exception:                        # noqa: BLE001
                 continue
         return n
@@ -980,9 +1263,12 @@ class Sync:
             if not sig:
                 continue
             mine = have.get(sig) or {}
-            theirs_at = r.get("updated_at") or ""
-            mine_at = cloud.ts(mine.get("at")) or ""
-            if mine and mine_at >= theirs_at:
+            # Compared as times. `mine.get("at")` is local ("14:05-04:00")
+            # and `updated_at` is the cloud's UTC ("18:05+00:00"), so as text
+            # a mark made locally this afternoon sorted BEFORE a remote one
+            # from this morning -- and re-triaging an error here was undone
+            # by the next pull. Same fault as the push filter had.
+            if mine and not _newer_in(r.get("updated_at"), mine.get("at")):
                 continue
             if r.get("resolved"):
                 if not mine:
@@ -1122,7 +1408,21 @@ class Sync:
         have = {e.get("id") for e in self.bank.all()}
         n = 0
         for r in rows:
-            if r.get("deleted_at") or r.get("id") in have:
+            if r.get("deleted_at"):
+                continue
+            # An entry this machine already has is not nothing to do. It
+            # used to be skipped outright, so a version created elsewhere
+            # arrived in the row and was thrown away -- which is why a new
+            # v# only showed up after a git pull.
+            if r.get("id") in have:
+                try:
+                    got = self.bank.absorb_versions(
+                        r.get("id"), r.get("versions") or [],
+                        r.get("version"))
+                    if got:
+                        n += got
+                except Exception:        # noqa: BLE001
+                    pass
                 continue
             try:
                 self.bank.add({
@@ -1145,6 +1445,15 @@ class Sync:
                     "curated": bool(r.get("specified")),
                     "curation_label": r.get("curation_label"),
                 })
+                # And the history it arrived with, or a brand new entry
+                # would show as v0 on this machine while the machine that
+                # made it shows v3.
+                if r.get("versions"):
+                    try:
+                        self.bank.absorb_versions(
+                            r.get("id"), r.get("versions"), r.get("version"))
+                    except Exception:    # noqa: BLE001
+                        pass
                 n += 1
             except Exception:            # noqa: BLE001
                 continue
@@ -1170,12 +1479,34 @@ class Sync:
                 cur = mine.get(e.get("event_id"))
                 if not cur:
                     continue
-                if (e.get("label") or "unspecified") != cur.get("label"):
-                    cur["label"] = e.get("label") or "unspecified"
+                # Normalised both ways: the string "unspecified" and an
+                # empty label mean the same thing -- nobody has decided --
+                # and the difference between them is not news.
+                theirs = e.get("label") or None
+                if theirs == "unspecified":
+                    theirs = None
+                ours = cur.get("label") or None
+                if ours == "unspecified":
+                    ours = None
+                if theirs == ours:
+                    continue
+                if not _decision_wins(e.get("decided_at"), cur.get("at"),
+                                      ours or "unspecified",
+                                      cur.get("cleared_at")):
+                    continue
+                cur["label"] = theirs
+                if theirs is None:
+                    cur.pop("by", None)
+                    cur.pop("at", None)
+                    # When it became undecided, from the row that said so --
+                    # without it the next pull of that same old decision
+                    # would find an unstamped blank and take the shortcut.
+                    cur["cleared_at"] = e.get("decided_at") or _now_iso()
+                else:
                     cur["by"] = e.get("decided_by")
                     cur["at"] = e.get("decided_at")
-                    touched = True
-                    n += 1
+                touched = True
+                n += 1
             if touched:
                 self.curate._write(rec)
         return n
@@ -1205,6 +1536,35 @@ class Sync:
             if changed:
                 self.layers.set_many(gid, changed)
                 n += len(changed)
+
+            # Whose it is, whether it is on a bench and whether it has been
+            # filed away -- written only when they actually differ. Writing
+            # them back unconditionally restamps the sheet, and a restamped
+            # sheet is pushed up as though it were an edit: the loop the
+            # roster was stuck in, passing identical rows between machines
+            # forever.
+            if s.get("name") and s.get("name") != mine.get("name"):
+                self.layers.rename(gid, s["name"])
+                mine = self.layers.get(gid) or {}
+            if s.get("assignee") and s.get("assignee") != mine.get("assignee"):
+                self.layers.assign(gid, s["assignee"])
+                mine = self.layers.get(gid) or {}
+            if bool(s.get("archived")) != bool(mine.get("archived")):
+                self.layers.archive(gid, bool(s.get("archived")))
+                mine = self.layers.get(gid) or {}
+            # `is_open` is a claim about right now, so the later claim wins
+            # rather than the remote one always winning: putting a sheet down
+            # here should not be undone by a colleague's older pull.
+            if bool(s.get("is_open")) != bool(mine.get("open")):
+                ours = mine.get("opened_at") or mine.get("closed_at")
+                if not mine.get("archived") and (
+                        not ours or _newer_in(s.get("opened_at"), ours)):
+                    try:
+                        self.layers.open_set(gid, bool(s.get("is_open")),
+                                             who=s.get("opened_by"))
+                    except Exception:                          # noqa: BLE001
+                        pass
+                    mine = self.layers.get(gid) or {}
 
             # The history, when this machine has less of it than the cloud.
             # Never the other way: a sheet that has been versioned here and

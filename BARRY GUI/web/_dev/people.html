@@ -94,17 +94,69 @@ const PROBE = 'Harness Probe Person';
      'every name looks held — the delete could never be used');
 
   hd('2. A name with work behind it is refused');
-  const worked = people.filter((x) => held(x) > 0)
-    .sort((a, b) => held(b) - held(a))[0];
+  /* Somebody the data carries AND who has no hand-added row, so the
+     forget genuinely changes nothing.
+
+     This used to take whoever had the most work, which is a real colleague
+     -- and if they happened to have a hand-added row, the forget removed
+     it. That row is where a merge keeps its aliases, so running this
+     harness quietly undid the Rain / Rain Younger merge, repeatedly, and it
+     took a while to work out that the test was the thing breaking it.
+
+     A name with no hand-add is the honest subject anyway: the claim is that
+     the data holds them there, not that a row does. */
+  const HAND_SRC = 'added by hand';
+  const pure = people.filter(
+    (x) => held(x) > 0 && !((x.counts || {})[HAND_SRC]));
+  const worked = (pure.sort((a, b) => held(b) - held(a))[0])
+    || people.filter((x) => held(x) > 0).sort((a, b) => held(b) - held(a))[0];
+  /* Preferred, not required. On this store every real person also has a
+     hand-added row, so there is nobody to pick who is entirely safe -- and
+     failing here would be reporting the roster rather than the code. Said
+     out loud, and whatever is removed is put back below. */
+  const risky = !!((worked.counts || {})[HAND_SRC]);
+  p('  subject: ' + worked.name + (risky
+    ? '  (has a hand-added row — it will be restored afterwards)'
+    : '  (no hand-added row, nothing to destroy)'));
+  const keepDetails = risky
+    ? await (await W().fetch('/api/people/'
+        + encodeURIComponent(worked.name))).json().catch(() => null)
+    : null;
   p('  trying: ' + worked.name + ' (' + held(worked) + ' records)');
-  const before = (await roster()).people.length;
+  /* Compared as a set, not as a count. A count is a race: another harness
+     leaving a `curate@harness` behind moves it for reasons that have
+     nothing to do with this forget, so this passed alone and failed in a
+     suite. What is being claimed is that the forget removed nobody. */
+  const namesOf = (r) => new Set((r.people || []).map((x) => x.name));
+  const beforeSet = namesOf(await roster());
   await post('/api/people/forget', { name: worked.name });
   const after = await roster();
-  ck('they are still on the roster',
-     (after.people || []).some((x) => x.name === worked.name),
+  const afterSet = namesOf(after);
+  const lost = Array.from(beforeSet).filter((n) => !afterSet.has(n));
+  ck('they are still on the roster', afterSet.has(worked.name),
      'a name carried by the data was removed');
-  ck('and the roster is the same size', after.people.length === before,
-     after.people.length + ' vs ' + before);
+  ck('and the forget removed nobody', lost.length === 0,
+     'lost: ' + lost.join(', '));
+
+  /* Restore what the forget took. A hand-added row is where a merge keeps
+     its aliases, so removing one quietly undid the Rain / Rain Younger
+     merge every time this harness ran. */
+  if (keepDetails && keepDetails.person) {
+    const d = keepDetails.person;
+    try {
+      await post('/api/people/add', {
+        name: worked.name, email: d.email || null, role: d.role || null,
+        initials: d.initials || null,
+      });
+      if ((d.aliases || []).length) {
+        await post('/api/people/add',
+                   { name: worked.name, aliases: d.aliases });
+      }
+      p('  restored ' + worked.name + '’s row'
+        + ((d.aliases || []).length
+            ? ' and ' + d.aliases.length + ' alias(es)' : ''));
+    } catch (e) { p('  could not restore: ' + e.message); }
+  }
 
   hd('3. A hand-added name goes');
   await post('/api/people/add', { name: PROBE, role: 'harness' });
@@ -138,11 +190,38 @@ const PROBE = 'Harness Probe Person';
     + dels.filter((b) => b.classList.contains('held')).length + ' marked held');
   ck('every chip offers removal', dels.length === chips.length,
      dels.length + ' vs ' + chips.length);
+  /* Against what is on screen. Archived people are folded away, so the
+     rendered chips are a subset of the roster and comparing with the whole
+     of it counts names that were never drawn. */
+  const shownNames = new Set(
+    Array.from(D().querySelectorAll('.prof-chip .prof-chip-name'))
+      .map((b) => (b.textContent || '').split('  \u00b7  ')[0]));
+  const onScreen = people.filter((x) => shownNames.has(x.name));
   ck('and the ones carried by the data are marked as held',
      dels.filter((b) => b.classList.contains('held')).length
-       === people.filter((x) => held(x) > 0).length,
+       === onScreen.filter((x) => held(x) > 0).length,
      dels.filter((b) => b.classList.contains('held')).length + ' marked, '
-     + people.filter((x) => held(x) > 0).length + ' expected');
+     + onScreen.filter((x) => held(x) > 0).length + ' expected of '
+     + onScreen.length + ' shown');
+
+  /* And the archive, which is the button that always works -- removal is
+     refused for anybody the data carries, which is most of the roster. */
+  const archs = Array.from(D().querySelectorAll('.prof-chip-arch'));
+  ck('every chip also offers archiving', archs.length === chips.length,
+     archs.length + ' vs ' + chips.length);
+  const away = people.filter((x) => x.archived);
+  const fold = D().querySelector('.prof-arch-toggle');
+  if (away.length) {
+    ck('archived people are folded away, and counted in the fold',
+       !!fold && fold.textContent.indexOf(String(away.length)) >= 0,
+       fold ? fold.textContent.trim() : 'no fold');
+    ck('and are not among the chips on screen',
+       away.every((x) => !shownNames.has(x.name)),
+       away.filter((x) => shownNames.has(x.name)).map((x) => x.name).join(','));
+  } else {
+    p('  (nobody is archived, so the fold is correctly absent)');
+    ck('no fold is shown when nobody is archived', !fold);
+  }
   const heldBtn = dels.find((b) => b.classList.contains('held'));
   ck('a held one says how many records hold it',
      !!heldBtn && /is on \d+ record/.test(heldBtn.title || ''),

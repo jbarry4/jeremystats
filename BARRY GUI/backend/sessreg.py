@@ -33,7 +33,7 @@ import os
 import re
 import uuid
 
-from . import ids
+from . import ids, shards
 
 SCHEMA = 2
 
@@ -52,6 +52,37 @@ def new_gid():
     when the thing it was derived from is corrected.
     """
     return "s" + uuid.uuid4().hex[:12]
+
+
+# Whether a folder will open, remembered against its mtime.
+#
+# `os.path.isdir` is not the question -- a folder can survive its contents,
+# and a recording with no CSC .ncs and no converted .mat cannot be opened
+# however much else is in it. Asking the loader is authoritative and costs a
+# listdir, which over a network share is worth caching: 28ms each, 184 of
+# them, and the registry is read on every visit to the Sessions view.
+_OPENS = {}
+
+
+def _opens(path):
+    """True when `csc.describe_path` would accept this folder."""
+    try:
+        stamp = os.path.getmtime(path)
+    except OSError:
+        _OPENS.pop(path, None)
+        return False
+    was = _OPENS.get(path)
+    if was and was[0] == stamp:
+        return was[1]
+    try:
+        from . import csc
+        ok = bool((csc.describe_path(path) or {}).get("ok"))
+    except Exception:                                    # noqa: BLE001
+        # An unreadable share is not a verdict about the recording. Say no
+        # for now and ask again when its mtime changes.
+        ok = False
+    _OPENS[path] = (stamp, ok)
+    return ok
 
 
 def _newest_sighting(rec):
@@ -123,8 +154,38 @@ class Registry:
     # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
+    # Every record, rebuilt only when the session files change.
+    _all_sig = None
+    _all_recs = None
+
     def all(self):
-        return self.store.all_sessions()
+        """Every session record, merged from its shards.
+
+        Cached against the shard directory's signature. Reading and merging
+        515 records is 1.35 s, and one `/api/registry` did it three times --
+        once directly, once inside `projects()` and once inside `tree()` --
+        which is most of the eight and a half seconds that request took.
+
+        The signature is the safety: it changes the moment any shard is
+        written, by this machine or by a pull, so this cannot serve a record
+        that has been superseded. `by_gid` below has kept an index the same
+        way for the same reason.
+        """
+        try:
+            sig = self.store.sessions.signature()
+        except Exception:                                  # noqa: BLE001
+            sig = None
+        if sig is None:
+            # No signature to trust, so no cache. Correctness first: this is
+            # the path a store without shard stamps takes.
+            return self.store.all_sessions()
+        if sig != self._all_sig or self._all_recs is None:
+            self._all_recs = self.store.all_sessions()
+            self._all_sig = sig
+        # Copies, because callers edit what they are handed -- `ensure` and
+        # the appliers all do -- and editing this list would be editing the
+        # cache. Shallow is enough: the mutations are top-level fields.
+        return [dict(r) for r in self._all_recs]
 
     # gid -> record, rebuilt only when the session files change.
     _gid_sig = None
@@ -214,11 +275,44 @@ class Registry:
     def _seen_patch(self, rec, where, scan_id=None, root=None):
         """This machine's sighting, merged with whatever other machines wrote."""
         prov = self.store.provenance() if self.store else {}
-        who = prov.get("machine") or "unknown"
         seen = dict((rec or {}).get("seen") or {})
+        # Keyed on the machine id, not the label.
+        #
+        # `provenance().machine` is the name somebody typed into the device
+        # field. It changes, and it is not unique: this one computer has
+        # sightings filed under "Bluebarry", "DESKTOP-4H65AI7" and
+        # "Strawbarrry", so asking "has this machine seen it" matched
+        # nothing. The id is the hostname slug plus a hash of the MAC.
+        #
+        # The label rides along, because a human reading the table wants
+        # "Bluebarry" and not "desktop-4h65ai7-d565".
+        who = shards.machine_id()
         seen[who] = {"at": prov.get("at"), "by": prov.get("user"),
-                     "path": where, "root": root, "scan": scan_id}
+                     "path": where, "root": root, "scan": scan_id,
+                     "machine": prov.get("machine")}
         return seen
+
+    def seen_by(self, rec, names):
+        """Has any of `names` seen this recording?
+
+        `names` is every spelling one computer answers to -- its id, its
+        current label, its real hostname, and the older labels it used. All
+        of them, because the sightings already on record are keyed on
+        whatever the label was at the time and those years are not being
+        rewritten: guessing which old label belonged to which computer is
+        how two people's machines were merged once already.
+        """
+        want = {str(n).strip().lower() for n in (names or []) if n}
+        if not want:
+            return False
+        for key, got in ((rec or {}).get("seen") or {}).items():
+            if str(key).strip().lower() in want:
+                return True
+            # A newer sighting is keyed on the id and carries the label.
+            label = (got or {}).get("machine") if isinstance(got, dict) else None
+            if label and str(label).strip().lower() in want:
+                return True
+        return False
 
     def _durable_patch(self, rec, ident, facts, first_seen_by="scan"):
         """Only what is worth a tracked write, or None for "nothing changed".
@@ -530,6 +624,11 @@ class Registry:
     def summary(self, rec, attachments=None):
         """One row of the housekeeping view."""
         paths = list(rec.get("paths") or [])
+        # Computed once, and reused for the loadability check below: the
+        # folders that do not exist must not be touched again. Reaching for
+        # an unmounted network path costs a timeout, and checking all 471
+        # rather than the 184 that answer took this read from 5s to 25s.
+        here = [p for p in paths if os.path.isdir(p)]
         row = {
             "gid": rec.get("gid"),
             "key": rec.get("key"),
@@ -551,7 +650,14 @@ class Registry:
             # Which of those paths this machine can actually reach. The point
             # of listing them all is to see, at a glance, that a recording is
             # known but not mounted here.
-            "here": [p for p in paths if os.path.isdir(p)],
+            "here": here,
+            # Which of them will actually open, which is not the same
+            # question: a folder can outlive its contents. Asked of the
+            # loader itself rather than guessed at, and only of the folders
+            # that already answered `isdir` -- touching an unmounted network
+            # path costs a timeout, and asking all 471 instead of the 184
+            # that exist took the registry read from 5s to 25s.
+            "loadable": [p for p in here if _opens(p)],
             "bad_channels": rec.get("bad_channels") or [],
             "merged_in": rec.get("merged_in") or [],
             "split_from": rec.get("split_from"),
@@ -586,6 +692,9 @@ class Registry:
             "converted": bool(rec.get("converted")),
         }
         row["reachable"] = bool(row["here"])
+        # "Can I click this right now." The filter that says "on this
+        # machine" means this one, not `reachable`.
+        row["can_open"] = bool(row["loadable"])
         if attachments:
             row["has"] = attachments(rec) or {}
         return row

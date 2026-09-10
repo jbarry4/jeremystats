@@ -642,6 +642,22 @@ BARRY.views.housekeeping = (function () {
           + 'labels, curated events — follows the recording rather than the '
           + 'folder it happens to sit in.' }));
 
+    /* The built-in example is in the tree but is not a registry record, so
+       every by-gid write answers "No session demo-...". Saying so beats
+       offering controls that fail: a new user's first click here is quite
+       likely to be the example, and what they would learn is that the
+       controls do not work. */
+    const isDemo = /^demo-/.test(String(s.gid || ''));
+    if (isDemo) {
+      host.appendChild(el('p', { class: 'hint hk-demo-note',
+        text: 'This is the built-in example, not a recording on a drive. It '
+            + 'is here so there is something to look at before you scan '
+            + 'anything, and it is not in the registry — so it cannot be '
+            + 'filed under a project, annotated, merged or split. '
+            + 'Everything else on this page is real: open it and it '
+            + 'behaves like a recording.' }));
+    }
+
     // ---- identity -------------------------------------------------------
     host.appendChild(el('div', { class: 'section-label', text: 'Identity' }));
     host.appendChild(el('div', { class: 'hk-facts' }, [
@@ -656,6 +672,9 @@ BARRY.views.housekeeping = (function () {
     ]));
 
     // ---- project --------------------------------------------------------
+    // Not for the example: `patch` would 404 and the picker would sit there
+    // showing a value it had not managed to change.
+    if (!isDemo) {
     host.appendChild(el('div', { class: 'section-label', text: 'Project' }));
     const known = (data.known_projects || []).slice();
     for (const p of (data.projects || [])) {
@@ -680,6 +699,7 @@ BARRY.views.housekeeping = (function () {
           ? 'Set by hand — a later guess will not override it.'
           : 'Guessed from the path. Changing it here makes it permanent.' }),
     ]));
+    }
 
     // ---- paths ----------------------------------------------------------
     host.appendChild(el('div', { class: 'section-label',
@@ -718,7 +738,7 @@ BARRY.views.housekeeping = (function () {
             class: 'mini', text: 'Open',
             onclick: () => { setView('xplore'); BARRY.views.xplore.open(p); },
           }) : null,
-          el('button', {
+          isDemo ? null : el('button', {
             class: 'mini', text: 'Split off',
             title: 'This path is a different recording that was folded in '
                  + 'here by a loose match. Give it its own record.',
@@ -774,6 +794,10 @@ BARRY.views.housekeeping = (function () {
     host.appendChild(links);
 
     // ---- notes and edge cases -------------------------------------------
+    // The example takes none of these either: a note, a merge, a split and
+    // a forget are all writes against a registry record, and it is not one.
+    if (isDemo) return;
+
     host.appendChild(el('div', { class: 'section-label', text: 'Note' }));
     host.appendChild(el('textarea', {
       rows: '3', class: 'hk-note', value: s.note || '',
@@ -788,10 +812,22 @@ BARRY.views.housekeeping = (function () {
         title: 'Drop what BARRY remembers about it. The recording itself is '
              + 'untouched, and opening or scanning it again starts fresh.',
         onclick: async () => {
-          const ok = window.confirm(
-            'Forget ' + (s.label || s.gid) + '?\n\n'
-            + 'Its bad channels, notes and project go with it. The '
-            + 'recording on disk is untouched.');
+          /* The application's own dialog, not the browser's. This was
+             the last `window.confirm` in the codebase: it looks like a
+             different program, it cannot lay out more than a sentence
+             legibly, and of all the controls to be terse in, the one
+             that destroys a record's history is the wrong choice. */
+          const ok = await BARRY.confirm(
+            'Forget ' + (s.label || s.gid) + '?',
+            'Its bad channels, notes, project and the paths BARRY has '
+            + 'seen it at go with it, and it stays gone: a tombstone is '
+            + 'written so a colleague\u2019s registry cannot push it back '
+            + 'and the next scan of that drive will not re-register it. '
+            + 'That is the point \u2014 a scratch copy that creeps back on '
+            + 'every scan has not been forgotten.\n\nThe recording on '
+            + 'disk is untouched. Bringing it back is a deliberate act, '
+            + 'not something a scan does for you.',
+            'Forget it');
           if (!ok) return;
           try {
             await apiPost('/api/registry/' + encodeURIComponent(s.gid)

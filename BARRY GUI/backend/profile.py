@@ -30,13 +30,21 @@ import platform
 
 from . import shards
 
-FIELDS = ("name", "email", "device", "role", "initials", "orcid", "note")
+# `device` is deliberately NOT here any more -- see device.py. It is a
+# property of the computer, and keeping it in this record meant every path
+# that saved a profile could rename the machine. It stays readable through
+# `get()` so the one-time adoption in device.py can find it.
+FIELDS = ("name", "email", "role", "initials", "orcid", "note")
 
 # Bounded so a paste accident cannot write a novel into every record.
 MAX_LEN = 200
 
 
 class Profile:
+    # Set by app.py. Read-only from here: the profile reports the machine
+    # name so the dialog can show it, and never writes it.
+    device = None
+
     def __init__(self, logs_dir, store=None):
         self.dir = os.path.join(logs_dir, "prefs")
         self.store = store
@@ -50,8 +58,19 @@ class Profile:
     def get(self):
         rec = self.book.read(self._base()) or {}
         out = {k: (rec.get(k) or "") for k in FIELDS}
+        # Read but not writable: device.py adopts it once and then this is
+        # only ever the old value sitting in an old record.
+        out["device"] = rec.get("device") or ""
         out["machine"] = platform.node()
         out["shard"] = shards.machine_id()
+        # What the computer is actually called right now, so the profile
+        # dialog can say it without owning it. Read-only here: the field
+        # lives in device.py, and this record is a person.
+        if self.device is not None:
+            try:
+                out["device_name"] = (self.device.get(self) or {}).get("name")
+            except Exception:                        # noqa: BLE001
+                out["device_name"] = None
         # What would actually be used for attribution right now, so the UI
         # can show the consequence rather than just the form.
         out["effective"] = self.effective(rec)
@@ -63,11 +82,9 @@ class Profile:
         rec = rec if rec is not None else (self.book.read(self._base()) or {})
         name = (rec.get("name") or "").strip()
         email = (rec.get("email") or "").strip()
-        device = (rec.get("device") or "").strip()
         return {
             "user": name or email or None,
             "email": email or None,
-            "device": device or platform.node(),
         }
 
     def save(self, patch):

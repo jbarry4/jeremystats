@@ -1,6 +1,6 @@
 {
   "_at": {
-    "assignee": "2026-09-08T18:01:48.848113+00:00",
+    "assignee": "2026-09-09T02:02:26.517608+00:00",
     "created": "2026-09-03T21:07:03.547837+00:00",
     "gid": "2026-09-03T21:07:03.547837+00:00",
     "imports": "2026-09-03T21:07:03.547837+00:00",
@@ -10,7 +10,7 @@
     "schema": "2026-09-03T21:07:03.547837+00:00",
     "session_label": "2026-09-03T21:07:03.547837+00:00",
     "source": "2026-09-03T21:07:03.547837+00:00",
-    "updated": "2026-09-08T18:01:48.848113+00:00"
+    "updated": "2026-09-09T02:02:26.517608+00:00"
   },
   "_keys": {
     "events": {
@@ -1677,11 +1677,11 @@
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:01:48.848113+00:00",
+    "at": "2026-09-09T02:02:26.517608+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "assignee": "theexaminedexistence@gmail.com",
+  "assignee": "Shahriar Tafti",
   "created": {
     "at": "2026-09-03T17:07:03-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -7565,11 +7565,11 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-08T14:01:48-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-08T22:02:26-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

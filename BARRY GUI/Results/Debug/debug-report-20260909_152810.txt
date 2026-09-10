@@ -1,0 +1,385 @@
+BARRY GUI debug report
+generated  2026-09-09 15:28:10
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     C:\Users\Z390\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.exe
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    None
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+written by the check harness
+
+UI ACTIONS, oldest first (4)
+------------------------------------------------------------------
+:58.106Z  link.scope                 {"scope": "session"}
+:58.226Z  session.open               {"path": "demo:long-session", "channels": 64, "fs": 30000, "duration_s": 900, "restored": ["view restored"]}
+:59.126Z  ylim.change                {"ylim": 250}
+:02.120Z  ylim.change                {"ylim": null}
+
+REQUESTS AS THE BROWSER SAW THEM (200)
+------------------------------------------------------------------
+15:28:14  GET  /api/link                            200       10 ms
+15:28:14  GET  /api/link                            200       10 ms
+15:28:14  GET  /api/link                            200       10 ms
+15:28:15  GET  /api/link                            200       10 ms
+15:28:15  GET  /api/link                            200       10 ms
+15:28:16  GET  /api/link                            200       10 ms
+15:28:16  GET  /api/link                            200       10 ms
+15:28:16  GET  /api/link                            200       10 ms
+15:28:17  GET  /api/link                            200       10 ms
+15:28:17  GET  /api/link                            200       10 ms
+15:28:18  GET  /api/link                            200       10 ms
+15:28:18  GET  /api/link                            200       10 ms
+15:28:18  GET  /api/link                            200       10 ms
+15:28:19  GET  /api/link                            200       10 ms
+15:28:19  GET  /api/link                            200       10 ms
+15:28:20  GET  /api/link                            200       10 ms
+15:28:20  GET  /api/link                            200       10 ms
+15:28:21  GET  /api/link                            200       10 ms
+15:28:21  GET  /api/link                            200       10 ms
+15:28:21  GET  /api/link                            200       10 ms
+15:28:22  GET  /api/link                            200       10 ms
+15:28:22  GET  /api/link                            200       10 ms
+15:28:23  GET  /api/link                            200       10 ms
+15:28:23  GET  /api/link                            200       10 ms
+15:28:23  GET  /api/link                            200       10 ms
+15:28:24  GET  /api/link                            200       10 ms
+15:28:24  GET  /api/link                            200       10 ms
+15:28:25  GET  /api/link                            200       10 ms
+15:28:25  GET  /api/link                            200       10 ms
+15:28:25  GET  /api/link                            200       10 ms
+15:28:26  GET  /api/link                            200       10 ms
+15:28:26  GET  /api/link                            200       10 ms
+15:28:27  GET  /api/link                            200       10 ms
+15:28:27  GET  /api/link                            200       10 ms
+15:28:27  GET  /api/link                            200       10 ms
+15:28:28  GET  /api/link                            200       10 ms
+15:28:28  GET  /api/link                            200       10 ms
+15:28:29  GET  /api/link                            200       10 ms
+15:28:29  GET  /api/link                            200       10 ms
+15:28:30  GET  /api/link                            200       10 ms
+15:28:30  GET  /api/link                            200       10 ms
+15:28:30  GET  /api/link                            200       10 ms
+15:28:31  GET  /api/link                            200       10 ms
+15:28:31  GET  /api/link                            200       10 ms
+15:28:32  GET  /api/link                            200       10 ms
+15:28:32  GET  /api/link                            200       10 ms
+15:28:32  GET  /api/link                            200       10 ms
+15:28:33  GET  /api/link                            200       10 ms
+15:28:33  GET  /api/link                            200       10 ms
+15:28:34  GET  /api/link                            200       10 ms
+15:28:34  GET  /api/link                            200       10 ms
+15:28:34  GET  /api/link                            200       10 ms
+15:28:35  GET  /api/link                            200       10 ms
+15:28:35  GET  /api/link                            200       10 ms
+15:28:36  GET  /api/link                            200       10 ms
+15:28:36  GET  /api/link                            200       10 ms
+15:28:37  GET  /api/link                            200       10 ms
+15:28:37  GET  /api/link                            200       10 ms
+15:28:37  GET  /api/link                            200       10 ms
+15:28:38  GET  /api/link                            200       10 ms
+15:28:38  GET  /api/link                            200       10 ms
+15:28:39  GET  /api/link                            200       10 ms
+15:28:39  GET  /api/link                            200       10 ms
+15:28:39  GET  /api/link                            200       10 ms
+15:28:40  GET  /api/link                            200       10 ms
+15:28:40  GET  /api/link                            200       10 ms
+15:28:41  GET  /api/link                            200       10 ms
+15:28:41  GET  /api/link                            200       10 ms
+15:28:41  GET  /api/link                            200       10 ms
+15:28:42  GET  /api/link                            200       10 ms
+15:28:42  GET  /api/link                            200       10 ms
+15:28:43  GET  /api/link                            200       10 ms
+15:28:43  GET  /api/link                            200       10 ms
+15:28:43  GET  /api/link                            200       10 ms
+15:28:44  GET  /api/link                            200       10 ms
+15:28:44  GET  /api/link                            200       10 ms
+15:28:45  GET  /api/link                            200       10 ms
+15:28:45  GET  /api/link                            200       10 ms
+15:28:46  GET  /api/link                            200       10 ms
+15:28:46  GET  /api/link                            200       10 ms
+15:28:46  GET  /api/link                            200       10 ms
+15:28:47  GET  /api/link                            200       10 ms
+15:28:47  GET  /api/link                            200       10 ms
+15:28:48  GET  /api/link                            200       10 ms
+15:28:48  GET  /api/link                            200       10 ms
+15:28:48  GET  /api/link                            200       10 ms
+15:28:49  GET  /api/link                            200       10 ms
+15:28:49  GET  /api/link                            200       10 ms
+15:28:50  GET  /api/link                            200       10 ms
+15:28:50  GET  /api/link                            200       10 ms
+15:28:50  GET  /api/link                            200       10 ms
+15:28:51  GET  /api/link                            200       10 ms
+15:28:51  GET  /api/link                            200       10 ms
+15:28:52  GET  /api/link                            200       10 ms
+15:28:52  GET  /api/link                            200       10 ms
+15:28:53  GET  /api/link                            200       10 ms
+15:28:53  GET  /api/link                            200       10 ms
+15:28:53  GET  /api/link                            200       10 ms
+15:28:54  GET  /api/link                            200       10 ms
+15:28:54  GET  /api/link                            200       10 ms
+15:28:55  GET  /api/link                            200       10 ms
+15:28:55  GET  /api/link                            200       10 ms
+15:28:55  GET  /api/link                            200       10 ms
+15:28:56  GET  /api/link                            200       10 ms
+15:28:56  GET  /api/link                            200       10 ms
+15:28:57  GET  /api/link                            200       10 ms
+15:28:57  GET  /api/link                            200       10 ms
+15:28:57  GET  /api/link                            200       10 ms
+15:28:58  GET  /api/link                            200       10 ms
+15:28:58  GET  /api/link                            200       10 ms
+15:28:59  GET  /api/link                            200       10 ms
+15:28:59  GET  /api/link                            200       10 ms
+15:28:59  GET  /api/link                            200       10 ms
+15:29:00  GET  /api/link                            200       10 ms
+15:29:00  GET  /api/link                            200       10 ms
+15:29:01  GET  /api/link                            200       10 ms
+15:29:01  GET  /api/link                            200       10 ms
+15:29:02  GET  /api/link                            200       10 ms
+15:29:02  GET  /api/link                            200       10 ms
+15:29:02  GET  /api/link                            200       10 ms
+15:29:03  GET  /api/link                            200       10 ms
+15:29:03  GET  /api/link                            200       10 ms
+15:29:04  GET  /api/link                            200       10 ms
+15:29:04  GET  /api/link                            200       10 ms
+15:29:04  GET  /api/link                            200       10 ms
+15:29:05  GET  /api/link                            200       10 ms
+15:29:05  GET  /api/link                            200       10 ms
+15:29:06  GET  /api/link                            200       10 ms
+15:29:06  GET  /api/link                            200       10 ms
+15:29:06  GET  /api/link                            200       10 ms
+15:29:07  GET  /api/link                            200       10 ms
+15:29:07  GET  /api/link                            200       10 ms
+15:29:08  GET  /api/link                            200       10 ms
+15:29:08  GET  /api/errors                          200       10 ms
+15:29:08  GET  /api/feedback                        200       10 ms
+15:29:08  GET  /api/errors/grouped                  200       10 ms
+15:29:08  GET  /api/debug/trace                     200       10 ms
+15:29:08  GET  /api/devices                         200       10 ms
+15:29:08  GET  /api/link                            200       10 ms
+15:29:08  GET  /api/link                            200       10 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (200)
+------------------------------------------------------------------
+15:28:10  GET  /api/devices                     200    907.7 ms  
+15:28:09  GET  /api/errors/grouped              200    369.9 ms  limit=600
+15:28:09  GET  /api/feedback                    200     21.7 ms  
+15:28:09  GET  /api/errors                      200     17.4 ms  limit=300
+15:28:08  POST /api/panel                       200      0.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "scalogram", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch":
+15:28:08  POST /api/panel                       200   4233.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "scalogram", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch":
+15:28:06  POST /api/prefs                       200     24.5 ms  {"patch": "{themes}"}
+15:28:06  GET  /api/sync/status                 200    130.5 ms  
+15:28:06  POST /api/pipeline/check              200      0.7 ms  {"folder": "demo:long-session", "track": "session"}
+15:28:06  GET  /api/presets/layouts             200      6.5 ms  
+15:28:06  GET  /api/panels                      200     16.1 ms  
+15:28:06  GET  /api/jobs                        200      0.1 ms  
+15:28:06  GET  /api/presets/filters             200      4.7 ms  
+15:28:06  GET  /api/probes                      200      0.1 ms  
+15:28:06  GET  /api/pipeline                    200      0.1 ms  
+15:28:06  GET  /api/catalog                     200     47.0 ms  
+15:28:06  GET  /api/profile                     200     14.8 ms  
+15:28:06  GET  /api/prefs                       200      8.3 ms  
+15:28:06  GET  /api/notes                       200      1.0 ms  
+15:28:04  POST /api/panel                       200    536.6 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "csd", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch": 0, "c
+15:28:03  POST /api/session/state               200   1330.6 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:28:02  POST /api/csc/window                  200    212.6 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:28:02  POST /api/session/state               200   1232.4 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:28:00  POST /api/csc/window                  200    271.6 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:27:59  POST /api/prefs                       200     12.6 ms  {"patch": "{themes}"}
+15:27:59  POST /api/csc/window                  200    267.4 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:27:59  POST /api/csc/overview                200      1.0 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+15:27:59  POST /api/csc/open                    200   1286.4 ms  {"path": "demo:long-session", "invert": true}
+15:27:58  GET  /api/sync/status                 200     78.5 ms  
+15:27:58  POST /api/pipeline/check              200      0.3 ms  {"folder": "demo:long-session", "track": "session"}
+15:27:58  GET  /api/presets/layouts             200      0.5 ms  
+15:27:58  GET  /api/jobs                        200      0.1 ms  
+15:27:58  GET  /api/panels                      200      8.2 ms  
+15:27:58  GET  /api/presets/filters             200      1.9 ms  
+15:27:58  GET  /api/probes                      200      0.2 ms  
+15:27:58  GET  /api/pipeline                    200      0.1 ms  
+15:27:58  GET  /api/catalog                     200     27.4 ms  
+15:27:58  GET  /api/profile                     200      7.5 ms  
+15:27:58  GET  /api/prefs                       200      3.4 ms  
+15:27:58  GET  /api/notes                       200      0.6 ms  
+15:27:54  POST /api/panel                       200    326.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "panel": 
+15:27:54  GET  /api/sync/status                 200     55.9 ms  
+15:27:54  POST /api/session/bad                 200   1316.9 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "bad_channels": []}
+15:27:53  POST /api/csc/window                  200    421.4 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 13.
+15:27:52  GET  /api/sync/status                 200     51.5 ms  
+15:27:52  POST /api/session/bad                 200   1229.0 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "bad_channels": [33]}
+15:27:51  POST /api/csc/window                  200    422.7 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 13.
+15:27:50  POST /api/csc/window                  200   1476.0 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 13.
+15:27:49  POST /api/prefs                       200      9.9 ms  {"patch": "{themes}"}
+15:27:49  POST /api/csc/overview                200      0.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "channel"
+15:27:49  POST /api/events/nev                  200     14.9 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10\\Events.nev", "session_path": "\\\\netfiles03.u
+15:27:49  POST /api/csc/open                    200    227.6 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "invert": true}
+15:27:49  GET  /api/registry                    200  10903.5 ms  
+15:27:40  GET  /api/sync/status                 200   1976.9 ms  
+15:27:38  POST /api/pipeline/check              200      1.1 ms  {"folder": "demo:long-session", "track": "session"}
+15:27:38  GET  /api/presets/layouts             200      2.4 ms  
+15:27:38  GET  /api/panels                      200     15.0 ms  
+15:27:38  GET  /api/jobs                        200      0.1 ms  
+15:27:38  GET  /api/presets/filters             200      2.7 ms  
+15:27:38  GET  /api/probes                      200      0.3 ms  
+15:27:38  GET  /api/pipeline                    200      0.1 ms  
+15:27:38  GET  /api/catalog                     200     50.0 ms  
+15:27:38  GET  /api/prefs                       200      9.3 ms  
+15:27:38  GET  /api/profile                     200      8.0 ms  
+15:27:38  GET  /api/notes                       200      0.8 ms  
+15:27:36  POST /api/errors/resolve              200     14.3 ms  {"signature": "ui/mode.bounce||The mode changed to none and back to strata in 2520ms with no click or keypress. Nothing in the code accounts for this; both stacks are bel
+15:27:36  POST /api/errors/resolve              200     14.1 ms  {"signature": "ui/mode.bounce||The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are belo
+15:27:36  GET  /api/errors                      200      4.1 ms  limit=400
+15:27:36  GET  /api/errors                      200      4.3 ms  limit=400
+15:27:36  GET  /api/errors                      200      4.0 ms  limit=400
+15:27:36  GET  /api/errors                      200      4.0 ms  limit=400
+15:27:36  GET  /api/errors                      200      4.0 ms  limit=400
+15:27:36  GET  /api/errors                      200     14.4 ms  limit=400
+15:27:36  POST /api/errors/client               200      2.4 ms  {"where": "mode.bounce", "message": "The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks ar
+15:27:36  GET  /api/errors                      200      5.8 ms  limit=400
+15:27:36  POST /api/prefs                       200     14.9 ms  {"patch": "{themes}"}
+15:27:36  GET  /api/sync/status                 200     71.9 ms  
+15:27:36  POST /api/pipeline/check              200      0.4 ms  {"folder": "demo:long-session", "track": "session"}
+15:27:36  GET  /api/presets/layouts             200      1.9 ms  
+15:27:36  GET  /api/panels                      200      8.8 ms  
+15:27:36  GET  /api/jobs                        200      0.1 ms  
+15:27:36  GET  /api/presets/filters             200      1.7 ms  
+15:27:36  GET  /api/probes                      200      0.1 ms  
+15:27:36  GET  /api/pipeline                    200      0.1 ms  
+15:27:36  GET  /api/catalog                     200     29.3 ms  
+15:27:36  GET  /api/profile                     200      8.5 ms  
+15:27:36  GET  /api/prefs                       200      5.5 ms  
+15:27:36  GET  /api/notes                       200      1.1 ms  
+15:27:33  GET  /api/layers                      200   5014.3 ms  
+15:27:28  GET  /api/bank                        200     44.7 ms  
+15:27:27  POST /api/csc/window                  200   1759.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28", "even_only": false, "invert": true
+15:27:26  POST /api/csc/overview                200      7.1 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28", "even_only": false, "invert": true
+15:27:26  POST /api/events/nev                  200     13.2 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28\\Events.nev", "session_path": "\\\\n
+15:27:26  POST /api/csc/open                    200    377.0 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28", "invert": true}
+15:27:25  POST /api/csc/window                  200   1708.6 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_78_opto\\Kcnt1_M78_S1\\2023-11-28_15-41-33", "even_only": false, "invert": true, "t0": 
+15:27:23  POST /api/events/nev                  200     16.4 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_78_opto\\Kcnt1_M78_S1\\2023-11-28_15-41-33\\Events.nev", "session_path": "\\\\netfiles0
+15:27:23  POST /api/csc/overview                200      5.4 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_78_opto\\Kcnt1_M78_S1\\2023-11-28_15-41-33", "even_only": false, "invert": true, "chann
+15:27:23  POST /api/csc/open                    200    307.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_78_opto\\Kcnt1_M78_S1\\2023-11-28_15-41-33", "invert": true}
+15:27:23  POST /api/csc/window                  200    705.1 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 13.
+15:27:22  POST /api/csc/overview                200      5.6 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "channel"
+15:27:22  POST /api/events/nev                  200     15.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10\\Events.nev", "session_path": "\\\\netfiles03.u
+15:27:22  POST /api/csc/open                    200    384.2 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "invert": true}
+15:27:22  GET  /api/registry                    200   8789.2 ms  
+15:27:13  POST /api/prefs                       200     12.9 ms  {"patch": "{themes}"}
+15:27:13  GET  /api/sync/status                 200     71.6 ms  
+15:27:13  POST /api/pipeline/check              200      0.3 ms  {"folder": "demo:long-session", "track": "session"}
+15:27:13  GET  /api/presets/layouts             200      1.8 ms  
+15:27:13  GET  /api/panels                      200      8.6 ms  
+15:27:13  GET  /api/jobs                        200      0.1 ms  
+15:27:13  GET  /api/probes                      200      0.2 ms  
+15:27:13  GET  /api/presets/filters             200      0.9 ms  
+15:27:13  GET  /api/pipeline                    200      0.1 ms  
+15:27:13  GET  /api/catalog                     200     32.5 ms  
+15:27:13  GET  /api/profile                     200      9.6 ms  
+15:27:13  GET  /api/prefs                       200      4.6 ms  
+15:27:13  GET  /api/notes                       200      0.7 ms  
+15:27:11  GET  /api/layers/s5b932a8e933d        200     38.8 ms  
+15:27:11  GET  /api/bank/c9d65f255e69           200      0.9 ms  
+15:27:11  GET  /api/layers                      200   2855.1 ms  
+15:27:08  GET  /api/bank                        200     16.7 ms  
+15:27:08  POST /api/prefs                       200     10.2 ms  {"patch": "{themes}"}
+15:27:08  GET  /api/sync/status                 200   1319.0 ms  
+15:27:07  POST /api/pipeline/check              200      0.4 ms  {"folder": "demo:long-session", "track": "session"}
+15:27:07  GET  /api/presets/layouts             200      0.7 ms  
+15:27:07  GET  /api/jobs                        200      0.1 ms  
+15:27:07  GET  /api/panels                      200      8.2 ms  
+15:27:07  GET  /api/presets/filters             200      1.9 ms  
+15:27:07  GET  /api/probes                      200      0.2 ms  
+15:27:07  GET  /api/pipeline                    200      0.1 ms  
+15:27:07  GET  /api/catalog                     200     25.9 ms  
+15:27:07  GET  /api/profile                     200      6.5 ms  
+15:27:07  GET  /api/prefs                       200      3.4 ms  
+15:27:07  GET  /api/notes                       200      0.7 ms  
+15:27:05  GET  /api/layers                      200   2552.5 ms  
+15:27:03  POST /api/layers/s45bae70722f2/snapsh 200     20.7 ms  {"note": "harness snapshot"}
+15:27:03  POST /api/layers/s45bae70722f2/versio 200     41.5 ms  {"v": 0}
+15:27:03  GET  /api/layers/s45bae70722f2        200     48.9 ms  
+15:27:02  GET  /api/layers                      200   2635.9 ms  
+15:27:00  GET  /api/bank                        200     14.7 ms  
+15:27:00  GET  /api/layers                      200   2668.5 ms  
+15:26:57  POST /api/prefs                       200     12.8 ms  {"patch": "{themes}"}
+15:26:57  GET  /api/sync/status                 200     68.2 ms  
+15:26:57  POST /api/pipeline/check              200      0.3 ms  {"folder": "demo:long-session", "track": "session"}
+15:26:57  GET  /api/presets/layouts             200      1.4 ms  
+15:26:57  GET  /api/jobs                        200      0.1 ms  
+15:26:57  GET  /api/panels                      200      8.2 ms  
+15:26:57  GET  /api/probes                      200      0.2 ms  
+15:26:57  GET  /api/presets/filters             200      1.1 ms  
+15:26:57  GET  /api/pipeline                    200      0.2 ms  
+15:26:57  GET  /api/catalog                     200     30.9 ms  
+15:26:57  GET  /api/prefs                       200      6.7 ms  
+15:26:57  GET  /api/profile                     200      8.8 ms  
+15:26:57  GET  /api/notes                       200      0.8 ms  
+15:26:55  GET  /api/presence                    200    225.2 ms  
+15:26:55  GET  /api/presence                    200    184.6 ms  
+15:26:54  GET  /api/presence                    200    210.0 ms  
+15:26:54  GET  /api/presence                    200    252.0 ms  
+15:26:54  GET  /api/presence                    200    194.2 ms  
+15:26:54  GET  /api/presence                    200    242.5 ms  
+15:26:54  GET  /api/presence                    200    208.0 ms  
+15:26:53  GET  /api/presence                    200    175.9 ms  
+15:26:53  GET  /api/presence                    200    183.3 ms  
+15:26:53  GET  /api/presence                    200    200.2 ms  
+15:26:53  GET  /api/presence                    200    239.8 ms  
+15:26:53  GET  /api/presence                    200    254.4 ms  
+15:26:52  GET  /api/presence                    200    334.4 ms  
+15:26:52  GET  /api/presence                    200    210.1 ms  
+15:26:52  GET  /api/curation/for-recording/s45b 200     39.5 ms  
+15:26:52  GET  /api/bank                        200     10.8 ms  
+15:26:52  POST /api/prefs                       200     10.8 ms  {"patch": "{themes}"}
+15:26:52  GET  /api/registry                    200   7932.4 ms  
+15:26:44  GET  /api/curation                    200   2884.3 ms  
+15:26:41  GET  /api/registry                    200  13930.8 ms  
+15:26:37  POST /api/figure/preview              200   1105.9 ms  {"layout": "{bad_channels, channels, cmap, cols, dpi, events, gain, height_in}", "sessions": "{default, s1}", "dpi": 110}
+15:26:36  POST /api/session/state               200   1461.2 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:26:35  POST /api/csc/window                  200    343.6 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 623, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:34  POST /api/figure/preview              200   1268.2 ms  {"layout": "{bad_channels, channels, cmap, cols, dpi, events, gain, height_in}", "sessions": "{s1}", "dpi": 70}
+15:26:33  POST /api/figure/preview              200   1477.3 ms  {"layout": "{bad_channels, channels, cmap, cols, dpi, events, gain, height_in}", "sessions": "{default, s1}", "dpi": 110}
+15:26:32  POST /api/session/state               200   1734.0 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+15:26:30  GET  /api/panels                      200      4.3 ms  
+15:26:30  POST /api/csc/window                  200    180.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[12 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    177.9 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[12 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    145.5 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[10 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    147.6 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[10 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    134.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[10 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    116.2 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[10 items]", "px": 200, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:30  POST /api/csc/window                  200    278.4 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 623, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+15:26:29  POST /api/csc/overview                200      0.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+15:26:29  POST /api/csc/open                    200   1819.6 ms  {"path": "demo:long-session", "invert": true}
+15:26:27  POST /api/prefs                       200     13.9 ms  {"patch": "{themes}"}
+15:26:27  GET  /api/sync/status                 200   4165.3 ms  
+15:26:27  GET  /api/curation                    200   3101.3 ms  
+15:26:27  GET  /api/presence                    200    431.6 ms  
+15:26:26  GET  /api/toolkit/scopes              200   2417.7 ms  
+15:26:26  GET  /api/sync/status                 200   2605.5 ms  
+15:26:24  POST /api/curation/from-bank          400      0.1 ms  {"gid": "s72df5edc7210", "kind": "nonsense", "entry": "340307eba315", "version": 0, "replace": true}
+15:26:24  POST /api/curation/from-bank          404     62.5 ms  {"gid": "s72df5edc7210", "kind": "ds", "entry": "340307eba315", "version": 99, "replace": true}
+15:26:24  POST /api/curation/from-bank          200     70.8 ms  {"gid": "s72df5edc7210", "kind": "ds", "entry": "340307eba315", "version": 1, "replace": true}
+15:26:24  POST /api/curation/from-bank          200     85.5 ms  {"gid": "s72df5edc7210", "kind": "ds", "entry": "340307eba315", "version": 0, "replace": true}
+15:26:23  POST /api/curation/from-bank          409    102.2 ms  {"gid": "s72df5edc7210", "kind": "ds", "entry": "340307eba315", "version": 0}
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-09T15:27:36-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-09T15:25:22-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-09T15:23:59-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-09T15:09:35-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-09T13:11:30-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-09T12:45:10-04:00] cloud.sync: GET /rest/v1/storyboards?updated_at=gt.2026-09-09T16:44:33.18212%2B00:00&select=*&limit=1000&offset=0 -> HTTP 504 {"message":"Gateway Timeout"}
+
+The database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.
+[2026-09-09T12:20:09-04:00] cloud.sync: GET /rest/v1/curation_events?updated_at=gt.2026-09-09T16:19:49.054084%2B00:00&select=*&limit=1000&offset=0 -> HTTP 504 {"message":"Gateway Timeout"}
+
+The database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.
+[2026-09-09T12:10:08-04:00] cloud.sync: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-09T11:29:45-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-09T11:29:08-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-09T10:44:23-04:00] cloud.sync: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-09T10:36:05-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.

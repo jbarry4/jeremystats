@@ -6,30 +6,30 @@
     "converted": "2026-09-04T15:57:01.661821+00:00",
     "created": "2026-09-02T23:51:19.841181+00:00",
     "duration_s": "2026-09-04T15:57:01.661821+00:00",
-    "extraction_note": "2026-09-09T01:33:01.626616+00:00",
+    "extraction_note": "2026-09-09T06:08:51.911243+00:00",
     "first_seen_by": "2026-09-04T15:57:01.661821+00:00",
-    "fissure_channel": "2026-09-09T01:33:01.626616+00:00",
+    "fissure_channel": "2026-09-09T06:08:51.911243+00:00",
     "fs": "2026-09-04T15:57:01.661821+00:00",
     "gid": "2026-09-02T23:51:19.841181+00:00",
     "group": "2026-09-04T15:57:01.661821+00:00",
     "hemisphere": "2026-09-09T00:00:32.536571+00:00",
     "hemisphere_source": "2026-09-09T00:00:32.536571+00:00",
-    "hilus_channel": "2026-09-09T01:33:01.626616+00:00",
+    "hilus_channel": "2026-09-09T06:08:51.911243+00:00",
     "key": "2026-09-04T15:57:01.661821+00:00",
     "label": "2026-09-04T15:57:01.661821+00:00",
     "loose_key": "2026-09-04T15:57:01.661821+00:00",
     "mouse": "2026-09-04T15:57:01.661821+00:00",
     "n_channels": "2026-09-04T15:57:01.661821+00:00",
-    "needs_processing": "2026-09-09T01:33:01.626616+00:00",
+    "needs_processing": "2026-09-09T06:08:51.911243+00:00",
     "project": "2026-09-04T15:57:01.661821+00:00",
     "project_source": "2026-09-04T15:57:01.661821+00:00",
-    "reference_channels_source": "2026-09-09T01:33:01.626616+00:00",
+    "reference_channels_source": "2026-09-09T06:08:51.911243+00:00",
     "retired": "2026-09-04T15:57:01.661821+00:00",
-    "ripple_channel": "2026-09-09T01:33:01.626616+00:00",
+    "ripple_channel": "2026-09-09T06:08:51.911243+00:00",
     "schema": "2026-09-04T15:57:01.661821+00:00",
     "session": "2026-09-04T15:57:01.661821+00:00",
     "start": "2026-09-04T15:57:01.661821+00:00",
-    "updated": "2026-09-09T01:33:01.626616+00:00"
+    "updated": "2026-09-09T13:48:17.776239+00:00"
   },
   "_keys": {
     "paths": {
@@ -59,6 +59,10 @@
         "set",
         "2026-09-04T15:57:01.661821+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.776239+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.661821+00:00"
@@ -70,7 +74,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T01:33:01.626616+00:00",
+    "at": "2026-09-09T13:48:17.776239+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -88,21 +92,21 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1871.9744,
-  "extraction_note": "Success: Clean extraction.",
+  "extraction_note": null,
   "first_seen_by": "scan",
-  "fissure_channel": 17,
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "s38b9e61c5684",
   "group": "PTEN",
   "hemisphere": "L",
   "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
-  "hilus_channel": 35,
+  "hilus_channel": null,
   "key": "m013_s002_2023-08-01_12-11-26",
   "label": "PTEN m13 s2 2023-08-01",
   "loose_key": "m013_s002",
   "mouse": 13,
   "n_channels": 64,
-  "needs_processing": false,
+  "needs_processing": null,
   "paths": [
     "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26",
     "G:\\PTEN\\M13_s2",
@@ -112,9 +116,9 @@
   ],
   "project": "PTEN",
   "project_source": "guessed",
-  "reference_channels_source": "PTEN Toothy Data .xlsx",
+  "reference_channels_source": null,
   "retired": false,
-  "ripple_channel": 3,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -123,6 +127,13 @@
       "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M13_s2_baseline",
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
@@ -142,7 +153,7 @@
   "session": 2,
   "start": "2023-08-01T12:11:26",
   "updated": {
-    "at": "2026-09-08T21:33:01-04:00",
+    "at": "2026-09-09T09:48:17-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

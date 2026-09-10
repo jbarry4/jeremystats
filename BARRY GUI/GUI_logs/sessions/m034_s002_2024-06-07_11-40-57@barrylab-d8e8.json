@@ -1,7 +1,50 @@
 {
+  "_at": {
+    "created": "2026-09-02T23:51:19.873109+00:00",
+    "duration_s": "2026-09-04T15:57:01.794823+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.794823+00:00",
+    "fs": "2026-09-04T15:57:01.794823+00:00",
+    "gid": "2026-09-02T23:51:19.873109+00:00",
+    "group": "2026-09-04T15:57:01.794823+00:00",
+    "has_video": "2026-09-04T15:57:01.794823+00:00",
+    "key": "2026-09-04T15:57:01.794823+00:00",
+    "label": "2026-09-04T15:57:01.794823+00:00",
+    "loose_key": "2026-09-04T15:57:01.794823+00:00",
+    "mouse": "2026-09-04T15:57:01.794823+00:00",
+    "n_channels": "2026-09-04T15:57:01.794823+00:00",
+    "project": "2026-09-04T15:57:01.794823+00:00",
+    "project_source": "2026-09-04T15:57:01.794823+00:00",
+    "retired": "2026-09-04T15:57:01.794823+00:00",
+    "schema": "2026-09-04T15:57:01.794823+00:00",
+    "session": "2026-09-04T15:57:01.794823+00:00",
+    "start": "2026-09-04T15:57:01.794823+00:00",
+    "updated": "2026-09-09T20:37:10.455050+00:00",
+    "view_state": "2026-09-09T20:37:10.455050+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57": [
+        "set",
+        "2026-09-04T15:57:01.794823+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.794823+00:00"
+      ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T17:30:22.308576+00:00"
+      ],
+      "Strawbarry": [
+        "set",
+        "2026-09-09T17:38:53.246091+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-04T15:57:01.794823+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-09T20:37:10.455050+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -36,14 +79,52 @@
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T13:30:21-04:00",
+      "by": "Shahriar Tafti",
+      "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
+      "root": null,
+      "scan": null
+    },
+    "Strawbarry": {
+      "at": "2026-09-09T13:38:52-04:00",
+      "by": "Shahriar Tafti",
+      "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
   "start": "2024-06-07T11:40:57",
   "updated": {
-    "at": "2026-09-04T11:26:43-04:00",
-    "machine": "BarryLab",
+    "at": "2026-09-09T16:37:10-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "barry"
+    "user": "Shahriar Tafti"
+  },
+  "view_state": {
+    "channels": [
+      8
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 0,
+    "probe": null,
+    "spacing": 50,
+    "span": 3.699992524594304,
+    "stft_mode": null,
+    "t0": 1853.5254161955506,
+    "ylim": null
   }
 }

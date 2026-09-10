@@ -1,7 +1,67 @@
 {
+  "_at": {
+    "bad_channels": "2026-09-04T16:16:59.494457+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.604946+00:00",
+    "condition": "2026-09-04T15:57:01.604946+00:00",
+    "converted": "2026-09-04T15:57:01.604946+00:00",
+    "created": "2026-09-02T23:51:19.825724+00:00",
+    "duration_s": "2026-09-04T15:57:01.604946+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.604946+00:00",
+    "fs": "2026-09-04T15:57:01.604946+00:00",
+    "gid": "2026-09-02T23:51:19.825724+00:00",
+    "group": "2026-09-04T15:57:01.604946+00:00",
+    "hemisphere": "2026-09-09T00:00:24.606093+00:00",
+    "hemisphere_source": "2026-09-09T00:00:24.606093+00:00",
+    "key": "2026-09-04T15:57:01.604946+00:00",
+    "label": "2026-09-04T15:57:01.604946+00:00",
+    "loose_key": "2026-09-04T15:57:01.604946+00:00",
+    "mouse": "2026-09-04T15:57:01.604946+00:00",
+    "n_channels": "2026-09-04T15:57:01.604946+00:00",
+    "project": "2026-09-04T15:57:01.604946+00:00",
+    "project_source": "2026-09-04T15:57:01.604946+00:00",
+    "retired": "2026-09-04T15:57:01.604946+00:00",
+    "schema": "2026-09-04T15:57:01.604946+00:00",
+    "session": "2026-09-04T15:57:01.604946+00:00",
+    "start": "2026-09-04T15:57:01.604946+00:00",
+    "updated": "2026-09-09T14:52:41.444825+00:00",
+    "view_state": "2026-09-09T14:52:41.444825+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54": [
+        "set",
+        "2026-09-04T15:57:01.604946+00:00"
+      ],
+      "G:\\PTEN\\M6_s8": [
+        "set",
+        "2026-09-04T15:57:01.604946+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54": [
+        "set",
+        "2026-09-04T15:57:01.604946+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M6_s8_CNO": [
+        "set",
+        "2026-09-04T15:57:01.604946+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.604946+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T16:16:35.438075+00:00"
+      ],
+      "Strawbarry": [
+        "set",
+        "2026-09-09T14:25:55.050753+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-04T15:57:01.604946+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-09T14:52:41.444825+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -22,6 +82,8 @@
   "fs": 30000.0,
   "gid": "s08c93e795383",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m006_s008_2023-09-14_18-04-54",
   "label": "PTEN m6 s8 2023-09-14",
   "loose_key": "m006_s008",
@@ -46,19 +108,81 @@
       "scan": "scan_894736ef4e"
     },
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-02T18:50:19-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "at": "2026-09-04T12:16:35-04:00",
+      "by": "Shahriar",
       "path": "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54",
-      "root": "D:/PTEN",
-      "scan": "scan_765fa11e51"
+      "root": null,
+      "scan": null
+    },
+    "Strawbarry": {
+      "at": "2026-09-09T10:25:53-04:00",
+      "by": "Rain Younger",
+      "path": "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54",
+      "root": null,
+      "scan": null
     }
   },
   "session": 8,
   "start": "2023-09-14T18:04:54",
   "updated": {
-    "at": "2026-09-04T11:26:57-04:00",
-    "machine": "BarryLab",
+    "at": "2026-09-09T10:52:41-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "barry"
+    "user": "Rain Younger"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": null,
+    "spacing": 50,
+    "span": 1,
+    "stft_mode": null,
+    "t0": 1308.155,
+    "ylim": null
   }
 }

@@ -110,6 +110,26 @@ def _explain(method, path, code, detail):
 PAGE = 1000            # PostgREST's own default ceiling
 BATCH = 200            # rows per upsert; keeps request bodies sane
 
+# Columns this machine tried to send that the database has not got, per
+# table. Kept so a pending migration is something the interface can say
+# rather than something somebody eventually notices.
+PENDING_COLUMNS = {}
+
+
+def missing_column(exc):
+    """The column name out of a PGRST204, or None.
+
+    Postgrest says: Could not find the 'extraction_note' column of
+    'sessions' in the schema cache. That is the only 400 where retrying
+    without the field is the right move -- every other one means the data is
+    wrong rather than the schema being behind.
+    """
+    msg = str(exc)
+    if "PGRST204" not in msg and "in the schema cache" not in msg:
+        return None
+    m = re.search(r"Could not find the '([^']+)' column", msg)
+    return m.group(1) if m else None
+
 
 class CloudError(RuntimeError):
     pass
@@ -271,14 +291,67 @@ def ts(value):
     s = s.replace(" ", "T", 1) if re.match(r"^\d{4}-\d\d-\d\d ", s) else s
     s = _OFFSET.sub(r"\1:\2", s)          # -0400 -> -04:00
     try:
-        datetime.fromisoformat(s.replace("Z", "+00:00"))
-        return s
+        got = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
+    # Normalised to UTC, not handed back as written.
+    #
+    # A timestamptz column stores an instant, so the offset in the text was
+    # never information the database kept -- but it WAS information the
+    # incremental push compared, as text, against a UTC "since". Vermont is
+    # UTC-4, so "2026-09-09T14:55:51-04:00" -- written four minutes ago --
+    # sorted before "2026-09-09T18:55:06+00:00" and the row was dropped as
+    # older than the last push. Every edit made during a working day was
+    # invisible to the incremental push and travelled only on a full one.
+    if got.tzinfo is None:
+        # Naive means a Neuralynx header or an old shard write, both of
+        # which are local wall-clock time on the machine that wrote them.
+        got = got.astimezone()
+    return got.astimezone(timezone.utc).isoformat()
 
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def _one_per_key(rows, on_conflict):
+    """Collapse rows that share a conflict key, keeping the last.
+
+    Postgres refuses a batch that would touch one row twice -- "ON CONFLICT DO
+    UPDATE command cannot affect row a second time" -- and it is right to:
+    it cannot know which of the two duplicates was meant, and applying both
+    in one statement would make the answer depend on arrival order.
+
+    So the choice is made here, where the order is known: the builders append
+    in the order they read their shards, so the later row is the newer fact.
+
+    Without a stated conflict key the primary key is the target, and here
+    that is `id` on every table that has one -- which is where this actually
+    bit: `errors` is keyed on `id`, is not in the ON_CONFLICT map, and two
+    shards holding the same failure produced two rows with one id.
+    """
+    keys = [k.strip() for k in str(on_conflict or "").split(",") if k.strip()]
+    if not keys:
+        if all(isinstance(r, dict) and r.get("id") is not None for r in rows):
+            keys = ["id"]
+        else:
+            return rows
+    seen = {}
+    order = []
+    for r in rows:
+        ident = tuple(r.get(k) for k in keys)
+        if any(v is None for v in ident):
+            # Not identifiable, so not a duplicate of anything; let the
+            # database decide what to do with it.
+            order.append(("keep", r))
+            continue
+        if ident not in seen:
+            order.append(("key", ident))
+        seen[ident] = r
+    out = []
+    for kind, val in order:
+        out.append(val if kind == "keep" else seen[val])
+    return out
 
 
 # ==========================================================================
@@ -400,16 +473,41 @@ class Cloud:
         rows = [r for r in (rows or []) if r]
         if not rows:
             return 0
+        rows = _one_per_key(rows, on_conflict)
         prefer = "resolution=merge-duplicates,return=minimal"
         sent = 0
+        # A column the database has not got yet is dropped and the batch
+        # retried, rather than taking the whole push down with it. One
+        # migration nobody has run used to stop every table after this one
+        # from syncing, for everybody.
+        dropped = set(PENDING_COLUMNS.get(table) or ())
         for i in range(0, len(rows), BATCH):
             chunk = rows[i:i + BATCH]
             path = "/rest/v1/" + table
             if on_conflict:
                 path += "?on_conflict=" + urllib.parse.quote(on_conflict)
-            self._call("POST", path, body=chunk,
-                       headers={"Prefer": prefer})
+            # Bounded: each pass either sends the chunk or removes one
+            # column, and there are finitely many columns.
+            for _attempt in range(16):
+                if dropped:
+                    chunk = [{k: v for k, v in r.items() if k not in dropped}
+                             for r in chunk]
+                try:
+                    self._call("POST", path, body=chunk,
+                               headers={"Prefer": prefer})
+                    break
+                except Exception as exc:             # noqa: BLE001
+                    col = missing_column(exc)
+                    if not col or col in dropped:
+                        raise
+                    dropped.add(col)
+            else:
+                raise CloudError(
+                    "%s: gave up after dropping %s" % (table,
+                                                       sorted(dropped)))
             sent += len(chunk)
+        if dropped:
+            PENDING_COLUMNS.setdefault(table, set()).update(dropped)
         return sent
 
     def patch_rows(self, table, query, values):
@@ -430,8 +528,17 @@ class Cloud:
                    % (table, self._safe_query(query)),
                    headers={"Prefer": "return=minimal"})
 
-    def count(self, table):
-        path = "/rest/v1/%s?select=*&limit=1" % table
+    def count(self, table, query=""):
+        """How many rows match, without fetching them.
+
+        `query` matters more than it looks: a caller that counts by taking
+        `len(select(...))` is reporting the page size the moment there are
+        more rows than a page, and PostgREST caps a page at a thousand. The
+        digest did exactly that and was out by 992.
+        """
+        q = self._safe_query(query)
+        q = q + ("&" if q else "")
+        path = "/rest/v1/%s?%sselect=*&limit=1" % (table, q)
         _rows, headers = self._call(
             "GET", path, headers={"Prefer": "count=exact",
                                   "Range-Unit": "items", "Range": "0-0"})

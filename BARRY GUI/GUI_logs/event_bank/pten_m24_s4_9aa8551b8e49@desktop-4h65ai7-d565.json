@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-09-08T18:21:14.437184+00:00",
+    "added": "2026-09-09T02:03:40.345873+00:00",
     "by_label": "2026-09-08T18:35:59.440066+00:00",
     "curation_label": "2026-09-08T18:21:14.437184+00:00",
     "duration_s": "2026-09-08T18:21:14.437184+00:00",
@@ -36,6 +36,14 @@
       "{\"at\": \"2026-09-08T14:24:20-04:00\", \"by\": \"Rain\", \"changed\": [\"versions\"], \"why\": \"deleted version 1\"}": [
         "set",
         "2026-09-08T18:24:20.554869+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:02:28-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-09T02:02:28.266462+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:40-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-09T02:03:40.345873+00:00"
       ]
     },
     "versions": {
@@ -49,22 +57,22 @@
       ],
       "v0-9d96e67f": [
         "set",
-        "2026-09-08T18:35:59.440066+00:00"
+        "2026-09-09T02:03:40.345873+00:00"
       ],
       "v1-a6d79cf8": [
         "set",
-        "2026-09-08T18:35:59.440066+00:00"
+        "2026-09-09T02:03:40.345873+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:35:59.440066+00:00",
+    "at": "2026-09-09T02:03:40.345873+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
     "at": "2026-09-02T19:00:02-04:00",
-    "by": "theexaminedexistence@gmail.com",
+    "by": "Shahriar Tafti",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -3784,6 +3792,20 @@
         "versions"
       ],
       "why": "deleted version 1"
+    },
+    {
+      "at": "2026-09-08T22:02:28-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:40-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
     }
   ],
   "id": "9aa8551b8e49",
@@ -3822,7 +3844,7 @@
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "by_label": {
         "unspecified": 738
       },
@@ -6793,7 +6815,7 @@
     },
     {
       "at": "2026-09-02T19:00:02-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "by_label": {
         "flag": 2,
         "garbage": 734,

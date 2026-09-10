@@ -1,11 +1,16 @@
 {
   "_at": {
+    "assignee": "2026-09-09T19:58:48.062839+00:00",
+    "closed_at": "2026-09-09T21:32:19.132154+00:00",
     "created": "2026-09-03T20:23:56.849986+00:00",
     "gid": "2026-09-03T20:23:56.849986+00:00",
+    "open": "2026-09-09T21:32:19.132154+00:00",
+    "opened_at": "2026-09-09T21:32:23.239081+00:00",
+    "opened_by": "2026-09-09T19:58:48.062839+00:00",
     "regions": "2026-09-03T20:23:56.849986+00:00",
     "schema": "2026-09-03T20:23:56.849986+00:00",
     "session_label": "2026-09-03T20:23:56.849986+00:00",
-    "updated": "2026-09-04T17:40:26.618471+00:00"
+    "updated": "2026-09-09T21:32:23.218031+00:00"
   },
   "_keys": {
     "channels": {
@@ -278,10 +283,11 @@
     }
   },
   "_shard": {
-    "at": "2026-09-04T17:40:26.654177+00:00",
+    "at": "2026-09-09T21:32:23.239081+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "assignee": "Shahriar Tafti",
   "channels": [
     1,
     2,
@@ -348,6 +354,7 @@
     63,
     64
   ],
+  "closed_at": null,
   "created": {
     "at": "2026-09-03T16:23:56-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -356,6 +363,9 @@
   },
   "gid": "s61700eac90ec",
   "labels": {},
+  "open": true,
+  "opened_at": "2026-09-09T17:32:23-0400",
+  "opened_by": "Shahriar Tafti",
   "regions": [
     {
       "color": "#8ec5ff",
@@ -439,10 +449,11 @@
   "schema": 1,
   "session_label": "KCNT1 m22 s4 2026-06-18",
   "updated": {
-    "at": "2026-09-04T13:40:26-04:00",
-    "email": "sakhava1@uvm.edu",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T17:32:23-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Shahriar"
+    "user": "Shahriar Tafti"
   }
 }

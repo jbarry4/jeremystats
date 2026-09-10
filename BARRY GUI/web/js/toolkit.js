@@ -95,6 +95,36 @@ BARRY.views.toolkit = (function () {
     return p.toString();
   }
 
+  /* The registry, kept rather than re-read.
+
+     It takes eight seconds on this lab's data and both the Curation and
+     StrataScope tools want it, so switching between them paid for it again
+     every time -- and a slow read in flight is what lets a stale answer land
+     on top of the tool you just opened. Held for a minute: a recording
+     appearing mid-session is not what this pane is for, and `forget()` is
+     there for when something really has changed. */
+  let regCache = { at: 0, data: null, inflight: null };
+  const REG_FRESH_MS = 60000;
+
+  async function registry(force) {
+    const now = Date.now();
+    if (!force && regCache.data && now - regCache.at < REG_FRESH_MS) {
+      return regCache.data;
+    }
+    if (regCache.inflight) return regCache.inflight;
+    regCache.inflight = (async () => {
+      try {
+        const got = await api('/api/registry');
+        regCache = { at: Date.now(), data: got, inflight: null };
+        return got;
+      } catch (e) {
+        regCache.inflight = null;
+        throw e;
+      }
+    })();
+    return regCache.inflight;
+  }
+
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
@@ -363,7 +393,7 @@ BARRY.views.toolkit = (function () {
       try {
         const got = await api('/api/curation');
         if (l) l.step('reading the recording registry');
-        got.registry = await api('/api/registry');
+        got.registry = await registry();
         cur = got;
         curStale = false;
       } catch (e) {
@@ -371,7 +401,11 @@ BARRY.views.toolkit = (function () {
       } finally {
         curLoading = null;
       }
-      renderCuration();
+      /* Only if this is still the tool on screen. A four-second answer
+         that lands after you have clicked StrataScope must not paint
+         Curation over it -- the same guard the bad-channel loader has
+         carried all along. */
+      if (q.tool === 'curate') renderCuration();
       return cur;
     })();
     return curLoading;
@@ -475,6 +509,12 @@ BARRY.views.toolkit = (function () {
   function renderCuration() {
     const host = $('#tkResult');
     if (!host) return;
+    /* Belt as well as braces. This is called from the presence poll, from
+       every set action and from the loader, and any of those can happen
+       after the tool has changed -- one place that refuses is worth more
+       than a guard at each call site, because the next call site will not
+       have one. */
+    if (q.tool !== 'curate') return;
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!cur) {
@@ -508,6 +548,16 @@ BARRY.views.toolkit = (function () {
          a second door into the same store, and implied a recording could
          have more than one set of a kind -- it cannot, so a second import
          merged into the first, added nothing and threw away the name. */
+      /* Not a novelty. It is the only view of the decisions as a set
+         rather than one at a time, which makes it the only place a
+         detector producing mostly obvious garbage would show up. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Hall of garbage',
+        title: 'The candidates nobody had to think about — rejected fast, '
+             + 'never flagged, never revisited. Useful for showing a new '
+             + 'curator what garbage looks like.',
+        onclick: showGarbageHall,
+      }),
       el('button', { class: 'btn', text: 'New curation set…',
                      onclick: newCurationSet }),
     ].filter(Boolean)));
@@ -573,9 +623,13 @@ BARRY.views.toolkit = (function () {
       if (!res || !res.ok) return;
       const before = JSON.stringify(presence.sessions || []);
       presence = res;
-      // Only redraw when it actually changed: this runs every ten seconds
-      // and the shelf is a few hundred nodes.
-      if (andRender && JSON.stringify(res.sessions || []) !== before) {
+      /* Only redraw when it actually changed, and only when the tool it is
+         about is the one on screen. This runs every ten seconds for as long
+         as the ToolKit is open, so without the second condition it repaints
+         Curation over StrataScope, or over Kilosort, on its own -- a jump to
+         another module with nothing you did to explain it. */
+      if (andRender && q.tool === 'curate'
+          && JSON.stringify(res.sessions || []) !== before) {
         renderCuration();
       }
     } catch (e) { /* presence is a courtesy, never an interruption */ }
@@ -680,6 +734,153 @@ BARRY.views.toolkit = (function () {
     loadPresence(true);
   }
 
+  /* ==================================================================
+     The hall of garbage
+     ==================================================================
+     The candidates nobody had to think about: rejected, decided in under a
+     couple of seconds, never flagged, never revisited. Which makes it a
+     teaching set -- the fastest way to explain what garbage looks like is
+     forty examples that nobody hesitated over -- and a sanity check on the
+     detector, since a detector producing this much obvious garbage is
+     saying something about its threshold.
+
+     The honest part is the caveat. Most of the decisions in this store were
+     backfilled with one shared timestamp, so their gaps are not durations
+     at all, and those are excluded and counted rather than quietly averaged
+     in. A hall of fame built on made-up numbers would be worse than none.
+     ================================================================== */
+  let hall = null;
+
+  async function showGarbageHall() {
+    showModal(el('div', { class: 'gh-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hall of garbage' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('div', { class: 'hint', text: 'Reading every decision…' }),
+      ]),
+    ]));
+    try {
+      hall = await api('/api/curation/garbage-hall?limit=60');
+    } catch (e) {
+      hall = { failed: e.message };
+    }
+    drawHall();
+  }
+
+  function drawHall() {
+    if (!hall) return;
+    const rows = hall.hall || [];
+    const body = el('div', { class: 'mb' });
+
+    if (hall.failed) {
+      body.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the decisions: ' + hall.failed }));
+    } else {
+      body.appendChild(el('p', { class: 'sub',
+        text: 'Rejected in under ' + hall.quick_s + ' seconds, never '
+            + 'flagged, never revisited. Sorted by how fast the call was.' }));
+
+      /* Said before the list, not after it. If most of the store cannot be
+         timed then the list is a sample of a corner of it, and somebody
+         reading "5 qualify" out of nine thousand decisions deserves to know
+         why before they conclude the detector is fine. */
+      if (hall.unusable) {
+        body.appendChild(el('div', { class: 'ecx-warn' }, [
+          el('strong', { text: hall.unusable.toLocaleString()
+                             + ' decisions could not be timed. ' }),
+          el('span', { text: hall.why || 'They share one timestamp, so the '
+            + 'gap between them is not how long anybody took. They are left '
+            + 'out rather than guessed at.' }),
+        ]));
+      }
+
+      if (!rows.length) {
+        body.appendChild(el('div', { class: 'hint',
+          text: 'Nothing qualifies yet. It fills up as people curate — '
+              + 'every fast rejection lands here.' }));
+      } else {
+        const list = el('div', { class: 'gh-list' });
+        rows.forEach((r, i) => {
+          list.appendChild(el('div', { class: 'gh-row' }, [
+            el('span', { class: 'gh-rank', text: '#' + (i + 1) }),
+            el('span', { class: 'gh-took', text: r.took_s + 's' }),
+            el('span', { class: 'gh-sess', text: r.session || r.gid }),
+            el('span', { class: 'gh-at', text: fmtClock(r.start) }),
+            el('span', { class: 'gh-by', text: r.by || '' }),
+            /* Straight to the candidate, because "show me" is the next
+               thought after "that was quick". */
+            el('button', {
+              class: 'linkish gh-go', text: 'look',
+              title: 'Open that recording at that moment',
+              onclick: () => { closeModal(); goToCandidate(r); },
+            }),
+          ]));
+        });
+        body.appendChild(list);
+        body.appendChild(el('div', { class: 'hint gh-foot',
+          text: rows.length >= hall.n
+            ? (hall.n === 1 ? 'One qualifies.'
+                            : 'All ' + hall.n + ' that qualify are shown.')
+            : hall.n + ' qualify altogether; the fastest ' + rows.length
+              + ' are shown.' }));
+      }
+    }
+
+    showModal(el('div', { class: 'gh-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Hall of garbage' }),
+        el('span', { class: 'sub',
+          text: 'The candidates nobody had to think about' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+      body,
+    ]), { replace: true });
+  }
+
+  function fmtClock(sec) {
+    if (!isFinite(sec)) return '';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+  }
+
+  /* Open the recording it came from and put the window on it. Not curation
+     mode -- looking at an example is not deciding it, and entering curation
+     would take the set off whoever has it and reset their pass. */
+  async function goToCandidate(r) {
+    const sets = (cur && cur.sets) || [];
+    const st = sets.find((x) => x.gid === r.gid && x.kind === r.kind);
+    const label = (st && st.session && st.session.label) || r.session || r.gid;
+    let info = st;
+    if (!info) {
+      try {
+        info = await api('/api/curation/' + encodeURIComponent(r.gid) + '/'
+                         + encodeURIComponent(r.kind));
+      } catch (e) { info = null; }
+    }
+    const here = ((info && (info.session || {})).here) || [];
+    if (!here.length) {
+      toast('That recording is not reachable from this machine: ' + label,
+            'warn', 7000);
+      return;
+    }
+    setView('xplore');
+    const sess = await BARRY.views.xplore.open(here[0]);
+    if (!sess) return;
+    /* A second either side, the same window curation uses -- enough to tell
+       a deflection from an artifact on one wire, which is the whole point of
+       looking at it. */
+    BARRY.views.xplore.setWindow(0, Math.max(0, r.start - 0.5), 1.0);
+  }
+
   function curCard(st) {
     const pr = st.progress || {};
     const done = pr.left === 0 && pr.total > 0;
@@ -704,6 +905,17 @@ BARRY.views.toolkit = (function () {
         onclick: () => window.open(
           '/api/curation/' + encodeURIComponent(st.gid) + '/'
           + encodeURIComponent(st.kind) + '/export', '_blank'),
+      }),
+      /* What the last sitting on it came to. Available whether or not the
+         set is open, because the question "how long did that take" arrives
+         after you have already left. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Receipt',
+        disabled: (pr.specified) ? null : 'disabled',
+        title: pr.specified
+          ? 'What the last sitting on this set came to, and how fast'
+          : 'Nothing has been decided yet',
+        onclick: () => BARRY.curate.receipt(st.gid, st.kind),
       }),
       el('button', {
         class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',
@@ -1279,7 +1491,13 @@ BARRY.views.toolkit = (function () {
 
     const paint = () => {
       list.innerHTML = '';
-      const rows = (r.people || []);
+      /* Archived people are not offered. Except the one who already has
+         this set: hiding a current owner would leave a set assigned to a
+         name that is nowhere on screen, and no way to hand it on. */
+      const rows = (r.people || []).filter(
+        (x) => !x.archived || x.name === st.assignee);
+      const away = (r.people || []).filter(
+        (x) => x.archived && x.name !== st.assignee).length;
       if (!rows.length) {
         list.appendChild(el('div', { class: 'hint',
           text: 'Nobody is on the roster yet. BARRY builds it from the '
@@ -1308,7 +1526,17 @@ BARRY.views.toolkit = (function () {
           el('span', { class: 'mk-name', text: p.name }),
           what ? el('span', { class: 'person-what', text: what }) : null,
           p.me ? el('span', { class: 'flagchip good', text: 'you' }) : null,
+          p.archived
+            ? el('span', { class: 'flagchip', text: 'archived' }) : null,
         ].filter(Boolean)));
+      }
+      /* Said, not silently dropped. A picker that is quietly shorter than
+         the roster is a picker somebody will scroll looking for a name. */
+      if (away) {
+        list.appendChild(el('div', { class: 'hint',
+          text: away + ' archived ' + (away === 1 ? 'person is' : 'people are')
+              + ' not listed. They are still on every record they are on — '
+              + 'un-archive them in Profile to offer them work again.' }));
       }
     };
     paint();
@@ -1434,16 +1662,285 @@ BARRY.views.toolkit = (function () {
     try {
       strata = await api('/api/layers');
       if (l) l.step('reading the recording registry');
-      strata.registry = await api('/api/registry');
+      strata.registry = await registry();
     } catch (e) {
       strata = { error: e.message, sheets: [], regions: [] };
     }
+    // See `loadCuration`: an eight-second registry read that lands after the
+    // tool has changed must not paint over what is there now.
+    if (q.tool !== 'strata') return;
     renderStrata();
+  }
+
+  /* How the shelf is being looked at. Held here, not read off the DOM, so a
+     re-render cannot lose a half-typed search. */
+  const strataQ = { text: '', show: 'all', shelf: false };
+
+  const STRATA_SHOWS = [
+    ['all', 'All'],
+    ['left', 'Unfinished'],
+    ['done', 'Finished'],
+    ['mine', 'Mine'],
+    ['archived', 'Archived'],
+  ];
+
+  const strataSheets = () => (strata && strata.sheets) || [];
+  const strataOpen = () => strataSheets()
+    .filter((sh) => sh.open && !sh.archived);
+
+  /* The sheets on the shelf that match what is being asked for. Everything
+     not on the bench, the finished ones included -- being done is a reason
+     not to be in the way, not a reason to be hidden. */
+  function strataShelf() {
+    const me = (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+      || '';
+    const q = strataQ.text.trim().toLowerCase();
+    const words = q ? q.split(/\s+/) : [];
+    return strataSheets().filter((sh) => {
+      if (sh.open && !sh.archived) return false;
+      const pr = sh.progress || {};
+      if (strataQ.show === 'left' && !(pr.left > 0)) return false;
+      if (strataQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) {
+        return false;
+      }
+      if (strataQ.show === 'mine'
+          && (sh.assignee || '').toLowerCase() !== me.toLowerCase()) {
+        return false;
+      }
+      /* Archived sheets are out of the way unless asked for. Archiving still
+         means "I am done thinking about this at all", which is a stronger
+         statement than putting it down. */
+      if (strataQ.show === 'archived') {
+        if (!sh.archived) return false;
+      } else if (sh.archived) {
+        return false;
+      }
+      if (!words.length) return true;
+      const hay = [sh.name, sh.session_label, sh.gid, sh.assignee]
+        .filter(Boolean).join(' ').toLowerCase();
+      return words.every((w) => hay.indexOf(w) >= 0);
+    });
+  }
+
+  async function strataAct(gid, what, body) {
+    try {
+      const got = await apiPost('/api/layers/' + encodeURIComponent(gid)
+                                + '/' + what, body || {});
+      if (got && got.sheet) {
+        const at = strataSheets().findIndex((x) => x.gid === gid);
+        if (at >= 0) Object.assign(strata.sheets[at], got.sheet);
+      }
+      renderStrata();
+      return got;
+    } catch (e) {
+      toast(e.message, 'err', 6000);
+      return null;
+    }
+  }
+
+  const pickUpSheet = (sh, andOpen) => strataAct(sh.gid, 'open', { on: true })
+    .then((got) => { if (got && andOpen) BARRY.strata.enter(sh.gid); });
+  const putDownSheet = (sh) => strataAct(sh.gid, 'open', { on: false });
+
+  async function archiveSheet(sh) {
+    if (!sh.archived) {
+      const ok = await BARRY.confirm(
+        'File away the layer sheet for ' + (sh.session_label || sh.gid) + '?',
+        'It comes off the bench and off the shelf, so it stops being offered. '
+        + 'Nothing is lost: the labels, the version history and the snapshots '
+        + 'all stay, and it can be taken back out at any time.',
+        'File it away');
+      if (!ok) return;
+    }
+    strataAct(sh.gid, 'archive', { on: !sh.archived });
+  }
+
+  async function unarchiveAndPickUp(sh) {
+    const ok = await BARRY.confirm(
+      'Take ' + (sh.session_label || sh.gid) + ' back out?',
+      'It is archived. Picking it up puts it back on the bench and takes it '
+      + 'out of the archive.',
+      'Take it out and pick it up');
+    if (!ok) return;
+    strataAct(sh.gid, 'open', { on: true, unarchive: true });
+  }
+
+  /* The name, edited where it is shown.
+
+     There is no text-prompt helper in this codebase and one field does not
+     justify inventing a dialog for it, so the title becomes an input and
+     goes back to being a title. Empty means "call it after the
+     recording". */
+  function nameCell(sh) {
+    const shown = sh.name || sh.session_label || sh.gid;
+    const strong = el('strong', {
+      class: 'sheet-name', text: shown, tabindex: '0',
+      title: 'Click to name this work set. A sheet is about a recording, but '
+           + 'the work is not always "the recording" — it can be the '
+           + 'second pass after the probe map was fixed.',
+      onclick: (e) => edit(e.currentTarget),
+      onkeydown: (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          edit(e.currentTarget);
+        }
+      },
+    });
+
+    function edit(node) {
+      const box = el('input', {
+        class: 'inp sm sheet-name-edit', value: sh.name || '',
+        placeholder: sh.session_label || sh.gid,
+      });
+      let done = false;
+      const finish = (save) => {
+        if (done) return;
+        done = true;
+        const want = box.value.trim();
+        if (save && want !== (sh.name || '')) {
+          strataAct(sh.gid, 'rename', { name: want });
+        } else {
+          renderStrata();
+        }
+      };
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      });
+      box.addEventListener('blur', () => finish(true));
+      node.replaceWith(box);
+      box.focus();
+      box.select();
+    }
+
+    return strong;
+  }
+  /* There is no delete here.
+
+     There was, and it took a confirmation dialog three paragraphs long to
+     explain everything it would not destroy -- which is the tell. The
+     labelling IS the data; a work set is a statement about who is working
+     on what. So the verbs are Close (off the bench) and File away (off the
+     shelf as well), and neither touches a label, a version or a snapshot.
+
+     `/api/layers/<gid>/delete` still exists, because an import that landed
+     a sheet on the wrong recording has to be undoable. It is not something
+     a card offers you in passing. */
+
+  async function closeAllSheets() {
+    const n = strataOpen().length;
+    const ok = await BARRY.confirm(
+      'Clear the bench?',
+      'Closes all ' + n + ' open work set' + (n === 1 ? '' : 's') + '. '
+      + 'Nothing is archived, deleted or unlabelled — every label was '
+      + 'written as it was made. Each one goes back on the shelf.',
+      'Close them all');
+    if (!ok) return;
+    try {
+      await apiPost('/api/layers/close-all', {});
+      strata = null;
+      loadStrata();
+    } catch (e) { toast(e.message, 'err', 6000); }
+  }
+
+  /* One sheet, as a card. The same shape as a curation set, because it is
+     the same kind of thing: a pile of decisions about one recording that
+     somebody is or is not working on. */
+  function sheetCard(sh, onBench) {
+    const pr = sh.progress || {};
+    const done = pr.left === 0 && pr.total > 0;
+    const reach = sh.session && sh.session.reachable;
+    const when = curWhen(onBench ? sh.opened_at : (sh.updated || {}).at);
+
+    const acts = [
+      el('button', {
+        class: 'btn sm',
+        text: pr.left ? 'Continue…' : 'Review…',
+        disabled: reach ? null : 'disabled',
+        title: reach ? 'Open it in StrataScope'
+          : 'The folder for this recording is not reachable from this '
+            + 'computer',
+        onclick: () => BARRY.strata.enter(sh.gid),
+      }),
+    ];
+    if (onBench) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        title: 'Closes the work set: it comes off the bench and goes back '
+             + 'on the shelf. It changes no labels, no versions and no '
+             + 'snapshots \u2014 every label was written the moment you '
+             + 'made it.',
+        onclick: () => putDownSheet(sh),
+      }));
+    } else if (sh.archived) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Take it out…',
+        title: 'Un-archive it and put it on the bench',
+        onclick: () => unarchiveAndPickUp(sh),
+      }));
+    } else {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick it up',
+        title: 'Puts it on the bench. Opening the recording is separate — '
+             + 'this is just saying you are working on it.',
+        onclick: () => pickUpSheet(sh, false),
+      }));
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick up and open',
+        disabled: reach ? null : 'disabled',
+        onclick: () => pickUpSheet(sh, true),
+      }));
+    }
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: 'Export CSV',
+      onclick: () => window.open('/api/layers/'
+        + encodeURIComponent(sh.gid) + '/export', '_blank'),
+    }));
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: sh.archived ? 'Unarchive' : 'File away',
+      title: sh.archived
+        ? 'Put it back on the shelf'
+        : 'Off the shelf as well as off the bench. Nothing is lost.',
+      onclick: () => archiveSheet(sh),
+    }));
+
+    return el('div', {
+      class: 'cur-set' + (done ? ' done' : '') + (onBench ? ' on-bench' : ''),
+      'data-gid': sh.gid,
+    }, [
+      el('div', { class: 'cur-set-top' }, [
+        nameCell(sh),
+        el('span', { class: 'hk-chip', text: 'layers' }),
+        sh.name && sh.session_label
+          ? el('span', { class: 'hint', text: sh.session_label }) : null,
+        sh.archived
+          ? el('span', { class: 'hk-chip', text: 'archived' }) : null,
+        el('div', { style: 'flex:1' }),
+        sh.assignee
+          ? el('span', { class: 'csr-who', text: sh.assignee }) : null,
+        el('span', { class: 'cur-set-n',
+          text: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels' }),
+      ].filter(Boolean)),
+      when ? el('div', { class: 'hint',
+        text: (onBench ? 'picked up ' : 'last touched ') + when
+          + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '') }) : null,
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+      el('div', { class: 'cur-set-tally' },
+         (sh.regions || []).filter(
+           (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
+             class: 'cur-tally', style: '--cat:' + r.color,
+             text: r.name + '  ' + pr.by_region[r.id],
+           }))),
+      el('div', { class: 'cur-set-acts' }, acts),
+    ].filter(Boolean));
   }
 
   function renderStrata() {
     const host = $('#tkResult');
     if (!host) return;
+    if (q.tool !== 'strata') return;   // see renderCuration
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!strata) {
@@ -1454,7 +1951,7 @@ BARRY.views.toolkit = (function () {
     }
 
     const rows = ((strata.registry || {}).tree || [])
-      .flatMap((p) => p.mice.flatMap((m) => m.sessions));
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
     // Same search field as the curation importer, for the same reason.
     let strataGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
     const pick = BARRY.pickSession({
@@ -1464,80 +1961,96 @@ BARRY.views.toolkit = (function () {
     });
     pick.id = 'strataPick';
 
+    const open = strataOpen();
+
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
         el('h2', { text: 'StrataScope' }),
         el('p', { class: 'sub',
-          text: 'Which anatomical layer each channel is sitting in \u2014 '
-              + 'labelled against the live voltage, CSD and theta rasters, so '
-              + 'there is nothing to crop and the rows cannot drift off the '
-              + 'channels.' }),
+          text: open.length
+            ? 'What you have open. It stays here until you put it down.'
+            : 'Which anatomical layer each channel is sitting in. Pick a '
+              + 'recording up below, or start a new sheet on the right — '
+              + 'it stays on the bench until you put it down.' }),
       ]),
       el('div', { class: 'spacer' }),
+      open.length > 1 ? el('button', {
+        class: 'btn ghost sm', text: 'Clear the bench',
+        title: 'Closes every open work set. Nothing is archived, deleted or '
+             + 'unlabelled.',
+        onclick: closeAllSheets,
+      }) : null,
       pick,
       el('button', {
-        class: 'btn', text: 'Open\u2026',
+        class: 'btn', text: 'Open…',
         disabled: rows.length ? null : 'disabled',
+        title: 'Opens the recording in StrataScope, making a sheet if there '
+             + 'is not one yet',
         onclick: () => {
           if (!strataGid) { toast('Pick a recording first.', 'err'); return; }
           BARRY.strata.enter(strataGid);
         },
       }),
-    ]));
+    ].filter(Boolean)));
 
-    const sheets = strata.sheets || [];
-    if (!sheets.length) {
-      host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'No layer sheets yet. Pick a recording above and open it '
-            + '\u2014 a sheet is made the first time.' }));
+    /* ---- the bench ---- */
+    const bench = el('div', { class: 'cur-sets cur-bench', id: 'strataBench' });
+    if (open.length) {
+      for (const sh of open) bench.appendChild(sheetCard(sh, true));
     } else {
-      const list = el('div', { class: 'cur-sets' });
-      for (const sh of sheets) {
-        const pr = sh.progress || {};
-        const reach = sh.session && sh.session.reachable;
-        list.appendChild(el('div', {
-          class: 'cur-set' + (pr.left === 0 && pr.total ? ' done' : ''),
-        }, [
-          el('div', { class: 'cur-set-top' }, [
-            el('strong', { text: sh.session_label || sh.gid }),
-            el('span', { class: 'hk-chip', text: 'layers' }),
-            el('div', { style: 'flex:1' }),
-            el('span', { class: 'cur-set-n',
-              text: pr.labelled + ' / ' + pr.total + ' channels' }),
-          ]),
-          el('div', { class: 'cur-prog small' }, [
-            el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-          ]),
-          el('div', { class: 'cur-set-tally' },
-             (sh.regions || []).filter(
-               (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
-                 class: 'cur-tally', style: '--cat:' + r.color,
-                 text: r.name + '  ' + pr.by_region[r.id],
-               }))),
-          el('div', { class: 'cur-set-acts' }, [
-            el('button', {
-              class: 'btn sm',
-              text: pr.left ? 'Continue\u2026' : 'Review\u2026',
-              disabled: reach ? null : 'disabled',
-              onclick: () => BARRY.strata.enter(sh.gid),
-            }),
-            el('button', {
-              class: 'btn ghost sm', text: 'Export CSV',
-              onclick: () => window.open('/api/layers/'
-                + encodeURIComponent(sh.gid) + '/export', '_blank'),
-            }),
-            el('button', {
-              class: 'btn ghost sm danger', text: 'Delete',
-              onclick: async () => {
-                await apiPost('/api/layers/' + encodeURIComponent(sh.gid)
-                              + '/delete', {});
-                loadStrata();
-              },
-            }),
-          ]),
-        ]));
-      }
-      host.appendChild(list);
+      bench.appendChild(el('div', { class: 'cur-bench-empty' }, [
+        el('p', { text: 'Nothing open.' }),
+        el('p', { class: 'hint',
+          text: strataSheets().length
+            ? 'Pick one up below and it stays on the bench until you put it '
+              + 'down. Putting a sheet down neither saves nor loses '
+              + 'anything — every label was written the moment you made it.'
+            : 'No layer sheets yet. Pick a recording above and open it — a '
+              + 'sheet is made the first time.' }),
+      ]));
+    }
+    host.appendChild(bench);
+
+    /* ---- the shelf, folded away until wanted ---- */
+    const nShelf = strataSheets().filter((sh) => !sh.open && !sh.archived)
+      .length;
+    const nArch = strataSheets().filter((sh) => sh.archived).length;
+    if (strataSheets().length) {
+      host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+        el('button', {
+          class: 'cur-shelf-toggle' + (strataQ.shelf ? ' on' : ''),
+          text: (strataQ.shelf ? '▾  ' : '▸  ')
+              + (open.length ? 'Pick up another sheet' : 'Pick up a sheet')
+              + '  ·  ' + nShelf + ' put down'
+              + (nArch ? '  ·  ' + nArch + ' archived' : ''),
+          onclick: () => { strataQ.shelf = !strataQ.shelf; renderStrata(); },
+        }),
+      ]));
+    }
+
+    if (strataQ.shelf) {
+      const shelf = el('div', { class: 'cur-shelf', id: 'strataShelf' });
+      shelf.appendChild(el('div', { class: 'cur-filter' }, [
+        el('input', {
+          class: 'inp sm', id: 'strataSearch', type: 'search',
+          placeholder: 'Search the sheets…', value: strataQ.text,
+          oninput: (e) => {
+            strataQ.text = e.target.value;
+            const box = $('#strataShelfList');
+            if (box) fillStrataShelf(box);
+          },
+        }),
+        el('select', {
+          title: 'Which of them',
+          onchange: (e) => { strataQ.show = e.target.value; renderStrata(); },
+        }, STRATA_SHOWS.map(([v, t]) => el('option', {
+          value: v, text: t,
+          selected: strataQ.show === v ? 'selected' : null }))),
+      ]));
+      const list = el('div', { class: 'cur-sets', id: 'strataShelfList' });
+      fillStrataShelf(list);
+      shelf.appendChild(list);
+      host.appendChild(shelf);
     }
 
     host.appendChild(el('div', { class: 'section-label', text: 'The layers' }));
@@ -1546,6 +2059,21 @@ BARRY.views.toolkit = (function () {
         class: 'cur-tally', style: '--cat:' + r.color,
         title: r.note || '', text: r.name,
       }))));
+  }
+
+  /* The shelf list on its own, so typing in the search box repaints the rows
+     and not the box the cursor is in. */
+  function fillStrataShelf(box) {
+    box.innerHTML = '';
+    const rows = strataShelf();
+    if (!rows.length) {
+      box.appendChild(el('div', { class: 'hint tk-empty',
+        text: strataQ.text
+          ? 'Nothing matches “' + strataQ.text + '”.'
+          : 'Nothing here under that filter.' }));
+      return;
+    }
+    for (const sh of rows) box.appendChild(sheetCard(sh, false));
   }
 
   /* ==================================================================

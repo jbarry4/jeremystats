@@ -56,8 +56,26 @@ async function until(fn, ms = 40000) {
   /* Start from full, whatever the last run left behind. The rail state is
      remembered per machine in localStorage, so a previous harness (or a
      previous you) leaving it collapsed made every step here off by one. */
+  /* Finish whatever is animating, then measure.
+
+     The timer clock fast-forwards under --virtual-time-budget and the
+     animation clock does not, so a transition never advances: the rail
+     animates its width through `@property --rail`, and every reading came
+     back at the start value, 190px, however many times the burger was
+     clicked. `Animation.finish()` needs no clock. `subtree: true` because
+     the rail's own animation is on a descendant of the element being
+     measured. */
+  const settle = async () => {
+    try {
+      for (const a of D.getAnimations({ subtree: true })) {
+        try { a.finish(); } catch (e) { /* already done */ }
+      }
+    } catch (e) { /* an older engine: the sleep below is the fallback */ }
+    await sleep(120);
+  };
+
   W.eval("setRail('full')");
-  await sleep(250);
+  await settle();
   const app = D.getElementById('app');
   const burger = D.getElementById('railToggle');
   check('there is a burger', !!burger);
@@ -66,7 +84,7 @@ async function until(fn, ms = 40000) {
   const wFull = railW();
   say('note', '  full: ' + wFull + 'px');
   burger.click();
-  await sleep(300);
+  await settle();
   const wIcons = railW();
   check('one click gives icons only',
         app.classList.contains('rail-icons') && wIcons < wFull && wIcons > 0,
@@ -75,7 +93,7 @@ async function until(fn, ms = 40000) {
         D.querySelectorAll('#rail .nav-item').length > 5,
         D.querySelectorAll('#rail .nav-item').length + ' items');
   burger.click();
-  await sleep(300);
+  await settle();
   check('a second click hides it', app.classList.contains('rail-away')
         && railW() === 0, railW() + 'px');
   /* And the rest of the app is still there.
@@ -102,7 +120,7 @@ async function until(fn, ms = 40000) {
         && W.getComputedStyle(peek).display !== 'none',
         peek ? W.getComputedStyle(peek).display : 'no handle');
   peek.click();
-  await sleep(300);
+  await settle();
   check('the handle restores it', railW() === wFull, railW() + 'px');
 
   head('Every bar in Xplorefinder folds');
