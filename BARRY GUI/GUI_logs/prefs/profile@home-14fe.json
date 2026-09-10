@@ -1,0 +1,19 @@
+{
+  "_at": {
+    "device": "2026-09-09T02:34:06.798929+00:00",
+    "email": "2026-09-08T21:24:21.555087+00:00",
+    "initials": "2026-09-08T21:24:21.555087+00:00",
+    "name": "2026-09-08T21:24:21.555087+00:00",
+    "role": "2026-09-08T21:24:06.715007+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-09T02:34:06.798929+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "device": "Homebarry",
+  "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+  "initials": "ST",
+  "name": "Shahriar Tafti",
+  "role": "Gradstudent"
+}

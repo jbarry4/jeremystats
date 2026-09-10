@@ -1,24 +1,24 @@
 {
   "_at": {
-    "created": "2026-09-08T18:42:54.327265+00:00",
-    "id": "2026-09-08T18:42:54.327265+00:00",
-    "schema": "2026-09-08T18:42:54.327265+00:00",
-    "slides": "2026-09-08T18:42:54.327265+00:00",
-    "title": "2026-09-08T18:42:54.327265+00:00",
-    "updated": "2026-09-08T18:42:54.327265+00:00"
+    "created": "2026-09-10T04:19:07.460355+00:00",
+    "id": "2026-09-10T04:19:07.460355+00:00",
+    "schema": "2026-09-10T04:19:07.460355+00:00",
+    "slides": "2026-09-10T04:19:07.460355+00:00",
+    "title": "2026-09-10T04:19:07.460355+00:00",
+    "updated": "2026-09-10T04:19:07.460355+00:00"
   },
   "_shard": {
-    "at": "2026-09-08T18:42:54.327265+00:00",
+    "at": "2026-09-10T04:19:07.460355+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-08T14:42:54-04:00",
+    "at": "2026-09-10T00:19:07-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "id": "deck_d726f9b2",
   "schema": 1,
@@ -154,11 +154,11 @@
   ],
   "title": "Test story",
   "updated": {
-    "at": "2026-09-08T14:42:54-04:00",
+    "at": "2026-09-10T00:19:07-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

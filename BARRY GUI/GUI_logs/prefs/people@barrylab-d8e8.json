@@ -20,7 +20,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T20:37:36.142919+00:00"
+        "2026-09-10T13:50:19.686255+00:00"
       ],
       "Shahriar": [
         "set",
@@ -77,7 +77,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:37:36.155211+00:00",
+    "at": "2026-09-10T13:50:19.686255+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -158,30 +158,6 @@
     },
     {
       "archived": true,
-      "at": "2026-09-09T16:24:23.763631+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T16:24:23.763649+00:00",
-      "id": "zz edit probe",
-      "name": "zz edit probe"
-    },
-    {
-      "archived": true,
-      "at": "2026-09-09T16:24:23.793247+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T16:24:23.793265+00:00",
-      "id": "zz edit probe renamed",
-      "name": "zz edit probe renamed"
-    },
-    {
-      "archived": true,
-      "at": "2026-09-09T16:19:52.816315+00:00",
-      "by": "Sylvia Clouse",
-      "edited_at": "2026-09-09T17:29:37.485034+00:00",
-      "id": "Harness Probe Person",
-      "name": "Harness Probe Person"
-    },
-    {
-      "archived": true,
       "at": "2026-09-09T19:31:52.332901+00:00",
       "by": "Shahriar Tafti",
       "edited_at": "2026-09-09T20:26:47.358237+00:00",
@@ -213,19 +189,6 @@
       "role": "Graduate Student"
     },
     {
-      "aliases": [
-        "rain"
-      ],
-      "at": "2026-09-09T16:19:48.238353+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T20:37:36.135210+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Graduate Student"
-    },
-    {
       "at": "2026-09-09T15:29:28.090683+00:00",
       "by": "Shahriar Tafti",
       "edited_at": "2026-09-09T20:37:36.155210+00:00",
@@ -234,6 +197,19 @@
       "initials": "SC",
       "name": "Sylvia Clouse",
       "role": "Undergraduate"
+    },
+    {
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-09T16:19:48.238353+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-09-10T13:50:19.686254+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
+      "role": "Graduate Student"
     }
   ]
 }

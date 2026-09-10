@@ -1,9 +1,9 @@
 {
   "_at": {
-    "bad_channels": "2026-09-09T14:14:24.028151+00:00",
+    "bad_channels": "2026-09-10T01:26:55.951272+00:00",
     "created": "2026-09-02T23:51:19.849758+00:00",
     "duration_s": "2026-09-04T15:57:01.695046+00:00",
-    "event_classes": "2026-09-09T14:26:34.700772+00:00",
+    "event_classes": "2026-09-09T21:19:24.778228+00:00",
     "first_seen_by": "2026-09-04T15:57:01.695046+00:00",
     "fs": "2026-09-04T15:57:01.695046+00:00",
     "gid": "2026-09-03T00:10:40.126938+00:00",
@@ -12,19 +12,19 @@
     "key": "2026-09-04T15:57:01.695046+00:00",
     "label": "2026-09-04T15:57:01.695046+00:00",
     "loose_key": "2026-09-04T15:57:01.695046+00:00",
-    "merged_in": "2026-09-04T15:57:01.695046+00:00",
+    "merged_in": "2026-09-09T21:33:46.961964+00:00",
     "mouse": "2026-09-04T15:57:01.695046+00:00",
     "n_channels": "2026-09-04T15:57:01.695046+00:00",
-    "note": "2026-09-09T20:23:45.889923+00:00",
-    "project": "2026-09-04T15:57:01.695046+00:00",
+    "note": "2026-09-09T21:33:41.445344+00:00",
+    "project": "2026-09-09T21:33:38.834295+00:00",
     "project_source": "2026-09-04T15:57:01.695046+00:00",
     "retired": "2026-09-04T15:57:01.695046+00:00",
     "schema": "2026-09-04T15:57:01.695046+00:00",
     "session": "2026-09-04T15:57:01.695046+00:00",
-    "spike_labels": "2026-09-09T07:24:50.173178+00:00",
+    "spike_labels": "2026-09-09T20:15:00.351423+00:00",
     "start": "2026-09-04T15:57:01.695046+00:00",
-    "updated": "2026-09-09T20:23:45.889923+00:00",
-    "view_state": "2026-09-09T14:27:28.984158+00:00"
+    "updated": "2026-09-10T01:26:55.951272+00:00",
+    "view_state": "2026-09-09T21:32:21.111424+00:00"
   },
   "_keys": {
     "paths": {
@@ -61,11 +61,15 @@
       "Strawbarrry": [
         "set",
         "2026-09-09T14:27:20.761055+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-09T21:36:24.093065+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T20:23:45.889923+00:00",
+    "at": "2026-09-10T01:26:55.951272+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -97,6 +101,11 @@
       "color": "#FFB81C",
       "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
       "visible": true
+    },
+    "bankback spikes": {
+      "color": "#c9a6ff",
+      "name": "bankback spikes",
+      "visible": true
     }
   },
   "first_seen_by": "scan",
@@ -113,6 +122,8 @@
     "s2bc226ab01c5",
     "s314b7d404614",
     "s4cddfdd3aa83",
+    "s5e669d3d04bd",
+    "s9fa18a9a6fde",
     "s9fd89b2bbd5f",
     "sa2bead544933",
     "sae52d0caf0af",
@@ -125,7 +136,7 @@
   ],
   "mouse": 22,
   "n_channels": 64,
-  "note": "harness note",
+  "note": "",
   "paths": [
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
@@ -170,6 +181,14 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
       "root": null,
       "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-09T17:36:24-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+      "root": null,
+      "scan": null
     }
   },
   "session": 4,
@@ -178,8 +197,8 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-09T16:23:45-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "at": "2026-09-09T21:26:55-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
@@ -224,18 +243,18 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 3,
+    "gain": 2,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 4,
     "stft_mode": null,
-    "t0": 13.3,
+    "t0": 609.964856,
     "ylim": 2133.0312426885184
   }
 }
