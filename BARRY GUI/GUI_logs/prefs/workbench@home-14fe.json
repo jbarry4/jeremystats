@@ -1,40 +1,60 @@
 {
   "_at": {
-    "pipeline_folders": "2026-09-02T23:21:29.293258+00:00",
-    "recent_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-05T18:45:25.854788+00:00"
+    "pipeline_folders": "2026-09-08T21:54:16.096322+00:00",
+    "radio": "2026-09-09T01:49:33.742856+00:00",
+    "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
+    "updated": "2026-09-09T02:33:54.857443+00:00"
   },
   "_keys": {
     "themes": {
       "BarryLab": [
         "set",
-        "2026-09-03T00:08:57.246596+00:00"
+        "2026-09-04T15:57:01.925044+00:00"
       ],
       "DESKTOP-4H65AI7": [
-        "gone",
-        "2026-09-03T00:08:57.246596+00:00"
+        "set",
+        "2026-09-08T15:39:52.477222+00:00"
       ],
       "Home": [
         "set",
         "2026-09-03T00:09:05.747120+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-09-08T17:53:47.145828+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-05T18:45:25.854788+00:00",
+    "at": "2026-09-09T02:33:54.857443+00:00",
     "machine": "home-14fe",
     "schema": 1
   },
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"
+    "session": "D:/PTEN/PTEN/M11_Pten/HF2_s10jul25/2023-07-25_14-40-32"
+  },
+  "radio": {
+    "agreed": true,
+    "small": true,
+    "station": "rFZHOHl-L8A",
+    "volume": 55
   },
   "recent_scripts": [
-    "IED/03_IED_Detection/vacc_ied_detect.m"
+    "IED/03_IED_Detection/vacc_ied_detect.m",
+    "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
+    "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
+    "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
+    "IED/05_Session_Pipeline/components/SolidSputterAvgStack.m",
+    "IED/02_CSC_Conversion/CSC2microVoltPatchCode.m",
+    "IED/03_IED_Detection/Analyze_MatFile_Start.m",
+    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
   "themes": {
-    "BarryLab": "light",
-    "Home": "dark"
+    "BarryLab": "horizon-night",
+    "DESKTOP-4H65AI7": "horizon-night",
+    "Home": "dark",
+    "LCOM549913": "dark"
   },
-  "updated": "2026-09-05T14:45:25-04:00"
+  "updated": "2026-09-08T22:33:54-04:00"
 }
