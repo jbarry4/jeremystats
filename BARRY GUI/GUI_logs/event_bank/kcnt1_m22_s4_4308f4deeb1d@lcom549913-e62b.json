@@ -1,0 +1,110 @@
+{
+  "_at": {
+    "added": "2026-09-10T19:05:51.812912+00:00",
+    "by_label": "2026-09-10T19:05:51.812912+00:00",
+    "curation_label": "2026-09-10T19:05:51.812912+00:00",
+    "duration_s": "2026-09-10T19:05:51.812912+00:00",
+    "events": "2026-09-10T19:05:51.812912+00:00",
+    "gid": "2026-09-10T19:05:51.812912+00:00",
+    "id": "2026-09-10T19:05:51.812912+00:00",
+    "label_names": "2026-09-10T19:05:51.812912+00:00",
+    "mouse": "2026-09-10T19:05:51.812912+00:00",
+    "n": "2026-09-10T19:05:51.812912+00:00",
+    "name": "2026-09-10T19:05:51.812912+00:00",
+    "note": "2026-09-10T19:05:51.812912+00:00",
+    "project": "2026-09-10T19:05:51.812912+00:00",
+    "recording_start": "2026-09-10T19:05:51.812912+00:00",
+    "schema": "2026-09-10T19:05:51.812912+00:00",
+    "session": "2026-09-10T19:05:51.812912+00:00",
+    "session_key": "2026-09-10T19:05:51.812912+00:00",
+    "session_label": "2026-09-10T19:05:51.812912+00:00",
+    "session_loose_key": "2026-09-10T19:05:51.812912+00:00",
+    "session_path": "2026-09-10T19:05:51.812912+00:00",
+    "source": "2026-09-10T19:05:51.812912+00:00",
+    "specified": "2026-09-10T19:05:51.812912+00:00",
+    "type": "2026-09-10T19:05:51.812912+00:00",
+    "type_name": "2026-09-10T19:05:51.812912+00:00",
+    "units": "2026-09-10T19:05:51.812912+00:00",
+    "version": "2026-09-10T19:05:51.812912+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "264fd6281142": [
+        "set",
+        "2026-09-10T19:05:51.812912+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T19:05:51.812912+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-10T15:05:51-04:00",
+    "by": "harness@test",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "unspecified": 1
+  },
+  "curation_label": null,
+  "duration_s": 1829.23946666667,
+  "events": [
+    {
+      "start": 1829.214377
+    }
+  ],
+  "gid": null,
+  "id": "4308f4deeb1d",
+  "label_names": {},
+  "mouse": 22,
+  "n": 1,
+  "name": "Stopping Recording",
+  "note": "",
+  "project": "KCNT1",
+  "recording_start": "2026-06-18T21:13:10+00:00",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m022_s004_2026-06-18_17-13-10",
+  "session_label": "KCNT1 m22 s4 2026-06-18",
+  "session_loose_key": null,
+  "session_path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "harness: BARRY threshold detector",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "other",
+  "type_name": "Other",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-10T15:05:51-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 1
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "264fd6281142",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 1,
+      "note": "Imported from harness: BARRY threshold detector. 1 candidates, none decided yet.",
+      "snap": [
+        [
+          1829.214377,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

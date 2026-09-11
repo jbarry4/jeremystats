@@ -1,44 +1,54 @@
 {
   "_at": {
+    "archived": "2026-09-10T18:17:21.487623+00:00",
+    "archived_at": "2026-09-10T18:17:21.487623+00:00",
+    "archived_by": "2026-09-10T18:17:21.487623+00:00",
     "assignee": "2026-09-09T02:02:26.216505+00:00",
+    "closed_at": "2026-09-10T18:17:21.487623+00:00",
     "created": "2026-09-09T21:20:01.443029+00:00",
     "gid": "2026-09-03T21:07:03.081193+00:00",
-    "imports": "2026-09-09T21:20:01.510306+00:00",
+    "imports": "2026-09-10T18:18:04.136024+00:00",
     "kind": "2026-09-03T21:07:03.081193+00:00",
     "labels": "2026-09-08T19:03:11.347561+00:00",
     "name": "2026-09-08T19:03:11.347561+00:00",
-    "open": "2026-09-08T21:54:42.438519+00:00",
+    "open": "2026-09-10T18:17:21.487623+00:00",
+    "opened_at": "2026-09-10T17:51:12.211017+00:00",
+    "opened_by": "2026-09-10T17:43:04.666331+00:00",
     "schema": "2026-09-03T21:07:03.081193+00:00",
     "session_label": "2026-09-03T21:07:03.081193+00:00",
-    "source": "2026-09-09T21:20:01.510306+00:00",
-    "updated": "2026-09-10T17:48:50.237643+00:00"
+    "source": "2026-09-10T18:18:04.136024+00:00",
+    "updated": "2026-09-10T18:56:48.869689+00:00"
   },
   "_keys": {
     "events": {
       "e04ca22b5ab": [
         "set",
-        "2026-09-09T21:20:01.510306+00:00"
+        "2026-09-10T18:56:48.869689+00:00"
       ],
       "e5a21c87853": [
         "set",
-        "2026-09-09T21:20:01.510306+00:00"
+        "2026-09-10T18:56:48.869689+00:00"
       ],
       "e85b6aa17eb": [
         "set",
-        "2026-09-09T21:20:01.510306+00:00"
+        "2026-09-10T18:56:48.869689+00:00"
       ],
       "eb6a9368fb8": [
         "set",
-        "2026-09-10T17:48:50.237643+00:00"
+        "2026-09-10T18:56:48.869689+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T17:48:50.237643+00:00",
+    "at": "2026-09-10T18:56:48.869689+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
+  "archived": true,
+  "archived_at": "2026-09-10T14:17:21-0400",
+  "archived_by": "Rain Younger",
   "assignee": "Shahriar Tafti",
+  "closed_at": "2026-09-10T14:17:21-0400",
   "created": {
     "at": "2026-09-09T17:20:01-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
@@ -49,75 +59,47 @@
   },
   "events": [
     {
-      "at": "2026-09-09T17:20:01-0400",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-10T18:55:08+00:00",
+      "by": "Rain Younger",
       "id": "e5a21c87853",
       "label": "garbage",
-      "reviews": [
-        {
-          "at": "2026-09-09T17:20:01-0400",
-          "by": "Shahriar Tafti",
-          "label": "garbage"
-        }
-      ],
       "start": 531.35
     },
     {
-      "at": "2026-09-09T17:20:01-0400",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-10T18:55:08+00:00",
+      "by": "Rain Younger",
       "id": "e04ca22b5ab",
       "label": "garbage",
-      "reviews": [
-        {
-          "at": "2026-09-09T17:20:01-0400",
-          "by": "Shahriar Tafti",
-          "label": "garbage"
-        }
-      ],
       "start": 547.079
     },
     {
-      "at": "2026-09-09T17:20:01-0400",
-      "by": "Shahriar Tafti",
+      "at": "2026-09-10T18:55:08+00:00",
+      "by": "Rain Younger",
       "id": "e85b6aa17eb",
       "label": "garbage",
-      "reviews": [
-        {
-          "at": "2026-09-09T17:20:01-0400",
-          "by": "Shahriar Tafti",
-          "label": "garbage"
-        }
-      ],
       "start": 625.815
     },
     {
-      "at": "2026-09-10T17:45:26+00:00",
+      "at": "2026-09-10T18:55:08+00:00",
       "by": "Rain Younger",
       "id": "eb6a9368fb8",
-      "label": "spike",
-      "reviews": [
-        {
-          "at": "2026-09-09T17:20:01-0400",
-          "by": "Shahriar Tafti",
-          "label": "garbage"
-        }
-      ],
+      "label": "garbage",
       "start": 1548.814
     }
   ],
   "gid": "s72df5edc7210",
   "imports": [
     {
-      "at": "2026-09-09T17:20:01-0400",
+      "at": "2026-09-10T14:18:04-0400",
       "n": 4,
       "skipped": 0,
       "source": {
         "bank_entry": "340307eba315",
-        "by": "Shahriar Tafti",
+        "by": "Rain Younger",
         "entry_name": "DS candidates (ETS)",
         "kind": "bank version",
         "pipeline": "ETS dentate-spike export",
-        "version": 1
+        "version": 2
       }
     }
   ],
@@ -165,21 +147,23 @@
   ],
   "name": "DS candidates (ETS)",
   "open": false,
+  "opened_at": "2026-09-10T13:51:12-0400",
+  "opened_by": "Rain Younger",
   "schema": 1,
   "session_label": "PTEN m11 s10 2023-07-25",
   "source": {
     "bank_entry": "340307eba315",
-    "by": "Shahriar Tafti",
+    "by": "Rain Younger",
     "entry_name": "DS candidates (ETS)",
     "kind": "bank version",
     "pipeline": "ETS dentate-spike export",
-    "version": 1
+    "version": 2
   },
   "updated": {
-    "at": "2026-09-10T13:48:50-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "at": "2026-09-10T14:56:48-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "LCOM549913",
-    "machine": "Blackbarry",
+    "machine": "Bluebarry",
     "os": "Windows",
     "user": "Shahriar Tafti"
   }

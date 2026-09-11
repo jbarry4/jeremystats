@@ -10,6 +10,8 @@
     "fs": "2026-09-04T15:57:01.635111+00:00",
     "gid": "2026-09-02T23:51:19.834479+00:00",
     "group": "2026-09-04T15:57:01.635111+00:00",
+    "hemisphere": "2026-09-09T00:00:29.991280+00:00",
+    "hemisphere_source": "2026-09-09T00:00:29.991280+00:00",
     "key": "2026-09-04T15:57:01.635111+00:00",
     "label": "2026-09-04T15:57:01.635111+00:00",
     "loose_key": "2026-09-04T15:57:01.635111+00:00",
@@ -21,14 +23,14 @@
     "schema": "2026-09-04T15:57:01.635111+00:00",
     "session": "2026-09-04T15:57:01.635111+00:00",
     "start": "2026-09-04T15:57:01.635111+00:00",
-    "updated": "2026-09-08T18:00:51.975354+00:00",
+    "updated": "2026-09-10T20:35:47.041541+00:00",
     "view_state": "2026-09-04T15:57:01.635111+00:00"
   },
   "_keys": {
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M10_s4\\2023-08-23_17-14-35": [
         "set",
-        "2026-09-08T18:00:51.975354+00:00"
+        "2026-09-08T18:40:09.388582+00:00"
       ],
       "D:\\PTEN\\PTEN\\M10_HF6_pten\\m10s4aug23\\2023-08-23_17-14-35": [
         "set",
@@ -52,6 +54,10 @@
         "set",
         "2026-09-04T15:57:01.635111+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.691976+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.635111+00:00"
@@ -59,11 +65,15 @@
       "StrawBarry": [
         "set",
         "2026-09-08T18:00:51.975354+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-10T20:35:47.041541+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:00:51.975354+00:00",
+    "at": "2026-09-10T20:35:47.041541+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -97,6 +107,8 @@
   "fs": 30000.0,
   "gid": "s225fa452d9a8",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m010_s004_2023-08-23_17-14-35",
   "label": "PTEN m10 s4 2023-08-23",
   "loose_key": "m010_s004",
@@ -121,6 +133,13 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M10_HF6_pten\\m10s4aug23\\2023-08-23_17-14-35",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -134,17 +153,25 @@
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M10_s4\\2023-08-23_17-14-35",
       "root": "D:/Data/Archive/PTEN Project/PTEN",
       "scan": "scan_e4c0479cd6"
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-10T16:35:47-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M10_s4\\2023-08-23_17-14-35",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_4888cfefce"
     }
   },
   "session": 4,
   "start": "2023-08-23T17:14:35",
   "updated": {
-    "at": "2026-09-08T14:00:51-04:00",
+    "at": "2026-09-10T16:35:47-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "LCOM549913",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
     "channels": [
