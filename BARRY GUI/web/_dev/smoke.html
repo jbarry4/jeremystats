@@ -49,10 +49,10 @@ async function run() {
         && frame.contentDocument.readyState === 'complete') r();
     else frame.addEventListener('load', r, { once: true });
   });
-  // core.js declares BARRY with const, so it is a lexical global, not a
+  // core.js declares Jarvis with const, so it is a lexical global, not a
   // property of window. eval() runs in the page's global scope and can see it.
   const ev = (code) => win().eval(code);
-  await until(() => ev('typeof BARRY') === 'object'
+  await until(() => ev('typeof Jarvis') === 'object'
                     && ev('BARRY.state.catalog'), 25000, 'boot');
 
   const W = win();

@@ -98,7 +98,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     await sleep(700);
   }
 
-  /* Find OUR card, not the first one. Anyone using BARRY has curation sets
+  /* Find OUR card, not the first one. Anyone using Jarvis has curation sets
      of their own, and taking `.cur-set` unqualified meant the harness read
      someone else's progress and, worse, pressed its keys into someone else's
      set. It did exactly that, and the decisions had to be unpicked by hand. */

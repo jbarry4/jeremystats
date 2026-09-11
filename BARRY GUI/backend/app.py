@@ -1,5 +1,5 @@
 """
-app.py -- The BARRY GUI local server.
+app.py -- The Jarvis local server.
 
 Serves the single-page frontend and a JSON API over the repo and the data.
 Binds to 127.0.0.1 only: this is a local workbench, not a service.
@@ -37,7 +37,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, store,
-               storyboard, sysinfo, toolkit, video)
+               storyboard, sysinfo, toolfeed, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -413,7 +413,7 @@ def api_discover_status(job_id):
     include = job.status == "done"
     data = job.snapshot(include_sessions=include)
     if include:
-        # A finished scan is the one moment BARRY has the whole picture of a
+        # A finished scan is the one moment Jarvis has the whole picture of a
         # drive, so everything it walked past gets written into the registry
         # -- not just the handful anyone happens to open. Done once per job:
         # the status route is polled, and re-registering on every poll would
@@ -630,9 +630,20 @@ def api_csc_window():
             lowpass=float(body.get("lowpass", 0) or 0),
             notch=float(body.get("notch", 0) or 0),
             mode=body.get("mode", "voltage"),
-            spacing_um=float(body.get("spacing_um", 50) or 50))
+            spacing_um=float(body.get("spacing_um", 50) or 50),
+            full_rate=bool(body.get("full_rate")))
     except Exception as exc:
         return fail("csc/window", exc, 400, {"path": body.get("path")})
+    if not win.get("ok"):
+        return jsonify(win), 400
+    # The same steps a panel reports, so the trace view can wear the same
+    # badge. This route does not go through `render_panel`.
+    steps = analysis.window_steps(win.get("sampling"))
+    win["sampling"] = steps
+    win["downsampled"] = any(x.get("lossy") for x in steps)
+    win["reversible"] = any(x.get("lossy") and x.get("reversible", True)
+                            for x in steps)
+    win["full_rate"] = bool(body.get("full_rate"))
     bad = set(int(b) for b in (body.get("bad_channels") or []))
     if bad:
         for s in win.get("series", []):
@@ -801,7 +812,7 @@ def api_sync_status():
                     "root": LOGS_DIR, "index": idx,
                     "auto_stage": STORE.auto_stage,
                     # Carried on a poll that already happens, so noticing
-                    # that BARRY needs restarting costs no extra request.
+                    # that Jarvis needs restarting costs no extra request.
                     "code_changed": _code_changed(),
                     "started_at": _STARTED_AT,
                     "conflicts": conflict_audit()})
@@ -1777,6 +1788,37 @@ def api_activity():
     })
 
 
+@app.route("/api/toolfeed/<tool>")
+def api_toolfeed(tool):
+    """What has happened in one tool, newest first, from the shared table.
+
+    The tool id is the ToolKit's own -- `curate`, `strata`, `cfc`,
+    `kilosort`, `snapshots`, `bad` -- and an id with no entry falls back to
+    its own name as the action prefix, so a toolkit added next year has a
+    feed without anybody registering it.
+
+    Supabase when there is a key and it answers; this machine's own log when
+    there is not. Which one it was comes back in `source`, because "nobody
+    else is working on this" and "I could not ask" look identical on screen
+    and are not the same fact.
+    """
+    try:
+        limit = int(request.args.get("limit") or toolfeed.LIMIT)
+    except (TypeError, ValueError):
+        limit = toolfeed.LIMIT
+    got = toolfeed.feed(STORE, CLOUD.cloud, tool, limit=limit,
+                        since=request.args.get("since") or None)
+    return jsonify(got)
+
+
+@app.route("/api/toolfeed")
+def api_toolfeed_tools():
+    """Which tools have a feed, for anything that wants to list them."""
+    return jsonify({"ok": True, "tools": [
+        {"id": k, "name": v["name"], "prefixes": v["prefixes"]}
+        for k, v in sorted(toolfeed.TOOLS.items())]})
+
+
 @app.route("/api/activity/who")
 def api_activity_who():
     """Who has done what, and where -- the shape of the shared log.
@@ -2109,7 +2151,7 @@ def save_output(blob, filename, subdir=None):
 RESULTS = results.Results(STORE, outputs_dir(), REPO_ROOT)
 
 # Data roots the user has scanned. Session folders are searched for stage
-# output so a MATLAB figure is cataloged even though BARRY did not make it.
+# output so a MATLAB figure is cataloged even though Jarvis did not make it.
 _KNOWN_ROOTS = []
 
 
@@ -2486,7 +2528,7 @@ def api_layers_export(gid):
         return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
     rows = LAYERS.rows(rec)
     prog = LAYERS.progress(rec)
-    head = ("# BARRY GUI layer labels -- %s -- %d of %d channels labelled "
+    head = ("# Jarvis layer labels -- %s -- %d of %d channels labelled "
             "-- taken %s\n"
             % (rec.get("session_label") or gid, prog["labelled"],
                prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
@@ -2616,7 +2658,7 @@ def api_curation_from_bank():
     entry_id = (body.get("entry") or "").strip()
     if kind not in curation.KINDS:
         return jsonify({"ok": False,
-                        "error": "%r is not a kind of curation this BARRY "
+                        "error": "%r is not a kind of curation this Jarvis "
                                  "knows about." % kind}), 400
 
     ent = BANK.get(entry_id) if entry_id else None
@@ -3580,7 +3622,7 @@ def api_curation_bank(gid, kind):
             "by_label": bundle["by_label"],
             "label_names": bundle["label_names"],
             "pipeline": (body.get("pipeline")
-                         or "BARRY curation (" + kind + ")"),
+                         or "Jarvis curation (" + kind + ")"),
             "added_by": body.get("added_by"),
             "version_note": body.get("note"),
             # What the bank needs to tell a guess from a decision.
@@ -3681,7 +3723,7 @@ def api_curation_banked(gid, kind):
     # banked under its own name yet. `curated_entries` only knows about
     # entries this set has already written, and an import has no
     # `curation_label` -- so a set whose history is v0 (the detector) plus v1
-    # (a sort done before BARRY) looked untouched here, and the dialog
+    # (a sort done before Jarvis) looked untouched here, and the dialog
     # offered to write "version 1" while the route was about to write v2.
     # Asked the same way the bank route asks, so the two cannot disagree.
     if ent is None:
@@ -3954,7 +3996,7 @@ def api_curation_export(gid, kind):
         return jsonify({"ok": False, "error": "No such curation set."}), 404
     rows = CURATE.rows(rec)
     prog = CURATE.progress(rec)
-    head = ("# BARRY GUI event curation -- %s -- %s -- %d of %d specified "
+    head = ("# Jarvis event curation -- %s -- %s -- %d of %d specified "
             "-- taken %s\n"
             % (rec.get("session_label") or gid, kind, prog["specified"],
                prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
@@ -4190,7 +4232,7 @@ def _demo_project():
 
 @app.route("/api/registry")
 def api_registry():
-    """Every recording BARRY has met, as a project / mouse / session tree."""
+    """Every recording Jarvis has met, as a project / mouse / session tree."""
     if request.args.get("backfill"):
         REG.backfill()
     # One index for the whole tree: `_attachments` used to read the figure
@@ -4374,7 +4416,7 @@ def api_registry_retire():
 
     Retired, not deleted: the record stays, so anything already pointing at
     its id still resolves, and it stops appearing in the tree. Nothing on the
-    recording drive is touched -- BARRY does not delete data it did not
+    recording drive is touched -- Jarvis does not delete data it did not
     write, and an aborted acquisition is still the lab's to keep or bin.
     """
     body = request.get_json(force=True) or {}
@@ -4407,7 +4449,7 @@ def api_registry_forget(gid):
 
     For a recording that should never have been registered -- a scratch copy,
     a test tree, a folder that was moved and re-registered under a new name.
-    The recording itself is untouched; only what BARRY remembers about it
+    The recording itself is untouched; only what Jarvis remembers about it
     goes.
 
     It stays gone. The record is erased and a tombstone is written against
@@ -4582,7 +4624,7 @@ def api_toolkit_bad_channels_export():
     # A header comment line, so a CSV opened months later still says what it
     # was a list of and when it was taken.
     stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
-    head = ("# BARRY GUI bad-channel export -- %s -- %d row(s) from %d "
+    head = ("# Jarvis bad-channel export -- %s -- %d row(s) from %d "
             "session(s) -- taken %s\n"
             % (toolkit.scope_label(**args), len(rows), len(picked), stamp))
     text = head + body
@@ -4743,7 +4785,7 @@ def api_pipeline_preflight():
         else:
             add("bad", "MATLAB",
                 "These stages need MATLAB and it was not found on PATH. "
-                "Run the setup script, or set BARRY_MATLAB to the executable.")
+                "Run the setup script, or set Jarvis_MATLAB to the executable.")
     if "python" in langs:
         add("ok", "Python", "%s (%s)" % (sysinfo.describe()["python"],
                                          sys.executable))
@@ -5020,7 +5062,7 @@ def api_backup_json():
         folder = os.path.join(root, name)
         if not os.path.isdir(folder):
             continue
-        # `.cache` and friends are BARRY's own working files, not a copy of
+        # `.cache` and friends are Jarvis's own working files, not a copy of
         # anything -- listing them as part of the backup invites somebody to
         # treat them as one.
         if name.startswith("."):
@@ -5540,6 +5582,11 @@ COLUMN_MIGRATIONS = {
     "is_open": "13_layer_bench.sql",
     "opened_at": "13_layer_bench.sql",
     "opened_by": "13_layer_bench.sql",
+    # A whole table, not a column -- but the probe asks for a column OF a
+    # table, and a missing table answers "does not exist" the same way a
+    # missing column does. So asking for this one column is how a machine
+    # finds out that `bank_snapshots` has never been created.
+    "sha256": "14_bank_snapshots.sql",
 }
 
 
@@ -5568,6 +5615,7 @@ COLUMN_TABLES = {
     "is_open": "layer_sheets",
     "opened_at": "layer_sheets",
     "opened_by": "layer_sheets",
+    "sha256": "bank_snapshots",
 }
 
 
@@ -5967,7 +6015,7 @@ def api_devices():
 # `machines.id` is `slug(platform.node())` plus a four-character hash of the
 # MAC address, so it decodes the real computer name -- which the friendly
 # name often is not. Bluebarry is DESKTOP-4H65AI7; StrawBarry is LCOM549913
-# and Strawbarry is BARRYLAB, and those last two are different computers
+# and Strawbarry is JarvisLAB, and those last two are different computers
 # whose friendly names differ by the case of one letter.
 #
 # So a machine is shown as "Friendly (ACTUAL)" whenever the two differ. It
@@ -6100,7 +6148,7 @@ def api_errors_bundle():
 
     sysdesc = sysinfo.describe()
     lines = [
-        "BARRY GUI diagnostic bundle",
+        "Jarvis diagnostic bundle",
         "generated  " + time.strftime("%Y-%m-%d %H:%M:%S"),
         "repo       " + REPO_ROOT,
         "machine    %s / %s %s (%s)" % (sysdesc.get("hostname"),
@@ -6467,7 +6515,7 @@ def api_debug_report():
     body = request.get_json(force=True) or {}
     sysdesc = sysinfo.describe()
     L = []
-    L.append("BARRY GUI debug report")
+    L.append("Jarvis debug report")
     L.append("generated  " + time.strftime("%Y-%m-%d %H:%M:%S"))
     L.append("machine    %s / %s %s" % (sysdesc.get("hostname"),
                                         sysdesc.get("os"), sysdesc.get("release")))
@@ -7009,7 +7057,7 @@ def api_bank_export():
 # ==========================================================================
 # Nothing here runs Kilosort in-process. A sort takes an hour and holds a GPU;
 # it belongs in its own process, with its output streamed, cancellable, and
-# recorded as a run like everything else BARRY launches.
+# recorded as a run like everything else Jarvis launches.
 @app.route("/api/kilosort/check")
 def api_kilosort_check():
     """What this machine has, and what it is missing."""
@@ -7021,7 +7069,7 @@ def api_kilosort_check():
 def api_kilosort_plan():
     """What a run would do, before anything is launched.
 
-    Bad channels come from BARRY's own record of the recording when the
+    Bad channels come from Jarvis's own record of the recording when the
     caller does not name them, which is the point: the numbers people marked
     while looking at the traces are the numbers that should be excluded, and
     nobody should be retyping them into a second place.
@@ -7130,7 +7178,7 @@ def api_kilosort_runs():
 def api_phy_open():
     """Launch Phy on a results folder.
 
-    Phy is a desktop app with its own window; BARRY starts it and gets out of
+    Phy is a desktop app with its own window; Jarvis starts it and gets out of
     the way. Its console output still comes back as a job, because when it
     refuses to start the reason is on stderr.
     """
@@ -7191,11 +7239,11 @@ def api_kilosort_terminal():
 # ==========================================================================
 # Supabase -- the shared copy
 #
-# BARRY writes locally first, always. The files are what make it work on a
+# Jarvis writes locally first, always. The files are what make it work on a
 # rig with no network and on a drive that is not mounted; this pushes what
 # they hold to Postgres and brings back what other machines have changed.
 # Nothing here is on the critical path of anything: if the sync is down,
-# BARRY carries on and catches up later.
+# Jarvis carries on and catches up later.
 # ==========================================================================
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
@@ -7302,7 +7350,7 @@ def cloud_sync_once(push=True, pull=True, files=False):
         _cloud_last["failures"] = _cloud_last.get("failures", 0) + 1
         # A clock that is ahead of the server's is not something retrying
         # fixes. Every attempt fails identically and logs the same line, so
-        # the automatic sync stands down until BARRY is restarted -- by which
+        # the automatic sync stands down until Jarvis is restarted -- by which
         # time the clock has either been set or it has not. Syncing by hand
         # still works, so there is a way to test the fix without a restart.
         msg = str(exc)
@@ -7352,7 +7400,7 @@ def _cloud_backoff(fails, blocked):
     took sync offline for half an hour, which is indistinguishable from it
     being broken.
 
-    A clock that is ahead used to stand sync down until BARRY was restarted.
+    A clock that is ahead used to stand sync down until Jarvis was restarted.
     Windows fixes its own clock eventually, and ten minutes is a reasonable
     time to look again; being silently offline until somebody restarts is
     not.

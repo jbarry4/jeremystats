@@ -244,7 +244,7 @@ BARRY.views.history = (function () {
       }))),
       el('div', { style: 'flex:1' }),
       el('span', { class: 'hint',
-        text: 'Every action BARRY records, with what it was done to.' }),
+        text: 'Every action Jarvis records, with what it was done to.' }),
     ]);
   }
 
@@ -1200,7 +1200,7 @@ BARRY.views.errors = (function () {
     if (!errors.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
         el('svg', { viewBox: '0 0 24 24', html: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>' }),
-        el('p', { text: 'No errors logged. Anything that fails anywhere in BARRY lands here with its full traceback.' }),
+        el('p', { text: 'No errors logged. Anything that fails anywhere in Jarvis lands here with its full traceback.' }),
       ]));
       return;
     }
@@ -1597,7 +1597,7 @@ BARRY.views.errors = (function () {
     if (!devices.configured) {
       box.appendChild(el('div', { class: 'hint',
         text: 'No cloud configured, so there is nothing to compare against '
-            + '— this machine is the only one BARRY can see.' }));
+            + '— this machine is the only one Jarvis can see.' }));
       return box;
     }
 
@@ -1622,7 +1622,7 @@ BARRY.views.errors = (function () {
            letter and are different computers; one has two names and is one
            computer. The bracket is what tells them apart. */
         el('strong', { class: 'dev-host', text: d.label || d.hostname || d.id,
-          title: 'Known to BARRY as ' + d.id }),
+          title: 'Known to Jarvis as ' + d.id }),
         d.is_me ? el('span', { class: 'flagchip sm', text: 'this one' }) : null,
         /* Renamed here, but the shared table has not heard about it. The
            name on screen is this computer's own record, which changes the
@@ -1743,7 +1743,7 @@ BARRY.views.errors = (function () {
       const paintSay = () => {
         say.textContent = mine.named
           ? 'Named here. Its own name is ' + mine.real + '.'
-          : 'Not named yet, so BARRY uses the name the computer reports: '
+          : 'Not named yet, so Jarvis uses the name the computer reports: '
             + mine.real + '.';
       };
       paintSay();
@@ -1771,7 +1771,7 @@ BARRY.views.errors = (function () {
         el('p', { class: 'hint',
           text: 'This is what gets stamped on every error, action and run '
               + 'from this computer. It belongs to the computer, not to '
-              + 'you \u2014 switching who BARRY credits work to leaves it '
+              + 'you \u2014 switching who Jarvis credits work to leaves it '
               + 'alone.' }),
         mine.adopted_from_profile
           ? el('p', { class: 'hint',
@@ -1779,7 +1779,7 @@ BARRY.views.errors = (function () {
                   + mine.adopted_from_profile }) : null,
         el('p', { class: 'hint dev-mgr-id',
           text: 'Identity: ' + mine.id + '  \u2014 derived from the '
-              + 'hostname and the network address, and what BARRY actually '
+              + 'hostname and the network address, and what Jarvis actually '
               + 'compares. The name above is only for reading.' }),
       ].filter(Boolean)));
     }

@@ -34,7 +34,7 @@ def check(name, got, want):
 
 def as_machine(name):
     """Pretend to be a different computer for the next Book operation."""
-    os.environ["BARRY_MACHINE"] = name
+    os.environ["Jarvis_MACHINE"] = name
     shards._MACHINE = None
     return shards.machine_id()
 
@@ -215,7 +215,7 @@ def main():
               [r["m"] for r in rows], ["b1", "a1"])
 
     finally:
-        os.environ.pop("BARRY_MACHINE", None)
+        os.environ.pop("Jarvis_MACHINE", None)
         shards._MACHINE = None
         shutil.rmtree(tmp, ignore_errors=True)
 

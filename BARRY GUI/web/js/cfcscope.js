@@ -1,5 +1,5 @@
 /* ==========================================================================
-   cfcscope.js -- CFCScope: looking at rhythms and how they couple.
+   cfcscope.js -- Braid: looking at rhythms and how they couple.
 
    The third mode, after DS curation and StrataScope, and the first that
    decides nothing. Nothing here is saved, nothing is claimed, no set goes on
@@ -148,7 +148,7 @@ BARRY.cfc = (function () {
 
     const chan = firstChannel();
     b.appendChild(el('div', { class: 'cfc-bar-row' }, [
-      el('strong', { text: 'CFCScope' }),
+      el('strong', { text: 'Braid' }),
       el('span', { class: 'hint',
         text: 'Band-resolved theta power and the spectrogram are in the '
             + 'second window.' }),
@@ -170,6 +170,14 @@ BARRY.cfc = (function () {
              + 'before it runs anything.',
         onclick: openMap,
       }),
+      /* Last on the right, where DS curation and StrataScope put theirs.
+         A mode that takes over the panes, the keyboard and a second window
+         has to say how to give them back. */
+      el('button', { class: 'btn ghost sm', text: 'Leave',
+                     title: 'Close the panels and the comodulogram window '
+                          + 'and hand the panes back. Nothing here was '
+                          + 'written down, so there is nothing to save.',
+                     onclick: exit }),
     ]));
     // The banner already says the mode; this says the part that is a promise.
     b.appendChild(el('p', { class: 'hint cfc-note',

@@ -58,7 +58,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
      It has to be real: a rebuild plan locates the recording on disk, and
      the demo is not a folder -- the plan comes back "missing" and the whole
      walkthrough is skipped. So this harness borrows one, and puts it back
-     at the end: everything BARRY does is saved by default, and leaving a
+     at the end: everything Jarvis does is saved by default, and leaving a
      real recording holding a figure's six-channel selection is what made
      `chan64.html` find 32 of its 64 channels selected. */
   let path = null;
@@ -331,7 +331,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     /* Put the recording back the way it was found.
 
        This harness restores a figure's selection, a bad channel and two
-       marks into a real recording, and BARRY saves that -- so without this
+       marks into a real recording, and Jarvis saves that -- so without this
        the next harness to open it gets the figure's state instead of the
        recording's, which is exactly what happened to `chan64.html`. */
     try {

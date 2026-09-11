@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BARRY GUI -- design system, UVM palette
+   Jarvis -- design system, UVM palette
 
    Brand anchors:
      Catamount Green  #154734
@@ -596,11 +596,20 @@ code { font-family: var(--mono); }
 
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 0; }
 .brand-mark {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--uvm-green) 0%, #1e6b4d 55%, var(--uvm-gold) 100%);
-  color: #fff; font-weight: 700; font-size: 15px;
-  display: grid; place-items: center;
+  /* The mark itself, at rail size. No gradient and no letter: the shape
+     carries its own rounded square, and nesting that inside a second one
+     with a different fill was two badges deep. The glow stays -- it is what
+     lifts the badge off the rail. */
+  width: 30px; height: 30px; flex: none; display: block;
+  border-radius: 8px;
   box-shadow: 0 2px 10px var(--accent-soft);
+}
+/* Coloured from the theme, like `paintFavicon` does, so the badge in the
+   rail and the icon in the tab are the same mark in the same light. */
+.brand-mark .bm-ground { fill: var(--accent); }
+.brand-mark .bm-trace {
+  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.7;
+  stroke-linecap: round; stroke-linejoin: round;
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .brand-text strong { font-size: 14px; letter-spacing: 0.03em; }
@@ -2023,6 +2032,19 @@ body.dragging-session .pane { transition: outline .1s; }
 .ch-overlay .ch-lane .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .ch-overlay .ch-lane.marked-bad { color: var(--warn); }
 .ch-overlay .ch-lane.compact { height: 12px; font-size: 9px; gap: 4px; }
+/* Denser than a label can be drawn at. The row keeps its controls -- every
+   channel stays markable -- and the name is dropped on the rows between the
+   ones that kept theirs, because sixty-four names in five hundred pixels is
+   a grey smear rather than sixty-four names. */
+.ch-overlay .ch-lane.micro { gap: 2px; padding: 0 1px; line-height: 1; }
+.ch-overlay .ch-lane.micro .nm { letter-spacing: -.02em; }
+.ch-overlay .ch-lane.unnamed .nm { visibility: hidden; }
+/* On hover the name comes back, over its neighbours, because the one thing
+   a hidden label must still be able to answer is "which channel is this". */
+.ch-overlay .ch-lane.unnamed:hover .nm {
+  visibility: visible; position: relative; z-index: 5;
+  background: var(--bg-3); padding: 0 3px; border-radius: 3px;
+}
 .ch-overlay .ch-lane.compact input { width: 10px; height: 10px; }
 .ch-overlay .ch-lane .badbtn {
   font-size: 8.5px; padding: 0 3px; border-radius: 3px; flex: none;
@@ -2665,13 +2687,44 @@ select {
   /* Top-left, not along the bottom: the bottom of a pane is where the time
      axis and its tick labels are drawn, and the two were sitting on top of
      each other. The cursor readout occupies the top right, so this is capped
-     to leave it room. */
+     to leave it room.
+
+     `left` is set in JS, from the width of the channel overlay: the lanes
+     live at left:0 too and are as wide as the longest channel name, so a
+     fixed indent either collided with them or wasted space. */
   position: absolute; left: 0; top: 0; max-width: 62%; z-index: 4;
-  padding: 3px 8px; pointer-events: none;
-  font-family: var(--mono); font-size: 9px; letter-spacing: .01em;
-  color: rgba(255, 255, 255, .62);
-  background: linear-gradient(to bottom, rgba(0, 0, 0, .55), transparent);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 2px 9px 3px;
+  /* The strip itself is not a click target -- it sits over the plot -- but
+     what is IN it may be. Without this the badge could not be pressed. */
+  pointer-events: none;
+  display: flex; align-items: baseline; gap: 7px;
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .03em;
+  color: rgba(255, 255, 255, .8);
+  /* Frosted, not boxed.
+
+     A gradient into transparency left half the line unreadable; a solid
+     panel with a border read as a dialog left open on the picture, which
+     over a bright CSD raster is exactly as bad. This darkens and blurs
+     whatever is behind it instead, so the text is legible over a green
+     raster and over a dark trace without a rectangle in either case. One
+     rounded corner, on the inside edge, so it belongs to the corner it
+     sits in. Browsers without `backdrop-filter` get the flat colour. */
+  background: rgba(6, 12, 10, .58);
+  backdrop-filter: blur(3px) saturate(.55);
+  -webkit-backdrop-filter: blur(3px) saturate(.55);
+  border: 0; border-bottom-right-radius: 7px;
+  white-space: nowrap;
+}
+/* The TEXT gives way, not the badge: a stamp that says DOWNSAMPLED is
+   worthless if a long filter description pushes it out of the overflow. */
+.panel-input > span:first-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.panel-input .ds-chip {
+  pointer-events: auto; flex: none;
+  /* The line got quieter; this must not. It is the part that is meant to
+     be noticed. */
+  font-size: 9px; padding: 1px 7px;
 }
 .pane-canvas-host .panel-input {
   color: var(--text-3); background: none;
@@ -3824,7 +3877,7 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .pane:fullscreen .pane-main { height: 100%; }
 
 /* ==========================================================================
-   Housekeeping -- every recording BARRY has met.
+   Housekeeping -- every recording Jarvis has met.
    ========================================================================== */
 .hk-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -4371,7 +4424,7 @@ body.splitting .pane-split { pointer-events: auto !important; }
 #xfBody.strata-on .pane-grid { margin-left: var(--rail-w, 122px); }
 
 /* ---- Remembered vs found -------------------------------------------------
-   A recording BARRY remembers and one it has just laid eyes on are different
+   A recording Jarvis remembers and one it has just laid eyes on are different
    facts. The list opens showing everything faint -- what I remember -- and a
    scan brightens whatever it finds, so what stays faint after scanning the
    drive you expected it on is the interesting part. */
@@ -4401,7 +4454,7 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
 }
 
-/* A recording BARRY remembers but this scan has not found. Faint, so the
+/* A recording Jarvis remembers but this scan has not found. Faint, so the
    drive you just scanned reads as "here is what is actually on it" and the
    rest is visibly a memory rather than a finding. */
 .sess-card.remembered { opacity: .5; }
@@ -4411,7 +4464,7 @@ body.splitting .pane-split { pointer-events: auto !important; }
 /* ==========================================================================
    The session search field.
 
-   A <select> was right when BARRY knew six recordings; a scan registers every
+   A <select> was right when Jarvis knew six recordings; a scan registers every
    one it walks past, so the list is in the hundreds and a dropdown you cannot
    type at is the wrong control.
    ========================================================================== */
@@ -5285,7 +5338,7 @@ body.aid-window .xf-tabs { display: none !important; }
 
 /* A running server older than the files on disk.
    ------------------------------------------------------------------------
-   Stays until BARRY is restarted, because that is the only thing that fixes
+   Stays until Jarvis is restarted, because that is the only thing that fixes
    it and everything added since it started will otherwise fail -- some of it
    silently. A peer lost a bug report to exactly this: the report route was
    one of the missing ones. */
@@ -6545,7 +6598,7 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 
 /* ==========================================================================
-   CFCScope, and the comodulogram window
+   Braid, and the comodulogram window
    ========================================================================== */
 /* The mode bar. Same shape as StrataScope's -- it sits in the same place and
    does the same job -- but no brushes, because there is nothing to paint. */
@@ -6698,7 +6751,7 @@ body.aid-window .xf-tabs { display: none !important; }
 body.solo-window #rail { display: none !important; }
 body.solo-window #app { grid-template-columns: 1fr !important; }
 
-/* The CFCScope pane's action row. `tk-actions` was used before it existed,
+/* The Braid pane's action row. `tk-actions` was used before it existed,
    so the button and the sentence explaining it ran together with no space. */
 .tk-actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -6828,4 +6881,120 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   .cfcg-bar { gap: 8px 12px; }
   .cfcg-slider input[type="range"] { width: 104px; }
   .cfcg-body { padding: 12px 12px 18px; }
+}
+
+
+/* ---------- DOWNSAMPLED ---------- */
+/* Loud on purpose. A panel that did not run on every sample cannot be told
+   from one that did by looking at it, and the difference decides what the
+   picture is allowed to mean. Uppercase and boxed so it reads as a stamp
+   rather than as another word in the caption. */
+.ds-chip {
+  display: inline-flex; align-items: center; margin-left: 8px;
+  padding: 1px 6px; border: 1px solid var(--warn); border-radius: 4px;
+  background: var(--warn-soft); color: var(--warn);
+  font: 600 9.5px/1.5 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .07em; cursor: pointer; vertical-align: 1px;
+}
+.ds-chip:hover, .ds-chip:focus-visible { filter: brightness(1.25); outline: none; }
+/* Not anti-aliased is a different claim from "decimated", and must not look
+   like it: this one can show energy the recording does not contain. */
+.ds-chip.alias { border-color: var(--err); background: var(--err-soft, rgba(255,110,90,.15)); color: var(--err); }
+.ds-chip.full {
+  border-color: var(--ok); background: var(--ok-soft); color: var(--ok);
+  cursor: default;
+}
+
+/* Over the plot, under the caption that opened it -- and in the caption's
+   own parent, whatever that is on this panel type, so the offset is
+   measured from the same box the caption is. Scrollable because a panel can
+   have four steps and a pane can be 200 px tall. */
+.ds-detail.floating {
+  position: absolute; left: 0; top: 22px; z-index: 6;
+  max-width: min(560px, 92%); max-height: 72%; overflow-y: auto;
+  pointer-events: auto;
+  background: var(--bg-2); border: 1px solid var(--line);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
+}
+.ds-detail {
+  margin: 6px 0 2px; padding: 8px 10px; max-width: 78ch;
+  border-left: 2px solid var(--warn); border-radius: 0 6px 6px 0;
+  background: var(--bg-2);
+}
+.ds-step { margin-bottom: 7px; }
+.ds-step:last-of-type { margin-bottom: 0; }
+.ds-what {
+  display: inline-block; min-width: 9.5em;
+  font: 600 10.5px/1.6 ui-sans-serif, system-ui, sans-serif;
+  color: var(--text); text-transform: uppercase; letter-spacing: .04em;
+}
+.ds-nums {
+  font: 11px ui-monospace, Consolas, monospace; color: var(--accent);
+  margin-right: 8px;
+}
+.ds-why { display: block; font-size: 11px; line-height: 1.55; color: var(--text-2); }
+.ds-warn { display: block; font-size: 11px; line-height: 1.55; color: var(--err); }
+/* Not a warning -- a fact about the screen. Dimmer than the rest so it
+   reads as "and that is that" rather than as another problem. */
+.ds-fixed {
+  display: block; font-size: 10.5px; line-height: 1.5; color: var(--text-3);
+  font-style: italic;
+}
+.ds-act { display: flex; align-items: center; gap: 10px; margin-top: 9px; flex-wrap: wrap; }
+
+
+/* ---------- the per-tool activity feed ---------- */
+/* Under whatever the tool drew. Quiet by default -- it is a record, not a
+   notification -- and readable in one pass: when, who, what, and which
+   recording, in that order, because that is the order somebody reads a
+   line of history in. */
+.tf {
+  margin: 18px 0 4px; border-top: 1px solid var(--line-soft); padding-top: 10px;
+}
+.tf-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tf-head strong { font-size: 12px; }
+.tf-src { font-size: 10.5px; color: var(--text-3); letter-spacing: .02em; }
+.tf-count { font-size: 10.5px; }
+.tf-note { flex-basis: 100%; margin: 4px 0 0; font-size: 11px; }
+/* Lit when the rows are the shared table's, dark when they are only this
+   computer's -- "nobody else is working" and "I could not ask" must not
+   look the same. */
+.tf-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-3); flex: none;
+}
+.tf-dot.on {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
+.tf-list { margin-top: 8px; max-height: 320px; overflow-y: auto; }
+.tf-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
+.tf-row {
+  display: grid; align-items: baseline; gap: 10px;
+  grid-template-columns: 62px 96px minmax(90px, 1fr) minmax(0, 1.2fr) auto;
+  padding: 3px 4px; border-radius: 4px;
+  font-size: 11px; line-height: 1.5;
+}
+.tf-row:nth-child(odd) { background: var(--bg-2); }
+.tf-when { color: var(--text-3); font-family: var(--mono); font-size: 10px; }
+.tf-who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+.tf-what { color: var(--text); }
+.tf-on {
+  color: var(--text-3); font-family: var(--mono); font-size: 10px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tf-extra { color: var(--accent); font-size: 10px; white-space: nowrap; }
+/* A row that has just arrived, for one beat. The feed is watched while
+   something is running, and "did that register?" should not need a
+   refresh. */
+.tf-new { animation: tf-in 1.6s ease-out; }
+@keyframes tf-in {
+  0% { background: var(--accent-soft); }
+  100% { background: transparent; }
+}
+
+@media (max-width: 900px) {
+  .tf-row { grid-template-columns: 54px 1fr; }
+  .tf-on, .tf-extra { grid-column: 2; }
 }

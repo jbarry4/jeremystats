@@ -82,7 +82,7 @@ PROBES = {
         "id": "h3",
         "name": "H3 (single linear array)",
         "note": "One column of contacts, so channel order is depth order and "
-                "a CSD runs straight down it. This is what BARRY has always "
+                "a CSD runs straight down it. This is what Jarvis has always "
                 "assumed.",
         "columns": None,          # no grouping: the whole selection is a line
     },

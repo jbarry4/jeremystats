@@ -1,8 +1,8 @@
 #!/bin/bash
-# BARRY GUI -- macOS launcher. Double-click this file in Finder.
+# Jarvis -- macOS launcher. Double-click this file in Finder.
 #
 # If macOS refuses to run it, right-click and choose Open, or run once:
-#     chmod +x "Start BARRY GUI.command"
+#     chmod +x "Wake up Jarvis.command"
 
 cd "$(dirname "$0")" || exit 1
 
@@ -25,7 +25,7 @@ STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
     echo
-    echo "  BARRY GUI exited with an error. See the messages above."
+    echo "  Jarvis exited with an error. See the messages above."
     echo "  If packages are missing, run \"Setup Mac.command\"."
     read -r -p "  Press Enter to close..."
 fi

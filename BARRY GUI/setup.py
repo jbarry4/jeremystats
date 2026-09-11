@@ -1,8 +1,8 @@
 """
-BARRY GUI -- one-time setup.
+Jarvis -- one-time setup.
 
 Run this once per machine (or double-click "Setup Windows.bat" /
-"Setup Mac.command"). It installs the Python packages BARRY needs, then checks
+"Setup Mac.command"). It installs the Python packages Jarvis needs, then checks
 for the two optional external tools -- MATLAB and ffmpeg -- and tells you
 exactly what to do if either is missing.
 
@@ -28,7 +28,7 @@ BANNER = r"""
 MIN_PYTHON = (3, 9)
 
 # requirements.txt is the single source of truth for WHAT is needed; this table
-# only supplies the human explanation and whether BARRY can run without it.
+# only supplies the human explanation and whether Jarvis can run without it.
 # Keeping the list in one place means the two cannot drift apart.
 PACKAGE_INFO = {
     "flask":      ("the local web server", True),
@@ -140,7 +140,7 @@ def check_python():
     v = sys.version_info
     print("     %d.%d.%d at %s" % (v.major, v.minor, v.micro, sys.executable))
     if v[:2] < MIN_PYTHON:
-        bad("BARRY needs Python %d.%d or newer." % MIN_PYTHON)
+        bad("Jarvis needs Python %d.%d or newer." % MIN_PYTHON)
         print("     Install a newer Python from https://www.python.org/downloads/")
         return False
     ok("Version is fine.")
@@ -211,7 +211,7 @@ def check_packages():
             ok(label + ("  (%s)" % ver if ver != "present" else ""))
 
     if not todo:
-        ok("Everything BARRY needs is already installed.")
+        ok("Everything Jarvis needs is already installed.")
         return True
 
     print()
@@ -251,7 +251,7 @@ def check_matlab():
     try:
         from backend import sysinfo
     except Exception as exc:
-        warn("Could not load BARRY's platform helper yet (%s)." % exc)
+        warn("Could not load Jarvis's platform helper yet (%s)." % exc)
         return
     exe = sysinfo.find_matlab()
     if exe:
@@ -261,7 +261,7 @@ def check_matlab():
         return "%s  (%s)" % (rel or "found", exe)
 
     warn("MATLAB not found.")
-    print("     The Python half of BARRY works fine without it; the MATLAB")
+    print("     The Python half of Jarvis works fine without it; the MATLAB")
     print("     pipeline stages will be grayed out.")
     if sysinfo.IS_MAC:
         print("     Looked in /Applications, ~/Applications and $PATH.")
@@ -289,7 +289,7 @@ def check_ffmpeg():
     warn("ffmpeg not found.")
     print("     Everything except video playback works without it.")
     print("     Neuralynx VT1.mpg is MPEG-1, which no browser can decode, so")
-    print("     BARRY transcodes a few seconds at a time using ffmpeg.")
+    print("     Jarvis transcodes a few seconds at a time using ffmpeg.")
     print()
 
     if sysinfo.IS_WINDOWS:
@@ -366,7 +366,7 @@ def check_repo():
 
 def main():
     print(BANNER)
-    print("  Setting up BARRY GUI in:\n     " + HERE)
+    print("  Setting up Jarvis in:\n     " + HERE)
 
     py_ok = check_python()
 
@@ -391,9 +391,9 @@ def main():
 
     if py_ok and pkg_ok:
         if os.name == "nt":
-            print('\n  Start BARRY by double-clicking "Start BARRY GUI.bat"')
+            print('\n  Wake Jarvis by double-clicking "Wake up Jarvis.bat"')
         else:
-            print('\n  Start BARRY by double-clicking "Start BARRY GUI.command"')
+            print('\n  Wake Jarvis by double-clicking "Wake up Jarvis.command"')
     print(c("=" * 66, "dim"))
     finish(0 if (py_ok and pkg_ok) else 1)
     return 0 if (py_ok and pkg_ok) else 1

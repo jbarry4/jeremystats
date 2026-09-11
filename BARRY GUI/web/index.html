@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BARRY GUI</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23154734'/%3E%3Cpath d='M4 18h3l3-9 4 15 4-12 3 7 2-3h5' fill='none' stroke='%23FFB81C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Jarvis</title>
+<!-- The boot icon, before core.js repaints it in the live theme. A
+     file rather than an inline copy: two copies of one mark drift the
+     first time either is edited. -->
+<link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -80,7 +83,7 @@
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <div class="boot-name">BARRY</div>
+    <div class="boot-name">Jarvis</div>
     <div class="boot-track"><div class="boot-fill"></div></div>
     <div class="boot-what" id="bootWhat">starting up…</div>
     <div class="boot-slow" id="bootSlow"></div>
@@ -92,9 +95,15 @@
   <!-- ================= LEFT RAIL ================= -->
   <nav id="rail">
     <div class="brand">
-      <div class="brand-mark">B</div>
+      <!-- The mark, not a letter. Inline so it can take the theme's
+           own colours; the same path the favicon and the desktop
+           icon are drawn from. -->
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect class="bm-ground" width="32" height="32" rx="7.5"/>
+        <path class="bm-trace" d="M3.2 11.6 H9 L13 3.8 L17 11.6 V19.4 Q17 24.2 12.4 24.2 Q8.6 24.2 8.1 20.6"/>
+      </svg>
       <div class="brand-text">
-        <strong>BARRY</strong>
+        <strong>Jarvis</strong>
         <span class="brand-line">
           <span id="repoName">repo</span>
           <!-- The version, and what changed in it. Beside the repo name
@@ -213,7 +222,7 @@
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
       </button>
-      <!-- Off by default, and the only thing in BARRY that reaches the
+      <!-- Off by default, and the only thing in Jarvis that reaches the
            internet. It says so before it is turned on. -->
       <button class="chip-btn" id="radioBtn" title="A radio to work to">
         <svg viewBox="0 0 20 20"><path d="M4 8h12v8H4z"/><circle cx="8" cy="12" r="2"/><path d="M13 11h2M13 13h2M6 8 15 4"/></svg>
@@ -382,7 +391,7 @@
         <div class="head-actions">
           <div class="seg" id="sessModeSeg" title="Two views of the same thing">
             <button class="active" data-mode="scan">Scan a drive</button>
-            <button data-mode="housekeeping">Everything BARRY knows</button>
+            <button data-mode="housekeeping">Everything Jarvis knows</button>
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
@@ -550,7 +559,7 @@
     </section>
 
     <!-- ---------- COMODULOGRAM ----------
-         Its own view because it lives in its own window: CFCScope opens
+         Its own view because it lives in its own window: Braid opens
          /?role=comod#comod, and comparing two maps means keeping them both
          up, which a dialog cannot do. -->
     <section class="view" id="view-comod">
@@ -638,6 +647,7 @@
 <script src="js/hk_views.js"></script>
 <script src="js/housekeeping.js"></script>
 <script src="js/kilosort.js"></script>
+<script src="js/toolfeed.js"></script>
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/strata.js"></script>

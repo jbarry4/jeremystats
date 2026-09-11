@@ -1,7 +1,7 @@
 """
 sessreg.py -- The session registry: one record per recording, everywhere.
 
-BARRY already kept a file per session under GUI_logs/sessions/, keyed by
+Jarvis already kept a file per session under GUI_logs/sessions/, keyed by
 mouse + session + header start time. That key is good at recognising the same
 recording across machines, and it is exactly the wrong thing to hang years of
 work off, because it is *derived*. Re-read a header slightly differently, fix
@@ -11,7 +11,7 @@ events with it.
 
 So: a global id, minted once on first contact and never recomputed.
 
-    gid   s7f3a91c04b2e     assigned when BARRY first meets a recording
+    gid   s7f3a91c04b2e     assigned when Jarvis first meets a recording
     key   m007_s002_2023-08-22_15-46-13   derived, and allowed to change
     paths every absolute path it has ever been opened from, on any machine
 
@@ -353,12 +353,12 @@ class Registry:
     def ingest(self, found, scan_id=None, root=None):
         """Register everything a scan walked past, whether or not anyone opens it.
 
-        A recording BARRY has *seen* and one somebody has *worked on* are
+        A recording Jarvis has *seen* and one somebody has *worked on* are
         different facts, and only the second used to get written down -- so
         the registry knew about six recordings when the drive held two
         hundred, and there was no way to sort or explore the rest.
 
-        A scan is the moment BARRY has the whole picture of a drive, so it is
+        A scan is the moment Jarvis has the whole picture of a drive, so it is
         the right moment to write it all down. Nothing here opens a file or
         reads a sample; it records that the recording exists, where, and when
         it was last laid eyes on.
@@ -450,7 +450,7 @@ class Registry:
         """Teach the registry that a recording also lives here.
 
         The edge case this exists for: a recording whose folder was renamed,
-        so the derived key no longer matches and BARRY would otherwise mint a
+        so the derived key no longer matches and Jarvis would otherwise mint a
         second record for it.
         """
         rec = self.by_gid(gid)

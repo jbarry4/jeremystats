@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Merge duplicate identities across everything BARRY has recorded.
+"""Merge duplicate identities across everything Jarvis has recorded.
 
     python tools/merge_people.py                # say what would change
     python tools/merge_people.py --apply

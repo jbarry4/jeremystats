@@ -28,7 +28,7 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /* A recording to demonstrate on: whichever one BARRY already knows about.
+  /* A recording to demonstrate on: whichever one Jarvis already knows about.
      Falls back to null, and the steps that need one are marked skippable, so
      the tour still runs on a fresh machine with nothing scanned. */
   let cachedPath;
@@ -91,7 +91,7 @@
          + 'goes.',
     steps: [
       {
-        title: 'This is BARRY',
+        title: 'This is Jarvis',
         body: 'A workbench for the lab’s recordings. It reads Neuralynx '
             + 'files straight off the drive, runs the pipeline, draws the '
             + 'figures, and writes down what it did so you can find your way '
@@ -127,7 +127,7 @@
       },
       {
         title: 'Opening one',
-        body: 'Drop a session folder here, or pick one BARRY has seen before. '
+        body: 'Drop a session folder here, or pick one Jarvis has seen before. '
             + 'A folder of CSC*.ncs files is all it needs.',
         view: 'xplore',
         before: async () => { await ensureOpen(); },
@@ -136,7 +136,7 @@
         target: () => document.querySelector('.pane-canvas-host')
                    || document.querySelector('#xfDrop'),
         placement: 'top',
-        note: 'BARRY has opened a made-up recording for the tour, so this '
+        note: 'Jarvis has opened a made-up recording for the tour, so this '
             + 'works on a laptop with no drive mounted — and so the '
             + 'tour is not moving the window around on somebody’s real '
             + 'session while they are using it. Nothing in it is real data.',
@@ -177,19 +177,19 @@
       },
       {
         title: 'Every recording gets a permanent name',
-        body: 'The first time BARRY meets a recording it mints a global id '
+        body: 'The first time Jarvis meets a recording it mints a global id '
             + 'for it and never changes it. Bad channels, layer labels and '
             + 'curated events hang off that id, so they follow the recording '
             + 'rather than the folder it happens to be sitting in \u2014 and '
             + 'they are the same on everybody\u2019s machine.',
         target: railItem('sessions'),
         placement: 'right',
-        note: 'Sessions \u203a Everything BARRY knows is the list, with the '
+        note: 'Sessions \u203a Everything Jarvis knows is the list, with the '
             + 'id and every path each recording has been seen at.',
       },
       {
         title: 'And your output has one home',
-        body: 'Everything BARRY saves lands in the Results folder inside the '
+        body: 'Everything Jarvis saves lands in the Results folder inside the '
             + 'repo, cataloged automatically. Nothing is filed by hand, and '
             + 'nothing ends up in a downloads folder where nobody else can '
             + 'find it.',
@@ -244,7 +244,7 @@
       },
       {
         title: 'Filters, and what they cost',
-        body: 'High-pass, low-pass and notch. BARRY filters by subtraction '
+        body: 'High-pass, low-pass and notch. Jarvis filters by subtraction '
             + '— the high-pass is the signal minus its own baseline '
             + '— which is why it can redraw 32 channels of 30 kHz data '
             + 'as fast as you can drag.',
@@ -272,7 +272,7 @@
         title: 'Bad channels follow the recording',
         body: 'Mark one bad on the channel list and it stays marked — '
             + 'across sessions, across machines, and across a git pull, '
-            + 'because BARRY matches recordings by mouse, session and header '
+            + 'because Jarvis matches recordings by mouse, session and header '
             + 'start time rather than by folder name.',
         view: 'xplore',
         wait: '.pane-chans',
@@ -462,7 +462,7 @@
         title: 'Adding to it costs something, on purpose',
         body: 'Filing an entry requires who added it, when, and what pipeline '
             + 'produced it. A set of event times with no provenance is a '
-            + 'number nobody can defend six months later, so BARRY refuses '
+            + 'number nobody can defend six months later, so Jarvis refuses '
             + 'to store one.',
         view: 'eventbank',
         wait: '#bankBody',
@@ -694,7 +694,7 @@
         placement: 'right',
       },
       {
-        title: 'Everything BARRY has ever met',
+        title: 'Everything Jarvis has ever met',
         body: 'The other half of Sessions. Every recording, filed by project '
             + 'and mouse, each with its permanent id and every path it has '
             + 'been opened from on any machine \u2014 including the ones '
@@ -803,7 +803,7 @@
       },
       {
         title: 'The files did not go away, on purpose',
-        body: 'BARRY writes locally first, always. That is what makes it work '
+        body: 'Jarvis writes locally first, always. That is what makes it work '
             + 'on a rig with no network and on a drive that is not mounted, '
             + 'and it is why the sync can be honest about time: a laptop that '
             + 'has been shut since Tuesday pushes edits stamped Tuesday, and '
@@ -861,7 +861,7 @@
         body: 'A line-length detector says where something might be. Whether '
             + 'it was a dentate spike, or whether a discharge was solid or a '
             + 'sputter, is a judgement someone has to make while looking at '
-            + 'the recording. BARRY keeps those two things apart on purpose.',
+            + 'the recording. Jarvis keeps those two things apart on purpose.',
         note: 'Candidates arrive unspecified and stay that way until somebody '
             + 'looks. Unspecified is not a category \u2014 it is the absence '
             + 'of one, which is why the count of what is left is meaningful.',
@@ -1014,7 +1014,7 @@
             + 'with nothing on screen to say so.',
       },
       {
-        title: 'BARRY draws the panels, so it knows the rows',
+        title: 'Jarvis draws the panels, so it knows the rows',
         body: 'There is nothing to crop and nothing to drift. And because it '
             + 'is not a snapshot, you can change the window, the filters or '
             + 'the scale while you decide \u2014 which is exactly what you '
@@ -1095,7 +1095,7 @@
         body: 'Kilosort is not difficult to run. It is difficult to run for '
             + 'the first time: the attempt fails for one of about eight '
             + 'reasons and the error rarely says which. Every one of them is '
-            + 'checkable beforehand, so BARRY checks them beforehand.',
+            + 'checkable beforehand, so Jarvis checks them beforehand.',
         target: railItem('toolkit'),
         action: 'click',
         placement: 'right',
@@ -1131,7 +1131,7 @@
       },
       {
         title: 'Run checks the recording, not just the machine',
-        body: 'Pick a recording and BARRY resolves the whole thing against '
+        body: 'Pick a recording and Jarvis resolves the whole thing against '
             + 'what is on disk before anything starts: is there a binary, '
             + 'does its length divide evenly by the channel count, does the '
             + 'probe describe the same number of channels as the settings. '

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   housekeeping.js -- Every recording BARRY has ever met, in one tree.
+   housekeeping.js -- Every recording Jarvis has ever met, in one tree.
 
    The Sessions view answers "what is on this drive". This answers the other
    question: what does the lab have, where has each recording been seen, and
@@ -39,7 +39,7 @@ BARRY.views.housekeeping = (function () {
 
   /* Which recordings a scan has actually found since the app started.
 
-     A recording BARRY remembers and a recording BARRY has just laid eyes on
+     A recording Jarvis remembers and a recording Jarvis has just laid eyes on
      are different facts, and the list should not pretend otherwise. So the
      view opens with everything faint -- "this is what I remember" -- and a
      scan brings back whatever it finds. What stays faint after a scan of the
@@ -76,7 +76,7 @@ BARRY.views.housekeeping = (function () {
       toast('Could not read the registry: ' + e.message, 'err', 8000);
       data = { tree: [], projects: [], total: 0 };
     }
-    /* A branch BARRY has not seen before starts open.
+    /* A branch Jarvis has not seen before starts open.
 
        Only doing this on the first load meant a scan that discovered six new
        mice added six collapsed branches -- so the recordings it had just
@@ -87,7 +87,7 @@ BARRY.views.housekeeping = (function () {
     render();
   }
 
-  /* A branch BARRY has not seen before starts open, whichever grouping is
+  /* A branch Jarvis has not seen before starts open, whichever grouping is
      showing. Anything collapsed by hand stays collapsed. */
   function openNewBranches() {
     if (!data) return;
@@ -136,7 +136,7 @@ BARRY.views.housekeeping = (function () {
     host.appendChild(toolbar());
     if (!scanned) {
       host.appendChild(el('p', { class: 'hint hk-remembered-note',
-        text: 'Everything below is what BARRY remembers. Scan a drive and '
+        text: 'Everything below is what Jarvis remembers. Scan a drive and '
             + 'whatever it finds will brighten — so what stays faint is '
             + 'what is not where you expected it.' }));
     }
@@ -227,7 +227,7 @@ BARRY.views.housekeeping = (function () {
           })
         : el('span', {
             class: 'hk-sub',
-            title: 'BARRY could not read a mouse number out of the folder '
+            title: 'Jarvis could not read a mouse number out of the folder '
                  + 'name, so there is no animal to hang labels off. Rename '
                  + 'the folder, or set this recording\u2019s label by hand.',
             text: 'nothing to label',
@@ -399,7 +399,7 @@ BARRY.views.housekeeping = (function () {
       title: scanned
         ? 'Confirmed by a scan since this window opened'
         : 'Nothing has been scanned yet this session, so everything below is '
-          + 'what BARRY remembers rather than what it has just seen',
+          + 'what Jarvis remembers rather than what it has just seen',
       text: confirmed.size + ' found this session',
     }));
     bar.appendChild(el('button', {
@@ -637,7 +637,7 @@ BARRY.views.housekeeping = (function () {
     ]));
 
     host.appendChild(el('p', { class: 'hint',
-      text: 'That id was minted the first time BARRY met this recording and '
+      text: 'That id was minted the first time Jarvis met this recording and '
           + 'never changes. Everything attached to it — bad channels, layer '
           + 'labels, curated events — follows the recording rather than the '
           + 'folder it happens to sit in.' }));
@@ -809,7 +809,7 @@ BARRY.views.housekeeping = (function () {
     host.appendChild(el('div', { class: 'hk-merge' }, [
       el('button', {
         class: 'btn ghost sm danger', text: 'Forget this recording',
-        title: 'Drop what BARRY remembers about it. The recording itself is '
+        title: 'Drop what Jarvis remembers about it. The recording itself is '
              + 'untouched, and opening or scanning it again starts fresh.',
         onclick: async () => {
           /* The application's own dialog, not the browser's. This was
@@ -819,7 +819,7 @@ BARRY.views.housekeeping = (function () {
              that destroys a record's history is the wrong choice. */
           const ok = await BARRY.confirm(
             'Forget ' + (s.label || s.gid) + '?',
-            'Its bad channels, notes, project and the paths BARRY has '
+            'Its bad channels, notes, project and the paths Jarvis has '
             + 'seen it at go with it, and it stays gone: a tombstone is '
             + 'written so a colleague\u2019s registry cannot push it back '
             + 'and the next scan of that drive will not re-register it. '

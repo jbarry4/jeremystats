@@ -66,7 +66,7 @@ BARRY.hk = (function () {
       const gk = key === null ? '\u0000unset' : String(key);
       if (!groups.has(gk)) groups.set(gk, { key: gk, label, mice: new Map() });
       const g = groups.get(gk);
-      /* A recording BARRY could not get a mouse number out of still has
+      /* A recording Jarvis could not get a mouse number out of still has
          to appear -- it is usually the one you were looking for. It gets a
          branch of its own that says so, rather than one labelled "mnull"
          that offers to label an animal that does not exist. */

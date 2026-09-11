@@ -4,24 +4,22 @@
     "mouse": "2026-09-09T02:56:07.457844+00:00",
     "project": "2026-09-09T02:56:07.457844+00:00",
     "schema": "2026-09-09T02:56:07.457844+00:00",
-    "updated": "2026-09-10T19:22:13.131544+00:00"
+    "updated": "2026-09-10T21:56:53.816805+00:00"
   },
   "_keys": {
     "attrs": {
       "genotype": [
-        "set",
-        "2026-09-10T19:22:13.131544+00:00"
+        "gone",
+        "2026-09-10T21:56:53.816805+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T19:22:13.131544+00:00",
+    "at": "2026-09-10T21:56:53.816805+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "attrs": {
-    "genotype": "HARNESS-TEST"
-  },
+  "attrs": {},
   "created": {
     "at": "2026-09-08T22:56:07-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
@@ -34,7 +32,7 @@
   "project": "DEMO",
   "schema": 1,
   "updated": {
-    "at": "2026-09-10T15:22:13-04:00",
+    "at": "2026-09-10T17:56:53-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

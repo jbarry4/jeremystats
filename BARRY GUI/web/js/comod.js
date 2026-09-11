@@ -1,7 +1,7 @@
 /* ==========================================================================
    comod.js -- the comodulogram window.
 
-   Opened by CFCScope, in a window of its own rather than as a dialog. You
+   Opened by Braid, in a window of its own rather than as a dialog. You
    keep it up while moving the window around the recording and stack the maps
    as you go, because comparing two of them is most of what the thing is for
    and a modal cannot be compared with anything.
@@ -61,6 +61,16 @@ BARRY.views.comod = (function () {
     cmap: 'jet',
   };
 
+  /* The reference grid, so "is this still Tort's?" is a comparison rather
+     than a memory. Same numbers as `cfc.TORT_*` on the server. */
+  const TORT = {
+    slow_lo: 2, slow_hi: 50, slow_step: 2, slow_bw: 4,
+    fast_lo: 10, fast_hi: 200, fast_step: 5, fast_bw: 10,
+  };
+  const TORT_KEYS = Object.keys(TORT);
+  const isTort = () => TORT_KEYS.every((k) => Number(q[k]) === TORT[k]);
+  let editing = false;   // the grid fields are hidden until asked for
+
   let ctx = null;         // the opener's live state
   let est = null;         // what the run is likely to cost
   let job = null;         // the run in flight
@@ -92,7 +102,7 @@ BARRY.views.comod = (function () {
      `window`. So `window.opener.BARRY` is undefined from here however
      completely the opener has loaded, and the first version of this
      silently decided there was no opener every single time and rendered
-     the "open this from CFCScope" fallback for ever.
+     the "open this from Braid" fallback for ever.
 
      Each side therefore publishes the one handle the other needs as a real
      property. `BARRY.cfc` is still the name inside its own window. */
@@ -121,7 +131,7 @@ BARRY.views.comod = (function () {
     return true;
   }
 
-  /* Called by CFCScope whenever the window or the channel moves. */
+  /* Called by Braid whenever the window or the channel moves. */
   function openerMoved() {
     if (!pullContext()) return;
     if (follow) { refreshEstimate(); render(); }
@@ -265,10 +275,10 @@ BARRY.views.comod = (function () {
 
     if (!ctx) {
       host.appendChild(el('div', { class: 'card' }, [
-        el('p', { text: 'This window is opened from CFCScope, and it reads '
+        el('p', { text: 'This window is opened from Braid, and it reads '
                       + 'the recording and the window from it.' }),
         el('p', { class: 'hint',
-          text: 'The window that opened this one has gone. Open CFCScope '
+          text: 'The window that opened this one has gone. Open Braid '
               + 'again from the Toolkit and press C.' }),
       ]));
       return;
@@ -350,28 +360,91 @@ BARRY.views.comod = (function () {
        made the first thing anybody met a decision about a grid they had no
        way to make yet -- and two of those presets were this lab's own
        sweeps rather than the reference one. It runs Tort's grid. */
-    box.appendChild(el('div', { class: 'section-label', text: 'The grid' }));
+    box.appendChild(el('div', { class: 'section-label' }, [
+      el('span', { text: 'The grid' }),
+      el('span', { style: 'flex:1' }),
+      el('button', {
+        class: 'mini' + (editing ? ' on' : ''),
+        text: editing ? 'Done editing' : 'Edit…',
+        title: editing
+          ? 'Put the fields away. Whatever is in them stays.'
+          : 'Change the bands. The defaults are Tort’s, and a map on '
+            + 'another grid is not comparable with one from the paper — '
+            + 'which is worth knowing before rather than after.',
+        onclick: () => { editing = !editing; render(); },
+      }),
+      isTort() ? null : el('button', {
+        class: 'mini warn-mini', text: 'Back to Tort’s',
+        title: 'PhaseFreqVector 2:2:50 with a 4 Hz bandwidth, AmpFreqVector '
+             + '10:5:200 with 10.',
+        onclick: () => {
+          Object.assign(q, TORT);
+          refreshEstimate(); render();
+        },
+      }),
+    ].filter(Boolean)));
+
+    /* Not Tort's any more. Said here rather than in a tooltip: the grid is
+       what makes two maps comparable, and somebody who has changed it
+       should be reminded while they are looking at the result, not asked
+       to remember. */
+    if (!isTort()) {
+      box.appendChild(el('p', { class: 'hint warn',
+        text: 'This is not Tort’s grid. It will run, and it is not '
+            + 'comparable with a map computed on the reference grid — '
+            + 'phase 2:2:50 with a 4 Hz bandwidth, amplitude 10:5:200 '
+            + 'with 10.' }));
+    }
+
     box.appendChild(el('div', { class: 'comod-grid-fixed' }, [
       el('div', { class: 'comod-row' }, [
         el('span', { class: 'comod-axis', text: 'Phase' }),
-        el('code', { text: '2:2:50 Hz' }),
+        el('code', { text: trimNum(q.slow_lo) + ':' + trimNum(q.slow_step)
+                           + ':' + trimNum(q.slow_hi) + ' Hz' }),
         el('span', { class: 'hint',
-                     text: '4 Hz bands, stepped by 2 — ' + axisNote('slow')
-                         + ', overlapping by half' }),
+                     text: trimNum(q.slow_bw) + ' Hz bands, stepped by '
+                         + trimNum(q.slow_step) + ' — ' + axisNote('slow')
+                         + (q.slow_bw > q.slow_step ? ', overlapping' : '') }),
       ]),
       el('div', { class: 'comod-row' }, [
         el('span', { class: 'comod-axis', text: 'Amplitude' }),
-        el('code', { text: '10:5:200 Hz' }),
+        el('code', { text: trimNum(q.fast_lo) + ':' + trimNum(q.fast_step)
+                           + ':' + trimNum(q.fast_hi) + ' Hz' }),
         el('span', { class: 'hint',
-                     text: '10 Hz bands, stepped by 5 — ' + axisNote('fast')
-                         + ', overlapping by half' }),
+                     text: trimNum(q.fast_bw) + ' Hz bands, stepped by '
+                         + trimNum(q.fast_step) + ' — ' + axisNote('fast')
+                         + (q.fast_bw > q.fast_step ? ', overlapping' : '') }),
       ]),
-      el('p', { class: 'hint',
+
+      /* The fields, when asked for. The same eight as before -- step and
+         bandwidth are separate on both axes, which is Tort's convention and
+         the thing most likely to be got wrong by hand. */
+      !editing ? null : el('div', { class: 'comod-row' }, [
+        el('span', { class: 'comod-axis', text: 'Phase' }),
+        num('slow_lo', 'from', 'Lowest phase band', { step: 0.5, min: 0.5 }),
+        num('slow_hi', 'to', 'Highest phase band', { step: 0.5, min: 1 }),
+        num('slow_step', 'step', 'Spacing of the phase bands',
+            { step: 0.5, min: 0.1 }),
+        num('slow_bw', 'width', 'How wide each band is. Tort uses 4 Hz '
+            + 'bands stepped by 2, so they overlap by half.',
+            { step: 0.5, min: 0.1 }),
+      ]),
+      !editing ? null : el('div', { class: 'comod-row' }, [
+        el('span', { class: 'comod-axis', text: 'Amplitude' }),
+        num('fast_lo', 'from', 'Lowest amplitude band', { step: 5, min: 5 }),
+        num('fast_hi', 'to', 'Highest amplitude band', { step: 5, min: 10 }),
+        num('fast_step', 'step', 'Spacing of the amplitude bands',
+            { step: 1, min: 1 }),
+        num('fast_bw', 'width', 'How wide each band is. Tort uses 10 Hz '
+            + 'bands stepped by 5, so they overlap by half.',
+            { step: 1, min: 1 }),
+      ]),
+      !isTort() ? null : el('p', { class: 'hint',
         text: 'Tort’s defaults, from CallerRoutine.m — '
             + 'PhaseFreqVector 2:2:50 with a 4 Hz bandwidth, AmpFreqVector '
-            + '10:5:200 with 10, and 18 phase bins. Fixed, so a map from '
-            + 'here is comparable with a map from the paper.' }),
-    ]));
+            + '10:5:200 with 10, and 18 phase bins. A map computed on this '
+            + 'grid is comparable with a map from the paper.' }),
+    ].filter(Boolean)));
 
     /* The thing a comodulogram axis never says about itself.
 
@@ -439,6 +512,14 @@ BARRY.views.comod = (function () {
     ].filter(Boolean)));
 
     return box;
+  }
+
+  /* 2 not 2.0, 0.5 not 0.50 -- the vector should read the way somebody
+     would type it into MATLAB. */
+  function trimNum(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return String(v);
+    return String(Math.round(n * 1000) / 1000);
   }
 
   function axisNote(which) {
@@ -918,7 +999,7 @@ BARRY.views.comod = (function () {
            get maps() { return maps; } };
 }());
 
-/* The handle CFCScope calls into when the window moves. A property, because
+/* The handle Braid calls into when the window moves. A property, because
    the module object itself is reached through a `const` that no other window
    can see. See `opener()` above for the whole story. */
 window.barryComod = BARRY.views.comod;

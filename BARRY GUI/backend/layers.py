@@ -11,7 +11,7 @@ be redone whenever anyone re-exports, and when it is slightly wrong every
 label is off by a fraction of a channel with nothing to show for it. It exists
 only because a PNG has forgotten which row was which channel.
 
-BARRY has not forgotten. It draws those panels itself, from the recording, and
+Jarvis has not forgotten. It draws those panels itself, from the recording, and
 knows exactly which lane is channel 14 -- so the labels sit on channels rather
 than on pixels, the alignment cannot drift, and you can pan and filter while
 you label instead of labelling a frozen snapshot.

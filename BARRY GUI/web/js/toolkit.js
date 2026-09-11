@@ -186,7 +186,7 @@ BARRY.views.toolkit = (function () {
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
-        toolButton('cfc', 'CFCScope',
+        toolButton('cfc', 'Braid',
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
                    + 'in it is saved.'),
@@ -1519,7 +1519,7 @@ BARRY.views.toolkit = (function () {
         (x) => x.archived && x.name !== st.assignee).length;
       if (!rows.length) {
         list.appendChild(el('div', { class: 'hint',
-          text: 'Nobody is on the roster yet. BARRY builds it from the '
+          text: 'Nobody is on the roster yet. Jarvis builds it from the '
               + 'names already stamped on decisions and bank entries, so '
               + 'it fills in as work happens \u2014 or type one below.' }));
       }
@@ -1957,7 +1957,7 @@ BARRY.views.toolkit = (function () {
   }
 
   /* ==================================================================
-     CFCScope
+     Braid
 
      The one tool here that decides nothing. It opens a recording in
      XploreFinder with the band-resolved power panel up, and puts a
@@ -1984,7 +1984,7 @@ BARRY.views.toolkit = (function () {
     host.innerHTML = '';
     if (!cfcReg) {
       host.appendChild(el('div', { class: 'tk-loading' }, [
-        stepLoader('CFCScope', ['reading the recording registry'])]));
+        stepLoader('Braid', ['reading the recording registry'])]));
       return;
     }
 
@@ -1999,7 +1999,7 @@ BARRY.views.toolkit = (function () {
 
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
-        el('h2', { text: 'CFCScope' }),
+        el('h2', { text: 'Braid' }),
         el('p', { class: 'sub',
           text: 'Theta, resolved into the bands it is actually made of, and '
               + 'phase-amplitude coupling for a window you choose.' }),
@@ -2012,7 +2012,7 @@ BARRY.views.toolkit = (function () {
     card.appendChild(pick);
     card.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
-        class: 'btn', text: 'Open in CFCScope',
+        class: 'btn', text: 'Open in Braid',
         onclick: () => { if (cfcGid) BARRY.cfc.enter(cfcGid); },
       }),
       el('span', { class: 'hint',
@@ -2190,7 +2190,7 @@ BARRY.views.toolkit = (function () {
   /* ==================================================================
      Importing a folder of sorted snapshots
      ==================================================================
-     Thousands of dentate spikes were sorted before BARRY existed, by
+     Thousands of dentate spikes were sorted before Jarvis existed, by
      dragging one PNG per candidate into a folder named after the decision.
      That work is real and nobody is redoing it, so this reads it back.
 
@@ -2339,7 +2339,59 @@ BARRY.views.toolkit = (function () {
     ]));
   }
 
+  /* The panel, and then the feed.
+
+     Each tool's branch below returns early, so there is nowhere after them
+     to hang anything. Wrapping is what makes the feed automatic: a toolkit
+     added later renders in a branch of the same function, and gets its
+     activity list without anybody remembering to ask for one. */
   function renderResult() {
+    renderToolPanel();
+    mountFeed();
+  }
+
+  /* One feed, for the tool on screen. Torn down and remounted rather than
+     left running: a poller for a tool nobody is looking at is a request
+     every nine seconds for as long as the window is open. */
+  let feedWatch = null;
+
+  function mountFeed() {
+    if (!BARRY.toolfeed) return;
+    BARRY.toolfeed.stop();
+    const host = $('#tkResult');
+    if (!host || !q.tool) return;
+    watchPanel(host);
+    tryFeed(host, q.tool);
+  }
+
+  /* Mount when there is a panel to mount under.
+
+     Skipped while a spinner is up -- a feed above a loading panel jumps
+     when the panel lands -- and skipped when one is already there, which is
+     what stops the watcher below reacting to its own mount. */
+  function tryFeed(host, tool) {
+    if (!host || !tool || !BARRY.toolfeed) return;
+    if (host.querySelector('.tk-loading')) return;
+    if (host.querySelector('.tf')) return;
+    BARRY.toolfeed.mount(host, tool);
+  }
+
+  /* Half the tools fetch before they draw, so the panel arrives after the
+     mount would have run and repaints over it. Watching the host covers
+     sync tools, async tools and anything added later without each of them
+     having to remember. */
+  function watchPanel(host) {
+    if (feedWatch) { feedWatch.disconnect(); feedWatch = null; }
+    if (typeof MutationObserver !== 'function') return;
+    feedWatch = new MutationObserver(() => {
+      if (!q.tool) return;
+      const now = $('#tkResult');
+      if (now) tryFeed(now, q.tool);
+    });
+    feedWatch.observe(host, { childList: true });
+  }
+
+  function renderToolPanel() {
     /* Undim first, whatever branch this takes. Every early return below used
        to skip the line that reset it. */
     const box = document.getElementById('tkResult');

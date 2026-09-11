@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-11T15:20:52.102626+00:00",
+    "rel": "2026-09-11T15:20:52.102626+00:00",
+    "starred": "2026-09-11T15:21:03.812685+00:00",
+    "updated": "2026-09-11T15:21:03.812685+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-11T15:21:03.812685+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_20.png",
+  "rel": "Storyboards/arrow harness_20.png",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-11T11:21:03-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -15,9 +15,71 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
-## 2026.09.10.1 — CFCScope
+## 2026.09.10.1 — Braid, and the name on the door
 
 ### Fixed
+
+- **Braid had no way out.** DS curation and StrataScope both end their bar
+  with `Leave`; Braid had nothing, so a mode that takes over the panes, the
+  keyboard and a second window gave no way to hand them back. Same button,
+  same place, and `cfcbar.html` now checks for it.
+
+- **"Draw at full rate" did nothing on a raster.** Reported, and the server
+  proved it: at full rate a raster went from 1800 columns to 20000 and
+  stayed averaged, so the picture was identical. A picture is as wide as the
+  pane it is drawn in. That step is marked not-reversible now, the cap is no
+  longer raised, and the panel states the limit — one column is 33 ms — with
+  no switch offered, because a switch that cannot move is worse than none.
+
+- **There was no way back from full rate.** The badge became a `<span>` once
+  full rate was on, so the one thing it had to be able to say — "and here is
+  how to undo me" — it could not. It is a button in both states.
+
+- **A full-rate render now says what the wait is for.** "Every sample at
+  30 kHz · exact filters, no shortcut · 64 channels", instead of "reading
+  channels" whatever was being asked.
+
+- **The rasters were downsampling without saying so.** Reported from the
+  application: the badge showed on the voltage traces and not on the voltage
+  raster or the CSD. True, and my omission — the recorder was wired into
+  band power's call and not into the other two, so the panels people spend
+  the most time in were the two that said nothing. A CSD of a 60 s window is
+  1.8 M samples averaged into 1800 columns, which is **33 ms a column** when
+  a dentate spike is a few milliseconds wide. It says that now, and offers
+  to raise the cap.
+
+- **The DOWNSAMPLED badge could not be clicked.** It lives in the caption
+  strip over the plot, and that strip is `pointer-events: none` — so the
+  answer to "how do I turn this off" was that you could not. Three faults in
+  one small element, all mine: the strip swallowed the click, `nowrap` +
+  `overflow: hidden` clipped the badge off the end of a long line, and the
+  detail panel was appended *inside* that one-line strip, where it could
+  never be seen. The text is now the part that ellipsises, the badge is the
+  part that survives, and the panel opens in the caption's own frame.
+
+- **Sixty-four channel labels sat on top of each other.** The lane is a
+  fixed 18 px, or 12 px when compact. The grid slot it sits in is the plot
+  height over the channel count — 7.8 px for 64 channels in a 500 px pane —
+  so every lane overlapped its neighbours by two pixels top and bottom, and
+  the gutter read as a grey smear. The height and font now follow the
+  measured pitch, and below about 10 px the names thin out one row in `n`
+  while every row keeps its controls, which is the stride a crowded axis
+  already gets in `compose.py`.
+
+  `chan64.html` checks that all sixty-four lanes have a hittable
+  bad-channel button and never checked that two lanes were in the same
+  place, which is why the suite was quiet about it. `downsampled.html` now
+  measures it: no lane may overlap the next, and the caption may not
+  intersect any of them. It reports 64 lanes at a 10 px pitch with 10 px
+  height, and a caption starting 4 px clear of the widest label.
+
+- **The caption ran into the channel labels.** It sat at `left: 0`, and so
+  do the labels. The indent is measured now rather than guessed — the widest
+  DOM lane on a trace pane, and the widest label the grid canvas actually
+  drew on a raster, since those are painted rather than built. A pane
+  showing `CSC28-CSC29` gets a wider indent than one showing `CSC2`. Its
+  backdrop is opaque too: at 9 px over a trace, a translucent wash mixes the
+  text with the signal and the line reads as neither.
 
 - **The leftover-clearing added yesterday broke `bank.html`'s own count.**
   It clears the entries earlier runs left behind, and that clearing landed
@@ -64,6 +126,101 @@ This file is the only place the version is written. The app reads it.
   40.
 
 ### Added
+
+- **Every tool has a live activity feed, read from Supabase.** Each mode
+  already wrote to the activity log and those rows already went up. What was
+  missing was anybody being able to read them back **per tool**, so "is
+  somebody else curating this?", "what did that import actually do?" and
+  "why does this look different from yesterday?" were questions you answered
+  by asking a person.
+
+  It is for reproducibility first and debugging second. The feed is the
+  record of what was done to a recording, by whom, on which machine, in what
+  order — including the actions from the *other* machine that this one only
+  learned about through the sync, which are exactly the ones nobody can
+  reconstruct from memory.
+
+  It is under all six tools: bad channels, event curation, StrataScope,
+  Braid, Kilosort and Import sorted snapshots. **And under any tool added
+  later, with no registration step**, twice over: a tool id the server has
+  never heard of falls back to its own name as the action prefix, and the
+  ToolKit mounts the feed by watching the panel host rather than by each
+  tool remembering to ask. `toolfeed.TOOLS` exists only for the tools whose
+  actions are not named after them — curation also writes `bank.*`, Kilosort
+  writes `phy.*`, and bad channels were `channels.*` long before there was a
+  page for them.
+
+  The header says **which source it is reading**, because "nobody else is
+  working on this" and "I could not reach the shared table" look identical
+  on screen and are not the same fact. Polling asks only for what is newer
+  than the newest row it holds, so a feed left open all afternoon costs
+  twenty rows and then nothing.
+
+- **Banked versions travel through Supabase, snapshots and all.** Migration
+  11 sent the version history up without them and said why: 110 versions are
+  44 kB of metadata and 0.5 MB with their snapshots. So a colleague's v7 was
+  *visible* and not restorable — you could see who made it and how many
+  events it held, and you needed a git pull to have it.
+
+  `bank_snapshots` (migration **14**) closes that, and the shape is what
+  makes it safe: keyed `(entry_id, v)`, append-only. A version's snapshot is
+  written once and never changes, so two machines writing the same key write
+  the same bytes — there is no last-writer, no clock to compare, and none of
+  the timestamp-comparison class of bug that has been wrong in eleven places
+  in this codebase. `updated_at` is the version's own creation time, so the
+  incremental push sends each snapshot exactly once and then stops forever.
+
+  Nothing replaces the JSON shard. It is still written and still travels
+  with the repository, so a snapshot now has two independent copies instead
+  of one. `absorb_snapshot` only ever FILLS one in: if this machine already
+  has that version, the two are compared by a digest over a canonical form,
+  and a disagreement is **reported rather than resolved** — there is no
+  correct side to pick, and a version that disagrees with itself is a fault
+  to look at. Conflicts ride out with the sync result.
+
+  `tools/test_banksnap.py` proves it in seventeen checks, including that a
+  machine's own work survives a pull, that a payload whose digest does not
+  match its content is refused, and that float noise (315.275 against
+  315.27500000000003) is one snapshot rather than two.
+
+  **Run `supabase/14_bank_snapshots.sql` before expecting it to work.**
+
+- **The comodulogram's parameters are editable again.** Tort's grid is still
+  what it opens with and still says where it comes from; `Edit…` reveals the
+  eight fields. Once the grid is no longer Tort's the form says so plainly,
+  because the whole reason to default to the reference is that a map on it
+  is comparable with a map from the paper. One click puts it back.
+
+- **Every panel now says DOWNSAMPLED when it is, and offers not to be.** A
+  panel that ran on every tenth sample cannot be told from one that ran on
+  all of them by looking at it, and the difference decides what the picture
+  is allowed to mean. So each one states what it did, in the line that
+  already says what it ran on:
+
+  ```
+  ran on  01:40-02:40 (60 s) · 1 ch · >3 Hz +60Hz notch   [DOWNSAMPLED]
+  ```
+
+  Clicking it says exactly what happened — 30 kHz → 3 kHz, ÷10,
+  anti-aliased, nothing above 1.5 kHz in the answer; or 1,800,000 samples
+  drawn as 1,400 min/max columns, extremes exact and shape inside a column
+  not — and offers **Draw at full rate**, per pane.
+
+  The badge is red for a step that is **not** anti-aliased, which is a
+  different claim and must not look like the same one. Only the scalogram
+  does that: it takes a plain stride over 200 000 samples, so energy between
+  1.5 and 15 kHz folds into the picture. It now says so in those words.
+
+  Full rate is refused rather than attempted when it would be absurd, with
+  the number and the window that would fit: "Every sample of 60 s at 30 kHz
+  is 1,800,000 points per channel, past the 400,000 this will send without
+  an envelope. About 13 s would fit." Which surfaced something worth
+  knowing — **band power cannot run at full rate at 30 kHz at all**, because
+  eegfilt's order scales with the sample rate and designing a 4 Hz filter
+  there means a 22500-tap least-squares system. The decimation is not an
+  optimisation; it is what makes the analysis possible.
+
+  The spectrogram correctly wears no badge: it runs on every sample.
 
 - **An explainer behind the bandwidth line, opened by the (i) beside it.**
   The band-power panel prints "Really 1.14–3.42 Hz wide, not 0.5. The bands
@@ -151,6 +308,59 @@ This file is the only place the version is written. The app reads it.
   0.11 s, measured.
 
 ### Changed
+
+- **Jarvis, not Javits.** I misheard the name. Mechanical this time and
+  safe in a way the last rename was not: "Javits" was nowhere an identifier,
+  a folder, or a string written into anybody's data, so a straight
+  replacement was correct everywhere it appeared — which is exactly what was
+  not true of the name before it.
+
+- **The rail badge wears the mark.** It was a gradient square with a `B` in
+  it: the wrong initial, and a letter in a box is what an application uses
+  when it has no mark. It has one, so it uses it — inline, taking its two
+  colours from the live theme, so the badge in the rail and the icon in the
+  tab are the same mark in the same light rather than one being a picture of
+  the other.
+
+- **The application is called Jarvis.** The launchers are **Wake up
+  Jarvis** (`.bat` and `.command`), moved with `git mv` so their history
+  follows them, and everything that names them was updated in the same pass
+  — the README, `setup.py`'s closing line, `start.py`'s docstring, and the
+  mac script's own chmod hint.
+
+  Four things deliberately keep the old name, because they are not the
+  product's name:
+
+  - `const BARRY` and its 1713 references. That is an address, not a name.
+  - `pipeline: 'BARRY threshold detector'`, which is **written into banked
+    entries as provenance**. Renaming it would give one detector two names
+    and make last week's entries disagree with today's about which tool made
+    them. Provenance is history.
+  - `"BARRY GUI"` in `registry.py`'s skip list — a **folder name**, and the
+    string by which a drive scan knows not to descend into the application's
+    own directory.
+  - the folder itself, and every path containing it.
+
+  Renaming the first of those was how I broke eighteen harnesses on the way
+  here: they reach the global by name, as a string — `ev('BARRY')` — and a
+  regex cannot tell a name from an address. The application booted fine
+  throughout; the tests were asking for a global that no longer existed.
+
+- **CFCScope is now Braid.** Phase-amplitude coupling is two rhythms
+  plaited together, and "CFCScope" was an acronym wearing a telescope. The
+  module, the file and the `BARRY.cfc` handle keep their names for the same
+  reason as above.
+
+- **A new mark.** The old favicon was a five-spike train in a rounded
+  square, which said "oscilloscope" rather than anything about this
+  application. The new one is a single continuous stroke: flat, a sharp
+  spike up, down through the baseline, and the descent becomes the stem of a
+  J. So it reads as a dentate spike at 256 px and as an initial at 16.
+
+  `tools/make_icons.py` renders that same SVG in the browser and packs six
+  sizes into `web/img/jarvis.ico`, so the tab, the shortcut and the dock
+  cannot drift apart. A `.bat` cannot carry an icon, so there is a
+  **`Wake up Jarvis.lnk`** beside it that can.
 
 - **Samples are anti-aliased before the filter bank.** `read_csc.m`
   decimates with `Samples(1:10:end)` and no low-pass, so content above the

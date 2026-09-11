@@ -797,7 +797,7 @@ def _free_bytes(path):
 # Scratch runner
 # ==========================================================================
 SCRATCH_PREAMBLE = (
-    "# BARRY scratch. The repo and BARRY's own readers are importable, and\n"
+    "# Jarvis scratch. The repo and Jarvis's own readers are importable, and\n"
     "# these names are already bound for you.\n"
     "import os, sys, glob, json, math\n"
     "import numpy as np\n"
@@ -805,7 +805,7 @@ SCRATCH_PREAMBLE = (
 
 
 def scratch_source(body, repo_root, app_dir):
-    """Wrap a snippet so the repo and BARRY's backend are both importable."""
+    """Wrap a snippet so the repo and Jarvis's backend are both importable."""
     header = ("import sys\n"
               "sys.path.insert(0, %r)\n"
               "sys.path.insert(0, %r)\n"

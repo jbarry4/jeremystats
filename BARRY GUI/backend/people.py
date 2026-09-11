@@ -1,7 +1,7 @@
 """
 people.py -- who has worked on this repo, gathered rather than declared.
 
-There is no sign-up here and there should not be. Every record BARRY writes
+There is no sign-up here and there should not be. Every record Jarvis writes
 already carries who made it: a curation decision has a `by`, a bank entry has
 an `added.by`, a profile shard has a name and a machine, the activity log has
 a user on every line. So the roster is a reading of what is already written,

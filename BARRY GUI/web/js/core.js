@@ -33,7 +33,7 @@ function reportClientError(where, message, detail) {
       box.textContent = 'Interface error in ' + where + ': ' + text;
     }
     // Mirrored into the title so it is visible even in a headless capture.
-    document.title = 'BARRY GUI — error: ' + text.slice(0, 120);
+    document.title = 'Jarvis — error: ' + text.slice(0, 120);
   } catch (e) { /* ignore */ }
 
   try { toast('Interface error: ' + text, 'err', 12000); } catch (e) { /* early */ }
@@ -154,7 +154,7 @@ BARRY.hues = function hues(n) {
 /* ==========================================================================
    Picking one recording out of hundreds.
 
-   A <select> was fine when BARRY knew about six recordings. Scanning a drive
+   A <select> was fine when Jarvis knew about six recordings. Scanning a drive
    registers every one it walks past, so the list is now in the hundreds and a
    dropdown is the wrong control entirely -- you cannot type at it, you cannot
    see the project or whether the drive is mounted, and finding m59 s11 means
@@ -404,7 +404,7 @@ async function api(path, opts) {
 
   /* 404 or 405 on an /api/ route means the route is not there -- which
      almost always means the server is running older code than the page that
-     just asked for it. That happens whenever BARRY is left running while the
+     just asked for it. That happens whenever Jarvis is left running while the
      repo is updated, and the only symptom is a feature quietly doing
      nothing.
 
@@ -422,7 +422,7 @@ async function api(path, opts) {
   catch (e) {
     record(res.status, 'non-JSON response');
     if (missing) {
-      throw new Error('This BARRY is running older code than the files on '
+      throw new Error('This Jarvis is running older code than the files on '
                       + 'disk, so it has no ' + path.split('?')[0]
                       + '. Restart it and try again.');
     }
@@ -458,14 +458,14 @@ function staleServer(path) {
   if (staleSeen.has(route)) return;
   staleSeen.add(route);
   toast('This page asked the server for ' + route
-        + ' and it does not have it \u2014 BARRY is running older code than '
+        + ' and it does not have it \u2014 Jarvis is running older code than '
         + 'the files on disk. Restart it (close the window and run '
-        + '"Start BARRY GUI" again) to pick up the new version.',
+        + '"Start Jarvis" again) to pick up the new version.',
         'err', 20000);
   showStaleBanner();
 }
 
-/* BARRY is running code older than what is on disk.
+/* Jarvis is running code older than what is on disk.
 
    Distinct from the 404 case below: nothing is missing, so nothing fails
    loudly. The old code simply does the old thing, which is worse -- you
@@ -478,7 +478,7 @@ function showCodeStaleBanner(files, startedAt) {
   codeStaleShown = true;
   const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
-    el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
+    el('strong', { text: 'Restart Jarvis \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
                      + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
@@ -504,7 +504,7 @@ function showCodeStaleBanner(files, startedAt) {
 
    A toast goes away; a stale server does not. Everything added since it
    started will fail, some of it silently, so this stays on screen until
-   BARRY is restarted -- which is the only thing that fixes it. */
+   Jarvis is restarted -- which is the only thing that fixes it. */
 function showStaleBanner() {
   if (document.getElementById('staleBanner')) {
     const n = document.getElementById('staleCount');
@@ -512,12 +512,12 @@ function showStaleBanner() {
     return;
   }
   const bar = el('div', { class: 'stale-banner', id: 'staleBanner' }, [
-    el('strong', { text: 'BARRY is running older code than the files on disk' }),
+    el('strong', { text: 'Jarvis is running older code than the files on disk' }),
     el('span', {}, [
       document.createTextNode('  '),
       el('span', { id: 'staleCount', text: String(staleSeen.size) }),
       document.createTextNode(' feature(s) this page expects are missing from '
-                              + 'the running server. Restart BARRY to pick '
+                              + 'the running server. Restart Jarvis to pick '
                               + 'them up \u2014 until then some things will '
                               + 'fail, and saving may not work.'),
     ]),
@@ -894,7 +894,7 @@ BARRY.refreshSync = async function refreshSync() {
 /* The one thing a clone cannot carry.
 
    The repo says which project to sync to; the key deliberately is not in it,
-   so each machine has to be told once. BARRY asks on startup in the terminal
+   so each machine has to be told once. Jarvis asks on startup in the terminal
    and here, because whichever one somebody is looking at should be enough. */
 function askForKey(c) {
   const input = el('input', {
@@ -935,7 +935,7 @@ function askForKey(c) {
     ]),
     msg,
     el('p', { class: 'hint',
-      text: 'Kept in GUI_logs/.cloud.json, which git ignores. BARRY works '
+      text: 'Kept in GUI_logs/.cloud.json, which git ignores. Jarvis works '
           + 'perfectly well without it \u2014 the sync is an addition, not a '
           + 'requirement.' }),
   ]);
@@ -952,7 +952,7 @@ function cloudNote() {
       box.appendChild(el('div', { class: 'cloud-err',
         text: 'cloud.json in the repo contains a key. That file is tracked '
             + 'by git, so treat the key as public: rotate it in the Supabase '
-            + 'dashboard and paste the new one below. BARRY is ignoring the '
+            + 'dashboard and paste the new one below. Jarvis is ignoring the '
             + 'one in the file.' }));
     }
     if (c.needs_key) { box.appendChild(askForKey(c)); return; }
@@ -1052,12 +1052,12 @@ function cloudNote() {
       box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
     }
     box.appendChild(el('p', { class: 'hint',
-      text: 'BARRY writes here first and syncs in the background, so none of '
+      text: 'Jarvis writes here first and syncs in the background, so none of '
           + 'this is in the way if the network is down.' }));
   }).catch(() => {
     box.innerHTML = '';
     box.appendChild(el('p', { class: 'hint',
-      text: 'This BARRY does not have the Supabase sync — restart it to '
+      text: 'This Jarvis does not have the Supabase sync — restart it to '
           + 'pick up the new version.' }));
   });
   return box;
@@ -1193,7 +1193,7 @@ function showSync() {
       ]),
       el('div', { class: 'section-label', text: 'How syncing works' }),
       el('p', { style: 'font-size:12.5px;line-height:1.7;color:var(--text-2)' , text:
-        'BARRY writes every run, bad-channel mark, preset and error into GUI_logs as '
+        'Jarvis writes every run, bad-channel mark, preset and error into GUI_logs as '
         + 'plain JSON — one file per run and per session, so git merges them without '
         + 'conflict. It never commits or pushes on its own.' }),
       el('div', { class: 'source-box' }, [
@@ -1252,7 +1252,7 @@ BARRY.notes = (function () {
        and "we are both on 65ece68" are different claims, and the second is
        the one that settles an argument about why something behaves
        differently for one of you. */
-    chip.title = 'BARRY ' + v
+    chip.title = 'Jarvis ' + v
       + (run ? '  ·  ' + run.commit + (run.dirty ? ' + local changes' : '')
              + (run.branch ? '  ·  ' + run.branch : '')
              : '')
@@ -1306,7 +1306,7 @@ BARRY.notes = (function () {
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'What changed' }),
-        el('span', { class: 'sub', text: 'BARRY ' + (data.version || '') }),
+        el('span', { class: 'sub', text: 'Jarvis ' + (data.version || '') }),
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
@@ -1487,7 +1487,7 @@ const MODES = {
         + '· the aids are in the second window',
   },
   cfc: {
-    name: 'CFCScope',
+    name: 'Braid',
     /* The banner is the promise. The other two modes take a set off
        somebody, move a bench, write decisions; this one reads. Saying so
        where it cannot be missed is cheaper than anyone having to wonder,
@@ -1581,7 +1581,7 @@ function wireMode() {
 /* ==========================================================================
    Profile -- who the work is credited to
    ==========================================================================
-   Everything BARRY writes down carries a name: curation decisions, banked
+   Everything Jarvis writes down carries a name: curation decisions, banked
    event sets, layer sheets, exported figures, runs. That name used to come
    from `git config user.name`, falling back to the Windows account -- so on
    a shared rig every decision was credited to a computer, and two people on
@@ -1650,7 +1650,7 @@ BARRY.profile = (function () {
     }
   }
 
-  /* Everyone BARRY has come into contact with. Cached for the dialog's
+  /* Everyone Jarvis has come into contact with. Cached for the dialog's
      lifetime; a fresh copy each time it is opened. */
   let roster = null;
 
@@ -1800,7 +1800,7 @@ BARRY.profile = (function () {
           ? 'Adding somebody new to the roster. Save puts them on it; it '
             + 'does not change who this computer credits work to.'
           : 'This is who this computer credits work to. Save applies it to '
-            + 'everything BARRY records here from now on.');
+            + 'everything Jarvis records here from now on.');
     };
 
     /* Remove, and then say what actually happened.
@@ -1840,7 +1840,7 @@ BARRY.profile = (function () {
           + '.\n\nThe roster is compiled from the work itself, not from a '
           + 'list anybody keeps, so this name is here because the data says '
           + 'so. Taking it off could not un-say it, and a button that looked '
-          + 'like it had would be lying about what BARRY holds.',
+          + 'like it had would be lying about what Jarvis holds.',
           null);
         return;
       }
@@ -1958,7 +1958,7 @@ BARRY.profile = (function () {
              with work behind it therefore cannot be removed: it is stamped
              on those records whether the roster lists it or not, and a
              button that appeared to delete it would be lying about what
-             BARRY holds. Only the hand-added ones can go, which is exactly
+             Jarvis holds. Only the hand-added ones can go, which is exactly
              what a leftover test entry is.
 
              The count is in the tooltip rather than the button being
@@ -2018,7 +2018,7 @@ BARRY.profile = (function () {
     const body = el('div', { class: 'prof-form' }, [
       modeLine,
       el('p', { class: 'confirm-msg',
-        text: 'Everything BARRY records is credited to this: curation '
+        text: 'Everything Jarvis records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
             + 'every run. Set it once.' }),
       el('div', { class: 'section-label', text: 'People already here' }),
@@ -2094,7 +2094,7 @@ BARRY.profile = (function () {
               save.disabled = null;
               const go = await BARRY.confirm(
                 clash.name + ' is already on the roster',
-                'BARRY can update their details instead of adding a second '
+                'Jarvis can update their details instead of adding a second '
                 + clash.name + '. Two entries with the same name cannot be '
                 + 'told apart on any record.',
                 'Update ' + clash.name);
@@ -2129,7 +2129,7 @@ BARRY.profile = (function () {
                 + 'banked sets and their layer sheets. Renaming the roster '
                 + 'entry cannot rename those, so they would be left '
                 + 'crediting somebody the roster no longer lists.'
-                + '\n\nBARRY can add ' + typed + ' as a separate person '
+                + '\n\nJarvis can add ' + typed + ' as a separate person '
                 + 'instead, leaving ' + editing + ' exactly as they are. If '
                 + 'they really are the same person, archive one and add the '
                 + 'other as an alias — that folds the old name without '
@@ -2500,10 +2500,22 @@ function paintFavicon() {
   const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
   const bg = tok('--accent', '#154734');
   const ink = tok('--on-accent', '#FFB81C');
+  /* A trace whose tail hooks into a J.
+
+     The mark this replaces was a spike train in a rounded square, which
+     said "oscilloscope" rather than "Jarvis". Same badge, same signal, and
+     the tail now curls into the initial so the two are one stroke.
+
+     Drawn to read at 16 px: the spike is the tallest thing and the hook is
+     as heavy as the trace, because at a tab's size the fine detail goes and
+     whatever is left has to still be a mark. `tools/make_icons.py`
+     rasterises this exact path for the desktop icon, so the tab and the
+     shortcut cannot drift apart. */
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<rect width="32" height="32" rx="7" fill="' + bg + '"/>'
-    + '<path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none" stroke="' + ink
-    + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<rect width="32" height="32" rx="7.5" fill="' + bg + '"/>'
+    + '<path d="M3.2 11.6 H9 L13 3.8 L17 11.6 V19.4 Q17 24.2 12.4 24.2 Q8.6 24.2 8.1 20.6"'
+    + ' fill="none" stroke="' + ink + '" stroke-width="2.7"'
+    + ' stroke-linecap="round" stroke-linejoin="round"/>'
     + '</svg>';
   let link = document.querySelector('link[rel="icon"]');
   if (!link) {

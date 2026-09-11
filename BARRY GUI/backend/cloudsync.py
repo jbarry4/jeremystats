@@ -1,5 +1,5 @@
 """
-cloudsync.py -- Turning BARRY's records into rows, and back.
+cloudsync.py -- Turning Jarvis's records into rows, and back.
 
 Push and pull are not symmetric, on purpose.
 
@@ -25,7 +25,7 @@ import os
 
 from datetime import datetime
 
-from . import cloud, shards
+from . import cloud, eventbank, shards
 
 BUCKET = "results"
 
@@ -34,7 +34,12 @@ BUCKET = "results"
 # references them.
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
-    "bank_entries", "curation_sets", "curation_events", "curation_reviews",
+    "bank_entries",
+    # After the entries, always: a snapshot is filed against a version, and
+    # the version's metadata travels in the entry. The other way round, every
+    # snapshot would arrive for a version this machine has never heard of.
+    "bank_snapshots",
+    "curation_sets", "curation_events", "curation_reviews",
     "layer_sheets",
     "layer_labels", "storyboards", "results", "presets", "prefs",
     # Both directions. A report filed on the rig has to reach the desktop,
@@ -198,7 +203,7 @@ def _after(stamp, since):
 
 
 class Sync:
-    """Everything BARRY knows, in both directions."""
+    """Everything Jarvis knows, in both directions."""
 
     def __init__(self, logs_dir, store, bank=None, curate=None, layers=None,
                  mice=None, results=None, repo_root=None, feedback=None,
@@ -384,6 +389,34 @@ class Sync:
                 "updated_by": added.get("by") or self.machine,
             })
         return {"bank_entries": out}
+
+    def rows_bank_snapshots(self):
+        """One row per version that has a snapshot here.
+
+        `updated_at` is the version's creation time, not now(): it never
+        changes, so the incremental push sends each of these once and then
+        stops. A snapshot is immutable, so a re-push would be the same bytes
+        anyway -- this just saves sending them.
+        """
+        if not self.bank:
+            return {"bank_snapshots": []}
+        # Demo entries stay local, as they do for `rows_bank`.
+        real = {rec.get("id") for rec in self.bank.all()
+                if not self._is_demo(rec)}
+        out = []
+        for eid, v, snap, machine, at in self.bank.snapshots():
+            if eid not in real:
+                continue
+            out.append({
+                "entry_id": eid,
+                "v": int(v),
+                "n": len(snap),
+                "sha256": eventbank.snap_sha(snap),
+                "snap": snap,
+                "machine": machine,
+                "updated_at": cloud.ts(at) or UNSTAMPED,
+            })
+        return {"bank_snapshots": out}
 
     def rows_curation(self):
         sets, events, reviews = [], [], []
@@ -784,6 +817,7 @@ class Sync:
         "session_paths": "gid,path",
         "session_sightings": "gid,machine",
         "mice": "project,mouse",
+        "bank_snapshots": "entry_id,v",
         "curation_events": "set_id,event_id",
         "curation_reviews": "set_id,event_id,reviewer",
         "layer_labels": "gid,channel",
@@ -875,7 +909,7 @@ class Sync:
         Soft, because a hard delete is indistinguishable from a row somebody
         else has not fetched yet -- and because a session with curated events
         hanging off it should not evaporate on a stray click. `retired` is
-        already how BARRY hides a session it has been told to forget.
+        already how Jarvis hides a session it has been told to forget.
         """
         if not self.tombs:
             return {"marked": 0}
@@ -1020,6 +1054,9 @@ class Sync:
         applied["session_paths"] = self._apply_paths(fetch("session_paths"))
         applied["mice"] = self._apply_mice(fetch("mice"))
         applied["bank_entries"] = self._apply_bank(fetch("bank_entries"))
+        # After the entries: see the note beside `bank_snapshots` in ORDER.
+        applied["bank_snapshots"] = self._apply_bank_snapshots(
+            fetch("bank_snapshots"))
         applied["curation"] = self._apply_curation(
             fetch("curation_sets"), fetch("curation_events"))
         applied["layers"] = self._apply_layers(
@@ -1035,8 +1072,16 @@ class Sync:
             on_progress(applied)
 
         self.cloud.save_state({"last_pull": newest_holder[0] or cloud.now()})
-        return {"applied": applied, "since": since,
-                "through": newest_holder[0]}
+        out = {"applied": applied, "since": since,
+               "through": newest_holder[0]}
+        # A version that disagrees with itself across machines is a fault,
+        # not a merge. It rides out with the result so it is on screen
+        # rather than in a log nobody opens.
+        clashes = getattr(self, "snapshot_conflicts", None)
+        if clashes:
+            out["snapshot_conflicts"] = clashes
+            self.snapshot_conflicts = []
+        return out
 
     # -- appliers -------------------------------------------------------
     def _apply_feedback(self, rows, notes):
@@ -1401,6 +1446,41 @@ class Sync:
             self.mice.set(project, r["mouse"], attrs, note=r.get("note"))
             n += 1
         return n
+
+    def _apply_bank_snapshots(self, rows):
+        """Fill in the snapshots this machine is missing.
+
+        Only ever fills in. `absorb_snapshot` refuses to overwrite, so a
+        version that is already restorable here is left exactly as it is --
+        which is what makes this safe to run against a machine that has been
+        curating offline.
+
+        A disagreement between two copies of one version is filed rather than
+        resolved. There is no correct side to pick: v7 is what v7 was, and
+        two different answers means something upstream is wrong.
+        """
+        if not self.bank:
+            return 0
+        added = 0
+        clashes = []
+        for r in rows:
+            try:
+                got = self.bank.absorb_snapshot(
+                    r.get("entry_id"), r.get("v"), r.get("snap"),
+                    r.get("sha256"))
+            except Exception as exc:                       # noqa: BLE001
+                clashes.append("%s v%s: %s"
+                               % (r.get("entry_id"), r.get("v"), exc))
+                continue
+            if got == "added":
+                added += 1
+            elif isinstance(got, str) and got.startswith("conflict"):
+                clashes.append(got)
+        if clashes:
+            # Carried out of the sync rather than logged and forgotten: the
+            # caller puts it in the result, and the result is on screen.
+            self.snapshot_conflicts = clashes
+        return added
 
     def _apply_bank(self, rows):
         if not self.bank:

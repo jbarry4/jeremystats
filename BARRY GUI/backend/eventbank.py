@@ -13,6 +13,7 @@ the same reason the run log is shaped that way.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import platform
@@ -39,6 +40,29 @@ EVENT_TYPES = [
     {"id": "behavior", "name": "Behavior", "note": "scored from video"},
     {"id": "other", "name": "Other", "note": ""},
 ]
+
+
+def snap_sha(snap):
+    """A digest of a snapshot that two machines can agree on.
+
+    Canonicalised first: a time is rounded to the microsecond and a label is
+    text, so 315.275 and 315.27500000000003 -- the same event written by two
+    different float paths -- do not read as two different snapshots. The
+    digest is what makes "both copies agree" a check instead of an
+    assumption, and what catches a half-transferred one before somebody
+    restores from it.
+    """
+    rows = []
+    for pair in (snap or []):
+        try:
+            t = round(float(pair[0]), 6)
+        except (TypeError, ValueError, IndexError):
+            continue
+        lab = pair[1] if isinstance(pair, (list, tuple)) and len(pair) > 1 \
+            else None
+        rows.append([t, None if lab is None else str(lab)])
+    blob = json.dumps(rows, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 class BankError(Exception):
@@ -281,7 +305,7 @@ class EventBank:
             "events": clean,
             # The detector that produced the times stays the source.
             # Curation said what they are; it did not find them, and
-            # overwriting this with "BARRY curation" would lose the only
+            # overwriting this with "Jarvis curation" would lose the only
             # record of where the candidates came from.
             #
             # Written out rather than folded into one expression: a
@@ -447,7 +471,7 @@ class EventBank:
             versions.append(fresh)
 
             # A set whose very first bank is already curated: the migration
-            # edge case, where the sorting happened before BARRY existed and
+            # edge case, where the sorting happened before Jarvis existed and
             # arrives all at once. The unsorted list still has to be v0 --
             # it is the thing the sorting was done to, and without it the
             # history opens on a finished set and cannot say what moved. So
@@ -680,6 +704,78 @@ class EventBank:
         return n
 
     @shards.atomic
+    def snapshots(self):
+        """Every version snapshot this machine holds.
+
+        (entry_id, v, snap, machine, at) per version that has one. What the
+        push sends; the versions without a snapshot are the ones that
+        arrived from somewhere else and are still waiting for theirs.
+        """
+        out = []
+        for rec in self.all():
+            eid = rec.get("id")
+            if not eid:
+                continue
+            for ver in (rec.get("versions") or []):
+                snap = ver.get("snap")
+                if not snap:
+                    continue
+                try:
+                    v = int(ver.get("v"))
+                except (TypeError, ValueError):
+                    continue
+                out.append((eid, v, snap,
+                            ver.get("machine") or rec.get("machine"),
+                            ver.get("at")))
+        return out
+
+    def absorb_snapshot(self, entry_id, v, snap, sha=None):
+        """Fill in one version's snapshot from another machine.
+
+        Returns "added", "already", "unknown" or a conflict string. Never
+        overwrites: a snapshot is immutable, so the only honest outcomes are
+        "this machine did not have it" and "it already did".
+        """
+        if not snap:
+            return "unknown"
+        rec = self.get(entry_id)
+        if not rec:
+            return "unknown"
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            return "unknown"
+        hit = None
+        for ver in (rec.get("versions") or []):
+            if ver.get("v") == v:
+                hit = ver
+                break
+        if hit is None:
+            # The metadata has not arrived yet. `bank_entries` is applied
+            # before this table for exactly that reason, so this is a
+            # genuinely unknown version rather than a race.
+            return "unknown"
+
+        if hit.get("snap"):
+            if snap_sha(hit["snap"]) == snap_sha(snap):
+                # Same content. Clear the flag if it was still set: it
+                # is restorable here, and has been all along.
+                if hit.pop("snap_elsewhere", None):
+                    self._save(rec)
+                return "already"
+            return ("conflict: %s v%d differs from the copy here (%s vs %s)"
+                    % (entry_id, v, snap_sha(hit["snap"])[:12],
+                       snap_sha(snap)[:12]))
+
+        if sha and snap_sha(snap) != sha:
+            return ("conflict: %s v%d arrived with a digest that does not "
+                    "match its own content" % (entry_id, v))
+
+        hit["snap"] = snap
+        hit.pop("snap_elsewhere", None)
+        self._save(rec)
+        return "added"
+
     def absorb_versions(self, entry_id, versions, current=None):
         """Take on version metadata from another machine.
 

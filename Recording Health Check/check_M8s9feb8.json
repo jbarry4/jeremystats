@@ -1,0 +1,207 @@
+{
+  "folder": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+  "n_ncs_files": 64,
+  "reference_channel": "CSC1",
+  "sampling_rate": 30000.0,
+  "strict_gap_mode": false,
+  "gap_tolerance_us": 4267,
+  "n_records": 124485,
+  "total_samples": 63730335,
+  "n_segments": 8,
+  "concat_issue": true,
+  "true_span_s": 2124.466077,
+  "concat_span_s": 2124.3445,
+  "time_lost_s": 0.12157699999988836,
+  "segments": [
+    {
+      "start_rec": 0,
+      "end_rec": 103267,
+      "start_us": 1707497033060617,
+      "end_us": 1707498795476932,
+      "n_samples": 52872637
+    },
+    {
+      "start_rec": 103268,
+      "end_rec": 103268,
+      "start_us": 1707498795527199,
+      "end_us": 1707498795527865,
+      "n_samples": 20
+    },
+    {
+      "start_rec": 103269,
+      "end_rec": 103271,
+      "start_us": 1707498795561166,
+      "end_us": 1707498795575532,
+      "n_samples": 420
+    },
+    {
+      "start_rec": 103272,
+      "end_rec": 103272,
+      "start_us": 1707498795583132,
+      "end_us": 1707498795591132,
+      "n_samples": 240
+    },
+    {
+      "start_rec": 103273,
+      "end_rec": 104066,
+      "start_us": 1707498795601032,
+      "end_us": 1707498809118579,
+      "n_samples": 405401
+    },
+    {
+      "start_rec": 104067,
+      "end_rec": 104310,
+      "start_us": 1707498809124379,
+      "end_us": 1707498813263640,
+      "n_samples": 124176
+    },
+    {
+      "start_rec": 104311,
+      "end_rec": 109665,
+      "start_us": 1707498813271073,
+      "end_us": 1707498904631883,
+      "n_samples": 2740833
+    },
+    {
+      "start_rec": 109666,
+      "end_rec": 124484,
+      "start_us": 1707498904640108,
+      "end_us": 1707499157526694,
+      "n_samples": 7586608
+    }
+  ],
+  "gaps": [
+    {
+      "after_record": 103267,
+      "at_true_time_s": 1762.416315,
+      "gap_s": 0.050267,
+      "gap_samples_equiv": 1508.01,
+      "cumulative_shift_s": 0.050267
+    },
+    {
+      "after_record": 103268,
+      "at_true_time_s": 1762.467248,
+      "gap_s": 0.033301,
+      "gap_samples_equiv": 999.03,
+      "cumulative_shift_s": 0.083568
+    },
+    {
+      "after_record": 103271,
+      "at_true_time_s": 1762.514915,
+      "gap_s": 0.0076,
+      "gap_samples_equiv": 228.0,
+      "cumulative_shift_s": 0.091168
+    },
+    {
+      "after_record": 103272,
+      "at_true_time_s": 1762.530515,
+      "gap_s": 0.0099,
+      "gap_samples_equiv": 297.0,
+      "cumulative_shift_s": 0.101068
+    },
+    {
+      "after_record": 104066,
+      "at_true_time_s": 1776.057962,
+      "gap_s": 0.0058,
+      "gap_samples_equiv": 174.0,
+      "cumulative_shift_s": 0.106868
+    },
+    {
+      "after_record": 104310,
+      "at_true_time_s": 1780.203023,
+      "gap_s": 0.007433,
+      "gap_samples_equiv": 222.99,
+      "cumulative_shift_s": 0.114301
+    },
+    {
+      "after_record": 109665,
+      "at_true_time_s": 1871.571266,
+      "gap_s": 0.008225,
+      "gap_samples_equiv": 246.75,
+      "cumulative_shift_s": 0.122526
+    }
+  ],
+  "short_records": [
+    [
+      103266,
+      425,
+      1762.399282
+    ],
+    [
+      103267,
+      20,
+      1762.415649
+    ],
+    [
+      103268,
+      20,
+      1762.466582
+    ],
+    [
+      103269,
+      100,
+      1762.500549
+    ],
+    [
+      103270,
+      300,
+      1762.503982
+    ],
+    [
+      103271,
+      20,
+      1762.514249
+    ],
+    [
+      103272,
+      240,
+      1762.522515
+    ],
+    [
+      103273,
+      20,
+      1762.540415
+    ],
+    [
+      103474,
+      328,
+      1765.954568
+    ],
+    [
+      104066,
+      61,
+      1776.055929
+    ],
+    [
+      104067,
+      40,
+      1776.063762
+    ],
+    [
+      104310,
+      232,
+      1780.19529
+    ],
+    [
+      104311,
+      20,
+      1780.210456
+    ],
+    [
+      109665,
+      77,
+      1871.5687
+    ],
+    [
+      109666,
+      40,
+      1871.579491
+    ],
+    [
+      124484,
+      264,
+      2124.457277
+    ]
+  ],
+  "channel_mismatches": []
+}

@@ -262,10 +262,10 @@ BARRY.views.misc = (function () {
      Feature 2 -- Scratch runner
      The "just check one thing" script. Runs as a normal job so its output
      lands in the log dock and its run is recorded like any other, with the
-     repo and BARRY's own readers already importable.
+     repo and Jarvis's own readers already importable.
      ====================================================================== */
   const SCRATCH_SEED = [
-    '# nlx and csc are BARRY\'s own readers -- no MEX, no MATLAB needed.',
+    '# nlx and csc are Jarvis\'s own readers -- no MEX, no MATLAB needed.',
     'from backend import nlx',
     '',
     'folder = r"D:\\PTEN\\PTEN"',
@@ -323,7 +323,7 @@ BARRY.views.misc = (function () {
         },
       }),
       el('span', { class: 'hint',
-        text: 'The repo and BARRY\'s backend are on sys.path; os, sys, glob, '
+        text: 'The repo and Jarvis\'s backend are on sys.path; os, sys, glob, '
             + 'json, math and numpy as np are already imported.' }),
     ]));
 

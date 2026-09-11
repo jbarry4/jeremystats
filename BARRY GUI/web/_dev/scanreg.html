@@ -224,7 +224,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
   // Reload the app the way F5 would.
   frame.contentWindow.location.reload();
   await new Promise((r) => frame.addEventListener('load', r, { once: true }));
-  await until(() => ev('typeof BARRY') === 'object'
+  await until(() => ev('typeof Jarvis') === 'object'
                     && ev('BARRY.state.catalog'), 30000);
   ev("setView('sessions')");
   const back = await until(() => $$('.sess-card').length > 0, 15000);

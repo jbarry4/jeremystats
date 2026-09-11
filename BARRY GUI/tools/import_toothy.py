@@ -13,8 +13,8 @@ WHAT IS IMPORTED
     extraction note and whether the session still needs processing.
 
     These are anatomical landmarks: which channel sits at the fissure is a
-    fact about where the probe ended up, and BARRY had nowhere to put it, so
-    the answer lived in a spreadsheet. All 62 rows match a recording BARRY
+    fact about where the probe ended up, and Jarvis had nowhere to put it, so
+    the answer lived in a spreadsheet. All 62 rows match a recording Jarvis
     knows.
 
     And they are corroborated rather than trusted. The hilus channel the
@@ -25,7 +25,7 @@ WHAT IS IMPORTED
 
 WHAT IS NOT, AND WHY
     Recording Sessions: DS#, Garbage#, Flag#, Deep Rev.
-        BARRY holds the decisions these count, one per candidate, with who
+        Jarvis holds the decisions these count, one per candidate, with who
         made each and when. Of the 40 sessions where both exist, 22 agree
         exactly and 18 do not -- and m24 s4 reads spike 4 / garbage 734 in
         the workbook against spike 738 / garbage 0 here, which looks like
@@ -72,9 +72,9 @@ WORKBOOK = "PTEN Toothy Data .xlsx"
 
 OUT = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-# The sheet's count column, and the label id BARRY actually uses for it.
+# The sheet's count column, and the label id Jarvis actually uses for it.
 # `DS#` is the one that matters: the label is `spike`, and comparing against
-# an id of "ds" reported BARRY holding zero everywhere, which was a false
+# an id of "ds" reported Jarvis holding zero everywhere, which was a false
 # conflict and very nearly a wrong conclusion.
 COUNTS = [("DS#", "spike"), ("Garbage#", "garbage"),
           ("Flag#", "flag"), ("Deep Rev.", "review")]
@@ -157,7 +157,7 @@ def do_refs(store, index, wb, apply_it):
             continue
         recs = index.get(key) or []
         if len(recs) != 1:
-            say("  m%-3d s%-3d  SKIPPED: BARRY has %d recordings for this"
+            say("  m%-3d s%-3d  SKIPPED: Jarvis has %d recordings for this"
                 % (key[0], key[1], len(recs)))
             skipped += 1
             continue
@@ -209,13 +209,13 @@ def do_refs(store, index, wb, apply_it):
 
 
 def do_reconcile(store, index, wb, curate, layers):
-    """Where the workbook and BARRY disagree. Reports; never writes."""
+    """Where the workbook and Jarvis disagree. Reports; never writes."""
     say("\n" + "=" * 70)
     say("RECONCILIATION  (nothing is written by this)")
     say("=" * 70)
 
     idx, body = read_sheet(wb, "Recording Sessions")
-    say("\nCuration counts, workbook against BARRY's own decisions:")
+    say("\nCuration counts, workbook against Jarvis's own decisions:")
     agree = differ = nocur = 0
     lines = []
     for r in body:
@@ -246,7 +246,7 @@ def do_reconcile(store, index, wb, curate, layers):
             agree += 1
     say("  %d agree on every count, %d differ, %d have no curation set"
         % (agree, differ, nocur))
-    say("  (workbook/BARRY)")
+    say("  (workbook/Jarvis)")
     for line in lines:
         say(line)
 
@@ -286,7 +286,7 @@ def main():
     ap.add_argument("--apply", action="store_true",
                     help="actually write. Without it, only reports.")
     ap.add_argument("--reconcile", action="store_true",
-                    help="list where the workbook and BARRY disagree, and "
+                    help="list where the workbook and Jarvis disagree, and "
                          "write nothing at all")
     args = ap.parse_args()
 
@@ -296,7 +296,7 @@ def main():
     index = barry_index(A.STORE)
     say("Reading %s" % WORKBOOK)
     say("  sheets: %s" % ", ".join(wb.sheetnames))
-    say("  BARRY (mouse, session) keys: %d" % len(index))
+    say("  Jarvis (mouse, session) keys: %d" % len(index))
 
     if args.reconcile:
         do_reconcile(A.STORE, index, wb, A.CURATE, A.LAYERS)

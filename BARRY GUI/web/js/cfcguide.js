@@ -2,7 +2,7 @@
    cfcguide.js -- what the band axis and the comodulogram are actually doing.
 
    Opened by the little (i) beside the line the band-power panel prints about
-   its own bandwidth, and from CFCScope. Twelve chapters, from "a recording is
+   its own bandwidth, and from Braid. Twelve chapters, from "a recording is
    a voltage over time" to "here is what you may and may not claim".
 
    Every chapter computes. There are no pictures in this file: one synthetic
@@ -367,7 +367,7 @@ BARRY.cfcGuide = (function () {
       cycles: () => range('Filter length', 'cycles', 2, 24, 1,
                           (v) => v.toFixed(0) + ' cycles',
                           'How many cycles of its own low edge each filter '
-                          + 'watches for. BARRY’s eegfilt uses 3. This '
+                          + 'watches for. Jarvis’s eegfilt uses 3. This '
                           + 'is the number chapter 6 is about.'),
     };
     return el('div', { class: 'cfcg-bar' },
@@ -394,7 +394,7 @@ BARRY.cfcGuide = (function () {
       build: (h) => {
         h.appendChild(para(
           'One electrode in the hippocampus, sampled ' + FS + ' times a '
-          + 'second. Every panel in BARRY starts from this and nothing '
+          + 'second. Every panel in Jarvis starts from this and nothing '
           + 'else: a number per sample, in microvolts, and the only thing '
           + 'that has happened so far is that a wire was in a brain.'));
         h.appendChild(para(
@@ -492,7 +492,7 @@ BARRY.cfcGuide = (function () {
           'A filter cannot do this instantly. It has to watch the signal '
           + 'for long enough to tell one frequency from a nearby one, and '
           + '"long enough" is counted in cycles of the rhythm it is looking '
-          + 'for. BARRY’s filter watches for three. That single choice '
+          + 'for. Jarvis’s filter watches for three. That single choice '
           + 'is responsible for the line you clicked to get here, and '
           + 'chapter 6 is about it.'));
         h.appendChild(signalBar(['ftheta', 'noise', 'cycles']));
@@ -725,7 +725,7 @@ BARRY.cfcGuide = (function () {
         tbl.appendChild(body);
         h.appendChild(tbl);
         h.appendChild(small(
-          'Measured off the filter BARRY designs, at 3 kHz. The f/3 column '
+          'Measured off the filter Jarvis designs, at 3 kHz. The f/3 column '
           + 'is the rule of thumb; the filter does slightly better than it '
           + 'because firls is handed 15% ramps rather than a brick wall.'));
 
@@ -1311,7 +1311,7 @@ BARRY.cfcGuide = (function () {
           'The band axis of the band-resolved panel: from 4 Hz to 12 Hz in '
           + '0.5 Hz steps. Chapter 5 is what it draws; chapter 6 is why the '
           + 'rows are wider than 0.5.'],
-         ['CFCScope → Comodulogram…',
+         ['Braid → Comodulogram…',
           'Opens the window chapter 9 is about. It is a separate window on '
           + 'purpose: you keep it up while you move around the recording and '
           + 'stack maps as you go, because comparing two of them is most of '
@@ -1392,7 +1392,7 @@ BARRY.cfcGuide = (function () {
         });
         h.appendChild(dl);
         h.appendChild(small(
-          'Nothing in CFCScope or this guide writes anything down. Move the '
+          'Nothing in Braid or this guide writes anything down. Move the '
           + 'window, change the bands, change your mind: no set is claimed '
           + 'and no decision is recorded.'));
       },

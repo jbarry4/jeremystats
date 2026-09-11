@@ -551,7 +551,7 @@ class Curation:
             })
         return {
             "schema": self.HANDOFF_SCHEMA,
-            "what": "BARRY curation handoff",
+            "what": "Jarvis curation handoff",
             "from": {
                 "who": prov.get("user"),
                 "machine": prov.get("machine") or platform.node(),
@@ -576,7 +576,7 @@ class Curation:
         schema = bundle.get("schema")
         if schema and int(schema) > self.HANDOFF_SCHEMA:
             raise CurationError(
-                "That handoff was written by a newer BARRY (schema %s, this "
+                "That handoff was written by a newer Jarvis (schema %s, this "
                 "one reads %s). Update this copy first rather than importing "
                 "it half-understood." % (schema, self.HANDOFF_SCHEMA))
 
@@ -604,7 +604,7 @@ class Curation:
                 "kept": 0,         # we disagreed and ours stands
                 "disagreed": [], "unchanged": 0}
         if not gid or kind not in KINDS:
-            line["error"] = "That set says it is a %r set, which this BARRY " \
+            line["error"] = "That set says it is a %r set, which this Jarvis " \
                             "does not know about." % (kind,)
             return line
 

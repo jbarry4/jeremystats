@@ -125,7 +125,7 @@ def fake_drive():
     # first resolved "exact" to a tombstoned record and registered nothing.
     #
     # The mouse number and the dates move with the clock, so each run meets
-    # recordings BARRY has never seen.
+    # recordings Jarvis has never seen.
     mouse = 900 + (int(time.strftime("%j")) * 7 + int(time.strftime("%H%M"))
                    % 90) % 90
     day = time.strftime("2026-%m-%d")
