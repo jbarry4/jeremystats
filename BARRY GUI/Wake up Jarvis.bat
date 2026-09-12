@@ -1,5 +1,5 @@
 @echo off
-title BARRY GUI
+title Jarvis
 cd /d "%~dp0"
 
 set "PYEXE="
@@ -20,7 +20,7 @@ if not defined PYEXE (
 
 if %errorlevel% neq 0 (
     echo.
-    echo   BARRY GUI exited with an error. See the messages above.
+    echo   Jarvis exited with an error. See the messages above.
     echo   If packages are missing, run "Setup Windows.bat".
     pause
 )

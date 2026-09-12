@@ -1,0 +1,321 @@
+Javits debug report
+generated  2026-09-10 17:45:07
+machine    DESKTOP-4H65AI7 / Windows 10
+python     3.14.4
+matlab     C:\Program Files\MATLAB\R2023b\bin\matlab.EXE
+ffmpeg     C:\Users\Z390\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.EXE
+repo       C:\Users\Z390\Desktop\jeremystats
+view       errors
+session    None
+
+WHAT I WAS DOING
+------------------------------------------------------------------
+written by the check harness
+
+UI ACTIONS, oldest first (4)
+------------------------------------------------------------------
+:51.062Z  link.scope                 {"scope": "session"}
+:51.162Z  session.open               {"path": "demo:long-session", "channels": 64, "fs": 30000, "duration_s": 900, "restored": ["view restored"]}
+:52.062Z  ylim.change                {"ylim": null}
+:55.744Z  ylim.change                {"ylim": null}
+
+REQUESTS AS THE BROWSER SAW THEM (57)
+------------------------------------------------------------------
+17:44:51  GET  /api/notes                           200       11 ms
+17:44:51  GET  /api/prefs                           200       11 ms
+17:44:51  GET  /api/profile                         200       11 ms
+17:44:51  GET  /api/catalog                         200       20 ms
+17:44:51  GET  /api/pipeline                        200       10 ms
+17:44:51  GET  /api/presets/filters                 200       10 ms
+17:44:51  GET  /api/probes                          200       10 ms
+17:44:51  GET  /api/jobs                            200       10 ms
+17:44:51  GET  /api/panels                          200       10 ms
+17:44:51  GET  /api/presets/layouts                 200       10 ms
+17:44:51  GET  /api/sync/status                     200       20 ms
+17:44:51  POST /api/pipeline/check                  200       10 ms
+17:44:51  POST /api/csc/open                        200       10 ms
+17:44:51  POST /api/csc/overview                    200       10 ms
+17:44:51  POST /api/csc/window                      200       10 ms
+17:44:51  POST /api/prefs                           200       10 ms
+17:44:51  POST /api/csc/window                      200       10 ms
+17:44:52  POST /api/csc/window                      200       10 ms
+17:44:52  POST /api/link                            200       10 ms
+17:44:53  GET  /api/link                            200       10 ms
+17:44:53  GET  /api/link                            200       10 ms
+17:44:53  POST /api/link                            200       10 ms
+17:44:53  GET  /api/link                            200       10 ms
+17:44:54  GET  /api/link                            200       10 ms
+17:44:54  GET  /api/link                            200       10 ms
+17:44:54  POST /api/session/state                   200       10 ms
+17:44:54  POST /api/link                            200       10 ms
+17:44:55  GET  /api/link                            200       10 ms
+17:44:55  GET  /api/link                            200       10 ms
+17:44:55  POST /api/csc/window                      200       10 ms
+17:44:55  GET  /api/link                            200       10 ms
+17:44:56  GET  /api/link                            200       10 ms
+17:44:56  GET  /api/link                            200       10 ms
+17:44:56  POST /api/session/state                   200       10 ms
+17:44:57  GET  /api/link                            200       10 ms
+17:44:57  GET  /api/link                            200       10 ms
+17:44:57  GET  /api/link                            200       10 ms
+17:44:58  POST /api/panel                           200       10 ms
+17:44:58  GET  /api/link                            200       10 ms
+17:44:58  GET  /api/link                            200       10 ms
+17:44:59  GET  /api/link                            200       10 ms
+17:44:59  POST /api/panel                           200       10 ms
+17:44:59  GET  /api/link                            200       10 ms
+17:45:00  GET  /api/link                            200       10 ms
+17:45:00  GET  /api/link                            200       10 ms
+17:45:00  GET  /api/link                            200       10 ms
+17:45:01  GET  /api/link                            200       10 ms
+17:45:01  POST /api/panel                           200       10 ms
+17:45:01  GET  /api/link                            200       10 ms
+17:45:02  GET  /api/link                            200       10 ms
+17:45:02  GET  /api/errors                          200       10 ms
+17:45:02  GET  /api/feedback                        200       10 ms
+17:45:02  GET  /api/errors/grouped                  200       10 ms
+17:45:02  GET  /api/debug/trace                     200       10 ms
+17:45:02  GET  /api/devices                         200       10 ms
+17:45:02  GET  /api/link                            200       10 ms
+17:45:02  GET  /api/link                            200       10 ms
+
+REQUESTS AS THE SERVER SAW THEM, newest first (200)
+------------------------------------------------------------------
+17:45:07  GET  /api/devices                     200    945.1 ms  
+17:45:06  GET  /api/errors/grouped              200    253.8 ms  limit=600
+17:45:06  GET  /api/feedback                    200     44.9 ms  
+17:45:06  GET  /api/errors                      200     17.6 ms  limit=300
+17:45:06  POST /api/panel                       200   3965.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "scalogram", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch":
+17:45:02  POST /api/panel                       200   3550.7 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "scalogram", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch":
+17:44:58  POST /api/panel                       200    391.5 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "csd", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch": 0, "c
+17:44:57  POST /api/session/state               200   1493.3 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+17:44:56  POST /api/csc/window                  200    216.2 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+17:44:56  POST /api/session/state               200   1432.8 ms  {"identity": "{confidence, demo, gid, key, label, loose_key, mouse, project}", "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"}
+17:44:53  POST /api/csc/window                  200    222.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+17:44:53  POST /api/csc/window                  200    230.4 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+17:44:53  POST /api/prefs                       200     12.6 ms  {"patch": "{themes}"}
+17:44:53  POST /api/csc/window                  200    222.2 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "t0": 0, "t1": 10, "channels": "[64 items]", "px": 501, "highpass": 0, "lowpass": 0, "notch": 0, "mode":
+17:44:53  POST /api/csc/overview                200      0.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+17:44:52  POST /api/csc/open                    200   1590.5 ms  {"path": "demo:long-session", "invert": true}
+17:44:51  POST /api/pipeline/check              200    268.2 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+17:44:51  GET  /api/sync/status                 200     74.3 ms  
+17:44:51  GET  /api/presets/layouts             200      1.6 ms  
+17:44:51  GET  /api/panels                      200      9.5 ms  
+17:44:51  GET  /api/jobs                        200      0.1 ms  
+17:44:51  GET  /api/probes                      200      0.2 ms  
+17:44:51  GET  /api/presets/filters             200      0.9 ms  
+17:44:51  GET  /api/pipeline                    200      0.1 ms  
+17:44:51  GET  /api/catalog                     200     30.2 ms  
+17:44:51  GET  /api/profile                     200     10.6 ms  
+17:44:51  GET  /api/prefs                       200      3.4 ms  
+17:44:51  GET  /api/notes                       200      0.8 ms  
+17:44:48  POST /api/panel                       200   2082.2 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "panel": 
+17:44:46  GET  /api/sync/status                 200     61.6 ms  
+17:44:46  POST /api/session/bad                 200   1455.3 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "bad_channels": []}
+17:44:44  POST /api/csc/window                  200    620.5 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:43  GET  /api/sync/status                 200   1454.7 ms  
+17:44:42  POST /api/session/bad                 200   1525.7 ms  {"identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}", "bad_channels": [33]}
+17:44:40  POST /api/csc/window                  200   1409.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:39  POST /api/csc/window                  200    278.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:38  POST /api/csc/window                  200    275.6 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:38  POST /api/csc/window                  200    275.1 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:38  POST /api/csc/window                  200   1019.4 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:37  POST /api/prefs                       200     13.2 ms  {"patch": "{themes}"}
+17:44:37  POST /api/csc/overview                200      0.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "channel"
+17:44:37  POST /api/events/nev                  200     13.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10\\Events.nev", "session_path": "\\\\netfiles03.u
+17:44:37  POST /api/csc/open                    200    207.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true}
+17:44:36  GET  /api/registry                    200   3258.8 ms  
+17:44:34  POST /api/pipeline/check              200    527.2 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+17:44:33  GET  /api/sync/status                 200     91.5 ms  
+17:44:33  GET  /api/presets/layouts             200      2.9 ms  
+17:44:33  GET  /api/panels                      200     11.1 ms  
+17:44:33  GET  /api/jobs                        200      0.2 ms  
+17:44:33  GET  /api/presets/filters             200      2.1 ms  
+17:44:33  GET  /api/probes                      200      0.2 ms  
+17:44:33  GET  /api/pipeline                    200      0.1 ms  
+17:44:33  GET  /api/catalog                     200     40.1 ms  
+17:44:33  GET  /api/profile                     200     12.4 ms  
+17:44:33  GET  /api/prefs                       200      4.8 ms  
+17:44:33  GET  /api/notes                       200      0.8 ms  
+17:44:30  POST /api/panel                       200    248.2 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "panel": "bandpower", "t0": 0, "t1": 10, "channels": "[64 items]", "highpass": 0, "lowpass": 0, "notch":
+17:44:30  POST /api/csc/overview                200      1.8 ms  {"path": "demo:long-session", "even_only": false, "invert": true, "channel": 0, "bins": 700}
+17:44:30  POST /api/csc/open                    200   1697.7 ms  {"path": "demo:long-session", "invert": true}
+17:44:28  POST /api/prefs                       200     11.0 ms  {"patch": "{themes}"}
+17:44:28  POST /api/pipeline/check              200    279.5 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+17:44:28  GET  /api/sync/status                 200    115.5 ms  
+17:44:28  GET  /api/presets/layouts             200      2.9 ms  
+17:44:28  GET  /api/jobs                        200      0.2 ms  
+17:44:28  GET  /api/panels                      200     23.6 ms  
+17:44:28  GET  /api/probes                      200      0.3 ms  
+17:44:28  GET  /api/presets/filters             200      3.1 ms  
+17:44:28  GET  /api/pipeline                    200      0.6 ms  
+17:44:28  GET  /api/catalog                     200     52.1 ms  
+17:44:27  GET  /api/profile                     200      9.1 ms  
+17:44:27  GET  /api/prefs                       200      2.8 ms  
+17:44:27  GET  /api/notes                       200      0.9 ms  
+17:44:25  POST /api/panel                       200    430.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "panel": 
+17:44:25  POST /api/csc/window                  200    282.9 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:25  POST /api/csc/window                  200    372.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:24  POST /api/csc/window                  200    328.5 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:24  POST /api/csc/window                  200    329.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:23  POST /api/csc/window                  200   1081.3 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "t0": 127
+17:44:22  POST /api/csc/overview                200      6.5 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "even_only": false, "invert": true, "channel"
+17:44:22  POST /api/events/nev                  200     14.8 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10\\Events.nev", "session_path": "\\\\netfiles03.u
+17:44:22  POST /api/csc/open                    200    358.4 ms  {"path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "invert": true}
+17:44:22  GET  /api/registry/s34d1f0b371d4      200     76.1 ms  
+17:44:22  GET  /api/registry                    200   1506.1 ms  
+17:44:20  POST /api/prefs                       200     13.9 ms  {"patch": "{themes}"}
+17:44:20  POST /api/pipeline/check              200    320.8 ms  {"folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10", "track": "session"}
+17:44:20  GET  /api/sync/status                 200     89.0 ms  
+17:44:20  GET  /api/presets/layouts             200      0.9 ms  
+17:44:20  GET  /api/jobs                        200      0.1 ms  
+17:44:20  GET  /api/panels                      200      9.1 ms  
+17:44:20  GET  /api/probes                      200      0.2 ms  
+17:44:20  GET  /api/presets/filters             200      0.9 ms  
+17:44:20  GET  /api/pipeline                    200      0.1 ms  
+17:44:20  GET  /api/catalog                     200     31.6 ms  
+17:44:20  GET  /api/profile                     200     11.2 ms  
+17:44:20  GET  /api/prefs                       200      4.4 ms  
+17:44:20  GET  /api/notes                       200      0.8 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.3 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.4 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.6 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.4 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.7 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.4 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.4 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.7 ms  
+17:44:18  GET  /api/cfc/job/64edd264a25a        200      0.6 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.5 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.3 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.2 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+17:44:17  GET  /api/cfc/job/64edd264a25a        200      0.1 ms  
+
+LAST 12 LOGGED ERRORS
+------------------------------------------------------------------
+[2026-09-10T17:51:59+00:00] ui/mode.bounce: The mode changed to none and back to curate in 1772ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-10T17:45:57+00:00] ui/mode.bounce: The mode changed to none and back to curate in 1937ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-10T17:44:16-04:00] ui/mode.bounce: The mode changed to cfc and back to none in 900ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-10T17:44:09-04:00] panel:bandpower: A 0.05 Hz band needs a 179997-tap filter at 3000 Hz (eegfilt uses 3*fix(fs/locutoff)), and designing one means solving a 179997 by 179997 least-squares system -- 241.4 GiB. It would also need 207 s of recording to run at all. The lowest band edge this rate can afford is 0.78 Hz; raise the bottom of the band range.
+Traceback (most recent call last):
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 953, in api_panel
+    out = analysis.render_panel(sess, body)
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\analysis.py", line 495, in render_panel
+    out = _panel_bandpower(session, spec)
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\analysis.py", line 903, in _panel_bandpower
+    power = cfc.band_power(y, fs_used, vec, bw)
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\cfc.py", line 381, in band_power
+    y = eegfilt(x, fs, f1, f1 + bw)
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\cfc.py", line 190, in eegfilt
+    return filtfilt(eegfilt_taps(fs, locutoff, hicutoff), [1.0], x)
+                    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\cfc.py", line 166, in eegfilt_taps
+    check_designable(fs, locutoff)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\cfc.py", line 131, in check_designable
+    raise ValueError(
+    ...<6 lines>...
+           needed_seconds(locutoff), design_limit(fs)))
+ValueError: A 0.05 Hz band ne
+[2026-09-10T17:44:05-04:00] ui/mode.bounce: The mode changed to strata and back to none in 120ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.
+[2026-09-10T17:42:09+00:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Data Bank\\HARNESS\\m99\\s1\\ied - seeded entry.json.tmp' -> 'C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Data Bank\\HARNESS\\m99\\s1\\ied - seeded entry.json'
+[2026-09-10T17:41:32-04:00] cloud.sync: GET /rest/v1/bank_snapshots?updated_at=gt.2026-09-10T21:40:37.532817%2B00:00&select=*&limit=1000&offset=0 -> HTTP 404 {"code":"PGRST205","details":null,"hint":"Perhaps you meant the table 'public.bank_entries'","message":"Could not find the table 'public.bank_snapshots' in the schema cache"}
+
+That table is not in the database yet. Run the files in supabase/ against the project (01_schema.sql first), then sync again.
+[2026-09-10T17:38:19-04:00] bank.mirror: [WinError 5] Access is denied: 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-10T17:38:19+00:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json.tmp' -> 'C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Data Bank\\KCNT1\\m22\\s4 2026-06-18\\spike - bankback spikes.json'
+[2026-09-10T17:37:53-04:00] selftest: Test error from the Errors panel
+No stack trace -- this entry was created on purpose.
+[2026-09-10T17:36:15+00:00] cloud.sync: [WinError 5] Access is denied: 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\HARNESS\\m99\\s1\\ied - seeded entry.json.tmp' -> 'C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Data Bank\\HARNESS\\m99\\s1\\ied - seeded entry.json'
+[2026-09-10T17:35:14-04:00] ui/mode.bounce: The mode changed to strata and back to none in 4360ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.

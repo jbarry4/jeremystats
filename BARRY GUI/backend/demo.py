@@ -3,7 +3,7 @@ demo.py -- recordings that are not on disk.
 
 Why
 ---
-Nothing in BARRY does anything until somebody has scanned a drive and found
+Nothing in Jarvis does anything until somebody has scanned a drive and found
 a session. That is fine on the rig and useless everywhere else: a new person
 opening it for the first time, on a laptop, with no drive mounted, has an
 empty application and a Guide that walks them past features it cannot

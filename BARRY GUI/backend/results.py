@@ -2,7 +2,7 @@
 results.py -- The Results catalog and the Storyboard store.
 
 RESULTS
-    Everything BARRY saves is cataloged here automatically: figures exported
+    Everything Jarvis saves is cataloged here automatically: figures exported
     from the builder, single-window trace exports, and any image or table a
     pipeline stage drops into a session folder. A result is a row of metadata --
     what it is, which session it came from, who made it, which run produced it --
@@ -75,7 +75,7 @@ class Results:
     # Catalog
     # ------------------------------------------------------------------
     def catalog(self, refresh=False, extra_roots=None):
-        """Every result BARRY has saved, newest first.
+        """Every result Jarvis has saved, newest first.
 
         Deliberately one source: the Results folder in the repo. It used to
         also sweep data roots for whatever a MATLAB stage had left in a
@@ -92,7 +92,7 @@ class Results:
 
         items = {}
 
-        # 1. Anything exported through BARRY, which carries real provenance.
+        # 1. Anything exported through Jarvis, which carries real provenance.
         for rec in self.store.all_runs():
             out = rec.get("output") or {}
             path = out.get("path")
@@ -365,7 +365,7 @@ class Results:
     # one. That is the whole point: what the Results view shows and what you
     # see when you open the folder are the same thing, so a figure you filed
     # under "Figure 3" is at Results/Figure 3/ and can be dragged into a
-    # slide deck, emailed, or found by someone who has never opened BARRY.
+    # slide deck, emailed, or found by someone who has never opened Jarvis.
     #
     # It costs more than a label, because moving a file breaks whatever was
     # holding its old path -- the run that produced it, a storyboard slide

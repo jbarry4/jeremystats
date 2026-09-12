@@ -59,7 +59,7 @@ async function untilN(fn, tries = 250, gap = 100) {
   await new Promise((r) => f.addEventListener('load', r, { once: true }));
   /* Getters, not saved references. A harness that holds contentWindow across
      an await is holding a handle that any navigation invalidates, and the
-     failure reads as "BARRY is undefined" a long way from the cause. */
+     failure reads as "Jarvis is undefined" a long way from the cause. */
   const win = () => f.contentWindow;
   const doc = () => f.contentDocument;
   let W = win(), D = doc();
@@ -70,7 +70,7 @@ async function untilN(fn, tries = 250, gap = 100) {
   /* `BARRY` is a top-level const in core.js, so it is in the script scope
      and NOT a property of the frame's window: `contentWindow.BARRY` is
      undefined forever. `setView` is a function declaration, so it does land
-     on the window. Anything on BARRY has to be reached through eval, which
+     on the window. Anything on Jarvis has to be reached through eval, which
      runs inside the frame's own scope. */
   await untilN(() => typeof win().setView === 'function');
   await sleep(600);

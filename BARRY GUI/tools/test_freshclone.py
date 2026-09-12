@@ -4,7 +4,7 @@ test_freshclone.py -- What somebody gets when they clone the repo.
 The question this answers is "will it just work for the next person", and the
 only honest way to ask it is to build what git would actually hand them --
 tracked files only, none of the gitignored local state -- and then see what
-BARRY does with it.
+Jarvis does with it.
 
 What must be true:
 
@@ -53,9 +53,9 @@ def tracked_files():
                              timeout=120)
         return [l for l in res.stdout.splitlines() if l.strip()]
 
-    files = set(run(["git", "ls-files", "--", "BARRY GUI"]))
+    files = set(run(["git", "ls-files", "--", "Jarvis"]))
     files |= set(run(["git", "ls-files", "--others",
-                      "--exclude-standard", "--", "BARRY GUI"]))
+                      "--exclude-standard", "--", "Jarvis"]))
     return sorted(files)
 
 
@@ -63,7 +63,7 @@ def main():
     print("Building what a clone would get...")
     files = tracked_files()
     tmp = tempfile.mkdtemp(prefix="barry-clone-")
-    dest_app = os.path.join(tmp, "BARRY GUI")
+    dest_app = os.path.join(tmp, "Jarvis")
     n = 0
     for rel in files:
         src = os.path.join(REPO, rel)
@@ -129,8 +129,8 @@ def main():
         print("What it does when started")
         logs = os.path.join(dest_app, "GUI_logs")
         env = dict(os.environ)
-        env.pop("BARRY_SUPABASE_KEY", None)
-        env.pop("BARRY_SUPABASE_URL", None)
+        env.pop("Jarvis_SUPABASE_KEY", None)
+        env.pop("Jarvis_SUPABASE_URL", None)
         env["PYTHONPATH"] = dest_app
 
         probe = (

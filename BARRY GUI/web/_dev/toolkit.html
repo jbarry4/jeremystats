@@ -223,7 +223,7 @@ async function until(fn, ms) {
   const csv = await csvRes.text();
   const lines = csv.trim().split('\n');
   check('it opens with a line saying what it is',
-        lines[0].startsWith('# BARRY GUI bad-channel export'), lines[0]);
+        lines[0].startsWith('# Jarvis bad-channel export'), lines[0]);
   check('then a header row',
         lines[1].startsWith('project,mouse,session,date'), lines[1]);
   check('then one row per bad channel',

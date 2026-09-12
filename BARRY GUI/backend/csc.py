@@ -380,10 +380,15 @@ def _read_channel_window(session, ch, t0, t1):
     return seg, i0 / fs, fs
 
 
-def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0):
+def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0,
+                  exact=False, report=None):
     """Zero-phase Butterworth band shaping (filtfilt -> no phase distortion).
 
     Matches the xplorefinder low/high pass controls; 0 disables a stage.
+
+    `exact` forbids the coarse-subtraction shortcut in `_highpass` and
+    `_notch` whatever it costs. `report`, if given, is a dict this fills in
+    with what was actually done, so a caller can say so on screen.
     """
     if x.size == 0 or not HAVE_SCIPY:
         return x
@@ -411,9 +416,9 @@ def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0):
 
     try:
         if notch and 0 < notch < nyq:
-            y = _notch(y, fs, notch)
+            y = _notch(y, fs, notch, exact=exact, report=report)
         if highpass and 0 < highpass < nyq:
-            y = _highpass(y, fs, highpass)
+            y = _highpass(y, fs, highpass, exact=exact, report=report)
         if lowpass and 0 < lowpass < nyq:
             y = sosfiltfilt(butter(4, lowpass / nyq, btype="lowpass", output="sos"), y)
     except Exception:
@@ -497,11 +502,11 @@ def _subtract_coarse(y, fs, target_fs, make_component):
     return y
 
 
-def _highpass(y, fs, corner):
+def _highpass(y, fs, corner, exact=False, report=None):
     """High-pass: the signal minus its own low-frequency baseline."""
     direct = lambda: sosfiltfilt(
         butter(2, corner / (fs / 2.0), btype="highpass", output="sos"), y)
-    if fs / max(corner, 1e-9) < BASELINE_RATIO:
+    if exact or fs / max(corner, 1e-9) < BASELINE_RATIO:
         return direct()
 
     def baseline(coarse, fs_c):
@@ -511,16 +516,21 @@ def _highpass(y, fs, corner):
                    output="sos"), coarse)
 
     out = _subtract_coarse(y, fs, 20.0 * corner, baseline)
-    return out if out is not None else direct()
+    if out is None:
+        return direct()
+    if report is not None:
+        report.setdefault("coarse_filters", []).append(
+            "%g Hz high-pass" % corner)
+    return out
 
 
-def _notch(y, fs, freq, q_factor=30.0):
+def _notch(y, fs, freq, q_factor=30.0, exact=False, report=None):
     """Notch: the signal minus the narrow band around `freq`."""
     def direct():
         b, a = iirnotch(freq / (fs / 2.0), q_factor)
         return sosfiltfilt(tf2sos(b, a), y)
 
-    if fs / max(freq, 1e-9) < BASELINE_RATIO:
+    if exact or fs / max(freq, 1e-9) < BASELINE_RATIO:
         return direct()
 
     def hum(coarse, fs_c):
@@ -536,7 +546,11 @@ def _notch(y, fs, freq, q_factor=30.0):
     # the error under a tenth of a percent, and the coarse array is still
     # small enough that the filter on it costs nothing.
     out = _subtract_coarse(y, fs, 40.0 * freq, hum)
-    return out if out is not None else direct()
+    if out is None:
+        return direct()
+    if report is not None:
+        report.setdefault("coarse_filters", []).append("%g Hz notch" % freq)
+    return out
 
 
 def _prep_for_filter(x, fs, highpass, lowpass, notch, px, span):
@@ -649,10 +663,24 @@ def _json_row(arr):
     return [None if not np.isfinite(v) else float(v) for v in arr]
 
 
+# Every sample, per channel, when somebody asks for no envelope.
+#
+# 400 k points is 13 s at 30 kHz, or two minutes of a 3 kHz .mat -- past
+# anything a screen can show and already a large JSON array. The refusal
+# names the window that would fit rather than leaving somebody to guess.
+FULL_RATE_MAX_POINTS = 400_000
+
+
 def get_window(session, t0, t1, channels=None, px=1400,
                highpass=0.0, lowpass=0.0, notch=0.0, mode="voltage",
-               spacing_um=50.0, ylim=None):
-    """Build the payload the viewer draws: per-channel min/max envelopes."""
+               spacing_um=50.0, ylim=None, full_rate=False, report=None):
+    """Build the payload the viewer draws: per-channel min/max envelopes.
+
+    `full_rate` sends every sample instead -- no envelope, no decimation
+    before filtering, the exact filter -- so that what is drawn is the
+    recording rather than a summary of it. `report`, if given, is filled in
+    with what was actually done either way.
+    """
     all_ch = session["channels"]
     if channels:
         sel = [all_ch[i] for i in channels if 0 <= i < len(all_ch)]
@@ -673,21 +701,46 @@ def get_window(session, t0, t1, channels=None, px=1400,
     # however far out the view is zoomed.
     needs_stack = mode == "csd"
 
+    rep = report if report is not None else {}
+
+    if full_rate:
+        # Checked before reading anything, from the arithmetic rather than
+        # from a failed allocation.
+        want = int(round((t1 - t0) * fs))
+        if want > FULL_RATE_MAX_POINTS:
+            fits = FULL_RATE_MAX_POINTS / max(fs, 1.0)
+            return {"ok": False, "error":
+                    "Every sample of %.3g s at %g Hz is %s points per "
+                    "channel, past the %s this will send without an "
+                    "envelope. About %.2g s would fit — or leave the "
+                    "envelope on, which keeps the true extremes."
+                    % (t1 - t0, fs, "{:,}".format(want),
+                       "{:,}".format(FULL_RATE_MAX_POINTS), fits)}
+
     rows, filtered = [], []
     actual_t0, actual_fs = t0, fs
     width = 0
     for ch in sel:
         seg, seg_t0, seg_fs = _read_channel_window(session, ch, t0, t1)
         actual_t0, actual_fs = seg_t0, seg_fs
-        seg, seg_fs = _prep_for_filter(seg, seg_fs, highpass, lowpass,
-                                       notch, px, t1 - t0)
+        raw_fs = seg_fs
+        if not full_rate:
+            seg, seg_fs = _prep_for_filter(seg, seg_fs, highpass, lowpass,
+                                           notch, px, t1 - t0)
+            if seg_fs != raw_fs:
+                rep["prefilter"] = {"from": float(raw_fs),
+                                    "to": float(seg_fs)}
         actual_fs = seg_fs
-        seg = apply_filters(seg, seg_fs, highpass, lowpass, notch)
+        seg = apply_filters(seg, seg_fs, highpass, lowpass, notch,
+                            exact=bool(full_rate), report=rep)
         width = max(width, seg.size)
         if needs_stack:
             filtered.append(seg)
         else:
-            rows.append((ch, envelope(seg, px), _scale_sample(seg)))
+            n_out = seg.size if full_rate else px
+            rows.append((ch, envelope(seg, n_out), _scale_sample(seg)))
+            if not full_rate and seg.size > px:
+                rep["envelope"] = {"samples": int(seg.size), "columns": px}
 
     if width == 0:
         return {"ok": False, "error": "No samples in that time range."}
@@ -735,6 +788,14 @@ def get_window(session, t0, t1, channels=None, px=1400,
         except (TypeError, ValueError):
             pass
 
+    # What was done to get here, in the payload rather than only in a
+    # caller's dict: every caller of this draws or exports the result, and
+    # all of them owe the reader the same sentence.
+    rep["full_rate"] = bool(full_rate)
+    rep["raw_fs"] = float(fs)
+    rep["column_ms"] = (1000.0 * (t1 - t0) / max(len(series[0]["min"]), 1)
+                        if series else None)
+
     return {
         "ok": True, "t0": float(actual_t0),
         "t1": float(actual_t0 + width / actual_fs),
@@ -746,6 +807,7 @@ def get_window(session, t0, t1, channels=None, px=1400,
         "robust_auto": robust_auto,
         "ylim_manual": manual,
         "abs_max": abs_max,
+        "sampling": rep,
     }
 
 

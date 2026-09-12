@@ -18,7 +18,7 @@ BARRY.views.sessions = (function () {
 
   /* Availability is a choice, not a switch.
 
-     "Everything BARRY knows" and "only what I can open right now" are two
+     "Everything Jarvis knows" and "only what I can open right now" are two
      different jobs -- one is a catalogue of 473 recordings, the other is a
      work queue of 184 -- and as the ninth checkbox in a row of nine that
      distinction was invisible. */
@@ -61,7 +61,7 @@ BARRY.views.sessions = (function () {
 
      The scan page used to hold its results in memory and nothing else, so a
      refresh emptied it -- a strange thing for a page about what is on your
-     drives to do. Everything BARRY has ever met is in the registry now, so
+     drives to do. Everything Jarvis has ever met is in the registry now, so
      the page opens showing all of it faint and a scan brightens what it
      finds. Refreshing costs you the brightening, not the list. */
   const foundNow = new Set();
@@ -142,7 +142,7 @@ BARRY.views.sessions = (function () {
     };
   }
 
-  /* Everything BARRY knows, as the starting list. */
+  /* Everything Jarvis knows, as the starting list. */
   async function loadKnown(force) {
     if (knownLoaded && !force) return;
     knownLoaded = true;
@@ -381,7 +381,7 @@ BARRY.views.sessions = (function () {
           el('button', {
             class: 'btn sm', text: 'Add anyway',
             title: 'Register it despite the check. Nothing about the '
-                 + 'recording changes; BARRY just stops leaving it out.',
+                 + 'recording changes; Jarvis just stops leaving it out.',
             onclick: async (e) => {
               e.target.disabled = true;
               try {
@@ -415,13 +415,13 @@ BARRY.views.sessions = (function () {
         el('p', { class: 'hint',
           text: 'These look like recordings but did not pass the check, so '
               + 'they are not in the registry. Nothing on the drive has been '
-              + 'touched \u2014 BARRY does not delete data it did not write.' }),
+              + 'touched \u2014 Jarvis does not delete data it did not write.' }),
         el('div', { class: 'held-list' }, rows),
       ]),
     ]));
   }
 
-  /* A scan is the one moment BARRY has the whole picture of a drive, so
+  /* A scan is the one moment Jarvis has the whole picture of a drive, so
        everything it walked past is now registered -- not just the handful
        anyone opens. The server did the writing; this tells the registry view
        which ones were actually laid eyes on, so they stop being merely
@@ -431,7 +431,7 @@ BARRY.views.sessions = (function () {
       box.appendChild(el('span', {
         class: 'stat-chip',
         title: 'Every recording found is now in Sessions › Everything '
-             + 'BARRY knows, whether or not you open it',
+             + 'Jarvis knows, whether or not you open it',
         text: reg.new
           ? reg.new + ' new · ' + reg.seen + ' catalogued'
           : reg.seen + ' catalogued',
@@ -487,7 +487,7 @@ BARRY.views.sessions = (function () {
   function matches(s) {
     /* "Scan a drive" is this computer's own view: what it has been exposed
        to, read off the registry on disk with no database involved.
-       "Everything BARRY knows" is the shared catalogue -- every recording
+       "Everything Jarvis knows" is the shared catalogue -- every recording
        any machine has met, which is what travels through Supabase.
 
        A recording found by the scan running now counts as met whether or
@@ -702,7 +702,7 @@ BARRY.views.sessions = (function () {
        is FOR rather than which subset of it you see. */
     box.appendChild(el('div', { class: 'ctl-pop-group' }, [
       el('div', { class: 'ctl-pop-title', text: 'Which recordings' }),
-      radio('Everything BARRY knows', avail === 'all',
+      radio('Everything Jarvis knows', avail === 'all',
             'Every recording on record, including ones on drives nobody '
             + 'has mounted since.',
             () => { avail = 'all'; refresh(); }, 'all'),
@@ -866,7 +866,7 @@ BARRY.views.sessions = (function () {
            + (remembered ? ' remembered' : ' found'),
       title: remembered
         ? ((s.path || '(no path on this machine)')
-           + '\n\nKnown to BARRY, but this scan has not found it.')
+           + '\n\nKnown to Jarvis, but this scan has not found it.')
         : s.path,
       onclick: (e) => {
         if (!s.path) {
@@ -1384,7 +1384,7 @@ BARRY.views.sessions = (function () {
         BARRY.views.housekeeping.onShow();
       } else {
         renderRecents();
-        // Open showing what BARRY already knows rather than an empty page.
+        // Open showing what Jarvis already knows rather than an empty page.
         loadKnown();
       }
     },

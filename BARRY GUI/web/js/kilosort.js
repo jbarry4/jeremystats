@@ -31,10 +31,10 @@ BARRY.kilosort = (function () {
   let settings = null;
   let invert = true;
   let pane = 'setup';        // setup | run | phy
-  /* Which interpreter to use. BARRY itself may be running on a Python torch
+  /* Which interpreter to use. Jarvis itself may be running on a Python torch
      does not build for -- 3.14, as it happens -- and every route here takes
      a `python` argument, so the fix is choosing one rather than installing
-     anything. Null means "the one BARRY is running on". */
+     anything. Null means "the one Jarvis is running on". */
   let python = null;
   let job = null;            // the running sort or install
   let phyGuide = null;
@@ -142,15 +142,15 @@ BARRY.kilosort = (function () {
       el('span', { text: env && env.ready
         ? 'Everything it needs imports in ' + (env.python || 'this Python')
           + '.'
-        : 'Each one below says what to type. You can also let BARRY run it.' }),
+        : 'Each one below says what to type. You can also let Jarvis run it.' }),
     ]));
 
     if ((env.interpreters || []).length > 1) node.appendChild(pythonPicker());
     if (env.switched) {
       node.appendChild(el('p', { class: 'hint',
-        text: 'BARRY runs on a Python that torch does not build for, so this '
+        text: 'Jarvis runs on a Python that torch does not build for, so this '
             + 'pane switched to Python ' + (env.python_version || '')
-            + '. BARRY itself carries on unchanged — this only affects '
+            + '. Jarvis itself carries on unchanged — this only affects '
             + 'what the sort runs on.' }));
     }
 
@@ -228,7 +228,7 @@ BARRY.kilosort = (function () {
       value: i.path,
       text: 'Python ' + (i.version || '?')
           + (i.usable ? '' : '  \u2014 no torch for this one')
-          + (i.current ? '  (BARRY runs on this)' : '')
+          + (i.current ? '  (Jarvis runs on this)' : '')
           + '   ' + i.path,
     }));
     const sel = el('select', {
@@ -250,7 +250,7 @@ BARRY.kilosort = (function () {
           ? 'torch publishes no build for that version, so installing it '
             + 'fails with "from versions: none" \u2014 which reads like a '
             + 'network problem and is not one.'
-          : 'BARRY can keep running on its own Python; this is only what the '
+          : 'Jarvis can keep running on its own Python; this is only what the '
             + 'sort runs on.' }),
     ]);
   }
@@ -326,7 +326,7 @@ BARRY.kilosort = (function () {
 
     if (!pick) {
       node.appendChild(el('p', { class: 'hint',
-        text: 'Pick a recording and BARRY will work out whether it can be '
+        text: 'Pick a recording and Jarvis will work out whether it can be '
             + 'sorted before anything runs.' }));
       return;
     }
@@ -509,7 +509,7 @@ BARRY.kilosort = (function () {
 
     node.appendChild(el('p', { class: 'hint',
       text: 'Phy opens what Kilosort decided and lets you disagree with it. '
-          + 'It is a desktop window of its own — BARRY starts it and '
+          + 'It is a desktop window of its own — Jarvis starts it and '
           + 'gets out of the way. What you save there lands beside the sort '
           + 'as cluster_group.tsv.' }));
 

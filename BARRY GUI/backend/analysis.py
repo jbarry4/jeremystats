@@ -121,10 +121,23 @@ def _stack(session, spec, channels=None):
     notch = float(spec.get("notch", 0) or 0)
 
     rows, actual_t0, fs = [], t0, session["fs"]
+    frep = {}
     for ch in sel:
         seg, seg_t0, seg_fs = csc._read_channel_window(session, ch, t0, t1)
         actual_t0, fs = seg_t0, seg_fs
-        rows.append(csc.apply_filters(seg, seg_fs, hp, lp, notch))
+        rows.append(csc.apply_filters(seg, seg_fs, hp, lp, notch,
+                                      exact=_full_rate(spec), report=frep))
+    # The coarse-subtraction shortcut, if the filters took it. This is the
+    # one that reaches the spike detector and the comodulogram, so it is
+    # reported even though it changes the trace by a fraction of a
+    # microvolt.
+    if frep.get("coarse_filters"):
+        _note(spec, "filter shortcut",
+              "the band removed by the "
+              + ", ".join(frep["coarse_filters"])
+              + " was measured on a decimated copy and subtracted, rather "
+                "than filtering every sample",
+              extra={"filters": frep["coarse_filters"]})
 
     width = max((r.size for r in rows), default=0)
     if width == 0:
@@ -267,10 +280,32 @@ def _robust_clim(m, pct=99.5, symmetric=True, dyn_range=None):
     return (lo, hi)
 
 
-def _decimate_cols(m, max_cols=2000):
-    """Cap raster width; a raster wider than the screen buys nothing."""
+def _decimate_cols(m, max_cols=2000, spec=None, span=None):
+    """Cap raster width; a raster wider than the screen buys nothing.
+
+    Records what one column ended up covering, which is the number that
+    actually limits reading time structure off the picture. With
+    `full_rate` the cap is lifted tenfold rather than removed: an image
+    with a column per sample is not a wider picture, it is an unsendable
+    one.
+    """
     if m.shape[1] <= max_cols:
         return m
+    if spec is not None:
+        cell = (1000.0 * span / max_cols) if span else None
+        _note(spec, "picture width",
+              "the raster is averaged into %s columns from %s samples%s"
+              % ("{:,}".format(int(max_cols)), "{:,}".format(m.shape[1]),
+                 (" — one column is %.3g ms, so anything briefer than "
+                  "that is averaged into its neighbours" % cell)
+                 if cell else ""),
+              factor=int(np.ceil(m.shape[1] / max_cols)),
+              # A picture is as wide as the pane. `full_rate` used to raise
+              # this cap tenfold, which produced a 20000-column image that
+              # looked exactly the same and took ten times as long -- so the
+              # toggle appeared to do nothing, because it did nothing.
+              reversible=False,
+              extra={"columns": int(max_cols), "column_ms": cell})
     step = int(np.ceil(m.shape[1] / max_cols))
     n = (m.shape[1] // step) * step
     # A block that is entirely NaN (a bad channel) averages to NaN by design.
@@ -281,6 +316,109 @@ def _decimate_cols(m, max_cols=2000):
 
 # --------------------------------------------------------------------------
 # Panels
+# --------------------------------------------------------------------------
+# What was downsampled
+# --------------------------------------------------------------------------
+# Somebody reading a panel cannot tell 3 kHz from 30 kHz by looking, and the
+# difference decides what the picture is allowed to mean. So every step that
+# changes or limits that gets recorded and shown, and every one of them can
+# be turned off.
+#
+# `lossy` is the flag the badge reads: it means "this limits what you can
+# conclude", not "this is wrong". Anti-aliased decimation to 3 kHz is sound
+# and still lossy in that sense -- there is nothing above 1.5 kHz in the
+# answer. `antialiased: False` is the stronger warning: content from above
+# the new Nyquist folded INTO the band on screen.
+def _note(spec, what, why, frm=None, to=None, factor=None,
+          antialiased=True, lossy=True, reversible=True, extra=None):
+    rep = spec.get("_report")
+    if rep is None:
+        return
+    # `reversible` is whether `full_rate` can undo it. A picture is as wide
+    # as the pane it is drawn in, so its averaging cannot be turned off --
+    # and offering a switch that does nothing is worse than saying so.
+    step = {"what": what, "why": why, "lossy": bool(lossy),
+            "antialiased": bool(antialiased),
+            "reversible": bool(reversible)}
+    if frm is not None:
+        step["from"] = float(frm)
+    if to is not None:
+        step["to"] = float(to)
+    if factor is not None:
+        step["factor"] = int(factor)
+    if extra:
+        step.update(extra)
+    rep.append(step)
+    return step
+
+
+def _full_rate(spec):
+    return bool(spec.get("full_rate"))
+
+
+def window_steps(win):
+    """`csc.get_window`'s report, as the same steps a panel reports.
+
+    Public because the trace view does not go through `render_panel` -- it
+    calls `/api/csc/window` directly -- and the pane that draws the raw
+    trace must not be the one place with no badge on it.
+    """
+    steps = []
+    if not isinstance(win, dict):
+        return steps
+    e = win.get("envelope")
+    if e:
+        n = int(e.get("samples") or 0)
+        cols = int(e.get("columns") or 1)
+        steps.append({
+            "what": "envelope",
+            "why": "drawn as %s min/max columns from %s samples — the "
+                   "extremes are exact, the shape inside a column is not"
+                   % ("{:,}".format(cols), "{:,}".format(n)),
+            "lossy": True, "antialiased": True, "reversible": True,
+            "factor": int(max(1, round(n / max(cols, 1)))),
+            "column_ms": win.get("column_ms"),
+        })
+    pf = win.get("prefilter")
+    if pf:
+        steps.append({
+            "what": "rate before filtering",
+            "why": "block-mean decimated to %g Hz before the filters, which "
+                   "the low-pass makes safe" % (pf.get("to") or 0),
+            "from": pf.get("from"), "to": pf.get("to"),
+            "lossy": True, "antialiased": True, "reversible": True,
+        })
+    if win.get("coarse_filters"):
+        steps.append({
+            "what": "filter shortcut",
+            "why": "the band removed by the "
+                   + ", ".join(win["coarse_filters"])
+                   + " was measured on a decimated copy and subtracted",
+            "lossy": True, "antialiased": True, "reversible": True,
+            "filters": win["coarse_filters"],
+        })
+    return steps
+
+
+# A full-rate comodulogram or CWT is not a slower version of the same thing,
+# it is a different order of cost: 975 cells over 1.8 M samples is billions
+# of operations. Refused with the number rather than started.
+FULL_RATE_MAX_SAMPLES = 1_200_000
+
+
+def _full_rate_ceiling(n, fs, what):
+    if n <= FULL_RATE_MAX_SAMPLES:
+        return
+    raise PanelError(
+        "%s at the full %g Hz is %s samples, past the %s this will attempt. "
+        "About %.3g s of recording would fit at this rate — or leave the "
+        "decimation on, which is anti-aliased and keeps everything below "
+        "%g Hz."
+        % (what, fs, "{:,}".format(int(n)),
+           "{:,}".format(FULL_RATE_MAX_SAMPLES),
+           FULL_RATE_MAX_SAMPLES / max(fs, 1.0), fs / 2.0))
+
+
 # --------------------------------------------------------------------------
 def describe_input(session, spec, used=None):
     """One line saying what this analysis actually ran on.
@@ -336,7 +474,14 @@ def _clock(t):
 
 
 def render_panel(session, spec):
-    """Render one panel. `spec.panel` selects which."""
+    """Render one panel. `spec.panel` selects which.
+
+    The spec is copied and given somewhere to record what was downsampled.
+    NOT the caller's dict: `/api/panel` uses the request body as the prewarm
+    cache key both before and after this call, so a key added here would
+    mean the cache never hit again.
+    """
+    spec = dict(spec, _report=[])
     kind = spec.get("panel", "voltage")
     if kind == "traces":
         out = _panel_traces(session, spec)
@@ -359,6 +504,19 @@ def render_panel(session, spec):
     if isinstance(out, dict) and out.get("ok"):
         out["input"] = describe_input(session, spec,
                                       used=out.get("channels_used"))
+        # The traces panel gets its facts from `get_window`, which reports
+        # in its own payload; fold them in so there is one place to look.
+        win = out.pop("sampling", None)
+        steps = list(spec.get("_report") or [])
+        if isinstance(win, dict):
+            steps.extend(window_steps(win))
+            out["full_rate"] = bool(win.get("full_rate"))
+        out["sampling"] = steps
+        out["downsampled"] = any(x.get("lossy") for x in steps)
+        # Whether the offer is worth making. A raster whose only step is its
+        # own width has nothing to turn off.
+        out["reversible"] = any(x.get("lossy") and x.get("reversible", True)
+                                for x in steps)
     return out
 
 
@@ -369,7 +527,8 @@ def _panel_traces(session, spec):
         highpass=float(spec.get("highpass", 0) or 0),
         lowpass=float(spec.get("lowpass", 0) or 0),
         notch=float(spec.get("notch", 0) or 0),
-        mode="voltage", spacing_um=float(spec.get("spacing_um", 50) or 50))
+        mode="voltage", spacing_um=float(spec.get("spacing_um", 50) or 50),
+        full_rate=_full_rate(spec))
     if not win.get("ok"):
         raise PanelError(win.get("error", "Could not read that window."))
     win["panel"] = "traces"
@@ -411,7 +570,13 @@ def _panel_raster(session, spec, mode):
         units = "uV"
         default_cmap = "jet"
 
-    matrix = _decimate_cols(matrix, int(spec.get("max_cols", 2000)))
+    # The time axis of the picture. Reported, because one column of a 60 s
+    # window at 1800 columns is 33 ms and a dentate spike is narrower than
+    # that -- so what can be seen here is not what was read.
+    matrix = _decimate_cols(matrix, int(spec.get("max_cols", 2000)),
+                            spec=spec,
+                            span=float(spec.get("t1", 0) or 0)
+                                 - float(spec.get("t0", 0) or 0))
 
     clim = _explicit_clim(spec)
     if clim is None:
@@ -723,7 +888,17 @@ def _panel_bandpower(session, spec):
     target_fs = float(spec.get("target_fs", 3000) or 3000)
     if hi + bw >= target_fs * 0.4:
         target_fs = (hi + bw) * 4.0
-    y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
+    if _full_rate(spec):
+        _full_rate_ceiling(row.size, fs, "Band power")
+        y, fs_used, factor = row, fs, 1
+    else:
+        y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
+    if factor > 1:
+        _note(spec, "analysis rate",
+              "the band filters ran at %g Hz, not %g — anti-aliased, so "
+              "nothing above %g Hz is in this answer"
+              % (fs_used, fs, fs_used / 2.0),
+              frm=fs, to=fs_used, factor=factor)
 
     power = cfc.band_power(y, fs_used, vec, bw)
 
@@ -740,7 +915,8 @@ def _panel_bandpower(session, spec):
     profile = power.mean(axis=1)
     peak_i = int(np.argmax(profile))
 
-    matrix = _decimate_cols(power, int(spec.get("max_cols", 2000)))
+    matrix = _decimate_cols(power, int(spec.get("max_cols", 2000)),
+                            spec=spec, span=shown_t1 - shown_t0)
 
     log = str(spec.get("band_scale", "log")).lower() != "linear"
     if log:
@@ -1018,9 +1194,20 @@ def _cwt(y, fs, fmin, fmax, spec):
     # Cap the transform length; a CWT over a long window at high fs is huge.
     max_n = int(spec.get("max_cwt_samples", 200000) or 200000)
     step = 1
-    if y.size > max_n:
+    if _full_rate(spec):
+        _full_rate_ceiling(y.size, fs, "A scalogram")
+    elif y.size > max_n:
         step = int(np.ceil(y.size / max_n))
         y = y[::step]
+        # Said plainly, because this one is not anti-aliased: it is a plain
+        # stride, so anything between the new Nyquist and the old one is
+        # FOLDED INTO the band being drawn. Spike energy in a 250 Hz
+        # scalogram arrives this way.
+        _note(spec, "scalogram rate",
+              "every %dth sample was taken, with no anti-alias filter, so "
+              "energy between %g and %g Hz is folded into this picture"
+              % (step, fs / (2.0 * step), fs / 2.0),
+              frm=fs, to=fs / step, factor=step, antialiased=False)
     fs_eff = fs / step
 
     n = y.size
@@ -1045,7 +1232,9 @@ def _cwt(y, fs, fmin, fmax, spec):
         power[i] = np.abs(coef) ** 2
 
     times = np.arange(n) / fs_eff
-    power = _decimate_cols(power, int(spec.get("max_cols", 2000)))
+    power = _decimate_cols(power, int(spec.get("max_cols", 2000)),
+                           spec=spec,
+                           span=(n / fs_eff) if fs_eff else None)
     if power.shape[1] != n:
         times = np.linspace(times[0], times[-1], power.shape[1])
     return power, freqs, times
@@ -1277,9 +1466,19 @@ def run_comodulogram(session, spec, job=None):
         # Room above the highest band, so the amplitude axis is not measuring
         # its own Nyquist. 2.5x the top band rather than the bare 2x.
         target_fs = top * 2.5
-    y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
+    if _full_rate(spec):
+        _full_rate_ceiling(row.size, fs, "A comodulogram")
+        y, fs_used, factor = row, fs, 1
+    else:
+        y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
     if job:
         job.tick("decimate", 1)
+    if factor > 1:
+        _note(spec, "analysis rate",
+              "every band filter and every modulation index ran at %g Hz, "
+              "not %g — anti-aliased, so nothing above %g Hz is in this "
+              "map" % (fs_used, fs, fs_used / 2.0),
+              frm=fs, to=fs_used, factor=factor)
 
     # Trim the padding in the decimated space, so the grid sees exactly the
     # window that was asked for.

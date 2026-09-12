@@ -1,5 +1,5 @@
 """
-cloud_setup.py -- Point BARRY at a Supabase project, and check it works.
+cloud_setup.py -- Point Jarvis at a Supabase project, and check it works.
 
 The key never goes in the repo. It is written to GUI_logs/.cloud.json, which
 .gitignore covers, and this refuses to write anywhere git can see. If a key
@@ -79,7 +79,7 @@ def main():
     ap.add_argument("--url", help="project id, or the full https:// URL")
     ap.add_argument("--key", help="the SECRET key (sb_secret_...)")
     ap.add_argument("--auto", choices=["on", "off"],
-                    help="sync in the background while BARRY runs")
+                    help="sync in the background while Jarvis runs")
     ap.add_argument("--interval", type=int,
                     help="seconds between background syncs")
     ap.add_argument("--check", action="store_true",

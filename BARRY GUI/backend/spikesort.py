@@ -24,7 +24,7 @@ can run it at all.
 
 One thing here is a genuine improvement rather than a wrapper: bad channels.
 Kilosort takes them as 0-based indices, the lab records them as CSC numbers,
-and BARRY already knows which channels were marked bad for the recording. That
+and Jarvis already knows which channels were marked bad for the recording. That
 conversion is done here, once, with the off-by-one written down, rather than
 in each person's head.
 """
@@ -194,7 +194,7 @@ def interpreters():
             "note": note,
         })
 
-    add(sys.executable, "the one BARRY is running on")
+    add(sys.executable, "the one Jarvis is running on")
 
     # The Windows launcher knows about every registered install.
     code, listing = _run(["py", "-0p"], timeout=30)
@@ -629,15 +629,15 @@ def runner_script(repo_root, session_path, probe_path, settings_path,
     """The script a run would execute, as text.
 
     Written out rather than called in-process on purpose: it is readable
-    before it runs, it can be re-run by hand without BARRY, and when it fails
+    before it runs, it can be re-run by hand without Jarvis, and when it fails
     at 2am the file that failed is still sitting there to be read.
     """
     bad = bad_channels_for_kilosort(bad_csc)
     return '''"""
-Kilosort run, written by BARRY GUI.
+Kilosort run, written by Jarvis.
 
 Kept as a file rather than run inline so you can read it before it runs, and
-re-run it afterwards without BARRY. Everything below is what the interface
+re-run it afterwards without Jarvis. Everything below is what the interface
 resolved: paths as they are on this machine, and bad channels converted from
 CSC numbers to the 0-based indices Kilosort counts in.
 """
@@ -650,7 +650,7 @@ PROBE       = r"%(probe)s"
 SETTINGS    = r"%(settings)s"
 RESULTS_DIR = r"%(results)s"
 
-# CSC numbers %(bad_csc)s from BARRY, minus one each: the .ncs files are
+# CSC numbers %(bad_csc)s from Jarvis, minus one each: the .ncs files are
 # CSC1..CSC64 and Kilosort counts binary rows from zero.
 BAD_CHANNELS = %(bad)s
 

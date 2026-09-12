@@ -2,7 +2,7 @@
 test_twomachines.py -- Two computers, one repo, no conflicts.
 
 test_shards.py proves the merge algebra. This proves the thing people actually
-care about: that BARRY's stores, as wired up, let two machines work on the same
+care about: that Jarvis's stores, as wired up, let two machines work on the same
 recordings and end up agreeing -- and that git would have nothing to resolve.
 
 It works on a throwaway copy of GUI_logs, so it never touches real records.
@@ -38,8 +38,8 @@ def check(name, got, want):
 
 
 def stores(logs, machine):
-    """A fresh set of BARRY's stores, pretending to be `machine`."""
-    os.environ["BARRY_MACHINE"] = machine
+    """A fresh set of Jarvis's stores, pretending to be `machine`."""
+    os.environ["Jarvis_MACHINE"] = machine
     shards._MACHINE = None
     for mod in [m for m in list(sys.modules)
                 if m.startswith("backend.") or m == "backend"]:
@@ -172,7 +172,7 @@ def main():
         check("conflict_check agrees", res.returncode, 0)
 
     finally:
-        os.environ.pop("BARRY_MACHINE", None)
+        os.environ.pop("Jarvis_MACHINE", None)
         shards._MACHINE = None
         shutil.rmtree(tmp, ignore_errors=True)
 

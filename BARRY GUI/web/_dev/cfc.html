@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Harness — CFCScope</title>
+<title>Harness — Braid</title>
 <style>
  html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
  #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
@@ -8,7 +8,7 @@
 </style>
 <div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* CFCScope is the mode that decides nothing, so unlike the curation and
+/* Braid is the mode that decides nothing, so unlike the curation and
    layer harnesses this one has nothing to put back afterwards -- which is
    itself one of the things it checks.
 
@@ -356,7 +356,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
   await untilN(() => ev('BARRY.cfc.active'));
   ck('it reports itself active', ev('BARRY.cfc.active') === true);
   ck('the banner names it',
-     (W().document.getElementById('modeName') || {}).textContent === 'CFCScope',
+     (W().document.getElementById('modeName') || {}).textContent === 'Braid',
      (W().document.getElementById('modeName') || {}).textContent);
   ck('the banner says nothing is saved',
      /nothing here is saved/i.test(
@@ -496,7 +496,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
   ck('the form comes up, filled in from the opener',
      !!W().document.querySelector('#comodBody .comod-form'));
   ck('it did not fall back to the "no opener" message',
-     !/opened from CFCScope/.test(
+     !/opened from Braid/.test(
        (W().document.getElementById('comodBody') || {}).textContent || ''));
   const truth = (W().document.querySelector('.comod-truth') || {})
     .textContent || '';
@@ -573,10 +573,10 @@ const hd = (t) => p('\n== ' + t + ' ==');
   }
   p('\n' + (bad ? bad + ' FAILED' : 'all ok')
     + '  (' + ran + ' checks)');
-  document.title = (bad ? bad + ' fail' : 'ok') + ' — CFCScope';
+  document.title = (bad ? bad + ' fail' : 'ok') + ' — Braid';
 })().catch((e) => {
   p('\nFAIL  the harness crashed before it finished: ' + (e && e.message));
   p(String((e && e.stack) || '').split('\n').slice(0, 6).join('\n'));
-  document.title = 'crash — CFCScope';
+  document.title = 'crash — Braid';
 });
 </script>

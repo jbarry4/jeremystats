@@ -1,7 +1,7 @@
 /* ==========================================================================
    results.js -- the Results catalog.
 
-   Everything BARRY saves is listed here automatically: figures from the
+   Everything Jarvis saves is listed here automatically: figures from the
    builder, single-window exports, and any image or table a pipeline stage
    drops into a session folder. Nothing has to be filed by hand -- the catalog
    is rebuilt by scanning, so a colleague's committed figure shows up after a
@@ -31,7 +31,7 @@ BARRY.views.results = (function () {
      a collection is a saved search, so its contents change when the results
      do; a folder is where a result lives, and it lives in one.
 
-     Filing is BARRY's, not the disk's: the files stay where the run wrote
+     Filing is Jarvis's, not the disk's: the files stay where the run wrote
      them, because a run record points at a path and moving the file behind
      it would break the rebuild of every figure made before the move. */
   let folders = [];
@@ -428,7 +428,7 @@ BARRY.views.results = (function () {
           text: 'These files are removed from disk. This cannot be undone.' }),
         outside ? el('p', { class: 'confirm-msg',
           text: outside + ' of the selected result(s) live outside the Output '
-              + 'folder and will be left alone \u2014 BARRY only deletes what '
+              + 'folder and will be left alone \u2014 Jarvis only deletes what '
               + 'it filed itself.' }) : null,
         el('div', { class: 'source-box' }, [
           el('pre', { text: inside.map((r) => r.name).join('\n') || '(nothing)' }),

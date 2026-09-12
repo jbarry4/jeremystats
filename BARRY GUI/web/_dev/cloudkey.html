@@ -88,7 +88,7 @@ async function until(fn, ms = 12000) {
           !!D.querySelector('.cloud-ask input.cloud-key'));
     check('and says where to get it',
           /API Keys/.test((ask || {}).textContent || ''));
-    check('and that BARRY works without it',
+    check('and that Jarvis works without it',
           /without it/.test((ask || {}).textContent || ''));
 
     // The mistake, through the actual UI.

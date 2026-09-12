@@ -10,7 +10,7 @@
    time anyone re-exports, and when it is slightly off every label is off by a
    fraction of a channel with nothing on screen to say so.
 
-   Here the panels are drawn from the recording, so BARRY already knows which
+   Here the panels are drawn from the recording, so Jarvis already knows which
    lane is channel 14. There is nothing to crop and nothing to drift. And
    because it is not a snapshot, you can filter, change the window, or zoom
    into the theta while you decide -- which is what you actually want when a

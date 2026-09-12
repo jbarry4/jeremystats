@@ -5089,6 +5089,52 @@ BARRY.views.xplore = (function () {
     return since < 900 ? PANEL_SETTLE : 80;
   }
 
+  /* What the wait is for.
+
+     `loader(label, sub)` builds its text once, when the pane is built, so
+     the overlay said "reading channels" whatever was being asked for. This
+     rewrites the two lines per request -- cheap, and the only chance to be
+     specific about a read that can take ten times as long. */
+  const PANEL_WORDS = {
+    traces: 'Voltage traces', voltage: 'Voltage raster', csd: 'CSD raster',
+    theta: 'Theta raster', bandpower: 'Band power',
+    spectrogram: 'Spectrogram', scalogram: 'Scalogram',
+  };
+
+  function sayLoading(pane, sess) {
+    const host = pane && pane._loading;
+    if (!host) return;
+    const strong = host.querySelector('.loader-text strong');
+    const sub = host.querySelector('.loader-text span');
+    const fs = (sess && sess.info && sess.info.fs) || 0;
+    const rate = fs >= 1000 ? Math.round(fs / 1000) + ' kHz'
+                            : (fs ? Math.round(fs) + ' Hz' : '');
+    const nch = (sess && sess.sel && sess.sel.size) || 0;
+    const chans = nch ? nch + ' channel' + (nch === 1 ? '' : 's') : '';
+    const bits = [];
+    if (pane.fullRate) {
+      if (rate) bits.push('every sample at ' + rate);
+      if (sess && (sess.hp || sess.lp || sess.notch)) {
+        bits.push('exact filters, no shortcut');
+      }
+      if (pane.panel === 'bandpower' && rate) {
+        bits.push('filters designed at ' + rate);
+      }
+      if (chans) bits.push(chans);
+    } else {
+      if (chans) bits.push(chans);
+      if (pane.panel === 'bandpower') bits.push('one filter per band');
+      else if (pane.panel === 'scalogram') bits.push('wavelet transform');
+      else if (pane.panel === 'spectrogram') bits.push('short-time Fourier');
+    }
+    if (strong) {
+      strong.textContent = pane.fullRate
+        ? 'Full rate — the slow read'
+        : (PANEL_WORDS[pane.panel] || 'Reading');
+    }
+    if (sub) sub.textContent = bits.join('  \u00b7  ');
+  }
+
   function refreshPane(index) {
     clearTimeout(debouncers[index]);
     debouncers[index] = setTimeout(() => doRefreshPane(index),
@@ -5121,6 +5167,7 @@ BARRY.views.xplore = (function () {
     // that ever rendered.
     const id = (pane._req = (pane._req || 0) + 1);
     if (pane._loading) pane._loading.classList.remove('hidden');
+    sayLoading(pane, sess);
     const px = Math.max(200, Math.floor((pane._canvas ? pane._canvas.clientWidth : 900) - 70));
     try {
       const win = await apiPost('/api/csc/window', {
@@ -5131,6 +5178,7 @@ BARRY.views.xplore = (function () {
         mode: 'voltage', spacing_um: sess.spacing,
         bad_channels: Array.from(sess.bad),
         ylim: sess.ylim,
+        full_rate: !!pane.fullRate,
       });
       if (id !== pane._req) return;
       sess.win = win;
@@ -5144,6 +5192,11 @@ BARRY.views.xplore = (function () {
                 sess.invert ? 'inverted' : null,
                 sess.evenOnly ? 'even only' : null,
                ].filter(Boolean).join('  \u00b7  '),
+        // The trace is a min/max envelope unless somebody said otherwise,
+        // and that decides whether waveform shape can be read off it.
+        sampling: win.sampling,
+        downsampled: win.downsampled,
+        full_rate: win.full_rate,
       });
       // Drawing is separated from fetching so a render fault is reported as
       // one, instead of being mistaken for a failed request.
@@ -5210,6 +5263,8 @@ BARRY.views.xplore = (function () {
       bad_channels: Array.from(sess.bad),
       max_cols: 1800,
       clim: pane.clim || sess.clim || null,
+      // Off by default. Every panel says whether it took it.
+      full_rate: !!pane.fullRate,
     };
     if (pane.panel === 'bandpower') {
       /* One channel, and the band axis rather than a frequency range.
@@ -5258,6 +5313,7 @@ BARRY.views.xplore = (function () {
       ? new AbortController() : null;
     pane._abort = ctl;
     if (pane._loading) pane._loading.classList.remove('hidden');
+    sayLoading(pane, sess);
     try {
       const spec = panelSpec(index, pane, sess);
       const res = await apiPost('/api/panel', spec,
@@ -5389,6 +5445,7 @@ BARRY.views.xplore = (function () {
 
     /* Channel rules and labels. Without them a stacked raster is an anonymous
        block of color -- you cannot tell which band is which electrode. */
+    let gutter = 0;
     if (rows.length > 1) {
       const lane = h / rows.length;
       const compact = lane < 13;
@@ -5415,7 +5472,12 @@ BARRY.views.xplore = (function () {
         ctx.fillRect(2, ty - 9, tw + 6, 11);
         ctx.fillStyle = r.bad ? '#ffcf8a' : 'rgba(255,255,255,0.82)';
         ctx.fillText(text, 5, ty);
+        // The widest label drawn, so the caption can start clear of them.
+        // Measured here because the box above needs the width anyway.
+        gutter = Math.max(gutter, 2 + tw + 6);
       }
+      pane._labelGutter = gutter;
+      placeCaption(pane);
     } else if (res.log_freq || (res.freqs && res.freqs.length === 2)) {
       /* The frequency axis of a single time-frequency panel.
 
@@ -5721,8 +5783,165 @@ BARRY.views.xplore = (function () {
             + sig(res.freqs[1]) + ' Hz of ' + sig(res.freqs_computed[0])
             + '\u2013' + sig(res.freqs_computed[1]) + ' computed';
     }
-    n.textContent = text;
-    n.classList.toggle('hidden', !text);
+    n.innerHTML = '';
+    n.appendChild(el('span', { text: text }));
+
+    if (res.downsampled) n.appendChild(dsBadge(pane, res));
+    else if (res.full_rate || pane.fullRate) {
+      /* A button, not a label. It was a `<span>`, so once full rate was on
+         there was no way back to the cheap read -- the one thing this chip
+         has to be able to say is "and here is how to undo me". */
+      n.appendChild(dsBadge(pane, res, true));
+    }
+    n.classList.toggle('hidden', !text && !res.downsampled
+                                 && !res.full_rate);
+    placeCaption(pane);
+  }
+
+  /* Clear of the channel gutter.
+
+     The overlay's lanes sit at left:0 too and are as wide as the longest
+     channel name, so this is measured rather than guessed -- a pane showing
+     CSC28-CSC29 needs a wider indent than one showing CSC2. Called from
+     `showPanelInput` and again from `alignChannelRows`, because the lanes
+     are built out of the canvas geometry AFTER the caption is written: on
+     the first call there is usually nothing to measure yet, and on the
+     second there is. */
+  function placeCaption(pane) {
+    const n = pane && pane._inputLine;
+    if (!n) return;
+    /* Two kinds of gutter. A trace pane builds its channel rows as DOM, so
+       the widest lane can be measured. A raster paints its row labels onto
+       the grid canvas and records the widest one it drew. Either way the
+       caption starts after the labels rather than on them. */
+    const lane = pane._overlay && pane._overlay.querySelector('.ch-lane');
+    const indent = lane
+      ? Math.ceil(lane.getBoundingClientRect().width) + 10
+      : (pane._labelGutter ? Math.ceil(pane._labelGutter) + 8 : 0);
+    n.style.left = indent + 'px';
+    n.style.maxWidth = indent ? 'calc(70% - ' + indent + 'px)' : '62%';
+    const box = pane._canvas && pane._canvas.parentNode
+                && pane._canvas.parentNode.querySelector('.ds-detail');
+    if (box) box.style.left = indent + 'px';
+  }
+
+  /* What was downsampled, and the way to turn it off.
+
+     Shown as a badge rather than a line of prose because the point is that
+     it is noticeable: somebody reading a panel cannot tell 3 kHz from
+     30 kHz by looking, and the difference decides what the picture is
+     allowed to mean. */
+  function dsBadge(pane, res, full) {
+    const steps = res.sampling || [];
+    const folded = !full && steps.some((x) => x.antialiased === false);
+    const badge = el('button', {
+      class: 'ds-chip' + (folded ? ' alias' : '') + (full ? ' full' : ''),
+      text: full ? 'FULL RATE' : 'DOWNSAMPLED',
+      title: full
+        ? 'Every sample, no envelope, exact filters. Click to go back to '
+          + 'the cheap read.'
+        : folded
+        ? 'One of these steps is NOT anti-aliased — energy from outside '
+          + 'the band is folded into this picture. Click for what happened.'
+        : 'This panel did not run on every sample. Click for what happened '
+          + 'and how to turn it off.',
+      onclick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        /* The caption's PARENT: not the strip itself, which is one line
+           wide and overflow-hidden, and not an element found by class --
+           `closest('.pane-canvas-host, .pane-plot')` matched something that
+           is not a containing block on an image panel, and the detail
+           opened over the pane's control strip.
+
+           The caption is positioned correctly on every panel type, so
+           sharing its parent shares a frame that is known to work. */
+        const strip = pane._inputLine || badge.parentNode;
+        const plot = strip.parentNode || badge.parentNode;
+        const open = plot.querySelector('.ds-detail');
+        if (open) { open.remove(); return; }
+        plot.appendChild(dsDetail(pane, res));
+        placeCaption(pane);
+      },
+    });
+    return badge;
+  }
+
+  /* A sample rate as somebody would say it: 30 kHz, 3 kHz, 1017 Hz. */
+  function rateWords(hz) {
+    const v = Number(hz) || 0;
+    if (v >= 1000 && Math.abs(v % 1000) < 1) return (v / 1000) + ' kHz';
+    if (v >= 10000) return round(v / 1000, 1) + ' kHz';
+    return round(v, v < 100 ? 1 : 0) + ' Hz';
+  }
+
+  function dsDetail(pane, res) {
+    const steps = res.sampling || [];
+    const box = el('div', { class: 'ds-detail floating' });
+    for (const st of steps) {
+      const bits = [];
+      if (st.from && st.to) {
+        /* `sig` renders 30000 as 3.00e+4. A sample rate is said in
+           kHz or Hz, not in scientific notation. */
+        bits.push(rateWords(st.from) + ' \u2192 '
+                  + rateWords(st.to));
+      }
+      if (st.factor > 1) bits.push('\u00f7' + st.factor);
+      if (st.column_ms) bits.push(round(st.column_ms, 2) + ' ms per column');
+      box.appendChild(el('div', { class: 'ds-step' }, [
+        el('span', { class: 'ds-what', text: st.what }),
+        el('span', { class: 'ds-nums', text: bits.join('  \u00b7  ') }),
+        el('span', { class: 'ds-why', text: st.why || '' }),
+        st.antialiased === false
+          ? el('span', { class: 'ds-warn',
+                         text: 'not anti-aliased — this can put energy '
+                             + 'here that is not in the recording' })
+          : null,
+        /* Said per step, because one panel can have both kinds and the
+           difference decides whether the switch below will do anything. */
+        st.reversible === false
+          ? el('span', { class: 'ds-fixed',
+                         text: 'this one cannot be turned off — a picture '
+                             + 'is as wide as the pane it is drawn in' })
+          : null,
+      ].filter(Boolean)));
+    }
+    const index = XF.panes.indexOf(pane);
+    /* Is there anything for the switch to do? A raster whose only step is
+       its own width has nothing, and offering anyway is how "it opens the
+       dialogue box but never goes through" happens. */
+    const canUndo = pane.fullRate
+      || (res.reversible !== undefined
+          ? !!res.reversible
+          : steps.some((x) => x.reversible !== false));
+    box.appendChild(el('div', { class: 'ds-act' }, [
+      el('button', { class: 'btn ghost sm', text: 'Close',
+                     onclick: () => box.remove() }),
+      !canUndo ? el('span', { class: 'hint',
+        text: 'Nothing here can be turned off: what is listed above is the '
+            + 'size of the picture, not a choice about the analysis.' }) : null,
+      !canUndo ? null : el('button', {
+        class: 'btn sm' + (pane.fullRate ? ' on' : ''),
+        text: pane.fullRate ? 'Full rate is on — turn it off'
+                            : 'Draw at full rate',
+        title: pane.fullRate
+          ? 'Back to the decimated read, which is anti-aliased and much '
+            + 'cheaper.'
+          : 'Every sample, no envelope, exact filters. Refused with a '
+            + 'number if the window is too long for it — the decimation '
+            + 'is what makes some of these analyses possible at all, not '
+            + 'just faster.',
+        onclick: () => {
+          pane.fullRate = !pane.fullRate;
+          box.remove();
+          if (index >= 0) refreshPane(index);
+        },
+      }),
+      canUndo ? el('span', { class: 'hint',
+        text: 'Nothing here is saved; this is how the panel is read.' })
+              : null,
+    ].filter(Boolean)));
+    return box;
   }
 
   /* The filter band in words, matching how the server describes it. */
@@ -5821,7 +6040,7 @@ BARRY.views.xplore = (function () {
       try { BARRY.curate.recentre(); } finally { recentring = false; }
     }
 
-    /* CFCScope's bar reads out the window, and the comodulogram form fills
+    /* Braid's bar reads out the window, and the comodulogram form fills
        itself in from it. Told rather than polled -- this is the one place
        the window changes, and a form that quietly went stale would be a
        form that runs the wrong window. */
@@ -6725,12 +6944,22 @@ BARRY.views.xplore = (function () {
 
     const lane = pane._geom.lane;
     const compact = lane < 15;            // no room for a checkbox in the lane
+    /* Below this there is no room for a 9 px label on every row, so the
+       names thin out and the rest of the rows keep their controls. One name
+       every `every` rows, which is the stride a crowded axis gets. */
+    const micro = lane < 10.5;
+    const every = micro ? Math.ceil(10.5 / Math.max(lane, 1)) : 1;
 
     host.innerHTML = '';
+    let row_i = -1;
     for (const c of rows) {
+      row_i += 1;
       const isBad = sess.bad.has(c.number) || c.bad;
-      host.appendChild(el('label', {
-        class: 'ch-lane' + (isBad ? ' marked-bad' : '') + (compact ? ' compact' : ''),
+      const named = !micro || (row_i % every === 0);
+      const laneEl = el('label', {
+        class: 'ch-lane' + (isBad ? ' marked-bad' : '')
+               + (compact ? ' compact' : '') + (micro ? ' micro' : '')
+               + (named ? '' : ' unnamed'),
         title: c.label + (isBad ? '  (marked bad)' : ''),
       }, [
         el('input', {
@@ -6763,8 +6992,19 @@ BARRY.views.xplore = (function () {
             toggleBad(sess, c.number);
           },
         }),
-      ]));
+      ]);
+      /* Sized from the measured pitch rather than from a constant: a 12 px
+         lane in a 7.8 px slot is what put sixty-four labels on top of one
+         another. */
+      if (lane < 18) {
+        laneEl.style.height = Math.max(5, Math.floor(lane)) + 'px';
+        laneEl.style.fontSize =
+          Math.max(7, Math.min(10.5, Math.floor(lane) - 1)) + 'px';
+      }
+      host.appendChild(laneEl);
     }
+    // Now that there is a gutter, the caption can be moved off it.
+    placeCaption(pane);
   }
 
   /* Threshold-detector marks.
@@ -7114,7 +7354,7 @@ BARRY.views.xplore = (function () {
       box.appendChild(el('div', { class: 'video-msg' }, [
         el('strong', { text: 'This video needs ffmpeg' }),
         el('p', { text: vids[0].name + ' is MPEG-1, which browsers cannot play. '
-                      + 'BARRY transcodes a few seconds at a time, but ffmpeg '
+                      + 'Jarvis transcodes a few seconds at a time, but ffmpeg '
                       + 'was not found on this machine.' }),
         el('p', { text: 'Run the setup script, or install ffmpeg and restart '
                       + 'BARRY. Everything else works without it.' }),
@@ -7932,7 +8172,7 @@ BARRY.views.xplore = (function () {
     init,
     open: openSession,
     popOutPanes,
-    /* Whatever recording is on screen. CFCScope's `enter()` with no argument
+    /* Whatever recording is on screen. Braid's `enter()` with no argument
        means "this one", which is what somebody already looking at a window
        and wanting a closer look is asking for. */
     current: () => active(),

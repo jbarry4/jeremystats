@@ -2,13 +2,13 @@
 """Pull mouse details from the lab's colony Google Sheet.
 
 The sheet is the colony log: who is alive, what genotype, what was implanted
-and when. BARRY has slots for all of that already -- the mouse book has
+and when. Jarvis has slots for all of that already -- the mouse book has
 `genotype`, `sex`, `dob`, `implant`, `status` and has simply never had
 anything to put in them, so every one of those questions has been answered by
 opening the spreadsheet.
 
 Mouse facts only, deliberately. The sheet also carries session numbers and
-per-procedure leads, and recordings are the one thing BARRY should learn from
+per-procedure leads, and recordings are the one thing Jarvis should learn from
 the recordings themselves: a session that exists because a spreadsheet says
 so is a session nobody can open.
 
@@ -16,13 +16,13 @@ so is a session nobody can open.
     python tools/import_colony.py --apply
     python tools/import_colony.py --apply --all   # unknown mice too
 
-Read-only against Google, and one direction only. BARRY writing back into a
+Read-only against Google, and one direction only. Jarvis writing back into a
 sheet people edit by hand would invite exactly the conflict class the shard
 files spent a fortnight untangling, and a sheet has no per-field timestamps
 to resolve it with.
 
-Only mice BARRY already recognises are touched, unless --all. The sheet holds
-241 mice and BARRY knows nineteen of them; importing the rest would fill the
+Only mice Jarvis already recognises are touched, unless --all. The sheet holds
+241 mice and Jarvis knows nineteen of them; importing the rest would fill the
 mouse book with animals nobody here has recorded.
 """
 import argparse
@@ -97,7 +97,7 @@ def fetch(url, use_cache=False):
     if use_cache and os.path.exists(CACHE):
         say("  using the cached copy at %s" % CACHE)
         return io.open(CACHE, encoding="utf-8-sig").read()
-    req = urllib.request.Request(url, headers={"User-Agent": "BARRY-GUI"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Jarvis-GUI"})
     text = urllib.request.urlopen(req, timeout=90).read().decode("utf-8-sig")
     try:
         os.makedirs(os.path.dirname(CACHE), exist_ok=True)
@@ -108,7 +108,7 @@ def fetch(url, use_cache=False):
 
 
 def attrs_for(row):
-    """The mouse-level facts in one row, as BARRY's attributes.
+    """The mouse-level facts in one row, as Jarvis's attributes.
 
     Anything not in the sheet is left out rather than written empty: an
     attribute that is absent means "the sheet does not say", and one written
@@ -188,7 +188,7 @@ def main():
     ap.add_argument("--apply", action="store_true",
                     help="actually write. Without it, only reports.")
     ap.add_argument("--all", action="store_true",
-                    help="include mice BARRY has never recorded")
+                    help="include mice Jarvis has never recorded")
     ap.add_argument("--offline", action="store_true",
                     help="use the cached copy instead of fetching")
     ap.add_argument("--url", default=SHEET_URL)
@@ -201,7 +201,7 @@ def main():
     rows = list(csv.DictReader(io.StringIO(text)))
     say("  %d rows, %d columns" % (len(rows), len(rows[0]) if rows else 0))
 
-    # Which mice BARRY has recordings for, and in which project. The project
+    # Which mice Jarvis has recordings for, and in which project. The project
     # is not in the sheet -- it comes from where the recordings live, which
     # is the only place that knows.
     project_of = {}
@@ -213,7 +213,7 @@ def main():
         proj = s.get("project")
         if proj:
             project_of.setdefault(m, proj)
-    say("  BARRY has recordings for %d mice" % len(project_of))
+    say("  Jarvis has recordings for %d mice" % len(project_of))
 
     by_mouse = {}
     for r in rows:
@@ -225,7 +225,7 @@ def main():
 
     known = sorted(set(by_mouse) & set(project_of))
     unknown = sorted(set(by_mouse) - set(project_of))
-    say("  %d of them BARRY has recordings for; %d it does not"
+    say("  %d of them Jarvis has recordings for; %d it does not"
         % (len(known), len(unknown)))
     if not args.apply:
         say("\n*** DRY RUN -- nothing will be written. Add --apply to do it.")

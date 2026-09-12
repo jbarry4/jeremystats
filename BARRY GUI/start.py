@@ -1,8 +1,8 @@
 """
-BARRY GUI -- launcher.
+Jarvis -- launcher.
 
-Windows: double-click "Start BARRY GUI.bat"
-macOS:   double-click "Start BARRY GUI.command"
+Windows: double-click "Wake up Jarvis.bat"
+macOS:   double-click "Wake up Jarvis.command"
 Either:  python start.py
 
 Starts the local server and opens your browser. Nothing is installed and
@@ -85,7 +85,7 @@ def ask_for_key(logs_dir):
     window they are already looking at, rather than in a README they will
     read afterwards.
 
-    Skipping is a first-class answer. BARRY writes locally first and works
+    Skipping is a first-class answer. Jarvis writes locally first and works
     completely without the network; the sync is an addition, never a
     prerequisite, and starting up must never depend on someone having a
     password to hand.
@@ -99,7 +99,7 @@ def ask_for_key(logs_dir):
         print("  !! cloud.json in the repo contains a key. That file is")
         print("     tracked by git, so the key should be treated as public:")
         print("     rotate it in the Supabase dashboard, then paste the new")
-        print("     one below. BARRY is ignoring the one in the file.")
+        print("     one below. Jarvis is ignoring the one in the file.")
 
     if not cfg.get("needs_key"):
         if cfg.get("enabled"):
@@ -116,7 +116,7 @@ def ask_for_key(logs_dir):
     print("  It is stored in GUI_logs/.cloud.json, which git ignores, and")
     print("  never goes into the repo.")
     print()
-    print("  Press Enter to skip -- BARRY works fine without it, and you")
+    print("  Press Enter to skip -- Jarvis works fine without it, and you")
     print("  can add it later from the Sync panel.")
     print()
 
@@ -145,7 +145,7 @@ def ask_for_key(logs_dir):
         if not ping["reachable"]:
             print("  Could not reach the project: %s"
                   % (ping.get("error") or "")[:160])
-            print("  Saved anyway; BARRY will keep trying in the background.")
+            print("  Saved anyway; Jarvis will keep trying in the background.")
             return
         if not ping["schema"]:
             print("  Connected, but the tables are not there yet. Run the SQL")

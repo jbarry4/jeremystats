@@ -1,7 +1,7 @@
 /* ==========================================================================
    tour.js -- Guided tours: the engine.
 
-   A new person in front of BARRY has the same problem as a new person in
+   A new person in front of Jarvis has the same problem as a new person in
    front of any instrument: everything is visible and nothing is obvious.
    Documentation answers "what does this do" for someone who already knows
    what to look at. A tour answers "what should I look at", which is the
@@ -27,7 +27,7 @@
    says to click, the real click happens. There is no mock interface to fall
    out of date.
 
-   The content lives in tourmodules.js. This file knows nothing about BARRY's
+   The content lives in tourmodules.js. This file knows nothing about Jarvis's
    features, only how to point at them.
    ========================================================================== */
 'use strict';

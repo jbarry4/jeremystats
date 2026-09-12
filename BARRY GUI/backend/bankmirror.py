@@ -4,7 +4,7 @@ bankmirror.py -- The Event Bank, as folders you can open.
 The bank lives in GUI_logs as one JSON file per entry, named for git's
 benefit rather than a person's. That is the right shape for a record and the
 wrong shape for finding the dentate spikes for m34 s8 when you are not in
-BARRY -- which is most of the time, for most people.
+Jarvis -- which is most of the time, for most people.
 
 So this writes the same content out again, laid out the way the Event Bank
 view groups it:
@@ -23,7 +23,7 @@ produces byte-identical files, so it is safe to commit and cannot conflict.
 Delete the whole tree and the next sync rebuilds it.
 
 The CSV is the point. It opens in Excel, it goes into MATLAB in one line, and
-it does not need anything of BARRY's to read.
+it does not need anything of Jarvis's to read.
 """
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ import re
 FOLDER = "Data Bank"
 README = """# Data Bank
 
-Written by BARRY, from the Event Bank. Open anything here in Excel or MATLAB;
-nothing needs BARRY to read it.
+Written by Jarvis, from the Event Bank. Open anything here in Excel or MATLAB;
+nothing needs Jarvis to read it.
 
     <Project>/m<mouse>/s<session> <date>/<type> - <name>.csv     the times
     <Project>/m<mouse>/s<session> <date>/<type> - <name>.json    everything else
@@ -50,7 +50,7 @@ label says what they called it. They are different claims and the bank does
 not blur them.
 
 This folder is generated. Edit it and the next sync writes over you -- change
-things in BARRY, or in the database, and they land here.
+things in Jarvis, or in the database, and they land here.
 """
 
 
@@ -205,7 +205,7 @@ class BankMirror:
     def _prune(self, wanted):
         """Take away what the bank no longer has.
 
-        Without this, deleting an entry in BARRY leaves its CSV sitting in a
+        Without this, deleting an entry in Jarvis leaves its CSV sitting in a
         folder looking exactly as authoritative as the real ones.
         """
         removed = 0

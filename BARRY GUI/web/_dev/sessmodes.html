@@ -14,7 +14,7 @@
 /* The two session views answer two different questions.
  *
  * "Scan a drive" is this computer's own view: what it has been exposed to,
- * read off the registry on this disk. "Everything BARRY knows" is the shared
+ * read off the registry on this disk. "Everything Jarvis knows" is the shared
  * catalogue -- every recording any machine has met, which is what travels
  * through Supabase.
  *
@@ -105,7 +105,7 @@ const untilN = async (fn, n) => {
   ck('and it does not advertise the catalogue it is not showing',
      !/remembered/.test(sub()), sub().slice(0, 80));
 
-  hd('2. Everything BARRY knows shows the lab');
+  hd('2. Everything Jarvis knows shows the lab');
   ck('there is a mode switch', !!modeBtn('housekeeping'));
   modeBtn('housekeeping').click();
   await sleep(3000);

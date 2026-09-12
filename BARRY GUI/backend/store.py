@@ -1,5 +1,5 @@
 """
-store.py -- The GUI_logs store: everything BARRY remembers, on disk, in git.
+store.py -- The GUI_logs store: everything Jarvis remembers, on disk, in git.
 
 Layout -- and every path in it is chosen so that **no two machines ever write
 the same file**, which is what makes a git conflict impossible rather than
@@ -463,7 +463,7 @@ class Store:
             if not rec.get("gid"):
                 rec["gid"] = identity.get("gid") or new_gid()
             # The permanent id is the last resort, not the string
-            # "unknown": every recording BARRY cannot derive a key for would
+            # "unknown": every recording Jarvis cannot derive a key for would
             # otherwise share one filename and overwrite the one before it.
             # Three real recordings went through that file before anyone
             # noticed, and the only reason two survived is that they had
@@ -813,7 +813,7 @@ _DEFAULT_IMPORTS = {
 
 _README = """# GUI_logs
 
-Everything BARRY GUI remembers, kept as plain JSON so it travels through git.
+Everything Jarvis remembers, kept as plain JSON so it travels through git.
 
 ## The rule
 
@@ -880,13 +880,13 @@ first bad pull.
 
 ## Sync
 
-BARRY never commits or pushes on its own. It only writes files here.
+Jarvis never commits or pushes on its own. It only writes files here.
 
     git add "BARRY GUI/GUI_logs"
     git commit -m "session logs"
     git push
 
-To pick up everyone else's, `git pull` -- new files appear and BARRY reads
+To pick up everyone else's, `git pull` -- new files appear and Jarvis reads
 them on the next refresh.
 
 ## Session identity

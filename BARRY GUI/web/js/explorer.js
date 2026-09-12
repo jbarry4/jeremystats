@@ -181,7 +181,7 @@ BARRY.views.explorer = (function () {
         }),
         el('button', {
           class: 'btn ghost sm', text: 'Copy command',
-          title: 'The exact command line that reproduces this run outside BARRY',
+          title: 'The exact command line that reproduces this run outside Jarvis',
           onclick: () => BARRY.copy(runCommand(), 'Command'),
         }),
         el('button', {
@@ -392,7 +392,7 @@ BARRY.views.explorer = (function () {
     return el('div', { class: 'coll-row', style: 'margin-bottom:9px' }, chips);
   }
 
-  /* The command BARRY itself would run, spelled out. For Python with edits
+  /* The command Jarvis itself would run, spelled out. For Python with edits
      it names the constants to change, since the real run uses a temp copy. */
   function runCommand() {
     if (!current) return '';
@@ -413,7 +413,7 @@ BARRY.views.explorer = (function () {
     }
     let cmd = '"' + (cat.python || 'python') + '" -u "' + abs + '"';
     if (changed.length) {
-      cmd += '\n\n# BARRY overrides these top-level constants in a temp copy;\n'
+      cmd += '\n\n# Jarvis overrides these top-level constants in a temp copy;\n'
            + '# to reproduce by hand, edit them in the file first:\n'
            + changed.map((k) => '#   ' + k + ' = '
                                 + JSON.stringify(edits[k])).join('\n');

@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>cfcbar — is the CFCScope bar actually on the screen</title>
+<title>cfcbar — is the Braid bar actually on the screen</title>
 <style>
  body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
         margin:0; padding:10px; }
@@ -11,7 +11,7 @@
  div { white-space:pre-wrap; }
 </style>
 <p class="note">"It just opens a voltage trace." A traces pane IS what
-CFCScope's layout asks for — so the question is whether the bar carrying the
+Braid's layout asks for — so the question is whether the bar carrying the
 Comodulogram button is on the screen, not whether it is in the DOM.</p>
 <div id="out"></div>
 <iframe id="A" src="/"></iframe>
@@ -46,7 +46,7 @@ const errs = [];
 
   /* A real recording, picked the way the ToolKit picks one: the first the
      registry says is reachable here. The harness that already covers
-     CFCScope uses the demo session, and the demo is not what is being
+     Braid uses the demo session, and the demo is not what is being
      reported. */
   const reg = await (await fetch('/api/registry')).json();
   let gid = null, label = null;
@@ -102,6 +102,9 @@ const errs = [];
       + "+Math.round(q.width)+'w';});return m.join(' | ');})()");
     say('note', '  buttons: ' + btn);
     ck('a Comodulogram button is there', /Comodulogram/.test(btn), btn);
+    /* And a way out, in the place the other two modes put theirs. */
+    ck('and a Leave button, like curation and StrataScope',
+       /Leave/.test(btn), btn);
   }
 
   /* Does it SURVIVE?

@@ -12,7 +12,7 @@ exactly two things that ever happened to it:
     v1    somebody went through all N and filed each one
 
 Anything else in the version list is an artifact of how the entry got into
-BARRY -- a bank that ran twice, a per-category split that was later folded
+Jarvis -- a bank that ran twice, a per-category split that was later folded
 in, a version written before `label_id` was stored. Those are not passes of
 curation and reading them as passes makes the history lie about how much
 review a set has had.
@@ -161,7 +161,7 @@ def rebuild(root, logs_dir, write=False, kind="ds"):
             "at": _stamp(entry, "updated", at0),
             "by": (r.get("_notes") and by) or by,
             "note": "Sorted by dragging the snapshots into folders, before "
-                    "BARRY. " + str(decided) + " of " + str(n)
+                    "Jarvis. " + str(decided) + " of " + str(n)
                     + " decided"
                     + (", %d filed under two folders and flagged"
                        % len(r.get("conflicts") or [])

@@ -1,7 +1,7 @@
 """
 profile.py -- who you are, said once.
 
-Everything BARRY writes down carries who did it: a curation decision, a
+Everything Jarvis writes down carries who did it: a curation decision, a
 banked event set, a layer sheet, an exported figure, a run. Until now that
 name came from `git config user.name`, falling back to the Windows account.
 Both are wrong often enough to matter:
