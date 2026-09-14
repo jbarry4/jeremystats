@@ -1,0 +1,68 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:18:54.338813+00:00",
+    "label": "2026-09-14T16:18:54.338813+00:00",
+    "path": "2026-09-14T16:18:54.338813+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "25a14b1ee5d0": [
+        "set",
+        "2026-09-14T16:18:54.338813+00:00"
+      ],
+      "8e44230ae56b": [
+        "set",
+        "2026-09-14T16:27:09.207846+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:27:09.207846+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:18:54.338813+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1594.8447666666666,
+      "gap_map_sha": "ee994ef59210e988",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "25a14b1ee5d0",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 484.56033333332016,
+      "mismatches": 0,
+      "n_gaps": 29,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 30,
+      "seconds_lost": 0.428581,
+      "sub_threshold_lost_s": 0.062801,
+      "true_duration_s": 1595.324776
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:22:29.824991+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 1594.84476666667,
+      "gap_map_sha": "ee994ef59210e988",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "8e44230ae56b",
+      "level": "warn",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 484.56033333332,
+      "mismatches": 0,
+      "n_gaps": 29,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 30,
+      "seconds_lost": 0.428581,
+      "true_duration_s": 1595.324776
+    }
+  ],
+  "gid": "s238f423d3548",
+  "label": "KCNT1 m536 s6 2026-07-21",
+  "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04"
+}
