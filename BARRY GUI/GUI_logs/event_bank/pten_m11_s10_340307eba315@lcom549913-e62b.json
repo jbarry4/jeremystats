@@ -1,58 +1,76 @@
 {
   "_at": {
-    "added": "2026-09-09T02:03:39.079537+00:00",
-    "by_label": "2026-09-08T18:35:58.097316+00:00",
-    "events": "2026-09-02T23:21:29.319930+00:00",
-    "gid": "2026-09-02T23:21:29.319930+00:00",
-    "id": "2026-09-02T23:21:29.319930+00:00",
-    "label_names": "2026-09-08T18:35:58.097316+00:00",
-    "mouse": "2026-09-02T23:21:29.319930+00:00",
-    "n": "2026-09-02T23:21:29.319930+00:00",
-    "name": "2026-09-02T23:21:29.319930+00:00",
-    "note": "2026-09-02T23:21:29.319930+00:00",
-    "project": "2026-09-02T23:21:29.319930+00:00",
-    "recording_start": "2026-09-02T23:21:29.319930+00:00",
-    "schema": "2026-09-02T23:21:29.319930+00:00",
-    "session": "2026-09-02T23:21:29.319930+00:00",
-    "session_key": "2026-09-02T23:21:29.319930+00:00",
-    "session_label": "2026-09-02T23:21:29.319930+00:00",
-    "session_loose_key": "2026-09-02T23:21:29.319930+00:00",
-    "session_path": "2026-09-02T23:21:29.319930+00:00",
-    "source": "2026-09-02T23:21:29.319930+00:00",
-    "specified": "2026-09-02T23:21:29.319930+00:00",
-    "type": "2026-09-02T23:21:29.319930+00:00",
-    "type_name": "2026-09-02T23:21:29.319930+00:00",
-    "units": "2026-09-02T23:21:29.319930+00:00",
-    "version": "2026-09-10T17:48:48.742011+00:00"
+    "added": "2026-09-11T15:24:36.409034+00:00",
+    "by_label": "2026-09-11T15:24:36.409034+00:00",
+    "curation_label": "2026-09-11T15:24:36.409034+00:00",
+    "duration_s": "2026-09-11T15:24:36.409034+00:00",
+    "events": "2026-09-11T15:24:36.409034+00:00",
+    "gid": "2026-09-11T15:24:36.409034+00:00",
+    "id": "2026-09-11T15:24:36.409034+00:00",
+    "label_names": "2026-09-11T15:24:36.409034+00:00",
+    "mouse": "2026-09-11T15:24:36.409034+00:00",
+    "n": "2026-09-11T15:24:36.409034+00:00",
+    "name": "2026-09-11T15:24:36.409034+00:00",
+    "note": "2026-09-11T15:24:36.409034+00:00",
+    "project": "2026-09-11T15:24:36.409034+00:00",
+    "recording_start": "2026-09-11T15:24:36.409034+00:00",
+    "schema": "2026-09-11T15:24:36.409034+00:00",
+    "session": "2026-09-11T15:24:36.409034+00:00",
+    "session_key": "2026-09-11T15:24:36.409034+00:00",
+    "session_label": "2026-09-11T15:24:36.409034+00:00",
+    "session_loose_key": "2026-09-11T15:24:36.409034+00:00",
+    "session_path": "2026-09-11T15:24:36.409034+00:00",
+    "source": "2026-09-11T15:24:36.409034+00:00",
+    "specified": "2026-09-11T15:24:36.409034+00:00",
+    "type": "2026-09-11T15:24:36.409034+00:00",
+    "type_name": "2026-09-11T15:24:36.409034+00:00",
+    "units": "2026-09-11T15:24:36.409034+00:00",
+    "version": "2026-09-11T15:24:36.409034+00:00"
   },
   "_keys": {
     "history": {
       "{\"at\": \"2026-09-08T22:02:26-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
         "set",
-        "2026-09-09T02:02:26.732157+00:00"
+        "2026-09-11T15:24:36.409034+00:00"
       ],
       "{\"at\": \"2026-09-08T22:03:39-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
         "set",
-        "2026-09-09T02:03:39.079537+00:00"
+        "2026-09-11T15:24:36.409034+00:00"
+      ],
+      "{\"at\": \"2026-09-10T13:44:37-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 4, \"was_n\": 4, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-11T15:24:36.409034+00:00"
+      ],
+      "{\"at\": \"2026-09-11T11:24:36-04:00\", \"by\": \"Isabella Piatek\", \"changed\": [\"events\"], \"now_n\": 4, \"was_n\": 4, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-11T15:24:36.409034+00:00"
       ]
     },
     "versions": {
+      "8ec5e4df54df": [
+        "set",
+        "2026-09-11T15:24:36.409034+00:00"
+      ],
+      "a1719f9c6e2b": [
+        "set",
+        "2026-09-11T15:24:36.409034+00:00"
+      ],
       "v0-68550494": [
         "set",
-        "2026-09-09T02:03:39.079537+00:00"
+        "2026-09-11T15:24:36.409034+00:00"
       ],
       "v1-7bee693f": [
         "set",
-        "2026-09-09T02:03:39.079537+00:00"
+        "2026-09-11T15:24:36.409034+00:00"
       ],
       "{\"at\": \"2026-09-10T13:44:37-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 4}, \"machine\": \"BarryLab\", \"n\": 4, \"note\": \"GUI final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
         "set",
-        "2026-09-10T17:48:48.742011+00:00"
+        "2026-09-11T15:24:36.409034+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T17:48:48.742011+00:00",
+    "at": "2026-09-11T15:24:36.409034+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -62,19 +80,29 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
-    "garbage": 4
+    "review": 4
   },
+  "curation_label": "*",
+  "duration_s": null,
   "events": [
     {
+      "label": "Flag for Deep Review",
+      "label_id": "review",
       "start": 531.35
     },
     {
+      "label": "Flag for Deep Review",
+      "label_id": "review",
       "start": 547.079
     },
     {
+      "label": "Flag for Deep Review",
+      "label_id": "review",
       "start": 625.815
     },
     {
+      "label": "Flag for Deep Review",
+      "label_id": "review",
       "start": 1548.814
     }
   ],
@@ -93,6 +121,26 @@
         "from": "theexaminedexistence@gmail.com",
         "to": "Shahriar Tafti"
       }
+    },
+    {
+      "at": "2026-09-10T13:44:37-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 4,
+      "was_n": 4,
+      "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-11T11:24:36-04:00",
+      "by": "Isabella Piatek",
+      "changed": [
+        "events"
+      ],
+      "now_n": 4,
+      "was_n": 4,
+      "why": "re-banked from the curation set"
     }
   ],
   "id": "340307eba315",
@@ -105,7 +153,7 @@
   "mouse": 11,
   "n": 4,
   "name": "DS candidates (ETS)",
-  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "note": "",
   "project": "PTEN",
   "recording_start": "2023-07-25T14:40:32",
   "schema": 1,
@@ -113,7 +161,7 @@
   "session_key": "m011_s010_2023-07-25_14-40-32",
   "session_label": "PTEN m11 s10 2023-07-25",
   "session_loose_key": "m011_s010",
-  "session_path": "D:\\PTEN\\PTEN\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
+  "session_path": null,
   "source": {
     "detector": "ets_hp_1_lp_300_nf",
     "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m11s10_ets\\ets_hp_1_lp_300_nf.mat",
@@ -124,11 +172,11 @@
     "pipeline": "ETS dentate-spike export",
     "run_id": null
   },
-  "specified": false,
+  "specified": true,
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -211,11 +259,83 @@
       "by_label": {
         "garbage": 4
       },
+      "changed": 4,
+      "gained": 0,
+      "id": "8ec5e4df54df",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Garbage": 4
+      },
+      "n": 4,
+      "note": "GUI final curation\n-RY",
+      "snap": [
+        [
+          531.35,
+          "garbage"
+        ],
+        [
+          547.079,
+          "garbage"
+        ],
+        [
+          625.815,
+          "garbage"
+        ],
+        [
+          1548.814,
+          "garbage"
+        ]
+      ],
+      "v": 2
+    },
+    {
+      "at": "2026-09-10T13:44:37-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 4
+      },
       "machine": "BarryLab",
       "n": 4,
       "note": "GUI final curation\n-RY",
       "snap_elsewhere": true,
       "v": 2
+    },
+    {
+      "at": "2026-09-11T11:24:36-04:00",
+      "by": "Isabella Piatek",
+      "by_label": {
+        "review": 4
+      },
+      "changed": 4,
+      "gained": 0,
+      "id": "a1719f9c6e2b",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "Garbage \u2192 Flag for Deep Review": 4
+      },
+      "n": 4,
+      "note": "TEST",
+      "snap": [
+        [
+          531.35,
+          "review"
+        ],
+        [
+          547.079,
+          "review"
+        ],
+        [
+          625.815,
+          "review"
+        ],
+        [
+          1548.814,
+          "review"
+        ]
+      ],
+      "v": 3
     }
   ]
 }
