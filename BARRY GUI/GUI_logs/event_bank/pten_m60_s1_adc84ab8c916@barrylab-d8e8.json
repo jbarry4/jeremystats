@@ -1,0 +1,9121 @@
+{
+  "_at": {
+    "added": "2026-09-12T23:54:04.354799+00:00",
+    "by_label": "2026-09-12T23:54:04.354799+00:00",
+    "curation_label": "2026-09-12T23:54:04.354799+00:00",
+    "duration_s": "2026-09-12T23:54:04.354799+00:00",
+    "events": "2026-09-12T23:54:04.354799+00:00",
+    "gid": "2026-09-12T23:54:04.354799+00:00",
+    "id": "2026-09-12T23:54:04.354799+00:00",
+    "label_names": "2026-09-12T23:54:04.354799+00:00",
+    "mouse": "2026-09-12T23:54:04.354799+00:00",
+    "n": "2026-09-12T23:54:04.354799+00:00",
+    "name": "2026-09-12T23:54:04.354799+00:00",
+    "note": "2026-09-12T23:54:04.354799+00:00",
+    "project": "2026-09-12T23:54:04.354799+00:00",
+    "recording_start": "2026-09-12T23:54:04.354799+00:00",
+    "schema": "2026-09-12T23:54:04.354799+00:00",
+    "session": "2026-09-12T23:54:04.354799+00:00",
+    "session_key": "2026-09-12T23:54:04.354799+00:00",
+    "session_label": "2026-09-12T23:54:04.354799+00:00",
+    "session_loose_key": "2026-09-12T23:54:04.354799+00:00",
+    "session_path": "2026-09-12T23:54:04.354799+00:00",
+    "source": "2026-09-12T23:54:04.354799+00:00",
+    "specified": "2026-09-12T23:54:04.354799+00:00",
+    "type": "2026-09-12T23:54:04.354799+00:00",
+    "type_name": "2026-09-12T23:54:04.354799+00:00",
+    "units": "2026-09-12T23:54:04.354799+00:00",
+    "version": "2026-09-12T23:54:04.354799+00:00"
+  },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-09-08T22:02:31-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:43-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ],
+      "{\"at\": \"2026-09-12T19:54:04-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 524, \"was_n\": 524, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ]
+    },
+    "versions": {
+      "3b551d236229": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ],
+      "v0-d3fa62a7": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ],
+      "v1-6a51338a": [
+        "set",
+        "2026-09-12T23:54:04.354799+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-12T23:54:04.354799+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "flag": 8,
+    "garbage": 122,
+    "spike": 394
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 4.807
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 11.798
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 12.262
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 13.805
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 14.619
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 29.025
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 38.892
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 42.431
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 58.709
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 62.949
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 76.228
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 90.491
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 94.619
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 101.187
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 109.704
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 110.17
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 110.462
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 112.384
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 114.134
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 114.677
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 137.587
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 137.725
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 148.78
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 180.521
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 181.253
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 181.386
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 184.921
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 205.573
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 211.798
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 215.562
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 222.63
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 223.469
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 225.819
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 233.029
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 245.278
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 250.316
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 266.423
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 269.377
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 296.455
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 303.599
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 305.748
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 306.867
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 306.975
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 312.064
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 336.671
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 336.835
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 337.034
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 339.053
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 348.157
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 368.389
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 369.798
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 388.328
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 423.136
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 423.315
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 429.358
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 433.914
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 436.337
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 441.976
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 443.56
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 444.232
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 444.339
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 447.91
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 462.32
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 464.789
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 466.816
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 479.376
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 503.495
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 517.638
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 518.505
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 518.806
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 525.869
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 531.149
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 531.43
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 543.93
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 544.052
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 544.22
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 544.429
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 548.429
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 562.815
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 571.503
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 571.623
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 576.223
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 576.349
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 583.006
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 595.173
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 596.425
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 625.168
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 628.393
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 632.715
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 634.818
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 636.603
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 636.735
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 640.214
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 640.774
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 652.364
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 652.695
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 690.135
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 690.447
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 694.406
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 694.556
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 698.154
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 704.724
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 704.846
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 705.023
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 710.386
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 722.651
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 744.092
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 747.519
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 748.051
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 766.911
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 775.204
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 776.072
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 791.086
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 800.09
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 800.262
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 801.108
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 825.468
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 826.791
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 834.234
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 846.096
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 852.147
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 871.57
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 893.846
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 913.242
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 930.368
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 933.63
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 934.835
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 939.744
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 939.867
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 940.015
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 940.136
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 943.684
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 953.53
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 967.127
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 981.254
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 991.839
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 995.873
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 996.051
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 996.432
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1001.404
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1014.556
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1030.362
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1052.384
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1063.365
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1064.177
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1065.735
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1069.245
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1071.383
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1089.094
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1093.676
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1105.311
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1117.171
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1118.358
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1129.971
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1137.699
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1141.02
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1145.867
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1146.25
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1162.116
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1170.98
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1183.898
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1186.14
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1188.079
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1209.27
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1215.183
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1247.393
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1257.16
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1258.734
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1262.139
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1273.394
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1278.767
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1283.607
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1283.805
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1291.583
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1291.932
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1293.708
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1293.993
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1294.282
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1300.026
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1308.452
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1309.23
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1314.416
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1314.664
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1317.965
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1318.565
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1322.212
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1325.494
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1330.382
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1334.396
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1334.71
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1347.726
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1351.384
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1353.293
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1354.132
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1356.185
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1356.588
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1360.763
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1363.798
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1364.271
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1365.813
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1374.493
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1375.776
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1380.941
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1381.603
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1381.912
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1444.057
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1446.159
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1456.144
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1456.367
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1461.795
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1473.313
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1476.738
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1479.016
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1480.129
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1485.698
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1491.004
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1491.135
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1503.291
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1503.771
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1509.219
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1520.578
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1521.952
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1524.769
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1529.791
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1532.906
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1533.095
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1536.117
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1545.043
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1545.49
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1549.473
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1555.282
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1567.333
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1571.428
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1572.021
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1576.68
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1585.862
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1586.451
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1598.448
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1603.757
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1617.524
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1621.515
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1621.789
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1628.127
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1628.406
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1629.274
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1632.14
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1632.933
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1636.857
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1640.498
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1644.01
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1644.143
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1655.546
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1655.929
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1658.5
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1661.675
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1663.089
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1665.698
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1665.898
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1668.349
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1669.233
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1672.337
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1674.54
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1675.894
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1682.958
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1684.639
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1690.033
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1702.032
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1704.868
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1707.866
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1708.06
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1708.885
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1708.988
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1709.398
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1719.902
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1721.85
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1731.535
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1734.604
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1740.344
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1743.444
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1743.635
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1744.014
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1747.132
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1749.39
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1757.24
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1761.279
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1761.683
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1764.788
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1766.687
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1766.845
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1767.818
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1767.977
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1770.784
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1783.271
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1787.986
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1788.713
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1792.296
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1796.648
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1803.639
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1808.695
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1809.412
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1819.448
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1820.023
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1823.85
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1825.176
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1826.124
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1828.529
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1829.379
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1829.555
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1831.542
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1832.842
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1834.232
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1834.471
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1838.683
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1838.89
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1840.337
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1841.667
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1842.913
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1845.156
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1848.96
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1849.215
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1853.674
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1853.8
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1858.093
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1858.324
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1861.974
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1862.587
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1862.701
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1863.276
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1867.237
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1868.347
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1868.959
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1872.48
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1873.195
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1873.76
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1875.0
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1877.665
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1878.168
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1878.98
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1880.232
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1883.977
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1884.289
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1887.29
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1887.588
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1887.718
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1887.94
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1888.082
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1890.105
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1891.06
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1893.001
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1897.838
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1898.32
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1901.318
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1906.306
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1907.641
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1909.159
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1909.813
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1912.815
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1912.951
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1913.496
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1916.272
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1917.741
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1920.711
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1921.925
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1924.168
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1924.714
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1925.45
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1925.76
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1925.919
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1929.591
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1934.938
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1935.093
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1937.098
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1939.724
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1942.896
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1943.525
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1946.472
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1946.59
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1947.422
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1947.526
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1948.454
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1950.756
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1953.197
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1953.658
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1954.471
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1955.292
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1959.668
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1963.38
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1971.64
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1973.845
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1974.94
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1975.178
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1977.051
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1980.752
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1986.957
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1992.197
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1992.346
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1994.324
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1998.553
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1999.027
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2001.193
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2003.921
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2006.81
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2008.551
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2009.14
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2009.454
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2010.625
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2013.206
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2014.48
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2014.659
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2016.146
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2016.297
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2023.148
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2026.325
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2026.57
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2029.182
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2030.604
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2031.586
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2031.723
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2035.912
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2040.471
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2040.638
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2041.613
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2042.152
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2044.138
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2044.795
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2045.057
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2045.345
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2046.147
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2053.294
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2057.337
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2057.86
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2060.099
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2067.352
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2067.458
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2069.868
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2070.195
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2072.953
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2073.915
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2077.583
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2084.525
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2085.358
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2086.794
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2087.758
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2098.537
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2103.456
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2105.545
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2106.304
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2112.773
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2118.92
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2125.431
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2130.807
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2131.127
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2137.178
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2141.803
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2146.995
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2147.111
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2153.975
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2159.577
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2159.842
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2163.26
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2169.696
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2172.484
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2175.041
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2176.827
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2177.125
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2177.294
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2177.398
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2177.759
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2179.206
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2182.347
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2184.014
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2184.887
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2186.088
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2186.23
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2187.031
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2187.139
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2187.327
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2192.19
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 2192.648
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2193.346
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2193.659
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2194.557
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2194.795
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2195.106
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2201.756
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2204.341
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2205.049
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2210.032
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2219.221
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2220.697
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2224.393
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2231.038
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 2254.531
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2255.61
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2260.5
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2271.782
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2279.918
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2282.882
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2287.361
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2300.317
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2303.0
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2305.048
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2309.913
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2311.212
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2321.894
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2322.046
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2328.46
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2332.939
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2334.964
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2336.609
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2340.97
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2346.635
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2347.769
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2378.487
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2387.038
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2391.954
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2393.711
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2399.846
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2407.144
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2407.321
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2411.795
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2413.775
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2415.079
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2415.723
+    }
+  ],
+  "gid": "s8d7f397b9708",
+  "history": [
+    {
+      "at": "2026-09-08T22:02:31-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:43-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
+    },
+    {
+      "at": "2026-09-12T19:54:04-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 524,
+      "was_n": 524,
+      "why": "re-banked from the curation set"
+    }
+  ],
+  "id": "adc84ab8c916",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
+  "mouse": 60,
+  "n": 524,
+  "name": "m60s1jul10",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2025-07-10T11:41:45",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m060_s001_2025-07-10_11-41-45",
+  "session_label": "PTEN m60 s1 2025-07-10",
+  "session_loose_key": "m060_s001",
+  "session_path": null,
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m60s1_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 2,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 524
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-d3fa62a7",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 524,
+      "note": "Imported from ETS dentate-spike export. 524 candidates, none decided yet.",
+      "snap": [
+        [
+          4.807,
+          null
+        ],
+        [
+          11.798,
+          null
+        ],
+        [
+          12.262,
+          null
+        ],
+        [
+          13.805,
+          null
+        ],
+        [
+          14.619,
+          null
+        ],
+        [
+          29.025,
+          null
+        ],
+        [
+          38.892,
+          null
+        ],
+        [
+          42.431,
+          null
+        ],
+        [
+          58.709,
+          null
+        ],
+        [
+          62.949,
+          null
+        ],
+        [
+          76.228,
+          null
+        ],
+        [
+          90.491,
+          null
+        ],
+        [
+          94.619,
+          null
+        ],
+        [
+          101.187,
+          null
+        ],
+        [
+          109.704,
+          null
+        ],
+        [
+          110.17,
+          null
+        ],
+        [
+          110.462,
+          null
+        ],
+        [
+          112.384,
+          null
+        ],
+        [
+          114.134,
+          null
+        ],
+        [
+          114.677,
+          null
+        ],
+        [
+          137.587,
+          null
+        ],
+        [
+          137.725,
+          null
+        ],
+        [
+          148.78,
+          null
+        ],
+        [
+          180.521,
+          null
+        ],
+        [
+          181.253,
+          null
+        ],
+        [
+          181.386,
+          null
+        ],
+        [
+          184.921,
+          null
+        ],
+        [
+          205.573,
+          null
+        ],
+        [
+          211.798,
+          null
+        ],
+        [
+          215.562,
+          null
+        ],
+        [
+          222.63,
+          null
+        ],
+        [
+          223.469,
+          null
+        ],
+        [
+          225.819,
+          null
+        ],
+        [
+          233.029,
+          null
+        ],
+        [
+          245.278,
+          null
+        ],
+        [
+          250.316,
+          null
+        ],
+        [
+          266.423,
+          null
+        ],
+        [
+          269.377,
+          null
+        ],
+        [
+          296.455,
+          null
+        ],
+        [
+          303.599,
+          null
+        ],
+        [
+          305.748,
+          null
+        ],
+        [
+          306.867,
+          null
+        ],
+        [
+          306.975,
+          null
+        ],
+        [
+          312.064,
+          null
+        ],
+        [
+          336.671,
+          null
+        ],
+        [
+          336.835,
+          null
+        ],
+        [
+          337.034,
+          null
+        ],
+        [
+          339.053,
+          null
+        ],
+        [
+          348.157,
+          null
+        ],
+        [
+          368.389,
+          null
+        ],
+        [
+          369.798,
+          null
+        ],
+        [
+          388.328,
+          null
+        ],
+        [
+          423.136,
+          null
+        ],
+        [
+          423.315,
+          null
+        ],
+        [
+          429.358,
+          null
+        ],
+        [
+          433.914,
+          null
+        ],
+        [
+          436.337,
+          null
+        ],
+        [
+          441.976,
+          null
+        ],
+        [
+          443.56,
+          null
+        ],
+        [
+          444.232,
+          null
+        ],
+        [
+          444.339,
+          null
+        ],
+        [
+          447.91,
+          null
+        ],
+        [
+          462.32,
+          null
+        ],
+        [
+          464.789,
+          null
+        ],
+        [
+          466.816,
+          null
+        ],
+        [
+          479.376,
+          null
+        ],
+        [
+          503.495,
+          null
+        ],
+        [
+          517.638,
+          null
+        ],
+        [
+          518.505,
+          null
+        ],
+        [
+          518.806,
+          null
+        ],
+        [
+          525.869,
+          null
+        ],
+        [
+          531.149,
+          null
+        ],
+        [
+          531.43,
+          null
+        ],
+        [
+          543.93,
+          null
+        ],
+        [
+          544.052,
+          null
+        ],
+        [
+          544.22,
+          null
+        ],
+        [
+          544.429,
+          null
+        ],
+        [
+          548.429,
+          null
+        ],
+        [
+          562.815,
+          null
+        ],
+        [
+          571.503,
+          null
+        ],
+        [
+          571.623,
+          null
+        ],
+        [
+          576.223,
+          null
+        ],
+        [
+          576.349,
+          null
+        ],
+        [
+          583.006,
+          null
+        ],
+        [
+          595.173,
+          null
+        ],
+        [
+          596.425,
+          null
+        ],
+        [
+          625.168,
+          null
+        ],
+        [
+          628.393,
+          null
+        ],
+        [
+          632.715,
+          null
+        ],
+        [
+          634.818,
+          null
+        ],
+        [
+          636.603,
+          null
+        ],
+        [
+          636.735,
+          null
+        ],
+        [
+          640.214,
+          null
+        ],
+        [
+          640.774,
+          null
+        ],
+        [
+          652.364,
+          null
+        ],
+        [
+          652.695,
+          null
+        ],
+        [
+          690.135,
+          null
+        ],
+        [
+          690.447,
+          null
+        ],
+        [
+          694.406,
+          null
+        ],
+        [
+          694.556,
+          null
+        ],
+        [
+          698.154,
+          null
+        ],
+        [
+          704.724,
+          null
+        ],
+        [
+          704.846,
+          null
+        ],
+        [
+          705.023,
+          null
+        ],
+        [
+          710.386,
+          null
+        ],
+        [
+          722.651,
+          null
+        ],
+        [
+          744.092,
+          null
+        ],
+        [
+          747.519,
+          null
+        ],
+        [
+          748.051,
+          null
+        ],
+        [
+          766.911,
+          null
+        ],
+        [
+          775.204,
+          null
+        ],
+        [
+          776.072,
+          null
+        ],
+        [
+          791.086,
+          null
+        ],
+        [
+          800.09,
+          null
+        ],
+        [
+          800.262,
+          null
+        ],
+        [
+          801.108,
+          null
+        ],
+        [
+          825.468,
+          null
+        ],
+        [
+          826.791,
+          null
+        ],
+        [
+          834.234,
+          null
+        ],
+        [
+          846.096,
+          null
+        ],
+        [
+          852.147,
+          null
+        ],
+        [
+          871.57,
+          null
+        ],
+        [
+          893.846,
+          null
+        ],
+        [
+          913.242,
+          null
+        ],
+        [
+          930.368,
+          null
+        ],
+        [
+          933.63,
+          null
+        ],
+        [
+          934.835,
+          null
+        ],
+        [
+          939.744,
+          null
+        ],
+        [
+          939.867,
+          null
+        ],
+        [
+          940.015,
+          null
+        ],
+        [
+          940.136,
+          null
+        ],
+        [
+          943.684,
+          null
+        ],
+        [
+          953.53,
+          null
+        ],
+        [
+          967.127,
+          null
+        ],
+        [
+          981.254,
+          null
+        ],
+        [
+          991.839,
+          null
+        ],
+        [
+          995.873,
+          null
+        ],
+        [
+          996.051,
+          null
+        ],
+        [
+          996.432,
+          null
+        ],
+        [
+          1001.404,
+          null
+        ],
+        [
+          1014.556,
+          null
+        ],
+        [
+          1030.362,
+          null
+        ],
+        [
+          1052.384,
+          null
+        ],
+        [
+          1063.365,
+          null
+        ],
+        [
+          1064.177,
+          null
+        ],
+        [
+          1065.735,
+          null
+        ],
+        [
+          1069.245,
+          null
+        ],
+        [
+          1071.383,
+          null
+        ],
+        [
+          1089.094,
+          null
+        ],
+        [
+          1093.676,
+          null
+        ],
+        [
+          1105.311,
+          null
+        ],
+        [
+          1117.171,
+          null
+        ],
+        [
+          1118.358,
+          null
+        ],
+        [
+          1129.971,
+          null
+        ],
+        [
+          1137.699,
+          null
+        ],
+        [
+          1141.02,
+          null
+        ],
+        [
+          1145.867,
+          null
+        ],
+        [
+          1146.25,
+          null
+        ],
+        [
+          1162.116,
+          null
+        ],
+        [
+          1170.98,
+          null
+        ],
+        [
+          1183.898,
+          null
+        ],
+        [
+          1186.14,
+          null
+        ],
+        [
+          1188.079,
+          null
+        ],
+        [
+          1209.27,
+          null
+        ],
+        [
+          1215.183,
+          null
+        ],
+        [
+          1247.393,
+          null
+        ],
+        [
+          1257.16,
+          null
+        ],
+        [
+          1258.734,
+          null
+        ],
+        [
+          1262.139,
+          null
+        ],
+        [
+          1273.394,
+          null
+        ],
+        [
+          1278.767,
+          null
+        ],
+        [
+          1283.607,
+          null
+        ],
+        [
+          1283.805,
+          null
+        ],
+        [
+          1291.583,
+          null
+        ],
+        [
+          1291.932,
+          null
+        ],
+        [
+          1293.708,
+          null
+        ],
+        [
+          1293.993,
+          null
+        ],
+        [
+          1294.282,
+          null
+        ],
+        [
+          1300.026,
+          null
+        ],
+        [
+          1308.452,
+          null
+        ],
+        [
+          1309.23,
+          null
+        ],
+        [
+          1314.416,
+          null
+        ],
+        [
+          1314.664,
+          null
+        ],
+        [
+          1317.965,
+          null
+        ],
+        [
+          1318.565,
+          null
+        ],
+        [
+          1322.212,
+          null
+        ],
+        [
+          1325.494,
+          null
+        ],
+        [
+          1330.382,
+          null
+        ],
+        [
+          1334.396,
+          null
+        ],
+        [
+          1334.71,
+          null
+        ],
+        [
+          1347.726,
+          null
+        ],
+        [
+          1351.384,
+          null
+        ],
+        [
+          1353.293,
+          null
+        ],
+        [
+          1354.132,
+          null
+        ],
+        [
+          1356.185,
+          null
+        ],
+        [
+          1356.588,
+          null
+        ],
+        [
+          1360.763,
+          null
+        ],
+        [
+          1363.798,
+          null
+        ],
+        [
+          1364.271,
+          null
+        ],
+        [
+          1365.813,
+          null
+        ],
+        [
+          1374.493,
+          null
+        ],
+        [
+          1375.776,
+          null
+        ],
+        [
+          1380.941,
+          null
+        ],
+        [
+          1381.603,
+          null
+        ],
+        [
+          1381.912,
+          null
+        ],
+        [
+          1444.057,
+          null
+        ],
+        [
+          1446.159,
+          null
+        ],
+        [
+          1456.144,
+          null
+        ],
+        [
+          1456.367,
+          null
+        ],
+        [
+          1461.795,
+          null
+        ],
+        [
+          1473.313,
+          null
+        ],
+        [
+          1476.738,
+          null
+        ],
+        [
+          1479.016,
+          null
+        ],
+        [
+          1480.129,
+          null
+        ],
+        [
+          1485.698,
+          null
+        ],
+        [
+          1491.004,
+          null
+        ],
+        [
+          1491.135,
+          null
+        ],
+        [
+          1503.291,
+          null
+        ],
+        [
+          1503.771,
+          null
+        ],
+        [
+          1509.219,
+          null
+        ],
+        [
+          1520.578,
+          null
+        ],
+        [
+          1521.952,
+          null
+        ],
+        [
+          1524.769,
+          null
+        ],
+        [
+          1529.791,
+          null
+        ],
+        [
+          1532.906,
+          null
+        ],
+        [
+          1533.095,
+          null
+        ],
+        [
+          1536.117,
+          null
+        ],
+        [
+          1545.043,
+          null
+        ],
+        [
+          1545.49,
+          null
+        ],
+        [
+          1549.473,
+          null
+        ],
+        [
+          1555.282,
+          null
+        ],
+        [
+          1567.333,
+          null
+        ],
+        [
+          1571.428,
+          null
+        ],
+        [
+          1572.021,
+          null
+        ],
+        [
+          1576.68,
+          null
+        ],
+        [
+          1585.862,
+          null
+        ],
+        [
+          1586.451,
+          null
+        ],
+        [
+          1598.448,
+          null
+        ],
+        [
+          1603.757,
+          null
+        ],
+        [
+          1617.524,
+          null
+        ],
+        [
+          1621.515,
+          null
+        ],
+        [
+          1621.789,
+          null
+        ],
+        [
+          1628.127,
+          null
+        ],
+        [
+          1628.406,
+          null
+        ],
+        [
+          1629.274,
+          null
+        ],
+        [
+          1632.14,
+          null
+        ],
+        [
+          1632.933,
+          null
+        ],
+        [
+          1636.857,
+          null
+        ],
+        [
+          1640.498,
+          null
+        ],
+        [
+          1644.01,
+          null
+        ],
+        [
+          1644.143,
+          null
+        ],
+        [
+          1655.546,
+          null
+        ],
+        [
+          1655.929,
+          null
+        ],
+        [
+          1658.5,
+          null
+        ],
+        [
+          1661.675,
+          null
+        ],
+        [
+          1663.089,
+          null
+        ],
+        [
+          1665.698,
+          null
+        ],
+        [
+          1665.898,
+          null
+        ],
+        [
+          1668.349,
+          null
+        ],
+        [
+          1669.233,
+          null
+        ],
+        [
+          1672.337,
+          null
+        ],
+        [
+          1674.54,
+          null
+        ],
+        [
+          1675.894,
+          null
+        ],
+        [
+          1682.958,
+          null
+        ],
+        [
+          1684.639,
+          null
+        ],
+        [
+          1690.033,
+          null
+        ],
+        [
+          1702.032,
+          null
+        ],
+        [
+          1704.868,
+          null
+        ],
+        [
+          1707.866,
+          null
+        ],
+        [
+          1708.06,
+          null
+        ],
+        [
+          1708.885,
+          null
+        ],
+        [
+          1708.988,
+          null
+        ],
+        [
+          1709.398,
+          null
+        ],
+        [
+          1719.902,
+          null
+        ],
+        [
+          1721.85,
+          null
+        ],
+        [
+          1731.535,
+          null
+        ],
+        [
+          1734.604,
+          null
+        ],
+        [
+          1740.344,
+          null
+        ],
+        [
+          1743.444,
+          null
+        ],
+        [
+          1743.635,
+          null
+        ],
+        [
+          1744.014,
+          null
+        ],
+        [
+          1747.132,
+          null
+        ],
+        [
+          1749.39,
+          null
+        ],
+        [
+          1757.24,
+          null
+        ],
+        [
+          1761.279,
+          null
+        ],
+        [
+          1761.683,
+          null
+        ],
+        [
+          1764.788,
+          null
+        ],
+        [
+          1766.687,
+          null
+        ],
+        [
+          1766.845,
+          null
+        ],
+        [
+          1767.818,
+          null
+        ],
+        [
+          1767.977,
+          null
+        ],
+        [
+          1770.784,
+          null
+        ],
+        [
+          1783.271,
+          null
+        ],
+        [
+          1787.986,
+          null
+        ],
+        [
+          1788.713,
+          null
+        ],
+        [
+          1792.296,
+          null
+        ],
+        [
+          1796.648,
+          null
+        ],
+        [
+          1803.639,
+          null
+        ],
+        [
+          1808.695,
+          null
+        ],
+        [
+          1809.412,
+          null
+        ],
+        [
+          1819.448,
+          null
+        ],
+        [
+          1820.023,
+          null
+        ],
+        [
+          1823.85,
+          null
+        ],
+        [
+          1825.176,
+          null
+        ],
+        [
+          1826.124,
+          null
+        ],
+        [
+          1828.529,
+          null
+        ],
+        [
+          1829.379,
+          null
+        ],
+        [
+          1829.555,
+          null
+        ],
+        [
+          1831.542,
+          null
+        ],
+        [
+          1832.842,
+          null
+        ],
+        [
+          1834.232,
+          null
+        ],
+        [
+          1834.471,
+          null
+        ],
+        [
+          1838.683,
+          null
+        ],
+        [
+          1838.89,
+          null
+        ],
+        [
+          1840.337,
+          null
+        ],
+        [
+          1841.667,
+          null
+        ],
+        [
+          1842.913,
+          null
+        ],
+        [
+          1845.156,
+          null
+        ],
+        [
+          1848.96,
+          null
+        ],
+        [
+          1849.215,
+          null
+        ],
+        [
+          1853.674,
+          null
+        ],
+        [
+          1853.8,
+          null
+        ],
+        [
+          1858.093,
+          null
+        ],
+        [
+          1858.324,
+          null
+        ],
+        [
+          1861.974,
+          null
+        ],
+        [
+          1862.587,
+          null
+        ],
+        [
+          1862.701,
+          null
+        ],
+        [
+          1863.276,
+          null
+        ],
+        [
+          1867.237,
+          null
+        ],
+        [
+          1868.347,
+          null
+        ],
+        [
+          1868.959,
+          null
+        ],
+        [
+          1872.48,
+          null
+        ],
+        [
+          1873.195,
+          null
+        ],
+        [
+          1873.76,
+          null
+        ],
+        [
+          1875.0,
+          null
+        ],
+        [
+          1877.665,
+          null
+        ],
+        [
+          1878.168,
+          null
+        ],
+        [
+          1878.98,
+          null
+        ],
+        [
+          1880.232,
+          null
+        ],
+        [
+          1883.977,
+          null
+        ],
+        [
+          1884.289,
+          null
+        ],
+        [
+          1887.29,
+          null
+        ],
+        [
+          1887.588,
+          null
+        ],
+        [
+          1887.718,
+          null
+        ],
+        [
+          1887.94,
+          null
+        ],
+        [
+          1888.082,
+          null
+        ],
+        [
+          1890.105,
+          null
+        ],
+        [
+          1891.06,
+          null
+        ],
+        [
+          1893.001,
+          null
+        ],
+        [
+          1897.838,
+          null
+        ],
+        [
+          1898.32,
+          null
+        ],
+        [
+          1901.318,
+          null
+        ],
+        [
+          1906.306,
+          null
+        ],
+        [
+          1907.641,
+          null
+        ],
+        [
+          1909.159,
+          null
+        ],
+        [
+          1909.813,
+          null
+        ],
+        [
+          1912.815,
+          null
+        ],
+        [
+          1912.951,
+          null
+        ],
+        [
+          1913.496,
+          null
+        ],
+        [
+          1916.272,
+          null
+        ],
+        [
+          1917.741,
+          null
+        ],
+        [
+          1920.711,
+          null
+        ],
+        [
+          1921.925,
+          null
+        ],
+        [
+          1924.168,
+          null
+        ],
+        [
+          1924.714,
+          null
+        ],
+        [
+          1925.45,
+          null
+        ],
+        [
+          1925.76,
+          null
+        ],
+        [
+          1925.919,
+          null
+        ],
+        [
+          1929.591,
+          null
+        ],
+        [
+          1934.938,
+          null
+        ],
+        [
+          1935.093,
+          null
+        ],
+        [
+          1937.098,
+          null
+        ],
+        [
+          1939.724,
+          null
+        ],
+        [
+          1942.896,
+          null
+        ],
+        [
+          1943.525,
+          null
+        ],
+        [
+          1946.472,
+          null
+        ],
+        [
+          1946.59,
+          null
+        ],
+        [
+          1947.422,
+          null
+        ],
+        [
+          1947.526,
+          null
+        ],
+        [
+          1948.454,
+          null
+        ],
+        [
+          1950.756,
+          null
+        ],
+        [
+          1953.197,
+          null
+        ],
+        [
+          1953.658,
+          null
+        ],
+        [
+          1954.471,
+          null
+        ],
+        [
+          1955.292,
+          null
+        ],
+        [
+          1959.668,
+          null
+        ],
+        [
+          1963.38,
+          null
+        ],
+        [
+          1971.64,
+          null
+        ],
+        [
+          1973.845,
+          null
+        ],
+        [
+          1974.94,
+          null
+        ],
+        [
+          1975.178,
+          null
+        ],
+        [
+          1977.051,
+          null
+        ],
+        [
+          1980.752,
+          null
+        ],
+        [
+          1986.957,
+          null
+        ],
+        [
+          1992.197,
+          null
+        ],
+        [
+          1992.346,
+          null
+        ],
+        [
+          1994.324,
+          null
+        ],
+        [
+          1998.553,
+          null
+        ],
+        [
+          1999.027,
+          null
+        ],
+        [
+          2001.193,
+          null
+        ],
+        [
+          2003.921,
+          null
+        ],
+        [
+          2006.81,
+          null
+        ],
+        [
+          2008.551,
+          null
+        ],
+        [
+          2009.14,
+          null
+        ],
+        [
+          2009.454,
+          null
+        ],
+        [
+          2010.625,
+          null
+        ],
+        [
+          2013.206,
+          null
+        ],
+        [
+          2014.48,
+          null
+        ],
+        [
+          2014.659,
+          null
+        ],
+        [
+          2016.146,
+          null
+        ],
+        [
+          2016.297,
+          null
+        ],
+        [
+          2023.148,
+          null
+        ],
+        [
+          2026.325,
+          null
+        ],
+        [
+          2026.57,
+          null
+        ],
+        [
+          2029.182,
+          null
+        ],
+        [
+          2030.604,
+          null
+        ],
+        [
+          2031.586,
+          null
+        ],
+        [
+          2031.723,
+          null
+        ],
+        [
+          2035.912,
+          null
+        ],
+        [
+          2040.471,
+          null
+        ],
+        [
+          2040.638,
+          null
+        ],
+        [
+          2041.613,
+          null
+        ],
+        [
+          2042.152,
+          null
+        ],
+        [
+          2044.138,
+          null
+        ],
+        [
+          2044.795,
+          null
+        ],
+        [
+          2045.057,
+          null
+        ],
+        [
+          2045.345,
+          null
+        ],
+        [
+          2046.147,
+          null
+        ],
+        [
+          2053.294,
+          null
+        ],
+        [
+          2057.337,
+          null
+        ],
+        [
+          2057.86,
+          null
+        ],
+        [
+          2060.099,
+          null
+        ],
+        [
+          2067.352,
+          null
+        ],
+        [
+          2067.458,
+          null
+        ],
+        [
+          2069.868,
+          null
+        ],
+        [
+          2070.195,
+          null
+        ],
+        [
+          2072.953,
+          null
+        ],
+        [
+          2073.915,
+          null
+        ],
+        [
+          2077.583,
+          null
+        ],
+        [
+          2084.525,
+          null
+        ],
+        [
+          2085.358,
+          null
+        ],
+        [
+          2086.794,
+          null
+        ],
+        [
+          2087.758,
+          null
+        ],
+        [
+          2098.537,
+          null
+        ],
+        [
+          2103.456,
+          null
+        ],
+        [
+          2105.545,
+          null
+        ],
+        [
+          2106.304,
+          null
+        ],
+        [
+          2112.773,
+          null
+        ],
+        [
+          2118.92,
+          null
+        ],
+        [
+          2125.431,
+          null
+        ],
+        [
+          2130.807,
+          null
+        ],
+        [
+          2131.127,
+          null
+        ],
+        [
+          2137.178,
+          null
+        ],
+        [
+          2141.803,
+          null
+        ],
+        [
+          2146.995,
+          null
+        ],
+        [
+          2147.111,
+          null
+        ],
+        [
+          2153.975,
+          null
+        ],
+        [
+          2159.577,
+          null
+        ],
+        [
+          2159.842,
+          null
+        ],
+        [
+          2163.26,
+          null
+        ],
+        [
+          2169.696,
+          null
+        ],
+        [
+          2172.484,
+          null
+        ],
+        [
+          2175.041,
+          null
+        ],
+        [
+          2176.827,
+          null
+        ],
+        [
+          2177.125,
+          null
+        ],
+        [
+          2177.294,
+          null
+        ],
+        [
+          2177.398,
+          null
+        ],
+        [
+          2177.759,
+          null
+        ],
+        [
+          2179.206,
+          null
+        ],
+        [
+          2182.347,
+          null
+        ],
+        [
+          2184.014,
+          null
+        ],
+        [
+          2184.887,
+          null
+        ],
+        [
+          2186.088,
+          null
+        ],
+        [
+          2186.23,
+          null
+        ],
+        [
+          2187.031,
+          null
+        ],
+        [
+          2187.139,
+          null
+        ],
+        [
+          2187.327,
+          null
+        ],
+        [
+          2192.19,
+          null
+        ],
+        [
+          2192.648,
+          null
+        ],
+        [
+          2193.346,
+          null
+        ],
+        [
+          2193.659,
+          null
+        ],
+        [
+          2194.557,
+          null
+        ],
+        [
+          2194.795,
+          null
+        ],
+        [
+          2195.106,
+          null
+        ],
+        [
+          2201.756,
+          null
+        ],
+        [
+          2204.341,
+          null
+        ],
+        [
+          2205.049,
+          null
+        ],
+        [
+          2210.032,
+          null
+        ],
+        [
+          2219.221,
+          null
+        ],
+        [
+          2220.697,
+          null
+        ],
+        [
+          2224.393,
+          null
+        ],
+        [
+          2231.038,
+          null
+        ],
+        [
+          2254.531,
+          null
+        ],
+        [
+          2255.61,
+          null
+        ],
+        [
+          2260.5,
+          null
+        ],
+        [
+          2271.782,
+          null
+        ],
+        [
+          2279.918,
+          null
+        ],
+        [
+          2282.882,
+          null
+        ],
+        [
+          2287.361,
+          null
+        ],
+        [
+          2300.317,
+          null
+        ],
+        [
+          2303.0,
+          null
+        ],
+        [
+          2305.048,
+          null
+        ],
+        [
+          2309.913,
+          null
+        ],
+        [
+          2311.212,
+          null
+        ],
+        [
+          2321.894,
+          null
+        ],
+        [
+          2322.046,
+          null
+        ],
+        [
+          2328.46,
+          null
+        ],
+        [
+          2332.939,
+          null
+        ],
+        [
+          2334.964,
+          null
+        ],
+        [
+          2336.609,
+          null
+        ],
+        [
+          2340.97,
+          null
+        ],
+        [
+          2346.635,
+          null
+        ],
+        [
+          2347.769,
+          null
+        ],
+        [
+          2378.487,
+          null
+        ],
+        [
+          2387.038,
+          null
+        ],
+        [
+          2391.954,
+          null
+        ],
+        [
+          2393.711,
+          null
+        ],
+        [
+          2399.846,
+          null
+        ],
+        [
+          2407.144,
+          null
+        ],
+        [
+          2407.321,
+          null
+        ],
+        [
+          2411.795,
+          null
+        ],
+        [
+          2413.775,
+          null
+        ],
+        [
+          2415.079,
+          null
+        ],
+        [
+          2415.723,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "flag": 127,
+        "garbage": 126,
+        "spike": 271
+      },
+      "changed": 524,
+      "gained": 0,
+      "id": "v1-6a51338a",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 flag": 127,
+        "undecided \u2192 garbage": 126,
+        "undecided \u2192 spike": 271
+      },
+      "n": 524,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 524 of 524 decided.",
+      "rebuilt_from": {
+        "folder": "m60s1jul10",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          4.807,
+          "flag"
+        ],
+        [
+          11.798,
+          "spike"
+        ],
+        [
+          12.262,
+          "spike"
+        ],
+        [
+          13.805,
+          "garbage"
+        ],
+        [
+          14.619,
+          "garbage"
+        ],
+        [
+          29.025,
+          "garbage"
+        ],
+        [
+          38.892,
+          "garbage"
+        ],
+        [
+          42.431,
+          "garbage"
+        ],
+        [
+          58.709,
+          "garbage"
+        ],
+        [
+          62.949,
+          "garbage"
+        ],
+        [
+          76.228,
+          "garbage"
+        ],
+        [
+          90.491,
+          "garbage"
+        ],
+        [
+          94.619,
+          "garbage"
+        ],
+        [
+          101.187,
+          "flag"
+        ],
+        [
+          109.704,
+          "flag"
+        ],
+        [
+          110.17,
+          "flag"
+        ],
+        [
+          110.462,
+          "flag"
+        ],
+        [
+          112.384,
+          "flag"
+        ],
+        [
+          114.134,
+          "garbage"
+        ],
+        [
+          114.677,
+          "garbage"
+        ],
+        [
+          137.587,
+          "garbage"
+        ],
+        [
+          137.725,
+          "flag"
+        ],
+        [
+          148.78,
+          "garbage"
+        ],
+        [
+          180.521,
+          "flag"
+        ],
+        [
+          181.253,
+          "garbage"
+        ],
+        [
+          181.386,
+          "flag"
+        ],
+        [
+          184.921,
+          "flag"
+        ],
+        [
+          205.573,
+          "flag"
+        ],
+        [
+          211.798,
+          "garbage"
+        ],
+        [
+          215.562,
+          "flag"
+        ],
+        [
+          222.63,
+          "garbage"
+        ],
+        [
+          223.469,
+          "flag"
+        ],
+        [
+          225.819,
+          "spike"
+        ],
+        [
+          233.029,
+          "garbage"
+        ],
+        [
+          245.278,
+          "garbage"
+        ],
+        [
+          250.316,
+          "garbage"
+        ],
+        [
+          266.423,
+          "garbage"
+        ],
+        [
+          269.377,
+          "garbage"
+        ],
+        [
+          296.455,
+          "garbage"
+        ],
+        [
+          303.599,
+          "flag"
+        ],
+        [
+          305.748,
+          "flag"
+        ],
+        [
+          306.867,
+          "flag"
+        ],
+        [
+          306.975,
+          "flag"
+        ],
+        [
+          312.064,
+          "flag"
+        ],
+        [
+          336.671,
+          "flag"
+        ],
+        [
+          336.835,
+          "flag"
+        ],
+        [
+          337.034,
+          "flag"
+        ],
+        [
+          339.053,
+          "flag"
+        ],
+        [
+          348.157,
+          "flag"
+        ],
+        [
+          368.389,
+          "garbage"
+        ],
+        [
+          369.798,
+          "garbage"
+        ],
+        [
+          388.328,
+          "garbage"
+        ],
+        [
+          423.136,
+          "garbage"
+        ],
+        [
+          423.315,
+          "flag"
+        ],
+        [
+          429.358,
+          "flag"
+        ],
+        [
+          433.914,
+          "garbage"
+        ],
+        [
+          436.337,
+          "garbage"
+        ],
+        [
+          441.976,
+          "garbage"
+        ],
+        [
+          443.56,
+          "garbage"
+        ],
+        [
+          444.232,
+          "garbage"
+        ],
+        [
+          444.339,
+          "garbage"
+        ],
+        [
+          447.91,
+          "spike"
+        ],
+        [
+          462.32,
+          "garbage"
+        ],
+        [
+          464.789,
+          "garbage"
+        ],
+        [
+          466.816,
+          "garbage"
+        ],
+        [
+          479.376,
+          "garbage"
+        ],
+        [
+          503.495,
+          "garbage"
+        ],
+        [
+          517.638,
+          "flag"
+        ],
+        [
+          518.505,
+          "flag"
+        ],
+        [
+          518.806,
+          "garbage"
+        ],
+        [
+          525.869,
+          "garbage"
+        ],
+        [
+          531.149,
+          "garbage"
+        ],
+        [
+          531.43,
+          "garbage"
+        ],
+        [
+          543.93,
+          "flag"
+        ],
+        [
+          544.052,
+          "spike"
+        ],
+        [
+          544.22,
+          "spike"
+        ],
+        [
+          544.429,
+          "spike"
+        ],
+        [
+          548.429,
+          "flag"
+        ],
+        [
+          562.815,
+          "spike"
+        ],
+        [
+          571.503,
+          "spike"
+        ],
+        [
+          571.623,
+          "spike"
+        ],
+        [
+          576.223,
+          "spike"
+        ],
+        [
+          576.349,
+          "spike"
+        ],
+        [
+          583.006,
+          "spike"
+        ],
+        [
+          595.173,
+          "spike"
+        ],
+        [
+          596.425,
+          "spike"
+        ],
+        [
+          625.168,
+          "spike"
+        ],
+        [
+          628.393,
+          "spike"
+        ],
+        [
+          632.715,
+          "spike"
+        ],
+        [
+          634.818,
+          "spike"
+        ],
+        [
+          636.603,
+          "spike"
+        ],
+        [
+          636.735,
+          "spike"
+        ],
+        [
+          640.214,
+          "spike"
+        ],
+        [
+          640.774,
+          "spike"
+        ],
+        [
+          652.364,
+          "spike"
+        ],
+        [
+          652.695,
+          "spike"
+        ],
+        [
+          690.135,
+          "flag"
+        ],
+        [
+          690.447,
+          "spike"
+        ],
+        [
+          694.406,
+          "spike"
+        ],
+        [
+          694.556,
+          "spike"
+        ],
+        [
+          698.154,
+          "spike"
+        ],
+        [
+          704.724,
+          "spike"
+        ],
+        [
+          704.846,
+          "spike"
+        ],
+        [
+          705.023,
+          "spike"
+        ],
+        [
+          710.386,
+          "spike"
+        ],
+        [
+          722.651,
+          "spike"
+        ],
+        [
+          744.092,
+          "spike"
+        ],
+        [
+          747.519,
+          "spike"
+        ],
+        [
+          748.051,
+          "spike"
+        ],
+        [
+          766.911,
+          "spike"
+        ],
+        [
+          775.204,
+          "spike"
+        ],
+        [
+          776.072,
+          "spike"
+        ],
+        [
+          791.086,
+          "spike"
+        ],
+        [
+          800.09,
+          "spike"
+        ],
+        [
+          800.262,
+          "spike"
+        ],
+        [
+          801.108,
+          "spike"
+        ],
+        [
+          825.468,
+          "spike"
+        ],
+        [
+          826.791,
+          "spike"
+        ],
+        [
+          834.234,
+          "spike"
+        ],
+        [
+          846.096,
+          "spike"
+        ],
+        [
+          852.147,
+          "spike"
+        ],
+        [
+          871.57,
+          "spike"
+        ],
+        [
+          893.846,
+          "spike"
+        ],
+        [
+          913.242,
+          "spike"
+        ],
+        [
+          930.368,
+          "spike"
+        ],
+        [
+          933.63,
+          "spike"
+        ],
+        [
+          934.835,
+          "spike"
+        ],
+        [
+          939.744,
+          "spike"
+        ],
+        [
+          939.867,
+          "spike"
+        ],
+        [
+          940.015,
+          "spike"
+        ],
+        [
+          940.136,
+          "spike"
+        ],
+        [
+          943.684,
+          "garbage"
+        ],
+        [
+          953.53,
+          "spike"
+        ],
+        [
+          967.127,
+          "spike"
+        ],
+        [
+          981.254,
+          "spike"
+        ],
+        [
+          991.839,
+          "spike"
+        ],
+        [
+          995.873,
+          "spike"
+        ],
+        [
+          996.051,
+          "spike"
+        ],
+        [
+          996.432,
+          "spike"
+        ],
+        [
+          1001.404,
+          "spike"
+        ],
+        [
+          1014.556,
+          "flag"
+        ],
+        [
+          1030.362,
+          "flag"
+        ],
+        [
+          1052.384,
+          "flag"
+        ],
+        [
+          1063.365,
+          "flag"
+        ],
+        [
+          1064.177,
+          "flag"
+        ],
+        [
+          1065.735,
+          "flag"
+        ],
+        [
+          1069.245,
+          "flag"
+        ],
+        [
+          1071.383,
+          "flag"
+        ],
+        [
+          1089.094,
+          "flag"
+        ],
+        [
+          1093.676,
+          "flag"
+        ],
+        [
+          1105.311,
+          "flag"
+        ],
+        [
+          1117.171,
+          "flag"
+        ],
+        [
+          1118.358,
+          "flag"
+        ],
+        [
+          1129.971,
+          "flag"
+        ],
+        [
+          1137.699,
+          "flag"
+        ],
+        [
+          1141.02,
+          "flag"
+        ],
+        [
+          1145.867,
+          "flag"
+        ],
+        [
+          1146.25,
+          "flag"
+        ],
+        [
+          1162.116,
+          "flag"
+        ],
+        [
+          1170.98,
+          "flag"
+        ],
+        [
+          1183.898,
+          "flag"
+        ],
+        [
+          1186.14,
+          "flag"
+        ],
+        [
+          1188.079,
+          "flag"
+        ],
+        [
+          1209.27,
+          "flag"
+        ],
+        [
+          1215.183,
+          "flag"
+        ],
+        [
+          1247.393,
+          "flag"
+        ],
+        [
+          1257.16,
+          "flag"
+        ],
+        [
+          1258.734,
+          "flag"
+        ],
+        [
+          1262.139,
+          "flag"
+        ],
+        [
+          1273.394,
+          "flag"
+        ],
+        [
+          1278.767,
+          "flag"
+        ],
+        [
+          1283.607,
+          "flag"
+        ],
+        [
+          1283.805,
+          "flag"
+        ],
+        [
+          1291.583,
+          "flag"
+        ],
+        [
+          1291.932,
+          "flag"
+        ],
+        [
+          1293.708,
+          "flag"
+        ],
+        [
+          1293.993,
+          "flag"
+        ],
+        [
+          1294.282,
+          "flag"
+        ],
+        [
+          1300.026,
+          "flag"
+        ],
+        [
+          1308.452,
+          "flag"
+        ],
+        [
+          1309.23,
+          "flag"
+        ],
+        [
+          1314.416,
+          "flag"
+        ],
+        [
+          1314.664,
+          "flag"
+        ],
+        [
+          1317.965,
+          "flag"
+        ],
+        [
+          1318.565,
+          "flag"
+        ],
+        [
+          1322.212,
+          "flag"
+        ],
+        [
+          1325.494,
+          "flag"
+        ],
+        [
+          1330.382,
+          "flag"
+        ],
+        [
+          1334.396,
+          "spike"
+        ],
+        [
+          1334.71,
+          "flag"
+        ],
+        [
+          1347.726,
+          "spike"
+        ],
+        [
+          1351.384,
+          "spike"
+        ],
+        [
+          1353.293,
+          "spike"
+        ],
+        [
+          1354.132,
+          "spike"
+        ],
+        [
+          1356.185,
+          "spike"
+        ],
+        [
+          1356.588,
+          "spike"
+        ],
+        [
+          1360.763,
+          "spike"
+        ],
+        [
+          1363.798,
+          "flag"
+        ],
+        [
+          1364.271,
+          "spike"
+        ],
+        [
+          1365.813,
+          "spike"
+        ],
+        [
+          1374.493,
+          "spike"
+        ],
+        [
+          1375.776,
+          "spike"
+        ],
+        [
+          1380.941,
+          "spike"
+        ],
+        [
+          1381.603,
+          "spike"
+        ],
+        [
+          1381.912,
+          "spike"
+        ],
+        [
+          1444.057,
+          "spike"
+        ],
+        [
+          1446.159,
+          "spike"
+        ],
+        [
+          1456.144,
+          "spike"
+        ],
+        [
+          1456.367,
+          "spike"
+        ],
+        [
+          1461.795,
+          "flag"
+        ],
+        [
+          1473.313,
+          "garbage"
+        ],
+        [
+          1476.738,
+          "flag"
+        ],
+        [
+          1479.016,
+          "garbage"
+        ],
+        [
+          1480.129,
+          "spike"
+        ],
+        [
+          1485.698,
+          "spike"
+        ],
+        [
+          1491.004,
+          "spike"
+        ],
+        [
+          1491.135,
+          "spike"
+        ],
+        [
+          1503.291,
+          "flag"
+        ],
+        [
+          1503.771,
+          "flag"
+        ],
+        [
+          1509.219,
+          "spike"
+        ],
+        [
+          1520.578,
+          "spike"
+        ],
+        [
+          1521.952,
+          "spike"
+        ],
+        [
+          1524.769,
+          "spike"
+        ],
+        [
+          1529.791,
+          "flag"
+        ],
+        [
+          1532.906,
+          "flag"
+        ],
+        [
+          1533.095,
+          "flag"
+        ],
+        [
+          1536.117,
+          "flag"
+        ],
+        [
+          1545.043,
+          "flag"
+        ],
+        [
+          1545.49,
+          "flag"
+        ],
+        [
+          1549.473,
+          "spike"
+        ],
+        [
+          1555.282,
+          "spike"
+        ],
+        [
+          1567.333,
+          "flag"
+        ],
+        [
+          1571.428,
+          "flag"
+        ],
+        [
+          1572.021,
+          "spike"
+        ],
+        [
+          1576.68,
+          "spike"
+        ],
+        [
+          1585.862,
+          "flag"
+        ],
+        [
+          1586.451,
+          "spike"
+        ],
+        [
+          1598.448,
+          "spike"
+        ],
+        [
+          1603.757,
+          "spike"
+        ],
+        [
+          1617.524,
+          "spike"
+        ],
+        [
+          1621.515,
+          "spike"
+        ],
+        [
+          1621.789,
+          "spike"
+        ],
+        [
+          1628.127,
+          "spike"
+        ],
+        [
+          1628.406,
+          "spike"
+        ],
+        [
+          1629.274,
+          "spike"
+        ],
+        [
+          1632.14,
+          "spike"
+        ],
+        [
+          1632.933,
+          "spike"
+        ],
+        [
+          1636.857,
+          "spike"
+        ],
+        [
+          1640.498,
+          "spike"
+        ],
+        [
+          1644.01,
+          "spike"
+        ],
+        [
+          1644.143,
+          "spike"
+        ],
+        [
+          1655.546,
+          "spike"
+        ],
+        [
+          1655.929,
+          "spike"
+        ],
+        [
+          1658.5,
+          "spike"
+        ],
+        [
+          1661.675,
+          "spike"
+        ],
+        [
+          1663.089,
+          "spike"
+        ],
+        [
+          1665.698,
+          "spike"
+        ],
+        [
+          1665.898,
+          "spike"
+        ],
+        [
+          1668.349,
+          "spike"
+        ],
+        [
+          1669.233,
+          "spike"
+        ],
+        [
+          1672.337,
+          "spike"
+        ],
+        [
+          1674.54,
+          "spike"
+        ],
+        [
+          1675.894,
+          "spike"
+        ],
+        [
+          1682.958,
+          "spike"
+        ],
+        [
+          1684.639,
+          "spike"
+        ],
+        [
+          1690.033,
+          "spike"
+        ],
+        [
+          1702.032,
+          "spike"
+        ],
+        [
+          1704.868,
+          "spike"
+        ],
+        [
+          1707.866,
+          "spike"
+        ],
+        [
+          1708.06,
+          "spike"
+        ],
+        [
+          1708.885,
+          "spike"
+        ],
+        [
+          1708.988,
+          "spike"
+        ],
+        [
+          1709.398,
+          "spike"
+        ],
+        [
+          1719.902,
+          "spike"
+        ],
+        [
+          1721.85,
+          "spike"
+        ],
+        [
+          1731.535,
+          "spike"
+        ],
+        [
+          1734.604,
+          "spike"
+        ],
+        [
+          1740.344,
+          "spike"
+        ],
+        [
+          1743.444,
+          "flag"
+        ],
+        [
+          1743.635,
+          "spike"
+        ],
+        [
+          1744.014,
+          "spike"
+        ],
+        [
+          1747.132,
+          "spike"
+        ],
+        [
+          1749.39,
+          "spike"
+        ],
+        [
+          1757.24,
+          "spike"
+        ],
+        [
+          1761.279,
+          "spike"
+        ],
+        [
+          1761.683,
+          "spike"
+        ],
+        [
+          1764.788,
+          "spike"
+        ],
+        [
+          1766.687,
+          "spike"
+        ],
+        [
+          1766.845,
+          "spike"
+        ],
+        [
+          1767.818,
+          "spike"
+        ],
+        [
+          1767.977,
+          "spike"
+        ],
+        [
+          1770.784,
+          "spike"
+        ],
+        [
+          1783.271,
+          "spike"
+        ],
+        [
+          1787.986,
+          "spike"
+        ],
+        [
+          1788.713,
+          "spike"
+        ],
+        [
+          1792.296,
+          "spike"
+        ],
+        [
+          1796.648,
+          "spike"
+        ],
+        [
+          1803.639,
+          "spike"
+        ],
+        [
+          1808.695,
+          "spike"
+        ],
+        [
+          1809.412,
+          "spike"
+        ],
+        [
+          1819.448,
+          "spike"
+        ],
+        [
+          1820.023,
+          "spike"
+        ],
+        [
+          1823.85,
+          "spike"
+        ],
+        [
+          1825.176,
+          "spike"
+        ],
+        [
+          1826.124,
+          "spike"
+        ],
+        [
+          1828.529,
+          "spike"
+        ],
+        [
+          1829.379,
+          "spike"
+        ],
+        [
+          1829.555,
+          "spike"
+        ],
+        [
+          1831.542,
+          "spike"
+        ],
+        [
+          1832.842,
+          "spike"
+        ],
+        [
+          1834.232,
+          "spike"
+        ],
+        [
+          1834.471,
+          "spike"
+        ],
+        [
+          1838.683,
+          "spike"
+        ],
+        [
+          1838.89,
+          "spike"
+        ],
+        [
+          1840.337,
+          "spike"
+        ],
+        [
+          1841.667,
+          "spike"
+        ],
+        [
+          1842.913,
+          "spike"
+        ],
+        [
+          1845.156,
+          "spike"
+        ],
+        [
+          1848.96,
+          "spike"
+        ],
+        [
+          1849.215,
+          "spike"
+        ],
+        [
+          1853.674,
+          "spike"
+        ],
+        [
+          1853.8,
+          "spike"
+        ],
+        [
+          1858.093,
+          "spike"
+        ],
+        [
+          1858.324,
+          "spike"
+        ],
+        [
+          1861.974,
+          "spike"
+        ],
+        [
+          1862.587,
+          "spike"
+        ],
+        [
+          1862.701,
+          "spike"
+        ],
+        [
+          1863.276,
+          "spike"
+        ],
+        [
+          1867.237,
+          "spike"
+        ],
+        [
+          1868.347,
+          "spike"
+        ],
+        [
+          1868.959,
+          "spike"
+        ],
+        [
+          1872.48,
+          "spike"
+        ],
+        [
+          1873.195,
+          "spike"
+        ],
+        [
+          1873.76,
+          "spike"
+        ],
+        [
+          1875.0,
+          "spike"
+        ],
+        [
+          1877.665,
+          "spike"
+        ],
+        [
+          1878.168,
+          "spike"
+        ],
+        [
+          1878.98,
+          "spike"
+        ],
+        [
+          1880.232,
+          "spike"
+        ],
+        [
+          1883.977,
+          "spike"
+        ],
+        [
+          1884.289,
+          "spike"
+        ],
+        [
+          1887.29,
+          "spike"
+        ],
+        [
+          1887.588,
+          "spike"
+        ],
+        [
+          1887.718,
+          "spike"
+        ],
+        [
+          1887.94,
+          "flag"
+        ],
+        [
+          1888.082,
+          "spike"
+        ],
+        [
+          1890.105,
+          "spike"
+        ],
+        [
+          1891.06,
+          "spike"
+        ],
+        [
+          1893.001,
+          "spike"
+        ],
+        [
+          1897.838,
+          "spike"
+        ],
+        [
+          1898.32,
+          "spike"
+        ],
+        [
+          1901.318,
+          "flag"
+        ],
+        [
+          1906.306,
+          "spike"
+        ],
+        [
+          1907.641,
+          "flag"
+        ],
+        [
+          1909.159,
+          "spike"
+        ],
+        [
+          1909.813,
+          "spike"
+        ],
+        [
+          1912.815,
+          "spike"
+        ],
+        [
+          1912.951,
+          "spike"
+        ],
+        [
+          1913.496,
+          "flag"
+        ],
+        [
+          1916.272,
+          "spike"
+        ],
+        [
+          1917.741,
+          "spike"
+        ],
+        [
+          1920.711,
+          "flag"
+        ],
+        [
+          1921.925,
+          "flag"
+        ],
+        [
+          1924.168,
+          "spike"
+        ],
+        [
+          1924.714,
+          "spike"
+        ],
+        [
+          1925.45,
+          "spike"
+        ],
+        [
+          1925.76,
+          "spike"
+        ],
+        [
+          1925.919,
+          "spike"
+        ],
+        [
+          1929.591,
+          "spike"
+        ],
+        [
+          1934.938,
+          "spike"
+        ],
+        [
+          1935.093,
+          "spike"
+        ],
+        [
+          1937.098,
+          "spike"
+        ],
+        [
+          1939.724,
+          "spike"
+        ],
+        [
+          1942.896,
+          "flag"
+        ],
+        [
+          1943.525,
+          "flag"
+        ],
+        [
+          1946.472,
+          "spike"
+        ],
+        [
+          1946.59,
+          "spike"
+        ],
+        [
+          1947.422,
+          "spike"
+        ],
+        [
+          1947.526,
+          "spike"
+        ],
+        [
+          1948.454,
+          "spike"
+        ],
+        [
+          1950.756,
+          "spike"
+        ],
+        [
+          1953.197,
+          "flag"
+        ],
+        [
+          1953.658,
+          "spike"
+        ],
+        [
+          1954.471,
+          "spike"
+        ],
+        [
+          1955.292,
+          "spike"
+        ],
+        [
+          1959.668,
+          "spike"
+        ],
+        [
+          1963.38,
+          "spike"
+        ],
+        [
+          1971.64,
+          "spike"
+        ],
+        [
+          1973.845,
+          "spike"
+        ],
+        [
+          1974.94,
+          "spike"
+        ],
+        [
+          1975.178,
+          "spike"
+        ],
+        [
+          1977.051,
+          "spike"
+        ],
+        [
+          1980.752,
+          "spike"
+        ],
+        [
+          1986.957,
+          "spike"
+        ],
+        [
+          1992.197,
+          "spike"
+        ],
+        [
+          1992.346,
+          "spike"
+        ],
+        [
+          1994.324,
+          "spike"
+        ],
+        [
+          1998.553,
+          "spike"
+        ],
+        [
+          1999.027,
+          "spike"
+        ],
+        [
+          2001.193,
+          "flag"
+        ],
+        [
+          2003.921,
+          "spike"
+        ],
+        [
+          2006.81,
+          "spike"
+        ],
+        [
+          2008.551,
+          "flag"
+        ],
+        [
+          2009.14,
+          "flag"
+        ],
+        [
+          2009.454,
+          "flag"
+        ],
+        [
+          2010.625,
+          "flag"
+        ],
+        [
+          2013.206,
+          "spike"
+        ],
+        [
+          2014.48,
+          "spike"
+        ],
+        [
+          2014.659,
+          "flag"
+        ],
+        [
+          2016.146,
+          "spike"
+        ],
+        [
+          2016.297,
+          "spike"
+        ],
+        [
+          2023.148,
+          "spike"
+        ],
+        [
+          2026.325,
+          "spike"
+        ],
+        [
+          2026.57,
+          "spike"
+        ],
+        [
+          2029.182,
+          "spike"
+        ],
+        [
+          2030.604,
+          "spike"
+        ],
+        [
+          2031.586,
+          "flag"
+        ],
+        [
+          2031.723,
+          "spike"
+        ],
+        [
+          2035.912,
+          "spike"
+        ],
+        [
+          2040.471,
+          "flag"
+        ],
+        [
+          2040.638,
+          "spike"
+        ],
+        [
+          2041.613,
+          "spike"
+        ],
+        [
+          2042.152,
+          "flag"
+        ],
+        [
+          2044.138,
+          "flag"
+        ],
+        [
+          2044.795,
+          "spike"
+        ],
+        [
+          2045.057,
+          "spike"
+        ],
+        [
+          2045.345,
+          "spike"
+        ],
+        [
+          2046.147,
+          "flag"
+        ],
+        [
+          2053.294,
+          "spike"
+        ],
+        [
+          2057.337,
+          "flag"
+        ],
+        [
+          2057.86,
+          "flag"
+        ],
+        [
+          2060.099,
+          "flag"
+        ],
+        [
+          2067.352,
+          "garbage"
+        ],
+        [
+          2067.458,
+          "garbage"
+        ],
+        [
+          2069.868,
+          "garbage"
+        ],
+        [
+          2070.195,
+          "flag"
+        ],
+        [
+          2072.953,
+          "flag"
+        ],
+        [
+          2073.915,
+          "flag"
+        ],
+        [
+          2077.583,
+          "garbage"
+        ],
+        [
+          2084.525,
+          "garbage"
+        ],
+        [
+          2085.358,
+          "garbage"
+        ],
+        [
+          2086.794,
+          "garbage"
+        ],
+        [
+          2087.758,
+          "garbage"
+        ],
+        [
+          2098.537,
+          "garbage"
+        ],
+        [
+          2103.456,
+          "garbage"
+        ],
+        [
+          2105.545,
+          "garbage"
+        ],
+        [
+          2106.304,
+          "flag"
+        ],
+        [
+          2112.773,
+          "flag"
+        ],
+        [
+          2118.92,
+          "garbage"
+        ],
+        [
+          2125.431,
+          "garbage"
+        ],
+        [
+          2130.807,
+          "garbage"
+        ],
+        [
+          2131.127,
+          "garbage"
+        ],
+        [
+          2137.178,
+          "garbage"
+        ],
+        [
+          2141.803,
+          "garbage"
+        ],
+        [
+          2146.995,
+          "garbage"
+        ],
+        [
+          2147.111,
+          "garbage"
+        ],
+        [
+          2153.975,
+          "garbage"
+        ],
+        [
+          2159.577,
+          "garbage"
+        ],
+        [
+          2159.842,
+          "garbage"
+        ],
+        [
+          2163.26,
+          "garbage"
+        ],
+        [
+          2169.696,
+          "garbage"
+        ],
+        [
+          2172.484,
+          "garbage"
+        ],
+        [
+          2175.041,
+          "garbage"
+        ],
+        [
+          2176.827,
+          "garbage"
+        ],
+        [
+          2177.125,
+          "garbage"
+        ],
+        [
+          2177.294,
+          "garbage"
+        ],
+        [
+          2177.398,
+          "garbage"
+        ],
+        [
+          2177.759,
+          "garbage"
+        ],
+        [
+          2179.206,
+          "flag"
+        ],
+        [
+          2182.347,
+          "garbage"
+        ],
+        [
+          2184.014,
+          "garbage"
+        ],
+        [
+          2184.887,
+          "garbage"
+        ],
+        [
+          2186.088,
+          "garbage"
+        ],
+        [
+          2186.23,
+          "garbage"
+        ],
+        [
+          2187.031,
+          "garbage"
+        ],
+        [
+          2187.139,
+          "garbage"
+        ],
+        [
+          2187.327,
+          "garbage"
+        ],
+        [
+          2192.19,
+          "garbage"
+        ],
+        [
+          2192.648,
+          "spike"
+        ],
+        [
+          2193.346,
+          "garbage"
+        ],
+        [
+          2193.659,
+          "garbage"
+        ],
+        [
+          2194.557,
+          "garbage"
+        ],
+        [
+          2194.795,
+          "garbage"
+        ],
+        [
+          2195.106,
+          "garbage"
+        ],
+        [
+          2201.756,
+          "garbage"
+        ],
+        [
+          2204.341,
+          "garbage"
+        ],
+        [
+          2205.049,
+          "flag"
+        ],
+        [
+          2210.032,
+          "flag"
+        ],
+        [
+          2219.221,
+          "flag"
+        ],
+        [
+          2220.697,
+          "garbage"
+        ],
+        [
+          2224.393,
+          "garbage"
+        ],
+        [
+          2231.038,
+          "garbage"
+        ],
+        [
+          2254.531,
+          "flag"
+        ],
+        [
+          2255.61,
+          "garbage"
+        ],
+        [
+          2260.5,
+          "garbage"
+        ],
+        [
+          2271.782,
+          "garbage"
+        ],
+        [
+          2279.918,
+          "garbage"
+        ],
+        [
+          2282.882,
+          "garbage"
+        ],
+        [
+          2287.361,
+          "garbage"
+        ],
+        [
+          2300.317,
+          "garbage"
+        ],
+        [
+          2303.0,
+          "garbage"
+        ],
+        [
+          2305.048,
+          "garbage"
+        ],
+        [
+          2309.913,
+          "garbage"
+        ],
+        [
+          2311.212,
+          "garbage"
+        ],
+        [
+          2321.894,
+          "garbage"
+        ],
+        [
+          2322.046,
+          "garbage"
+        ],
+        [
+          2328.46,
+          "garbage"
+        ],
+        [
+          2332.939,
+          "garbage"
+        ],
+        [
+          2334.964,
+          "garbage"
+        ],
+        [
+          2336.609,
+          "garbage"
+        ],
+        [
+          2340.97,
+          "garbage"
+        ],
+        [
+          2346.635,
+          "garbage"
+        ],
+        [
+          2347.769,
+          "garbage"
+        ],
+        [
+          2378.487,
+          "garbage"
+        ],
+        [
+          2387.038,
+          "garbage"
+        ],
+        [
+          2391.954,
+          "garbage"
+        ],
+        [
+          2393.711,
+          "garbage"
+        ],
+        [
+          2399.846,
+          "garbage"
+        ],
+        [
+          2407.144,
+          "garbage"
+        ],
+        [
+          2407.321,
+          "garbage"
+        ],
+        [
+          2411.795,
+          "garbage"
+        ],
+        [
+          2413.775,
+          "garbage"
+        ],
+        [
+          2415.079,
+          "garbage"
+        ],
+        [
+          2415.723,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "at": "2026-09-12T19:54:04-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "flag": 8,
+        "garbage": 122,
+        "spike": 394
+      },
+      "changed": 524,
+      "gained": 0,
+      "id": "3b551d236229",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Dentate Spike": 394,
+        "undecided \u2192 Flag": 8,
+        "undecided \u2192 Garbage": 122
+      },
+      "n": 524,
+      "note": "check bookmarks",
+      "snap": [
+        [
+          4.807,
+          "spike"
+        ],
+        [
+          11.798,
+          "spike"
+        ],
+        [
+          12.262,
+          "spike"
+        ],
+        [
+          13.805,
+          "spike"
+        ],
+        [
+          14.619,
+          "spike"
+        ],
+        [
+          29.025,
+          "spike"
+        ],
+        [
+          38.892,
+          "spike"
+        ],
+        [
+          42.431,
+          "spike"
+        ],
+        [
+          58.709,
+          "spike"
+        ],
+        [
+          62.949,
+          "spike"
+        ],
+        [
+          76.228,
+          "spike"
+        ],
+        [
+          90.491,
+          "spike"
+        ],
+        [
+          94.619,
+          "spike"
+        ],
+        [
+          101.187,
+          "spike"
+        ],
+        [
+          109.704,
+          "spike"
+        ],
+        [
+          110.17,
+          "spike"
+        ],
+        [
+          110.462,
+          "spike"
+        ],
+        [
+          112.384,
+          "spike"
+        ],
+        [
+          114.134,
+          "spike"
+        ],
+        [
+          114.677,
+          "spike"
+        ],
+        [
+          137.587,
+          "spike"
+        ],
+        [
+          137.725,
+          "spike"
+        ],
+        [
+          148.78,
+          "spike"
+        ],
+        [
+          180.521,
+          "spike"
+        ],
+        [
+          181.253,
+          "spike"
+        ],
+        [
+          181.386,
+          "spike"
+        ],
+        [
+          184.921,
+          "spike"
+        ],
+        [
+          205.573,
+          "spike"
+        ],
+        [
+          211.798,
+          "spike"
+        ],
+        [
+          215.562,
+          "spike"
+        ],
+        [
+          222.63,
+          "spike"
+        ],
+        [
+          223.469,
+          "spike"
+        ],
+        [
+          225.819,
+          "spike"
+        ],
+        [
+          233.029,
+          "spike"
+        ],
+        [
+          245.278,
+          "spike"
+        ],
+        [
+          250.316,
+          "spike"
+        ],
+        [
+          266.423,
+          "spike"
+        ],
+        [
+          269.377,
+          "spike"
+        ],
+        [
+          296.455,
+          "spike"
+        ],
+        [
+          303.599,
+          "spike"
+        ],
+        [
+          305.748,
+          "spike"
+        ],
+        [
+          306.867,
+          "spike"
+        ],
+        [
+          306.975,
+          "spike"
+        ],
+        [
+          312.064,
+          "spike"
+        ],
+        [
+          336.671,
+          "spike"
+        ],
+        [
+          336.835,
+          "spike"
+        ],
+        [
+          337.034,
+          "spike"
+        ],
+        [
+          339.053,
+          "spike"
+        ],
+        [
+          348.157,
+          "spike"
+        ],
+        [
+          368.389,
+          "spike"
+        ],
+        [
+          369.798,
+          "spike"
+        ],
+        [
+          388.328,
+          "spike"
+        ],
+        [
+          423.136,
+          "spike"
+        ],
+        [
+          423.315,
+          "spike"
+        ],
+        [
+          429.358,
+          "spike"
+        ],
+        [
+          433.914,
+          "spike"
+        ],
+        [
+          436.337,
+          "spike"
+        ],
+        [
+          441.976,
+          "spike"
+        ],
+        [
+          443.56,
+          "spike"
+        ],
+        [
+          444.232,
+          "spike"
+        ],
+        [
+          444.339,
+          "spike"
+        ],
+        [
+          447.91,
+          "spike"
+        ],
+        [
+          462.32,
+          "spike"
+        ],
+        [
+          464.789,
+          "spike"
+        ],
+        [
+          466.816,
+          "spike"
+        ],
+        [
+          479.376,
+          "spike"
+        ],
+        [
+          503.495,
+          "spike"
+        ],
+        [
+          517.638,
+          "spike"
+        ],
+        [
+          518.505,
+          "spike"
+        ],
+        [
+          518.806,
+          "spike"
+        ],
+        [
+          525.869,
+          "spike"
+        ],
+        [
+          531.149,
+          "spike"
+        ],
+        [
+          531.43,
+          "spike"
+        ],
+        [
+          543.93,
+          "spike"
+        ],
+        [
+          544.052,
+          "spike"
+        ],
+        [
+          544.22,
+          "spike"
+        ],
+        [
+          544.429,
+          "spike"
+        ],
+        [
+          548.429,
+          "spike"
+        ],
+        [
+          562.815,
+          "spike"
+        ],
+        [
+          571.503,
+          "spike"
+        ],
+        [
+          571.623,
+          "spike"
+        ],
+        [
+          576.223,
+          "spike"
+        ],
+        [
+          576.349,
+          "spike"
+        ],
+        [
+          583.006,
+          "spike"
+        ],
+        [
+          595.173,
+          "spike"
+        ],
+        [
+          596.425,
+          "spike"
+        ],
+        [
+          625.168,
+          "spike"
+        ],
+        [
+          628.393,
+          "spike"
+        ],
+        [
+          632.715,
+          "spike"
+        ],
+        [
+          634.818,
+          "spike"
+        ],
+        [
+          636.603,
+          "spike"
+        ],
+        [
+          636.735,
+          "spike"
+        ],
+        [
+          640.214,
+          "spike"
+        ],
+        [
+          640.774,
+          "spike"
+        ],
+        [
+          652.364,
+          "spike"
+        ],
+        [
+          652.695,
+          "spike"
+        ],
+        [
+          690.135,
+          "spike"
+        ],
+        [
+          690.447,
+          "spike"
+        ],
+        [
+          694.406,
+          "spike"
+        ],
+        [
+          694.556,
+          "spike"
+        ],
+        [
+          698.154,
+          "spike"
+        ],
+        [
+          704.724,
+          "spike"
+        ],
+        [
+          704.846,
+          "spike"
+        ],
+        [
+          705.023,
+          "spike"
+        ],
+        [
+          710.386,
+          "spike"
+        ],
+        [
+          722.651,
+          "spike"
+        ],
+        [
+          744.092,
+          "spike"
+        ],
+        [
+          747.519,
+          "spike"
+        ],
+        [
+          748.051,
+          "spike"
+        ],
+        [
+          766.911,
+          "spike"
+        ],
+        [
+          775.204,
+          "spike"
+        ],
+        [
+          776.072,
+          "spike"
+        ],
+        [
+          791.086,
+          "spike"
+        ],
+        [
+          800.09,
+          "spike"
+        ],
+        [
+          800.262,
+          "spike"
+        ],
+        [
+          801.108,
+          "spike"
+        ],
+        [
+          825.468,
+          "spike"
+        ],
+        [
+          826.791,
+          "spike"
+        ],
+        [
+          834.234,
+          "spike"
+        ],
+        [
+          846.096,
+          "spike"
+        ],
+        [
+          852.147,
+          "garbage"
+        ],
+        [
+          871.57,
+          "spike"
+        ],
+        [
+          893.846,
+          "spike"
+        ],
+        [
+          913.242,
+          "spike"
+        ],
+        [
+          930.368,
+          "spike"
+        ],
+        [
+          933.63,
+          "spike"
+        ],
+        [
+          934.835,
+          "spike"
+        ],
+        [
+          939.744,
+          "garbage"
+        ],
+        [
+          939.867,
+          "spike"
+        ],
+        [
+          940.015,
+          "garbage"
+        ],
+        [
+          940.136,
+          "spike"
+        ],
+        [
+          943.684,
+          "spike"
+        ],
+        [
+          953.53,
+          "spike"
+        ],
+        [
+          967.127,
+          "spike"
+        ],
+        [
+          981.254,
+          "spike"
+        ],
+        [
+          991.839,
+          "spike"
+        ],
+        [
+          995.873,
+          "spike"
+        ],
+        [
+          996.051,
+          "spike"
+        ],
+        [
+          996.432,
+          "spike"
+        ],
+        [
+          1001.404,
+          "spike"
+        ],
+        [
+          1014.556,
+          "spike"
+        ],
+        [
+          1030.362,
+          "garbage"
+        ],
+        [
+          1052.384,
+          "garbage"
+        ],
+        [
+          1063.365,
+          "garbage"
+        ],
+        [
+          1064.177,
+          "garbage"
+        ],
+        [
+          1065.735,
+          "garbage"
+        ],
+        [
+          1069.245,
+          "spike"
+        ],
+        [
+          1071.383,
+          "garbage"
+        ],
+        [
+          1089.094,
+          "garbage"
+        ],
+        [
+          1093.676,
+          "garbage"
+        ],
+        [
+          1105.311,
+          "spike"
+        ],
+        [
+          1117.171,
+          "garbage"
+        ],
+        [
+          1118.358,
+          "garbage"
+        ],
+        [
+          1129.971,
+          "garbage"
+        ],
+        [
+          1137.699,
+          "garbage"
+        ],
+        [
+          1141.02,
+          "spike"
+        ],
+        [
+          1145.867,
+          "spike"
+        ],
+        [
+          1146.25,
+          "spike"
+        ],
+        [
+          1162.116,
+          "spike"
+        ],
+        [
+          1170.98,
+          "garbage"
+        ],
+        [
+          1183.898,
+          "garbage"
+        ],
+        [
+          1186.14,
+          "spike"
+        ],
+        [
+          1188.079,
+          "garbage"
+        ],
+        [
+          1209.27,
+          "spike"
+        ],
+        [
+          1215.183,
+          "garbage"
+        ],
+        [
+          1247.393,
+          "spike"
+        ],
+        [
+          1257.16,
+          "spike"
+        ],
+        [
+          1258.734,
+          "spike"
+        ],
+        [
+          1262.139,
+          "spike"
+        ],
+        [
+          1273.394,
+          "spike"
+        ],
+        [
+          1278.767,
+          "spike"
+        ],
+        [
+          1283.607,
+          "spike"
+        ],
+        [
+          1283.805,
+          "garbage"
+        ],
+        [
+          1291.583,
+          "spike"
+        ],
+        [
+          1291.932,
+          "spike"
+        ],
+        [
+          1293.708,
+          "spike"
+        ],
+        [
+          1293.993,
+          "garbage"
+        ],
+        [
+          1294.282,
+          "spike"
+        ],
+        [
+          1300.026,
+          "spike"
+        ],
+        [
+          1308.452,
+          "spike"
+        ],
+        [
+          1309.23,
+          "spike"
+        ],
+        [
+          1314.416,
+          "spike"
+        ],
+        [
+          1314.664,
+          "spike"
+        ],
+        [
+          1317.965,
+          "spike"
+        ],
+        [
+          1318.565,
+          "spike"
+        ],
+        [
+          1322.212,
+          "spike"
+        ],
+        [
+          1325.494,
+          "spike"
+        ],
+        [
+          1330.382,
+          "spike"
+        ],
+        [
+          1334.396,
+          "spike"
+        ],
+        [
+          1334.71,
+          "garbage"
+        ],
+        [
+          1347.726,
+          "spike"
+        ],
+        [
+          1351.384,
+          "spike"
+        ],
+        [
+          1353.293,
+          "spike"
+        ],
+        [
+          1354.132,
+          "spike"
+        ],
+        [
+          1356.185,
+          "spike"
+        ],
+        [
+          1356.588,
+          "spike"
+        ],
+        [
+          1360.763,
+          "spike"
+        ],
+        [
+          1363.798,
+          "spike"
+        ],
+        [
+          1364.271,
+          "spike"
+        ],
+        [
+          1365.813,
+          "spike"
+        ],
+        [
+          1374.493,
+          "spike"
+        ],
+        [
+          1375.776,
+          "spike"
+        ],
+        [
+          1380.941,
+          "spike"
+        ],
+        [
+          1381.603,
+          "spike"
+        ],
+        [
+          1381.912,
+          "spike"
+        ],
+        [
+          1444.057,
+          "spike"
+        ],
+        [
+          1446.159,
+          "spike"
+        ],
+        [
+          1456.144,
+          "spike"
+        ],
+        [
+          1456.367,
+          "spike"
+        ],
+        [
+          1461.795,
+          "spike"
+        ],
+        [
+          1473.313,
+          "spike"
+        ],
+        [
+          1476.738,
+          "spike"
+        ],
+        [
+          1479.016,
+          "spike"
+        ],
+        [
+          1480.129,
+          "spike"
+        ],
+        [
+          1485.698,
+          "spike"
+        ],
+        [
+          1491.004,
+          "spike"
+        ],
+        [
+          1491.135,
+          "spike"
+        ],
+        [
+          1503.291,
+          "spike"
+        ],
+        [
+          1503.771,
+          "spike"
+        ],
+        [
+          1509.219,
+          "spike"
+        ],
+        [
+          1520.578,
+          "spike"
+        ],
+        [
+          1521.952,
+          "garbage"
+        ],
+        [
+          1524.769,
+          "garbage"
+        ],
+        [
+          1529.791,
+          "spike"
+        ],
+        [
+          1532.906,
+          "spike"
+        ],
+        [
+          1533.095,
+          "spike"
+        ],
+        [
+          1536.117,
+          "spike"
+        ],
+        [
+          1545.043,
+          "spike"
+        ],
+        [
+          1545.49,
+          "spike"
+        ],
+        [
+          1549.473,
+          "spike"
+        ],
+        [
+          1555.282,
+          "spike"
+        ],
+        [
+          1567.333,
+          "spike"
+        ],
+        [
+          1571.428,
+          "spike"
+        ],
+        [
+          1572.021,
+          "garbage"
+        ],
+        [
+          1576.68,
+          "spike"
+        ],
+        [
+          1585.862,
+          "garbage"
+        ],
+        [
+          1586.451,
+          "spike"
+        ],
+        [
+          1598.448,
+          "spike"
+        ],
+        [
+          1603.757,
+          "spike"
+        ],
+        [
+          1617.524,
+          "spike"
+        ],
+        [
+          1621.515,
+          "spike"
+        ],
+        [
+          1621.789,
+          "spike"
+        ],
+        [
+          1628.127,
+          "spike"
+        ],
+        [
+          1628.406,
+          "spike"
+        ],
+        [
+          1629.274,
+          "spike"
+        ],
+        [
+          1632.14,
+          "spike"
+        ],
+        [
+          1632.933,
+          "spike"
+        ],
+        [
+          1636.857,
+          "spike"
+        ],
+        [
+          1640.498,
+          "spike"
+        ],
+        [
+          1644.01,
+          "spike"
+        ],
+        [
+          1644.143,
+          "spike"
+        ],
+        [
+          1655.546,
+          "spike"
+        ],
+        [
+          1655.929,
+          "spike"
+        ],
+        [
+          1658.5,
+          "spike"
+        ],
+        [
+          1661.675,
+          "spike"
+        ],
+        [
+          1663.089,
+          "spike"
+        ],
+        [
+          1665.698,
+          "spike"
+        ],
+        [
+          1665.898,
+          "spike"
+        ],
+        [
+          1668.349,
+          "spike"
+        ],
+        [
+          1669.233,
+          "spike"
+        ],
+        [
+          1672.337,
+          "spike"
+        ],
+        [
+          1674.54,
+          "spike"
+        ],
+        [
+          1675.894,
+          "spike"
+        ],
+        [
+          1682.958,
+          "spike"
+        ],
+        [
+          1684.639,
+          "garbage"
+        ],
+        [
+          1690.033,
+          "spike"
+        ],
+        [
+          1702.032,
+          "spike"
+        ],
+        [
+          1704.868,
+          "spike"
+        ],
+        [
+          1707.866,
+          "spike"
+        ],
+        [
+          1708.06,
+          "spike"
+        ],
+        [
+          1708.885,
+          "spike"
+        ],
+        [
+          1708.988,
+          "spike"
+        ],
+        [
+          1709.398,
+          "spike"
+        ],
+        [
+          1719.902,
+          "spike"
+        ],
+        [
+          1721.85,
+          "spike"
+        ],
+        [
+          1731.535,
+          "spike"
+        ],
+        [
+          1734.604,
+          "spike"
+        ],
+        [
+          1740.344,
+          "spike"
+        ],
+        [
+          1743.444,
+          "spike"
+        ],
+        [
+          1743.635,
+          "spike"
+        ],
+        [
+          1744.014,
+          "spike"
+        ],
+        [
+          1747.132,
+          "spike"
+        ],
+        [
+          1749.39,
+          "spike"
+        ],
+        [
+          1757.24,
+          "spike"
+        ],
+        [
+          1761.279,
+          "spike"
+        ],
+        [
+          1761.683,
+          "garbage"
+        ],
+        [
+          1764.788,
+          "garbage"
+        ],
+        [
+          1766.687,
+          "garbage"
+        ],
+        [
+          1766.845,
+          "spike"
+        ],
+        [
+          1767.818,
+          "spike"
+        ],
+        [
+          1767.977,
+          "spike"
+        ],
+        [
+          1770.784,
+          "spike"
+        ],
+        [
+          1783.271,
+          "spike"
+        ],
+        [
+          1787.986,
+          "spike"
+        ],
+        [
+          1788.713,
+          "spike"
+        ],
+        [
+          1792.296,
+          "spike"
+        ],
+        [
+          1796.648,
+          "spike"
+        ],
+        [
+          1803.639,
+          "garbage"
+        ],
+        [
+          1808.695,
+          "spike"
+        ],
+        [
+          1809.412,
+          "garbage"
+        ],
+        [
+          1819.448,
+          "spike"
+        ],
+        [
+          1820.023,
+          "garbage"
+        ],
+        [
+          1823.85,
+          "spike"
+        ],
+        [
+          1825.176,
+          "spike"
+        ],
+        [
+          1826.124,
+          "spike"
+        ],
+        [
+          1828.529,
+          "spike"
+        ],
+        [
+          1829.379,
+          "spike"
+        ],
+        [
+          1829.555,
+          "spike"
+        ],
+        [
+          1831.542,
+          "spike"
+        ],
+        [
+          1832.842,
+          "spike"
+        ],
+        [
+          1834.232,
+          "garbage"
+        ],
+        [
+          1834.471,
+          "spike"
+        ],
+        [
+          1838.683,
+          "spike"
+        ],
+        [
+          1838.89,
+          "spike"
+        ],
+        [
+          1840.337,
+          "spike"
+        ],
+        [
+          1841.667,
+          "spike"
+        ],
+        [
+          1842.913,
+          "spike"
+        ],
+        [
+          1845.156,
+          "spike"
+        ],
+        [
+          1848.96,
+          "spike"
+        ],
+        [
+          1849.215,
+          "spike"
+        ],
+        [
+          1853.674,
+          "spike"
+        ],
+        [
+          1853.8,
+          "spike"
+        ],
+        [
+          1858.093,
+          "spike"
+        ],
+        [
+          1858.324,
+          "spike"
+        ],
+        [
+          1861.974,
+          "spike"
+        ],
+        [
+          1862.587,
+          "spike"
+        ],
+        [
+          1862.701,
+          "spike"
+        ],
+        [
+          1863.276,
+          "garbage"
+        ],
+        [
+          1867.237,
+          "spike"
+        ],
+        [
+          1868.347,
+          "garbage"
+        ],
+        [
+          1868.959,
+          "spike"
+        ],
+        [
+          1872.48,
+          "spike"
+        ],
+        [
+          1873.195,
+          "spike"
+        ],
+        [
+          1873.76,
+          "spike"
+        ],
+        [
+          1875.0,
+          "garbage"
+        ],
+        [
+          1877.665,
+          "spike"
+        ],
+        [
+          1878.168,
+          "spike"
+        ],
+        [
+          1878.98,
+          "spike"
+        ],
+        [
+          1880.232,
+          "spike"
+        ],
+        [
+          1883.977,
+          "spike"
+        ],
+        [
+          1884.289,
+          "spike"
+        ],
+        [
+          1887.29,
+          "spike"
+        ],
+        [
+          1887.588,
+          "spike"
+        ],
+        [
+          1887.718,
+          "spike"
+        ],
+        [
+          1887.94,
+          "spike"
+        ],
+        [
+          1888.082,
+          "spike"
+        ],
+        [
+          1890.105,
+          "spike"
+        ],
+        [
+          1891.06,
+          "spike"
+        ],
+        [
+          1893.001,
+          "spike"
+        ],
+        [
+          1897.838,
+          "spike"
+        ],
+        [
+          1898.32,
+          "spike"
+        ],
+        [
+          1901.318,
+          "spike"
+        ],
+        [
+          1906.306,
+          "spike"
+        ],
+        [
+          1907.641,
+          "spike"
+        ],
+        [
+          1909.159,
+          "spike"
+        ],
+        [
+          1909.813,
+          "spike"
+        ],
+        [
+          1912.815,
+          "spike"
+        ],
+        [
+          1912.951,
+          "spike"
+        ],
+        [
+          1913.496,
+          "spike"
+        ],
+        [
+          1916.272,
+          "spike"
+        ],
+        [
+          1917.741,
+          "spike"
+        ],
+        [
+          1920.711,
+          "spike"
+        ],
+        [
+          1921.925,
+          "spike"
+        ],
+        [
+          1924.168,
+          "spike"
+        ],
+        [
+          1924.714,
+          "spike"
+        ],
+        [
+          1925.45,
+          "spike"
+        ],
+        [
+          1925.76,
+          "spike"
+        ],
+        [
+          1925.919,
+          "spike"
+        ],
+        [
+          1929.591,
+          "spike"
+        ],
+        [
+          1934.938,
+          "spike"
+        ],
+        [
+          1935.093,
+          "spike"
+        ],
+        [
+          1937.098,
+          "spike"
+        ],
+        [
+          1939.724,
+          "spike"
+        ],
+        [
+          1942.896,
+          "spike"
+        ],
+        [
+          1943.525,
+          "garbage"
+        ],
+        [
+          1946.472,
+          "spike"
+        ],
+        [
+          1946.59,
+          "spike"
+        ],
+        [
+          1947.422,
+          "spike"
+        ],
+        [
+          1947.526,
+          "spike"
+        ],
+        [
+          1948.454,
+          "spike"
+        ],
+        [
+          1950.756,
+          "spike"
+        ],
+        [
+          1953.197,
+          "spike"
+        ],
+        [
+          1953.658,
+          "spike"
+        ],
+        [
+          1954.471,
+          "spike"
+        ],
+        [
+          1955.292,
+          "spike"
+        ],
+        [
+          1959.668,
+          "spike"
+        ],
+        [
+          1963.38,
+          "spike"
+        ],
+        [
+          1971.64,
+          "spike"
+        ],
+        [
+          1973.845,
+          "spike"
+        ],
+        [
+          1974.94,
+          "spike"
+        ],
+        [
+          1975.178,
+          "spike"
+        ],
+        [
+          1977.051,
+          "spike"
+        ],
+        [
+          1980.752,
+          "spike"
+        ],
+        [
+          1986.957,
+          "spike"
+        ],
+        [
+          1992.197,
+          "spike"
+        ],
+        [
+          1992.346,
+          "spike"
+        ],
+        [
+          1994.324,
+          "spike"
+        ],
+        [
+          1998.553,
+          "spike"
+        ],
+        [
+          1999.027,
+          "spike"
+        ],
+        [
+          2001.193,
+          "spike"
+        ],
+        [
+          2003.921,
+          "spike"
+        ],
+        [
+          2006.81,
+          "spike"
+        ],
+        [
+          2008.551,
+          "spike"
+        ],
+        [
+          2009.14,
+          "spike"
+        ],
+        [
+          2009.454,
+          "spike"
+        ],
+        [
+          2010.625,
+          "garbage"
+        ],
+        [
+          2013.206,
+          "spike"
+        ],
+        [
+          2014.48,
+          "spike"
+        ],
+        [
+          2014.659,
+          "spike"
+        ],
+        [
+          2016.146,
+          "spike"
+        ],
+        [
+          2016.297,
+          "spike"
+        ],
+        [
+          2023.148,
+          "spike"
+        ],
+        [
+          2026.325,
+          "spike"
+        ],
+        [
+          2026.57,
+          "spike"
+        ],
+        [
+          2029.182,
+          "spike"
+        ],
+        [
+          2030.604,
+          "spike"
+        ],
+        [
+          2031.586,
+          "spike"
+        ],
+        [
+          2031.723,
+          "garbage"
+        ],
+        [
+          2035.912,
+          "spike"
+        ],
+        [
+          2040.471,
+          "spike"
+        ],
+        [
+          2040.638,
+          "spike"
+        ],
+        [
+          2041.613,
+          "spike"
+        ],
+        [
+          2042.152,
+          "spike"
+        ],
+        [
+          2044.138,
+          "spike"
+        ],
+        [
+          2044.795,
+          "spike"
+        ],
+        [
+          2045.057,
+          "spike"
+        ],
+        [
+          2045.345,
+          "spike"
+        ],
+        [
+          2046.147,
+          "spike"
+        ],
+        [
+          2053.294,
+          "garbage"
+        ],
+        [
+          2057.337,
+          "garbage"
+        ],
+        [
+          2057.86,
+          "garbage"
+        ],
+        [
+          2060.099,
+          "spike"
+        ],
+        [
+          2067.352,
+          "spike"
+        ],
+        [
+          2067.458,
+          "spike"
+        ],
+        [
+          2069.868,
+          "garbage"
+        ],
+        [
+          2070.195,
+          "spike"
+        ],
+        [
+          2072.953,
+          "spike"
+        ],
+        [
+          2073.915,
+          "flag"
+        ],
+        [
+          2077.583,
+          "garbage"
+        ],
+        [
+          2084.525,
+          "garbage"
+        ],
+        [
+          2085.358,
+          "garbage"
+        ],
+        [
+          2086.794,
+          "garbage"
+        ],
+        [
+          2087.758,
+          "garbage"
+        ],
+        [
+          2098.537,
+          "garbage"
+        ],
+        [
+          2103.456,
+          "garbage"
+        ],
+        [
+          2105.545,
+          "garbage"
+        ],
+        [
+          2106.304,
+          "flag"
+        ],
+        [
+          2112.773,
+          "flag"
+        ],
+        [
+          2118.92,
+          "garbage"
+        ],
+        [
+          2125.431,
+          "garbage"
+        ],
+        [
+          2130.807,
+          "garbage"
+        ],
+        [
+          2131.127,
+          "garbage"
+        ],
+        [
+          2137.178,
+          "garbage"
+        ],
+        [
+          2141.803,
+          "garbage"
+        ],
+        [
+          2146.995,
+          "garbage"
+        ],
+        [
+          2147.111,
+          "garbage"
+        ],
+        [
+          2153.975,
+          "garbage"
+        ],
+        [
+          2159.577,
+          "garbage"
+        ],
+        [
+          2159.842,
+          "garbage"
+        ],
+        [
+          2163.26,
+          "garbage"
+        ],
+        [
+          2169.696,
+          "garbage"
+        ],
+        [
+          2172.484,
+          "garbage"
+        ],
+        [
+          2175.041,
+          "garbage"
+        ],
+        [
+          2176.827,
+          "garbage"
+        ],
+        [
+          2177.125,
+          "garbage"
+        ],
+        [
+          2177.294,
+          "garbage"
+        ],
+        [
+          2177.398,
+          "garbage"
+        ],
+        [
+          2177.759,
+          "garbage"
+        ],
+        [
+          2179.206,
+          "flag"
+        ],
+        [
+          2182.347,
+          "garbage"
+        ],
+        [
+          2184.014,
+          "garbage"
+        ],
+        [
+          2184.887,
+          "garbage"
+        ],
+        [
+          2186.088,
+          "garbage"
+        ],
+        [
+          2186.23,
+          "garbage"
+        ],
+        [
+          2187.031,
+          "garbage"
+        ],
+        [
+          2187.139,
+          "garbage"
+        ],
+        [
+          2187.327,
+          "garbage"
+        ],
+        [
+          2192.19,
+          "garbage"
+        ],
+        [
+          2192.648,
+          "spike"
+        ],
+        [
+          2193.346,
+          "garbage"
+        ],
+        [
+          2193.659,
+          "garbage"
+        ],
+        [
+          2194.557,
+          "garbage"
+        ],
+        [
+          2194.795,
+          "garbage"
+        ],
+        [
+          2195.106,
+          "garbage"
+        ],
+        [
+          2201.756,
+          "garbage"
+        ],
+        [
+          2204.341,
+          "garbage"
+        ],
+        [
+          2205.049,
+          "flag"
+        ],
+        [
+          2210.032,
+          "flag"
+        ],
+        [
+          2219.221,
+          "flag"
+        ],
+        [
+          2220.697,
+          "garbage"
+        ],
+        [
+          2224.393,
+          "garbage"
+        ],
+        [
+          2231.038,
+          "garbage"
+        ],
+        [
+          2254.531,
+          "flag"
+        ],
+        [
+          2255.61,
+          "garbage"
+        ],
+        [
+          2260.5,
+          "garbage"
+        ],
+        [
+          2271.782,
+          "garbage"
+        ],
+        [
+          2279.918,
+          "garbage"
+        ],
+        [
+          2282.882,
+          "garbage"
+        ],
+        [
+          2287.361,
+          "garbage"
+        ],
+        [
+          2300.317,
+          "garbage"
+        ],
+        [
+          2303.0,
+          "garbage"
+        ],
+        [
+          2305.048,
+          "garbage"
+        ],
+        [
+          2309.913,
+          "garbage"
+        ],
+        [
+          2311.212,
+          "garbage"
+        ],
+        [
+          2321.894,
+          "garbage"
+        ],
+        [
+          2322.046,
+          "garbage"
+        ],
+        [
+          2328.46,
+          "garbage"
+        ],
+        [
+          2332.939,
+          "garbage"
+        ],
+        [
+          2334.964,
+          "garbage"
+        ],
+        [
+          2336.609,
+          "garbage"
+        ],
+        [
+          2340.97,
+          "garbage"
+        ],
+        [
+          2346.635,
+          "garbage"
+        ],
+        [
+          2347.769,
+          "garbage"
+        ],
+        [
+          2378.487,
+          "garbage"
+        ],
+        [
+          2387.038,
+          "garbage"
+        ],
+        [
+          2391.954,
+          "garbage"
+        ],
+        [
+          2393.711,
+          "garbage"
+        ],
+        [
+          2399.846,
+          "garbage"
+        ],
+        [
+          2407.144,
+          "garbage"
+        ],
+        [
+          2407.321,
+          "garbage"
+        ],
+        [
+          2411.795,
+          "garbage"
+        ],
+        [
+          2413.775,
+          "garbage"
+        ],
+        [
+          2415.079,
+          "garbage"
+        ],
+        [
+          2415.723,
+          "garbage"
+        ]
+      ],
+      "v": 2
+    }
+  ]
+}

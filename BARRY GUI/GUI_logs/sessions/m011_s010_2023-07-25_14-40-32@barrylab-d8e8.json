@@ -23,7 +23,7 @@
     "schema": "2026-09-04T15:57:01.645060+00:00",
     "session": "2026-09-04T15:57:01.645060+00:00",
     "start": "2026-09-04T15:57:01.645060+00:00",
-    "updated": "2026-09-10T18:22:03.915006+00:00",
+    "updated": "2026-09-10T20:12:21.009582+00:00",
     "view_state": "2026-09-10T17:43:45.644296+00:00"
   },
   "_keys": {
@@ -68,12 +68,12 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-10T18:22:03.915006+00:00"
+        "2026-09-10T20:12:21.009582+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T18:22:03.915006+00:00",
+    "at": "2026-09-10T20:12:21.009582+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -154,9 +154,9 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-10T14:22:02-04:00",
-      "by": "Rain Younger",
-      "machine": "Homebarry",
+      "at": "2026-09-10T16:12:20-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
       "path": "Y:\\ProcessedPtenData\\M11_Pten\\HF2_s10jul25\\2023-07-25_14-40-32",
       "root": null,
       "scan": null
@@ -165,12 +165,12 @@
   "session": 10,
   "start": "2023-07-25T14:40:32",
   "updated": {
-    "at": "2026-09-10T14:22:03-04:00",
+    "at": "2026-09-10T16:12:21-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "Homebarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
     "channels": [
