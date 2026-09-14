@@ -8,19 +8,19 @@
     "checks": {
       "e403cd832157": [
         "set",
-        "2026-09-14T15:21:30.628128+00:00"
+        "2026-09-14T16:22:06.141172+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T15:21:30.628128+00:00",
+    "at": "2026-09-14T16:22:06.141172+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "checks": [
     {
       "all_channels": false,
-      "at": "2026-09-14T15:21:30.627972+00:00",
+      "at": "2026-09-14T16:22:06.140608+00:00",
       "by": "Shahriar Tafti",
       "concat_duration_s": 5685.105033333333,
       "gap_map_sha": "09735bd69c8d4601",
@@ -35,6 +35,7 @@
       "n_probed": 4,
       "n_segments": 1,
       "seconds_lost": 0.0,
+      "seen": 2,
       "sub_threshold_lost_s": 0.0,
       "true_duration_s": 5685.102751
     }

@@ -1,12 +1,12 @@
 {
   "_at": {
-    "bad_channels": "2026-09-14T15:26:18.830091+00:00",
+    "bad_channels": "2026-09-14T16:23:02.888309+00:00",
     "bad_channels_note": "2026-09-03T13:20:13.060390+00:00",
     "cohort": "2026-09-03T13:20:13.060390+00:00",
     "condition": "2026-09-03T13:20:13.060390+00:00",
     "created": "2026-09-02T23:51:19.849758+00:00",
     "duration_s": "2026-09-04T15:57:01.695046+00:00",
-    "event_classes": "2026-09-14T15:57:07.936882+00:00",
+    "event_classes": "2026-09-14T16:19:59.517915+00:00",
     "first_seen_by": "2026-09-04T15:57:01.695046+00:00",
     "fs": "2026-09-04T15:57:01.695046+00:00",
     "gid": "2026-09-03T00:08:54.920283+00:00",
@@ -27,8 +27,8 @@
     "spike_labels": "2026-09-14T15:57:33.758064+00:00",
     "split_from": "2026-09-03T00:10:40.126938+00:00",
     "start": "2026-09-04T15:57:01.695046+00:00",
-    "updated": "2026-09-14T15:57:33.758064+00:00",
-    "view_state": "2026-09-14T15:54:14.847148+00:00"
+    "updated": "2026-09-14T16:23:02.888309+00:00",
+    "view_state": "2026-09-14T16:04:48.778656+00:00"
   },
   "_keys": {
     "paths": {
@@ -76,12 +76,12 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T15:56:46.007390+00:00"
+        "2026-09-14T16:22:50.687806+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T15:57:33.758064+00:00",
+    "at": "2026-09-14T16:23:02.888309+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -116,14 +116,9 @@
       "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
       "visible": true
     },
-    "flow harness sd": {
+    "bankback spikes": {
       "color": "#c9a6ff",
-      "name": "flow harness sd",
-      "visible": true
-    },
-    "flow harness uv": {
-      "color": "#f59fb4",
-      "name": "flow harness uv",
+      "name": "bankback spikes",
       "visible": true
     }
   },
@@ -226,7 +221,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T11:56:46-04:00",
+      "at": "2026-09-14T12:22:50-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
@@ -240,7 +235,7 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-14T11:57:33-04:00",
+    "at": "2026-09-14T12:23:02-04:00",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -287,7 +282,7 @@
     "fdefault": null,
     "flock": true,
     "gain": 2,
-    "hp": 3,
+    "hp": 7,
     "invert": true,
     "lp": 70,
     "marks_view": "show",
@@ -297,7 +292,7 @@
     "spacing": 50,
     "span": 12.8,
     "stft_mode": null,
-    "t0": 1816.4394666666667,
+    "t0": 1272.5383381312572,
     "ylim": null
   }
 }

@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:22:57.700284+00:00",
+    "label": "2026-09-14T16:22:57.700284+00:00",
+    "path": "2026-09-14T16:22:57.700284+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "609302b90d59": [
+        "set",
+        "2026-09-14T16:22:57.700284+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:22:57.700284+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:22:57.699855+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 3202.4917,
+      "gap_map_sha": "048435c7d7478fda",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "609302b90d59",
+      "level": "warn",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 60.95099999993181,
+      "mismatches": 0,
+      "n_gaps": 4,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 5,
+      "seconds_lost": 0.048702,
+      "sub_threshold_lost_s": 0.026672,
+      "true_duration_s": 3202.549436
+    }
+  ],
+  "gid": "sd42a6992b76c",
+  "label": "PTEN m59 s4 2025-07-07",
+  "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s4jul7\\2025-07-07_12-52-42"
+}

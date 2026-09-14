@@ -556,6 +556,9 @@ class EventBank:
     # event lists.
     SNAP_VERSIONS = 12
     SNAP_MAX_EVENTS = 6000
+    # How many before/after rows a preview carries. A set is usually a few
+    # hundred to a few thousand; past this the panel says it is showing part.
+    PREVIEW_MAX = 5000
 
     def source_entry_for(self, gid, kind, events):
         """The detector import these curated events came from, if it is here.
@@ -791,6 +794,28 @@ class EventBank:
                  "shift_ms": round((m["start"] - e["start"]) * 1e3, 3)}
                 for e, m in list(zip(events, moved))[:8]
             ],
+            # And all of them, four values each rather than a dict, so the
+            # panel can scroll the set, mark the ones that move and draw
+            # them on the recording. Eight was worse than useless here:
+            # every gap is at 1762 s and the set starts at 1.7 s, so the
+            # first eight all shift by 0.00 ms.
+            "moves": [
+                [e.get("start"), m["start"],
+                 round((m["start"] - e["start"]) * 1e3, 3), m.get("label")]
+                for e, m in list(zip(events, moved))[:self.PREVIEW_MAX]
+            ],
+            "moves_capped": len(moved) > self.PREVIEW_MAX,
+            "n_shifted": sum(1 for e, m in zip(events, moved)
+                             if abs(m["start"] - e["start"]) > 5e-7),
+            # What this would become and what it would keep. Computed here
+            # rather than in the branch that writes, so a DRY RUN can name
+            # both -- which is what the confirmation is built from.
+            "current_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            "next_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])]
+                or [0]) + 1,
+            "n_versions": len(rec.get("versions") or []),
         }
         if unplaceable:
             report["error"] = ("%d event(s) have no time on the other clock. "

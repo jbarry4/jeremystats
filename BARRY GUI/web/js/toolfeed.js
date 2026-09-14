@@ -139,21 +139,9 @@ BARRY.toolfeed = (function () {
     me.lastCheck = Date.now();
     const fresh = (got.rows || []).filter((r) => r && r.at);
     if (fresh.length) {
-      /* Newest first from the server; the list keeps that order. Ids are
-         what stop a row arriving twice when two polls overlap at a
-         second boundary. */
-      const have = new Set(me.rows.map((r) => r.id));
-      const add = fresh.filter((r) => !have.has(r.id));
-      /* A row that has now been shared replaces the local one it came
-         from. Without this the same action sits in the list twice, once
-         pending and once not, which reads as it having happened twice. */
-      const seen = new Set(fresh.map(
-        (r) => String(r.action) + '|' + String(r.at).slice(0, 19)));
-      me.rows = me.rows.filter(
-        (r) => !(r.pending
-                 && seen.has(String(r.action) + '|'
-                             + String(r.at).slice(0, 19))));
-      me.rows = add.concat(me.rows).slice(0, KEEP);
+      const folded = fold(me.rows, fresh);
+      const add = folded.added;
+      me.rows = folded.rows;
       me.newest = me.rows.reduce(
         (top, r) => (!top || moment(r.at) > moment(top) ? r.at : top),
         me.newest);
@@ -197,6 +185,51 @@ BARRY.toolfeed = (function () {
       me.head.appendChild(el('p', { class: 'hint warn tf-note',
                                     text: me.note }));
     }
+  }
+
+  /* Fold a batch of rows into the list that is already on screen.
+
+     Its own function because the fault it replaces could only be reproduced
+     by waiting for a push -- a minute, over the network, on a timer -- and
+     what actually went wrong was entirely in here.
+
+     Newest first, and ids are what stop a row arriving twice when two polls
+     overlap at a second boundary. The id is minted where the action
+     happened and travels with it, so the local copy and the shared copy of
+     one action carry the SAME id -- which is what the old code got wrong.
+  */
+  function fold(existing, fresh) {
+    const same = (r) => String(r.action) + '|' + String(r.at).slice(0, 19);
+    const rows = existing.slice();
+    const byId = new Map();
+    for (const r of rows) { if (r.id) byId.set(r.id, r); }
+
+    /* A row already held that comes back is the same row, now shared:
+       updated where it sits, so it keeps its place and loses its pending
+       mark. It used to be dropped from `add` for having a known id and then
+       deleted by the sweep below for matching its own action and time -- so
+       every row vanished the moment it was pushed and reappeared when a
+       later poll refetched it. That was the flicker, and it could only
+       happen on the machine that made the actions. */
+    const added = [];
+    for (const r of fresh) {
+      const cur = r.id ? byId.get(r.id) : null;
+      if (cur) {
+        Object.assign(cur, r);
+        if (!r.pending) delete cur.pending;
+      } else {
+        added.push(r);
+      }
+    }
+
+    /* And the case the sweep was written for: a pending row the shared
+       table carries under a DIFFERENT id. Only those -- one whose id is
+       among the fresh rows has just been updated in place. */
+    const freshIds = new Set(fresh.map((r) => r.id).filter(Boolean));
+    const seen = new Set(fresh.map(same));
+    const kept = rows.filter(
+      (r) => !(r.pending && !freshIds.has(r.id) && seen.has(same(r))));
+    return { rows: added.concat(kept).slice(0, KEEP), added: added };
   }
 
   function paintList(flash) {
@@ -338,5 +371,10 @@ BARRY.toolfeed = (function () {
     }
   }
 
-  return { mount, stop, words };
+  return {
+    mount, stop, words,
+    /* For web/_dev/feedflicker.html: the merge, drivable without waiting a
+       minute for a real push. */
+    _fold: (rows, fresh) => fold(rows || [], fresh || []).rows,
+  };
 })();
