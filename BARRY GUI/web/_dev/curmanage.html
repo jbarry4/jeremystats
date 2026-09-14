@@ -112,7 +112,14 @@ async function untilN(fn, tries = 250, gap = 100) {
      machine it has not been run on before is not a check. */
   await post('/api/curation/close-all', {});
   for (const s of (await get('/api/curation')).sets) {
-    if (s.archived && /demo/i.test(s.name || '')) {
+    /* On the gid as well as the name. Section 10 archives a set called
+       "THROWAWAY for the harness" on `demo-long-session`: a demo gid with a
+       name that says nothing about demos, so the name test alone walked
+       straight past this harness's own leftovers. `create` then updated the
+       archived set instead of making a fresh one, and the run reported that
+       a new set does not reach the bench. */
+    if (s.archived && (/demo/i.test(s.name || '')
+                       || /demo/i.test(s.gid || ''))) {
       await post('/api/curation/' + s.gid + '/' + s.kind + '/archive',
                  { archived: false });
     }

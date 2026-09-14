@@ -704,6 +704,177 @@ class EventBank:
         return n
 
     @shards.atomic
+    # ------------------------------------------------------------------
+    # Re-timing
+    # ------------------------------------------------------------------
+    @shards.atomic
+    def retime(self, entry_id, mapping, target, basis_from, gap_map_sha,
+               note=None, by=None, dry_run=True, extra=None):
+        """Mint a version of `entry_id` with every time on the other clock.
+
+        `mapping` is a callable taking one time and returning
+        `(new_time, segment_index)`, or `(None, None)` when there is no
+        answer -- an event past the end of the data. Those are reported and
+        NOT moved; an event this cannot place is a fault somewhere else and
+        quietly clamping it to the last sample would hide that.
+
+        `dry_run=True` is the default and returns exactly what the write
+        would do, because a timestamp rewrite that cannot be read before it
+        happens should not be offered at all.
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No bank entry %s." % entry_id)
+
+        basis = (rec.get("time_basis") or {}).get("kind")
+        if basis == target:
+            raise BankError(
+                "This entry is already on %s. Absence of a basis means "
+                "unknown, not correct -- but this one says so." % target)
+        if basis and basis != basis_from:
+            raise BankError(
+                "This entry says it is on %s, not %s. Re-timing it would "
+                "be applying a correction it does not need." % (basis, basis_from))
+
+        events = rec.get("events") or []
+        moved, unplaceable, shifts = [], [], []
+        for ev in events:
+            try:
+                t = float(ev.get("start"))
+            except (TypeError, ValueError):
+                unplaceable.append(ev)
+                continue
+            new_t, seg = mapping(t)
+            if new_t is None:
+                unplaceable.append(ev)
+                continue
+            item = dict(ev)
+            item["start"] = round(float(new_t), 6)
+            if ev.get("end") is not None:
+                try:
+                    e_new, _seg = mapping(float(ev["end"]))
+                    if e_new is not None:
+                        item["end"] = round(float(e_new), 6)
+                except (TypeError, ValueError):
+                    pass
+            shifts.append(round((float(new_t) - t) * 1e3, 4))
+            moved.append(item)
+
+        # A uniform forward shift is monotone, so the order cannot change --
+        # asserted rather than assumed, because if it ever did the set and
+        # the bank would stop lining up and nothing else would notice.
+        ordered = sorted(moved, key=lambda e: e["start"])
+        order_held = [id(x) for x in ordered] == [id(x) for x in moved]
+
+        report = {
+            "entry_id": entry_id,
+            "name": rec.get("name"),
+            "gid": rec.get("gid"),
+            "session_label": rec.get("session_label"),
+            "was": len(events),
+            "moved": len(moved),
+            "unplaceable": len(unplaceable),
+            "unplaceable_times": [e.get("start") for e in unplaceable[:10]],
+            "order_held": order_held,
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "from": basis_from,
+            "to": target,
+            "gap_map_sha": gap_map_sha,
+            "dry_run": bool(dry_run),
+            # Before and after for a handful, because a preview of a
+            # timestamp rewrite that shows only counts is asking to be
+            # approved on trust.
+            "sample": [
+                {"was": e.get("start"), "now": m["start"],
+                 "label": m.get("label"),
+                 "shift_ms": round((m["start"] - e["start"]) * 1e3, 3)}
+                for e, m in list(zip(events, moved))[:8]
+            ],
+        }
+        if unplaceable:
+            report["error"] = ("%d event(s) have no time on the other clock. "
+                               "Nothing was written." % len(unplaceable))
+            return report
+        if not order_held:
+            report["error"] = ("The shift reordered the events, which a "
+                               "forward step function cannot do. Nothing was "
+                               "written.")
+            return report
+        if dry_run:
+            return report
+
+        prov = self.store.provenance() if self.store else {}
+        who = (by or prov.get("user") or "unknown").strip()
+        versions = list(rec.get("versions") or [])
+        counts = {}
+        for ev in moved:
+            key = ev.get("label") or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+
+        fresh = {
+            # Derived from what was applied, not minted at random: two
+            # machines correcting the same entry with the same map must
+            # converge on one version rather than each adding its own.
+            "id": "rt-" + hashlib.sha256(
+                ("%s|%s|%s" % (entry_id, gap_map_sha, target)
+                 ).encode("utf-8")).hexdigest()[:10],
+            "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+            "at": _now(),
+            "by": who,
+            "note": note or (
+                "Re-timed from %s to %s. %d event(s) moved by %.1f to "
+                "%.1f ms; every label kept, nothing re-detected."
+                % (basis_from, target, len(moved),
+                   report["shift_min_ms"], report["shift_max_ms"])),
+            "n": len(moved),
+            "by_label": counts,
+            # Nothing was decided differently. The counts are identical and
+            # saying otherwise would put a relabelling in the history that
+            # never happened.
+            "changed": 0, "gained": 0, "lost": 0, "moves": {},
+            "machine": platform.node(),
+            "retimed": {
+                "from": basis_from, "to": target,
+                "gap_map_sha": gap_map_sha,
+                "shift_min_ms": report["shift_min_ms"],
+                "shift_max_ms": report["shift_max_ms"],
+            },
+        }
+        if len(moved) <= self.SNAP_MAX_EVENTS:
+            fresh["snap"] = [[ev.get("start"),
+                              ev.get("label_id") or ev.get("label")]
+                             for ev in moved]
+        versions.append(fresh)
+
+        rec["events"] = moved
+        rec["versions"] = versions
+        rec["n"] = len(moved)
+        rec["by_label"] = counts
+        # Written LAST in spirit: an entry whose events moved but whose
+        # stamp is absent reads as un-retimed and is re-runnable, which is
+        # the recoverable half of a partial application. The two go into one
+        # file here so they land together or not at all.
+        rec["time_basis"] = {
+            "kind": target,
+            "converted_from": basis_from,
+            "gap_map_sha": gap_map_sha,
+            "tool": "jarvis.retime/1",
+            "at": _now(),
+            "by": who,
+        }
+        if extra:
+            rec["time_basis"].update(extra)
+
+        base = self._base_of(rec)
+        with _LOCK:
+            rec = self.book.write(base, rec)
+            self._cache = None
+        report["version"] = fresh["v"]
+        report["version_id"] = fresh["id"]
+        report["time_basis"] = rec["time_basis"]
+        return report
+
     def snapshots(self):
         """Every version snapshot this machine holds.
 

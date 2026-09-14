@@ -389,6 +389,10 @@ BARRY.checkList = function checkList(checks, opts) {
       el('span', { class: 'check-dot' }),
       el('span', { class: 'check-name', text: c.name }),
       el('span', { class: 'check-msg', text: c.message }),
+      /* A row may carry its own control -- the continuity check has a gap
+         table behind it, and the evidence for a number belongs beside the
+         number rather than in a second place to go looking. */
+      o.extra ? (o.extra(c) || null) : null,
     ])));
 };
 

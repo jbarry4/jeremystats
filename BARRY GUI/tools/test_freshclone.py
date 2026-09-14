@@ -45,6 +45,14 @@ def check(name, cond, detail=""):
     return ok
 
 
+# The folder the application lives in, taken from where this file actually
+# is. The app is called Jarvis and the folder is still "BARRY GUI" -- renaming
+# a directory that every machine in the lab has a checkout of is a different
+# decision from renaming the application, and it was not taken. Writing the
+# name down here again is how the two came apart in the first place.
+APP_DIR_NAME = os.path.basename(APP)
+
+
 def tracked_files():
     """Exactly what a clone gets: everything git tracks, plus anything new
     that is not ignored (which is what the next commit will include)."""
@@ -53,9 +61,12 @@ def tracked_files():
                              timeout=120)
         return [l for l in res.stdout.splitlines() if l.strip()]
 
-    files = set(run(["git", "ls-files", "--", "Jarvis"]))
+    files = set(run(["git", "ls-files", "--", APP_DIR_NAME]))
     files |= set(run(["git", "ls-files", "--others",
-                      "--exclude-standard", "--", "Jarvis"]))
+                      "--exclude-standard", "--", APP_DIR_NAME]))
+    if not files:
+        print("  nothing tracked under %r -- this test is pointed at the "
+              "wrong folder, not at a broken clone." % APP_DIR_NAME)
     return sorted(files)
 
 
@@ -63,7 +74,7 @@ def main():
     print("Building what a clone would get...")
     files = tracked_files()
     tmp = tempfile.mkdtemp(prefix="barry-clone-")
-    dest_app = os.path.join(tmp, "Jarvis")
+    dest_app = os.path.join(tmp, APP_DIR_NAME)
     n = 0
     for rel in files:
         src = os.path.join(REPO, rel)

@@ -50,13 +50,18 @@ class Profile:
         self.store = store
         # LWW on every field: it is one person editing their own row, and
         # the last thing they typed is what they meant.
+        #
+        # Read with `read_mine`, never `read`. The merge across machines is
+        # what made a profile set on one computer arrive on all of them --
+        # and attribution comes from this record, so that was not a display
+        # quirk, it credited the wrong person for the work.
         self.book = shards.Book(self.dir, {}, store)
 
     def _base(self):
         return "profile"
 
     def get(self):
-        rec = self.book.read(self._base()) or {}
+        rec = self.book.read_mine(self._base()) or {}
         out = {k: (rec.get(k) or "") for k in FIELDS}
         # Read but not writable: device.py adopts it once and then this is
         # only ever the old value sitting in an old record.
@@ -79,7 +84,7 @@ class Profile:
 
     def effective(self, rec=None):
         """The name and machine that will be stamped on new records."""
-        rec = rec if rec is not None else (self.book.read(self._base()) or {})
+        rec = rec if rec is not None else (self.book.read_mine(self._base()) or {})
         name = (rec.get("name") or "").strip()
         email = (rec.get("email") or "").strip()
         return {
@@ -95,7 +100,7 @@ class Profile:
                 clean[k] = ("" if v is None else str(v)).strip()[:MAX_LEN]
         if not clean:
             raise ValueError("Nothing to save.")
-        rec = self.book.read(self._base()) or {}
+        rec = self.book.read_mine(self._base()) or {}
         rec.update(clean)
         self.book.write(self._base(), rec)
         return self.get()

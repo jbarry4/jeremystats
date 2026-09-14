@@ -608,6 +608,9 @@ def _panel_raster(session, spec, mode):
         "clim_auto": list(_robust_clim(matrix,
                                        float(spec.get("clim_pct", 99.5)),
                                        symmetric=True)),
+        # Voltage, CSD and theta are signed and zero is the middle of them,
+        # so a scale for these is symmetric and the client may say so.
+        "clim_symmetric": True,
         "clim_manual": _explicit_clim(spec) is not None,
         "shape": list(matrix.shape),
         "upsample": upsample,
@@ -752,21 +755,27 @@ def _panel_tf(session, spec, method):
         db = db[lo_i:hi_i + 1]
         freqs = freqs[lo_i:hi_i + 1]
 
+    # The scale this panel picks for itself, worked out whether or not one is
+    # pinned: it is what the control means by "auto", and what pinning should
+    # pin to. Computed once, by whichever rule is actually live -- reporting
+    # the percentile branch while the legacy path drew the full range said
+    # "auto is [82.6, 122.6]" under a picture scaled to [5.2, 136.2].
+    finite = db[np.isfinite(db)]
+    if not finite.size:
+        auto_clim = [0.0, 1.0]
+    elif spec.get("_legacy_stft") and not spec.get("clim_pct"):
+        # MATLAB's imagesc scales to the full range of the data, and that is
+        # part of what the old picture looked like. A percentile clip is
+        # usually the better choice -- one loud artifact cannot wash the plot
+        # out -- but it is not what this is reproducing.
+        auto_clim = [float(np.min(finite)), float(np.max(finite))]
+    else:
+        hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5))))
+        auto_clim = [hi - float(spec.get("dyn_range_db", 40) or 40), hi]
+
     clim = _explicit_clim(spec)
     if clim is None:
-        finite = db[np.isfinite(db)]
-        if spec.get("_legacy_stft") and not spec.get("clim_pct"):
-            # MATLAB's imagesc scales to the full range of the data, and that
-            # is part of what the old picture looked like. A percentile clip
-            # is usually the better choice -- one loud artifact cannot wash
-            # the plot out -- but it is not what this is reproducing.
-            clim = ([float(np.min(finite)), float(np.max(finite))]
-                    if finite.size else [0.0, 1.0])
-        else:
-            hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5)))) \
-                if finite.size else 0.0
-            dyn = float(spec.get("dyn_range_db", 40) or 40)
-            clim = [hi - dyn, hi]
+        clim = list(auto_clim)
 
     cmap = spec.get("cmap", "jet")
     # Low frequency at the bottom, as MATLAB draws it.
@@ -783,6 +792,14 @@ def _panel_tf(session, spec, method):
         "extent": [t0 + float(times[0]), t0 + float(times[-1]),
                    extent_y[0], extent_y[1]],
         "clim": [float(clim[0]), float(clim[1])], "cmap": cmap, "units": "dB",
+        # What the scale would be with nothing pinned. Without this the client
+        # had no idea what this panel's numbers look like and pinned it to a
+        # placeholder.
+        "clim_auto": list(auto_clim),
+        # Decibels above a reference: one-sided, so there is no symmetry to
+        # preserve and forcing some would throw away half the range.
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
         "channel": {"label": sel[0]["label"], "number": sel[0]["number"],
                     "index": int(sel[0]["index"])} if n_ch == 1 else None,
         "channels_used": [{"label": c["label"], "number": c["number"],
@@ -927,17 +944,22 @@ def _panel_bandpower(session, spec):
         drawn = matrix
         units = "uV^2"
 
+    # The scale this panel picks for itself, computed whether or not one is
+    # pinned: it is what "auto" means on the control, and what pinning should
+    # pin to. Its absence is what pinned a 30 dB panel to [-1, 1].
+    finite = drawn[np.isfinite(drawn)]
+    if not finite.size:
+        auto_clim = [0.0, 1.0]
+    elif log:
+        top = float(np.percentile(finite, float(spec.get("clim_pct", 99.5))))
+        auto_clim = [top - float(spec.get("dyn_range_db", 30) or 30), top]
+    else:
+        auto_clim = [0.0, float(np.percentile(
+            finite, float(spec.get("clim_pct", 99.5))))]
+
     clim = _explicit_clim(spec)
     if clim is None:
-        finite = drawn[np.isfinite(drawn)]
-        if not finite.size:
-            clim = [0.0, 1.0]
-        elif log:
-            top = float(np.percentile(finite, float(spec.get("clim_pct", 99.5))))
-            clim = [top - float(spec.get("dyn_range_db", 30) or 30), top]
-        else:
-            clim = [0.0, float(np.percentile(
-                finite, float(spec.get("clim_pct", 99.5))))]
+        clim = list(auto_clim)
 
     cmap = spec.get("cmap", "jet")
     # Low frequency at the bottom, as every other raster here draws it.
@@ -951,6 +973,12 @@ def _panel_bandpower(session, spec):
         "extent": [shown_t0, shown_t1,
                    table["centers"][0], table["centers"][-1]],
         "clim": [float(clim[0]), float(clim[1])], "cmap": cmap, "units": units,
+        "clim_auto": [float(auto_clim[0]), float(auto_clim[1])],
+        # Power: zero is the floor, not the middle. In dB the useful control
+        # is how far below the peak the map bottoms out, which is a span
+        # anchored at the top, not a magnitude either side of nothing.
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
         "channel": {"label": sel[0]["label"], "number": sel[0]["number"],
                     "index": int(sel[0]["index"])},
         "channels_used": [{"label": sel[0]["label"], "number": sel[0]["number"],
@@ -1503,7 +1531,10 @@ def run_comodulogram(session, spec, job=None):
     fast_tab = cfc.band_table(fs_used, fast, fast_bw)
     j, i = np.unravel_index(int(np.argmax(MI)), MI.shape)
 
-    clim = _explicit_clim(spec) or [0.0, float(MI.max())]
+    # Modulation index is a Kullback-Leibler divergence: zero is no coupling
+    # and it cannot go below that. Nothing symmetric about it.
+    auto_clim = [0.0, float(MI.max())]
+    clim = _explicit_clim(spec) or list(auto_clim)
     cmap = spec.get("cmap", "seqblue")
     # Amplitude up the side, phase along the bottom, low at the bottom left --
     # the orientation every comodulogram in the repo is drawn in. Upsampled
@@ -1518,6 +1549,9 @@ def run_comodulogram(session, spec, job=None):
         "image": image,
         "mi": [[float(v) for v in r] for r in MI],
         "clim": [float(clim[0]), float(clim[1])],
+        "clim_auto": [float(auto_clim[0]), float(auto_clim[1])],
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
         "cmap": cmap,
         "max": float(MI.max()),
         "peak": {"slow": slow_tab["centers"][j], "fast": fast_tab["centers"][i],

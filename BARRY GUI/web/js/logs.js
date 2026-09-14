@@ -775,8 +775,11 @@ BARRY.views.errors = (function () {
     }
     try {
       const res = await api('/api/errors/grouped?limit=600'
-                            + (day ? '&day=' + day : ''));
+                            + (day ? '&day=' + day : '')
+                            + (errShowArchived ? '&machines=all' : ''));
       groups = res.groups || [];
+      hiddenArchived = res.hidden_archived || 0;
+      archivedIds = res.archived_machines || [];
     } catch (e) { groups = []; }
     try {
       const res = await api('/api/debug/trace?limit=400'
@@ -1109,6 +1112,17 @@ BARRY.views.errors = (function () {
     host.appendChild(list);
   }
 
+  /* Retired computers are left out by default. Named `errShowArchived`
+     rather than the obvious thing: the devices panel in this same file
+     already has a `showRetired` for its own list, and two of them in
+     one scope is a redeclaration.
+
+     Retired computers are left out by default. Theirs are still real
+     faults and still on the record -- they are just not this week's. */
+  let errShowArchived = false;
+  let hiddenArchived = 0;
+  let archivedIds = [];
+
   function render() {
     const host = $('#errBody');
     host.innerHTML = '';
@@ -1120,11 +1134,50 @@ BARRY.views.errors = (function () {
       : (day ? 'Nothing on ' + day + '.'
              : 'Nothing has failed \u2014 the log is clean.');
 
+    /* Said out loud. A list that hides rows without saying so cannot be
+       reasoned from: "no errors from the rig" and "the rig is archived"
+       read the same and mean opposite things. */
+    if (hiddenArchived || errShowArchived) {
+      host.appendChild(el('p', { class: 'hint err-archived' }, [
+        el('span', {
+          text: errShowArchived
+            ? 'Including computers that have been archived.'
+            : hiddenArchived + ' error(s) from archived computer(s) are not '
+              + 'shown'
+              + (archivedIds.length ? ' (' + archivedIds.join(', ') + ')' : '')
+              + '.',
+        }),
+        el('button', {
+          class: 'mini', text: errShowArchived ? 'Hide archived' : 'Show them',
+          onclick: () => { errShowArchived = !errShowArchived; load(); },
+        }),
+        el('span', { class: 'hint',
+          text: 'Archive a computer in DEVICE, beside its name.' }),
+      ]));
+    }
+
+
     host.appendChild(el('div', { class: 'res-toolbar' }, [
       el('button', {
         class: 'pill' + (mode === 'errors' ? ' active' : ''),
         text: 'Errors' + (errors.length ? ' (' + errors.length + ')' : ''),
         onclick: () => { mode = 'errors'; render(); },
+      }),
+      /* Everything still open, with the log either side of each
+         occurrence, as one file. A traceback says what broke; the twelve
+         actions before it say why -- and clearing a dozen faults at once
+         needs them in one place rather than a dozen panels. */
+      el('button', {
+        class: 'mini', text: 'Export open errors',
+        title: 'A text file of every unresolved error with the activity '
+             + 'around each occurrence, for working through them in one '
+             + 'go — or for handing to somebody else.',
+        onclick: () => {
+          window.open('/api/errors/export'
+                      + (errShowArchived ? '?machines=all' : ''), '_blank');
+          BARRY.activity.log('errors.export',
+                             { open: groups.filter((g) => !g.resolved).length });
+        },
       }),
       el('button', {
         class: 'pill' + (mode === 'debug' ? ' active' : ''),

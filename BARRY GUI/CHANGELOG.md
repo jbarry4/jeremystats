@@ -15,9 +15,329 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.14.1 — Hello, and where the gaps actually are
+
+### Added
+
+- **The launcher says Jarvis.** Everything else was renamed months ago; the
+  first thing the terminal printed was still BARRY GUI. It is now the name in
+  block capitals, with a greeting that knows what time it is.
+
+  Two things it has to survive. `Wake up Jarvis.bat` runs cmd.exe, which on an
+  older machine is codepage 437 and cannot encode a single block character —
+  so the wordmark is tested against the real console encoding first and a
+  pure-ASCII one takes over when it will not fit. And ANSI colour works in
+  Windows' console only once virtual-terminal processing is switched on, so it
+  is switched on deliberately and dropped rather than printed as escape codes
+  when that fails.
+
+- **A bar showing where the gaps are.** Seven rows of record numbers said how
+  much and how far and nothing about *where* — and where is the useful shape,
+  because every gap on `M8s9feb8` falls inside 110 seconds of an otherwise
+  clean 35-minute recording.
+
+  Positions are to scale. Widths are not, and the panel says so: 122.5 ms in
+  2124 s is a fifth of a pixel, so each marker has a floor width. Because four
+  of the seven then share that pixel, a second bar draws just the stretch the
+  gaps are in — and only when the gaps actually cluster, since on a recording
+  where they are spread out it would be the same picture twice. Hovering a
+  marker gives its size, its record, and the shift from there on.
+
+- **The correction is explained, and offered.** The panel said correcting the
+  times was "a separate, explicit step" and stopped, which reads like
+  something nobody has built. It is built. The panel now says what it does —
+  times move onto the recording's own clock, every label and id survives,
+  nothing is re-detected, it lands as a new version with the old one kept, and
+  kilosort units for the same session still need the same conversion — and
+  offers a preview.
+
+  The preview is the server's own dry run, so what it shows is what the write
+  would do, produced by the code that would do it: how many events move, the
+  shift per stretch, before and after for the first few, how many decisions
+  are affected, and the events sitting within 125 ms of a stitch that may be
+  filter ringing rather than real spikes. Applying is a second, deliberate
+  button inside it, and nothing on the way there writes anything.
+
+### Fixed
+
+- **The gap heading could read "0 gap(s)" above a table of seven.** The count
+  came from `n_gaps`, which the capped health summary carries and the full
+  report does not — and the full report is exactly what `Check every channel`
+  swaps in. It now counts whichever of the two actually arrived.
+
+- **A check name was ellipsised** at 130 px, turning "mixed sample rates" into
+  "mixed sample ra…". It wraps.
+
+### Checks
+
+- `web/_dev/continuity.html` — 45 checks now, including that the panel counts
+  the gaps it was handed (fed the full report, which is the shape that was
+  broken), that every gap is marked, that a marker sits where its timestamp
+  says to within 0.05% of the bar's width, and that the correction box
+  explains itself and offers a preview.
+- `web/_dev/gapbar.html` — a shot-taker for the panel and the preview.
+
+---
+
+## 2026.09.11.1 — Gaps in the recording, and the scale on a dB panel
+
+### Added
+
+- **A re-timing action, behind a preview.** Once a recording is known to have
+  gaps, the banked event set on it can be moved from Toothy's concatenated
+  clock to the recording's own. Arithmetic on existing events: nothing is
+  re-detected, the raw `.ncs` files are not touched, `DATA.hdf5` is not
+  rewritten, and no gap is interpolated across — the samples were never
+  recorded, and a gap is missing data rather than bad data.
+
+  **Which way, and why.** To the Neuralynx clock, because Jarvis is a
+  raw-backed application: its viewer, `.nvt` tracking, `.nev` marks and video
+  are all on that clock. The cost is stated in the preview rather than left to
+  be discovered — kilosort unit times for the same session are still in
+  concatenated time and need the same conversion before unit/DS comparisons
+  mean anything.
+
+  **The basis is established, not assumed.** All seven affected sets say
+  `pipeline: 'ETS dentate-spike export'`, and whether that is concat-era
+  output is exactly the thing the plan says never to guess at. Measured
+  instead: every one of the 1224 banked times for M8s9feb8 sits within 1.5 ms
+  of a Toothy `ALL_DS` time, *including* the 314 after the first gap — which
+  would be 96–122 ms away on any other clock. A set hand-curated against the
+  raw viewer is recognised as already correct and refused; a pipeline nothing
+  records is refused with a reason, because a correction applied on a guess
+  introduces the error it is meant to remove.
+
+  **Curation identity is the timestamp**, which is why this is not a loop
+  adding 0.122 to every `start`. A candidate's identity in a set is its time
+  at `MATCH_DP = 4` — 0.1 ms — and the correction is a thousand times that.
+  Pushing re-timed events through `create()` would mint a fresh id for every
+  one, orphan every decision, and on the next merge from a machine that had
+  not re-timed produce two ids per time whose union is a set of twice the
+  size, half of it undecided duplicates. That is what happened to m33 s8 on
+  2026-09-08: 416 decisions became 832 candidates.
+
+  So the edit is in place and keyed by event id; the per-event merge stamp is
+  bumped, without which a colleague's untouched copy is newer and silently
+  reverts the correction on the next sync; and every post-condition is
+  asserted rather than assumed — ids preserved, count unchanged, order held,
+  decisions intact, no tombstone written. `tools/test_retime.py` covers all of
+  it, including a merge from an un-retimed machine, which is the failure that
+  only appears after a sync.
+
+  Never auto-applied. `/api/session/retime` previews by default and `apply`
+  has to be asked for; running it twice refuses on the `time_basis` stamp,
+  where absence means **unknown** rather than correct. Reversal is "restore the
+  previous version", not a second arithmetic pass.
+
+- **The session health report says whether a recording is continuous.**
+  Cheetah closes a record early when acquisition hiccups, and the next
+  record's timestamp jumps. neo and spikeinterface call that a segment break,
+  so the file reaches Toothy as a multi-segment recording and Toothy
+  concatenates it — which closes the gaps and relabels every sample after one
+  with a time earlier than its true one, by the cumulative duration of all
+  preceding gaps. The error is a step, constant inside each segment, and
+  nothing downstream recorded that it happened.
+
+  `M8_Pten\M8s9feb8` is 8 segments, 7 gaps, 0.1225 s never written, and
+  121.9 ms of error by the end. A dentate spike is 10–20 ms wide, so seeking
+  to a banked DS time in the raw file after 1762.5 s lands six to twelve event
+  widths from the event. Before 1762.5 s the two agree exactly, which is why
+  it passes a casual spot-check.
+
+  The check is a faithful port of neo's `NcsSectionsFactory._buildNcsSections`
+  — including spikeinterface's non-strict 4267 µs tolerance, so the
+  segmentation reported is the one Toothy actually saw, not a stricter rule
+  that would count clock jitter as a break and find thousands. Verified
+  against spikeinterface's own answer on every affected recording in the PTEN
+  archive: same segment counts, same gap tables, same figures to six decimal
+  places.
+
+  It runs on every health check rather than being a deep-check extra, because
+  neo's fast path decides a continuous file from two records. Seventeen of
+  the twenty-nine PTEN recordings take it and cost two seeks; the answer is
+  cached against the reference file's size and mtime.
+
+- **Details behind the continuity row** — the gap table, the segment map, and
+  the three durations this recording can be said to have. Plain language in
+  the row, numbers in the expansion, because "121.9 ms" is a claim and the gap
+  table is the evidence for it. `Check every channel` parses all 64 rather
+  than the four-channel spot-check, which is the answer to trust before acting
+  on one.
+
+- **`tools/scan_continuity.py`** — the same check across a whole tree, for
+  "how much of the archive is affected" rather than "is this session all
+  right". On D:\PTEN\PTEN: **7 of 29 recordings have gaps**, and the other
+  22 are genuinely single-segment, which is the check discriminating rather
+  than always firing.
+
+- **`/api/session/continuity`** carries the full segment map. The health
+  report holds a capped version — sixty segments and sixty gaps — so a
+  sixty-session scan cannot return a hundred thousand rows.
+
+### Fixed
+
+- **Pinning the colour scale on a dB panel replaced the picture with a red
+  rectangle.** Reported: "when you click on Auto to pin the theta power
+  raster it breaks things, the colors look off."
+
+  Three faults stacked. Only one of the five image panels ever reported
+  `clim_auto`; the band-power raster, the spectrogram and the comodulogram
+  never did, so the client fell back to the literal placeholder `[-1, 1]`.
+  Band power in dB re 1 µV² runs about [-3, 27], so pinning clipped 30 dB of
+  data into 2 dB and everything above 1 dB saturated at the top of jet.
+
+  Underneath that, pinning rebuilt the range as `[-magnitude, +magnitude]`.
+  Symmetry is right for voltage, CSD and theta — signed quantities where zero
+  is the middle — and wrong for every one-sided scale: forcing [-3, 27] to
+  [-27, 27] throws away most of the map whatever the placeholder does. Each
+  panel now says what its auto limits are **and** whether its scale diverges,
+  and pinning pins the picture that is on screen.
+
+  And underneath *that*: the control strip is built when the pane appears and
+  `fetchImagePanel` never rebuilt it, so the button closed over
+  `auto === undefined` from before the first panel arrived and kept it for the
+  life of the pane. It cannot simply rebuild on every fetch — that replaces
+  the slider under a dragging pointer — so the button reads the live scale at
+  the moment it is clicked, and the strip refreshes only when the text on it
+  would change and no drag is settling.
+
+  On a one-sided panel the slider now sets the dynamic range, anchored at the
+  top, which is the only number on a dB axis anyone wants to move.
+
+- **The event bank never reached Supabase.** The table existed with **0 rows**
+  while this machine held 158 snapshots. Three faults, all from the morning
+  the table was added:
+
+  Each row's `updated_at` is the version's own creation time — deliberately,
+  so a pushed snapshot is never re-sent — which also means every snapshot
+  created before the feature shipped is older than `last_push` and was skipped
+  permanently. The table is append-only and small, so it now asks the database
+  which `(entry_id, v)` pairs exist and sends the difference. No clock
+  involved, right on the first push and the thousandth.
+
+  `collect()` never called the builder. It was written and wired into the push
+  order and the conflict map, and the one line that gathers it was missing.
+
+  And a foreign-key rejection aborted the **entire push**. `bank_snapshots`
+  sits sixth in the order, so one snapshot whose entry had not landed yet
+  returned `23503` and stopped `curation_sets`, `layer_sheets`, `results` and
+  everything after it from being sent — which is why a v3 curated here never
+  appeared anywhere else. The builder now sends only snapshots whose entry the
+  database already has; the entry goes up from an earlier table in the same
+  push and its snapshots follow a minute later. 130 snapshots up, and the
+  later tables moving again.
+
+- **The viewer was on a time basis of its own.** `read_ncs_range` seeked with
+  `floor(t / block)`, which assumes every record is full and that no timestamp
+  ever jumps. Measured on M8s9feb8: a window labelled t=2000 held data from
+  1999.923 — **77 ms early** — and the axis was 70 ms wrong by the end of the
+  file. Re-timing events while the viewer's own axis is wrong just moves the
+  error around, so this went first.
+
+  The seek is a binary search over the record timestamps now: seventeen
+  twenty-byte reads find the right record in a file of any size, exactly, and
+  on a continuous file it lands on precisely the record the arithmetic would
+  have picked. A window that crosses a gap reports it rather than pretending
+  to a uniform axis.
+
+- **The reported duration was a third number again.** `session_health` gave
+  `n_records × 512 / fs` — 2124.544 s on M8s9feb8, against 2124.3445 s
+  concatenated and 2124.4661 s on the recording's own clock, and agreeing with
+  neither the raw files nor anything Toothy produced. It is now the true
+  duration, read from the first and last record, with the concatenated one
+  beside it whenever the two differ. On a clean recording all three collapse
+  to the same number, which is exactly why this went unnoticed.
+
+- **Two counters were both called "gaps" and disagreed.** `read_ncs` counts
+  inter-record intervals off by more than half a block — 9 on M8s9feb8, where
+  neo sees 7 breaks. It also counts ordinary clock jitter, so it is now
+  `irregular_intervals`, which is what it counts. "Gaps" means neo's rule,
+  which is the one that decides whether Toothy sees one segment or eight.
+
+- **"2309 samples went missing" was the wrong number and the wrong idea.** A
+  synthetic test caught it: a record closed early at 200 of 512 samples, with
+  the next timestamp following 200 samples later, lost nothing — and the check
+  announced 312 missing samples. `n_records × 512 − samples` counts unused
+  buffer slots, not loss.
+
+  Nor is the obvious alternative any better: summing every sub-tolerance
+  residual gives 290 ms on M8s9feb8 and 299 ms on a recording with **no gaps
+  at all**, because `int(1e6 / fs × nvalid)` truncates and a microsecond per
+  record over 124,485 records is 124 ms of pure arithmetic. Measured: the
+  median residual on a full record is exactly 1 µs.
+
+  What is measurable is the residual at the records Cheetah actually closed
+  early. M8s9feb8 loses 7.6 ms that way; a clean recording with three short
+  records loses 2.9 ms. Across the archive that is 2 of 22 clean recordings
+  rather than all 22.
+
+- **A check name was truncated.** `.check-name` ellipsised at 130 px, turning
+  "mixed sample rates" into "mixed sample ra…" — hiding the word that matters.
+  It wraps now.
+
+### Checks
+
+- `tools/test_continuity.py` — the segmentation against files it writes
+  itself, so the right answer is known before the code runs: a continuous
+  file, a 50 ms gap, a 2 ms hiccup below the tolerance, short records with and
+  without lost time, a slow clock that must not read as loss, and a channel
+  that disagrees with the others.
+- `web/_dev/continuity.html` — 23 checks against the real recording, including
+  that a clean session does **not** get the warning.
+- `tools/test_retime.py` — 37 checks on the re-timing: a preview that
+  writes nothing, an apply that keeps every id and decision, a second run
+  that refuses, and a merge from an un-retimed machine that neither reverts
+  the times nor doubles the candidate list.
+- `web/_dev/climpin.html` — 11 checks that pinning a dB panel keeps the
+  picture and that pinning a signed one is still symmetric. It reproduced the
+  reported bug before the fix and fails again if either half is reverted.
+
+---
+
 ## 2026.09.10.1 — Braid, and the name on the door
 
 ### Fixed
+
+- **A profile set on one computer became everybody's.** Reported, and worse
+  than it looked. `Profile` and `Device` both say they are per-machine, and
+  both are half right: each machine WRITES its own shard, and both were
+  READING `book.read()`, which merges every machine's shard field by field,
+  last write wins. So the moment another computer typed a name, its name was
+  newer than yours and won everywhere — and the computer's nickname went the
+  same way.
+
+  Attribution comes from that record, so this was not a display quirk: it
+  credited work to whoever had most recently typed a name somewhere else.
+  And because a save read the merged record before writing it back, the
+  mixture got persisted — this machine's own file now holds one person's
+  name with another's email, written two days apart.
+
+  Both now read `read_mine`, which is this machine's shard and nothing else.
+  A machine that has never set a profile reads as unset rather than as
+  somebody else, which is the correct answer and the point: it will ask,
+  once, instead of quietly crediting the wrong person.
+
+- **The feed was not live, and the timestamps were fine.** Measured against
+  the clock, the newest rows were genuinely 21 minutes old and correctly in
+  UTC. Three delays were stacking: the client queues actions for four
+  seconds, the push reaches Supabase on the sync cycle, and the feed polled
+  every nine. Since it read only the shared table, your own work was
+  invisible until a push happened.
+
+  `activity.log` now notifies listeners the moment an action is logged —
+  before the queue, before any request — so your own actions appear with no
+  latency at all, marked "not shared yet" until the push carries them. The
+  feed endpoint merges this machine's log with the shared table so a reload
+  agrees with what the live append showed, and the poll is three seconds for
+  everybody else's work.
+
+- **A feed could go quiet while you were working.** It asked for rows newer
+  than the newest one it held — and that stamp comes from whichever machine
+  wrote it. The eleven machines in these logs do not share a clock, so one
+  running a minute ahead put the watermark a minute into the future and
+  every row this computer wrote until then was "older than since" and never
+  arrived. The watermark is set back two minutes and duplicates are dropped
+  by id.
 
 - **Braid had no way out.** DS curation and StrataScope both end their bar
   with `Leave`; Braid had nothing, so a mode that takes over the panes, the
@@ -126,6 +446,21 @@ This file is the only place the version is written. The app reads it.
   40.
 
 ### Added
+
+- **Archived computers stop filling the error feed.** Archiving a machine
+  already existed and took it off the device pickers and nothing else, so
+  eleven machines' faults — three of them retired — were still in the list.
+  Matched on the id rather than the friendly name, because this lab has four
+  names in its logs for three computers. Hidden, not dropped: the count is
+  on screen with a way to show them, since "no errors from the rig" and "the
+  rig is archived" read the same and mean opposite things.
+
+- **Export open errors.** One text file of every unresolved fault with the
+  activity either side of each occurrence, on one clock — because a
+  traceback says what broke and the twelve actions before it say why. For
+  working through a dozen at once, or for handing to somebody else. Bounded
+  at sixty groups, three occurrences each, twelve actions either side: past
+  that it stops being readable.
 
 - **Every tool has a live activity feed, read from Supabase.** Each mode
   already wrote to the activity log and those rows already went up. What was

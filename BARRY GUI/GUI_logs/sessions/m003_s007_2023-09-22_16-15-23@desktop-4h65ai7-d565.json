@@ -29,7 +29,7 @@
     "schema": "2026-09-04T15:57:01.584890+00:00",
     "session": "2026-09-04T15:57:01.584890+00:00",
     "start": "2026-09-04T15:57:01.584890+00:00",
-    "updated": "2026-09-11T14:52:05.284527+00:00",
+    "updated": "2026-09-14T13:59:12.787321+00:00",
     "view_state": "2026-09-11T14:52:05.284527+00:00"
   },
   "_keys": {
@@ -88,12 +88,16 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-11T14:47:35.914595+00:00"
+        "2026-09-14T13:59:12.787321+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-10T20:35:46.709430+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-11T14:52:05.284527+00:00",
+    "at": "2026-09-14T13:59:12.787321+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -198,19 +202,27 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-11T10:47:33-04:00",
+      "at": "2026-09-14T09:59:12-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s7sept22\\2023-09-22_16-15-23",
-      "root": null,
-      "scan": null
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_f179140bc2"
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-10T16:35:46-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s7\\2023-09-22_16-15-23",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_4888cfefce"
     }
   },
   "session": 7,
   "start": "2023-09-22T16:15:23",
   "updated": {
-    "at": "2026-09-11T10:52:05-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-14T09:59:12-04:00",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",

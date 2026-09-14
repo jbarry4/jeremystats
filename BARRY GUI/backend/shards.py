@@ -399,6 +399,17 @@ class Book:
         return os.path.join(self.dir,
                             "%s%s%s%s" % (base, SIGIL, machine_id(), self.ext))
 
+    def read_mine(self, base):
+        """This machine's own shard, unmerged.
+
+        For records that are ABOUT this machine -- who is at it, what it is
+        called. `read` merges every machine's answer with last-write-wins,
+        which is right for a recording's bad channels and wrong for an
+        identity: it hands whoever typed most recently everybody else's
+        name.
+        """
+        return _read_json(self.mine(base)) or {}
+
     def shard_files(self, base):
         out = []
         for name in sorted(_listdir(self.dir)):

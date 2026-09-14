@@ -403,9 +403,47 @@ class Sync:
         # Demo entries stay local, as they do for `rows_bank`.
         real = {rec.get("id") for rec in self.bank.all()
                 if not self._is_demo(rec)}
+
+        # What is already up there, as a set of keys.
+        #
+        # NOT a timestamp comparison. These rows carry the version's own
+        # creation time so that a pushed snapshot is never re-sent -- which
+        # also means every snapshot older than the day this feature shipped
+        # is older than `last_push` and would be skipped for ever. The table
+        # is append-only and small, so asking which keys exist is one light
+        # query and is right on the first push and the thousandth.
+        have = set()
+        known = None
+        try:
+            for r in self.cloud.select_all(
+                    "bank_snapshots", query="select=entry_id,v"):
+                have.add((str(r.get("entry_id")), int(r.get("v"))))
+            # And which entries the database actually has.
+            #
+            # `bank_snapshots.entry_id` references `bank_entries(id)`, so a
+            # snapshot for an entry that has not landed yet is rejected --
+            # and a rejected row fails the whole batch, which aborts the
+            # push before curation, layers, results and everything else
+            # later in the order. One new entry could stop a day's work
+            # leaving the machine. The entry goes up from a table earlier
+            # in the same push, so its snapshots follow a minute later.
+            known = {str(r.get("id")) for r in self.cloud.select_all(
+                "bank_entries", query="select=id") if r.get("id")}
+        except Exception:                            # noqa: BLE001
+            # No answer means send nothing rather than everything: an
+            # unanswered question is not a reason to risk the push that
+            # carries every other table.
+            return {"bank_snapshots": []}
+
         out = []
         for eid, v, snap, machine, at in self.bank.snapshots():
             if eid not in real:
+                continue
+            if (str(eid), int(v)) in have:
+                continue
+            # Its entry has to be there first, or the batch is refused and
+            # takes the rest of the push with it.
+            if known is not None and str(eid) not in known:
                 continue
             out.append({
                 "entry_id": eid,
@@ -799,6 +837,11 @@ class Sync:
         rows.update(self.rows_sessions())
         rows.update(self.rows_mice())
         rows.update(self.rows_bank())
+        # The snapshots that make a banked version restorable. In ORDER and
+        # in ON_CONFLICT since the day the table shipped -- and never built,
+        # so nothing was ever sent. A table nobody collects rows for is a
+        # table that stays empty however correct the rest of it is.
+        rows.update(self.rows_bank_snapshots())
         rows.update(self.rows_curation())
         rows.update(self.rows_layers())
         rows.update(self.rows_storyboards())
@@ -812,6 +855,14 @@ class Sync:
             rows.update(self.rows_activity())
             rows.update(self.rows_errors())
         return rows
+
+    # Tables whose builder decides for itself what to send, so the
+    # incremental `updated_at` filter must not have a second go at it.
+    # `bank_snapshots` carries each version's own creation time and works
+    # out what is missing by asking the database -- filtering that answer by
+    # those stamps would drop every snapshot older than the last push, which
+    # is all of them.
+    NO_INCREMENTAL = {"bank_snapshots"}
 
     ON_CONFLICT = {
         "session_paths": "gid,path",
@@ -844,7 +895,7 @@ class Sync:
         sent, report = 0, {}
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
-            if since:
+            if since and table not in self.NO_INCREMENTAL:
                 batch = [r for r in batch if _after(r.get("updated_at"), since)]
             report[table] = len(batch)
             if on_progress:

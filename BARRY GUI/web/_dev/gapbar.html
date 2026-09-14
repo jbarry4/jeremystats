@@ -1,0 +1,111 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>gapbar — the continuity panel, for looking at</title>
+<style>
+ /* No harness chrome: this exists to be screenshotted, so the application
+    fills the frame and nothing of this page is in the picture. */
+ html, body { margin:0; padding:0; background:#0a1310; overflow:hidden; }
+ iframe { display:block; width:100vw; height:100vh; border:0; }
+ #err { position:fixed; left:0; right:0; bottom:0; z-index:9;
+        background:#300; color:#fbb; font:12px/1.5 Consolas,monospace;
+        padding:8px 12px; white-space:pre-wrap; }
+</style>
+<iframe id="A" src="/"></iframe>
+<div id="err" hidden></div>
+<script>
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+/* Every exit that is not success says so on the page and in the title, so a
+   blank screenshot is never the whole report. */
+const fail = (t) => {
+  const box = document.getElementById('err');
+  box.hidden = false;
+  box.textContent = 'gapbar: ' + t;
+  document.title = 'gapbar ERR: ' + t;
+};
+const q = new URLSearchParams(location.search);
+/* Which modal to leave open: the continuity details, or the re-timing
+   preview behind its button. */
+const WANT = q.get('want') || 'continuity';
+const DIRTY = 'D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46';
+const post = async (url, body) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body || {}),
+})).json();
+
+(async () => { try {
+  document.title = 'gapbar: waiting for the app';
+  /* Through eval, because BARRY is a const inside the iframe's own script
+     and not a property of its window -- from out here W().BARRY is
+     undefined however loaded the app is. */
+  const ev = (src) => W().eval(src);
+  const ready = '!!(typeof BARRY !== "undefined" && BARRY.views'
+              + ' && BARRY.views.sessions)';
+  await until(() => ev(ready));
+  if (!ev(ready)) {
+    return fail('BARRY.views.sessions never appeared');
+  }
+  W().eval("setView('sessions')");
+  await sleep(500);
+
+  /* The panel is built from a continuity report, which comes from a route.
+     Rather than drive the whole scan-and-health sweep to reach it, hand the
+     view the session and call the opener: this page is a viewer for the
+     panel, not a test of how you get to it. */
+  document.title = 'gapbar: reading the recording';
+  const full = await post('/api/session/continuity', { path: DIRTY });
+  if (!full || !full.ok) {
+    return fail('continuity route said: '
+                + ((full && full.error) || 'nothing'));
+  }
+
+  const sess = {
+    path: DIRTY, name: 'M8s9feb8',
+    identity: { label: 'M8 s9 2024-02-09' },
+    gid: 's83ce541881d3', stored: { gid: 's83ce541881d3' },
+  };
+  if (!ev('typeof BARRY.views.sessions._showContinuity === "function"')) {
+    return fail('no _showContinuity export on the sessions view');
+  }
+  document.title = 'gapbar: opening the panel';
+  ev('BARRY.views.sessions._showContinuity(' + JSON.stringify(sess) + ', '
+     + JSON.stringify(full) + ')');
+
+  const modal = await until(() => D().querySelector('.continuity-modal'),
+                            20000);
+  if (!modal) return fail('the continuity modal never opened');
+  const bar = await until(() => D().querySelector('.gap-track'), 10000);
+  if (!bar) return fail('the modal opened but has no gap bar');
+  /* The banked-events box arrives on its own request; wait for it so the
+     picture is of the finished panel rather than of a half-drawn one. */
+  await until(() => D().querySelector('.fix-box, .basis-row, .basis-box p'),
+              20000);
+  await sleep(900);
+
+  if (WANT === 'preview') {
+    const btn = Array.from(D().querySelectorAll('.fix-acts .btn'))
+      .find((b) => /Preview/.test(b.textContent || ''));
+    if (!btn) return fail('no Preview button in the panel');
+    btn.click();
+    const lead = await until(
+      () => D().querySelector('.continuity-modal .lead'), 40000);
+    if (!lead) return fail('the preview never rendered');
+    await sleep(1000);
+  }
+  document.title = 'gapbar: ready';
+} catch (e) {
+  fail((e && e.stack ? e.stack : String(e)).slice(0, 400));
+} })();
+</script>

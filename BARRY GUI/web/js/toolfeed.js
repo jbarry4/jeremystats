@@ -25,7 +25,14 @@
 'use strict';
 
 BARRY.toolfeed = (function () {
-  const EVERY_MS = 9000;        // how often a mounted feed asks for more
+  /* How often a mounted feed asks the server for more.
+
+     Three seconds, not nine and not one. This poll is for what OTHER
+     machines have done, and their work cannot reach this computer faster
+     than the sync brings it -- so asking every second would be three times
+     the requests for no more knowledge. This machine's own actions do not
+     wait for it at all: see `onLog` below. */
+  const EVERY_MS = 3000;
   const KEEP = 120;             // rows held in the list before the tail goes
 
   let live = null;              // the feed currently on screen, if any
@@ -46,8 +53,33 @@ BARRY.toolfeed = (function () {
 
     live = {
       tool, box, head, list, rows: [], newest: null, timer: null,
-      stopped: false, source: null, note: null,
+      stopped: false, source: null, note: null, prefixes: null,
+      off: null, lastCheck: null,
     };
+
+    /* This machine's own actions, with no latency at all.
+
+       `activity.log` calls listeners before it queues anything, so a row
+       appears here as the click that caused it is handled -- no request, no
+       flush, no sync. It is marked pending until the shared table has it. */
+    if (BARRY.activity && BARRY.activity.onLog) {
+      live.off = BARRY.activity.onLog((entry) => {
+        const me = live;
+        if (!me || me.stopped || !entry) return;
+        if (!belongs(entry.action, me.prefixes)) return;
+        const row = {
+          id: entry.id || ('local-' + entry.at + '-' + entry.action),
+          at: entry.at, action: entry.action, detail: entry.detail || {},
+          gid: (entry.session || {}).gid || null,
+          session_key: (entry.session || {}).key || null,
+          view: entry.view, git_user: (BARRY.state.profile || {}).name || '',
+          machine: null, pending: true, mine: true,
+        };
+        me.rows = [row].concat(me.rows).slice(0, KEEP);
+        paintList([row.id]);
+        paintHead();
+      });
+    }
     paintHead();
     list.appendChild(el('div', { class: 'tf-empty', text: 'Reading…' }));
     pull(true);
@@ -57,17 +89,40 @@ BARRY.toolfeed = (function () {
 
   function stop() {
     if (live && live.timer) clearInterval(live.timer);
+    if (live && live.off) { try { live.off(); } catch (e) { /* gone */ } }
     if (live) live.stopped = true;
     live = null;
+  }
+
+  /* Does this action belong to the tool on screen?
+
+     The prefixes come from the server with the first answer, so before it
+     lands nothing is claimed -- showing another tool's action in this feed
+     would be a wrong answer to "what happened here". */
+  function belongs(action, prefixes) {
+    if (!prefixes || !prefixes.length) return false;
+    const a = String(action || '');
+    return prefixes.some(
+      (p) => a === String(p).replace(/\.$/, '') || a.startsWith(p));
   }
 
   async function pull(first) {
     const me = live;
     if (!me || me.stopped) return;
     let url = '/api/toolfeed/' + encodeURIComponent(me.tool) + '?limit=60';
-    /* Only what is new. A feed left open all afternoon should cost twenty
-       rows and then nothing, not the whole history every nine seconds. */
-    if (!first && me.newest) url += '&since=' + encodeURIComponent(me.newest);
+    /* Only what is new -- but with two minutes of slack.
+
+       The newest stamp held here was written by whichever machine wrote
+       that row, and the clocks in this lab are not one clock. If any of
+       them runs a minute ahead, an exact watermark is a minute in the
+       future and everything this computer writes until then is "older than
+       since" and never arrives: the feed goes quiet exactly while somebody
+       is working. Overlapping by two minutes costs a few repeated rows,
+       which the id check below drops anyway. */
+    if (!first && me.newest) {
+      const back = new Date(moment(me.newest) - 120000).toISOString();
+      url += '&since=' + encodeURIComponent(back);
+    }
     let got = null;
     try {
       got = await (await fetch(url)).json();
@@ -80,6 +135,8 @@ BARRY.toolfeed = (function () {
 
     me.source = got.source;
     me.note = got.note || null;
+    me.prefixes = got.prefixes || me.prefixes;
+    me.lastCheck = Date.now();
     const fresh = (got.rows || []).filter((r) => r && r.at);
     if (fresh.length) {
       /* Newest first from the server; the list keeps that order. Ids are
@@ -87,6 +144,15 @@ BARRY.toolfeed = (function () {
          second boundary. */
       const have = new Set(me.rows.map((r) => r.id));
       const add = fresh.filter((r) => !have.has(r.id));
+      /* A row that has now been shared replaces the local one it came
+         from. Without this the same action sits in the list twice, once
+         pending and once not, which reads as it having happened twice. */
+      const seen = new Set(fresh.map(
+        (r) => String(r.action) + '|' + String(r.at).slice(0, 19)));
+      me.rows = me.rows.filter(
+        (r) => !(r.pending
+                 && seen.has(String(r.action) + '|'
+                             + String(r.at).slice(0, 19))));
       me.rows = add.concat(me.rows).slice(0, KEEP);
       me.newest = me.rows.reduce(
         (top, r) => (!top || moment(r.at) > moment(top) ? r.at : top),
@@ -114,6 +180,15 @@ BARRY.toolfeed = (function () {
       text: cloud ? 'live · everybody' : 'this machine only',
     }));
     me.head.appendChild(el('span', { style: 'flex:1' }));
+    const waiting = me.rows.filter((r) => r.pending).length;
+    if (waiting) {
+      me.head.appendChild(el('span', {
+        class: 'tf-pending',
+        title: 'Done here and not yet in the shared table. It will be, on '
+             + 'the next sync.',
+        text: waiting + ' not shared yet',
+      }));
+    }
     me.head.appendChild(el('span', {
       class: 'hint tf-count',
       text: me.rows.length ? me.rows.length + ' recent' : '',
@@ -140,7 +215,13 @@ BARRY.toolfeed = (function () {
         class: 'tf-row' + (hot.has(r.id) ? ' tf-new' : ''),
         title: absolute(r.at) + (r.machine ? '  ·  ' + r.machine : ''),
       }, [
-        el('span', { class: 'tf-when', text: ago(r.at) }),
+        el('span', { class: 'tf-when' + (r.pending ? ' tf-wait' : ''),
+                     text: ago(r.at) }),
+        /* The clock time as well as "17h ago". A relative time cannot be
+           checked against anything, which is what "the timestamps look
+           off" means -- and they were right; it was the feed that was
+           stale. */
+        el('span', { class: 'tf-clock', text: clock(r.at) }),
         el('span', { class: 'tf-who', text: shortName(r.git_user) }),
         el('span', { class: 'tf-what', text: words(r.action) }),
         el('span', { class: 'tf-on', text: onWhat(r) }),
@@ -157,6 +238,9 @@ BARRY.toolfeed = (function () {
      legible rather than blank. */
   const WORDS = {
     'curation.enter': 'opened a set', 'curation.leave': 'closed a set',
+    'curation.open': 'opened curation', 'curation.take': 'took it on',
+    'curation.bank': 'banked a version', 'curation.undo': 'undid a decision',
+    'curation.skip': 'skipped one',
     'curation.label': 'labelled', 'curation.taken': 'took a set',
     'curation.review': 'reviewed', 'curation.bank': 'banked a version',
     'curation.import': 'imported curation',
@@ -232,6 +316,16 @@ BARRY.toolfeed = (function () {
     if (s < 3600) return Math.round(s / 60) + 'm ago';
     if (s < 86400) return Math.round(s / 3600) + 'h ago';
     return Math.round(s / 86400) + 'd ago';
+  }
+
+  /* Just the wall clock, for scanning down a column. */
+  function clock(t) {
+    const ms = moment(t);
+    if (!ms) return '';
+    const d = new Date(ms);
+    const two = (n) => (n < 10 ? '0' : '') + n;
+    return two(d.getHours()) + ':' + two(d.getMinutes()) + ':'
+         + two(d.getSeconds());
   }
 
   function absolute(t) {

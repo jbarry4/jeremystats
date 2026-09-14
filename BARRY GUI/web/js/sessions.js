@@ -1009,7 +1009,21 @@ BARRY.views.sessions = (function () {
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
-      el('div', { class: 'mb' }, [BARRY.checkList(h.checks || [])]),
+      el('div', { class: 'mb' }, [
+        BARRY.checkList(h.checks || [], {
+          extra: (c) => (c.name === 'continuity' && h.continuity
+                         && h.continuity.ok && h.continuity.n_segments > 1)
+            ? el('button', {
+                class: 'btn ghost xs gap-details', text: 'Details',
+                title: 'The gap table and the segment map',
+                onclick: (e) => {
+                  e.stopPropagation();
+                  showContinuity(s, h.continuity);
+                },
+              })
+            : null,
+        }),
+      ]),
       el('div', { class: 'mf' }, [
         el('button', {
           class: 'btn ghost sm', text: 'Deep check (reads every channel)',
@@ -1020,6 +1034,455 @@ BARRY.views.sessions = (function () {
         el('button', { class: 'btn ghost sm', text: 'Open folder',
           onclick: () => apiPost('/api/reveal', { path: s.path }).catch(() => {}) }),
         el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+      ]),
+    ]));
+  }
+
+
+  /* ======================================================================
+     The gap table behind the continuity row.
+
+     Cheetah closes a record early when acquisition hiccups and the next
+     record's timestamp jumps; neo calls that a segment break, and Toothy
+     concatenates across it, which closes the gap and labels every later
+     sample earlier than it truly is. The check says that happened. This says
+     where, and by how much, and on what evidence -- so the claim can be
+     checked rather than believed.
+     ====================================================================== */
+  function showContinuity(s, c) {
+    /* The health report carries a capped summary with an n_gaps count; the
+       full report from /api/session/continuity carries the gaps themselves
+       and no count. Both reach this function -- 'Check every channel'
+       swaps the second in for the first -- so the count comes from whichever
+       is actually there. Reading only n_gaps made the heading say '0 gap(s)'
+       above a table of seven. */
+    const nGaps = (c && c.n_gaps != null) ? c.n_gaps : ((c && c.gaps) || []).length;
+    const num = (v, dp) => (v == null || !isFinite(v))
+      ? '\u2014' : Number(v).toFixed(dp == null ? 3 : dp);
+    const ms = (v) => (v == null || !isFinite(v)) ? '\u2014'
+      : (Math.abs(v) < 1 ? num(v, 2) + ' ms'
+         : (Math.abs(v) < 1000 ? num(v, 1) + ' ms' : num(v / 1e3, 3) + ' s'));
+
+    const table = (head, rows) => el('table', { class: 'gap-table' }, [
+      el('thead', {}, [el('tr', {},
+        head.map((t) => el('th', { text: t })))]),
+      el('tbody', {}, rows.map((r) => el('tr', {},
+        r.map((v, i) => el('td', { class: i ? 'n' : '', text: String(v) }))))),
+    ]);
+
+    const three = el('div', { class: 'three-clocks' }, [
+      el('h4', { text: 'How long is this recording?' }),
+      table(['basis', 'seconds', 'who is on it'], [
+        ['its own clock', num(c.true_duration_s, 4),
+         'the .ncs files, .nev marks, video, and this viewer'],
+        ['concatenated', num(c.concat_duration_s, 4),
+         'Toothy DS times, lfp_time, CSC_Raw.dat, kilosort units'],
+        ['by record index', num(c.record_duration_s, 4),
+         'nothing \u2014 it assumes every record is full'],
+      ]),
+      el('p', { class: 'hint',
+        text: 'On a continuous recording these are the same number, which is '
+            + 'why the difference went unnoticed. Here they span '
+            + ms((Math.max(c.true_duration_s, c.concat_duration_s,
+                           c.record_duration_s)
+                  - Math.min(c.true_duration_s, c.concat_duration_s,
+                             c.record_duration_s)) * 1e3) + '.' }),
+    ]);
+
+    /* Where they are, along the recording.
+
+       The table says how much and how far; this says where, which is the
+       shape worth seeing -- every gap on this recording falls inside a
+       110-second window of an otherwise clean 35 minutes.
+
+       Positions are exact. Widths are not: 50 ms in 2124 s is a fifth of a
+       pixel, so each marker has a floor width and the note under the bar
+       says so. */
+    const span = Number(c.true_duration_s) || 0;
+    const allGaps = c.gaps || [];
+
+    /* One track over any window. The whole recording and the stretch the
+       gaps are in differ only in where they start and end. */
+    const trackOver = (from, to, label) => {
+      const width = to - from;
+      const at = (t) => Math.max(0, Math.min(100,
+        ((Number(t) - from) / width) * 100));
+      const track = el('div', { class: 'gap-track' });
+      (c.segments || []).forEach((g, i) => {
+        const a = at(g.true_t0_s);
+        const b = at(Number(g.true_t0_s) + Number(g.duration_s));
+        if (b < 0 || a > 100) return;
+        const seg = el('div', {
+          class: 'gap-seg' + (i % 2 ? ' alt' : ''),
+          title: 'segment ' + g.index + ' \u2014 ' + g.n_samples
+               + ' samples, ' + num(g.duration_s, 3) + ' s, '
+               + (Number(g.error_ms) || 0).toFixed(1)
+               + ' ms early in concatenated time',
+        });
+        seg.style.left = a.toFixed(4) + '%';
+        seg.style.width = Math.max(0, b - a).toFixed(4) + '%';
+        track.appendChild(seg);
+      });
+      allGaps.forEach((g, i) => {
+        const x = at(g.at_true_time_s);
+        if (x < 0 || x > 100) return;
+        const mark = el('div', {
+          class: 'gap-mark',
+          title: 'gap ' + (i + 1) + ' of ' + allGaps.length + ' \u2014 '
+               + ms(g.gap_ms) + ' at ' + num(g.at_true_time_s, 3)
+               + ' s, after record ' + g.after_record
+               + '. Everything past here is '
+               + ms(g.cumulative_shift_s * 1e3) + ' early.',
+        });
+        mark.style.left = x.toFixed(4) + '%';
+        track.appendChild(mark);
+      });
+      return el('div', { class: 'gap-bar' }, [
+        label ? el('div', { class: 'gap-label', text: label }) : null,
+        track,
+        el('div', { class: 'gap-axis' }, [
+          el('span', { text: num(from, from < 10 ? 0 : 1) + ' s' }),
+          el('span', { class: 'mid', text: label ? '' : nGaps + ' gap(s)' }),
+          el('span', { text: num(to, 1) + ' s' }),
+        ]),
+      ]);
+    };
+
+    const first = allGaps.length ? Number(allGaps[0].at_true_time_s) : 0;
+    const last = allGaps.length
+      ? Number(allGaps[allGaps.length - 1].at_true_time_s) : 0;
+    /* A second track, but only when it would show something the first
+       cannot. All seven gaps here fall in 110 seconds of 2124, so four of
+       them share a pixel at full width; on a recording whose gaps really are
+       spread out this would just be the same picture again. */
+    const clustered = allGaps.length > 1 && span > 0
+                      && (last - first) < span * 0.5;
+    const pad = Math.max((last - first) * 0.12, 0.4);
+    const bar = span > 0 ? el('div', {}, [
+      trackOver(0, span, clustered ? 'the whole recording' : ''),
+      clustered
+        ? trackOver(Math.max(0, first - pad), Math.min(span, last + pad),
+                    'the ' + num(last - first, 1) + ' s the gaps are in')
+        : null,
+      el('p', { class: 'hint quiet',
+        text: 'Positions are to scale. Widths are not \u2014 '
+            + ms((c.seconds_lost || 0) * 1e3) + ' in ' + num(span, 0)
+            + ' s is far under one pixel, so each marker is drawn at a '
+            + 'minimum width to be findable. Hover one for its size.'
+            + (clustered
+               ? '  Every gap is between ' + num(first, 1) + ' s and '
+                 + num(last, 1) + ' s, so the second bar is that stretch on '
+                 + 'its own.'
+               : '') }),
+    ]) : null;
+
+    const gaps = el('div', {}, [
+      el('h4', { text: (nGaps) + ' gap(s) \u2014 data Cheetah never '
+                       + 'wrote' }),
+      bar,
+      table(['after record', 'true time (s)', 'gap', 'shift from here on'],
+        (c.gaps || []).map((g) => [
+          g.after_record, num(g.at_true_time_s, 3), ms(g.gap_ms),
+          ms(g.cumulative_shift_s * 1e3),
+        ])),
+    ]);
+
+    const segs = el('div', {}, [
+      el('h4', { text: c.n_segments + ' segments' }),
+      table(['seg', 'samples', 'true start (s)', 'concat start (s)',
+             'error'],
+        (c.segments || []).map((g) => [
+          g.index, g.n_samples, num(g.true_t0_s, 6), num(g.concat_t0_s, 6),
+          ms(g.error_ms),
+        ])),
+      el('p', { class: 'hint',
+        text: 'Error is how much earlier the concatenated file calls this '
+            + 'stretch than it really is. It is a step, not a drift: '
+            + 'constant inside each segment. A dentate spike is 10\u201320 ms '
+            + 'wide, so ' + ms(c.max_time_error_ms) + ' is '
+            + Math.round(c.max_time_error_ms / 15) + ' event widths.' }),
+    ]);
+
+    const how = el('div', { class: 'hint prov' }, [
+      el('p', { text: 'Rule: ' + (c.gap_rule || '?') + ', tolerance '
+                      + (c.gap_tolerance_us || 0) + ' \u00b5s. This is the '
+                      + 'rule spikeinterface uses, so the segmentation here '
+                      + 'is the one Toothy saw. neo\u2019s own stricter '
+                      + 'default counts clock jitter as a break and finds '
+                      + 'thousands.' }),
+      el('p', { text: 'Checked ' + ((c.probed || []).length) + ' of '
+                      + (c.n_ncs || '?') + ' channels: '
+                      + (c.probed || []).join(', ')
+                      + ((c.mismatches || []).length
+                         ? ' \u2014 ' + c.mismatches.length + ' disagree'
+                         : ' \u2014 they agree') + '.' }),
+      el('p', { text: 'Clock drift ' + ms((c.clock_drift_s || 0) * 1e3)
+                      + ' (implied ' + num(c.implied_fs, 2) + ' Hz against a '
+                      + 'nominal rate) is not data loss and is counted '
+                      + 'separately.' }),
+      el('p', { text: (c.n_short_records || 0) + ' record(s) closed early, '
+                      + (c.n_short_inside || 0) + ' of them without making a '
+                      + 'break; ' + ms((c.sub_threshold_lost_s || 0) * 1e3)
+                      + ' went unrecorded at those. Measured from the '
+                      + 'timestamps rather than from the '
+                      + (c.unused_record_slots || 0) + ' unused buffer slots '
+                      + '\u2014 a record whose next timestamp follows its own '
+                      + 'short count is simply short, and lost nothing.' }),
+      el('p', { text: 'Segment map ' + (c.gap_map_sha || '?')
+                      + (c.truncated ? '  (tables capped here; the whole map '
+                                     + 'is on /api/session/continuity)' : '') }),
+    ]);
+
+    /* What clock the banked events for this session are on. Filled in
+       after the modal is up, because it is a second request and the gap
+       table is worth showing without waiting for it. */
+    const basisBox = el('div', { class: 'basis-box' }, [
+      el('p', { class: 'hint', text: 'Checking what clock the banked events '
+                                     + 'are on\u2026' }),
+    ]);
+    apiPost('/api/session/timebasis',
+            { path: s.path, gid: (s.stored && s.stored.gid) || s.gid })
+      .then((res) => {
+        basisBox.innerHTML = '';
+        const rows = (res && res.entries) || [];
+        if (!rows.length) {
+          basisBox.appendChild(el('p', { class: 'hint',
+            text: 'No event set is banked against this recording, so there '
+                + 'is nothing carrying these times.' }));
+          return;
+        }
+        basisBox.appendChild(el('h4', { text: 'Banked events' }));
+        for (const r of rows) {
+          const b = r.basis || {};
+          const concat = b.basis === 'toothy_concat';
+          basisBox.appendChild(el('div', {
+            class: 'basis-row' + (r.correctable ? ' off' : ''),
+          }, [
+            el('div', { class: 'basis-head' }, [
+              el('span', { class: 'basis-name',
+                           text: (r.name || r.type || 'events')
+                                 + '  \u00b7  ' + (r.n || 0) + ' event(s)' }),
+              el('span', { class: 'basis-chip ' + (concat ? 'concat' : 'true'),
+                           text: concat ? 'concatenated' : 'raw clock' }),
+            ]),
+            el('p', { class: 'hint', text: r.reason || '' }),
+            b.why ? el('p', { class: 'hint quiet', text: b.why }) : null,
+          ]));
+        }
+        /* What the correction actually does, and a way to look at it.
+
+           "A separate, explicit step" on its own reads like something
+           nobody has built. It exists; saying what it does is the
+           difference between a warning and a thing you can act on. */
+        const can = rows.filter((r) => r.correctable);
+        if (can.length) {
+          basisBox.appendChild(el('div', { class: 'fix-box' }, [
+            el('h4', { text: 'How this gets corrected' }),
+            el('ol', { class: 'fix-steps' }, [
+              el('li', { text: 'Every event time is moved onto the '
+                  + 'recording\u2019s own clock \u2014 the one the .ncs '
+                  + 'files, the .nev marks and the video are on. The shift '
+                  + 'is zero before the first gap and grows by each gap '
+                  + 'after it.' }),
+              el('li', { text: 'Times change and nothing else does. Every '
+                  + 'labelled event keeps its label and its id; nothing is '
+                  + 're-detected, and no candidate is added or removed.' }),
+              el('li', { text: 'It lands as a new version of the banked set, '
+                  + 'with the old one kept. Reversing it is '
+                  + '\u201crestore the previous version\u201d, not a '
+                  + 'second pass of arithmetic.' }),
+              el('li', { text: 'Kilosort unit times for this session stay in '
+                  + 'concatenated time and need the same conversion before '
+                  + 'unit/DS comparisons mean anything.' }),
+            ]),
+            el('div', { class: 'fix-acts' }, [
+              el('button', {
+                class: 'btn sm', text: 'Preview the correction\u2026',
+                title: 'Works out exactly what would change and shows it. '
+                     + 'Writes nothing.',
+                onclick: (ev) => {
+                  ev.stopPropagation();
+                  previewRetime(s, c, can[0]);
+                },
+              }),
+              el('span', { class: 'hint quiet',
+                text: 'The preview writes nothing. Applying is its own '
+                    + 'button, inside it.' }),
+            ]),
+          ]));
+        } else {
+          basisBox.appendChild(el('p', { class: 'hint quiet',
+            text: 'Nothing here can be corrected automatically, for the '
+                + 'reason given against each set above. Correcting a set '
+                + 'whose clock cannot be established would introduce the '
+                + 'very error this is looking for.' }));
+        }
+      })
+      .catch((e) => {
+        basisBox.innerHTML = '';
+        basisBox.appendChild(el('p', { class: 'hint',
+          text: 'Could not check the banked events: ' + e.message }));
+      });
+
+    showModal(el('div', { class: 'continuity-modal' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Continuity \u2014 ' + (s.identity.label || s.name) }),
+        el('span', { class: 'sub', text: c.n_segments + ' segments, '
+                     + ms((c.seconds_lost || 0) * 1e3) + ' never written' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [three, gaps, segs, basisBox, how]),
+      el('div', { class: 'mf' }, [
+        el('button', {
+          class: 'btn ghost sm', text: 'Check every channel',
+          title: 'Parses all ' + (c.n_ncs || '?') + ' files rather than a '
+               + 'spot-check. Slower, and the answer to trust before acting '
+               + 'on one.',
+          onclick: async (ev) => {
+            const b = ev.target;
+            b.disabled = true;
+            b.textContent = 'Reading ' + (c.n_ncs || '?') + ' channels\u2026';
+            try {
+              const full = await apiPost('/api/session/continuity',
+                                         { path: s.path, all_channels: true });
+              closeModal();
+              if (health[s.path]) health[s.path].continuity = full;
+              showContinuity(s, full);
+            } catch (err) {
+              b.disabled = false;
+              b.textContent = 'Check every channel';
+              toast('Could not read them all: ' + err.message, 'err');
+            }
+          },
+        }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+      ]),
+    ]));
+  }
+
+
+  /* ======================================================================
+     Re-timing a banked set onto the recording's own clock.
+
+     Preview first, always, and the preview is a server dry run rather than
+     a guess made here -- so what it shows is what the write would do,
+     produced by the code that would do it.
+     ====================================================================== */
+  async function previewRetime(sess, cont, entry) {
+    const num = (v, dp) => (v == null || !isFinite(v))
+      ? '\u2014' : Number(v).toFixed(dp == null ? 3 : dp);
+    const ms = (v) => (v == null || !isFinite(v)) ? '\u2014'
+      : (Math.abs(v) < 1 ? num(v, 2) + ' ms'
+         : (Math.abs(v) < 1000 ? num(v, 1) + ' ms' : num(v / 1e3, 3) + ' s'));
+
+    let res;
+    try {
+      res = await apiPost('/api/session/retime', {
+        path: sess.path, entry_id: entry.entry_id,
+        gid: (sess.stored && sess.stored.gid) || sess.gid || '', kind: 'ds',
+      });
+    } catch (e) {
+      toast('Could not work out the correction: ' + e.message, 'err');
+      return;
+    }
+    if (!res.ok && res.reason) {
+      toast(res.reason, 'err');
+      return;
+    }
+    const pv = res.preview || {};
+    const ent = res.entry || {};
+    const set = res.set || {};
+
+    const table = (head, rows) => el('table', { class: 'gap-table' }, [
+      el('thead', {}, [el('tr', {}, head.map((t) => el('th', { text: t })))]),
+      el('tbody', {}, rows.map((r) => el('tr', {},
+        r.map((v, i) => el('td', { class: i ? 'n' : '', text: String(v) }))))),
+    ]);
+
+    const body = el('div', {}, [
+      el('p', { class: 'lead', text: (ent.moved || 0) + ' event(s) move. '
+          + 'Every one keeps its label and its id \u2014 nothing is '
+          + 're-detected, and no candidate is added or removed.' }),
+      el('h4', { text: 'How far each stretch of the recording moves' }),
+      table(['stretch from (s)', 'to (s)', 'moves by'],
+        (pv.shifts || []).map((g) => [
+          num(g.concat_from_s, 3), num(g.concat_to_s, 3), ms(g.shift_ms),
+        ])),
+      el('h4', { text: 'The first few, before and after' }),
+      table(['was (s)', 'becomes (s)', 'shift', 'label'],
+        (ent.sample || []).map((g) => [
+          num(g.was, 4), num(g.now, 4), ms(g.shift_ms), g.label || '\u2014',
+        ])),
+      el('div', { class: 'fix-facts' }, [
+        el('p', { text: 'Curation set: ' + (set.was != null ? set.was : '?')
+            + ' candidate(s), ' + (set.decided != null ? set.decided : '?')
+            + ' of them decided. All of the decisions survive \u2014 the '
+            + 'edit is keyed on each event\u2019s id, not on its time.' }),
+        el('p', { text: 'Shift runs from ' + ms(ent.shift_min_ms) + ' to '
+            + ms(ent.shift_max_ms) + '. Order is preserved: '
+            + (ent.order_held ? 'checked and held.' : 'NOT held \u2014 '
+               + 'this would be refused.') }),
+        (ent.unplaceable
+          ? el('p', { class: 'warn-line', text: ent.unplaceable
+              + ' event(s) have no time on the other clock, so nothing '
+              + 'would be written.' })
+          : null),
+      ]),
+      el('h4', { text: 'Worth knowing first' }),
+      el('ul', { class: 'fix-steps' },
+        (pv.caveats || []).map((t) => el('li', { text: t }))),
+    ]);
+
+    const canApply = res.ok && !ent.error && !set.error && !ent.unplaceable;
+    showModal(el('div', { class: 'continuity-modal' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Preview \u2014 correct the event times' }),
+        el('span', { class: 'sub', text: (entry.name || 'events') + '  \u00b7  '
+            + (entry.n || 0) + ' event(s)  \u00b7  nothing is written yet' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mf' }, [
+        el('span', { class: 'hint quiet', text: canApply
+          ? 'Applying mints a new version. The current one is kept and can '
+            + 'be restored from the version history.'
+          : 'This cannot be applied as it stands.' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Close', onclick: closeModal }),
+        canApply ? el('button', {
+          class: 'btn', text: 'Apply the correction',
+          onclick: async (ev) => {
+            const b = ev.target;
+            b.disabled = true;
+            b.textContent = 'Applying\u2026';
+            try {
+              const done = await apiPost('/api/session/retime', {
+                path: sess.path, entry_id: entry.entry_id,
+                gid: (sess.stored && sess.stored.gid) || sess.gid || '',
+                kind: 'ds', apply: true,
+              });
+              if (!done.ok) {
+                throw new Error((done.entry || {}).error
+                                || (done.set || {}).error
+                                || done.reason || done.error || 'refused');
+              }
+              closeModal();
+              const v = (done.entry || {}).version;
+              toast('Corrected. The set is now v' + v + ' on the '
+                    + 'recording\u2019s own clock; v' + (v - 1)
+                    + ' is kept in the version history.', 'ok');
+            } catch (err) {
+              b.disabled = false;
+              b.textContent = 'Apply the correction';
+              toast('Not applied: ' + err.message, 'err');
+            }
+          },
+        }) : null,
       ]),
     ]));
   }
@@ -1379,6 +1842,10 @@ BARRY.views.sessions = (function () {
        button that merely looks changed is not the same as a scan that is
        changed -- so the harness reads the state the scan reads. */
     _scanOpts: () => Object.assign({}, scanOpts),
+    /* The continuity panel, opened directly. For web/_dev/gapbar.html:
+       getting to it through a scan and a health sweep is a test of the
+       scan, and what wants looking at is the panel. */
+    _showContinuity: (sess, report) => showContinuity(sess, report),
     onShow: () => {
       if (mode === 'housekeeping' && BARRY.views.housekeeping) {
         BARRY.views.housekeeping.onShow();

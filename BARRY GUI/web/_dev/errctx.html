@@ -109,6 +109,27 @@ const hd = (t) => p('\n== ' + t + ' ==');
      bogus && bogus.ok === false, JSON.stringify(bogus).slice(0, 80));
 
   hd('3. Clicking an error opens it, in the errors view');
+  /* Make the state this section needs rather than hoping for it.
+
+     The newest error on a working machine is often a background one -- the
+     sync loop files its own -- and the five minutes around it can contain
+     no actions from THIS machine at all, which is exactly what the route
+     reports and exactly what the panel then draws. Reading that as "the
+     panel lost the sequence" is the harness's fault, not the panel's.
+
+     So: a few actions that this machine logs, then an error of its own,
+     seconds apart. `session/health` records one action per call and needs
+     no session to exist. */
+  for (let i = 0; i < 3; i++) {
+    await post('/api/session/health', { paths: [] });
+  }
+  const mine = await post('/api/errors/test', {});
+  p('  filed a test error at ' + ((mine.error || {}).at || '?')
+    + ' on ' + ((mine.error || {}).machine || '?'));
+  /* The activity queue flushes on a timer; the route above wrote straight
+     to the log, so the only wait needed is for the error to be readable. */
+  await sleep(600);
+
   run("setView('errors')");
   await untilN(() => D().querySelectorAll('.err-card').length, 200);
   await sleep(1200);
@@ -119,14 +140,30 @@ const hd = (t) => p('\n== ' + t + ' ==');
   const cards = () => Array.from(D().querySelectorAll('.err-card'));
   p('  ' + cards().length + ' card(s)');
   ck('the errors view lists them', cards().length > 0, cards().length);
-  const head = cards()[0].querySelector('.ec-top');
+
+  /* The card for the error this harness just filed, not whichever of three
+     hundred the view puts first. That one is months old, nothing was logged
+     around it, and the panel is right to draw nothing -- which the check
+     below would read as the panel having lost the sequence. */
+  let card = cards().find(
+    (c) => /Test error from the Errors panel|selftest/.test(c.textContent || ''));
+  if (!card) {
+    p('  could not find the card for the error just filed; '
+              + 'falling back to the first, which may legitimately have no '
+              + 'context');
+    card = cards()[0];
+  } else {
+    p('  found the card for this run\u2019s own error');
+  }
+  const head = card.querySelector('.ec-top');
   ck('the header is the handle', !!head && head.classList.contains('ec-click'),
      head ? head.className : 'no header');
   head.click();
   await untilN(() => D().querySelector('.ec-context .ecx-rows')
                      || D().querySelector('.ec-context .hint'), 120);
   await sleep(900);
-  const panel = D().querySelector('.ec-context');
+  const panel = card.querySelector('.ec-context')
+             || D().querySelector('.ec-context');
   ck('a context panel opens', !!panel);
   /* Counted inside the panel just opened, not across the document. A
      panel left open by an earlier section put a second "here" marker on

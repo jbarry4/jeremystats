@@ -92,7 +92,8 @@ async function untilN(fn, tries = 300, gap = 100) {
 
   head('1. Cramped: the numbers');
   const rail = D.querySelector('.strata-rail');
-  const rows = Array.from(D.querySelectorAll('.strata-rows .strata-row'));
+  // Reassigned if the sheet has to be reopened to make a blank row.
+  let rows = Array.from(D.querySelectorAll('.strata-rows .strata-row'));
   const rowsBox = D.querySelector('.strata-rows');
   const rw = rail ? rail.getBoundingClientRect() : { width: 0 };
   const mid = rows[Math.floor(rows.length / 2)];
@@ -165,7 +166,9 @@ async function untilN(fn, tries = 300, gap = 100) {
   const labelled = () => W.eval('(function(){'
     + 'var s = BARRY.strata.state;'
     + 'return s ? Object.keys(s.labels || {}).length : -1; })()');
-  const before = labelled();
+  /* Re-read after any clearing below: the baseline has to be the state
+     the click starts from, not the state the harness walked in on. */
+  let before = labelled();
   say('note', '  labelled to start with: ' + before);
   /* Pick a brush the way a person does, then click a row. */
   const brush = brushes.find((b) => !/^Pick/.test(b.textContent.trim()))
@@ -178,14 +181,6 @@ async function untilN(fn, tries = 300, gap = 100) {
           '!!(BARRY.strata.state && BARRY.strata.state.brush)'),
         brush.className);
 
-  /* A row that has no label yet, so a no-op cannot be mistaken for a pass. */
-  const unl = W.eval('(function(){'
-    + 'var s = BARRY.strata.state, L = (s && s.labels) || {};'
-    + 'var cs = s.channels || [];'
-    + 'for (var i = 0; i < cs.length - 6; i++) {'
-    + '  if (!L[String(cs[i].number)]) return i;'
-    + '} return 0; })()');
-  say('note', '  painting from row ' + (unl + 1));
   const down = (r) => {
     const b = r.getBoundingClientRect();
     r.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true,
@@ -194,6 +189,66 @@ async function untilN(fn, tries = 300, gap = 100) {
   const over = (r) => r.dispatchEvent(
     new W.MouseEvent('mouseenter', { bubbles: false }));
 
+  /* A row that has no label yet, so a no-op cannot be mistaken for a pass.
+
+     Searched over the WHOLE rail, not the first fifty-eight rows, and -6
+     only at the end so the drag below has somewhere to go. When the sheet
+     is full -- which it becomes after enough runs of this harness -- the
+     old code fell back to row 0 without saying so, painted a row that was
+     already labelled, and reported that labelling does not work. */
+  const findBlank = () => W.eval('(function(){'
+    + 'var s = BARRY.strata.state, L = (s && s.labels) || {};'
+    + 'var cs = s.channels || [];'
+    + 'for (var i = 0; i < cs.length - 6; i++) {'
+    + '  if (!L[String(cs[i].number)]) return i;'
+    + '} return -1; })()');
+
+  let unl = findBlank();
+  if (unl < 0) {
+    /* Make one, with the eraser, the way a person would. The sheet being
+       full is not a reason to skip the check -- it is a reason to clear a
+       row first. */
+    say('note', '  every row is labelled already; clearing one with the '
+        + 'eraser first', 'note');
+    /* Through the API the eraser itself calls. Driving the brush from
+       outside is a mousedown/enter/up dance and guessing at it is how this
+       harness ended up reporting an application fault. */
+    const gid = W.eval('(BARRY.strata.state || {}).gid');
+    /* Six rows, not one: the click below takes the first and the drag
+       after it covers four more. Clearing exactly what the test needs and
+       nothing else. */
+    const nums = JSON.parse(W.eval('JSON.stringify((function(){'
+      + 'var s = BARRY.strata.state, out = [];'
+      + 'var cs = s.channels || [];'
+      + 'for (var i = 1; i < Math.min(7, cs.length); i++) '
+      + '  out.push(cs[i].number);'
+      + 'return out; })())'));
+    if (gid && nums.length) {
+      for (const n of nums) {
+        await fetch('/api/layers/' + encodeURIComponent(gid) + '/set', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: n, region: null }),
+        });
+      }
+      /* Back into the mode, so the rail and the store agree: the count
+         below reads the sheet this mode is holding, not the server. */
+      W.eval('BARRY.strata.exit()');
+      await sleep(300);
+      W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+      await untilN(() => W.eval('!!BARRY.strata.state'), 80);
+      await sleep(600);
+      rows = Array.from(D.querySelectorAll('.strata-rows .strata-row'));
+      const again = Array.from(D.querySelectorAll('.strata-brush'))
+        .find((b) => !/^Pick/.test(b.textContent.trim()));
+      if (again) { again.click(); await sleep(250); }
+    }
+    before = labelled();
+    say('note', '  cleared ' + (61 - before >= 0 ? 'some' : 'no') + ' row(s); '
+        + 'baseline is now ' + before);
+    unl = findBlank();
+    if (unl < 0) unl = 1;
+  }
+  say('note', '  painting from row ' + (unl + 1));
   down(rows[unl]);
   await untilN(() => labelled() > before, 60);
   say('note', '  labelled after one click: ' + labelled());

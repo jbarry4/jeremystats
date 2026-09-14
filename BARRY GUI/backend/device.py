@@ -42,8 +42,12 @@ class Device:
     def __init__(self, logs_dir, store=None):
         self.dir = os.path.join(logs_dir, "prefs")
         self.store = store
-        # LWW, and per machine by virtue of being a shard: this is one
-        # computer's own name and only it should be writing the record.
+        # Per machine, and now per machine on the way IN as well.
+        #
+        # Only this computer writes its own shard -- that part was always
+        # true -- but `read` merged everybody's, so the newest nickname
+        # anywhere became this computer's name. `read_mine` reads this
+        # machine's shard and nothing else.
         self.book = shards.Book(self.dir, {}, store)
 
     def _base(self):
@@ -56,7 +60,7 @@ class Device:
         used to be a profile field, and a machine that has been set up should
         not have to be told again just because the record moved.
         """
-        rec = self.book.read(self._base()) or {}
+        rec = self.book.read_mine(self._base()) or {}
         name = (rec.get("name") or "").strip()
         source = "set here" if name else None
 
@@ -89,7 +93,7 @@ class Device:
     def save(self, name):
         """Name this computer. Empty means "go back to the hostname"."""
         clean = ("" if name is None else str(name)).strip()[:MAX_LEN]
-        rec = self.book.read(self._base()) or {}
+        rec = self.book.read_mine(self._base()) or {}
         rec["name"] = clean
         rec["at"] = shards._now()
         rec["by"] = ((self.store.provenance() if self.store else {}) or {}) \
@@ -105,7 +109,7 @@ class Device:
         with the two records separated -- and since that name is stamped on
         every row, the history would fork.
         """
-        rec = self.book.read(self._base()) or {}
+        rec = self.book.read_mine(self._base()) or {}
         if (rec.get("name") or "").strip():
             return None                      # already has one of its own
         try:

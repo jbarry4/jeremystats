@@ -1618,6 +1618,17 @@ BARRY.views.xplore = (function () {
                           : (data && data.clim_auto);
     const pinned = isTraces ? (sess.ylim != null)
                             : !!(pane.clim || sess.clim);
+    /* Is zero the middle of this quantity or the floor of it?
+
+       Voltage, CSD and theta are signed and a diverging map means something,
+       so their scale is one magnitude either side of zero. Decibels above a
+       reference and a modulation index are one-sided: there is no negative
+       half to preserve and forcing symmetry on [-5, 25] dB gives [-25, 25],
+       which is half a map showing nothing. The panel says which it is; the
+       default is symmetric because that is what every panel that predates
+       the flag is. */
+    const twoSided = isTraces || !data
+      || data.clim_symmetric !== false;
     /* Whether this strip speaks for the whole grid. Worth saying on the
        control: "pinned" on a strip that reached one of six panes was true
        about that pane and false about the picture. */
@@ -1630,7 +1641,13 @@ BARRY.views.xplore = (function () {
       magnitude = sess.ylim != null ? sess.ylim : (auto || 100);
     } else {
       const cur = pane.clim || sess.clim || auto || [-1, 1];
-      magnitude = Math.max(Math.abs(cur[0]), Math.abs(cur[1])) || 1;
+      /* On a one-sided scale the slider drives the SPAN -- how far below the
+         top the map reaches -- because that is the only number on a dB axis
+         a person wants to move. On a signed one it drives the half-range, as
+         before. */
+      magnitude = twoSided
+        ? (Math.max(Math.abs(cur[0]), Math.abs(cur[1])) || 1)
+        : (Math.abs(cur[1] - cur[0]) || 1);
     }
 
     const units = isTraces ? 'uV' : ((data && data.units) || '');
@@ -1665,10 +1682,18 @@ BARRY.views.xplore = (function () {
       // new image -- but only after the drag settles, not per pixel.
       // Measured from the scale at the start of the drag, so dragging back
       // and forth lands where the pointer says rather than compounding.
-      const peak = Math.max(Math.abs(baseClim[0]), Math.abs(baseClim[1])) || 1;
-      const k = m / peak;
-      setClim(index, pane, sess,
-              [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)]);
+      if (twoSided) {
+        const peak = Math.max(Math.abs(baseClim[0]), Math.abs(baseClim[1])) || 1;
+        const k = m / peak;
+        setClim(index, pane, sess,
+                [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)]);
+      } else {
+        /* Anchored at the top. Scaling both ends about zero would drag the
+           peak of a dB panel around with the dynamic range, and the top of
+           the map is the one thing on that axis worth holding still. */
+        const top = baseClim[1];
+        setClim(index, pane, sess, [round(top - m, 6), round(top, 6)]);
+      }
       clearTimeout(pane._climTimer);
       pane._climTimer = setTimeout(() => refreshPane(index), commit ? 0 : 220);
       if (commit) {
@@ -1707,12 +1732,18 @@ BARRY.views.xplore = (function () {
 
     return el('div', { class: 'ctl scale-ctl' }, [
       el('label', {
-        text: isTraces ? '\u00b1 ' + units : 'Color',
+        /* "Range" on a one-sided scale, because that is what the number
+           beside it is: decibels from the top of the map to the bottom, not
+           a limit either side of zero. */
+        text: isTraces ? '\u00b1 ' + units : (twoSided ? 'Color' : 'Range'),
         title: auto
           ? (isTraces
              ? 'Auto is ' + sig(auto) + ' ' + units
                + ' \u2014 the 99.5th percentile of this window'
-             : 'Auto is [' + sig(auto[0]) + ', ' + sig(auto[1]) + ']')
+             : 'Auto is [' + sig(auto[0]) + ', ' + sig(auto[1]) + ']'
+               + (twoSided ? ''
+                  : ' \u2014 one-sided, so the number here is how far the '
+                    + 'map reaches below the top'))
           : 'Derived from each window',
       }),
       el('div', { class: 'ctl-group' }, [
@@ -1740,8 +1771,24 @@ BARRY.views.xplore = (function () {
                 setClim(index, pane, sess, null);
                 if (sess) sess.clim = null;
               } else {
+                /* Pin what is on screen, read at the moment of the click.
+
+                   Not `baseClim`: that was captured when this strip was
+                   built, which is before the first panel came back, so on a
+                   fresh pane it is the [-1, 1] placeholder. `fetchImagePanel`
+                   assigns `_panelData` without rebuilding the strip -- by
+                   design, because a rebuild on every fetch replaces the
+                   slider under a dragging pointer -- so the closed-over value
+                   never catches up. Reading it here is right whenever the
+                   click lands.
+
+                   And pinned as it is, not rebuilt from one magnitude: a dB
+                   panel's [-3, 27] is not symmetric and forcing it to
+                   [-27, 27] throws away most of the map. */
+                const live = (pane._panelData && pane._panelData.clim)
+                          || baseClim;
                 setClim(index, pane, sess,
-                        [-Math.abs(magnitude), Math.abs(magnitude)]);
+                        [round(live[0], 6), round(live[1], 6)]);
               }
               BARRY.activity.log('clim.change',
                                  { clim: pane.clim, panel: pane.panel }, sess);
@@ -5319,7 +5366,18 @@ BARRY.views.xplore = (function () {
       const res = await apiPost('/api/panel', spec,
                                 ctl ? { signal: ctl.signal } : null);
       if (id !== pane._req) return;
+      const hadAuto = JSON.stringify((pane._panelData || {}).clim_auto || null);
       pane._panelData = res;
+      /* The control strip was built before this panel had a scale, so its
+         "Auto is [x, y]" is blank on a fresh pane and stale after the scale
+         moves. Rebuild it when that text would change -- and only then:
+         rebuilding on every fetch would replace the slider under a dragging
+         pointer, which is why nothing else here does it. `_climTimer` is set
+         while a drag is settling, so this stays out of its way. */
+      const nowAuto = JSON.stringify(res.clim_auto || null);
+      if (nowAuto !== hadAuto && !pane._climTimer) {
+        refreshControls(index);
+      }
       if (pane._img) {
         pane._img.src = res.image;
         placePanelImage(pane, sess, res);

@@ -761,6 +761,171 @@ class Curation:
                 self.store._stage(path)
         return out
 
+    def retime(self, gid, kind, mapping, target, basis_from, gap_map_sha,
+               dry_run=True, who=None):
+        """Shift every event's time in place, keeping its id and its decision.
+
+        `mapping` takes one time and returns `(new_time, segment)`, or
+        `(None, None)` when there is no answer. An event this cannot place
+        stops the whole operation rather than being left behind at the old
+        time -- a set half on one clock and half on another is worse than
+        one wholly on the wrong clock, because nothing about it looks wrong.
+
+        `dry_run=True` by default, and the dry run returns exactly what the
+        write would do.
+        """
+        rec = self.get(gid, kind)
+        if not rec:
+            raise CurationError("No %s set for %s." % (kind, gid))
+
+        basis = (rec.get("time_basis") or {}).get("kind")
+        if basis == target:
+            raise CurationError(
+                "This set is already on %s." % target)
+        if basis and basis != basis_from:
+            raise CurationError(
+                "This set says it is on %s, not %s." % (basis, basis_from))
+
+        evs = rec.get("events") or []
+        ids_before = [e.get("id") for e in evs]
+        decided_before = sum(1 for e in evs if e.get("label"))
+        labels_before = {}
+        for e in evs:
+            if e.get("label"):
+                labels_before[e["label"]] = labels_before.get(e["label"], 0) + 1
+
+        plan, unplaceable, shifts = [], [], []
+        for e in evs:
+            try:
+                t = float(e.get("start"))
+            except (TypeError, ValueError):
+                unplaceable.append(e)
+                continue
+            new_t, seg = mapping(t)
+            if new_t is None:
+                unplaceable.append(e)
+                continue
+            plan.append((e, round(float(new_t), 6), seg))
+            shifts.append(round((float(new_t) - t) * 1e3, 4))
+
+        line = {
+            "gid": gid, "kind": kind,
+            "name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "was": len(evs),
+            "moving": len(plan),
+            "unplaceable": len(unplaceable),
+            "unplaceable_times": [e.get("start") for e in unplaceable[:10]],
+            "decided": decided_before,
+            "by_label": labels_before,
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "from": basis_from, "to": target,
+            "gap_map_sha": gap_map_sha,
+            "dry_run": bool(dry_run),
+            "sample": [
+                {"id": e.get("id"), "was": e.get("start"), "now": t,
+                 "label": e.get("label"),
+                 "shift_ms": round((t - float(e["start"])) * 1e3, 3)}
+                for e, t, _s in plan[:8]
+            ],
+        }
+        if unplaceable:
+            line["error"] = ("%d event(s) have no time on the other clock. "
+                             "Nothing was written -- a set half on one clock "
+                             "is worse than one wholly on the wrong one."
+                             % len(unplaceable))
+            return line
+        if dry_run:
+            return line
+
+        prov = self.store.provenance() if self.store else {}
+        stamp = _now()
+        by = (who or prov.get("user") or "unknown")
+
+        # Read the shard this machine owns, not the merged record. The
+        # merge is a read-time union of every machine's file; writing it
+        # back would claim every other machine's decisions as this one's.
+        path = self.book.mine(self.base(gid, kind))
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                shard = json.load(fh)
+        except (OSError, ValueError):
+            shard = None
+        if not shard:
+            raise CurationError(
+                "This machine holds no shard of that set, so there is "
+                "nothing here to re-time. Run it where the set was curated.")
+
+        want = {}
+        for e, t, _seg in plan:
+            if e.get("id"):
+                want[e["id"]] = t
+
+        keys = (shard.get("_keys") or {}).get("events") or {}
+        touched, missing = 0, 0
+        for ev in shard.get("events") or []:
+            eid = ev.get("id")
+            if not eid or eid not in want:
+                missing += 1
+                continue
+            was = ev.get("start")
+            ev["start"] = want[eid]
+            # `end` rides along so a span does not become a different
+            # length than it was recorded as.
+            if ev.get("end") is not None:
+                try:
+                    ev["end"] = round(float(ev["end"])
+                                      + (want[eid] - float(was)), 6)
+                except (TypeError, ValueError):
+                    pass
+            # What was applied, per event, so a second run compares and
+            # skips instead of shifting again.
+            ev["retimed"] = {"from": was, "shift_ms":
+                             round((want[eid] - float(was)) * 1e3, 4),
+                             "gap_map_sha": gap_map_sha}
+            # And the merge stamp. Without this a colleague's untouched
+            # copy of this id is newer and wins: the correction works here
+            # and silently reverts on the next sync.
+            keys[eid] = ["set", stamp]
+            touched += 1
+
+        shard.setdefault("_keys", {})["events"] = keys
+        shard["events"] = sorted(shard.get("events") or [],
+                                 key=lambda e: e.get("start") or 0)
+        shard["time_basis"] = {
+            "kind": target,
+            "converted_from": basis_from,
+            "gap_map_sha": gap_map_sha,
+            "tool": "jarvis.retime/1",
+            "at": stamp,
+            "by": by,
+        }
+        shard["updated"] = (self.store.provenance() if self.store
+                            else {"at": stamp})
+        shards.write_json_atomic(path, shard)
+        if self.store:
+            self.store._stage(path)
+
+        # Post-conditions, checked against the merged record afterwards --
+        # which is what everyone else will read. Every one of these is a
+        # way the operation could have looked fine and not been.
+        after = self.get(gid, kind) or {}
+        ids_after = [e.get("id") for e in (after.get("events") or [])]
+        line["touched"] = touched
+        line["not_in_my_shard"] = missing
+        line["now"] = len(ids_after)
+        line["ids_held"] = sorted(ids_before) == sorted(ids_after)
+        line["new_ids"] = len(set(ids_after) - set(ids_before))
+        line["lost_ids"] = len(set(ids_before) - set(ids_after))
+        line["decided_after"] = sum(1 for e in (after.get("events") or [])
+                                    if e.get("label"))
+        line["decisions_held"] = line["decided_after"] == decided_before
+        line["tombstones"] = len((after.get("_tombstones")
+                                  or shard.get("_tombstones") or []))
+        line["time_basis"] = shard["time_basis"]
+        return line
+
     def backfill(self, dry_run=False):
         """Give a decision that arrived without provenance the provenance
         its own record implies.

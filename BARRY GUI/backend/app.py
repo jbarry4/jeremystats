@@ -24,7 +24,8 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
-               compose, csc,
+               compose, continuity as continuitymod, csc,
+               retime as retimemod,
                device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
@@ -56,6 +57,12 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 # runs so the progress estimate is right on the rig as well as here. A cache of
 # timings, nothing more -- deleting the file costs one wrong estimate.
 cfcmod.configure(LOGS_DIR)
+# Whether a recording is one continuous block or several, keyed on the
+# reference file's size and mtime. A clean folder is decided by two records
+# per channel, so the check runs on every health report rather than being a
+# deep-check extra; the cache is what keeps a re-scan of the archive from
+# re-reading the ones that are not clean.
+continuitymod.configure(LOGS_DIR)
 # Who you are, said once. Everything attributed -- curation, banking, layer
 # sheets, figures, runs -- goes through STORE.provenance(), which prefers
 # this over the git identity. Wired after the Store exists because it needs
@@ -4978,6 +4985,207 @@ def api_session_health():
     return jsonify({"ok": True, "reports": out})
 
 
+@app.route("/api/session/continuity", methods=["POST"])
+def api_session_continuity():
+    """The whole segment map for one recording.
+
+    The health report carries a capped version of this so a sixty-session
+    scan cannot return a hundred thousand rows; the details panel asks here
+    for the rest. `refresh` skips the cache, which is the honest thing to
+    offer after somebody has re-copied a folder.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    if not path:
+        return jsonify({"ok": False, "error": "No path."}), 400
+    try:
+        rep = continuitymod.check(
+            path,
+            all_channels=bool(body.get("all_channels")),
+            strict=bool(body.get("strict")),
+            use_cache=not bool(body.get("refresh")))
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    if rep is None:
+        return jsonify({"ok": False,
+                        "error": "No .ncs files in that folder."}), 404
+    STORE.record_activity([{
+        "action": "session.continuity",
+        "detail": {"path": path, "segments": rep.get("n_segments"),
+                   "seconds_lost": rep.get("seconds_lost"),
+                   "gap_map_sha": rep.get("gap_map_sha"),
+                   "cached": rep.get("cached"),
+                   "all_channels": bool(body.get("all_channels"))},
+    }])
+    return jsonify(rep)
+
+
+@app.route("/api/session/timebasis", methods=["POST"])
+def api_session_timebasis():
+    """Which clock this session's banked events are on, and the evidence.
+
+    Reads. Writes nothing, and is the only one of the two that the health
+    report calls -- so a report can say what is wrong without anything being
+    able to act on it by accident.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    gid = body.get("gid") or ""
+    kind = body.get("kind") or "ds"
+    if not path and not gid:
+        return jsonify({"ok": False, "error": "Need a path or a gid."}), 400
+
+    rep = None
+    if path:
+        try:
+            rep = continuitymod.check(path)
+        except Exception:                                # noqa: BLE001
+            rep = None
+
+    # Which session this folder is, if the caller did not say. A row built
+    # from a scan rather than from the registry has no gid, and answering
+    # "nothing is banked" because none was supplied is a statement about the
+    # data made on the strength of a missing parameter.
+    if not gid and path:
+        want = os.path.normcase(os.path.abspath(path)).rstrip("\\/")
+        for rec in REG.all():
+            for entry in (rec.get("paths") or []):
+                where = entry.get("path") if isinstance(entry, dict) else entry
+                if not where:
+                    continue
+                if os.path.normcase(os.path.abspath(where)).rstrip("\\/") \
+                        == want:
+                    gid = rec.get("gid")
+                    break
+            if gid:
+                break
+        out_gid_resolved = bool(gid)
+    else:
+        out_gid_resolved = bool(gid)
+
+    if not gid:
+        # Said plainly rather than answered as an empty list.
+        return jsonify({
+            "ok": True, "gid": None, "unknown_session": True,
+            "n_entries": 0, "entries": [],
+            "reason": ("This folder is not in the session registry, so there "
+                       "is no way to tell which banked sets belong to it. "
+                       "Scan it in first."),
+        })
+
+    # Every banked entry for this session, each with its own answer -- two
+    # sets on one recording can be on different clocks and averaging that
+    # into one verdict would be the wrong kind of tidy.
+    entries = [e for e in BANK.all() if e.get("gid") == gid]
+    who = (STORE.provenance() or {}).get("user")
+    cur_set = CURATE.get(gid, kind) if gid else None
+
+    out = {"ok": True, "gid": gid, "n_entries": len(entries), "entries": [],
+           "gid_resolved": out_gid_resolved}
+    if rep and rep.get("ok"):
+        out["continuity"] = {
+            "n_segments": rep.get("n_segments"),
+            "max_time_error_ms": rep.get("max_time_error_ms"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "gap_map_sha": rep.get("gap_map_sha"),
+        }
+    for e in entries:
+        gate = retimemod.offer(rep, e, cur_set, me=who)
+        out["entries"].append({
+            "entry_id": e.get("id"),
+            "name": e.get("name"),
+            "type": e.get("type"),
+            "n": e.get("n"),
+            "pipeline": (e.get("source") or {}).get("pipeline"),
+            "basis": gate.get("basis"),
+            "correctable": bool(gate.get("offer")),
+            "reason": gate.get("reason"),
+        })
+    return jsonify(out)
+
+
+@app.route("/api/session/retime", methods=["POST"])
+def api_session_retime():
+    """Move a banked event set from Toothy's clock to the recording's own.
+
+    Preview by default. `apply: true` writes, and only then -- there is no
+    path through here that rewrites a timestamp because a flag was omitted.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    entry_id = body.get("entry_id") or ""
+    gid = body.get("gid") or ""
+    kind = body.get("kind") or "ds"
+    do_apply = bool(body.get("apply"))
+    if not path or not entry_id:
+        return jsonify({"ok": False,
+                        "error": "Need the recording path and the entry."}), 400
+
+    try:
+        rep = continuitymod.check(path)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    if not rep or not rep.get("ok"):
+        return jsonify({"ok": False,
+                        "error": "Could not segment that recording."}), 400
+
+    entry = BANK.get(entry_id)
+    if not entry:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+
+    who = (STORE.provenance() or {}).get("user")
+    cur_set = CURATE.get(gid, kind) if gid else None
+    gate = retimemod.offer(rep, entry, cur_set, me=who)
+    if not gate.get("offer"):
+        return jsonify({"ok": False, "offered": False,
+                        "reason": gate.get("reason"),
+                        "basis": gate.get("basis")}), 409
+
+    # The map the correction is derived from, and the hash that will be
+    # stamped on what it writes. A later run against a folder that has
+    # changed under the entry will not match this, which is the point.
+    sha = rep.get("gap_map_sha")
+    mapping = lambda t: continuitymod.concat_to_true(rep, t)
+
+    out = {
+        "ok": True,
+        "applied": do_apply,
+        "gap_map_sha": sha,
+        "preview": retimemod.preview(rep, entry, gid=gid, kind=kind),
+        "continuity": {"n_segments": rep.get("n_segments"),
+                       "max_time_error_ms": rep.get("max_time_error_ms"),
+                       "seconds_lost": rep.get("seconds_lost")},
+    }
+    try:
+        # The curation set first on a dry run, because it is the one that
+        # can refuse for a reason worth seeing before anything is written.
+        if gid:
+            out["set"] = CURATE.retime(
+                gid, kind, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
+                dry_run=not do_apply, who=who)
+        out["entry"] = BANK.retime(
+            entry_id, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
+            dry_run=not do_apply, by=who)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    if (out.get("set") or {}).get("error") or (out.get("entry") or {}).get("error"):
+        out["ok"] = False
+
+    if do_apply and out["ok"]:
+        STORE.record_activity([{
+            "action": "events.retime",
+            "detail": {"entry": entry_id, "gid": gid, "kind": kind,
+                       "from": retimemod.CONCAT, "to": retimemod.TRUE,
+                       "gap_map_sha": sha,
+                       "n": (out.get("entry") or {}).get("moved"),
+                       "version": (out.get("entry") or {}).get("version"),
+                       "shift_max_ms": (out.get("entry") or {}).get(
+                           "shift_max_ms")},
+        }])
+    return jsonify(out)
+
+
 @app.route("/api/session/manifest", methods=["POST"])
 def api_session_manifest():
     """A CSV row per session -- the table people paste into a methods table."""
@@ -5179,10 +5387,201 @@ def api_errors_client():
     return jsonify({"ok": True, "id": (rec or {}).get("id")})
 
 
+# Which machines have been archived, and when that was last asked.
+#
+# The flag lives in Supabase (migration 10) because two people archiving two
+# different computers through a last-write-wins pref would each undo the
+# other. Cached for a minute: it is read on every error list and changes
+# about twice a year.
+_ARCHIVED_SEEN = {"at": 0.0, "ids": frozenset()}
+
+
+def _archived_machines(max_age=60.0):
+    """The ids of computers taken off the lists, or an empty set."""
+    now = time.time()
+    if now - _ARCHIVED_SEEN["at"] < max_age:
+        return _ARCHIVED_SEEN["ids"]
+    ids = frozenset()
+    if CLOUD.cloud.configured:
+        try:
+            rows = CLOUD.cloud.select(
+                "machines", query="archived=is.true&select=id", limit=500)
+            ids = frozenset(str(r.get("id")) for r in rows if r.get("id"))
+        except Exception:                            # noqa: BLE001
+            # An unreachable database must not empty the error feed, and it
+            # must not hide anything either: no answer means no filtering.
+            ids = _ARCHIVED_SEEN["ids"]
+    _ARCHIVED_SEEN["at"] = now
+    _ARCHIVED_SEEN["ids"] = ids
+    return ids
+
+
+def _drop_archived(recs, want):
+    """Rows from archived computers, unless asked for all of them.
+
+    Returns (kept, hidden_count, ids). Matched on `shard` -- the id --
+    because `machine` is the friendly name and this lab has four names in
+    its logs for three computers.
+    """
+    if want == "all":
+        return recs, 0, frozenset()
+    gone = _archived_machines()
+    if not gone:
+        return recs, 0, gone
+    kept = [r for r in recs if str(r.get("shard") or "") not in gone]
+    return kept, len(recs) - len(kept), gone
+
+
+@app.route("/api/errors/export")
+def api_errors_export():
+    """Every unresolved error, with the activity around each occurrence.
+
+    A traceback says what broke; the actions before it say why. So each
+    occurrence is printed with the log either side of it, on one clock, in
+    one file -- which is the thing somebody can actually read through when
+    a dozen faults need clearing at once.
+
+    `?machines=all` includes archived computers, `?days=N` limits how far
+    back to look, `?all=1` includes the ones already marked resolved.
+    """
+    want_all = request.args.get("all") == "1"
+    try:
+        days = int(request.args.get("days") or 0)
+    except (TypeError, ValueError):
+        days = 0
+
+    recs = STORE.list_errors(limit=4000)
+    recs, hidden_n, hidden_ids = _drop_archived(
+        recs, request.args.get("machines") or "active")
+    if days > 0:
+        cut = time.time() - days * 86400
+        recs = [r for r in recs
+                if (extras.moment_key(r.get("at")) or 0) >= cut]
+
+    book = STORE.resolved_errors()
+    acts = STORE.list_activity(limit=8000)
+    # Oldest first, so "what happened around this" can be sliced by time.
+    acts = sorted(acts, key=lambda a: extras.moment_key(a.get("at")))
+
+    # Group by the same signature the errors view groups on: where it
+    # happened plus the first line of what it said.
+    groups = {}
+    for r in recs:
+        sig = "%s | %s" % (r.get("where") or "?",
+                           str(r.get("message") or "").split("\n")[0][:120])
+        groups.setdefault(sig, []).append(r)
+
+    def resolved(sig, rows):
+        mark = (book or {}).get(sig) or {}
+        if not mark:
+            return False
+        return all(extras.marked_after(r.get("at"), mark.get("at"))
+                   for r in rows)
+
+    live = [(sig, rows) for sig, rows in groups.items()
+            if want_all or not resolved(sig, rows)]
+    live.sort(key=lambda kv: max(extras.moment_key(r.get("at"))
+                                 for r in kv[1]), reverse=True)
+
+    sysdesc = sysinfo.describe()
+    L = []
+    L.append("Jarvis -- open errors, with the log around them")
+    L.append("generated   " + time.strftime("%Y-%m-%d %H:%M:%S"))
+    L.append("machine     %s / %s" % (sysdesc.get("hostname"),
+                                      shards.machine_id()))
+    L.append("version     %s" % (NOTES.read().get("version")
+                                 if NOTES else "?"))
+    L.append("scope       %d group(s) %s, from %d error(s) on record"
+             % (len(live), "including resolved" if want_all else "open",
+                len(recs)))
+    if hidden_n:
+        L.append("excluded    %d from archived computer(s): %s"
+                 % (hidden_n, ", ".join(sorted(hidden_ids))))
+    L.append("")
+    L.append("Each group below is one fault. Under each occurrence is what "
+             "this machine")
+    L.append("was doing either side of it -- the traceback says what broke, "
+             "the actions")
+    L.append("say why.")
+
+    for i, (sig, rows) in enumerate(live[:60], 1):
+        rows = sorted(rows, key=lambda r: extras.moment_key(r.get("at")),
+                      reverse=True)
+        machines = sorted({str(r.get("machine") or r.get("shard") or "?")
+                           for r in rows})
+        L.append("")
+        L.append("=" * 74)
+        L.append("%d/%d  %s  x%d" % (i, min(len(live), 60),
+                                     rows[0].get("where") or "?", len(rows)))
+        L.append("=" * 74)
+        L.append("first seen  %s" % (rows[-1].get("at") or "?"))
+        L.append("last seen   %s" % (rows[0].get("at") or "?"))
+        L.append("machines    %s" % ", ".join(machines))
+        L.append("")
+        L.append(str(rows[0].get("message") or "").strip()[:2000])
+
+        ctx = rows[0].get("context")
+        if isinstance(ctx, dict) and ctx:
+            L.append("")
+            L.append("context")
+            for k in sorted(ctx):
+                L.append("    %-16s %s" % (k, str(ctx[k])[:200]))
+
+        tb = rows[0].get("detail") or rows[0].get("stack")
+        if tb:
+            L.append("")
+            L.append("traceback")
+            for line in str(tb).strip().split("\n")[-24:]:
+                L.append("    " + line[:200])
+
+        for r in rows[:3]:
+            when = extras.moment_key(r.get("at"))
+            L.append("")
+            L.append("--- around %s on %s ---"
+                     % (r.get("at") or "?",
+                        r.get("machine") or r.get("shard") or "?"))
+            near = [a for a in acts
+                    if abs((extras.moment_key(a.get("at")) or 0) - when) <= 120]
+            if not near:
+                L.append("    (nothing in the activity log within two "
+                         "minutes)")
+                continue
+            # Twelve either side, and the error in its place among them.
+            before = [a for a in near
+                      if (extras.moment_key(a.get("at")) or 0) <= when][-12:]
+            after = [a for a in near
+                     if (extras.moment_key(a.get("at")) or 0) > when][:12]
+            for a in before:
+                L.append("    %+6.1fs  %-24s %s"
+                         % ((extras.moment_key(a.get("at")) or 0) - when,
+                            a.get("action") or "?",
+                            json.dumps(a.get("detail") or {},
+                                       default=str)[:120]))
+            L.append("    %+6.1fs  %s" % (0.0, ">>> THE ERROR <<<"))
+            for a in after:
+                L.append("    %+6.1fs  %-24s %s"
+                         % ((extras.moment_key(a.get("at")) or 0) - when,
+                            a.get("action") or "?",
+                            json.dumps(a.get("detail") or {},
+                                       default=str)[:120]))
+
+    if len(live) > 60:
+        L.append("")
+        L.append("... and %d more group(s), not printed." % (len(live) - 60))
+
+    text = "\n".join(L) + "\n"
+    name = "jarvis-open-errors-%s.txt" % time.strftime("%Y%m%d_%H%M%S")
+    return Response(text, mimetype="text/plain; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="%s"' % name})
+
+
 @app.route("/api/errors/grouped")
 def api_errors_grouped():
     recs = STORE.list_errors(limit=int(request.args.get("limit", 600)),
                              day=request.args.get("day") or None)
+    # A retired computer's faults are not this week's problem.
+    recs, hidden_n, hidden_ids = _drop_archived(
+        recs, request.args.get("machines") or "active")
     book = STORE.resolved_errors()
 
     # An occurrence counts as resolved only if it happened BEFORE somebody
@@ -5269,7 +5668,11 @@ def api_errors_grouped():
     return jsonify({"ok": True, "groups": groups, "days": STORE.error_days(),
                     "total": len(recs),
                     "unresolved": sum(1 for g in groups if not g["resolved"]),
-                    "reopened": sum(1 for g in groups if g.get("reopened"))})
+                    "reopened": sum(1 for g in groups if g.get("reopened")),
+                    # Said, not silently applied: a list that hides rows
+                    # without saying so is a list nobody can trust.
+                    "hidden_archived": hidden_n,
+                    "archived_machines": sorted(hidden_ids)})
 
 
 @app.route("/api/errors/resolve", methods=["POST"])

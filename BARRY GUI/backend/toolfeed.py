@@ -118,14 +118,20 @@ def feed(store, cloud, tool, limit=LIMIT, since=None):
     if not prefixes:
         return {"ok": False, "error": "No tool named."}
 
+    # This machine's own log, always. It is a local file read, and it is
+    # the only place an action exists until the next push -- so a feed built
+    # from the shared table alone cannot show what you just did.
+    mine = _local(store, prefixes, limit, since)
+
     if cloud is not None and getattr(cloud, "configured", False):
         try:
             rows = cloud.select("activity",
                                 query=_cloud_query(prefixes, since, limit),
                                 limit=limit)
+            shared = [_shape(r) for r in rows]
             return {"ok": True, "source": "supabase", "tool": tool,
                     "name": name_for(tool), "prefixes": prefixes,
-                    "rows": [_shape(r) for r in rows]}
+                    "rows": _merge(shared, mine, limit)}
         except Exception as exc:                          # noqa: BLE001
             # Said, not swallowed: a feed that has quietly fallen back to one
             # machine looks exactly like a lab where nobody else is working.
@@ -142,6 +148,26 @@ def feed(store, cloud, tool, limit=LIMIT, since=None):
             "rows": _local(store, prefixes, limit, since),
             "note": "No Supabase key on this machine, so this is only what "
                     "this computer has done."}
+
+
+def _merge(shared, mine, limit):
+    """The shared table, plus what this machine has not pushed yet.
+
+    Keyed on the row id, which is minted once where the action happened, so
+    a row that has been pushed appears once rather than twice. Anything of
+    ours the shared table does not have is marked `pending`: it is real, it
+    is recorded, and nobody else can see it yet. Saying so is the difference
+    between "done" and "done and shared", which for a reproducibility record
+    is the whole point.
+    """
+    up = {r.get("id") for r in shared if r.get("id")}
+    out = list(shared)
+    for r in mine:
+        if r.get("id") in up:
+            continue
+        out.append(dict(r, pending=True))
+    out.sort(key=lambda r: extras.moment_key(r.get("at")), reverse=True)
+    return out[:limit]
 
 
 def _local(store, prefixes, limit, since=None):
@@ -161,7 +187,13 @@ def _local(store, prefixes, limit, since=None):
         # As a moment, not as text. Stamps here come from several
         # machines in several offsets, and comparing two of those as
         # strings has been wrong in eleven places in this codebase.
-        if since and not extras.marked_after(since, row["at"]):
+        #
+        # Strictly newer, matching the `at=gt.since` the cloud side sends.
+        # `marked_after` is "at or after", so the row the caller already
+        # had came back on every poll -- one side inclusive and the other
+        # exclusive is how a watermark stops being one.
+        if since and (extras.moment_key(row["at"])
+                      <= extras.moment_key(since)):
             continue
         out.append(row)
         if len(out) >= limit:
