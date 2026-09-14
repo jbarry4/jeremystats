@@ -534,6 +534,15 @@ def grid(lo, hi, step):
 STAGES = [
     ("read", "samples"),
     ("decimate", "samples"),
+    # Welch over a whole recording, one channel at a time.
+    #
+    # Its own stages, NOT the `read` above. That one is counted in samples
+    # and this one in seconds of recording, and `_learn` divides seconds by
+    # units without knowing which -- so sharing the name would rewrite the
+    # comodulogram's read rate by a factor of the sample rate every time
+    # somebody looked at a spectrum.
+    ("spectrum read", "seconds"),
+    ("spectrum", "channels"),
     ("slow bank", "bands"),
     ("fast bank", "bands"),
     ("modulation index", "cells"),
@@ -557,12 +566,24 @@ _RATES = {
     "decimate": 6.1e-4,
     "slow bank": 0.489,           # per band, per megasample
     "fast bank": 0.272,
+    # Measured here: 16 channels of a 2124 s recording, 33984 stage-units, in
+    # 47.5 s wall -- so 1.4 ms of wall per second of recording per channel.
+    # Flat (see _FLAT): these units are already counted in samples.
+    "spectrum read": 1.4e-3,      # per second of recording, per channel
+    # Near zero because the transforms are interleaved with the reads to keep
+    # memory bounded, so their wall time is inside the stage above. This one
+    # counts channels finished, not a phase with a duration of its own.
+    "spectrum": 0.02,             # per channel
     "modulation index": 2.7e-3,   # per cell, per megasample
     "surrogates": 0.106,          # per (band x surrogate), per megasample
     "draw": 0.30,                 # flat: 629 cells to a PNG, whatever the window
 }
-# Stages whose cost does not scale with the number of samples.
-_FLAT = {"draw"}
+# Stages the per-megasample normalisation must NOT be applied to: either the
+# cost does not scale with the window at all (`draw` -- one picture, whatever
+# went into it), or the stage's own units already carry the sample count (the
+# spectrum's, counted in seconds of recording). Normalising those a second
+# time would make the estimate scale as the square of the window.
+_FLAT = {"draw", "spectrum read", "spectrum"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -579,6 +600,17 @@ def configure(logs_dir):
                 _RATES[k] = float(v)
     except (OSError, ValueError):
         pass            # first run on this machine, or the file went bad
+
+
+def rate_for(stage):
+    """What this machine costs for one unit of a stage, per megasample.
+
+    Read rather than reached into, so a caller outside this module can build
+    an estimate from the same measured numbers the comodulogram uses instead
+    of inventing its own.
+    """
+    with _RATES_LOCK:
+        return float(_RATES.get(stage, 0.0))
 
 
 def _learn(stage, seconds, units, msamples=1.0):

@@ -982,11 +982,73 @@ BARRY.views.sessions = (function () {
           class: 'flagchip', title: 'From the registry, not from this scan',
           text: 'remembered',
         }) : null,
+        concatChip(s),
         healthPill(s),
         noteChip(s),
       ]),
       flagSet(s),
     ]);
+  }
+
+  /* Acquisition gaps, on the card.
+
+     Read from the kept health log rather than by checking the files, so it
+     costs nothing per card and says nothing at all about a recording nobody
+     has checked -- which is the honest answer for one, and not the same as
+     saying it is clean. */
+  function concatChip(s) {
+    const c = continuityOf(s);
+    if (!c || !c.concat_issue) return null;
+    const fixed = !!c.patched;
+    const worst = Number(c.max_time_error_ms) || 0;
+    const chip = el('button', {
+      class: 'flagchip concat' + (fixed ? ' fixed' : ''),
+      title: c.n_segments + ' segments, ' + (c.n_gaps || 0) + ' gap(s). '
+           + 'Times taken from the concatenated file run up to '
+           + (worst < 1 ? worst.toFixed(2) : worst.toFixed(1))
+           + ' ms early against the raw recording.'
+           + (fixed
+              ? '\n\nThe events banked against it have been moved onto the '
+                + 'recording\u2019s own clock.'
+              : (c.n_banked
+                 ? '\n\n' + c.n_events + ' banked event(s) have NOT been '
+                   + 'corrected.'
+                 : '\n\nNothing is banked against it yet.'))
+           + '\n\nClick for the gap table.',
+      onclick: (e) => { e.stopPropagation(); openContinuity(s); },
+    }, [
+      /* A break in a line: two strokes with a space where the data is
+         missing. It is the thing being reported, at 9 px. */
+      el('svg', { class: 'cc-ico', viewBox: '0 0 16 10',
+        html: '<path d="M1 5h4M11 5h4M7 2.5v5" />' }),
+      el('span', { text: c.n_segments + ' seg' }),
+      fixed ? el('svg', { class: 'cc-tick', viewBox: '0 0 12 12',
+        html: '<path d="m2.5 6.5 2.5 2.5 4.5-5"/>' }) : null,
+    ]);
+    return chip;
+  }
+
+  /* The gap table for one recording.
+
+     The card's chip comes from the health log, which keeps the verdict and
+     not the segment map -- so the map is fetched here, when somebody
+     actually asks for it, rather than for every card in a list of four
+     hundred. */
+  async function openContinuity(s) {
+    let rep = (health[s.path] || {}).continuity;
+    if (!rep || !rep.segments) {
+      try {
+        rep = await apiPost('/api/session/continuity', { path: s.path });
+      } catch (e) {
+        toast('Could not read the recording: ' + e.message, 'err');
+        return;
+      }
+    }
+    if (!rep || !rep.ok) {
+      toast('That recording could not be segmented.', 'err');
+      return;
+    }
+    showContinuity(s, rep);
   }
 
   /* ======================================================================
@@ -1192,28 +1254,24 @@ BARRY.views.sessions = (function () {
     const first = allGaps.length ? Number(allGaps[0].at_true_time_s) : 0;
     const last = allGaps.length
       ? Number(allGaps[allGaps.length - 1].at_true_time_s) : 0;
-    /* A second track, but only when it would show something the first
-       cannot. All seven gaps here fall in 110 seconds of 2124, so four of
-       them share a pixel at full width; on a recording whose gaps really are
-       spread out this would just be the same picture again. */
-    const clustered = allGaps.length > 1 && span > 0
-                      && (last - first) < span * 0.5;
-    const pad = Math.max((last - first) * 0.12, 0.4);
+    /* One bar.
+
+       A second track zoomed to the gaps was tried, because four of the
+       seven share a pixel at full width. It answered that and cost more
+       than it was worth: two bars of one recording, where the second is a
+       detail of the first, is a picture you have to work out before you can
+       read it. The table below gives every boundary to the millisecond, so
+       the bar's job is where and how clustered -- which one bar does. */
     const bar = span > 0 ? el('div', {}, [
-      trackOver(0, span, clustered ? 'the whole recording' : ''),
-      clustered
-        ? trackOver(Math.max(0, first - pad), Math.min(span, last + pad),
-                    'the ' + num(last - first, 1) + ' s the gaps are in')
-        : null,
+      trackOver(0, span, ''),
       el('p', { class: 'hint quiet',
         text: 'Positions are to scale. Widths are not \u2014 '
             + ms((c.seconds_lost || 0) * 1e3) + ' in ' + num(span, 0)
             + ' s is far under one pixel, so each marker is drawn at a '
             + 'minimum width to be findable. Hover one for its size.'
-            + (clustered
-               ? '  Every gap is between ' + num(first, 1) + ' s and '
-                 + num(last, 1) + ' s, so the second bar is that stretch on '
-                 + 'its own.'
+            + (allGaps.length > 1
+               ? '  They fall between ' + num(first, 1) + ' s and '
+                 + num(last, 1) + ' s.'
                : '') }),
     ]) : null;
 
@@ -1412,6 +1470,13 @@ BARRY.views.sessions = (function () {
      a guess made here -- so what it shows is what the write would do,
      produced by the code that would do it.
      ====================================================================== */
+  /* "every 2nd", "every 3rd". A bar that quietly drops events without
+     saying how many it kept is a bar that lies about density. */
+  function wordEnding(n) {
+    if (n % 100 >= 11 && n % 100 <= 13) return 'th';
+    return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
+  }
+
   async function previewRetime(sess, cont, entry) {
     const num = (v, dp) => (v == null || !isFinite(v))
       ? '\u2014' : Number(v).toFixed(dp == null ? 3 : dp);
@@ -1443,25 +1508,132 @@ BARRY.views.sessions = (function () {
         r.map((v, i) => el('td', { class: i ? 'n' : '', text: String(v) }))))),
     ]);
 
+    /* The recording, with every event on it.
+
+       The tables say how much and how many; this says where -- which of my
+       events are on the wrong side of a gap. Each mark is an event at the
+       time it has now, coloured by whether the correction moves it, with
+       the gap boundaries over the top. */
+    const span = Number((res.continuity || {}).true_duration_s)
+              || Number(cont.true_duration_s) || 0;
+    const moves = ent.moves || [];
+    let eventBar = null;
+    if (span > 0 && moves.length) {
+      const at = (t) => Math.max(0, Math.min(100, (Number(t) / span) * 100));
+      const track = el('div', { class: 'gap-track ev-track' });
+      /* Each stretch, shaded by how far it moves, so the steps are visible
+         behind the events sitting in them. */
+      (pv.shifts || []).forEach((g, i) => {
+        const a = at(g.concat_from_s);
+        const b = at(g.concat_to_s);
+        const seg = el('div', {
+          class: 'gap-seg' + (i % 2 ? ' alt' : '')
+                 + (Math.abs(g.shift_ms) > 0.0005 ? ' shifts' : ''),
+          title: 'everything from ' + num(g.concat_from_s, 3) + ' s to '
+               + num(g.concat_to_s, 3) + ' s moves by ' + ms(g.shift_ms),
+        });
+        seg.style.left = a.toFixed(4) + '%';
+        seg.style.width = Math.max(0, b - a).toFixed(4) + '%';
+        track.appendChild(seg);
+      });
+      /* The events. Capped at what a bar can hold: past a few thousand the
+         marks overlap into a solid block and say less, not more. */
+      const step = Math.max(1, Math.ceil(moves.length / 1800));
+      let drawn = 0;
+      for (let i = 0; i < moves.length; i += step) {
+        const m = moves[i];
+        const shifted = Math.abs(m[2]) > 0.0005;
+        const tick = el('div', {
+          class: 'ev-mark' + (shifted ? ' moved' : ''),
+          title: (m[3] || 'event') + ' at ' + num(m[0], 4) + ' s'
+               + (shifted ? '  \u2192  ' + num(m[1], 4) + ' s  ('
+                            + ms(m[2]) + ' later)'
+                          : '  \u2014 does not move'),
+        });
+        tick.style.left = at(m[0]).toFixed(4) + '%';
+        track.appendChild(tick);
+        drawn += 1;
+      }
+      /* And where the data is missing, over the top of both. */
+      ((cont && cont.gaps) || []).forEach((g, i) => {
+        const mark = el('div', {
+          class: 'gap-mark',
+          title: 'gap ' + (i + 1) + ' \u2014 ' + ms(g.gap_ms) + ' at '
+               + num(g.at_true_time_s, 3) + ' s. Everything past here moves '
+               + 'by ' + ms(g.cumulative_shift_s * 1e3) + '.',
+        });
+        mark.style.left = at(g.at_true_time_s).toFixed(4) + '%';
+        track.appendChild(mark);
+      });
+
+      eventBar = el('div', { class: 'gap-bar' }, [
+        el('div', { class: 'gap-label', text: 'the recording, and where the '
+                                              + 'events sit on it' }),
+        track,
+        el('div', { class: 'gap-axis' }, [
+          el('span', { text: '0 s' }),
+          el('span', { class: 'mid',
+            text: (ent.n_shifted != null ? ent.n_shifted : '?') + ' of '
+                + (ent.moved || 0) + ' move' }),
+          el('span', { text: num(span, 0) + ' s' }),
+        ]),
+        el('p', { class: 'hint quiet',
+          text: 'Each mark is an event, at the time it has now. Coloured ones '
+              + 'move; the rest are before the first gap and stay exactly '
+              + 'where they are. The movement itself is not drawn to scale '
+              + '\u2014 ' + ms(ent.shift_max_ms) + ' in ' + num(span, 0)
+              + ' s is a twentieth of a pixel, so it is shown as colour and '
+              + 'said in numbers rather than as a displacement you could not '
+              + 'see.'
+              + (drawn < moves.length
+                 ? '  Showing every ' + step + wordEnding(step) + ' event, '
+                   + drawn + ' marks for ' + moves.length + '.'
+                 : '') }),
+      ]);
+    }
+
     const body = el('div', {}, [
       el('p', { class: 'lead', text: (ent.moved || 0) + ' event(s) move. '
           + 'Every one keeps its label and its id \u2014 nothing is '
           + 're-detected, and no candidate is added or removed.' }),
+      eventBar,
       el('h4', { text: 'How far each stretch of the recording moves' }),
       table(['stretch from (s)', 'to (s)', 'moves by'],
         (pv.shifts || []).map((g) => [
           num(g.concat_from_s, 3), num(g.concat_to_s, 3), ms(g.shift_ms),
         ])),
-      el('h4', { text: 'The first few, before and after' }),
-      table(['was (s)', 'becomes (s)', 'shift', 'label'],
-        (ent.sample || []).map((g) => [
-          num(g.was, 4), num(g.now, 4), ms(g.shift_ms), g.label || '\u2014',
-        ])),
+      el('h4', { text: 'Every event, before and after' }),
+      /* Scrolls, one line each, with the ones that actually move picked
+         out. Showing the first eight meant eight rows of 0.00 ms, because
+         every gap on this recording is at 1762 s and the set starts at
+         1.7 s. */
+      el('div', { class: 'move-list' },
+        (ent.moves || []).map((m) => {
+          const shifted = Math.abs(m[2]) > 0.0005;
+          return el('div', { class: 'move-row' + (shifted ? ' moved' : '') }, [
+            el('span', { class: 'mv-was', text: num(m[0], 4) }),
+            el('span', { class: 'mv-arrow', text: shifted ? '\u2192' : '=' }),
+            el('span', { class: 'mv-now', text: num(m[1], 4) }),
+            el('span', { class: 'mv-shift', text: shifted ? ms(m[2]) : '' }),
+            el('span', { class: 'mv-label', text: m[3] || '' }),
+          ]);
+        })),
+      el('p', { class: 'hint quiet',
+        text: (ent.n_shifted != null ? ent.n_shifted : '?') + ' of '
+            + (ent.moved || 0) + ' move; the rest are before the first gap '
+            + 'and stay exactly where they are.'
+            + (ent.moves_capped
+               ? '  Showing the first ' + (ent.moves || []).length + '.'
+               : '') }),
       el('div', { class: 'fix-facts' }, [
-        el('p', { text: 'Curation set: ' + (set.was != null ? set.was : '?')
-            + ' candidate(s), ' + (set.decided != null ? set.decided : '?')
-            + ' of them decided. All of the decisions survive \u2014 the '
-            + 'edit is keyed on each event\u2019s id, not on its time.' }),
+        el('p', { text: set.was != null
+            ? 'Curation set: ' + set.was + ' candidate(s), '
+              + (set.decided != null ? set.decided : 0)
+              + ' of them decided. All of the decisions survive \u2014 the '
+              + 'edit is keyed on each event\u2019s id, not on its time.'
+            : 'The curation set is edited alongside the bank, keyed on each '
+              + 'event\u2019s id rather than on its time, so every decision '
+              + 'survives.' }),
         el('p', { text: 'Shift runs from ' + ms(ent.shift_min_ms) + ' to '
             + ms(ent.shift_max_ms) + '. Order is preserved: '
             + (ent.order_held ? 'checked and held.' : 'NOT held \u2014 '
@@ -1496,9 +1668,44 @@ BARRY.views.sessions = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Close', onclick: closeModal }),
         canApply ? el('button', {
-          class: 'btn', text: 'Apply the correction',
+          class: 'btn', text: 'Apply the correction\u2026',
           onclick: async (ev) => {
             const b = ev.target;
+            /* Asked, not assumed. This button sits in the corner of a
+               modal somebody is scrolling through, and what it does is
+               rewrite 1224 timestamps -- so it says what it is about to
+               do, names the version it would mint and the one it keeps,
+               and writes only after that. */
+            const vNow = ent.current_version;
+            const vNext = ent.next_version;
+            const ok = await BARRY.confirm(
+              'Correct ' + (entry.n || 0) + ' event time(s)?',
+              el('div', { class: 'fix-facts' }, [
+                el('p', { text: 'This writes a new version of the banked '
+                    + 'set and of the curation set, with every time moved '
+                    + 'onto the recording\u2019s own clock.' }),
+                el('ul', { class: 'fix-steps' }, [
+                  el('li', { text: (ent.n_shifted != null ? ent.n_shifted
+                                    : '?') + ' of ' + (ent.moved || 0)
+                      + ' event(s) move, by ' + ms(ent.shift_min_ms)
+                      + ' to ' + ms(ent.shift_max_ms) + '.' }),
+                  el('li', { text: 'The set becomes v' + vNext
+                      + '. v' + vNow + ' is kept with its snapshot, and '
+                      + 'restoring it is how this is undone.' }),
+                  /* A number when there is one, and the sentence
+                     without it when there is not. */
+                  el('li', { text: (set.decided != null
+                      ? 'All ' + set.decided + ' decision(s) survive'
+                      : 'Every decision on the set survives')
+                      + ' \u2014 the edit is keyed on each event\u2019s id, '
+                      + 'not on its time. No candidate is added or '
+                      + 'removed.' }),
+                  el('li', { text: 'Running it again afterwards is refused, '
+                      + 'so it cannot be applied twice.' }),
+                ]),
+              ]),
+              'Write v' + vNext);
+            if (!ok) return;
             b.disabled = true;
             b.textContent = 'Applying\u2026';
             try {
@@ -1519,7 +1726,7 @@ BARRY.views.sessions = (function () {
                     + ' is kept in the version history.', 'ok');
             } catch (err) {
               b.disabled = false;
-              b.textContent = 'Apply the correction';
+              b.textContent = 'Apply the correction\u2026';
               toast('Not applied: ' + err.message, 'err');
             }
           },
@@ -1911,8 +2118,17 @@ BARRY.views.sessions = (function () {
         // Open showing what Jarvis already knows rather than an empty page.
         loadKnown();
         /* And what every continuity check has found, so the gap filters
-           have something to filter on the moment the view is open. */
-        loadContinuity().then(() => { if (continuity) renderTree(); });
+           and the gap chips have something to work from.
+
+           Only repainted if there is something to repaint. This is a small
+           local read and the registry is a slow one, so it finishes first --
+           and repainting then drew an empty tree over the skeleton that
+           says the registry is still being read. When the sessions have not
+           arrived yet, `loadKnown` draws them when they do, and by then the
+           summary is in hand, so the chips are on that first paint. */
+        loadContinuity().then(() => {
+          if (continuity && sessions.length) renderTree();
+        });
       }
     },
   };

@@ -357,15 +357,39 @@ def checks(report):
         first = (report.get("gaps") or [{}])[0].get("at_true_time_s")
         segs = report.get("segments") or []
         onset = float(segs[1].get("error_ms") or 0.0) if len(segs) > 1 else worst
+
+        # A stopped rig and a dropped packet look the same in the timestamps
+        # and mean opposite things. Both shift the times identically, so the
+        # correction does not change -- but "4445 s of data was never
+        # written" sends somebody looking for a fault that never happened,
+        # when what happened is that the recording was paused.
+        n_pause = int(report.get("n_pauses") or 0)
+        paused = float(report.get("seconds_paused") or 0.0)
+        dropped = float(report.get("seconds_dropped") or lost)
+        n_drop = int(report.get("n_dropouts") or len(report.get("gaps") or []))
+
+        what = []
+        if n_drop:
+            what.append("%d break(s) lost %s of data"
+                        % (n_drop, _ms(dropped * 1e3)))
+        if n_pause:
+            what.append("%d stop(s) of %s each or more, where the recording "
+                        "was paused rather than anything being lost"
+                        % (n_pause, _secs(paused / max(1, n_pause))))
+        # "early" is true of the end figure and not always of the first
+        # step: where the hardware clock runs slow, the concatenated axis
+        # can already be ahead by more than an early break puts it behind.
+        # Printing a signed number after the word "early" says two opposite
+        # things at once, so the sentence says "shift by" and keeps the
+        # direction on the figure whose sign is not in doubt.
+        way = "early" if worst >= 0 else "late"
         rows.append({
             "level": "warn", "name": "continuity",
-            "message": "%d segments, %d gap(s) -- %s of data was never "
-                       "written. Times read from the concatenated file run "
-                       "early from %s onward: %s at the first gap, %s by the "
-                       "end."
-                       % (n_seg, len(report.get("gaps") or []),
-                          _ms(lost * 1e3), _secs(first), _ms(onset),
-                          _ms(worst)),
+            "message": "%d segments. %s. Times read from the concatenated "
+                       "file shift by %s at the first break from %s onward, "
+                       "reaching %s %s by the end."
+                       % (n_seg, "; ".join(what) or "no gaps measured",
+                          _ms(onset), _secs(first), _ms(abs(worst)), way),
         })
     else:
         rows.append({"level": "ok", "name": "continuity",

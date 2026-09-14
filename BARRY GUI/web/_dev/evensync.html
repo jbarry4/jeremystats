@@ -53,7 +53,15 @@ async function untilN(fn, tries = 400, gap = 90) {
   const A = fa.contentWindow, B = fb.contentWindow;
   const errs = [];
   for (const W of [A, B]) {
-    W.addEventListener('error', (e) => errs.push(e.message));
+    /* With the stack. 'Cannot read properties of null' names nothing
+       on its own, and the point of catching it is to find it. */
+    W.addEventListener('error', (e) => errs.push(
+      e.message + '  @ ' + String(e.filename || '?').split('/').pop()
+      + ':' + e.lineno + ':' + e.colno
+      + ((e.error && e.error.stack)
+         ? '  |  ' + String(e.error.stack)
+             .split('\n').slice(0, 4).join('  |  ')
+         : '')));
     W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
   }
   await untilN(() => A.eval('BARRY') && B.eval('BARRY'));
@@ -78,8 +86,14 @@ async function untilN(fn, tries = 400, gap = 90) {
     await sleep(200);
     await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
   }
+  /* Guarded all the way down. `open` puts the session in the map first and
+     fills `info` when the server answers, so a poll landing between the two
+     finds a session with no info -- and reading through it threw, after
+     every check had already passed. */
   const nch = (W) => W.eval('(function(){var S=BARRY.views.xplore.state;'
-    + 'var s=S.sessions[S.active]; return s ? s.info.channels.length : 0;})()');
+    + 'var s=S.sessions[S.active];'
+    + 'return (s && s.info && s.info.channels)'
+    + ' ? s.info.channels.length : 0;})()');
   const even = (W) => W.eval('(function(){var S=BARRY.views.xplore.state;'
     + 'var s=S.sessions[S.active]; return s ? !!s.evenOnly : null;})()');
   await untilN(() => nch(A) > 0 && nch(B) > 0);

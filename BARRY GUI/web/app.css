@@ -1433,8 +1433,12 @@ code { font-family: var(--mono); }
 .recent-list button {
   padding: 2px 8px; font-size: 10.5px; border-radius: 999px;
   border: 1px solid var(--line); background: transparent; color: var(--text-2);
-  cursor: pointer; font-family: var(--mono); max-width: 260px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer; font-family: var(--mono);
+  /* Wrapped, not cut. These are paths you click to scan again, so the end
+     -- the part that tells one from another -- is exactly what an ellipsis
+     was hiding. Measured at 443 px of text in a 258 px box. */
+  max-width: 340px; white-space: normal; overflow-wrap: anywhere;
+  text-align: left; line-height: 1.35;
 }
 .recent-list button:hover { background: var(--bg-3); color: var(--text); }
 
@@ -1503,6 +1507,28 @@ code { font-family: var(--mono); }
 .flagchip.video { background: var(--accent-soft); color: var(--accent); }
 .flagchip.bad { background: var(--warn-soft); color: var(--warn); }
 .flagchip.mat { background: var(--ok-soft); color: var(--ok); }
+
+/* Acquisition gaps. A button, because it opens the gap table -- reset to
+   look like the chips beside it rather than like a control. */
+.flagchip.concat {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 0; cursor: pointer; font-family: var(--mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--err-soft); color: var(--err);
+}
+.flagchip.concat:hover { background: var(--err); color: var(--bg); }
+.flagchip.concat .cc-ico, .flagchip.concat .cc-tick {
+  width: 11px; height: 8px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.flagchip.concat .cc-tick { width: 9px; height: 9px; }
+/* Corrected: the recording still has gaps -- that never changes -- but what
+   was banked against it has been moved onto the raw clock. Said quietly. */
+.flagchip.concat.fixed {
+  background: var(--ok-soft); color: var(--ok);
+}
+.flagchip.concat.fixed:hover { background: var(--ok); color: var(--bg); }
 
 /* ---------- history + errors ---------- */
 .hist-row { display: flex; align-items: center; gap: 8px; width: 100%;
@@ -2655,6 +2681,19 @@ select {
 .gap-axis .mid { color: var(--accent); }
 .gap-bar .hint { margin: 6px 0 0; line-height: 1.5; }
 
+/* ---- the events on the recording, in the preview ---- */
+.ev-track { height: 34px; }
+/* A stretch that moves. Shaded behind the events sitting in it, so the step
+   function is visible rather than only described. */
+.gap-seg.shifts { background: var(--accent-soft); }
+.ev-mark {
+  position: absolute; top: 5px; bottom: 5px; width: 1px;
+  background: var(--text-3); opacity: .5; cursor: help;
+}
+/* The ones the correction moves. */
+.ev-mark.moved { background: var(--accent); opacity: .95; width: 2px;
+                 margin-left: -0.5px; }
+
 /* ---- what the correction does ---- */
 .fix-box {
   margin-top: 12px; padding: 11px 13px; border-radius: 6px;
@@ -2671,6 +2710,31 @@ select {
   flex-wrap: wrap;
 }
 .fix-acts .hint { margin: 0; }
+/* One line an event, scrolling. A thousand rows is a scroll box, not a
+   page, and the ones that move are the point. */
+.move-list {
+  max-height: 210px; overflow-y: auto; margin: 0 0 8px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg);
+}
+.move-row {
+  display: grid;
+  grid-template-columns: 84px 14px 84px 78px 1fr;
+  gap: 8px; align-items: baseline;
+  padding: 1px 10px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  line-height: 1.65;
+}
+.move-row .mv-was, .move-row .mv-now, .move-row .mv-shift {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.move-row .mv-arrow { text-align: center; }
+.move-row .mv-label { color: var(--text-3); font-family: var(--font);
+                      font-size: 10.5px; }
+/* The ones that move. Everything else is context. */
+.move-row.moved { color: var(--text); background: var(--accent-soft, transparent); }
+.move-row.moved .mv-shift { color: var(--accent); }
+.move-row.moved .mv-now { color: var(--accent); }
+
 .fix-facts { margin: 12px 0; }
 .fix-facts p { margin: 0 0 6px; line-height: 1.55; color: var(--text-2);
                font-size: 11.5px; }

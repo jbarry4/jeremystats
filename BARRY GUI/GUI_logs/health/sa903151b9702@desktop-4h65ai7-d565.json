@@ -1,0 +1,44 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:39:41.117940+00:00",
+    "label": "2026-09-14T16:39:41.117940+00:00",
+    "path": "2026-09-14T16:39:41.117940+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "0b56306631ee": [
+        "set",
+        "2026-09-14T16:39:41.117940+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:39:41.117940+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:38:47.62709+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1802.53756666667,
+      "gap_map_sha": "85dd4a63f5597ff3",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "0b56306631ee",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 84.9560000001475,
+      "mismatches": 0,
+      "n_gaps": 6,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 7,
+      "seconds_lost": 0.087736,
+      "true_duration_s": 1802.619305
+    }
+  ],
+  "gid": "sa903151b9702",
+  "label": "PTENDKO m59 s3 2025-07-07",
+  "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s3jul7\\2025-07-07_11-52-16"
+}

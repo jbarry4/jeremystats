@@ -24,6 +24,10 @@
         "set",
         "2026-09-09T13:46:14.061027+00:00"
       ],
+      "deck:deck_07802fc0": [
+        "set",
+        "2026-09-14T16:49:26.109775+00:00"
+      ],
       "deck:deck_07927048": [
         "set",
         "2026-09-10T21:11:16.688721+00:00"
@@ -35,6 +39,10 @@
       "deck:deck_0903665b": [
         "set",
         "2026-09-10T19:04:49.690733+00:00"
+      ],
+      "deck:deck_0b7abd6e": [
+        "set",
+        "2026-09-14T17:04:42.662077+00:00"
       ],
       "deck:deck_126429bd": [
         "set",
@@ -75,6 +83,10 @@
       "deck:deck_1fe89c4e": [
         "set",
         "2026-09-03T13:49:59.989200+00:00"
+      ],
+      "deck:deck_2483c05e": [
+        "set",
+        "2026-09-14T16:19:13.149133+00:00"
       ],
       "deck:deck_29391a7a": [
         "set",
@@ -124,6 +136,10 @@
         "set",
         "2026-09-10T00:07:08.917836+00:00"
       ],
+      "deck:deck_4c6fc02d": [
+        "set",
+        "2026-09-14T16:03:17.071225+00:00"
+      ],
       "deck:deck_4cc56fb8": [
         "set",
         "2026-09-09T23:40:48.977317+00:00"
@@ -168,6 +184,10 @@
         "set",
         "2026-09-10T00:11:35.914825+00:00"
       ],
+      "deck:deck_58f29f8a": [
+        "set",
+        "2026-09-14T17:51:24.891406+00:00"
+      ],
       "deck:deck_59174add": [
         "set",
         "2026-09-10T00:57:53.433961+00:00"
@@ -203,6 +223,10 @@
       "deck:deck_679e4142": [
         "set",
         "2026-09-09T13:46:14.061027+00:00"
+      ],
+      "deck:deck_684bbdc9": [
+        "set",
+        "2026-09-14T17:00:15.462063+00:00"
       ],
       "deck:deck_69370c1f": [
         "set",
@@ -304,6 +328,10 @@
         "set",
         "2026-09-14T15:52:19.522742+00:00"
       ],
+      "deck:deck_87305bf3": [
+        "set",
+        "2026-09-14T17:24:43.449539+00:00"
+      ],
       "deck:deck_894c6508": [
         "set",
         "2026-09-03T14:18:30.786944+00:00"
@@ -327,6 +355,10 @@
       "deck:deck_95b56e0b": [
         "set",
         "2026-09-10T21:42:38.296220+00:00"
+      ],
+      "deck:deck_95dd4138": [
+        "set",
+        "2026-09-14T16:49:26.109775+00:00"
       ],
       "deck:deck_960263b6": [
         "set",
@@ -367,6 +399,10 @@
       "deck:deck_a487ba7a": [
         "set",
         "2026-09-14T15:22:40.842848+00:00"
+      ],
+      "deck:deck_a4beef9b": [
+        "set",
+        "2026-09-14T17:51:24.891406+00:00"
       ],
       "deck:deck_a6bb7589": [
         "set",
@@ -431,6 +467,10 @@
       "deck:deck_c3710141": [
         "set",
         "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "deck:deck_c8563707": [
+        "set",
+        "2026-09-14T17:24:43.449539+00:00"
       ],
       "deck:deck_ca9b6a36": [
         "set",
@@ -556,6 +596,10 @@
         "set",
         "2026-09-11T16:49:42.873795+00:00"
       ],
+      "deck:deck_ea33a492": [
+        "set",
+        "2026-09-14T16:19:13.149133+00:00"
+      ],
       "deck:deck_eae33055": [
         "set",
         "2026-09-09T13:46:14.061027+00:00"
@@ -618,7 +662,7 @@
       ],
       "person:Harness Probe Person": [
         "set",
-        "2026-09-14T15:50:37.022659+00:00"
+        "2026-09-14T16:47:35.714532+00:00"
       ],
       "person:Rain": [
         "set",
@@ -634,7 +678,7 @@
       ],
       "person:zz edit probe": [
         "set",
-        "2026-09-14T15:50:46.069459+00:00"
+        "2026-09-14T16:47:42.853335+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -728,6 +772,14 @@
         "set",
         "2026-09-14T14:01:43.915060+00:00"
       ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260914_120233.csv": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260914_125942.csv": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
       "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
         "2026-09-03T14:57:23.662650+00:00"
@@ -819,6 +871,14 @@
       "result:HarnessFolder/arrow harness_26.png": [
         "set",
         "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_27.png": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_28.png": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
       ],
       "result:HarnessFolder/arrow harness_4.png": [
         "set",
@@ -952,6 +1012,14 @@
         "set",
         "2026-09-14T14:01:43.915060+00:00"
       ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
       "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
         "2026-09-03T14:57:24.101795+00:00"
@@ -1043,6 +1111,14 @@
       "result:HarnessRenamed/arrow harness_26.png": [
         "set",
         "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_27.png": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_28.png": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
       ],
       "result:HarnessRenamed/arrow harness_4.png": [
         "set",
@@ -1188,6 +1264,14 @@
         "gone",
         "2026-09-14T15:41:41.644815+00:00"
       ],
+      "result:Storyboards/arrow harness_27.png": [
+        "gone",
+        "2026-09-14T16:38:34.704229+00:00"
+      ],
+      "result:Storyboards/arrow harness_28.png": [
+        "gone",
+        "2026-09-14T17:44:42.914350+00:00"
+      ],
       "result:Storyboards/arrow harness_3.png": [
         "gone",
         "2026-09-09T19:58:31.434085+00:00"
@@ -1312,6 +1396,14 @@
         "gone",
         "2026-09-14T14:01:32.363910+00:00"
       ],
+      "result:ToolKit/bad-channels_all_20260914_120233.csv": [
+        "gone",
+        "2026-09-14T16:38:35.387300+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260914_125942.csv": [
+        "gone",
+        "2026-09-14T17:44:43.602150+00:00"
+      ],
       "result:ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": [
         "gone",
         "2026-09-10T18:30:46.700733+00:00"
@@ -1384,6 +1476,10 @@
         "set",
         "2026-09-03T14:11:46.094756+00:00"
       ],
+      "session:s07416c84e5cc": [
+        "set",
+        "2026-09-14T17:52:13.155844+00:00"
+      ],
       "session:s07727a320146": [
         "set",
         "2026-09-09T22:10:59.384629+00:00"
@@ -1448,6 +1544,10 @@
         "set",
         "2026-09-09T23:29:01.945076+00:00"
       ],
+      "session:s3aba70a88b23": [
+        "set",
+        "2026-09-14T17:53:20.715851+00:00"
+      ],
       "session:s3b23776ea810": [
         "set",
         "2026-09-03T14:56:51.204243+00:00"
@@ -1467,6 +1567,10 @@
       "session:s45d9856ac9f3": [
         "set",
         "2026-09-09T22:19:40.353235+00:00"
+      ],
+      "session:s49f993968445": [
+        "set",
+        "2026-09-14T17:53:20.715851+00:00"
       ],
       "session:s4b8d0f933cff": [
         "set",
@@ -1532,6 +1636,10 @@
         "set",
         "2026-09-11T18:40:54.706415+00:00"
       ],
+      "session:s6b22d84ed556": [
+        "set",
+        "2026-09-14T17:53:20.715851+00:00"
+      ],
       "session:s6bd0e2e77fda": [
         "set",
         "2026-09-09T03:40:59.876596+00:00"
@@ -1571,6 +1679,10 @@
       "session:s8b4ba1df0604": [
         "set",
         "2026-09-10T21:27:03.024299+00:00"
+      ],
+      "session:s8da54a731877": [
+        "set",
+        "2026-09-14T16:40:37.913502+00:00"
       ],
       "session:s8ede8f90e463": [
         "set",
@@ -1652,6 +1764,10 @@
         "set",
         "2026-09-10T00:01:42.047039+00:00"
       ],
+      "session:sb653125c9831": [
+        "set",
+        "2026-09-14T17:47:14.503446+00:00"
+      ],
       "session:sb6a0e8b3dd3a": [
         "set",
         "2026-09-10T22:04:19.472731+00:00"
@@ -1708,6 +1824,10 @@
         "set",
         "2026-09-10T19:27:35.063747+00:00"
       ],
+      "session:sd8ab5709f3c9": [
+        "set",
+        "2026-09-14T16:51:10.626871+00:00"
+      ],
       "session:sdb4d4ba67d7d": [
         "set",
         "2026-09-09T23:21:41.106861+00:00"
@@ -1736,6 +1856,10 @@
         "set",
         "2026-09-11T15:30:56.925482+00:00"
       ],
+      "session:seecb85f9faeb": [
+        "set",
+        "2026-09-14T16:51:10.626871+00:00"
+      ],
       "session:sf23d52694bd7": [
         "gone",
         "2026-09-09T21:20:32.980621+00:00"
@@ -1755,7 +1879,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-14T15:54:07.085627+00:00",
+    "at": "2026-09-14T17:53:20.715851+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -1805,6 +1929,15 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
     },
+    "deck:deck_07802fc0": {
+      "at": "2026-09-14T12:49:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_07802fc0",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:49:26-0400"
+    },
     "deck:deck_07927048": {
       "at": "2026-09-10T17:10:57-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1831,6 +1964,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-10T15:04:49-0400"
+    },
+    "deck:deck_0b7abd6e": {
+      "at": "2026-09-14T13:04:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_0b7abd6e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:04:42-0400"
     },
     "deck:deck_126429bd": {
       "at": "2026-09-09T15:06:45-0400",
@@ -1921,6 +2063,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T09:50:10-0400"
+    },
+    "deck:deck_2483c05e": {
+      "at": "2026-09-14T12:18:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2483c05e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:19:13-0400"
     },
     "deck:deck_29391a7a": {
       "at": "2026-09-09T21:24:39-0400",
@@ -2030,6 +2181,15 @@
       "synced": true,
       "synced_at": "2026-09-09T20:07:08-0400"
     },
+    "deck:deck_4c6fc02d": {
+      "at": "2026-09-14T12:02:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4c6fc02d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:03:17-0400"
+    },
     "deck:deck_4cc56fb8": {
       "at": "2026-09-09T19:40:17-0400",
       "by": "desktop-4h65ai7-d565",
@@ -2129,6 +2289,15 @@
       "synced": true,
       "synced_at": "2026-09-09T20:11:35-0400"
     },
+    "deck:deck_58f29f8a": {
+      "at": "2026-09-14T13:51:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_58f29f8a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:51:24-0400"
+    },
     "deck:deck_59174add": {
       "at": "2026-09-09T20:57:48-0400",
       "by": "desktop-4h65ai7-d565",
@@ -2209,6 +2378,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
+    },
+    "deck:deck_684bbdc9": {
+      "at": "2026-09-14T13:00:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_684bbdc9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:00:15-0400"
     },
     "deck:deck_69370c1f": {
       "at": "2026-09-11T14:38:09-0400",
@@ -2435,6 +2613,15 @@
       "synced": true,
       "synced_at": "2026-09-14T11:52:19-0400"
     },
+    "deck:deck_87305bf3": {
+      "at": "2026-09-14T13:24:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_87305bf3",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:24:43-0400"
+    },
     "deck:deck_894c6508": {
       "at": "2026-09-03T10:18:30-0400",
       "by": "desktop-4h65ai7-d565",
@@ -2488,6 +2675,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-10T17:42:38-0400"
+    },
+    "deck:deck_95dd4138": {
+      "at": "2026-09-14T12:49:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_95dd4138",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:49:26-0400"
     },
     "deck:deck_960263b6": {
       "at": "2026-09-09T15:24:42-0400",
@@ -2578,6 +2774,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-14T11:22:40-0400"
+    },
+    "deck:deck_a4beef9b": {
+      "at": "2026-09-14T13:51:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a4beef9b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:51:24-0400"
     },
     "deck:deck_a6bb7589": {
       "at": "2026-09-10T16:39:42-0400",
@@ -2722,6 +2927,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "deck:deck_c8563707": {
+      "at": "2026-09-14T13:24:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_c8563707",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:24:43-0400"
     },
     "deck:deck_ca9b6a36": {
       "at": "2026-09-09T15:44:14-0400",
@@ -3002,6 +3216,15 @@
       "synced": true,
       "synced_at": "2026-09-11T12:49:42-0400"
     },
+    "deck:deck_ea33a492": {
+      "at": "2026-09-14T12:18:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ea33a492",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:19:13-0400"
+    },
     "deck:deck_eae33055": {
       "at": "2026-09-09T09:46:03-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3138,7 +3361,7 @@
       "synced_at": "2026-09-11T11:20:20-0400"
     },
     "person:Harness Probe Person": {
-      "at": "2026-09-14T11:50:37-0400",
+      "at": "2026-09-14T12:47:35-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -3162,7 +3385,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-09-14T11:50:46-0400",
+      "at": "2026-09-14T12:47:42-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",
@@ -3373,6 +3596,24 @@
       "synced": true,
       "synced_at": "2026-09-14T10:01:43-0400"
     },
+    "result:HarnessFolder/Panels/bad-channels_all_20260914_120233.csv": {
+      "at": "2026-09-14T12:38:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260914_120233.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260914_125942.csv": {
+      "at": "2026-09-14T13:44:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260914_125942.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
     "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3579,6 +3820,24 @@
       "note": "moved to HarnessRenamed/arrow harness_26.png",
       "synced": true,
       "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessFolder/arrow harness_27.png": {
+      "at": "2026-09-14T12:38:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_27.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_27.png",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessFolder/arrow harness_28.png": {
+      "at": "2026-09-14T13:44:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_28.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_28.png",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
     },
     "result:HarnessFolder/arrow harness_4.png": {
       "at": "2026-09-09T15:58:30-0400",
@@ -3877,6 +4136,24 @@
       "synced": true,
       "synced_at": "2026-09-14T10:01:43-0400"
     },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv": {
+      "at": "2026-09-14T12:38:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260914_120233.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv": {
+      "at": "2026-09-14T13:44:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260914_125942.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
     "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:24-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4083,6 +4360,24 @@
       "note": "moved to Storyboards/arrow harness_26.png",
       "synced": true,
       "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessRenamed/arrow harness_27.png": {
+      "at": "2026-09-14T12:38:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_27.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_27.png",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessRenamed/arrow harness_28.png": {
+      "at": "2026-09-14T13:44:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_28.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_28.png",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
     },
     "result:HarnessRenamed/arrow harness_4.png": {
       "at": "2026-09-09T15:58:31-0400",
@@ -4381,6 +4676,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:12:05-0400"
     },
+    "session:s07416c84e5cc": {
+      "at": "2026-09-14T13:52:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s07416c84e5cc",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:52:13-0400"
+    },
     "session:s07727a320146": {
       "at": "2026-09-09T18:10:51-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4525,6 +4829,15 @@
       "synced": true,
       "synced_at": "2026-09-09T19:29:01-0400"
     },
+    "session:s3aba70a88b23": {
+      "at": "2026-09-14T13:52:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3aba70a88b23",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:53:20-0400"
+    },
     "session:s3b23776ea810": {
       "at": "2026-09-03T10:56:51-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4569,6 +4882,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T18:19:40-0400"
+    },
+    "session:s49f993968445": {
+      "at": "2026-09-14T13:52:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s49f993968445",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:53:20-0400"
     },
     "session:s4b8d0f933cff": {
       "at": "2026-09-09T21:12:06-0400",
@@ -4714,6 +5036,15 @@
       "synced": true,
       "synced_at": "2026-09-11T14:40:54-0400"
     },
+    "session:s6b22d84ed556": {
+      "at": "2026-09-14T13:52:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6b22d84ed556",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:53:20-0400"
+    },
     "session:s6bd0e2e77fda": {
       "at": "2026-09-08T23:40:37-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4803,6 +5134,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-10T17:27:03-0400"
+    },
+    "session:s8da54a731877": {
+      "at": "2026-09-14T12:40:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8da54a731877",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:40:37-0400"
     },
     "session:s8ede8f90e463": {
       "at": "2026-09-10T14:58:42-0400",
@@ -4984,6 +5324,15 @@
       "synced": true,
       "synced_at": "2026-09-09T20:01:42-0400"
     },
+    "session:sb653125c9831": {
+      "at": "2026-09-14T13:47:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb653125c9831",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:47:14-0400"
+    },
     "session:sb6a0e8b3dd3a": {
       "at": "2026-09-10T18:03:55-0400",
       "by": "desktop-4h65ai7-d565",
@@ -5110,6 +5459,15 @@
       "synced": true,
       "synced_at": "2026-09-10T15:27:35-0400"
     },
+    "session:sd8ab5709f3c9": {
+      "at": "2026-09-14T12:50:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd8ab5709f3c9",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:51:10-0400"
+    },
     "session:sdb4d4ba67d7d": {
       "at": "2026-09-09T19:21:32-0400",
       "by": "desktop-4h65ai7-d565",
@@ -5172,6 +5530,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-11T11:30:56-0400"
+    },
+    "session:seecb85f9faeb": {
+      "at": "2026-09-14T12:50:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "seecb85f9faeb",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:51:10-0400"
     },
     "session:sf40f60db339a": {
       "at": "2026-09-09T18:17:09-0400",

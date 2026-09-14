@@ -206,6 +206,19 @@ def _after(stamp, since):
         return True
 
 
+
+def _absent(exc):
+    """Is this "no such table" rather than a real failure?
+
+    PostgREST answers a request for a table it has never heard of with 404
+    and PGRST205. Anything else -- a timeout, a refusal, a network drop -- is
+    a genuine failure and must still stop the pull, because pretending a
+    table is empty when the answer was "I could not reach it" would delete
+    things.
+    """
+    text = str(exc)
+    return "PGRST205" in text or ("404" in text and "Could not find" in text)
+
 class Sync:
     """Everything Jarvis knows, in both directions."""
 
@@ -1106,6 +1119,8 @@ class Sync:
         q = ("updated_at=gt.%s" % since) if since else ""
         applied, newest = {}, since
 
+        missing = []
+
         def fetch(table):
             # Said before the request, not after it: the point of announcing
             # a table is that it is the one currently taking the time. The
@@ -1113,7 +1128,22 @@ class Sync:
             # it used to report the single word "pulling" for all of them.
             if on_table:
                 on_table(table)
-            rows = self.cloud.select_all(table, q)
+            try:
+                rows = self.cloud.select_all(table, q)
+            except Exception as exc:                     # noqa: BLE001
+                # A table this database has never been given. Reported and
+                # skipped, because the alternative is what actually
+                # happened: `health_checks` went into the order before
+                # migration 15 had been run anywhere, every pull 404'd on
+                # it, and everything after it in the sequence -- plus the
+                # `last_pull` stamp that makes a cycle count for anything --
+                # never ran. One table's absence must not take the other
+                # fourteen with it, and a migration you can run late is
+                # worth a great deal more than one that has to be run first.
+                if _absent(exc):
+                    missing.append(table)
+                    return []
+                raise
             for r in rows:
                 got = r.get("updated_at")
                 if got and (not newest_holder[0] or got > newest_holder[0]):
@@ -1147,6 +1177,8 @@ class Sync:
             on_progress(applied)
 
         self.cloud.save_state({"last_pull": newest_holder[0] or cloud.now()})
+        if missing:
+            applied["_missing_tables"] = missing
         out = {"applied": applied, "since": since,
                "through": newest_holder[0]}
         # A version that disagrees with itself across machines is a fault,
