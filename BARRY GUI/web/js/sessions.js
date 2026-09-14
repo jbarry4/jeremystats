@@ -47,6 +47,15 @@ BARRY.views.sessions = (function () {
       note: 'Leave out anything flagged exclude' },
     { group: 'Quality', id: 'unhealthy', name: 'Health notes',
       note: 'Only the ones the health check flagged' },
+    /* Acquisition gaps, from the kept record of every check rather than by
+       re-reading three hundred folders. A recording nobody has checked is
+       unknown rather than clean, and is in neither of these. */
+    { group: 'Continuity', id: 'concat', name: 'Has acquisition gaps',
+      note: 'Multi-segment: Toothy times run early against the raw files' },
+    { group: 'Continuity', id: 'unpatched', name: 'Gaps, not corrected',
+      note: 'Has gaps, has banked events, and they have not been re-timed' },
+    { group: 'Continuity', id: 'unchecked', name: 'Never checked for gaps',
+      note: 'Nobody has run the continuity check on this one' },
     /* Which recordings still need StrataScope is a question with sixty-odd
        sheets behind it now, and scrolling four hundred cards looking for
        the gaps is not an answer. */
@@ -56,6 +65,32 @@ BARRY.views.sessions = (function () {
   const picked = new Set();   // paths queued for opening
   const health = {};          // path -> report from /api/session/health
   let healthBusy = false;
+  /* What every continuity check anybody has run says, keyed on session id.
+     Read once when the view opens rather than per card: four hundred cards
+     would be four hundred questions and the answer is one table. */
+  let continuity = null;
+  let continuityAt = 0;
+
+  function continuityOf(s) {
+    if (!continuity) return null;
+    const gid = s.gid || (s.stored && s.stored.gid);
+    return gid ? (continuity[gid] || null) : null;
+  }
+
+  async function loadContinuity(force) {
+    /* Cheap and it changes when somebody runs a check, so re-read on a
+       filter rather than caching for the session. Thirty seconds is long
+       enough that switching filters does not re-ask, short enough that a
+       check you just ran shows up. */
+    if (!force && continuity && Date.now() - continuityAt < 30000) return;
+    try {
+      const res = await api('/api/health/summary');
+      continuity = (res && res.sessions) || {};
+      continuityAt = Date.now();
+    } catch (e) {
+      continuity = continuity || {};
+    }
+  }
 
   /* Which of the listed recordings this scan actually found.
 
@@ -503,6 +538,12 @@ BARRY.views.sessions = (function () {
       const h = health[s.path];
       if (!h || h.level === 'ok') return false;
     }
+    /* From the health log, keyed on the session id -- the registry's, which
+       is what the log and the bank both file under. */
+    const cont = continuityOf(s);
+    if (flags.has('concat') && !(cont && cont.concat_issue)) return false;
+    if (flags.has('unpatched') && !(cont && cont.unpatched)) return false;
+    if (flags.has('unchecked') && cont) return false;
     /* Layer state, from the registry's own count rather than by asking the
        layers store per card: four hundred cards would be four hundred
        questions, and the registry already knows. */
@@ -1842,6 +1883,22 @@ BARRY.views.sessions = (function () {
        button that merely looks changed is not the same as a scan that is
        changed -- so the harness reads the state the scan reads. */
     _scanOpts: () => Object.assign({}, scanOpts),
+    /* Which filters exist. For web/_dev/healthfilter.html: a filter that is
+       described in a popover but not wired into the predicate looks
+       identical from outside until somebody relies on it. */
+    _filterIds: () => FILTERS.map((f) => f.id),
+    /* Turn filters on and count what survives. For
+       web/_dev/healthfilter.html: a filter listed in the popover but never
+       wired into the predicate is invisible from outside until somebody
+       relies on it. */
+    _tryFilter: async (ids) => {
+      await loadContinuity(true);
+      flags.clear();
+      for (const id of (ids || [])) flags.add(id);
+      const kept = sessions.filter(matches).length;
+      flags.clear();
+      return { kept: kept, total: sessions.length };
+    },
     /* The continuity panel, opened directly. For web/_dev/gapbar.html:
        getting to it through a scan and a health sweep is a test of the
        scan, and what wants looking at is the panel. */
@@ -1853,6 +1910,9 @@ BARRY.views.sessions = (function () {
         renderRecents();
         // Open showing what Jarvis already knows rather than an empty page.
         loadKnown();
+        /* And what every continuity check has found, so the gap filters
+           have something to filter on the moment the view is open. */
+        loadContinuity().then(() => { if (continuity) renderTree(); });
       }
     },
   };

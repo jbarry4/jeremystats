@@ -8,11 +8,11 @@
       ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-11T18:36:30.603633+00:00"
+        "2026-09-14T15:50:36.996704+00:00"
       ],
       "Isabella Piatek": [
         "set",
-        "2026-09-09T20:37:36.088405+00:00"
+        "2026-09-11T15:23:46.778188+00:00"
       ],
       "Rain": [
         "gone",
@@ -20,7 +20,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-09-11T18:36:29.360258+00:00"
+        "2026-09-14T15:50:36.112990+00:00"
       ],
       "Shahriar": [
         "set",
@@ -64,7 +64,7 @@
       ],
       "spikeflow@harness": [
         "set",
-        "2026-09-11T15:23:29.458340+00:00"
+        "2026-09-11T15:24:04.935071+00:00"
       ],
       "theexaminedexistence@gmail.com": [
         "set",
@@ -80,7 +80,7 @@
       ],
       "zz edit probe": [
         "gone",
-        "2026-09-11T18:36:37.680949+00:00"
+        "2026-09-14T15:50:46.038823+00:00"
       ],
       "zz edit probe renamed": [
         "gone",
@@ -93,7 +93,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-14T13:26:58.987348+00:00",
+    "at": "2026-09-14T15:50:46.038823+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -182,8 +182,8 @@
     },
     {
       "at": "2026-09-08T21:23:16.555182+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T20:37:36.088404+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-09-11T15:23:46.777605+00:00",
       "email": "Isabella.Piatek@uvm.edu",
       "id": "Isabella Piatek",
       "initials": "IP",
@@ -202,27 +202,6 @@
     },
     {
       "aliases": [
-        "rain"
-      ],
-      "at": "2026-09-11T18:36:29.089049+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-11T18:36:29.359828+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Graduate Student"
-    },
-    {
-      "archived": true,
-      "at": "2026-09-10T18:44:30.211325+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-11T15:23:29.456353+00:00",
-      "id": "spikeflow@harness",
-      "name": "spikeflow@harness"
-    },
-    {
-      "aliases": [
         "shahriar",
         "theexaminedexistence@gmail.com"
       ],
@@ -233,6 +212,27 @@
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
+      "role": "Graduate Student"
+    },
+    {
+      "archived": true,
+      "at": "2026-09-10T18:42:52.900818+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-11T15:24:04.935070+00:00",
+      "id": "spikeflow@harness",
+      "name": "spikeflow@harness"
+    },
+    {
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-14T15:50:35.791161+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-14T15:50:36.112597+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
       "role": "Graduate Student"
     }
   ]

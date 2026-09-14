@@ -608,7 +608,7 @@ code { font-family: var(--mono); }
    rail and the icon in the tab are the same mark in the same light. */
 .brand-mark .bm-ground { fill: var(--accent); }
 .brand-mark .bm-trace {
-  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.7;
+  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.9;
   stroke-linecap: round; stroke-linejoin: round;
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
@@ -2678,6 +2678,12 @@ select {
 .continuity-modal .lead {
   margin: 0 0 14px; line-height: 1.6; color: var(--text-1); font-size: 12.5px;
 }
+
+/* A name some rows were filed under, not a computer we can identify. The
+   same row, said more quietly. */
+.dev-mgr-other.name-only { opacity: 0.82; }
+.dev-mgr-other.name-only .dev-dot { background: var(--text-3); }
+.dev-mgr-other.name-only strong { font-weight: 500; }
 
 .basis-row {
   padding: 8px 10px; border-radius: 5px; background: var(--bg-2);

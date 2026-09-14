@@ -1335,8 +1335,14 @@ BARRY.views.errors = (function () {
     /* A computer that has errors on record and has stopped syncing is not
        in the device table, so its id comes off the groups. Its label comes
        off the group too -- the table is the only other place one lives. */
+    /* Except the retired ones. A group can still mention an archived
+       machine -- the server's archived list is cached, and "Show archived"
+       deliberately returns them -- and `seen.add` would put the chip back
+       for a computer somebody has just taken off the list. When archived
+       rows are being shown on purpose, they belong in the picker. */
+    const retired = new Set(errShowArchived ? [] : (archivedIds || []));
     for (const g of groups) {
-      if (!g.machine) continue;
+      if (!g.machine || retired.has(g.machine)) continue;
       seen.add(g.machine);
       if (!labels[g.machine]) {
         labels[g.machine] = g.machine_label || g.machine;
@@ -1868,15 +1874,68 @@ BARRY.views.errors = (function () {
     }
 
     /* The two things the data says that nothing used to show. */
-    const unclaimed = (devices && devices.unclaimed_names) || [];
+    /* The keys the error feed actually offers that are names rather than
+       computers -- which is what has to be archivable here, or the picker
+       and this panel disagree about what exists. Not `unclaimed_names`:
+       that means "a name no machine answers to", and a machine IS called
+       Bluebarry, so these vanish from it. */
+    const nameOnly = (devices && devices.name_only_machines) || [];
+    const unclaimed = nameOnly.map((x) => x.name);
+    const errCount = {};
+    for (const x of nameOnly) errCount[x.name] = x.n_errors;
     const ambiguous = (devices && devices.ambiguous_labels) || [];
     if (unclaimed.length) {
+      /* A row each, with the same button as a real computer.
+
+         These were a sentence at the bottom of the panel while the error
+         feed offered every one of them as a filter -- so four computers
+         were pickable and unarchivable, and the only thing that said they
+         existed could not be acted on. They are rows written before errors
+         carried a machine id, so all that is known about them is the name
+         they were filed under; archiving files that name as a retired
+         machine of its own. */
+      body.appendChild(el('div', { class: 'section-label',
+        text: 'Names in the log with no computer' }));
+      for (const name of unclaimed) {
+        body.appendChild(el('div', { class: 'dev-mgr-other name-only' }, [
+          el('span', { class: 'dev-dot' }),
+          el('strong', { text: name }),
+          el('span', { class: 'hint',
+            text: (errCount[name] || 0) + ' error(s), no id on record' }),
+          el('div', { class: 'spacer' }),
+          el('button', {
+            class: 'btn ghost sm', text: 'Archive',
+            title: 'Takes this name off the error feed\u2019s picker. Its '
+                 + 'rows stay in the log and stay readable.',
+            onclick: async (e) => {
+              const b = e.target;
+              b.disabled = true;
+              try {
+                await apiPost('/api/devices/archive',
+                              { id: name, archived: true, name_only: true });
+                devices = null;
+                closeModal();
+                /* Both, and in this order. The chips are built from the
+                   device table AND from the machines the loaded groups
+                   mention, so reloading only the first left every archived
+                   machine on the bar -- put back by the stale groups. */
+                await loadDevices(true);
+                await load();
+                deviceManager();
+                toast(name + ' archived. Its rows stay in the log.', 'ok');
+              } catch (err) {
+                b.disabled = false;
+                toast(err.message, 'err');
+              }
+            },
+          }),
+        ]));
+      }
       body.appendChild(el('div', { class: 'hint dev-unclaimed' }, [
-        el('strong', { text: 'Names in the log with no machine: ' }),
-        el('span', { text: unclaimed.join(', ')
-          + ' \u2014 older names for these computers, or machines that '
-          + 'never registered. Nothing is guessed: a machine is only '
-          + 'claimed by its identity.' }),
+        el('span', { text: 'Older names for these computers, or machines '
+          + 'that never registered. Nothing is guessed: a machine is only '
+          + 'claimed by its identity, so a name that matches one by eye is '
+          + 'still listed separately.' }),
       ]));
     }
     if (ambiguous.length) {
@@ -1925,6 +1984,9 @@ BARRY.views.errors = (function () {
         return false;
       }
       await loadDevices(true);
+      // And the error list, which is the other half of what the picker is
+      // built from. Reloading only the devices left the chip on the bar.
+      await load();
       toast(yes ? d.label + ' archived.' : d.label + ' is back.', 'ok');
       return true;
     } catch (e) {

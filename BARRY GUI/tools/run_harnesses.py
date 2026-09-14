@@ -29,6 +29,7 @@ import html
 import os
 import re
 import subprocess
+import tempfile
 import time
 import sys
 import urllib.parse
@@ -47,6 +48,11 @@ except Exception:                                        # noqa: BLE001
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 BASE = "http://127.0.0.1:8791"
 ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
+# A browser profile of the suite's own. See the note on
+# --user-data-dir below: without it a run competes with whatever
+# browser is already open and silently produces nothing.
+PROFILE = os.path.join(tempfile.gettempdir(),
+                       "jarvis-harness-profile")
 
 # The demo recording, as xplore.open() takes it: checked in, always
 # reachable, and nothing driving it can touch real curation data.
@@ -192,18 +198,52 @@ def main():
             url += ("&" if "?" in url else "?") + "root=" \
                 + urllib.parse.quote(root, safe="")
         try:
-            raw = subprocess.run(
-                [EDGE, "--headless=new", "--disable-gpu",
-                 # A real window. Headless defaults to something small, and
-                 # the geometry harnesses measure against it: at the default
-                 # size stratacheck reported six failures (rows 1px tall, 22
-                 # buttons off screen) and typing reported 47 clipped names.
-                 # Both pass at 1600x1000. A layout harness run in a 423px
-                 # window is measuring the window, not the layout.
-                 "--window-size=1600,1000",
-                 "--virtual-time-budget=150000", "--dump-dom", url],
-                capture_output=True, timeout=280, cwd=ROOT).stdout.decode(
-                    "utf-8", "replace")
+            # To a FILE, never a pipe.
+            #
+            # Measured: `--dump-dom` writes nothing when stdout is a pipe on
+            # this machine and writes the whole document when it is a file.
+            # Same binary, same arguments, same page -- 0 bytes against
+            # 6871. Every harness therefore reported "0 checks", which is
+            # indistinguishable from what a shot-taker reports, so a suite
+            # of real checks read as a suite of probes and passed.
+            dump = os.path.join(tempfile.gettempdir(),
+                                "jarvis-harness-dump.html")
+            try:
+                os.remove(dump)
+            except OSError:
+                pass
+            with open(dump, "wb") as sink:
+                subprocess.run(
+                    [EDGE, "--headless=new", "--disable-gpu",
+                     # Its own profile, and this is not a detail.
+                     #
+                     # Without it Edge uses the default profile, and when
+                     # the person at the computer has their browser open it
+                     # does not start a second instance -- it hands the URL
+                     # over, says "Opening in existing browser session" and
+                     # exits. Nothing is dumped, every harness reports 0
+                     # checks, and the suite reads as a hundred shot-takers
+                     # instead of a hundred failures. Measured: the same
+                     # page that reported nothing returned 6871 bytes and
+                     # five passing checks with this set.
+                     #
+                     # It also keeps the suite out of the way of a real
+                     # browser, so clearing a stuck run does not mean
+                     # closing somebody's tabs.
+                     "--user-data-dir=" + PROFILE,
+                     "--no-first-run", "--no-default-browser-check",
+                     # A real window. Headless defaults to something small, and
+                     # the geometry harnesses measure against it: at the default
+                     # size stratacheck reported six failures (rows 1px tall, 22
+                     # buttons off screen) and typing reported 47 clipped names.
+                     # Both pass at 1600x1000. A layout harness run in a 423px
+                     # window is measuring the window, not the layout.
+                     "--window-size=1600,1000",
+                     "--virtual-time-budget=150000", "--dump-dom", url],
+                    stdout=sink, stderr=subprocess.DEVNULL,
+                    timeout=280, cwd=ROOT)
+            with open(dump, "rb") as fh:
+                raw = fh.read().decode("utf-8", "replace")
         except subprocess.TimeoutExpired:
             rows.append((name, 0, 0, "TIMED OUT", []))
             print("%-22s TIMED OUT" % name, flush=True)

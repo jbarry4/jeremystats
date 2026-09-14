@@ -2500,21 +2500,30 @@ function paintFavicon() {
   const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
   const bg = tok('--accent', '#154734');
   const ink = tok('--on-accent', '#FFB81C');
-  /* A trace whose tail hooks into a J.
+  /* A dentate spike, which is what this application is for.
 
-     The mark this replaces was a spike train in a rounded square, which
-     said "oscilloscope" rather than "Jarvis". Same badge, same signal, and
-     the tail now curls into the initial so the two are one stroke.
+     A letter was tried twice and rendered twice, and rendering it is what
+     settled it: a flat baseline with a symmetric peak on it reads as a
+     capital A, because the baseline becomes the crossbar. Running the
+     peak's falling edge down into a stem fixed the A and shrank the spike
+     to a bump on an otherwise plain J -- a letter that has to be explained,
+     which is worse than no letter. The wordmark beside it says the name.
 
-     Drawn to read at 16 px: the spike is the tallest thing and the hook is
-     as heavy as the trace, because at a tab's size the fine detail goes and
-     whatever is left has to still be a mark. `tools/make_icons.py`
-     rasterises this exact path for the desktop icon, so the tab and the
-     shortcut cannot drift apart. */
+     Drawn to read at 16 px, which is a browser tab: one confident stroke
+     and no glow. A glow under it was tried; it looks well at 120 px and
+     turns to mud at 16. `tools/make_icons.py` rasterises this exact path
+     for the desktop icon, so the tab and the shortcut cannot drift apart. */
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<rect width="32" height="32" rx="7.5" fill="' + bg + '"/>'
-    + '<path d="M3.2 11.6 H9 L13 3.8 L17 11.6 V19.4 Q17 24.2 12.4 24.2 Q8.6 24.2 8.1 20.6"'
-    + ' fill="none" stroke="' + ink + '" stroke-width="2.7"'
+    + '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
+    + '<stop offset=".55" stop-color="#fff" stop-opacity=".04"/>'
+    + '<stop offset="1" stop-color="#000" stop-opacity=".12"/>'
+    + '</linearGradient></defs>'
+    + '<rect width="32" height="32" rx="8" fill="' + bg + '"/>'
+    + '<rect width="32" height="32" rx="8" fill="url(#s)"/>'
+    + '<path d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4'
+    + ' L18 15.3 L20.2 19.4 H27.5"'
+    + ' fill="none" stroke="' + ink + '" stroke-width="2.9"'
     + ' stroke-linecap="round" stroke-linejoin="round"/>'
     + '</svg>';
   let link = document.querySelector('link[rel="icon"]');

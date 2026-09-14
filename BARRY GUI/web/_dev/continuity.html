@@ -205,6 +205,44 @@ const CLEAN = 'D:\\PTEN\\PTEN\\M10_HF6_pten\\m10s4aug23\\2023-08-23_17-14-35';
   const ent = (tb.entries || [])[0];
   if (ent) {
     say('note', '  banked: ' + ent.n + ' event(s), ' + ent.pipeline);
+    /* Two states, two sets of facts. This set has been corrected for real
+       since the harness was written, and a check that only passes before
+       the feature it tests has been used is a check with a shelf life. */
+    const done = (ent.basis || {}).basis === 'neuralynx_true';
+    if (done) {
+      say('note', '  this set has been re-timed already \u2014 checking the '
+                + 'guarantees that matter once it has');
+      ck('a corrected set says so', (ent.basis || {}).stamped === true,
+         JSON.stringify(ent.basis));
+      ck('  and is not offered the correction again',
+         ent.correctable === false, ent.reason);
+      ck('  the reason says it is already on the raw clock',
+         /already on the recording/i.test(ent.reason || ''), ent.reason);
+
+      /* Asking anyway. This is the guarantee that makes the operation safe
+         to put a button on: a second run must refuse on the stamp rather
+         than shift the times another 121.9 ms. */
+      const again = await post('/api/session/retime',
+                               { path: DIRTY, entry_id: ent.entry_id,
+                                 gid: gid || '', kind: 'ds' });
+      ck('  asking again is refused, not applied a second time',
+         again.ok === false && again.applied !== true,
+         JSON.stringify(again).slice(0, 120));
+      ck('  and nothing moved', again.entry === undefined,
+         JSON.stringify(again.entry || {}).slice(0, 90));
+
+      const after = await post('/api/session/timebasis',
+                               { path: DIRTY, gid: gid || '' });
+      const e2 = (after.entries || [])[0] || {};
+      ck('  the set is still exactly where it was',
+         e2.n === ent.n && (e2.basis || {}).basis === 'neuralynx_true',
+         JSON.stringify(e2.basis));
+      say('note', '  done');
+      document.title = 'DONE ok=' + (out.querySelectorAll('.ok').length)
+                     + ' fail=' + bad;
+      return;
+    }
+
     ck('a banked set is recognised as concatenated',
        (ent.basis || {}).basis === 'toothy_concat',
        JSON.stringify(ent.basis));

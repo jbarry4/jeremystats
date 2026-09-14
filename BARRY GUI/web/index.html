@@ -99,8 +99,21 @@
            own colours; the same path the favicon and the desktop
            icon are drawn from. -->
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <rect class="bm-ground" width="32" height="32" rx="7.5"/>
-        <path class="bm-trace" d="M3.2 11.6 H9 L13 3.8 L17 11.6 V19.4 Q17 24.2 12.4 24.2 Q8.6 24.2 8.1 20.6"/>
+        <defs>
+          <!-- Light at the top, dark at the bottom. One rect and no filter,
+               and it is the difference between a badge and a swatch. -->
+          <linearGradient id="bmSheen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".20"/>
+            <stop offset=".55" stop-color="#fff" stop-opacity=".04"/>
+            <stop offset="1" stop-color="#000" stop-opacity=".12"/>
+          </linearGradient>
+        </defs>
+        <rect class="bm-ground" width="32" height="32" rx="8"/>
+        <rect width="32" height="32" rx="8" fill="url(#bmSheen)"/>
+        <!-- A dentate spike: rest, a small pre-deflection, one sharp spike,
+             its after-wave, rest. A letter was tried twice and dropped — a
+             flat baseline with a peak on it reads as a capital A. -->
+        <path class="bm-trace" d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4 L18 15.3 L20.2 19.4 H27.5"/>
       </svg>
       <div class="brand-text">
         <strong>Jarvis</strong>

@@ -25,6 +25,7 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 
 from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                compose, continuity as continuitymod, csc,
+               healthlog as healthlogmod,
                retime as retimemod,
                device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
@@ -63,6 +64,11 @@ cfcmod.configure(LOGS_DIR)
 # deep-check extra; the cache is what keeps a re-scan of the archive from
 # re-reading the ones that are not clean.
 continuitymod.configure(LOGS_DIR)
+# When each recording was last checked for gaps, by whom, and what the answer
+# was. Kept because "which of these three hundred have a problem" is a
+# question about the archive, and a check that runs when you open one session
+# cannot answer it.
+HEALTHLOG = healthlogmod.HealthLog(LOGS_DIR, STORE)
 # Who you are, said once. Everything attributed -- curation, banking, layer
 # sheets, figures, runs -- goes through STORE.provenance(), which prefers
 # this over the git identity. Wired after the Store exists because it needs
@@ -4973,16 +4979,137 @@ def api_session_health():
     out = []
     for p in paths[:60]:
         try:
-            out.append(extras.session_health(p, deep=deep))
+            rep = extras.session_health(p, deep=deep)
         except Exception as exc:
             out.append({"path": p, "level": "bad", "checks": [
                 {"level": "bad", "name": "check failed", "message": str(exc)}]})
+            continue
+        # File what the continuity check found.
+        #
+        # `session_health` runs it and returns the answer, which is why the
+        # report on screen is right -- and nothing kept it, so the archive
+        # log held only the sessions somebody had aimed the continuity route
+        # at by hand. Checking a hundred and eighty-nine recordings flagged
+        # the ones with gaps and left the filter with nothing to filter.
+        cont = rep.get("continuity")
+        if cont and cont.get("ok"):
+            gid = _gid_for_path(p)
+            if gid:
+                rep["gid"] = gid
+                try:
+                    HEALTHLOG.record(gid, p, cont,
+                                     label=(rep.get("identity") or {}).get(
+                                         "label"),
+                                     deep=bool(deep))
+                except Exception as exc:                 # noqa: BLE001
+                    app.logger.warning("health log: %s", exc)
+        out.append(rep)
     STORE.record_activity([{
         "action": "session.health",
         "detail": {"n": len(out), "deep": deep,
                    "levels": [o.get("level") for o in out]},
     }])
     return jsonify({"ok": True, "reports": out})
+
+
+def _gid_for_path(path):
+    """Which registered session is this folder?
+
+    Through the registry's own path list, which is how the application
+    decides two names are one recording. NOT through `ids.identify`: the
+    bank and the health log key on the registry's session id, and matching
+    on the identity string silently returns nothing -- which reads as "this
+    recording has nothing filed against it".
+    """
+    if not path:
+        return None
+    want = os.path.normcase(os.path.abspath(path)).rstrip("\\/")
+    try:
+        for rec in REG.all():
+            for entry in (rec.get("paths") or []):
+                where = entry.get("path") if isinstance(entry, dict) else entry
+                if not where:
+                    continue
+                if os.path.normcase(os.path.abspath(where)).rstrip("\\/") \
+                        == want:
+                    return rec.get("gid")
+    except Exception:                                    # noqa: BLE001
+        return None
+    return None
+
+
+@app.route("/api/health/summary")
+def api_health_summary():
+    """What is known about every recording anybody has checked.
+
+    One row per session: when it was last checked and by whom, whether it
+    has gaps, what is banked against it, and whether that has been
+    re-timed. The session list filters on this -- which is the point of
+    keeping the checks at all.
+    """
+    try:
+        rows = HEALTHLOG.summary(BANK)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    issues = [r for r in rows.values() if r.get("concat_issue")]
+    return jsonify({
+        "ok": True,
+        "sessions": rows,
+        "n_checked": len(rows),
+        "n_concat": len(issues),
+        "n_unpatched": len([r for r in rows.values() if r.get("unpatched")]),
+    })
+
+
+@app.route("/api/session/healthlog", methods=["POST"])
+def api_session_healthlog():
+    """One recording's check history, beside what is banked against it.
+
+    The two together are the question people actually have: this recording
+    has gaps -- was anything built from it before that was known, and by
+    whom?
+    """
+    body = request.get_json(force=True) or {}
+    gid = body.get("gid") or _gid_for_path(body.get("path"))
+    if not gid:
+        return jsonify({"ok": False, "unknown_session": True,
+                        "reason": "That folder is not in the session "
+                                  "registry, so there is nothing filed "
+                                  "against it."}), 200
+
+    rec = HEALTHLOG.get(gid) or {}
+    checks = sorted((rec.get("checks") or []),
+                    key=lambda c: extras.moment_key(c.get("at")),
+                    reverse=True)
+    entries = []
+    for e in BANK.all():
+        if e.get("gid") != gid:
+            continue
+        basis = e.get("time_basis") or {}
+        added = e.get("added") or {}
+        entries.append({
+            "entry_id": e.get("id"),
+            "name": e.get("name"),
+            "type": e.get("type"),
+            "n": e.get("n"),
+            "pipeline": (e.get("source") or {}).get("pipeline"),
+            "added_at": added.get("at"),
+            "added_by": added.get("by"),
+            "added_on": added.get("machine"),
+            "versions": len(e.get("versions") or []),
+            "time_basis": basis.get("kind"),
+            "retimed_at": basis.get("at"),
+            "retimed_by": basis.get("by"),
+            "retimed_map": basis.get("gap_map_sha"),
+            "patched": basis.get("kind") == retimemod.TRUE,
+        })
+    return jsonify({
+        "ok": True, "gid": gid,
+        "path": rec.get("path"), "label": rec.get("label"),
+        "checks": checks, "n_checks": len(checks),
+        "latest": healthlogmod.HealthLog.latest(rec),
+        "banked": entries,
+    })
 
 
 @app.route("/api/session/continuity", methods=["POST"])
@@ -5009,9 +5136,20 @@ def api_session_continuity():
     if rep is None:
         return jsonify({"ok": False,
                         "error": "No .ncs files in that folder."}), 404
+    # Filed against the session, so the archive can be asked about this
+    # later rather than the answer being thrown away with the response.
+    gid = body.get("gid") or _gid_for_path(path)
+    try:
+        HEALTHLOG.record(gid, path, rep, label=body.get("label"),
+                         deep=bool(body.get("all_channels")))
+    except Exception as exc:                             # noqa: BLE001
+        app.logger.warning("health log: %s", exc)
+    rep["gid"] = gid
+
     STORE.record_activity([{
         "action": "session.continuity",
-        "detail": {"path": path, "segments": rep.get("n_segments"),
+        "detail": {"path": path, "gid": gid,
+                   "segments": rep.get("n_segments"),
                    "seconds_lost": rep.get("seconds_lost"),
                    "gap_map_sha": rep.get("gap_map_sha"),
                    "cached": rep.get("cached"),
@@ -5428,7 +5566,19 @@ def _drop_archived(recs, want):
     gone = _archived_machines()
     if not gone:
         return recs, 0, gone
-    kept = [r for r in recs if str(r.get("shard") or "") not in gone]
+    def retired(rec):
+        shard = str(rec.get("shard") or "")
+        if shard:
+            # A row that knows which computer wrote it is identified by
+            # that and nothing else.
+            return shard in gone
+        # And one that does not falls back to the friendly name -- which is
+        # what `host_of` does to decide the identity in the first place. The
+        # two used to disagree, so a name-only machine could be archived and
+        # its rows stayed.
+        return str(rec.get("machine") or "") in gone
+
+    kept = [r for r in recs if not retired(r)]
     return kept, len(recs) - len(kept), gone
 
 
@@ -5990,6 +6140,10 @@ COLUMN_MIGRATIONS = {
     # missing column does. So asking for this one column is how a machine
     # finds out that `bank_snapshots` has never been created.
     "sha256": "14_bank_snapshots.sql",
+    # Same trick again: a missing table answers a column probe exactly as a
+    # missing column does, so asking for this one is how a machine finds out
+    # that health_checks has never been created.
+    "gap_map_sha": "15_health_checks.sql",
 }
 
 
@@ -6019,6 +6173,7 @@ COLUMN_TABLES = {
     "opened_at": "layer_sheets",
     "opened_by": "layer_sheets",
     "sha256": "bank_snapshots",
+    "gap_map_sha": "health_checks",
 }
 
 
@@ -6318,6 +6473,37 @@ def api_devices():
     log_names = set(newest)
     claimed = set()
 
+    # Rows that say only a name.
+    #
+    # The error feed groups by `host_of`, which is the shard when there is
+    # one and the friendly name when there is not -- so a pre-shard row is
+    # filed under a key like "Bluebarry" that is NOT any machine's id. That
+    # key is offered in the picker, so it has to be offerable here too, or
+    # four computers are filterable and unarchivable.
+    #
+    # Deliberately not folded into `unclaimed_names`: a device is called
+    # Bluebarry, so the name reads as claimed there and disappears. And
+    # folding it into that device would be a guess -- three computers in
+    # this lab answer to Bluebarry, which is exactly why the row cannot be
+    # attributed to one of them.
+    name_only = {}
+    try:
+        ids = {str(m.get("id")) for m in machines if m.get("id")}
+        for rec in (STORE.list_errors(limit=4000) or []):
+            # Exactly the key the feed groups under.
+            key = str(extras.host_of(rec) or "").strip()
+            if not key or key == "unknown" or key in ids:
+                continue
+            # A shard id decodes: hostname slug, hyphen, four hex. A name
+            # does not. NOT `if rec.get("shard")` -- that field holds a
+            # friendly name on these rows, which is the whole reason they
+            # end up as their own key.
+            if extras.real_host(key) and "-" in key:
+                continue
+            name_only[key] = name_only.get(key, 0) + 1
+    except Exception:                                    # noqa: BLE001
+        name_only = {}
+
     out = []
     for m in machines:
         seen = presencemod._age_s(m.get("last_seen"))
@@ -6400,6 +6586,14 @@ def api_devices():
         # machines would get merged.
         "unclaimed_names": sorted(n for n in log_names
                                   if n and n not in claimed),
+        # Keys the error feed offers that are names rather than computers.
+        # Each carries how many rows are filed under it, because "25 errors
+        # nobody can attribute" and "1" are different problems.
+        "name_only_machines": [
+            {"name": n, "n_errors": c,
+             "archived": n in _archived_machines()}
+            for n, c in sorted(name_only.items(),
+                               key=lambda kv: (-kv[1], kv[0]))],
         # Labels that more than one computer answers to. The hazard, and the
         # reason the real hostname is shown in brackets: `machines.hostname`
         # is pushed from `provenance().machine`, which is the free-text
@@ -6519,9 +6713,25 @@ def api_devices_archive():
                         "error": "The machine list lives in the shared "
                                  "database, so archiving one needs a "
                                  "connection."}), 400
+    # A name with no computer behind it. Rows written before errors carried
+    # a shard are filed under the friendly name, so the feed offers names
+    # the `machines` table has never heard of -- and a patch on a row that
+    # does not exist succeeds and changes nothing, which looks exactly like
+    # archiving and is not. So the name is filed as a machine of its own:
+    # honest, because it IS a computer whose logs are here, and it makes the
+    # picker and the manager agree about what exists.
+    name_only = bool(body.get("name_only"))
     try:
-        CLOUD.cloud.patch_rows("machines", "id=eq.%s" % _q(mid),
-                               {"archived": want})
+        if name_only:
+            CLOUD.cloud.upsert("machines", [{
+                "id": mid,
+                "hostname": mid,
+                "archived": want,
+                "updated_at": cloudmod.now(),
+            }], on_conflict="id")
+        else:
+            CLOUD.cloud.patch_rows("machines", "id=eq.%s" % _q(mid),
+                                   {"archived": want})
     except Exception as exc:                             # noqa: BLE001
         msg = str(exc)
         if "42703" in msg or "PGRST204" in msg:
@@ -6532,9 +6742,14 @@ def api_devices_archive():
                          ".sql and try again.",
                 "run": "10_machines_archived.sql"}), 400
         return jsonify({"ok": False, "error": msg[:200]}), 502
+    # The answer this route just changed is cached for a minute, and the
+    # error feed filters on it. Without dropping it here, a machine stayed
+    # in the picker for up to sixty seconds after being archived and the
+    # click looked like it had done nothing.
+    _ARCHIVED_SEEN["at"] = 0.0
     STORE.record_activity([{
         "action": "device.archive",
-        "detail": {"id": mid, "archived": want},
+        "detail": {"id": mid, "archived": want, "name_only": name_only},
     }])
     return jsonify({"ok": True, "id": mid, "archived": want})
 
@@ -7650,7 +7865,8 @@ def api_kilosort_terminal():
 # ==========================================================================
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
-    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE)
+    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE,
+    health=HEALTHLOG)
 
 # Who is curating what, right now. Cloud-only by design -- see
 # backend/presence.py: a presence row that survives a restart is a lie.

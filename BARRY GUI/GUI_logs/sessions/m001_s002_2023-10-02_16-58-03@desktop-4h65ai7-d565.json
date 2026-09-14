@@ -32,8 +32,8 @@
     "session": "2026-09-04T15:57:01.566631+00:00",
     "spike_labels": "2026-09-04T15:57:01.566631+00:00",
     "start": "2026-09-04T15:57:01.566631+00:00",
-    "updated": "2026-09-14T13:59:12.696115+00:00",
-    "view_state": "2026-09-10T18:34:08.380764+00:00"
+    "updated": "2026-09-14T15:06:16.594814+00:00",
+    "view_state": "2026-09-11T16:13:01.677633+00:00"
   },
   "_keys": {
     "paths": {
@@ -93,16 +93,16 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T13:59:12.696115+00:00"
+        "2026-09-14T15:06:16.594814+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:46.576029+00:00"
+        "2026-09-11T15:57:31.584826+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T13:59:12.696115+00:00",
+    "at": "2026-09-14T15:06:16.594814+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -197,20 +197,20 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T09:59:12-04:00",
+      "at": "2026-09-14T11:06:15-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
       "root": "D:/PTEN/PTEN",
-      "scan": "scan_f179140bc2"
+      "scan": "scan_48d88479b4"
     },
     "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:46-04:00",
-      "by": "Shahriar Tafti",
-      "machine": "Bluebarry",
+      "at": "2026-09-11T11:57:27-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
-      "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
@@ -219,7 +219,7 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "at": "2026-09-14T09:59:12-04:00",
+    "at": "2026-09-14T11:06:16-04:00",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -274,9 +274,9 @@
     "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 100,
+    "span": 6,
     "stft_mode": null,
-    "t0": 751.4723929588531,
+    "t0": 529.387646060606,
     "ylim": null
   }
 }

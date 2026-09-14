@@ -50,6 +50,10 @@ ORDER = [
     # So somebody added on one computer is pickable on another without
     # waiting for a git pull.
     "people",
+    # Both directions, and late in the order because nothing references it.
+    # A rig that checked forty recordings and a desktop that checked twelve
+    # should both be able to ask which of the fifty-two have gaps.
+    "health_checks",
 ]
 PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 
@@ -207,7 +211,7 @@ class Sync:
 
     def __init__(self, logs_dir, store, bank=None, curate=None, layers=None,
                  mice=None, results=None, repo_root=None, feedback=None,
-                 people=None):
+                 people=None, health=None):
         self.logs = os.path.abspath(logs_dir)
         self.store = store
         self.bank = bank
@@ -217,6 +221,7 @@ class Sync:
         self.results = results
         self.feedback = feedback
         self.people = people
+        self.health = health
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -226,6 +231,22 @@ class Sync:
     # ==================================================================
     # Local records -> rows
     # ==================================================================
+    def rows_health_checks(self):
+        """Every continuity check this machine knows about.
+
+        Flat, one row per check, keyed on the check's own id. A check is a
+        thing that happened on a date -- it is never edited -- so the same id
+        always carries the same bytes and there is nothing to merge.
+        """
+        if not self.health:
+            return {"health_checks": []}
+        from . import healthlog
+        try:
+            return {"health_checks": healthlog.rows_for_cloud(self.health)}
+        except Exception:                                # noqa: BLE001
+            # A malformed local record must not take the whole push with it.
+            return {"health_checks": []}
+
     def rows_machines(self):
         prov = self.store.provenance()
         return [{
@@ -850,6 +871,7 @@ class Sync:
         rows.update(self.rows_prefs())
         rows.update(self.rows_feedback())
         rows.update(self.rows_people())
+        rows.update(self.rows_health_checks())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())
@@ -1117,6 +1139,8 @@ class Sync:
         applied["feedback"] = self._apply_feedback(
             fetch("feedback"), fetch("feedback_notes"))
         applied["people"] = self._apply_people(fetch("people"))
+        applied["health_checks"] = self._apply_health_checks(
+            fetch("health_checks"))
         applied["errors"] = self._apply_errors(fetch("errors"))
         applied["error_marks"] = self._apply_error_marks(fetch("error_marks"))
         if on_progress:
@@ -1164,6 +1188,70 @@ class Sync:
                 self.store.record_error(
                     "cloud.pull.feedback", str(exc), None, {"id": rid})
         return n_applied
+
+    def _apply_health_checks(self, rows):
+        """File checks made on other machines.
+
+        Only ever adds. A check is never edited, so a row already here is
+        the same row -- there is no side to prefer and nothing to overwrite.
+        Grouped by session first so one recording's history is one write
+        rather than one write per check.
+        """
+        if not self.health or not rows:
+            return 0
+        by_gid = {}
+        for r in rows:
+            gid = r.get("gid")
+            if not gid or not r.get("id"):
+                continue
+            by_gid.setdefault(gid, []).append(r)
+
+        added = 0
+        for gid, incoming in by_gid.items():
+            rec = self.health.book.read(gid) or {}
+            rec["gid"] = gid
+            checks = list(rec.get("checks") or [])
+            have = {c.get("id") for c in checks}
+            grew = False
+            for r in incoming:
+                if r["id"] in have:
+                    continue
+                checks.append({
+                    "id": r["id"],
+                    "at": r.get("at"),
+                    "by": r.get("by_user"),
+                    "machine": r.get("machine"),
+                    "level": r.get("level"),
+                    "n_segments": r.get("n_segments"),
+                    "n_gaps": r.get("n_gaps"),
+                    "seconds_lost": r.get("seconds_lost"),
+                    "max_time_error_ms": r.get("max_time_error_ms"),
+                    "true_duration_s": r.get("true_duration_s"),
+                    "concat_duration_s": r.get("concat_duration_s"),
+                    "gap_map_sha": r.get("gap_map_sha"),
+                    "gap_rule": r.get("gap_rule"),
+                    "n_ncs": r.get("n_ncs"),
+                    "n_probed": r.get("n_probed"),
+                    "all_channels": bool(r.get("all_channels")),
+                    "mismatches": r.get("mismatches"),
+                })
+                have.add(r["id"])
+                added += 1
+                grew = True
+            if not grew:
+                continue
+            # The path is whatever this machine knows, or whatever the
+            # sender knew. A folder is mounted differently on every machine,
+            # so a path from elsewhere is a hint rather than a fact -- kept
+            # only when there is nothing better.
+            if not rec.get("path"):
+                rec["path"] = incoming[0].get("path")
+            if not rec.get("label"):
+                rec["label"] = incoming[0].get("label")
+            checks.sort(key=lambda c: str(c.get("at") or ""))
+            rec["checks"] = checks[-200:]
+            self.health.book.write(gid, rec)
+        return added
 
     def _apply_people(self, rows):
         """The roster. Somebody added on one computer becomes pickable here.
