@@ -2118,8 +2118,17 @@ BARRY.views.sessions = (function () {
         // Open showing what Jarvis already knows rather than an empty page.
         loadKnown();
         /* And what every continuity check has found, so the gap filters
-           have something to filter on the moment the view is open. */
-        loadContinuity().then(() => { if (continuity) renderTree(); });
+           and the gap chips have something to work from.
+
+           Only repainted if there is something to repaint. This is a small
+           local read and the registry is a slow one, so it finishes first --
+           and repainting then drew an empty tree over the skeleton that
+           says the registry is still being read. When the sessions have not
+           arrived yet, `loadKnown` draws them when they do, and by then the
+           summary is in hand, so the chips are on that first paint. */
+        loadContinuity().then(() => {
+          if (continuity && sessions.length) renderTree();
+        });
       }
     },
   };

@@ -1433,8 +1433,12 @@ code { font-family: var(--mono); }
 .recent-list button {
   padding: 2px 8px; font-size: 10.5px; border-radius: 999px;
   border: 1px solid var(--line); background: transparent; color: var(--text-2);
-  cursor: pointer; font-family: var(--mono); max-width: 260px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer; font-family: var(--mono);
+  /* Wrapped, not cut. These are paths you click to scan again, so the end
+     -- the part that tells one from another -- is exactly what an ellipsis
+     was hiding. Measured at 443 px of text in a 258 px box. */
+  max-width: 340px; white-space: normal; overflow-wrap: anywhere;
+  text-align: left; line-height: 1.35;
 }
 .recent-list button:hover { background: var(--bg-3); color: var(--text); }
 

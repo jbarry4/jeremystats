@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-14T17:44:43.303854+00:00",
+    "rel": "2026-09-14T17:44:43.303854+00:00",
+    "starred": "2026-09-14T17:44:43.303854+00:00",
+    "updated": "2026-09-14T17:44:43.303854+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T17:44:43.303854+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "toolkit/bad-channels_all_20260914_125942.csv",
+  "rel": "ToolKit/bad-channels_all_20260914_125942.csv",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-14T13:44:43-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

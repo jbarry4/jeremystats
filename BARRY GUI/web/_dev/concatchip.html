@@ -71,9 +71,15 @@ const get = async (u) => (await fetch(u)).json();
   if (!chips) throw new Error('no chip to check');
 
   say('note', '  ' + chips.length + ' chip(s) on screen');
-  ck('  one per recording on record with gaps',
-     chips.length === withGaps.length,
+  /* A chip for every one that is ON SCREEN. The log covers the whole
+     archive; the list is whatever the current filter and scan show, so it
+     can hold fewer. What must not happen is a chip for a recording the log
+     says is clean, or a gappy one on screen without one. */
+  ck('  never more chips than recordings on record',
+     chips.length <= withGaps.length,
      chips.length + ' chips vs ' + withGaps.length + ' recordings');
+  ck('  and at least one, so the chip is reachable',
+     chips.length > 0, chips.length);
 
   /* It has to say something, and the something has to be the segment
      count -- a red mark that does not say what is wrong is decoration. */

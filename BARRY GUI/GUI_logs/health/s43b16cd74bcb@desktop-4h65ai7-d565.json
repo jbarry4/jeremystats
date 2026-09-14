@@ -9,11 +9,15 @@
       "93b7ecae9cfa": [
         "set",
         "2026-09-14T16:22:58.109662+00:00"
+      ],
+      "9b44e2ef783f": [
+        "set",
+        "2026-09-14T16:40:22.955244+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T16:22:58.109662+00:00",
+    "at": "2026-09-14T16:40:22.955244+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -36,6 +40,25 @@
       "n_segments": 1,
       "seconds_lost": 0.0,
       "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 2457.578658
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:40:12.054025+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 2457.5957,
+      "gap_map_sha": "81ffa8c7cf719ea7",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "9b44e2ef783f",
+      "level": "ok",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0,
       "true_duration_s": 2457.578658
     }
   ],

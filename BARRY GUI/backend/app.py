@@ -27,6 +27,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
                retime as retimemod,
+               spectrum as spectrummod,
                device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
@@ -1133,6 +1134,96 @@ def api_cfc_comodulogram():
                    "cells": n_slow * n_fast},
     }])
     return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
+
+
+def _spectrum_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    An empty window means the whole recording, which is the thing this view
+    is for -- "where does the power sit in this session" is not a question
+    about a ten-second look.
+    """
+    dur = float(sess.get("duration_s") or 0.0)
+    t0 = float(body.get("t0") or 0.0)
+    t1 = float(body.get("t1") or 0.0)
+    if t1 <= t0:
+        t0, t1 = 0.0, dur
+    chans = body.get("channels")
+    if not chans:
+        # Whatever the session has selected, or the first channel. Never all
+        # sixty-four by accident: that is a minute of work nobody asked for.
+        chans = [c["index"] for c in (sess.get("channels") or [])][:1]
+    return {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "t0": max(0.0, t0),
+        "t1": min(t1, dur) if dur else t1,
+        "fmax": float(body.get("fmax") or spectrummod.DEFAULT_FMAX),
+        "segment_s": float(body.get("segment_s") or 8.0),
+        "even_only": bool(sess.get("even_only")),
+    }
+
+
+@app.route("/api/spectrum/estimate", methods=["POST"])
+def api_spectrum_estimate():
+    """What a run would do, and how long it would take here.
+
+    Asked before anything is read, so the window can say what it is about to
+    cost rather than going quiet for a minute.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _spectrum_spec(body, sess)
+        plan = spectrummod.estimate(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("spectrum/estimate", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True, "plan": plan, "spec": spec,
+                    "cached": spectrummod.cache_get(
+                        spectrummod.cache_key(spec)) is not None})
+
+
+@app.route("/api/spectrum/run", methods=["POST"])
+def api_spectrum_run():
+    """Start one. Poll it on /api/cfc/job/<id>, which is not cfc-specific."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _spectrum_spec(body, sess)
+        plan = spectrummod.plan_for(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("spectrum/run", exc, 400, {"path": body.get("path")})
+
+    key = spectrummod.cache_key(spec)
+    hit = spectrummod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    steps = [("spectrum read",
+              int(plan["span_s"] * plan["n_channels"])),
+             ("spectrum", plan["n_channels"]),
+             ("draw", 1)]
+
+    def work(job):
+        out = spectrummod.run(sess, spec, job)
+        spectrummod.cache_put(key, out)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "spectrum.run",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channels": len(spec["channels"]),
+                   "fmax": spec["fmax"],
+                   "whole": spec["t0"] <= 0
+                            and spec["t1"] >= (sess.get("duration_s") or 0)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan})
 
 
 @app.route("/api/cfc/cache")
