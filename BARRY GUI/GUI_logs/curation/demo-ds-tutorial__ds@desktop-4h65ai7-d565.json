@@ -17,7 +17,7 @@
     "schema": "2026-09-04T21:16:32.824118+00:00",
     "session_label": "2026-09-04T21:16:32.824118+00:00",
     "source": "2026-09-04T21:16:32.824118+00:00",
-    "updated": "2026-09-14T14:05:20.071888+00:00"
+    "updated": "2026-09-14T14:05:24.512064+00:00"
   },
   "_keys": {
     "events": {
@@ -115,12 +115,12 @@
       ],
       "ef47ab02c57": [
         "set",
-        "2026-09-14T13:49:30.640788+00:00"
+        "2026-09-14T14:05:24.512064+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T14:05:20.071888+00:00",
+    "at": "2026-09-14T14:05:24.512064+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -138,11 +138,10 @@
   },
   "events": [
     {
-      "at": "2026-09-14T09:49:30-0400",
+      "at": "2026-09-14T10:05:24-0400",
       "by": "Shahriar Tafti",
-      "cleared_at": "2026-09-14T09:49:30-0400",
       "id": "ef47ab02c57",
-      "label": "spike",
+      "label": "garbage",
       "reviews": [
         {
           "at": "2026-09-08T17:04:27-0400",
@@ -150,9 +149,9 @@
           "label": "spike"
         },
         {
-          "at": "2026-09-14T09:49:30-0400",
+          "at": "2026-09-14T10:05:24-0400",
           "by": "Shahriar Tafti",
-          "label": "spike"
+          "label": "garbage"
         }
       ],
       "start": 3.4
@@ -1208,7 +1207,7 @@
     "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
   },
   "updated": {
-    "at": "2026-09-14T10:05:20-04:00",
+    "at": "2026-09-14T10:05:24-04:00",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
