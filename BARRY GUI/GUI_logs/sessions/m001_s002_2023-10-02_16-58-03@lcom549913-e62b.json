@@ -25,8 +25,8 @@
     "session": "2026-09-04T15:57:01.566631+00:00",
     "spike_labels": "2026-09-04T15:57:01.566631+00:00",
     "start": "2026-09-04T15:57:01.566631+00:00",
-    "updated": "2026-09-10T20:35:46.576029+00:00",
-    "view_state": "2026-09-10T18:34:08.380764+00:00"
+    "updated": "2026-09-11T16:13:01.677633+00:00",
+    "view_state": "2026-09-11T16:13:01.677633+00:00"
   },
   "_keys": {
     "paths": {
@@ -86,12 +86,12 @@
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:46.576029+00:00"
+        "2026-09-11T15:57:31.584826+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T20:35:46.576029+00:00",
+    "at": "2026-09-11T16:13:01.677633+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -180,12 +180,12 @@
       "scan": null
     },
     "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:46-04:00",
-      "by": "Shahriar Tafti",
-      "machine": "Bluebarry",
+      "at": "2026-09-11T11:57:27-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
-      "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
@@ -194,12 +194,12 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "at": "2026-09-10T16:35:46-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-11T12:13:01-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
-    "machine": "Bluebarry",
+    "machine": "Blackbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Isabella Piatek"
   },
   "view_state": {
     "channels": [
@@ -249,9 +249,9 @@
     "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 100,
+    "span": 6,
     "stft_mode": null,
-    "t0": 751.4723929588531,
+    "t0": 529.387646060606,
     "ylim": null
   }
 }
