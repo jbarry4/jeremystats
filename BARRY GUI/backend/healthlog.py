@@ -32,7 +32,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from . import shards
+from . import retime, shards
 
 # The history unions across machines rather than the newest file winning.
 # Two people checking the same recording is two facts, not a conflict.
@@ -181,12 +181,26 @@ class HealthLog:
             if not gid or not last:
                 continue
             entries = by_gid.get(gid) or []
-            # Patched means every banked set on this recording carries a
-            # basis stamp saying it is on the raw clock. One corrected set
-            # beside one uncorrected set is not a corrected recording.
-            stamped = [((e.get("time_basis") or {}).get("kind")) for e in entries]
-            patched = bool(entries) and all(k == "neuralynx_true"
+            # What clock each banked set is on, asked of the one function
+            # that knows. NOT read straight off `time_basis`: that stamp is
+            # written by the correction, so a set which never needed
+            # correcting -- detected in house, already on the recording's
+            # own clock -- has none, and reading the stamp alone called its
+            # recording unpatched and invited somebody to go and fix it.
+            #
+            # `basis_of` answers from the stamp where there is one and from
+            # the pipeline where there is not, with the evidence for each
+            # written down in `retime.py`.
+            bases = [retime.basis_of(e) for e in entries]
+            stamped = [b.get("basis") for b in bases]
+            patched = bool(entries) and all(k == retime.TRUE
                                             for k in stamped)
+            # Of those, the ones that were born right rather than repaired.
+            # A different fact from `patched`, and worth its own word: this
+            # recording needs nothing done to it and never did.
+            safe = sum(1 for b in bases
+                       if b.get("basis") == retime.TRUE
+                       and not b.get("stamped"))
             out[gid] = {
                 "gid": gid,
                 "path": rec.get("path"),
@@ -203,6 +217,11 @@ class HealthLog:
                 "gap_map_sha": last.get("gap_map_sha"),
                 "all_channels": last.get("all_channels"),
                 "concat_issue": int(last.get("n_segments") or 1) > 1,
+                # Sets that never needed the correction because of how they
+                # were made. `patched` says the problem was dealt with;
+                # this says there was never one to deal with.
+                "concat_safe": safe,
+                "all_concat_safe": bool(entries) and safe == len(entries),
                 "n_banked": len(entries),
                 "n_events": sum(int(e.get("n") or 0) for e in entries),
                 "patched": patched,

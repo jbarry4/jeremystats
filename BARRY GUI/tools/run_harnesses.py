@@ -51,8 +51,19 @@ ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
 # A browser profile of the suite's own. See the note on
 # --user-data-dir below: without it a run competes with whatever
 # browser is already open and silently produces nothing.
+# This run's own, and nobody else's.
+#
+# A fixed directory keeps the suite out of the way of the browser the person
+# at the computer has open -- that is why it exists -- but an Edge left over
+# from an earlier run still holds it, and a second instance then hands its
+# URL to the first and exits without writing anything. Every harness reports
+# zero checks, which is indistinguishable from a clean sweep.
+#
+# Named for the process, so two suites can run at once, and removed at the
+# end. The alternative was killing every Edge on the machine, which takes
+# the user's browser with it.
 PROFILE = os.path.join(tempfile.gettempdir(),
-                       "jarvis-harness-profile")
+                       "jarvis-harness-profile-%d" % os.getpid())
 
 # The demo recording, as xplore.open() takes it: checked in, always
 # reachable, and nothing driving it can touch real curation data.
@@ -179,6 +190,15 @@ def strip(doc):
     # ^-anchored counts see one of them.
     doc = TAG.sub("\n", doc)
     return html.unescape(doc)
+
+
+def drop_profile():
+    """Remove this run's browser profile. Failure here costs nothing."""
+    import shutil
+    try:
+        shutil.rmtree(PROFILE, ignore_errors=True)
+    except Exception:                                    # noqa: BLE001
+        pass
 
 
 def main():
@@ -325,5 +345,12 @@ def main():
     return 1 if broken else 0
 
 
+def _run():
+    try:
+        return main()
+    finally:
+        drop_profile()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run())

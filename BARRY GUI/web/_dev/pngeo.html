@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Panorama geometry</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:38vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:62vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0#toolkit"></iframe>
+<script>
+/* Where the boxes actually are. "It looks squashed" and "the chart is
+   invisible" are questions about rectangles, and a DOM assertion that an
+   element exists answers neither -- a canvas with zero height is present and
+   useless.
+
+   Measured at two widths, because the two-column step-1 grid has to become
+   one column rather than overflowing. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 900, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) {}
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => {
+  const f = document.getElementById('app');
+  const ev = (s) => f.contentWindow.eval(s);
+  const D = () => f.contentWindow.document;
+  const box = (sel) => {
+    const e = D().querySelector(sel);
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    return { x: Math.round(r.x), y: Math.round(r.y),
+             w: Math.round(r.width), h: Math.round(r.height) };
+  };
+
+  await untilN(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.panorama'));
+  ev('setView("toolkit")');
+  await untilN(() => D().querySelector('.tk-tools'));
+  const hit = Array.from(D().querySelectorAll('.tk-tool'))
+    .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
+  hit.click();
+  await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
+  ev('BARRY.panorama.openRecording("demo:long-session",'
+     + ' {label:"demo", t0:0, t1:180})');
+  await untilN(() => ev('!!BARRY.panorama.estimate'));
+  ev('BARRY.panorama.run()');
+  await untilN(() => ev('!!BARRY.panorama.result'));
+  await sleep(800);
+
+  async function measure(width, label) {
+    f.style.width = width + 'px';
+    document.getElementById('out').style.width = 'calc(100vw - ' + width + 'px)';
+    /* Repaint, not just resize. A bare resize event redraws the canvases but
+       leaves everything the shared components sized once -- the session
+       picker above all -- at its old width, and measuring that reports a
+       stale layout rather than this tool's. Repainting is what the panel
+       does the next time anything is touched. */
+    ev('window.dispatchEvent(new Event("resize")); BARRY.panorama.paint()');
+    await sleep(700);
+    hd(label + '  (frame ' + Math.round(f.getBoundingClientRect().width) + 'px)');
+    for (const sel of ['.pn-setup', '.pn-grid', '.pn-sg-img', '#pnSgAxes',
+                       '#pnHist', '#pnPsd']) {
+      const b = box(sel);
+      p('   ' + sel.padEnd(14) + (b ? (b.w + ' x ' + b.h + '  at ' + b.x + ',' + b.y)
+                                    : 'MISSING'));
+    }
+    const sg = box('.pn-sg-img'), ax = box('#pnSgAxes');
+    const hist = box('#pnHist'), psd = box('#pnPsd'), grid = box('.pn-grid');
+    ck('the spectrogram has real area', !!sg && sg.w > 150 && sg.h > 80,
+       sg ? sg.w + 'x' + sg.h : 'none');
+    ck('the axes overlay sits exactly on it',
+       !!sg && !!ax && Math.abs(sg.x - ax.x) <= 1 && Math.abs(sg.y - ax.y) <= 1
+       && Math.abs(sg.w - ax.w) <= 1 && Math.abs(sg.h - ax.h) <= 1,
+       sg && ax ? (sg.w + 'x' + sg.h + ' vs ' + ax.w + 'x' + ax.h) : 'none');
+    ck('the histogram has real area', !!hist && hist.w > 150 && hist.h > 80,
+       hist ? hist.w + 'x' + hist.h : 'none');
+    ck('the spectrum has real area', !!psd && psd.w > 150 && psd.h > 80,
+       psd ? psd.w + 'x' + psd.h : 'none');
+    const panes = D().querySelectorAll('.pn-grid .pn-pane');
+    if (panes.length === 2) {
+      const a = panes[0].getBoundingClientRect();
+      const b = panes[1].getBoundingClientRect();
+      const side = Math.abs(a.y - b.y) < 20;
+      p('   step 1 panes are ' + (side ? 'side by side' : 'stacked'));
+    }
+    // Nothing may push the pane sideways -- and if something does, name it.
+    const host = D().querySelector('#tkResult');
+    const over = host ? (host.scrollWidth - host.clientWidth) : 0;
+    if (over > 1) {
+      const edge = host.getBoundingClientRect().right;
+      const guilty = [];
+      host.querySelectorAll('*').forEach((e) => {
+        const r = e.getBoundingClientRect();
+        if (r.width && r.right > edge + 1) {
+          guilty.push('      ' + e.tagName.toLowerCase()
+            + '.' + (e.className || '(none)').toString().split(' ').join('.')
+            + '  w=' + Math.round(r.width)
+            + '  over by ' + Math.round(r.right - edge));
+        }
+      });
+      p('   widest offenders:');
+      guilty.slice(0, 8).forEach(p);
+      if (!guilty.length) p('      (nothing sticks out; the scroller is wider than its content box)');
+    }
+    ck('no horizontal overflow in the tool pane', over <= 1, over + 'px');
+    return { grid: grid, panes: panes.length };
+  }
+
+  const wide = await measure(1180, 'wide');
+  const narrow = await measure(620, 'narrow');
+
+  hd('it reflows rather than overflowing');
+  const wp = D().querySelectorAll('.pn-grid .pn-pane');
+  ck('both panes survive the narrow width', wp.length === 2, wp.length + '');
+
+  p('\n' + (bad ? 'FAILED ' + bad : 'ALL PASS'));
+  document.title = bad ? ('FAIL ' + bad) : 'PASS';
+})();
+</script>

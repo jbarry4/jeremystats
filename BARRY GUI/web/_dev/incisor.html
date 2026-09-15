@@ -115,7 +115,7 @@ async function pickShortest() {
       const r = await fetch('/api/incisor/estimate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: (row.here || [])[0],
-                               channels: [0, 8, 16, 24, 32, 40, 48, 56] }),
+                               channels: [0, 40] }),
       });
       return r.ok ? JSON.stringify(await r.json()).slice(0, 200) : null;
     })());
@@ -124,10 +124,15 @@ async function pickShortest() {
 
   head('The route does the whole scan');
   const t = Date.now();
-  /* Eight channels, not sixty-four. This is testing the wiring -- the job,
-     the stages, the shape of the answer -- and the arithmetic is checked
-     against Toothy's own code in tools/check_against_toothy_code.py. */
-  const some = [0, 8, 16, 24, 32, 40, 48, 56];
+  /* Two channels, not sixty-four.
+  
+     This tests the wiring -- the job, its stages, the shape of the answer,
+     and the lines landing on the right lanes. The arithmetic is checked
+     against Toothy's own code in tools/check_against_toothy_code.py, and
+     the suite gives each harness 150 seconds of virtual time, which a
+     full-probe scan of a half-hour recording over the share does not fit
+     inside. */
+  const some = [0, 40];
   const started = await (await fetch('/api/incisor/scan', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: (row.here || [])[0], channels: some }),
@@ -138,7 +143,7 @@ async function pickShortest() {
     while (Date.now() - t < 900000) {
       snap = (await (await fetch('/api/cfc/job/' + started.job.id)).json()).job;
       if (snap.status !== 'running') break;
-      await sleep(700);
+      await sleep(400);
     }
     ck('the scan finished', snap && snap.status === 'done',
        snap && (snap.error || snap.status));

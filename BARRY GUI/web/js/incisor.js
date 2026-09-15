@@ -43,12 +43,22 @@ BARRY.incisor = (function () {
   const q = {
     gid: null,
     path: null,
+    // The picked registry row. A banked set has to say which animal and
+    // session it belongs to, or it files itself under "Unfiled" and is
+    // never found again.
+    row: null,
     channels: null,       // null means every channel
     height_sd: 4.5,
     abs_uv: 300,
     dist_ms: 100,
     wlen_ms: 125,
     estimator: 'sd',
+  };
+
+  /* Toothy's own, from qparam.py. Named once so the "changed" tag and the
+     reset cannot drift apart from what the fields start at. */
+  const DEFAULTS = {
+    height_sd: 4.5, abs_uv: 300, dist_ms: 100, wlen_ms: 125,
   };
 
   let est = null;        // what a scan would cost
@@ -181,34 +191,88 @@ BARRY.incisor = (function () {
         chosen[r.key] = pick.number;
       }
     }
-    publishLines();
+    pushLines();
   }
 
   /* ==================================================================
-     The lines on XploreFinder
-     ================================================================== */
-  /* The point of the whole step: the chosen channels, drawn across the
-     traces, draggable. XploreFinder owns the geometry -- it knows which
-     lane a channel is on, because it drew them -- so this publishes what to
-     mark and lets it do the marking. */
-  function publishLines() {
-    const xf = BARRY.views.xplore;
-    if (!xf || !xf.setChannelLines) return;
-    const sess = xf.current && xf.current();
-    if (!sess || sess.path !== q.path) return;
-    xf.setChannelLines(sess, ROLES.map((r) => ({
-      key: r.key, label: r.label, colour: r.colour,
-      number: chosen[r.key] == null ? null : Number(chosen[r.key]),
-      onmove: (number) => { chosen[r.key] = number; publishLines(); paint(); },
-    })).filter((x) => x.number != null || res));
+     The traces, in a window of their own
+     ==================================================================
+     Not by taking over XploreFinder in this window: that replaced the panel
+     and left nowhere to go back to, and the lines had to be published into
+     whatever recording happened to already be open -- which is why they
+     sometimes did not appear at all.
+
+     A window opens on the scanned recording because its URL says so, and
+     closing it is the way back. The same arrangement Braid uses for its
+     panels and its comodulogram. */
+  let traceWin = null;
+
+  function tracesOpen() {
+    try { return !!(traceWin && !traceWin.closed); } catch (e) { return false; }
   }
 
-  async function openRecording() {
-    if (!q.path) return;
-    setView('xplore');
-    const sess = await BARRY.views.xplore.open(q.path);
-    if (sess) publishLines();
-    return sess;
+  async function openTraces() {
+    if (tracesOpen()) {
+      try { traceWin.focus(); } catch (e) {}
+      pushLines();
+      return traceWin;
+    }
+    if (!q.path) return null;
+    const args = new URLSearchParams({
+      csc: q.path,
+      panes: JSON.stringify([{ panel: 'traces' }]),
+      chrome: 'notabs,noheads',
+      role: 'incisor',
+      theme: (BARRY.state && BARRY.state.theme) || 'dark',
+    });
+    traceWin = window.open(location.origin + '/?' + args.toString()
+                           + '#xplore', 'barry-incisor-traces',
+                          'width=1180,height=900,menubar=no,toolbar=no');
+    if (!traceWin) {
+      toast('The traces window was blocked. Allow pop-ups for 127.0.0.1, '
+            + 'then press “Show them on the traces” again.', 'err', 9000);
+      return null;
+    }
+    paint();
+    /* Waited for rather than assumed. The window is a whole app booting --
+       it has to read the recording before it has lanes to draw a line on --
+       and publishing into it early is how the lines went missing before. */
+    const until = Date.now() + 60000;
+    while (Date.now() < until) {
+      if (!tracesOpen()) { paint(); return null; }
+      if (pushLines()) { paint(); return traceWin; }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    toast('The traces window did not finish opening that recording.',
+          'err', 8000);
+    return traceWin;
+  }
+
+  /* Returns whether the lines actually landed, so the caller can keep
+     waiting instead of believing it worked. */
+  function pushLines() {
+    if (!tracesOpen()) return false;
+    let xf = null;
+    try { xf = traceWin.barryXplore; } catch (e) { return false; }
+    if (!xf || !xf.setChannelLines || !xf.current) return false;
+    let sess = null;
+    try { sess = xf.current(); } catch (e) { return false; }
+    if (!sess) return false;
+    try {
+      xf.setChannelLines(sess, ROLES.map((r) => ({
+        key: r.key, label: r.label, colour: r.colour,
+        number: chosen[r.key] == null ? null : Number(chosen[r.key]),
+        // Dragged in the other window, remembered in this one.
+        onmove: (number) => { chosen[r.key] = number; paint(); },
+      })).filter((x) => x.number != null));
+    } catch (e) { return false; }
+    return true;
+  }
+
+  function closeTraces() {
+    if (tracesOpen()) { try { traceWin.close(); } catch (e) {} }
+    traceWin = null;
+    paint();
   }
 
   /* ==================================================================
@@ -216,8 +280,20 @@ BARRY.incisor = (function () {
      ================================================================== */
   function paint() {
     const host = document.getElementById('tkResult');
-    if (!host || (BARRY.views.toolkit.tool
-                  && BARRY.views.toolkit.tool() !== 'incisor')) return;
+    if (!host) return;
+    /* Fails CLOSED. The first version was
+     *   if (tk.tool && tk.tool() !== 'incisor') return;
+     * which draws when it cannot tell which tool is open -- so a page
+     * holding an older toolkit.js, where `tool` is not exported yet,
+     * painted this panel over whatever was actually showing and threw from
+     * inside it. The error then names Incisor's variables while the person
+     * is looking at another tool, which is about as misleading as an error
+     * can be. Not knowing is a reason not to draw.
+     */
+    const tk = BARRY.views.toolkit;
+    if (!tk || typeof tk.tool !== 'function' || tk.tool() !== 'incisor') {
+      return;
+    }
     host.innerHTML = '';
     host.appendChild(head());
     host.appendChild(pickCard());
@@ -252,6 +328,7 @@ BARRY.incisor = (function () {
       placeholder: 'Type a mouse, session or date…',
       onpick: (r) => {
         q.gid = r.gid;
+        q.row = r;
         q.path = (r.here || [])[0] || null;
         reset();
         refreshEstimate();
@@ -313,52 +390,101 @@ BARRY.incisor = (function () {
   }
 
   function params() {
-    const num = (key, label, step, title) => el('label', {
-      class: 'comod-field', title: title,
-    }, [
-      el('span', { text: label }),
-      el('input', {
-        type: 'number', value: q[key], step: step,
-        onchange: (e) => {
-          const v = parseFloat(e.target.value);
-          if (!isFinite(v)) { e.target.value = q[key]; return; }
-          q[key] = v; refreshEstimate(); paint();
-        },
-      }),
-    ]);
+    /* Each number decides what counts as a dentate spike, so each says what
+       it means and carries Toothy's own name for it -- `ds_height_thr` and
+       the rest are what you would grep for in `qparam.py`, and a panel that
+       renames them quietly makes that harder. */
+    const FIELDS = [
+      { key: 'height_sd', label: 'Height', unit: 'S.D.', step: 0.1,
+        toothy: 'ds_height_thr',
+        why: 'How far above this channel\u2019s own noise a peak has to '
+           + 'reach. Multiplied by the standard deviation of its filtered '
+           + 'trace, so it means the same thing on a quiet channel and a '
+           + 'loud one.' },
+      { key: 'abs_uv', label: 'Floor', unit: '\u00b5V', step: 10,
+        toothy: 'ds_abs_thr',
+        why: 'And never less than this, whatever the noise. Toothy\u2019s '
+           + '0.3 mV. On a quiet channel this is what binds.' },
+      { key: 'dist_ms', label: 'Min. spacing', unit: 'ms', step: 5,
+        toothy: 'ds_dist_thr',
+        why: 'Two peaks closer together than this are one event; the taller '
+           + 'is kept.' },
+      { key: 'wlen_ms', label: 'Width window', unit: 'ms', step: 5,
+        toothy: 'ds_wlen',
+        why: 'How far either side of a peak to look when measuring how wide '
+           + 'it is. Does not decide what is detected \u2014 only what is '
+           + 'recorded about it.' },
+    ];
+
+    const rows = FIELDS.map((f) => el('div', { class: 'inc-param' }, [
+      el('div', { class: 'inc-param-head' }, [
+        el('label', { class: 'inc-param-name' }, [
+          el('span', { text: f.label }),
+          el('input', {
+            type: 'number', value: q[f.key], step: f.step,
+            onchange: (e) => {
+              const v = parseFloat(e.target.value);
+              if (!isFinite(v)) { e.target.value = q[f.key]; return; }
+              q[f.key] = v; refreshEstimate(); paint();
+            },
+          }),
+          el('span', { class: 'inc-param-unit', text: f.unit }),
+        ]),
+        el('code', { class: 'inc-param-src', text: f.toothy,
+                     title: 'Toothy\u2019s name for it, in qparam.py' }),
+      ]),
+      el('p', { class: 'inc-param-why', text: f.why }),
+    ]));
+
+    const changed = FIELDS.some((f) => q[f.key] !== DEFAULTS[f.key])
+                    || q.estimator !== 'sd';
+
     return el('details', { class: 'incisor-params' }, [
-      el('summary', { text: 'Detection parameters' }),
-      el('p', { class: 'hint quiet',
-        text: 'Toothy’s defaults, from qparam.py. Changing one changes '
-            + 'what counts as a dentate spike.' }),
-      el('div', { class: 'comod-row' }, [
-        num('height_sd', 'Height (S.D.)', 0.1,
-            'Peak height in standard deviations of this channel’s '
-            + 'filtered trace. Toothy’s ds_height_thr.'),
-        num('abs_uv', 'Floor (µV)', 10,
-            'Absolute minimum height. Toothy’s ds_abs_thr of 0.3 mV.'),
-        num('dist_ms', 'Min. spacing (ms)', 5,
-            'Minimum interval between events. Toothy’s ds_dist_thr.'),
-        num('wlen_ms', 'Width window (ms)', 5,
-            'Window for evaluating peak width. Toothy’s ds_wlen.'),
+      el('summary', {}, [
+        el('span', { text: 'Detection parameters' }),
+        el('span', { class: 'inc-param-tag',
+                     text: changed ? 'changed' : 'Toothy\u2019s defaults' }),
       ]),
-      el('label', { class: 'comod-check',
-        title: 'Toothy uses the standard deviation, so that is the default '
-             + 'and a number from it is comparable with a number from '
-             + 'Toothy. The median absolute deviation is more robust — '
-             + 'one large artifact raises the S.D. enough to hide every '
-             + 'real event after it — but it is a deviation from the '
-             + 'reference, so it is asked for rather than assumed.' }, [
-        el('input', {
-          type: 'checkbox', checked: q.estimator === 'mad' ? 'checked' : null,
-          onchange: (e) => {
-            q.estimator = e.target.checked ? 'mad' : 'sd';
-            refreshEstimate(); paint();
-          },
-        }),
-        el('span', { text: 'Use the median absolute deviation instead of '
-                         + 'the S.D. (not what Toothy does)' }),
-      ]),
+      el('div', { class: 'inc-param-body' }, [
+        el('p', { class: 'hint quiet',
+          text: 'These are the numbers that decide what counts as a dentate '
+              + 'spike. The defaults are Toothy\u2019s own, from qparam.py, '
+              + 'and a set detected with them is comparable with one of '
+              + 'Toothy\u2019s.' }),
+        el('div', { class: 'inc-params-grid' }, rows),
+        el('div', { class: 'inc-param', style: 'grid-column:1/-1' }, [
+          el('label', { class: 'comod-check' }, [
+            el('input', {
+              type: 'checkbox',
+              checked: q.estimator === 'mad' ? 'checked' : null,
+              onchange: (e) => {
+                q.estimator = e.target.checked ? 'mad' : 'sd';
+                refreshEstimate(); paint();
+              },
+            }),
+            el('span', { text: 'Measure the noise with the median absolute '
+                             + 'deviation' }),
+          ]),
+          el('p', { class: 'inc-param-why',
+            text: 'Toothy uses the standard deviation, so that is the '
+                + 'default and a number from it is comparable with a number '
+                + 'from Toothy. The median absolute deviation is more '
+                + 'robust \u2014 one large artifact raises the S.D. enough '
+                + 'to hide every real event after it \u2014 but it is a '
+                + 'departure from the reference, so it is asked for rather '
+                + 'than assumed.' }),
+        ]),
+        changed ? el('div', { class: 'tk-actions' }, [
+          el('button', {
+            class: 'btn ghost sm', text: 'Back to Toothy\u2019s defaults',
+            onclick: () => {
+              Object.assign(q, DEFAULTS);
+              q.estimator = 'sd';
+              refreshEstimate(); paint();
+            },
+          }),
+        ]) : null,
+      ].filter(Boolean)),
     ]);
   }
 
@@ -466,7 +592,7 @@ BARRY.incisor = (function () {
               onchange: (e) => {
                 chosen[r.key] = e.target.value === ''
                   ? null : parseInt(e.target.value, 10);
-                publishLines(); paint();
+                pushLines(); paint();
               },
             }, [el('option', { value: '', text: '— choose —',
                                selected: now == null ? 'selected' : null })]
@@ -475,7 +601,7 @@ BARRY.incisor = (function () {
               class: 'btn ghost sm', text: 'Reset',
               title: 'Back to what the scan chose: ' + pick.label,
               onclick: () => {
-                chosen[r.key] = pick.number; publishLines(); paint();
+                chosen[r.key] = pick.number; pushLines(); paint();
               },
             }) : null,
           ].filter(Boolean)),
@@ -510,11 +636,17 @@ BARRY.incisor = (function () {
 
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
-        class: 'btn ghost', text: 'Show them on the traces',
-        title: 'Opens the recording in XploreFinder with a line across each '
-             + 'chosen channel. Drag one to move it.',
-        onclick: openRecording,
+        class: 'btn ghost',
+        text: tracesOpen() ? 'Focus the traces window'
+                           : 'Show them on the traces\u2026',
+        title: 'Opens the recording in a window of its own with a line '
+             + 'across each chosen channel. Drag a line to move it; close '
+             + 'the window when you are done. This panel stays where it is.',
+        onclick: openTraces,
       }),
+      tracesOpen() ? el('button', {
+        class: 'btn ghost sm', text: 'Close it', onclick: closeTraces,
+      }) : null,
       unresolved ? el('span', { class: 'hint warn',
         text: 'Choose a channel above before banking.' }) : null,
     ].filter(Boolean)));
@@ -530,14 +662,33 @@ BARRY.incisor = (function () {
     box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
                                 text: '4. Bank the candidates' }));
     if (!row) {
-      box.appendChild(el('p', { class: 'hint quiet',
-        text: 'Choose a hilus channel above first.' }));
+      /* A question, not a dead end. This is reached when the scan and the
+         recording's own notes name different channels, and the panel
+         deliberately picks neither -- so it has to say what to do next
+         rather than leave a sentence with no verb in it. */
+      box.appendChild(el('p', { class: 'hint',
+        text: 'Pick the hilus channel in step 3 and the candidates on it '
+            + 'appear here. Nothing is chosen for you because the scan and '
+            + 'this recording’s own notes name different channels — look at '
+            + 'them on the traces and decide.' }));
+      box.appendChild(el('div', { class: 'tk-actions' }, [
+        el('button', {
+          class: 'btn ghost',
+          text: tracesOpen() ? 'Focus the traces window'
+                             : 'Show them on the traces\u2026',
+          onclick: openTraces,
+        }),
+      ]));
       return box;
     }
-    const evs = ((res.by_channel || {})[String(row.index)]) || [];
+    /* The count comes with the scan; the events themselves are fetched
+       when they are needed. Shipping all sixty-four channels' events to
+       draw one of them made a response large enough to be cut off in
+       transit, which arrives as a 200 that will not parse. */
+    const n = Number((res.n_by_channel || {})[String(row.index)] || 0);
 
     box.appendChild(el('p', { class: 'hint',
-      text: evs.length + ' candidate' + (evs.length === 1 ? '' : 's')
+      text: n + ' candidate' + (n === 1 ? '' : 's')
           + ' on ' + row.label + '  ·  threshold '
           + (row.thr_uv || 0).toFixed(1) + ' µV ('
           + (row.thr_source === 'sd'
@@ -586,8 +737,8 @@ BARRY.incisor = (function () {
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
         class: 'btn', text: banking ? 'Banking…' : 'Bank and vet…',
-        disabled: (banking || !evs.length) ? 'disabled' : null,
-        onclick: () => bank(row, evs),
+        disabled: (banking || !n) ? 'disabled' : null,
+        onclick: () => bank(row),
       }),
       el('span', { class: 'hint quiet',
         text: 'Banks them as an UNCURATED set and opens DS curation. '
@@ -596,9 +747,22 @@ BARRY.incisor = (function () {
     return box;
   }
 
-  async function bank(row, evs) {
+  async function bank(row) {
     const who = await BARRY.profile.who();
     if (!who) return;
+    /* Fetched now rather than carried since the scan: out of the same cache
+       the scan filled, so this costs a small request and no reading. */
+    let evs;
+    try {
+      const got = await apiPost('/api/incisor/events',
+                                body({ channel: row.index }));
+      evs = got.events || [];
+    } catch (e) {
+      toast('Those candidates are no longer cached — run the scan again. ('
+            + e.message + ')', 'err', 9000);
+      return;
+    }
+    if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
     const ok = await BARRY.confirm(
       'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
       el('div', { class: 'fix-facts' }, [
@@ -617,9 +781,20 @@ BARRY.incisor = (function () {
     if (!ok) return;
     banking = true; paint();
     try {
+      const r = q.row || {};
       const added = await apiPost('/api/bank/add', {
         gid: q.gid,
+        // Who this belongs to. Without it the entry is filed under
+        // "Unfiled / m / s" and cannot be found by the animal it came from.
+        project: r.project,
+        mouse: r.mouse,
+        session: r.session,
+        session_key: r.key,
+        session_loose_key: r.loose_key,
+        session_label: r.label,
+        duration_s: r.duration_s,
         type: 'ds',
+        type_name: 'Dentate spike',
         name: 'Incisor ' + row.label,
         pipeline: 'Incisor (dentate spike)',
         added_by: who,
@@ -633,8 +808,40 @@ BARRY.incisor = (function () {
       });
       const id = (added.entry || {}).id || added.id;
       toast(evs.length + ' candidate(s) banked.', 'ok');
-      await apiPost('/api/curation/from-bank',
-                    { entry_id: id, gid: q.gid, kind: 'ds' });
+
+      /* `entry`, not `entry_id` -- and `replace` said out loud.
+         A recording has one curation set per kind, so starting this one
+         replaces whatever is there, and the route refuses unless the caller
+         says it means to. Asked here rather than sent blindly: the set
+         being replaced may be somebody's half-finished pass. */
+      let existing = null;
+      try {
+        existing = await api('/api/curation/' + encodeURIComponent(q.gid)
+                             + '/ds');
+      } catch (e) { existing = null; }
+      const had = ((existing || {}).set || {}).n || 0;
+      if (had) {
+        const go = await BARRY.confirm(
+          'Replace the curation set on this recording?',
+          el('div', { class: 'fix-facts' }, [
+            el('p', { text: 'There is already a dentate spike set here with '
+                + had + ' candidate(s) in it. Starting one from these '
+                + 'candidates replaces it.' }),
+            el('p', { class: 'hint quiet',
+              text: 'The banked sets are untouched either way — this is '
+                  + 'about which one is on the workbench. The one being '
+                  + 'replaced can be started again from the bank.' }),
+          ]), 'Replace it');
+        if (!go) {
+          toast('Banked, and left on the bench. Start it from the Event '
+                + 'Bank when you are ready.', 'ok', 8000);
+          banking = false; paint();
+          return;
+        }
+      }
+      await apiPost('/api/curation/from-bank', {
+        gid: q.gid, kind: 'ds', entry: id, version: 0, replace: true,
+      });
       await BARRY.curate.enter(q.gid, 'ds');
     } catch (e) {
       toast('Not banked: ' + e.message, 'err', 9000);
@@ -643,13 +850,15 @@ BARRY.incisor = (function () {
   }
 
   return {
-    paint, scan, reset, openRecording,
+    paint, scan, reset,
+    openTraces, closeTraces,
+    _tracesOpen: tracesOpen,
     /* For the harness and for XploreFinder: what is selected now, and a way
        to set it without a mouse. */
     _state: () => ({ q, est, res, chosen }),
     _choose: (key, number) => {
       chosen[key] = number == null ? null : Number(number);
-      publishLines(); paint();
+      pushLines(); paint();
     },
   };
 }());

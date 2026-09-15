@@ -156,6 +156,38 @@ def cache_clear():
         del _CACHE_ORDER[:]
 
 
+def _finite(v, dp=None):
+    """A float, or None where there is no number.
+
+    `NaN` and `Infinity` are not JSON. Python writes them anyway and the
+    browser then fails to parse a response it was told was fine, which is
+    how this arrived: HTTP 200, unparseable body.
+    """
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(f):
+        return None
+    return round(f, dp) if dp is not None else f
+
+
+def _clean(obj):
+    """The same structure with every non-finite number replaced by null.
+
+    Applied once, to the whole answer, rather than trusted to every site
+    that builds a number: the guarantee wanted here is about the payload,
+    and a guarantee that depends on remembering is not one.
+    """
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean(v) for v in obj]
+    return obj
+
+
 # --------------------------------------------------------------------------
 # Planning
 # --------------------------------------------------------------------------
@@ -511,7 +543,10 @@ def pick_hilus(channels):
     take on trust -- somebody who disagrees needs to see whether their
     channel lost on amplitude or on count.
     """
-    ok = [c for c in channels if not c.get("bad")]
+    # A channel that failed, or whose statistics are not numbers, is not a
+    # candidate: an argmax against a missing comparison is not a choice.
+    ok = [c for c in channels if not c.get("bad") and not c.get("error")
+          and c.get("mean_amp") is not None and c.get("n") is not None]
     if not ok:
         return None
     amp = _normalize([c.get("mean_amp") or 0.0 for c in ok])
@@ -525,7 +560,8 @@ def pick_hilus(channels):
 
 def pick_theta(channels):
     """`ephys.py:892 estimate_theta_chan`: argmax of theta-band SD."""
-    ok = [c for c in channels if not c.get("bad")]
+    ok = [c for c in channels if not c.get("bad")
+          and not c.get("error") and c.get("std_theta") is not None]
     if not ok:
         return None
     v = np.array([c.get("std_theta") or 0.0 for c in ok])
@@ -544,7 +580,8 @@ def pick_ripple(channels):
     Ripples where theta is weak: the top forty percent of theta channels are
     dropped before the ratio is taken.
     """
-    ok = [c for c in channels if not c.get("bad")]
+    ok = [c for c in channels if not c.get("bad")
+          and not c.get("error") and c.get("std_theta") is not None]
     if not ok:
         return None
     theta = _normalize([c.get("std_theta") or 0.0 for c in ok])
@@ -571,14 +608,17 @@ def _winner(rows, i, field, why):
     vals = sorted(((r.get(field) or 0.0) for r in rows), reverse=True)
     second = vals[1] if len(vals) > 1 else 0.0
     top = vals[0] if vals else 0.0
+    margin = ((top - second) / top) if (top and math.isfinite(top)) else 0.0
     return {
         "index": best["index"],
         "number": best["number"],
         "label": best["label"],
         "how": why,
-        "value": top,
-        "runner_up": second,
-        "margin": (top - second) / top if top else 0.0,
+        "value": _finite(top),
+        "runner_up": _finite(second),
+        # `if top` is true for a NaN, so the guard above tests finiteness as
+        # well -- a margin of NaN is what turns a 200 into a parse error.
+        "margin": _finite(margin) or 0.0,
     }
 
 
@@ -610,26 +650,35 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
     # and the whole reason this assertion exists. Half a decimated sample of
     # slack per segment, no more.
     by_index = {int(x["index"]): x for x in (report.get("segments") or [])}
-    # Tolerance of ONE RECORD, not one sample.
+    # A shortfall can only be at the TAIL, and a tail costs no timestamp.
     #
-    # The reader works in whole records, so the last partial record of a
-    # segment may not come back -- measured on M8s2feb6: 418 raw samples,
-    # fourteen decimated, out of 1.79 million. That is the file's own
-    # granularity and not a stitching fault, and rejecting the channel for it
-    # loses a whole recording to a tenth of a second at the very end.
+    # The read loop walks the segment in samples and locates each chunk by
+    # its absolute index, so a chunk that comes up short does not leave a
+    # hole -- the next one starts exactly where it stopped. The only way to
+    # end with fewer samples than the segment claims is to run out at the
+    # end, and every event's time comes from its own index, so the events
+    # that were found are unaffected. What is lost is the last fraction of a
+    # second of analysis.
     #
-    # Anything LARGER than a record still fails loudly, because that is the
-    # class of fault -- chunks that do not join -- which put every event on
-    # this recording 9.71 ms early until it was caught.
-    slack = int(nlx.SAMPLES_PER_RECORD) // q + 1
+    # Rejecting a channel for that was wrong and cost whole recordings:
+    # KCNT1 m306 s1 came back with zero events on every channel because its
+    # segment 6 was thirty-six decimated samples -- thirty-six milliseconds
+    # -- short of what the header implies. So the shortfall is REPORTED
+    # always and fails only when it is large enough to mean something other
+    # than the reader's own granularity.
+    slack = max(int(nlx.SAMPLES_PER_RECORD) // q + 1,
+                int(0.02 * sum(int(x["n_samples"]) // q
+                               for x in (report.get("segments") or []))))
     short, lost = [], 0
     for seg_i, _start, tr in segs:
         want = int(by_index[seg_i]["n_samples"]) // q
         gap = want - tr.size
         lost += max(0, gap)
         if abs(gap) > slack:
-            short.append("segment %d is %d decimated samples, expected %d"
-                         % (seg_i, tr.size, want))
+            short.append(
+                "segment %d is %d decimated samples, expected %d -- short by "
+                "%.1f s, which is more than the reader's granularity explains"
+                % (seg_i, tr.size, want, gap / lfp_fs))
     if short:
         return [], dict(base, n=0, error="; ".join(short[:3]))
 
@@ -650,6 +699,18 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
         # automatic one came from -- both stay in the summary.
         thr["thr_uv"] = float(spec["threshold_uv"])
         thr["thr_source"] = "override"
+
+    # A threshold that is not a number means the trace is not one either --
+    # a NaN anywhere in it poisons `np.std`. Failed with a reason rather
+    # than nulled: a channel left in the ranking with a missing threshold
+    # can still win the hilus pick, against a comparison that is not a
+    # number, and that is worse than one channel short.
+    if not math.isfinite(thr["thr_uv"]) or not math.isfinite(thr["sd_uv"]):
+        n_bad = int(np.count_nonzero(~np.isfinite(pooled)))
+        return [], dict(base, n=0, error=(
+            "this channel's filtered trace is not all numbers (%d of %d "
+            "samples), so no threshold can be set from it"
+            % (n_bad, pooled.size)))
 
     # The two other bands, from the RAW decimated trace. Not from the
     # DS-filtered one: that is 5-100 Hz, and a ripple measured through it
@@ -688,11 +749,15 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
                 # `near_stitch`'s own default half-window is this detector's
                 # `ds_wlen`, which is not a coincidence.
                 "near_stitch": bool(near) if near is not None else False,
-                "amp": round(float(got["amp"][k]), 4),
-                "prom": round(float(got["prom"][k]), 4),
-                "half_width_ms": round(float(got["half_width_ms"][k]), 4),
-                "width_height": round(float(got["width_height"][k]), 4),
-                "asym": round(float(got["asym"][k]), 3),
+                # Shape measures can legitimately have no value. Toothy's
+                # asymmetry divides by the distance from the peak to its own
+                # half-height edge, and that distance can be zero -- the
+                # event is still real, so it stays and the measure is null.
+                "amp": _finite(got["amp"][k], 4),
+                "prom": _finite(got["prom"][k], 4),
+                "half_width_ms": _finite(got["half_width_ms"][k], 4),
+                "width_height": _finite(got["width_height"][k], 4),
+                "asym": _finite(got["asym"][k], 3),
                 "idx": int(concat_i),
                 "channel": int(ch["number"]),
             })
@@ -703,18 +768,24 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
                if x["duration_s"] >= MIN_SEGMENT_S) or 1.0
     summary = dict(base, **{
         "n": len(events),
-        "rate_hz": round(len(events) / span, 5),
-        "mean_amp": round(float(amps.mean()), 3) if amps.size else 0.0,
-        "median_amp": round(float(np.median(amps)), 3) if amps.size else 0.0,
-        "mean_half_width_ms": (round(float(np.mean(
-            [e["half_width_ms"] for e in events])), 3) if events else 0.0),
-        "std_theta": round(std_theta, 4),
-        "std_swr": round(std_swr, 4),
+        "rate_hz": _finite(len(events) / span, 5),
+        "mean_amp": _finite(amps.mean(), 3) if amps.size else 0.0,
+        "median_amp": _finite(np.median(amps), 3) if amps.size else 0.0,
+        # Over the events that HAVE a width; `_finite` may have nulled some.
+        "mean_half_width_ms": _finite(np.mean(
+            [e["half_width_ms"] for e in events
+             if e["half_width_ms"] is not None] or [0.0]), 3),
+        "std_theta": _finite(std_theta, 4),
+        "std_swr": _finite(std_swr, 4),
         "n_near_stitch": sum(1 for e in events if e["near_stitch"]),
         "n_samples": int(raw_all.size),
         # Decimated samples the reader could not supply at the tail of a
         # segment, within the one-record tolerance above. Usually zero.
+        # Decimated samples the reader could not supply at the tail of a
+        # segment. Usually zero; when it is not, that many milliseconds at
+        # the very end of a segment were not looked at. No timestamp moves.
         "tail_short": int(lost),
+        "tail_short_ms": round(1000.0 * lost / lfp_fs, 1),
     })
     summary.update(thr)
     return events, summary
@@ -787,7 +858,7 @@ def run(session, spec, report, job=None):
     hil = picked["hilus"]
     chosen = hil["index"] if hil else want[0]["index"]
 
-    return {
+    out = _clean({
         "ok": True,
         "units": "microvolts",
         # What clock these are on, said in the answer rather than inferred
@@ -820,10 +891,29 @@ def run(session, spec, report, job=None):
         "chosen": chosen,
         "events": rows.get(chosen) or [],
         "n": len(rows.get(chosen) or []),
-        # Every channel's events, so changing the channel in the panel does
-        # not mean reading the recording again.
-        "by_channel": {str(k): v for k, v in rows.items()},
-    }
+        # NOT every channel's events. That was sixty-four times the payload
+        # to draw one channel, and a response large enough to be cut short in
+        # transit arrives as a 200 with a body that will not parse. The
+        # per-channel counts are in `channels`; the events themselves come
+        # from `events_for`, out of the cache this run just filled.
+        "n_by_channel": {str(k): len(v) for k, v in rows.items()},
+    })
+
+
+    # Kept beside the answer, not inside it: `_rows` never reaches a
+    # response, and the cache holds the whole object.
+    out["_rows"] = rows
+    return out
+
+
+def events_for(out, index):
+    """One channel's events out of a finished scan.
+
+    `run` keeps them all -- they were all detected -- but only ships the
+    chosen channel's. This is how the panel gets another one without the
+    recording being read again.
+    """
+    return (out.get("_rows") or {}).get(int(index)) or []
 
 
 def _params(spec, plan):

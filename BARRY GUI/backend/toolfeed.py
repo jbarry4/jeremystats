@@ -50,6 +50,13 @@ TOOLS = {
         "name": "Braid",
         "prefixes": ["cfc.", "cfcguide."],
     },
+    # Here for the name, not the prefixes: `panorama.*` is what the fallback
+    # would have worked out on its own. Without an entry the feed is headed
+    # "panorama" where every other tool has a capital letter.
+    "panorama": {
+        "name": "Panorama",
+        "prefixes": ["panorama."],
+    },
     "kilosort": {
         "name": "Kilosort",
         "prefixes": ["spikes.", "phy.", "pipeline."],

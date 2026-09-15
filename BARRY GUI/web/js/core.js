@@ -413,15 +413,22 @@ async function api(path, opts) {
      never heard of answers 404 to a GET and 405 to a POST depending on what
      else is registered. Treating only 404 as stale is why a failed bug
      report said "non-JSON response (405)" and nothing else. */
-  const missing = (res.status === 404 || res.status === 405)
-                  && path.startsWith('/api/');
-  if (missing) staleServer(path);
+  /* A route that is not registered, as against one that ran and said no.
+     Both answer 404, and the difference is whether anything answered: a
+     route that ran returns a JSON body with an error in it, and Flask's own
+     404 page does not. Deciding before reading the body told somebody to
+     restart Jarvis because a bank entry could not be found. */
+  const maybeMissing = (res.status === 404 || res.status === 405)
+                       && path.startsWith('/api/');
 
   let data;
+  let missing = false;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    missing = maybeMissing;
     if (missing) {
+      staleServer(path);
       throw new Error('This Jarvis is running older code than the files on '
                       + 'disk, so it has no ' + path.split('?')[0]
                       + '. Restart it and try again.');

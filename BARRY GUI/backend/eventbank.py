@@ -284,6 +284,13 @@ class EventBank:
             raise BankError("None of those events had a usable time.")
         clean.sort(key=lambda e: e["start"])
 
+        # A detector that knows what clock it produced may say so, and the
+        # stamp travels with the entry. Belt and braces beside
+        # `retime.basis_of`, which can already work it out from the
+        # pipeline: a fact recorded on the thing itself survives a rename
+        # of the pipeline that produced it.
+        basis = entry.get("time_basis")
+
         rec = {
             "id": entry.get("id") or uuid.uuid4().hex[:12],
             "schema": SCHEMA,
