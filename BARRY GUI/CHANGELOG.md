@@ -15,6 +15,42 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.15.1 — One event, written twice
+
+### Added
+
+- **Collapsing duplicate times in a banked set.** Some dentate spikes in the
+  bank sit on exactly the same timestamp as another: `m34s8jun10` holds 185
+  events on 162 distinct times. They arrive when a set is imported twice, or
+  restarted on one machine while another still holds decisions on it, and
+  nothing this lab records fires twice inside a tenth of a millisecond — so
+  two rows that close are one event written twice.
+
+  Open an entry and the panel says so before anybody asks: a chip at the top
+  next to the event count, a strip above the events, and the rows themselves
+  marked in the list. "Duplicate times…" opens the collapse.
+
+  It is not housekeeping, which is why it does not run on its own. Fourteen
+  of `m34s8jun10`'s twenty-three doubles carry two *different* calls — one
+  copy says Dentate Spike and the other says Garbage — so collapsing them
+  throws a real decision away. The dialog names every contested time with
+  both calls, makes you pick which copy to keep, and will not run until you
+  have: keeping the first leaves 52 dentate spikes and keeping the last
+  leaves 42, and no sort order should be choosing between those. An
+  undecided copy losing to a decided one is not a conflict and is not
+  offered as one; nor is a double where both copies agree.
+
+  The preview is the server's own dry run, so what it shows is what the
+  write would do, produced by the code that would do it. It lands as a new
+  version with the old one kept whole — including its snapshot, so deleting
+  the new version puts every removed row back. No decision is changed by it;
+  rows go, and the calls on the rows that stay are the ones that were
+  already there. It also says when the curation set the entry was banked
+  from still has doubles of its own, because re-banking from one that does
+  would put them straight back.
+
+---
+
 ## 2026.09.14.1 — Hello, and where the gaps actually are
 
 ### Added

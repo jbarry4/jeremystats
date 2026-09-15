@@ -556,6 +556,9 @@ class EventBank:
     # event lists.
     SNAP_VERSIONS = 12
     SNAP_MAX_EVENTS = 6000
+    # How many before/after rows a preview carries. A set is usually a few
+    # hundred to a few thousand; past this the panel says it is showing part.
+    PREVIEW_MAX = 5000
 
     def source_entry_for(self, gid, kind, events):
         """The detector import these curated events came from, if it is here.
@@ -703,13 +706,129 @@ class EventBank:
             n += hit
         return n
 
-    @shards.atomic
     # ------------------------------------------------------------------
     # Re-timing
     # ------------------------------------------------------------------
+    # What a snapshot holds: a start and a label. Any other field on an
+    # event cannot survive a round trip through one, so restoring from a
+    # version has to say which fields it dropped rather than dropping them.
+    SNAP_FIELDS = {"start", "label", "label_id"}
+
+    @staticmethod
+    def basis_at(rec, v):
+        """Which clock the events were on as of version `v`.
+
+        NOT the entry's `time_basis`, which describes the current events. If
+        the correction was applied at v4 then v5 is on the recording's clock
+        and v3 is not, and asking the entry gives the wrong answer for three
+        of those. Applying the shift to a version that already has it is the
+        single failure this whole area exists to prevent.
+        """
+        vers = sorted((rec.get("versions") or []),
+                      key=lambda x: x.get("v") or 0)
+        last = None
+        for ver in vers:
+            if (ver.get("v") or 0) > v:
+                break
+            if ver.get("retimed"):
+                last = (ver["retimed"] or {}).get("to")
+        if last:
+            return last
+        tb = rec.get("time_basis") or {}
+        # No conversion at or before this version, so it is on whatever the
+        # entry started on -- which is what a later conversion recorded as
+        # the thing it converted FROM.
+        return tb.get("converted_from") or tb.get("kind")
+
+    def events_at(self, rec, v):
+        """Rebuild one version's events from its snapshot.
+
+        Returns (events, dropped) where `dropped` names the fields the
+        current events carry that a snapshot cannot hold. Never guesses at
+        one: an event with a channel comes back without it, said out loud.
+        """
+        hit = None
+        for ver in (rec.get("versions") or []):
+            if (ver.get("v") or 0) == v:
+                hit = ver
+                break
+        if hit is None:
+            raise BankError("This set has no version %s." % v)
+        snap = hit.get("snap")
+        if not snap:
+            raise BankError(
+                "Version %s has no snapshot on this machine, so the events "
+                "it held cannot be read back. %s"
+                % (v, "It was recorded elsewhere and its snapshot has not "
+                      "synced yet." if hit.get("snap_elsewhere")
+                   else "Sets over %d events do not carry one."
+                        % self.SNAP_MAX_EVENTS))
+
+        names = rec.get("label_names") or {}
+        out = []
+        for row in snap:
+            try:
+                start = float(row[0])
+            except (TypeError, ValueError, IndexError):
+                continue
+            ev = {"start": start}
+            lab = row[1] if len(row) > 1 else None
+            if lab:
+                ev["label_id"] = lab
+                ev["label"] = names.get(lab, lab)
+            out.append(ev)
+
+        dropped = sorted({k for e in (rec.get("events") or [])
+                          for k in e if k not in self.SNAP_FIELDS})
+        return out, dropped
+
+    def retime_versions(self, entry_id, target):
+        """Every version, and whether the correction can be run from it.
+
+        One row per version with the reason it is not on offer where it is
+        not, because "this one is missing" is a question somebody will ask
+        of every version that is.
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No bank entry %s." % entry_id)
+        cur = max([v.get("v") or 0 for v in (rec.get("versions") or [])]
+                  or [0])
+        dropped = sorted({k for e in (rec.get("events") or [])
+                          for k in e if k not in self.SNAP_FIELDS})
+        rows = []
+        for ver in sorted((rec.get("versions") or []),
+                          key=lambda x: x.get("v") or 0):
+            v = ver.get("v") or 0
+            basis = self.basis_at(rec, v)
+            why = None
+            if basis == target:
+                why = ("already on %s — it was corrected at or before this "
+                       "version" % target)
+            elif not ver.get("snap"):
+                why = ("no snapshot on this machine, so its events cannot "
+                       "be read back")
+            rows.append({
+                "v": v,
+                "id": ver.get("id"),
+                "at": ver.get("at"),
+                "by": ver.get("by"),
+                "n": ver.get("n"),
+                "note": ver.get("note"),
+                "by_label": ver.get("by_label") or {},
+                "basis": basis,
+                "current": v == cur,
+                "retimed": bool(ver.get("retimed")),
+                "usable": why is None,
+                "why_not": why,
+            })
+        return {"current_version": cur, "versions": rows,
+                "drops_fields": dropped}
+
     @shards.atomic
     def retime(self, entry_id, mapping, target, basis_from, gap_map_sha,
-               note=None, by=None, dry_run=True, extra=None):
+               note=None, by=None, dry_run=True, extra=None,
+               from_version=None):
         """Mint a version of `entry_id` with every time on the other clock.
 
         `mapping` is a callable taking one time and returning
@@ -721,12 +840,29 @@ class EventBank:
         `dry_run=True` is the default and returns exactly what the write
         would do, because a timestamp rewrite that cannot be read before it
         happens should not be offered at all.
+
+        `from_version` reads the events out of that version's snapshot
+        instead of taking the current ones, so the correction can be applied
+        to the set as it stood at a chosen point -- with that version's
+        labels. It still lands as the next version; nothing is overwritten
+        and no version is removed.
         """
         rec = self.get(entry_id)
         if not rec:
             raise BankError("No bank entry %s." % entry_id)
 
-        basis = (rec.get("time_basis") or {}).get("kind")
+        src_v, dropped = None, []
+        if from_version is not None:
+            try:
+                src_v = int(from_version)
+            except (TypeError, ValueError):
+                raise BankError("%r is not a version number." % from_version)
+
+        if src_v is None:
+            basis = (rec.get("time_basis") or {}).get("kind")
+        else:
+            # The basis of THAT version, not of the entry. See basis_at.
+            basis = self.basis_at(rec, src_v)
         if basis == target:
             raise BankError(
                 "This entry is already on %s. Absence of a basis means "
@@ -736,7 +872,11 @@ class EventBank:
                 "This entry says it is on %s, not %s. Re-timing it would "
                 "be applying a correction it does not need." % (basis, basis_from))
 
-        events = rec.get("events") or []
+        if src_v is None:
+            events = rec.get("events") or []
+        else:
+            events, dropped = self.events_at(rec, src_v)
+
         moved, unplaceable, shifts = [], [], []
         for ev in events:
             try:
@@ -791,7 +931,41 @@ class EventBank:
                  "shift_ms": round((m["start"] - e["start"]) * 1e3, 3)}
                 for e, m in list(zip(events, moved))[:8]
             ],
+            # And all of them, four values each rather than a dict, so the
+            # panel can scroll the set, mark the ones that move and draw
+            # them on the recording. Eight was worse than useless here:
+            # every gap is at 1762 s and the set starts at 1.7 s, so the
+            # first eight all shift by 0.00 ms.
+            "moves": [
+                [e.get("start"), m["start"],
+                 round((m["start"] - e["start"]) * 1e3, 3), m.get("label")]
+                for e, m in list(zip(events, moved))[:self.PREVIEW_MAX]
+            ],
+            "moves_capped": len(moved) > self.PREVIEW_MAX,
+            "n_shifted": sum(1 for e, m in zip(events, moved)
+                             if abs(m["start"] - e["start"]) > 5e-7),
+            # What this would become and what it would keep. Computed here
+            # rather than in the branch that writes, so a DRY RUN can name
+            # both -- which is what the confirmation is built from.
+            "current_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            "next_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])]
+                or [0]) + 1,
+            "n_versions": len(rec.get("versions") or []),
+            # Which version supplied the times and the labels. `None` means
+            # the live set, which is the default and the common case.
+            "from_version": src_v,
+            # Fields the current events carry that a snapshot cannot hold,
+            # and which restoring from one therefore loses. Empty for every
+            # entry in this archive but the twenty-one that carry a channel.
+            "drops_fields": dropped,
         }
+        if dropped:
+            report["warning"] = (
+                "Version %s's snapshot holds a start and a label only, so "
+                "%s would not survive being read back from it."
+                % (src_v, ", ".join(dropped)))
         if unplaceable:
             report["error"] = ("%d event(s) have no time on the other clock. "
                                "Nothing was written." % len(unplaceable))
@@ -801,6 +975,23 @@ class EventBank:
                                "forward step function cannot do. Nothing was "
                                "written.")
             return report
+        # Already done, with the same map, from the same source. The id is
+        # derived rather than random so two machines converge on one
+        # version; the same derivation makes a repeat recognisable here
+        # instead of appending a second identical entry to the history.
+        twin = "rt-" + hashlib.sha256(
+            ("%s|%s|%s|%s" % (entry_id, gap_map_sha, target, src_v)
+             ).encode("utf-8")).hexdigest()[:10]
+        for ver in (rec.get("versions") or []):
+            if ver.get("id") == twin:
+                report["already_version"] = ver.get("v")
+                report["error"] = (
+                    "This exact correction is already version %s of this "
+                    "set — same gap map, same source. Delete that version "
+                    "to undo it, or correct from a different one."
+                    % ver.get("v"))
+                return report
+
         if dry_run:
             return report
 
@@ -817,16 +1008,18 @@ class EventBank:
             # machines correcting the same entry with the same map must
             # converge on one version rather than each adding its own.
             "id": "rt-" + hashlib.sha256(
-                ("%s|%s|%s" % (entry_id, gap_map_sha, target)
+                ("%s|%s|%s|%s" % (entry_id, gap_map_sha, target, src_v)
                  ).encode("utf-8")).hexdigest()[:10],
             "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
             "at": _now(),
             "by": who,
             "note": note or (
-                "Re-timed from %s to %s. %d event(s) moved by %.1f to "
+                "Re-timed from %s to %s%s. %d event(s) moved by %.1f to "
                 "%.1f ms; every label kept, nothing re-detected."
-                % (basis_from, target, len(moved),
-                   report["shift_min_ms"], report["shift_max_ms"])),
+                % (basis_from, target,
+                   "" if src_v is None else ", reading v%d" % src_v,
+                   len(moved), report["shift_min_ms"],
+                   report["shift_max_ms"])),
             "n": len(moved),
             "by_label": counts,
             # Nothing was decided differently. The counts are identical and
@@ -836,6 +1029,9 @@ class EventBank:
             "machine": platform.node(),
             "retimed": {
                 "from": basis_from, "to": target,
+                # The lineage, so a version minted off an older one is not
+                # mistaken for one minted off its own predecessor.
+                "source_version": src_v,
                 "gap_map_sha": gap_map_sha,
                 "shift_min_ms": report["shift_min_ms"],
                 "shift_max_ms": report["shift_max_ms"],
@@ -873,6 +1069,307 @@ class EventBank:
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         report["time_basis"] = rec["time_basis"]
+        return report
+
+    # ------------------------------------------------------------------
+    # Duplicate times
+    # ------------------------------------------------------------------
+    # Two records of one event, not two events. A detector run twice into
+    # the same set, or a set restarted on one machine while another still
+    # held decisions on it, leaves two rows at the same time -- and because
+    # the two copies were then decided separately, a good many of them
+    # disagree about what the event was. So this is not housekeeping: every
+    # row it removes is a call somebody made, and which call goes has to be
+    # said out loud before it goes rather than settled by a sort order.
+
+    # The same key the curation sets match on, so "duplicate" means one
+    # thing across the two. Four places is 0.1 ms -- inside a single sample
+    # at any rate this lab records at, so two rows this close are one event
+    # written twice and never two events.
+    DUP_DP = 4
+    # Reported, not acted on. Rows a hair apart are the interesting case:
+    # they are either one event the detector found twice with a jitter, or
+    # two real events in a burst, and nothing here can tell which. Saying
+    # how many there are lets somebody go and look.
+    NEAR_MS = 1.0
+
+    @classmethod
+    def _dup_key(cls, value):
+        """A start time as a match key, or None if it is not a time."""
+        try:
+            return round(float(value), cls.DUP_DP)
+        except (TypeError, ValueError):
+            return None
+
+    def dup_groups(self, events):
+        """Every time that more than one event claims, in order.
+
+        Returns a list of (key, [(index, event), ...]) with the original
+        positions kept, because "the first copy" has to mean the first one
+        in the set and not the first one some dict happened to yield.
+        """
+        groups = {}
+        for i, ev in enumerate(events or []):
+            key = self._dup_key(ev.get("start"))
+            if key is None:
+                continue
+            groups.setdefault(key, []).append((i, ev))
+        return [(k, v) for k, v in sorted(groups.items()) if len(v) > 1]
+
+    @shards.atomic
+    def dedupe(self, entry_id, conflicts=None, note=None, by=None,
+               dry_run=True):
+        """Mint a version holding one row per time instead of two.
+
+        `dry_run=True` is the default and returns exactly what the write
+        would do, down to which label each contested time would end up
+        with. A pass that silently drops a third of somebody's decisions
+        should not be offered without that.
+
+        Which copy survives, in order:
+
+          1. A decided copy beats an undecided one. Nothing is lost there:
+             the undecided row is the same candidate with nobody's opinion
+             attached.
+          2. Copies that agree collapse to the one carrying the most
+             fields, so a row with a channel is not dropped in favour of a
+             bare one saying the same thing.
+          3. Copies that DISAGREE are a conflict -- two people decided two
+             records of one candidate and both calls are real. There is no
+             rule that can settle that, so `conflicts` must say `first` or
+             `last` explicitly; without it nothing is written and every
+             contested time is named in the report.
+
+        The live events only. Re-running it from an older version would
+        mean deciding which of two questions is being asked, and the one
+        anybody wants here is "the set as it stands has doubles in it".
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No bank entry %s." % entry_id)
+        if conflicts not in (None, "first", "last"):
+            raise BankError(
+                "%r is not a way to settle a disagreement. Use 'first' or "
+                "'last'." % conflicts)
+
+        events = rec.get("events") or []
+        groups = self.dup_groups(events)
+
+        # Rows a hair apart, counted and not touched. See NEAR_MS.
+        times = sorted(t for t in (self._dup_key(e.get("start"))
+                                   for e in events) if t is not None)
+        times_seen = set(times)
+        near = sum(1 for a, b in zip(times, times[1:])
+                   if 0 < (b - a) * 1e3 <= self.NEAR_MS)
+
+        def labelled(ev):
+            return ev.get("label_id") or ev.get("label")
+
+        drop_idx, rows, contested = set(), [], []
+        kept_decided = undecided_dropped = 0
+        for key, members in groups:
+            decided = [(i, e) for i, e in members if labelled(e)]
+            calls = sorted({labelled(e) for _i, e in decided})
+            if decided:
+                undecided_dropped += len(members) - len(decided)
+            if not decided:
+                # Nobody decided any of them, so there is nothing to lose:
+                # keep the fullest copy and drop the rest.
+                pool = members
+            elif len(calls) == 1:
+                pool = decided
+                kept_decided += 1
+            else:
+                pool = decided
+                kept_decided += 1
+                contested.append((key, calls, [
+                    {"i": i, "label": e.get("label"),
+                     "label_id": e.get("label_id")} for i, e in decided]))
+
+            if len(calls) > 1:
+                # Positional, and only where the caller has said which.
+                pick = pool[0] if conflicts == "first" else pool[-1]
+            else:
+                # Richest, then first, so the choice does not depend on
+                # dict order and two machines reach the same survivor.
+                pick = sorted(pool, key=lambda p: (-len(p[1]), p[0]))[0]
+            for i, _e in members:
+                if i != pick[0]:
+                    drop_idx.add(i)
+
+            rows.append({
+                "t": key,
+                "n": len(members),
+                "labels": [e.get("label") or None for _i, e in members],
+                "kept": pick[0] - members[0][0],
+                "kept_label": pick[1].get("label"),
+                "conflict": len(calls) > 1,
+            })
+
+        kept = [e for i, e in enumerate(events) if i not in drop_idx]
+
+        def counts_of(evs):
+            out = {}
+            for ev in evs:
+                k = ev.get("label") or "unspecified"
+                out[k] = out.get(k, 0) + 1
+            return out
+
+        # What the removed copies carried that the rows replacing them do
+        # not. Empty for every entry in this archive, but a dedupe that
+        # quietly drops an amplitude should say so rather than be found out.
+        survivors = {self._dup_key(e.get("start")) for e in kept}
+        lost_fields = set()
+        for i in drop_idx:
+            ev = events[i]
+            key = self._dup_key(ev.get("start"))
+            if key not in survivors:
+                continue
+            mine = next((k for k in kept
+                         if self._dup_key(k.get("start")) == key), {})
+            lost_fields |= {f for f in ev
+                            if f not in mine and f not in self.SNAP_FIELDS}
+
+        versions = rec.get("versions") or []
+        cur = max([v.get("v") or 0 for v in versions] or [0])
+        report = {
+            "entry_id": entry_id,
+            "name": rec.get("name"),
+            "gid": rec.get("gid"),
+            "session_label": rec.get("session_label"),
+            "was": len(events),
+            "now": len(kept),
+            "times": len(times_seen),
+            "groups": len(groups),
+            "removed": len(drop_idx),
+            "kept_decided": kept_decided,
+            "undecided_dropped": undecided_dropped,
+            "conflicts": len(contested),
+            # Every contested time, not a sample. A choice made across
+            # fourteen of somebody's calls is made by reading all fourteen.
+            "conflict_rows": [
+                {"t": t, "calls": calls, "copies": copies}
+                for t, calls, copies in contested[:self.PREVIEW_MAX]
+            ],
+            "rows": rows[:self.PREVIEW_MAX],
+            "rows_capped": len(rows) > self.PREVIEW_MAX,
+            "policy": conflicts,
+            "near_pairs": near,
+            "near_ms": self.NEAR_MS,
+            "dp": self.DUP_DP,
+            "by_label_was": counts_of(events),
+            "by_label_now": counts_of(kept),
+            "drops_fields": sorted(lost_fields),
+            "current_version": cur,
+            "next_version": cur + 1,
+            "n_versions": len(versions),
+            "dry_run": bool(dry_run),
+        }
+        if lost_fields:
+            report["warning"] = (
+                "The copies being removed carry %s and the rows kept in "
+                "their place do not, so that would go with them."
+                % ", ".join(sorted(lost_fields)))
+        if not groups:
+            report["error"] = (
+                "No two events in this set share a time to %d decimal "
+                "place(s). There is nothing to collapse." % self.DUP_DP)
+            return report
+        if contested and conflicts is None:
+            # Everything downstream of the unmade choice is withdrawn, not
+            # filled in from a fallback. The survivor above defaults to the
+            # last copy so the loop has something to hold, and reporting
+            # that as the answer would show a caller a mix nobody asked
+            # for and let them act on it.
+            report["by_label_now"] = None
+            for row in report["rows"]:
+                if row["conflict"]:
+                    row["kept"] = row["kept_label"] = None
+            report["error"] = (
+                "%d of these times carry two different calls, so collapsing "
+                "them would throw one away. Say which copy to keep -- the "
+                "first or the last -- and nothing is decided by accident."
+                % len(contested))
+            return report
+
+        # Derived from what is being removed, not minted at random: two
+        # machines collapsing the same doubles converge on one version, and
+        # the same derivation makes a repeat recognisable here instead of
+        # appending a second identical pass to the history.
+        twin = "dd-" + hashlib.sha256(
+            ("%s|%s|%s" % (entry_id, conflicts or "-",
+                           snap_sha([[e.get("start"), labelled(e)]
+                                     for e in kept]))
+             ).encode("utf-8")).hexdigest()[:10]
+        for ver in versions:
+            if ver.get("id") == twin:
+                report["already_version"] = ver.get("v")
+                report["error"] = (
+                    "This exact collapse is already version %s of this set "
+                    "-- same survivors, same choice. Delete that version to "
+                    "undo it." % ver.get("v"))
+                return report
+        if dry_run:
+            return report
+
+        prov = self.store.provenance() if self.store else {}
+        who = (by or prov.get("user") or "unknown").strip()
+        counts = counts_of(kept)
+        fresh = {
+            "id": twin,
+            "v": cur + 1,
+            "at": _now(),
+            "by": who,
+            "note": note or (
+                "Collapsed %d time(s) that each held more than one record. "
+                "%d event(s) removed, %d left; %s"
+                % (len(groups), len(drop_idx), len(kept),
+                   ("%d of them disagreed about the call and the %s copy "
+                    "was kept." % (len(contested), conflicts))
+                   if contested else
+                   "none of them disagreed about the call.")),
+            "n": len(kept),
+            "by_label": counts,
+            # Nothing was re-decided. Rows went; the decisions on the rows
+            # that stayed are the ones that were already there, and putting
+            # a relabelling in the history would be inventing one.
+            "changed": 0, "gained": 0, "moves": {},
+            "lost": len(drop_idx),
+            "machine": platform.node(),
+            "deduped": {
+                "dp": self.DUP_DP,
+                "groups": len(groups),
+                "removed": len(drop_idx),
+                "conflicts": len(contested),
+                "policy": conflicts,
+                "undecided_dropped": undecided_dropped,
+                # The times that were contested and what won, so the pass
+                # can be argued with later by somebody who was not here.
+                "settled": [[t, calls, next(
+                    (r["kept_label"] for r in rows if r["t"] == t), None)]
+                    for t, calls, _copies in contested],
+            },
+        }
+        if len(kept) <= self.SNAP_MAX_EVENTS:
+            fresh["snap"] = [[ev.get("start"), labelled(ev)] for ev in kept]
+
+        rec["events"] = kept
+        rec["versions"] = versions + [fresh]
+        rec["version"] = fresh["v"]
+        rec["n"] = len(kept)
+        rec["by_label"] = counts
+        rec.setdefault("history", []).append({
+            "at": _now(), "by": who, "changed": ["events"],
+            "was_n": len(events), "now_n": len(kept),
+            "why": "collapsed %d duplicate time(s)" % len(groups),
+        })
+
+        base = self._base_of(rec)
+        with _LOCK:
+            rec = self.book.write(base, rec)
+            self._cache = None
+        report["version"] = fresh["v"]
+        report["version_id"] = fresh["id"]
         return report
 
     def snapshots(self):
@@ -1052,7 +1549,18 @@ class EventBank:
 
     @shards.atomic
     def delete_version(self, entry_id, v):
-        """Remove one version from the history. The events stay put."""
+        """Remove one version from the history.
+
+        For an ordinary version the events stay put -- the history loses a
+        row and nothing else changes.
+
+        For a CORRECTION the events do not stay put, because leaving them
+        would leave the set on the recording's clock with nothing recording
+        that it is. Deleting the correction restores the times from the
+        version below it and clears the basis stamp, which is what makes the
+        session go back to showing an unresolved segment issue: `patched` is
+        computed from that stamp and from nothing else.
+        """
         rec = self.get(entry_id)
         if not rec:
             raise BankError("No such entry.")
@@ -1064,6 +1572,16 @@ class EventBank:
             raise BankError(
                 "That is the only version this entry has. Delete the whole "
                 "entry instead, or archive the version.")
+
+        gone = next(x for x in vs if x.get("v") == v)
+        undo = None
+        if gone.get("retimed"):
+            # Only the correction that is actually in force needs undoing.
+            # Deleting a superseded one is a history edit and nothing more.
+            top = max(x.get("v") or 0 for x in vs)
+            if (gone.get("v") or 0) == top:
+                undo = self._undo_retime(rec, gone, keep)
+
         rec["versions"] = keep
         # Numbers are never reused and never shifted: the next bank counts
         # from the highest that has ever existed, so a deleted v2 does not
@@ -1072,11 +1590,86 @@ class EventBank:
         rec.setdefault("history", []).append({
             "at": _now(),
             "by": (self.store.provenance().get("user") if self.store else None),
-            "changed": ["versions"],
-            "why": "deleted version %s" % v,
+            "changed": ["versions"] + (["events", "time_basis"]
+                                       if undo else []),
+            "why": ("deleted version %s" % v) + (
+                ", restoring the times it moved from v%s and clearing the "
+                "basis stamp" % undo["restored_from"] if undo else ""),
         })
         self._save(rec)
+        if undo:
+            rec = dict(rec)
+            rec["undo"] = undo
         return rec
+
+    def _undo_retime(self, rec, gone, keep):
+        """Put the times back the way the correction found them.
+
+        Refuses rather than half-undoing. A set whose correction has been
+        deleted but whose times are still corrected reads as un-corrected to
+        everything that looks at it, which would make the segment warning
+        say "nobody has dealt with this" about a set that has silently had
+        the shift applied -- the exact confusion this area exists to
+        prevent.
+        """
+        below = [x for x in keep if (x.get("v") or 0) < (gone.get("v") or 0)]
+        src = None
+        for ver in sorted(below, key=lambda x: x.get("v") or 0, reverse=True):
+            if ver.get("snap"):
+                src = ver
+                break
+        if src is None:
+            raise BankError(
+                "Deleting this correction would have to put %d event time(s) "
+                "back, and no earlier version on this machine carries a "
+                "snapshot to put them back from. Nothing was deleted: a set "
+                "whose correction is gone but whose times are still shifted "
+                "reads as uncorrected everywhere, which is worse than "
+                "either state." % len(rec.get("events") or []))
+
+        events, dropped = self.events_at(rec, src.get("v"))
+        counts = {}
+        for ev in events:
+            key = ev.get("label") or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+        rec["events"] = events
+        rec["n"] = len(events)
+        rec["by_label"] = counts
+
+        # The stamp goes back to whatever is true once this version is gone.
+        # `basis_at` reads the remaining history, so a set corrected twice
+        # and un-corrected once lands on the earlier correction rather than
+        # on nothing.
+        top = max([x.get("v") or 0 for x in keep] or [0])
+        was = dict(rec.get("time_basis") or {})
+        basis = self.basis_at({"versions": keep,
+                               "time_basis": {"converted_from":
+                                              was.get("converted_from")}},
+                              top)
+        if basis:
+            # A fresh stamp, not the old one with its `kind` swapped. The
+            # correction's `gap_map_sha`, `at` and `by` describe a
+            # conversion that has just been undone, and carrying them
+            # forward would leave the set claiming to have been converted
+            # against a map it is no longer the result of.
+            rec["time_basis"] = {
+                "kind": basis,
+                "tool": "jarvis.retime/1",
+                "at": _now(),
+                "by": (self.store.provenance().get("user")
+                       if self.store else None),
+                "restored_from_version": src.get("v"),
+                "note": "Restored when the correction at v%s was deleted."
+                        % gone.get("v"),
+            }
+        if not basis:
+            # Nothing left says this set was converted, so nothing should.
+            # This is what flips the session back to an unresolved segment
+            # issue: `patched` is derived from this key existing.
+            rec.pop("time_basis", None)
+        return {"restored_from": src.get("v"), "n": len(events),
+                "dropped_fields": dropped, "was_basis": was.get("kind"),
+                "now_basis": basis}
 
     @shards.atomic
     def _save(self, rec):

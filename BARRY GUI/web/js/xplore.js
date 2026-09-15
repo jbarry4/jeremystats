@@ -7133,6 +7133,19 @@ BARRY.views.xplore = (function () {
   function drawMini(index, pane, sess) {
     const c = pane._mini;
     if (!c) return;
+    /* And a session that is still there.
+
+       This is called from three timers -- a resize debounce, a settle after
+       a drag, and the tail of a refresh that has just awaited a fetch -- and
+       any of them can fire after the pane's session has been closed or
+       swapped. One hands over `sessionOf(p)`, which is null by then, and the
+       whole thing threw. Reproduced every run by ticking even-only, which
+       reopens the session while the panes are still redrawing.
+
+       Here rather than at each call site: with no session there is nothing
+       to draw wherever the call came from, and the next timer somebody adds
+       gets this for free. */
+    if (!sess || !sess.info) return;
     sizePaneCanvas(c);
     const ctx = c.getContext('2d');
     const P = palette();

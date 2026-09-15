@@ -534,6 +534,15 @@ def grid(lo, hi, step):
 STAGES = [
     ("read", "samples"),
     ("decimate", "samples"),
+    # Welch over a whole recording, one channel at a time.
+    #
+    # Its own stages, NOT the `read` above. That one is counted in samples
+    # and this one in seconds of recording, and `_learn` divides seconds by
+    # units without knowing which -- so sharing the name would rewrite the
+    # comodulogram's read rate by a factor of the sample rate every time
+    # somebody looked at a spectrum.
+    ("spectrum read", "seconds"),
+    ("spectrum", "channels"),
     ("slow bank", "bands"),
     ("fast bank", "bands"),
     ("modulation index", "cells"),
@@ -557,14 +566,83 @@ _RATES = {
     "decimate": 6.1e-4,
     "slow bank": 0.489,           # per band, per megasample
     "fast bank": 0.272,
+    # Measured here: 16 channels of a 2124 s recording, 33984 stage-units, in
+    # 47.5 s wall -- so 1.4 ms of wall per second of recording per channel.
+    # Flat (see _FLAT): these units are already counted in samples.
+    "spectrum read": 1.4e-3,      # per second of recording, per channel
+    # Near zero because the transforms are interleaved with the reads to keep
+    # memory bounded, so their wall time is inside the stage above. This one
+    # counts channels finished, not a phase with a duration of its own.
+    "spectrum": 0.02,             # per channel
     "modulation index": 2.7e-3,   # per cell, per megasample
     "surrogates": 0.106,          # per (band x surrogate), per megasample
     "draw": 0.30,                 # flat: 629 cells to a PNG, whatever the window
 }
-# Stages whose cost does not scale with the number of samples.
-_FLAT = {"draw"}
+# Stages the per-megasample normalisation must NOT be applied to: either the
+# cost does not scale with the window at all (`draw` -- one picture, whatever
+# went into it), or the stage's own units already carry the sample count (the
+# spectrum's, counted in seconds of recording). Normalising those a second
+# time would make the estimate scale as the square of the window.
+_FLAT = {"draw", "spectrum read", "spectrum"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
+
+
+# Stages whose rate is learned per volume.
+#
+# Reading is the only thing that depends on which disk the recording is on.
+# Arithmetic is arithmetic, and splitting those rates per drive would divide
+# the evidence for each by the number of drives.
+#
+# Measured here, warm, ten minutes on two channels: 0.99 ms per
+# channel-second off local D:, 1.61 ms off \\netfiles03. A modest difference
+# -- it is not the order of magnitude a network share sounds like it should
+# be -- but a systematic one, and free to track now that the key exists. A
+# busier share at another site will be worse than this one.
+_PER_VOLUME = {"read", "decimate", "spectrum read"}
+
+
+def volume_key(path):
+    """Which disk this is, as a key: `D:` or `\\\\server\\share`.
+
+    Coarse on purpose. Local disk against the share is the distinction there
+    is evidence for; a key any finer would take a hundred runs to learn
+    anything and would never fill in.
+    """
+    if not path:
+        return None
+    p = str(path).replace("/", "\\")
+    if p.startswith("\\\\"):
+        parts = [x for x in p[2:].split("\\") if x]
+        if len(parts) >= 2:
+            return ("\\\\%s\\%s" % (parts[0], parts[1])).lower()
+        return ("\\\\%s" % (parts[0] if parts else "")).lower()
+    if len(p) >= 2 and p[1] == ":":
+        return p[:2].lower()
+    return None
+
+
+def _key(stage, where):
+    """The rates-table key for a stage on a volume."""
+    if where and stage in _PER_VOLUME:
+        return "%s @ %s" % (stage, where)
+    return stage
+
+
+def _stamp():
+    """What the saved numbers mean: the stages, their units, their scaling.
+
+    A rate is seconds per unit, and a unit is only a unit while the stage is
+    counted the same way -- and, for the reading stages, while it is about
+    the same disk. When that changes the saved number is not stale, it is in
+    a different currency -- and one such number, `read` in seconds
+    against a table measured in samples, sat at four hundred times its true
+    value until somebody read the file.
+    """
+    parts = ["%s|%s|%d|%d" % (name, unit, name in _FLAT,
+                              name in _PER_VOLUME)
+             for name, unit in STAGES]
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
 def configure(logs_dir):
@@ -574,14 +652,42 @@ def configure(logs_dir):
     try:
         with open(_RATES_PATH, "r", encoding="utf-8") as fh:
             saved = json.load(fh) or {}
-        for k, v in saved.items():
-            if k in _RATES and isinstance(v, (int, float)) and v > 0:
-                _RATES[k] = float(v)
     except (OSError, ValueError):
-        pass            # first run on this machine, or the file went bad
+        return          # first run on this machine, or the file went bad
+    # No stamp means it predates the units being written down, so there is no
+    # way to know what its numbers counted. Dropped, and measured again on the
+    # next run: it is a cache, and a wrong cache is worse than a cold one.
+    if saved.get("_stamp") != _stamp():
+        return
+    for k, v in (saved.get("rates") or {}).items():
+        # A per-volume key is not in the defaults -- it cannot be, the
+        # defaults do not know what disks this machine has -- so it is
+        # accepted on the strength of its stage name.
+        known = k in _RATES or k.split(" @ ")[0] in _RATES
+        if known and isinstance(v, (int, float)) and v > 0:
+            _RATES[k] = float(v)
 
 
-def _learn(stage, seconds, units, msamples=1.0):
+def rate_for(stage, where=None):
+    """What this machine costs for one unit of a stage, per megasample.
+
+    Read rather than reached into, so a caller outside this module can build
+    an estimate from the same measured numbers the comodulogram uses instead
+    of inventing its own.
+
+    `where` is a volume key from `volume_key(path)`. If that volume has been
+    measured the rate for it is returned; otherwise the volume-blind one,
+    which is right until there is evidence to the contrary.
+    """
+    with _RATES_LOCK:
+        if where:
+            got = _RATES.get(_key(stage, where))
+            if got:
+                return float(got)
+        return float(_RATES.get(stage, 0.0))
+
+
+def _learn(stage, seconds, units, msamples=1.0, where=None):
     """Fold one measurement into the rate for that stage.
 
     A running mean weighted towards recent runs. Not a plain average: the first
@@ -594,15 +700,20 @@ def _learn(stage, seconds, units, msamples=1.0):
         return
     denom = units * (1.0 if stage in _FLAT else max(msamples, 1e-6))
     with _RATES_LOCK:
-        was = _RATES.get(stage)
         rate = seconds / denom
-        _RATES[stage] = rate if not was else (0.7 * was + 0.3 * rate)
+        # The volume-blind rate as well as the per-volume one, so a drive
+        # nobody has run on yet is quoted something measured rather than the
+        # figure this file shipped with.
+        for k in {stage, _key(stage, where)}:
+            was = _RATES.get(k)
+            _RATES[k] = rate if not was else (0.7 * was + 0.3 * rate)
         if not _RATES_PATH:
             return
         try:
             tmp = "%s.%d.tmp" % (_RATES_PATH, os.getpid())
             with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-                json.dump(_RATES, fh, indent=1, sort_keys=True)
+                json.dump({"_stamp": _stamp(), "rates": dict(_RATES)},
+                          fh, indent=1, sort_keys=True)
             os.replace(tmp, _RATES_PATH)
         except OSError:
             pass        # a cache of how fast we are; losing it costs nothing
@@ -613,11 +724,15 @@ class Canceled(Exception):
 
 
 class Job:
-    def __init__(self, spec, plan, msamples=1.0):
+    def __init__(self, spec, plan, msamples=1.0, where=None):
         """`plan` is [(stage, units)] for the stages this run will actually do.
 
         `msamples` is how many megasamples the run works over, which is what
         makes a rate measured on one window length usable on another.
+
+        `where` is the volume the recording is on, so what this run teaches
+        about reading is filed against the disk it read from -- about 1.6x
+        between the share and local disk here, measured warm.
         """
         self.id = uuid.uuid4().hex[:12]
         self.spec = spec
@@ -642,6 +757,7 @@ class Job:
         self._t0 = None
         self._order = 0          # how many stages have finished
         self.msamples = max(float(msamples), 1e-6)
+        self.where = where or volume_key((spec or {}).get("path"))
 
     # -- driving it ------------------------------------------------------
     def _find(self, name):
@@ -683,7 +799,8 @@ class Job:
         st["status"] = "done"
         self._order += 1
         st["order"] = self._order
-        _learn(st["name"], st["seconds"], st["of"], self.msamples)
+        _learn(st["name"], st["seconds"], st["of"], self.msamples,
+               self.where)
         self._at = None
 
     def finish(self, result):
@@ -723,7 +840,7 @@ class Job:
         for i, st in enumerate(self.stages):
             if st["status"] == "done":
                 continue
-            rate = _RATES.get(st["name"], 0.0) * (
+            rate = rate_for(st["name"], self.where) * (
                 1.0 if st["name"] in _FLAT else self.msamples)
             remaining = max(st["of"] - st["done"], 0)
             if i == self._at and st["done"] >= 3 and self._t0:
@@ -759,9 +876,9 @@ def get(job_id):
         return _JOBS.get(job_id)
 
 
-def start(spec, plan, work, msamples=1.0):
+def start(spec, plan, work, msamples=1.0, where=None):
     """Run `work(job)` in a thread. Returns the Job at once."""
-    job = Job(spec, plan, msamples)
+    job = Job(spec, plan, msamples, where)
     with _JOBS_LOCK:
         # Oldest finished jobs first: a result somebody may still be looking at
         # is worth more than one they have forgotten.

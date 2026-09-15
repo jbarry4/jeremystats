@@ -218,8 +218,21 @@ const hd = (t) => p('\n== ' + t + ' ==');
   if (shown >= 0) {
     await untilN(() => D().querySelectorAll('.dev-row').length, 80);
     const dr = D().querySelectorAll('.dev-row').length;
-    p('  ' + dr + ' device row(s) on screen');
-    ck('with a row per machine', dr === ds.length, dr + ' vs ' + ds.length);
+    /* The ones still in use. A retired machine is deliberately not offered
+       -- it still wrote every row it wrote, so it is hidden rather than
+       deleted, and the panel has a toggle for it. Comparing against every
+       device the route returns was only right while nothing had ever been
+       archived. */
+    const active = ds.filter((d) => !d.archived);
+    const retired = ds.length - active.length;
+    p('  ' + dr + ' device row(s) on screen, ' + active.length
+      + ' machine(s) in use, ' + retired + ' retired');
+    ck('with a row per machine still in use', dr === active.length,
+       dr + ' vs ' + active.length);
+    ck('and the retired ones hidden rather than gone',
+       retired === 0 || dr < ds.length,
+       retired + ' retired but ' + dr + ' rows for ' + ds.length
+       + ' devices');
     /* Scoped to the panel. The Debug view now also carries a device
        picker, and a chip per machine lights the same way -- both correctly,
        so counting `.dev-dot.on` across the document counted each online

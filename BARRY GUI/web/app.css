@@ -608,7 +608,7 @@ code { font-family: var(--mono); }
    rail and the icon in the tab are the same mark in the same light. */
 .brand-mark .bm-ground { fill: var(--accent); }
 .brand-mark .bm-trace {
-  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.7;
+  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.9;
   stroke-linecap: round; stroke-linejoin: round;
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
@@ -1433,8 +1433,12 @@ code { font-family: var(--mono); }
 .recent-list button {
   padding: 2px 8px; font-size: 10.5px; border-radius: 999px;
   border: 1px solid var(--line); background: transparent; color: var(--text-2);
-  cursor: pointer; font-family: var(--mono); max-width: 260px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer; font-family: var(--mono);
+  /* Wrapped, not cut. These are paths you click to scan again, so the end
+     -- the part that tells one from another -- is exactly what an ellipsis
+     was hiding. Measured at 443 px of text in a 258 px box. */
+  max-width: 340px; white-space: normal; overflow-wrap: anywhere;
+  text-align: left; line-height: 1.35;
 }
 .recent-list button:hover { background: var(--bg-3); color: var(--text); }
 
@@ -1503,6 +1507,28 @@ code { font-family: var(--mono); }
 .flagchip.video { background: var(--accent-soft); color: var(--accent); }
 .flagchip.bad { background: var(--warn-soft); color: var(--warn); }
 .flagchip.mat { background: var(--ok-soft); color: var(--ok); }
+
+/* Acquisition gaps. A button, because it opens the gap table -- reset to
+   look like the chips beside it rather than like a control. */
+.flagchip.concat {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 0; cursor: pointer; font-family: var(--mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--err-soft); color: var(--err);
+}
+.flagchip.concat:hover { background: var(--err); color: var(--bg); }
+.flagchip.concat .cc-ico, .flagchip.concat .cc-tick {
+  width: 11px; height: 8px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.flagchip.concat .cc-tick { width: 9px; height: 9px; }
+/* Corrected: the recording still has gaps -- that never changes -- but what
+   was banked against it has been moved onto the raw clock. Said quietly. */
+.flagchip.concat.fixed {
+  background: var(--ok-soft); color: var(--ok);
+}
+.flagchip.concat.fixed:hover { background: var(--ok); color: var(--bg); }
 
 /* ---------- history + errors ---------- */
 .hist-row { display: flex; align-items: center; gap: 8px; width: 100%;
@@ -2655,6 +2681,19 @@ select {
 .gap-axis .mid { color: var(--accent); }
 .gap-bar .hint { margin: 6px 0 0; line-height: 1.5; }
 
+/* ---- the events on the recording, in the preview ---- */
+.ev-track { height: 34px; }
+/* A stretch that moves. Shaded behind the events sitting in it, so the step
+   function is visible rather than only described. */
+.gap-seg.shifts { background: var(--accent-soft); }
+.ev-mark {
+  position: absolute; top: 5px; bottom: 5px; width: 1px;
+  background: var(--text-3); opacity: .5; cursor: help;
+}
+/* The ones the correction moves. */
+.ev-mark.moved { background: var(--accent); opacity: .95; width: 2px;
+                 margin-left: -0.5px; }
+
 /* ---- what the correction does ---- */
 .fix-box {
   margin-top: 12px; padding: 11px 13px; border-radius: 6px;
@@ -2671,6 +2710,31 @@ select {
   flex-wrap: wrap;
 }
 .fix-acts .hint { margin: 0; }
+/* One line an event, scrolling. A thousand rows is a scroll box, not a
+   page, and the ones that move are the point. */
+.move-list {
+  max-height: 210px; overflow-y: auto; margin: 0 0 8px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg);
+}
+.move-row {
+  display: grid;
+  grid-template-columns: 84px 14px 84px 78px 1fr;
+  gap: 8px; align-items: baseline;
+  padding: 1px 10px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  line-height: 1.65;
+}
+.move-row .mv-was, .move-row .mv-now, .move-row .mv-shift {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.move-row .mv-arrow { text-align: center; }
+.move-row .mv-label { color: var(--text-3); font-family: var(--font);
+                      font-size: 10.5px; }
+/* The ones that move. Everything else is context. */
+.move-row.moved { color: var(--text); background: var(--accent-soft, transparent); }
+.move-row.moved .mv-shift { color: var(--accent); }
+.move-row.moved .mv-now { color: var(--accent); }
+
 .fix-facts { margin: 12px 0; }
 .fix-facts p { margin: 0 0 6px; line-height: 1.55; color: var(--text-2);
                font-size: 11.5px; }
@@ -2678,6 +2742,12 @@ select {
 .continuity-modal .lead {
   margin: 0 0 14px; line-height: 1.6; color: var(--text-1); font-size: 12.5px;
 }
+
+/* A name some rows were filed under, not a computer we can identify. The
+   same row, said more quietly. */
+.dev-mgr-other.name-only { opacity: 0.82; }
+.dev-mgr-other.name-only .dev-dot { background: var(--text-3); }
+.dev-mgr-other.name-only strong { font-weight: 500; }
 
 .basis-row {
   padding: 8px 10px; border-radius: 5px; background: var(--bg-2);
@@ -3177,6 +3247,46 @@ select {
 }
 .bank-events { margin-top: 6px; }
 .bank-events .preview-wrap { max-height: 34vh; overflow: auto; }
+
+/* ---------- duplicate times ---------- */
+/* Warn-coloured rather than error: a set with doubles in it is not broken,
+   it is a set somebody has to make a decision about. */
+.dup-strip {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 7px;
+  padding: 8px 11px; border-radius: var(--radius-sm);
+  background: var(--warn-soft); border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--warn);
+}
+.dup-strip .spacer { flex: 1; }
+.dup-say { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dup-say strong { font-size: 12px; color: var(--text); }
+.dup-say span { font-size: 11px; color: var(--text-2); }
+/* The rows the strip is talking about, findable in the list below it. */
+.preview-table tr.dup td { background: var(--warn-soft); }
+.preview-table tr.dup td:first-child { box-shadow: inset 2px 0 var(--warn); }
+
+/* The same chip, but it takes you to them. A button inherits none of the
+   text styling a span gets for free. */
+button.tag {
+  font-family: inherit; line-height: inherit; border: 0; cursor: pointer;
+}
+button.tag:hover { filter: brightness(1.25); }
+
+.dup-lede { margin: 0 0 6px; font-size: 12.5px; color: var(--text); }
+.dup-pick { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.dup-opt {
+  display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); cursor: pointer;
+}
+.dup-opt.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.dup-opt input { flex: none; margin-top: 2px; }
+.dup-opt span { display: flex; flex-direction: column; gap: 1px; }
+.dup-opt strong { font-size: 12.5px; font-weight: 600; }
+.dup-opt .hint { font-size: 11px; }
+.dup-kept { color: var(--text); font-weight: 600; }
+.dup-mixes { display: flex; flex-direction: column; gap: 5px; margin: 4px 0 2px; }
+.dup-mixes > div { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 
 @media (max-width: 1100px) {
   .bank-split { grid-template-columns: minmax(0, 1fr); }
@@ -6859,6 +6969,127 @@ body.aid-window .xf-tabs { display: none !important; }
 .tk-what dt:first-child { margin-top: 0; }
 .tk-what dd {
   margin: 3px 0 0; font-size: 12px; color: var(--text-2); line-height: 1.55;
+}
+
+/* ==========================================================================
+   The power spectrum window
+   ==========================================================================
+   The form, the stage list and the progress bars are `comod-*` -- the same
+   classes, not copies. It is the same job machinery on the server and the
+   same shape of wait, and two definitions of one stage row is two things to
+   keep in step.
+
+   Everything below is what the spectrum has and the map does not. The case
+   they all have to survive is sixty-four channels: the legend wraps, the
+   table scrolls, and neither of them decides how wide the window is.
+   ========================================================================== */
+
+/* Two exclusive choices, drawn as one control rather than two buttons that
+   happen to disagree. */
+.psd-seg { display: inline-flex; gap: 0; }
+.psd-seg .btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.psd-seg .btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.psd-seg .btn + .btn { margin-left: -1px; }
+
+.psd-picks {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin: 10px 0 0;
+}
+
+/* Sixty-four rows folded away until asked for, and scrolling when they are:
+   the quick picks are how this is used nine times in ten. */
+.psd-chanlist {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 2px 10px; max-height: 190px; overflow-y: auto;
+  margin: 8px 0 0; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.psd-chan {
+  display: flex; align-items: center; gap: 6px;
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+}
+.psd-chan.bad { color: var(--text-3); font-style: italic; }
+.psd-chan input { margin: 0; }
+
+/* Why the wait is as long as it is. Constrained, because it is a paragraph
+   to read rather than a status line to glance at. */
+.psd-why { margin: 10px 0 0; max-width: 78ch; line-height: 1.6; }
+
+.psd-canvas-wrap { display: flex; flex-direction: column; gap: 4px; }
+.psd-canvas { width: 100%; display: block; border-radius: var(--radius-sm); }
+.psd-readout {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
+  min-height: 17px;
+}
+.psd-read-ch { display: inline-flex; align-items: center; gap: 5px; }
+
+/* The dot is the only thing tying a name to a line, so it is the same
+   swatch everywhere a channel is named: readout, legend and table. */
+.psd-dot {
+  width: 9px; height: 9px; border-radius: 2px; display: inline-block;
+  flex: 0 0 auto;
+}
+
+.psd-legend {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px;
+}
+.psd-leg {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-2);
+  font: 11.5px ui-monospace, Consolas, monospace; color: var(--text);
+  cursor: pointer;
+}
+.psd-leg:hover { background: var(--bg-hover); }
+/* Hidden, not gone: the line comes back and the entry says where from. */
+.psd-leg.off { opacity: .42; text-decoration: line-through; }
+.psd-leg.bad { color: var(--warn); cursor: default; }
+.psd-leg-num { color: var(--text-3); }
+
+.psd-table-wrap { margin-top: 14px; }
+.psd-table-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; }
+.psd-table { border-collapse: collapse; font-size: 11.5px; width: 100%; }
+.psd-table th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-2); text-align: right; font-weight: 600;
+  padding: 5px 9px; border-bottom: 1px solid var(--line);
+  color: var(--text-2); white-space: nowrap;
+}
+.psd-table th:first-child { text-align: left; }
+.psd-table td {
+  padding: 4px 9px; text-align: right; white-space: nowrap;
+  font-family: ui-monospace, Consolas, monospace;
+  border-bottom: 1px solid var(--bg-2);
+}
+.psd-table td:first-child {
+  display: flex; align-items: center; gap: 6px; text-align: left;
+}
+.psd-table tr.off { opacity: .4; }
+
+.psd-note { margin-top: 14px; }
+.psd-note p { margin: 4px 0 0; max-width: 84ch; line-height: 1.6; }
+
+/* ---- choosing which version the correction reads ---- */
+/* Greyed, not hidden, where a version cannot be a source: a version missing
+   from the row raises the question of why, and the reason is worth more than
+   a shorter list. */
+.ver-pick { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+.ver-chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 4px 9px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-2);
+  color: var(--text); font-size: 11.5px; cursor: pointer;
+}
+.ver-chip:hover:not(.off) { background: var(--bg-hover); }
+.ver-chip.on { border-color: var(--accent); background: var(--bg-hover); }
+.ver-chip.off { opacity: .45; cursor: not-allowed; }
+.ver-chip .ver-n { color: var(--text-3); font-size: 10.5px; }
+.ver-chip .ver-tag {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-3); border: 1px solid var(--line);
+  border-radius: 3px; padding: 0 4px;
 }
 
 /* A window opened for one thing: no rail, because there is nowhere else in

@@ -207,6 +207,16 @@ GAP_FRAC_STRICT = 0.2          # of a sample   (neo, strict=True)
 GAP_RULE_LOOSE = "spikeinterface-nonstrict"
 GAP_RULE_STRICT = "neo-strict"
 
+# Above this a gap is a stopped recording, not a dropped packet.
+#
+# At 30 kHz a transient -- a lost packet, a disk stall -- cannot last a
+# second; a deliberate pause is never shorter. So nothing real sits near the
+# line, and the two sides of it want opposite words: one is data that was
+# lost, the other is time when nothing was being recorded. One recording here
+# reports 4445 seconds "never written", which is somebody pausing the rig for
+# an hour and a quarter.
+PAUSE_SECONDS = 1.0
+
 # Below this a residual is integer arithmetic, not a hiccup. Timestamps are
 # whole microseconds and the predicted interval is truncated, so a perfectly
 # continuous record pair differs by a microsecond or two.
@@ -428,6 +438,7 @@ def segment_ncs(path: str, strict: bool = False):
             gap_us = starts[i] - ends[i - 1]
             cum_lost_us += gap_us
             gaps.append({
+                "paused": gap_us / 1e6 > PAUSE_SECONDS,
                 "after_record": int(limits[i] - 1),
                 "at_true_time_s": (ends[i - 1] - t0_us) / 1e6,
                 "gap_s": gap_us / 1e6,
@@ -436,6 +447,12 @@ def segment_ncs(path: str, strict: bool = False):
                 "cumulative_shift_s": cum_lost_us / 1e6,
             })
         cum_samples += counts[i]
+
+    # A stopped recording and a dropped packet look identical in the
+    # timestamps and mean opposite things. Counted apart so they can be said
+    # apart; the segment map and the correction are the same either way.
+    paused = sum(g["gap_s"] for g in gaps if g["gap_s"] > PAUSE_SECONDS)
+    n_paused = sum(1 for g in gaps if g["gap_s"] > PAUSE_SECONDS)
 
     true_dur = (ends[-1] - t0_us) / 1e6
     concat_dur = nv_sum / fs
@@ -472,6 +489,12 @@ def segment_ncs(path: str, strict: bool = False):
         "record_duration_s": n_rec * SAMPLES_PER_RECORD / fs,   # by record
         "seconds_lost": lost,
         "samples_lost": lost * fs,
+        # Of that, the part where the rig was stopped rather than failing.
+        "seconds_paused": paused,
+        "n_pauses": n_paused,
+        "seconds_dropped": lost - paused,
+        "n_dropouts": len(gaps) - n_paused,
+        "pause_threshold_s": PAUSE_SECONDS,
         "clock_drift_s": drift,
         "implied_fs": (nv_sum - 1) / true_dur if true_dur else float(fs),
         "n_short_records": int(n_short),
