@@ -13,10 +13,18 @@
     "schema": "2026-09-14T18:52:29.015913+00:00",
     "session": "2026-09-14T18:52:29.015913+00:00",
     "start": "2026-09-14T18:52:29.015913+00:00",
-    "updated": "2026-09-14T18:52:29.015913+00:00"
+    "updated": "2026-09-14T18:54:09.690504+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260914_144921\\FAKEPROJ\\fake_m908\\m908s2_2026-09-14\\2026-09-14_14-49-45": [
+        "set",
+        "2026-09-14T18:54:09.690504+00:00"
+      ]
+    }
   },
   "_shard": {
-    "at": "2026-09-14T18:52:29.015913+00:00",
+    "at": "2026-09-14T18:54:09.690504+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -34,7 +42,9 @@
   "label": "m908 s2 2026-09-14",
   "loose_key": "m908_s002",
   "mouse": 908,
-  "paths": [],
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260914_144921\\FAKEPROJ\\fake_m908\\m908s2_2026-09-14\\2026-09-14_14-49-45"
+  ],
   "project": "Unfiled",
   "project_source": "guessed",
   "retired": true,
@@ -42,7 +52,7 @@
   "session": 2,
   "start": "2026-09-14T18:49:45+00:00",
   "updated": {
-    "at": "2026-09-14T14:52:29-04:00",
+    "at": "2026-09-14T14:54:09-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
