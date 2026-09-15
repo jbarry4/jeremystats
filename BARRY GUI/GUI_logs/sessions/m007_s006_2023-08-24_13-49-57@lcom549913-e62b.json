@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.614640+00:00",
     "session": "2026-09-04T15:57:01.614640+00:00",
     "start": "2026-09-04T15:57:01.614640+00:00",
-    "updated": "2026-09-11T15:26:56.299019+00:00",
-    "view_state": "2026-09-10T20:39:03.264799+00:00"
+    "updated": "2026-09-14T14:10:03.923264+00:00",
+    "view_state": "2026-09-14T14:09:41.719121+00:00"
   },
   "_keys": {
     "paths": {
@@ -66,14 +66,18 @@
         "set",
         "2026-09-08T18:00:51.909835+00:00"
       ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-14T13:59:12.965077+00:00"
+      ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-11T15:26:56.299019+00:00"
+        "2026-09-14T14:10:03.923264+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-11T15:26:56.299019+00:00",
+    "at": "2026-09-14T14:10:03.923264+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -142,19 +146,27 @@
       "root": "D:/Data/Archive/PTEN Project/PTEN",
       "scan": "scan_e4c0479cd6"
     },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-14T09:59:12-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s6aug24\\2023-08-24_13-49-57",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_f179140bc2"
+    },
     "lcom549913-e62b": {
-      "at": "2026-09-11T11:26:52-04:00",
+      "at": "2026-09-14T10:10:03-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M7_s6\\2023-08-24_13-49-57",
-      "root": null,
-      "scan": null
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 6,
   "start": "2023-08-24T13:49:57",
   "updated": {
-    "at": "2026-09-11T11:26:56-04:00",
+    "at": "2026-09-14T10:10:03-04:00",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -241,9 +253,9 @@
     "notch": 0,
     "probe": null,
     "spacing": 50,
-    "span": 10,
+    "span": 12.2,
     "stft_mode": null,
-    "t0": 30,
+    "t0": 28.700400686891815,
     "ylim": null
   }
 }

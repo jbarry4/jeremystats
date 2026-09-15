@@ -1,0 +1,329 @@
+{
+  "_at": {
+    "added": "2026-09-15T14:21:14.125729+00:00",
+    "by_label": "2026-09-15T14:21:14.125729+00:00",
+    "curation_label": "2026-09-15T14:21:14.125729+00:00",
+    "duration_s": "2026-09-15T14:21:14.125729+00:00",
+    "events": "2026-09-15T14:21:14.125729+00:00",
+    "gid": "2026-09-15T14:21:14.125729+00:00",
+    "id": "2026-09-15T14:21:14.125729+00:00",
+    "label_names": "2026-09-15T14:21:14.125729+00:00",
+    "mouse": "2026-09-15T14:21:14.125729+00:00",
+    "n": "2026-09-15T14:21:14.125729+00:00",
+    "name": "2026-09-15T14:21:14.125729+00:00",
+    "note": "2026-09-15T14:21:14.125729+00:00",
+    "project": "2026-09-15T14:21:14.125729+00:00",
+    "recording_start": "2026-09-15T14:21:14.125729+00:00",
+    "schema": "2026-09-15T14:21:14.125729+00:00",
+    "session": "2026-09-15T14:21:14.125729+00:00",
+    "session_key": "2026-09-15T14:21:14.125729+00:00",
+    "session_label": "2026-09-15T14:21:14.125729+00:00",
+    "session_loose_key": "2026-09-15T14:21:14.125729+00:00",
+    "session_path": "2026-09-15T14:21:14.125729+00:00",
+    "source": "2026-09-15T14:21:14.125729+00:00",
+    "specified": "2026-09-15T14:21:14.125729+00:00",
+    "type": "2026-09-15T14:21:14.125729+00:00",
+    "type_name": "2026-09-15T14:21:14.125729+00:00",
+    "units": "2026-09-15T14:21:14.125729+00:00",
+    "version": "2026-09-15T14:21:14.125729+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "11499ef7b74d": [
+        "set",
+        "2026-09-15T14:21:14.125729+00:00"
+      ],
+      "v0-526b8b9b": [
+        "set",
+        "2026-09-15T14:21:14.125729+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-15T14:21:14.125729+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-15T10:21:14-04:00",
+    "by": "harness@test",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "Dentate Spike": 10,
+    "Flag": 1,
+    "Garbage": 3,
+    "unspecified": 1
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 15.839
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 19.32
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 21.437
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 21.437
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 31.64
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 31.64
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 41.813
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 71.561
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 71.561
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 73.552
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 73.552
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 84.242
+    },
+    {
+      "start": 91.026
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 91.026
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 93.998
+    }
+  ],
+  "gid": null,
+  "id": "0b4a5be35484",
+  "label_names": {},
+  "mouse": 99,
+  "n": 15,
+  "name": "dupes shot",
+  "note": "",
+  "project": "HARNESS",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": null,
+  "session_label": "PTEN m34 s8 2026-06-10",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "harness: duplicate times",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-15T10:21:14-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 15
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-526b8b9b",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 15,
+      "note": "Imported from harness: duplicate times. 15 candidates, none decided yet.",
+      "snap": [
+        [
+          15.839,
+          null
+        ],
+        [
+          19.32,
+          null
+        ],
+        [
+          21.437,
+          null
+        ],
+        [
+          21.437,
+          null
+        ],
+        [
+          31.64,
+          null
+        ],
+        [
+          31.64,
+          null
+        ],
+        [
+          41.813,
+          null
+        ],
+        [
+          71.561,
+          null
+        ],
+        [
+          71.561,
+          null
+        ],
+        [
+          73.552,
+          null
+        ],
+        [
+          73.552,
+          null
+        ],
+        [
+          84.242,
+          null
+        ],
+        [
+          91.026,
+          null
+        ],
+        [
+          91.026,
+          null
+        ],
+        [
+          93.998,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-15T10:21:14-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "Dentate Spike": 10,
+        "Flag": 1,
+        "Garbage": 3,
+        "unspecified": 1
+      },
+      "changed": 14,
+      "gained": 0,
+      "id": "11499ef7b74d",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "undecided \u2192 flag": 1,
+        "undecided \u2192 garbage": 3,
+        "undecided \u2192 spike": 10
+      },
+      "n": 15,
+      "note": "",
+      "snap": [
+        [
+          15.839,
+          "spike"
+        ],
+        [
+          19.32,
+          "spike"
+        ],
+        [
+          21.437,
+          "spike"
+        ],
+        [
+          21.437,
+          "garbage"
+        ],
+        [
+          31.64,
+          "spike"
+        ],
+        [
+          31.64,
+          "flag"
+        ],
+        [
+          41.813,
+          "spike"
+        ],
+        [
+          71.561,
+          "spike"
+        ],
+        [
+          71.561,
+          "garbage"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          84.242,
+          "garbage"
+        ],
+        [
+          91.026,
+          null
+        ],
+        [
+          91.026,
+          "spike"
+        ],
+        [
+          93.998,
+          "spike"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}
