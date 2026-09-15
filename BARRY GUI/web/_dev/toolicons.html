@@ -1,0 +1,154 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the toolkit icons</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1300px; height:900px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ #out div { white-space:pre-wrap; }
+ /* The icons, big, on both grounds, so a path that is wrong is obvious
+    rather than a smudge at sixteen pixels. */
+ .sheet { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 16px; }
+ .cell { text-align:center; padding:8px; border:1px solid #333;
+         border-radius:6px; }
+ .cell.light { background:#fff; }
+ .cell svg { width:56px; height:56px; fill:none; stroke-width:1.4;
+             stroke-linecap:round; stroke-linejoin:round; display:block; }
+ .cell.dark svg { stroke:#ddd; } .cell.light svg { stroke:#222; }
+ .cell b { font-size:10px; display:block; margin-top:4px; color:#89a;
+           font-weight:normal; }
+</style>
+<p class="note">Icons are drawn at sixteen pixels, which is exactly the size
+at which a broken path looks like a smudge rather than a bug. So this pulls
+each one out of the running app and draws it at fifty-six, on both grounds,
+and checks the things a glance cannot: that every tool has one, that each is
+distinct, and that each stays inside its own box.</p>
+<div id="out"></div>
+<div class="sheet" id="sheet"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 30000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+/* `BARRY` is a const in core.js, so it is not a property of `window` --
+   reached through the frame's own eval. Same as comodwin.html. */
+const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } };
+
+(async () => { try {
+  A.src = '/#toolkit';
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.views.toolkit'),
+              40000);
+  const tools = await until(() => {
+    const n = D().querySelectorAll('#tkBody .tk-tool');
+    return n.length ? n : null;
+  }, 30000);
+  ck('the toolkit rendered its tools', !!tools, 'none');
+  if (!tools) { document.title = 'toolicons: ' + (bad || 1) + ' FAILED'; return; }
+  say('note', '  ' + tools.length + ' tools');
+
+  head('Every tool carries a mark');
+  const seen = [];
+  const paths = new Map();
+  for (const t of tools) {
+    const name = (t.querySelector('strong') || {}).textContent || '?';
+    const svg = t.querySelector('svg.tk-ico');
+    const p = svg && svg.querySelector('path');
+    seen.push(name);
+    ck(name + ' has one', !!p, 'no icon');
+    if (p) paths.set(name, p.getAttribute('d') || '');
+  }
+
+  head('And no two are the same');
+  /* A duplicated path is the commonest way a set like this rots: somebody
+     adds a tool, copies the line above, and two rows become one shape. */
+  const byPath = new Map();
+  for (const [name, d] of paths) {
+    if (byPath.has(d)) {
+      ck('distinct: ' + name, false, 'same as ' + byPath.get(d));
+    } else { byPath.set(d, name); }
+  }
+  ck('all ' + paths.size + ' are distinct', byPath.size === paths.size,
+     paths.size - byPath.size + ' duplicate(s)');
+
+  head('And each stays inside its sixteen-pixel box');
+  /* Measured, not eyeballed: a path that runs outside the viewBox is
+     clipped in the button and looks like a different, worse icon. */
+  const NS = 'http://www.w3.org/2000/svg';
+  const probe = document.createElementNS(NS, 'svg');
+  probe.setAttribute('viewBox', '0 0 16 16');
+  probe.style.cssText = 'position:absolute;width:160px;height:160px;'
+                      + 'left:-9999px;top:0';
+  document.body.appendChild(probe);
+  for (const [name, d] of paths) {
+    const el2 = document.createElementNS(NS, 'path');
+    el2.setAttribute('d', d);
+    probe.appendChild(el2);
+    const b = el2.getBBox();
+    probe.removeChild(el2);
+    const inside = b.x >= -0.6 && b.y >= -0.6
+                 && (b.x + b.width) <= 16.6 && (b.y + b.height) <= 16.6;
+    ck(name + ' fits', inside,
+       'bbox ' + [b.x, b.y, b.width, b.height].map((v) => v.toFixed(1)).join(','));
+    // And it is not a dot: a path that failed to parse draws nothing.
+    ck('  ' + name + ' actually draws something',
+       b.width > 3 && b.height > 3,
+       b.width.toFixed(1) + ' x ' + b.height.toFixed(1));
+  }
+  document.body.removeChild(probe);
+
+  head('The open tool takes the accent');
+  const first = tools[0];
+  first.click();
+  await sleep(400);
+  const on = D().querySelector('#tkBody .tk-tool.on svg.tk-ico');
+  ck('the open tool’s mark is styled apart', !!on, 'none marked');
+  if (on) {
+    const c = W().getComputedStyle(on).color;
+    const off = W().getComputedStyle(
+      D().querySelector('#tkBody .tk-tool:not(.on) svg.tk-ico')).color;
+    ck('  and it differs from the closed ones', c !== off,
+       c + ' vs ' + off);
+  }
+
+  // Draw them big, on both grounds, so the shapes can be judged.
+  const sheet = document.getElementById('sheet');
+  for (const [name, d] of paths) {
+    for (const ground of ['dark', 'light']) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + ground;
+      cell.innerHTML = '<svg viewBox="0 0 16 16"><path d="'
+                     + d.replace(/"/g, '') + '"/></svg><b>' + name + '</b>';
+      sheet.appendChild(cell);
+    }
+  }
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'toolicons: ' + bad + ' FAILED' : 'toolicons: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'toolicons: harness CRASH';
+} })();
+</script>

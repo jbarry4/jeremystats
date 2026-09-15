@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose — Panorama</title>
+<style>
+ html,body{margin:0;height:100%;background:#0c0f14}
+ iframe#app{width:100vw;height:100vh;border:0}
+</style>
+<iframe id="app" src="/?linkhold=0#toolkit"></iframe>
+<script>
+/* Opens Panorama on the demo session, runs it, and leaves it there -- for
+   screenshots and for looking at the layout, which is not something a DOM
+   assertion can tell you.
+
+   ?t1=<seconds>  how much of the demo to analyse (default 180)
+   ?wait=0        pose the form only, without running
+*/
+const Q = new URLSearchParams(location.search);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 900, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+(async () => {
+  const f = document.getElementById('app');
+  const ev = (s) => f.contentWindow.eval(s);
+  const D = () => f.contentWindow.document;
+  await untilN(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.panorama'));
+  ev('setView("toolkit")');
+  await untilN(() => D().querySelector('.tk-tools'));
+  const hit = Array.from(D().querySelectorAll('.tk-tool'))
+    .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
+  if (hit) hit.click();
+  await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
+  ev('BARRY.panorama.openRecording("demo:long-session", {label: "demo",'
+     + ' t0: 0, t1: ' + (parseFloat(Q.get('t1')) || 180) + '})');
+  await untilN(() => ev('!!BARRY.panorama.estimate'));
+  if (Q.get('wait') === '0') { document.title = 'POSED (form)'; return; }
+  ev('BARRY.panorama.run()');
+  await untilN(() => ev('!!BARRY.panorama.result'));
+  await sleep(700);
+  document.title = 'POSED';
+})();
+</script>

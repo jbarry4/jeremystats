@@ -76,7 +76,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 import nlx           # noqa: E402
 import cfc           # noqa: E402
 
-FOLDER = r"D:/PTEN/PTEN/M1_Pten/M1ptens2oct2/2023-10-02_16-58-03"
+FOLDER = r"D:\PTEN\CTL\M2_CTL\M2ctls3jan23\2024-01-23_16-04-25"
 
 # Bands, taken from backend/spectrum.py so a number here means the same thing
 # a number there does.

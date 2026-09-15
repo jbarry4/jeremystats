@@ -128,7 +128,9 @@ BARRY.views.toolkit = (function () {
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
+    if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
+    if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
 
        It used to fall through to the query below, which fetched the whole
@@ -186,10 +188,21 @@ BARRY.views.toolkit = (function () {
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
+        toolButton('incisor', 'Incisor',
+                   'Dentate spike detection, on the recording\u2019s own '
+                   + 'clock. A port of Toothy\u2019s detector \u2014 '
+                   + 'checked against its code on identical input \u2014 so '
+                   + 'a set from here never needs the concatenation '
+                   + 'correction.'),
         toolButton('cfc', 'Braid',
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
                    + 'in it is saved.'),
+        toolButton('panorama', 'Panorama',
+                   'The whole recording at once: the spectrogram end to '
+                   + 'end, which frequency was dominant and how often, '
+                   + 'and the power spectrum over the range you ask '
+                   + 'for. Saves into Results.'),
         toolButton('kilosort', 'Kilosort',
                    'Check this machine can sort, run a sort against a '
                    + 'recording, then open it in Phy.'),
@@ -208,12 +221,52 @@ BARRY.views.toolkit = (function () {
             snapshot importer was showing it and asking which recordings to
             scope a folder read to. */
          (q.tool === 'curate' || q.tool === 'strata' || q.tool === 'cfc'
-          || q.tool === 'kilosort' || q.tool === 'snapshots')
+          || q.tool === 'kilosort' || q.tool === 'snapshots'
+          // Incisor picks its own recording and scans every channel, so the
+          // bad-channel scope card above would be describing something else.
+          || q.tool === 'incisor'
+          // Panorama picks its own recording and its own channel, so
+          // the bad-channel scope card above would be describing
+          // something else.
+          || q.tool === 'panorama')
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
     ]));
     renderResult();
+  }
+
+  /* One per tool, drawing the thing the tool is about rather than a generic
+     gear -- what makes a row findable at a glance is a shape that is about
+     it. Stroke on `currentColor` at 16px, so they take the button's state
+     and need no second set for the dark theme. */
+  const TOOL_ICONS = {
+    // Channel rows, one of them struck out.
+    bad: 'M2 4h12M2 8h5M2 12h12M9.5 6.5l4 3M13.5 6.5l-4 3',
+    // A dentate spike, and a tick for the decision made about it.
+    curate: 'M1 11.5h2.5l2-6.5 2 6.5H10M11.5 10.5l1.5 1.5L15.5 8',
+    // Layers, with the probe going down through them.
+    strata: 'M2 4.5h12M2 8h12M2 11.5h12M11 2.5v11',
+    // A tooth. Dentate means toothed, and an incisor is the sharp one.
+    incisor: 'M4.2 3c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+             + '1-1.4 1-1.7 0L8.6 8.6c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+             + '1.7 0L3.5 7.1C3.1 5.6 3.1 3.9 4.2 3z',
+    // Two waves braided through one another.
+    cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
+    // A wide frame with a horizon in it.
+    panorama: 'M1.5 3.5h13v9h-13zM2.5 10.5l3-3 2.5 2.5 3-3.5 2.5 3',
+    // Units sorted into ordered bars.
+    kilosort: 'M2.5 13.5V9M6.5 13.5V5.5M10.5 13.5V7.5M14.5 13.5V3',
+    // A stack of frames.
+    snapshots: 'M5 2.5h9v9M2.5 5.5h9v9h-9zM5 11l2-2 1.5 1.5L11 8',
+  };
+
+  function toolIcon(id) {
+    const d = TOOL_ICONS[id];
+    if (!d) return null;
+    return el('svg', { class: 'tk-ico', viewBox: '0 0 16 16',
+                       'aria-hidden': 'true',
+                       html: '<path d="' + d + '" />' });
   }
 
   function toolButton(id, name, blurb) {
@@ -228,7 +281,10 @@ BARRY.views.toolkit = (function () {
         refresh();
       },
     }, [
-      el('strong', { text: name }),
+      el('div', { class: 'tk-tool-head' }, [
+        toolIcon(id),
+        el('strong', { text: name }),
+      ].filter(Boolean)),
       el('span', { text: blurb }),
     ]);
   }
@@ -1968,6 +2024,33 @@ BARRY.views.toolkit = (function () {
      ================================================================== */
   let cfcReg = null;
 
+  /* Incisor needs the registry and nothing else -- it does its own
+     estimating once a recording is chosen. The rows come from the same
+     sixty-second cache every other tool uses, because reading the registry
+     takes eight seconds on this lab's data. */
+  async function loadIncisor() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'incisor') return;
+    BARRY.incisor.paint();
+  }
+
+  /* Panorama needs the registry for its recording picker and nothing
+     else -- it estimates its own cost once a recording is chosen. Same
+     sixty-second cache as every other tool. */
+  async function loadPanorama() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'panorama') return;
+    BARRY.panorama.paint();
+  }
+
   async function loadCFC() {
     renderCFC();
     cfcReg = await registry();
@@ -2412,7 +2495,9 @@ BARRY.views.toolkit = (function () {
       return;
     }
     if (q.tool === 'strata') { renderStrata(); return; }
+    if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
+    if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
     if (!host) return;
@@ -2566,7 +2651,13 @@ BARRY.views.toolkit = (function () {
   }
 
   return {
-    init, onShow, refresh,
+    init,
+    /* The cached registry rows, flattened, for a tool that wants its own
+       session picker. Through here rather than each tool fetching, so one
+       sixty-second cache serves them all. */
+    registryRows: () => (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    tool: () => q.tool, onShow, refresh,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

@@ -480,6 +480,205 @@ BARRY.views.xplore = (function () {
   }
 
   /* ==================================================================
+     Channel lines -- a horizontal mark across a chosen channel
+     ==================================================================
+     Published by whoever cares (Incisor, today) rather than owned here:
+     this module knows where a channel is drawn and nothing about why it
+     matters. Each entry is {key, label, colour, number, onmove}, and
+     `number` is a CSC number rather than a lane, because a lane is a fact
+     about the current pane -- which may be showing every fourth channel --
+     and a channel is a fact about the probe.
+     ================================================================== */
+  let chanLines = [];
+  let dragLine = null;
+
+  function setChannelLines(sess, lines) {
+    chanLines = (lines || []).slice();
+    repaintTraces();
+  }
+
+  function channelLines() { return chanLines.slice(); }
+
+  function repaintTraces() {
+    XF.panes.forEach((p, i) => {
+      if (p && p.panel === 'traces') { try { drawPane(i); } catch (e) {} }
+    });
+  }
+
+  /* Which lane a CSC number is on, or -1 if this pane is not showing it.
+
+     Takes the rows rather than a window, so the traces pane and the rasters
+     can both ask -- `win.series` and a raster's `rows` are the same thing
+     under different names, and both carry `number`. A lookup rather than
+     arithmetic: the pane may be showing every fourth channel. */
+  function laneOfNumber(rows, number) {
+    if (!rows || !rows.length) return -1;
+    for (let i = 0; i < rows.length; i += 1) {
+      if (Number(rows[i].number) === Number(number)) return i;
+    }
+    return -1;
+  }
+
+  /* Drawn after the traces so it sits on top, and labelled at the left
+     where the channel names are, so the mark and the name read as one
+     thing.
+
+     Solid and heavy, with a dark halo under it. The first version was a
+     2 px dash at 80% alpha over traces of the same weight and was reported
+     as hard to read -- and dashes were wrong anyway: they read as
+     provisional when this is the most definite thing on the pane, and they
+     break the horizontal continuity that makes a line findable at a glance
+     across a wide plot. */
+  function drawChannelLines(ctx, rows, padL, plotW, padTop, plotH) {
+    if (!chanLines.length || !rows || !rows.length) return;
+    const lane = plotH / rows.length;
+    ctx.save();
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(rows, line.number);
+      if (i < 0) {
+        drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH);
+        continue;
+      }
+      const y = Math.round(padTop + lane * (i + 0.5)) + 0.5;
+      const on = dragLine === line;
+      const col = line.colour || '#e5484d';
+
+      // A dark halo first, so the line holds against a bright trace
+      // without having to be a colour that fights the palette.
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = on ? 7 : 5.5;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col;
+      ctx.lineWidth = on ? 4 : 3;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+
+      // A grip at each end: the line is a thing you can take hold of, and
+      // at this width the right-hand end alone is easy to miss.
+      ctx.fillRect(padL, y - 7, 5, 14);
+      ctx.fillRect(padL + plotW - 5, y - 7, 5, 14);
+
+      // The label in a filled pill, so it is legible over anything.
+      const label = line.label + '  ' + (rows[i].label || '');
+      ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const w = ctx.measureText(label).width + 14;
+      const ly = y - 17;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(padL + 8, ly, w, 17, 8);
+      else ctx.rect(padL + 8, ly, w, 17);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, padL + 15, ly + 12.5);
+    }
+    ctx.restore();
+  }
+
+  /* A channel that was chosen but is not on screen.
+
+     The pane may be showing every fourth channel, or the even ones only, and
+     the chosen one is then simply absent -- no line, no label, nothing. That
+     reads as "the choice did not take". So it is marked at the edge nearest
+     where it would sit, named, and said to be hidden. */
+  function drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH) {
+    const nums = rows.map((x) => Number(x.number));
+    const want = Number(line.number);
+    const above = nums.every((n) => n > want);
+    const below = nums.every((n) => n < want);
+    // Between two shown channels, or past one end: either way it is placed
+    // where the probe says it belongs.
+    let frac = 0.5;
+    if (above) frac = 0;
+    else if (below) frac = 1;
+    else {
+      let k = 0;
+      while (k < nums.length - 1 && nums[k + 1] < want) k += 1;
+      frac = (k + 1) / rows.length;
+    }
+    const y = Math.round(padTop + Math.max(10, Math.min(plotH - 10,
+                                                        frac * plotH))) + 0.5;
+    const col = line.colour || '#e5484d';
+    const label = line.label + '  ' + (line.numberLabel || ('CSC' + want))
+                + '  \u2014 hidden';
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    const w = ctx.measureText(label).width + 26;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(padL + 8, y - 9, w, 18, 9);
+    else ctx.rect(padL + 8, y - 9, w, 18);
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // A short dashed stub, because this one IS provisional: it says where
+    // the channel would be, not where it is.
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padL + 8 + w + 4, y);
+    ctx.lineTo(padL + plotW, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, padL + 18, y + 4);
+    // An eye-off dot, so the word is not the only thing carrying it.
+    ctx.beginPath();
+    ctx.arc(padL + 14, y, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* Picked up within a fraction of a lane of the line; let go over whatever
+     lane the pointer is on, and the CSC NUMBER of that lane is what gets
+     reported -- never an index, which means something different in a pane
+     showing a subset. */
+  function channelLineAt(pane, x, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !chanLines.length) return null;
+    const padL = PAD_TRACES_L;
+    if (x < padL) return null;
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(win.series, line.number);
+      if (i < 0) continue;
+      const ly = geom.top + geom.lane * (i + 0.5);
+      if (Math.abs(y - ly) <= Math.max(5, geom.lane * 0.35)) return line;
+    }
+    return null;
+  }
+
+  function channelLineDrop(pane, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !dragLine) { dragLine = null; return; }
+    // The same clamp the readout uses, for the same reason.
+    const i = clamp(Math.floor((y - geom.top) / geom.lane), 0,
+                    win.series.length - 1);
+    const number = Number(win.series[i].number);
+    const line = dragLine;
+    dragLine = null;
+    if (Number(line.number) !== number) {
+      line.number = number;
+      if (typeof line.onmove === 'function') line.onmove(number);
+    }
+    repaintTraces();
+  }
+
+  /* ==================================================================
      Curation marks
      ==================================================================
      The candidate being decided, and its neighbours, drawn on every panel
@@ -5536,7 +5735,21 @@ BARRY.views.xplore = (function () {
       }
       pane._labelGutter = gutter;
       placeCaption(pane);
-    } else if (res.log_freq || (res.freqs && res.freqs.length === 2)) {
+    }
+
+    /* The channel lines, on the rasters as well as the traces.
+       This is where a laminar landmark is easiest to read -- the layers are
+       visible as bands -- so losing the marks on the way here was exactly
+       backwards. The overlay already has the row geometry; it spans the
+       full panel, with the labels drawn inside rather than in a gutter. */
+    if (rows.length) {
+      drawChannelLines(ctx, rows, 0, w, 0, h);
+    }
+    /* The frequency axis belongs to a panel that has no channel rows --
+       it was the `else` of the block above before the channel lines were
+       drawn between them, and an empty `if` is a worse way to say it. */
+    if (rows.length <= 1
+        && (res.log_freq || (res.freqs && res.freqs.length === 2))) {
       /* The frequency axis of a single time-frequency panel.
 
          Chosen by measurement rather than by an every-nth rule: a candidate
@@ -6825,6 +7038,9 @@ BARRY.views.xplore = (function () {
     // Remember the lane geometry so the channel checkboxes can be lined up
     // with the traces they control.
     pane._geom = { top: padTop, padBottom: PAD.b, lane, n,
+                   // The horizontal extent too, so a channel line can be
+                   // hit-tested without recomputing what was just drawn.
+                   padL, plotW, plotH,
                    labels: win.series.map((x) => x.number) };
     pane._padTop = padTop;
     try {
@@ -6869,6 +7085,7 @@ BARRY.views.xplore = (function () {
        the same marks from the same data. The curate module still gets a
        turn afterwards for the label text, which only makes sense in the
        window doing the deciding. */
+    drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
     if (BARRY.curate && BARRY.curate.draw) {
@@ -7295,11 +7512,39 @@ BARRY.views.xplore = (function () {
       XF.focused = index; XF.active = pane.sessionId;
       if (e.altKey) { addEventAt(sess, canvas, e); return; }
       if (XF.measure || XF.placing) return;   // another handler owns this drag
+      /* A channel line gets first refusal. Inside this handler rather than
+         in one of its own: the canvas already has a mousedown that pans, so
+         a second listener would be two of them fighting over one press. */
+      const rect0 = canvas.getBoundingClientRect();
+      const hit = channelLineAt(pane, e.clientX - rect0.left,
+                                e.clientY - rect0.top);
+      if (hit) {
+        dragLine = hit;
+        canvas.style.cursor = 'ns-resize';
+        repaintTraces();
+        return;
+      }
       const w0 = winOf(pane, sess);
       drag = { x: e.clientX, t0: w0.t0, span: w0.span };
       canvas.style.cursor = 'grabbing';
     });
     const move = (e) => {
+      if (dragLine) {
+        // Followed live, snapped to a lane, so it is obvious which channel
+        // it will land on before the mouse is let go.
+        const rect = canvas.getBoundingClientRect();
+        const win = pane._win, geom = pane._geom;
+        if (win && geom) {
+          const i = clamp(Math.floor(((e.clientY - rect.top) - geom.top)
+                                     / geom.lane), 0, win.series.length - 1);
+          const number = Number(win.series[i].number);
+          if (Number(dragLine.number) !== number) {
+            dragLine.number = number;
+            repaintTraces();
+          }
+        }
+        return;
+      }
       if (drag) {
         const rect = canvas.getBoundingClientRect();
         const plotW = Math.max(1, rect.width - PAD_TRACES_L - PAD.r);
@@ -7307,9 +7552,25 @@ BARRY.views.xplore = (function () {
                   drag.span);
         return;
       }
+      // The cursor says a line can be taken hold of before it is.
+      const r2 = canvas.getBoundingClientRect();
+      if (channelLineAt(pane, e.clientX - r2.left, e.clientY - r2.top)) {
+        canvas.style.cursor = 'ns-resize';
+      } else if (canvas.style.cursor === 'ns-resize') {
+        canvas.style.cursor = 'crosshair';
+      }
       hoverTraces(pane, sess, canvas, readout, e);
     };
-    const up = () => { if (drag) { drag = null; canvas.style.cursor = 'crosshair'; } };
+    const up = (e) => {
+      if (dragLine) {
+        const rect = canvas.getBoundingClientRect();
+        channelLineDrop(pane, (e && e.clientY != null)
+                        ? e.clientY - rect.top : 0);
+        canvas.style.cursor = 'crosshair';
+        return;
+      }
+      if (drag) { drag = null; canvas.style.cursor = 'crosshair'; }
+    };
     onPane(pane, window, 'mousemove', move);
     onPane(pane, window, 'mouseup', up);
     canvas.addEventListener('mouseleave', () => readout.classList.remove('on'));
@@ -8239,8 +8500,13 @@ BARRY.views.xplore = (function () {
     refreshAll();
   }
 
-  return {
+  /* NOT named `api`. `api()` is the global fetch helper from core.js and
+     this module calls it everywhere; a `const api` in here shadows it for
+     the whole IIFE and every one of those calls becomes "api is not a
+     function" -- which is what happened. */
+  const handle = {
     init,
+    setChannelLines, channelLines,
     open: openSession,
     popOutPanes,
     /* Whatever recording is on screen. Braid's `enter()` with no argument
@@ -8393,4 +8659,14 @@ BARRY.views.xplore = (function () {
     },
     onShow: () => { if (XF.order.length) { render(); refreshAll(); } },
   };
+
+  /* Published as a real property so another WINDOW can drive this one.
+
+     `BARRY` is declared `const` in core.js, which makes it a lexical binding
+     and not a property of `window` -- `popup.BARRY` is undefined however
+     completely the popup has loaded. `barryCfc` and `barrySpectrum` exist
+     for the same reason. Incisor uses this to put its channel lines on a
+     traces window it opened. */
+  window.barryXplore = handle;
+  return handle;
 })();

@@ -26,6 +26,8 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
+               incisor as incisormod,
+               panorama as panoramamod,
                retime as retimemod,
                spectrum as spectrummod,
                device as devicemod,
@@ -1230,6 +1232,493 @@ def api_spectrum_run():
                     "plan": plan})
 
 
+# ==========================================================================
+# Panorama -- the whole recording, spectrally, end to end
+#
+# The same three-call contract as the spectrum: estimate what it will cost,
+# start it, poll it on /api/cfc/job/<id>. Deliberately not its own job
+# system -- there is one, it learns how fast this machine is, and a second
+# would start from zero.
+# ==========================================================================
+def _panorama_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    An empty window means the whole recording, which is the entire point of
+    this tool: "what did this session do" is not a question about a
+    ten-second look.
+    """
+    dur = float(sess.get("duration_s") or 0.0)
+    t0 = float(body.get("t0") or 0.0)
+    t1 = float(body.get("t1") or 0.0)
+    if t1 <= t0:
+        t0, t1 = 0.0, dur
+    chans = body.get("channels")
+    if not chans:
+        # One channel, never all sixty-four by accident -- that is an hour of
+        # fitting nobody asked for.
+        chans = [c["index"] for c in (sess.get("channels") or [])][:1]
+    spec = {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "t0": max(0.0, t0),
+        "t1": min(t1, dur) if dur else t1,
+        "f_lo": float(body.get("f_lo") or panoramamod.DEFAULT_FLO),
+        "f_hi": float(body.get("f_hi") or panoramamod.DEFAULT_FHI),
+        "sub_s": float(body.get("sub_s") or panoramamod.DEFAULT_SUB_S),
+        "win_s": float(body.get("win_s") or panoramamod.DEFAULT_WIN_S),
+        "step_s": float(body.get("step_s") or panoramamod.DEFAULT_STEP_S),
+        "bins": int(body.get("bins") or panoramamod.DEFAULT_BINS),
+        "hist_scale": ("linear" if body.get("hist_scale") == "linear"
+                       else "log"),
+        "cmap": str(body.get("cmap") or "jet"),
+        "scale": ("linear" if body.get("scale") == "linear" else "log10"),
+        "even_only": bool(sess.get("even_only")),
+        # Mains. `None` means "not said", which is 60 Hz here; an explicit 0
+        # means somebody turned it off and wants the interference shown.
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+    }
+    for k in ("peak_width_limits", "max_n_peaks", "min_peak_height",
+              "aperiodic_mode"):
+        if body.get(k) is not None:
+            spec[k] = body[k]
+    return spec
+
+
+@app.route("/api/panorama/estimate", methods=["POST"])
+def api_panorama_estimate():
+    """What a run would do, and how long it would take here."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+        got = panoramamod.estimate(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/estimate", exc, 400, {"path": body.get("path")})
+    # The channel list rides along with the estimate rather than being a
+    # second call: the estimate has already opened the session to work out
+    # what the run would cost, and the form needs both before it can be
+    # filled in at all.
+    chans = [{"index": c.get("index"), "number": c.get("number"),
+              "label": c.get("label"), "bad": bool(c.get("bad"))}
+             for c in (sess.get("channels") or [])]
+    return jsonify({"ok": True, "plan": got["plan"], "spec": spec,
+                    "seconds": got["seconds"], "read_s": got["read_s"],
+                    "fit_s": got["fit_s"], "notes": got["notes"],
+                    "engine": panoramamod.fit_engine(spec),
+                    "colormaps": [dict(c) for c in analysis.COLORMAPS],
+                    "session": {"duration_s": sess.get("duration_s"),
+                                "fs": sess.get("fs"),
+                                "channels": chans},
+                    "cached": panoramamod.cache_get(
+                        panoramamod.cache_key(spec)) is not None})
+
+
+@app.route("/api/panorama/run", methods=["POST"])
+def api_panorama_run():
+    """Start one. Poll it on /api/cfc/job/<id>, which is not cfc-specific."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+        plan = panoramamod.plan_for(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/run", exc, 400, {"path": body.get("path")})
+
+    if not panoramamod.HAVE_FOOOF:
+        return jsonify({
+            "ok": False,
+            "error": "Panorama's per-window fits need the `fooof` package, "
+                     "which is not installed here. Run `pip install -r "
+                     "requirements.txt` in the BARRY GUI folder.",
+        }), 501
+
+    key = panoramamod.cache_key(spec)
+    hit = panoramamod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    n_ch = plan["n_channels"]
+    steps = [("spectrum read", int(plan["span_s"] * n_ch)),
+             ("panorama windows", int(plan["n_windows"] * n_ch))]
+
+    def work(job):
+        state = {}
+
+        def on_preview(x, upto, plan_, st):
+            # Throttled here rather than in the module: how often a picture
+            # is worth re-encoding is a question about the screen watching
+            # it, not about the arithmetic.
+            now = time.time()
+            if now - state.get("at", 0) < 1.5:
+                return
+            uri = panoramamod.preview_png(x, upto, plan_, st)
+            if uri:
+                state["at"] = now
+                job.set_preview(uri)
+
+        out = panoramamod.run(sess, spec, job, on_preview=on_preview)
+        panoramamod.cache_put(key, out)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "panorama.run",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channels": len(spec["channels"]),
+                   "f_lo": spec["f_lo"], "f_hi": spec["f_hi"],
+                   "windows": plan["n_windows"],
+                   "whole": spec["t0"] <= 0
+                            and spec["t1"] >= (sess.get("duration_s") or 0)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan, "notes": panoramamod.notes_for(plan)})
+
+
+@app.route("/api/panorama/recolor", methods=["POST"])
+def api_panorama_recolor():
+    """The same spectrogram under a different colormap or scale.
+
+    From the cached result, so changing Jet for Viridis costs a re-encode
+    rather than reading the recording again.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/recolor", exc, 400, {"path": body.get("path")})
+    hit = panoramamod.cache_get(panoramamod.cache_key(spec))
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again and the picture comes back with "
+                                 "it."}), 409
+    return jsonify({"ok": True,
+                    "channels": [{"index": c.get("index"),
+                                  "spectrogram": c.get("spectrogram")}
+                                 for c in hit.get("channels") or []]})
+
+
+@app.route("/api/panorama/save", methods=["POST"])
+def api_panorama_save():
+    """Step 3. The figure and the numbers behind it, into Results/.
+
+    Five files under one stem, not one: a picture cannot be re-plotted and a
+    CSV cannot be looked at. The JSON carries every setting including which
+    fitter produced the numbers, so a figure found in six months can be
+    explained without anybody having to remember.
+
+    `results.py` catalogues Results/ by scanning, so nothing is registered
+    here -- the files appear in the Results view, go into the repo, and are
+    mirrored to the cloud bucket, on their own.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/save", exc, 400, {"path": body.get("path")})
+
+    out = panoramamod.cache_get(panoramamod.cache_key(spec))
+    if out is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again and Save will have something to "
+                                 "write."}), 409
+
+    index = max(0, int(body.get("index") or 0))
+    counting = "flat" if body.get("counting") == "flat" else "peak"
+    rows = out.get("channels") or []
+    if index >= len(rows) or "hist" not in rows[index]:
+        return jsonify({"ok": False,
+                        "error": "That channel produced nothing to save."}), 400
+    ch = rows[index]
+
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    label = str(body.get("name") or "panorama").strip() or "panorama"
+    stem = "".join(c if (c.isalnum() or c in " -_.") else "-"
+                   for c in label).strip().replace(" ", "_")[:70]
+    stem = "%s_%s" % (stem or "panorama", stamp)
+
+    head = ("# Jarvis Panorama -- %s -- %s -- %.3g-%.3g Hz -- %s windows of "
+            "%.3g s every %.3g s -- taken %s\n"
+            % (label, ch.get("label") or "", spec["f_lo"], spec["f_hi"],
+               "{:,}".format(ch["hist"]["n_windows"]), spec["win_s"],
+               spec["step_s"], time.strftime("%Y-%m-%dT%H:%M:%S")))
+
+    psd_rows, hist_rows, win_rows = panoramamod.tables(out, index)
+    written, errors = [], []
+
+    def put(blob, suffix):
+        try:
+            got = save_output(blob, stem + suffix, subdir="Panorama")
+            written.append(got)
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("%s: %s" % (suffix, exc))
+            STORE.record_error("panorama/save", str(exc), None,
+                               {"name": stem + suffix})
+
+    try:
+        put(panoramamod.figure(out, index, counting, title=label), ".png")
+    except Exception as exc:                             # noqa: BLE001
+        errors.append("figure: %s" % exc)
+        STORE.record_error("panorama/figure", str(exc), None, {"stem": stem})
+
+    put((head + extras.to_csv(psd_rows)).encode("utf-8"), "_psd.csv")
+    put((head + extras.to_csv(hist_rows)).encode("utf-8"), "_histogram.csv")
+    put((head + extras.to_csv(win_rows)).encode("utf-8"), "_windows.csv")
+    put(json.dumps({
+        "tool": "panorama",
+        "label": label,
+        "spec": spec,
+        "plan": out.get("plan"),
+        "fit_engine": out.get("fit_engine"),
+        "counting": counting,
+        "channel": {"index": ch.get("index"), "label": ch.get("label"),
+                    "number": ch.get("number"), "bad": ch.get("bad")},
+        "gaps": ch.get("gaps"),
+        "summary": {"modal_hz": ch.get("modal_hz"),
+                    "median_hz": ch.get("median_hz"),
+                    "n_windows": ch["hist"]["n_windows"],
+                    "n_used": ch["hist"]["n_used"],
+                    "n_nopeak": ch["hist"]["n_nopeak"],
+                    "n_rejected": ch["hist"]["n_rejected"]},
+        "notes": out.get("notes"),
+        "provenance": STORE.provenance(),
+    }, indent=1, sort_keys=True).encode("utf-8"), "_params.json")
+
+    if not written:
+        return jsonify({"ok": False,
+                        "error": "Nothing could be written to Results/: "
+                                 + "; ".join(errors)}), 500
+
+    run = STORE.record_run({
+        "kind": "panorama", "script": "Panorama",
+        "label": "Panorama -- " + label,
+        "status": "done", "format": "png",
+        "parameters": {"f_lo": spec["f_lo"], "f_hi": spec["f_hi"],
+                       "t0": spec["t0"], "t1": spec["t1"],
+                       "win_s": spec["win_s"], "sub_s": spec["sub_s"],
+                       "step_s": spec["step_s"], "bins": spec["bins"],
+                       "counting": counting,
+                       "channel": ch.get("label")},
+        "output": written[0],
+        "outputs": written,
+    })
+    STORE.record_activity([{
+        "action": "panorama.save",
+        "detail": {"label": label, "files": len(written),
+                   "channel": ch.get("label")},
+    }])
+    return jsonify({"ok": True,
+                    "folder": "Results/Panorama",
+                    "files": [w["rel"] for w in written],
+                    "saved": written,
+                    "errors": errors,
+                    "run": run.get("id") if isinstance(run, dict) else None})
+
+
+def _incisor_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    `invert` is read from the session rather than defaulted here, and travels
+    into the spec explicitly, because dentate spike detection is positive
+    peaks on a signed trace: the two conventions find opposite events and
+    both look entirely plausible. Measured on M8s9feb8, the lab's convention
+    (inverted) gives 1230 events at 1444 uV on the hilus channel and the
+    other gives four.
+    """
+    chans = body.get("channels")
+    if not chans:
+        chans = [c["index"] for c in (sess.get("channels") or [])]
+    spec = {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "invert": bool(sess.get("invert", True)),
+        "even_only": bool(sess.get("even_only")),
+        "estimator": (body.get("estimator") or "sd"),
+    }
+    for key, default in (("height_sd", incisormod.DS_HEIGHT_SD),
+                         ("abs_uv", incisormod.DS_ABS_THR_UV),
+                         ("dist_ms", incisormod.DS_DIST_MS),
+                         ("prom_uv", incisormod.DS_PROM_UV),
+                         ("wlen_ms", incisormod.DS_WLEN_MS),
+                         ("lfp_fs", incisormod.LFP_FS)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+    band = body.get("band") or incisormod.DS_BAND
+    spec["band"] = [float(band[0]), float(band[1])]
+    if body.get("threshold_uv"):
+        spec["threshold_uv"] = float(body["threshold_uv"])
+    return spec
+
+
+def _incisor_report(path):
+    """The segmentation every Incisor time is stamped from."""
+    rep = continuitymod.check(path)
+    if not rep or not rep.get("ok"):
+        raise ValueError(rep.get("error") if rep else "could not segment")
+    return rep
+
+
+@app.route("/api/incisor/estimate", methods=["POST"])
+def api_incisor_estimate():
+    """What a scan would do, and how long it would take here."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.estimate(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/estimate", exc, 400, {"path": body.get("path")})
+    key = incisormod.cache_key(spec, rep)
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec,
+        "cached": incisormod.cache_get(key) is not None,
+        "continuity": {
+            "n_segments": rep.get("n_segments"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "true_duration_s": rep.get("true_duration_s"),
+            "n_short_inside": rep.get("n_short_inside"),
+            "residual_sd_us": rep.get("map_residual_sd_us"),
+            "probed": rep.get("probed"),
+            "mismatches": rep.get("mismatches"),
+        },
+        # What the session already believes about its own anatomy, so the
+        # window can put the scan's answer beside it rather than over it.
+        "known": _known_channels(sess.get("path")),
+    })
+
+
+def _known_channels(path):
+    """Ripple, fissure and hilus as the registry already holds them.
+
+    Imported from the Toothy workbook by `tools/import_toothy.py` for 62
+    sessions and corroborated against the layer sheet in 57 of 57 cases where
+    both exist. Two independent sources agreeing is the best evidence either
+    of them could have, so the scan's estimate is shown BESIDE this rather
+    than replacing it.
+    """
+    # `all()` rather than `summary()`: the records straight out of the
+    # shards, cached against their signature, instead of the whole project
+    # tree -- which takes seconds on this lab's data and is three quarters
+    # of what `/api/registry` costs.
+    want = os.path.normcase(os.path.abspath(path or ""))
+    try:
+        for rec in (REG.all() or []):
+            for known in (rec.get("paths") or []):
+                if os.path.normcase(os.path.abspath(known)) == want:
+                    return {k: rec.get(k) for k in
+                            ("hilus_channel", "fissure_channel",
+                             "ripple_channel")
+                            if rec.get(k) is not None}
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {}
+
+
+def _incisor_public(out):
+    """The answer without the per-channel event lists.
+
+    They stay in the cache for `/api/incisor/events`. Sending all of them to
+    draw one channel is sixty-four times the payload, and a response big
+    enough to be truncated in transit arrives as a 200 that will not parse.
+    """
+    return {k: v for k, v in (out or {}).items() if not k.startswith("_")}
+
+
+@app.route("/api/incisor/events", methods=["POST"])
+def api_incisor_events():
+    """One channel's events from the scan already run.
+
+    Out of the cache, so changing the channel in the panel costs a small
+    request rather than reading the recording again. A miss is honest about
+    itself -- the caller should re-scan rather than be given nothing that
+    looks like an answer.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/events", exc, 400, {"path": body.get("path")})
+    hit = incisormod.cache_get(incisormod.cache_key(spec, rep))
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That scan is not in the cache any more. "
+                                 "Run it again."}), 409
+    try:
+        index = int(body.get("channel"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Which channel?"}), 400
+    evs = incisormod.events_for(hit, index)
+    return jsonify({"ok": True, "channel": index, "n": len(evs),
+                    "events": evs})
+
+
+@app.route("/api/incisor/scan", methods=["POST"])
+def api_incisor_scan():
+    """Detect on every chosen channel and say which one is the hilus.
+
+    One job, because Toothy's channel estimate is made FROM the per-channel
+    detection (`ephys.py:916`) -- scanning and picking are not separable
+    steps, and pretending otherwise would mean reading the recording twice.
+    Poll it on /api/cfc/job/<id>, which is not cfc-specific.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.plan_for(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/scan", exc, 400, {"path": body.get("path")})
+
+    key = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True,
+                        "result": _incisor_public(hit)})
+
+    steps = [("ds read", int(plan["span_s"] * plan["n_channels"])),
+             ("ds detect", plan["n_channels"])]
+
+    def work(job):
+        out = incisormod.run(sess, spec, rep, job)
+        incisormod.cache_put(key, out)
+        # The job's result is what the client fetches, so the private rows
+        # come off here rather than being serialised and thrown away.
+        return _incisor_public(out)
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "incisor.scan",
+        "detail": {"channels": len(spec["channels"]),
+                   "segments": rep.get("n_segments"),
+                   "invert": spec["invert"],
+                   "height_sd": spec["height_sd"]},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan})
+
+
 @app.route("/api/cfc/cache")
 def api_cfc_cache():
     """What the comodulogram cache is holding. Diagnostic; ?clear=1 empties it.
@@ -1275,6 +1764,26 @@ def api_cfc_result(job_id):
                         "error": snap.get("error")
                                  or "That run has not finished."}), 409
     return jsonify({"ok": True, "result": job.result, "job": snap})
+
+
+@app.route("/api/cfc/job/<job_id>/preview")
+def api_cfc_job_preview(job_id):
+    """The picture a run has built so far, for the waiting screen.
+
+    Its own route, not part of the job snapshot: the snapshot is polled
+    several times a second by every tool, and sixty kilobytes of base64
+    riding along with it would be two hundred kilobytes a second of
+    nothing for the tools that have no preview. The snapshot carries
+    `preview_rev`, an integer, and the caller asks for the image when
+    that changes.
+    """
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    uri, rev = job.preview()
+    if not uri:
+        return jsonify({"ok": True, "png": None, "rev": rev})
+    return jsonify({"ok": True, "png": uri, "rev": rev})
 
 
 @app.route("/api/figure/recipe/<run_id>")
@@ -7588,10 +8097,16 @@ def api_bank_add():
         return fail("bank/add", exc, 400)
     STORE.record_activity([{
         "action": "bank.add",
-        "detail": {"id": rec["id"], "project": rec["project"],
-                   "mouse": rec["mouse"], "session": rec["session"],
-                   "type": rec["type"], "n": rec["n"],
-                   "pipeline": rec["source"]["pipeline"]},
+        # `.get`, not `[...]`. These are the fields of an activity line, not
+        # a contract: a set banked without a mouse -- a detector's output,
+        # filed before anybody has said which animal it is -- writes a record
+        # whose null keys the shard writer drops, and `rec["mouse"]` then
+        # raised KeyError('mouse'). The bank had already succeeded, so the
+        # entry existed and the caller was told "Not banked: 'mouse'".
+        "detail": {"id": rec.get("id"), "project": rec.get("project"),
+                   "mouse": rec.get("mouse"), "session": rec.get("session"),
+                   "type": rec.get("type"), "n": rec.get("n"),
+                   "pipeline": (rec.get("source") or {}).get("pipeline")},
         "session": {"key": rec.get("session_key"),
                     "label": rec.get("session_label")},
     }])

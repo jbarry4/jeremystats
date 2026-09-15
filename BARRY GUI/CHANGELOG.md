@@ -15,6 +15,79 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.15.2 - Panorama
+
+### Added
+
+- **Panorama, a new ToolKit tool: the whole recording at once.** The Spectrum
+  view answers "how much power, at which frequency" with time collapsed, and
+  XploreFinder's spectrogram panel answers "what changed, when" for a window
+  you are looking at. Neither answers the question asked of a recording
+  before any other: across the whole session, which frequency was in charge,
+  and how often?
+
+  Three steps, and they stay on screen together because the answer is the
+  three of them side by side:
+
+  1. **Holistic** - the spectrogram end to end, in Jet by default with every
+     other colormap offered, beside a histogram of the dominant frequency by
+     occurrence. 2-200 Hz and log-spaced bins by default; the range, the time
+     range, the bin count and linear bins are all settable.
+  2. **Power spectrum** - the whole-recording PSD over the same range, with
+     the step size it achieved and how many segments it averaged stated on
+     the card rather than left to be worked out.
+  3. **Save** - a figure, the spectrum, the histogram and the per-window
+     table as CSV, and a JSON of every setting that produced them, into
+     `Results/Panorama`.
+
+  This is the analysis that has been living in `FOOOF Playgroun/` as a
+  command-line script. It worked, and it could only be run by somebody at a
+  terminal, on one session at a time, into a matplotlib window that nothing
+  kept.
+
+- **Step 2 costs nothing.** Averaging the spectrogram's columns *is* the
+  whole-recording Welch spectrum - same segments, same window, same average -
+  so the power spectrum comes off the same read and arrives with step 1. The
+  per-window fits come off the same columns again. One read, three answers,
+  rather than reading a thirty-minute recording twice to get the same
+  numbers.
+
+- **A waiting screen worth watching.** Long runs show both stages with their
+  counts and the learned estimate of what is left, and the spectrogram
+  **builds up left to right as the recording is read** - the real data
+  arriving, not an animation. A run that is obviously wrong can be stopped in
+  the first ten seconds instead of at the end of four minutes. The picture
+  rides on its own route rather than in the job poll, so it costs the tools
+  that have no preview nothing.
+
+- **Both definitions of "dominant frequency", switchable without re-running.**
+  The tallest peak the fit actually found - which can be *none*, and a window
+  with no rhythm is counted as such and reported rather than quietly dropped -
+  and the highest bin left once the aperiodic slope is removed, which always
+  returns a number and is labelled for what that means. Both come out of the
+  one fit, so the toggle is free.
+
+### Fixed
+
+- **Acquisition gaps no longer shift the spectrogram's time axis.** Reading a
+  long channel chunk by chunk and concatenating is right for a spectrum,
+  which does not care what order its samples came in, and wrong for a
+  spectrogram, whose x-axis *is* time: every column after a gap was drawn
+  earlier than it happened, by as much as the gap. Eight of twenty-five PTEN
+  recordings have gaps. Panorama lays the signal out on the recording's own
+  clock with holes where nothing was written; windows overlapping one are
+  drawn transparent and take no part in the spectrum, the fits or the
+  histogram, and the panel says how many there were and how much time is
+  missing.
+
+- **Adding a job stage no longer costs every other tool its measured
+  timings.** `.cfc_rates.json` was stamped with a hash of the whole stage
+  table and the entire file was dropped when that changed - so a new tool's
+  stages silently reset the comodulogram's, the spectrum's and Incisor's
+  learned rates, and every estimate in the app was wrong for one run of each.
+  Stamped per stage now: only a stage whose own meaning changed loses its
+  number. Existing files are recognised and kept rather than discarded.
+
 ## 2026.09.15.1 — One event, written twice
 
 ### Added

@@ -222,6 +222,17 @@ PAUSE_SECONDS = 1.0
 # continuous record pair differs by a microsecond or two.
 ROUNDING_FLOOR_US = 4
 
+# How far the sample-index-to-time map may drift before it re-anchors, as a
+# fraction of one acquisition sample. A quarter sample is 8.3 us at 30 kHz,
+# which is a four-thousandth of one sample at the 1 kHz rate a detector
+# actually works at -- far below anything measurable -- while keeping the map
+# to a few hundred rows on a recording whose clock drifts all day.
+#
+# The bound is the specification: no record start is ever further than this
+# from its own timestamp. See `segment_ncs`'s `breaks` and
+# `continuity.sample_to_true`.
+MAP_ERROR_SAMPLES = 0.25
+
 _FIELDS = struct.Struct("<QIII")   # timestamp, channel, freq, nvalid
 
 # Whether a file is one continuous block, and where its clock starts,
@@ -371,6 +382,14 @@ def segment_ncs(path: str, strict: bool = False):
         n_short = 0
         n_short_inside = 0
         sub_us = 0
+        map_fs = float(fs)
+        map_resid_sd = 0.0
+        resid_worst = 0.0
+        # One run, starting at sample zero. `_single_block` is only true when
+        # the last timestamp is exactly what full records predict, which
+        # rules out both gaps and short records -- so linear is exact here
+        # and one breakpoint describes the whole file.
+        marks = [[0, int(first[0]), 1e6 / float(fs)]]
     else:
         mm = np.memmap(path, dtype=RECORD_DTYPE, mode="r",
                        offset=HEADER_BYTES, shape=(int(n_rec),))
@@ -413,10 +432,113 @@ def segment_ncs(path: str, strict: bool = False):
         # median on a full record is exactly 1 us. The smallest real one in
         # the PTEN archive is 67 us, so a floor here separates them by a
         # factor of twenty without needing to be tuned.
+        cum = np.concatenate(([0], np.cumsum(nv)))
         inside = (short_at & (np.abs(resid) <= tol)
                   & (resid > ROUNDING_FLOOR_US))
         sub_us = int(resid[inside].sum())
         n_short_inside = int(np.count_nonzero(inside))
+
+        # The map, built to a bound rather than to a rule about residuals.
+        #
+        # `breaks` above is the SEGMENT starts, which is the wrong set for
+        # timing: it omits the short records measured two lines up, where
+        # time was lost without a segment boundary to record it. Measured on
+        # M8s9feb8, a segment-linear map is out by up to 11.02 ms, and a
+        # dentate spike is 10-20 ms wide.
+        #
+        # Emitting an anchor at every deviating record is also wrong -- not
+        # inaccurate, but unbounded: the 29998.6 Hz clock makes 2757 of them
+        # on that same file, none of which lost anything. So instead, carry
+        # the time this map WOULD predict and re-anchor whenever it has
+        # drifted past `MAP_ERROR_SAMPLES` of a sample. The map comes out as
+        # small as that bound allows, the bound is guaranteed by
+        # construction, and a record that really did lose time blows it
+        # immediately and gets an anchor without being a special case.
+        cum = np.concatenate(([0], np.cumsum(nv)))
+
+        # The map: one anchor per segment, plus one wherever samples were
+        # genuinely lost inside one. Each carries its own rate.
+        #
+        # See the module note above `MAP_ERROR_SAMPLES`. The record timestamp
+        # jitters by about half a millisecond -- measured on M8s9feb8, deltas
+        # of 16367 to 17579 us for identical full records -- so anchoring at
+        # every record that deviates reproduces that jitter rather than
+        # removing it. What a map can usefully remove is the rate error, and
+        # that is worth 11 ms over a half-hour segment.
+        # The rate, fitted once over the longest stretch of records that has
+        # no break in it. One crystal, one rate: a short run in the middle of
+        # a burst of gaps came out at 29976 Hz when each run fitted its own,
+        # and was 8.3 ms out over what followed.
+        # End to end within each segment, summed -- NOT a least-squares fit.
+        #
+        # Least squares assumes the residuals are white and these are not:
+        # the timestamp wanders in a structured way (-219 us at the start of
+        # the longest segment, +280 a quarter through, +2054 at its worst),
+        # so the slope comes out biased. Measured on M8s9feb8: a fit over the
+        # longest run gave 30000.1168 Hz, +3.89 ppm from nominal, while the
+        # recording's own end-to-end figure -- total samples over total
+        # elapsed, which is what `clock_drift_s` is computed from -- says
+        # 30000.0134 Hz, +0.45 ppm. Four parts per million is 8 ms across
+        # this recording, and the end-to-end number is the one anchored to
+        # both ends of the file rather than to the shape of the noise.
+        span_us, span_n = 0, 0
+        for a, b in zip(limits[:-1], limits[1:]):
+            if b - a < 2:
+                continue
+            span_us += int(ts[b - 1]) - int(ts[a])
+            span_n += int(cum[b - 1]) - int(cum[a])
+        per_sample = 1e6 / float(fs)
+        if span_n > SAMPLES_PER_RECORD * 64 and span_us > 0:
+            got = span_us / float(span_n)
+            # Half a percent is already absurd for a crystal; past it, the
+            # timestamps are not describing a clock.
+            if 0.995 < (1e6 / got) / float(fs) < 1.005:
+                per_sample = got
+
+        marks = []
+        resid_worst, resid_sq, resid_n = 0.0, 0.0, 0
+        for a, b in zip(limits[:-1], limits[1:]):
+            # Where this segment lost samples without breaking: the same
+            # `inside` test as above, restricted to this segment.
+            # Every short record, not only the ones whose residual passes a
+            # sign test. A record that holds fewer than 512 samples is a
+            # place where the sample axis and the clock part company, and
+            # the residual at it is measured against the SAME jittery
+            # timestamps the map is trying to track -- so using it to decide
+            # whether to anchor was letting a 200-record stretch in the
+            # middle of the gap burst drift 7.4 ms. They are rare enough to
+            # take unconditionally: eight on this file.
+            cuts = [a]
+            for r in range(a, b - 1):
+                if nv[r] != SAMPLES_PER_RECORD:
+                    cuts.append(r + 1)
+            cuts.append(b)
+
+            for c0, c1 in zip(cuts[:-1], cuts[1:]):
+                if c1 <= c0:
+                    continue
+                x = cum[c0:c1].astype(np.float64)
+                y = ts[c0:c1].astype(np.float64)   # for the residual below
+                # Seated on this run's FIRST record, not on a fit to all of
+                # them. Least squares was pulling the anchor 3.04 ms off the
+                # record it is supposed to start at -- the residuals wander,
+                # so minimising them moves the intercept -- which shifted
+                # every event in the segment by that much and disagreed with
+                # `true_t0_s`, which the rest of the codebase uses. The
+                # record's own timestamp is what the file says; it is not
+                # this map's business to improve on it.
+                base_i, base_us = int(cum[c0]), int(ts[c0])
+                marks.append([base_i, base_us, per_sample])
+
+                pred = base_us + (x - base_i) * per_sample
+                d = np.abs(y - pred)
+                if d.size:
+                    resid_worst = max(resid_worst, float(d.max()))
+                    resid_sq += float((d * d).sum())
+                    resid_n += int(d.size)
+
+        map_fs = 1e6 / per_sample
+        map_resid_sd = (resid_sq / resid_n) ** 0.5 if resid_n else 0.0
 
     t0_us = int(first[0])
     segments, gaps, cum_lost_us, cum_samples = [], [], 0, 0
@@ -502,6 +624,26 @@ def segment_ncs(path: str, strict: bool = False):
         # for at them. This is the loss no segment boundary records.
         "n_short_inside": int(n_short_inside),
         "sub_threshold_lost_s": sub_us / 1e6,
+        # [[concatenated sample index, start in us, us per sample], ...]
+        # One per segment, plus one wherever samples were lost inside one.
+        # Each carries the rate fitted to its own run, because the rate is
+        # what a map can usefully correct: the record timestamps jitter by
+        # about half a millisecond, which no map can remove, while the rate
+        # error is worth 11 ms over a half-hour segment.
+        # See `continuity.sample_to_true`.
+        "breaks": marks,
+        # How well the map describes the timestamps it was fitted to. Said
+        # rather than assumed: a time from this is good to a fraction of a
+        # millisecond, not to a microsecond, and a caller that needs to know
+        # should not have to measure it again.
+        "map_residual_sd_us": map_resid_sd,
+        "map_residual_max_us": resid_worst,
+        # The rate the breakpoints were laid out against, and the one
+        # `continuity.sample_to_true` must read back with. Travels in the
+        # report rather than being re-derived: a map and a reader that
+        # disagree about the sample rate are wrong in a way that looks like
+        # nothing at all.
+        "map_fs": float(map_fs),
         # Buffer slots a short record left unused. NOT a measure of loss:
         # when the next record's timestamp follows the short count, the
         # record was simply short and no time passed unrecorded. Kept because

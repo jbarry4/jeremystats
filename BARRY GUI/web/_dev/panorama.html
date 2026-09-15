@@ -1,0 +1,188 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Panorama</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0#toolkit"></iframe>
+<script>
+/* Panorama: the whole recording at once, in three steps that stay on screen
+   together.
+
+   This establishes its own starting state rather than assuming one -- it
+   switches to the ToolKit, selects the tool, and points it at the demo
+   session itself. A harness that assumes the state it starts in reports
+   whatever the last person left behind.
+
+   It runs against `demo:long-session`, so it needs no recording mounted and
+   writes nothing anywhere: the only thing that touches disk is Save, and
+   this does not press it. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 600, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => {
+  const f = document.getElementById('app');
+  /* `eval` in the frame's own global scope, because core.js declares BARRY
+     with `const` -- a lexical global, not a property of `window`. */
+  const ev = (src) => f.contentWindow.eval(src);
+  const D = () => f.contentWindow.document;
+
+  hd('the app comes up');
+  let ok = await untilN(() => ev('typeof BARRY') === 'object'
+                           && ev('!!BARRY.panorama'));
+  ck('BARRY.panorama is registered', ok >= 0);
+  if (ok < 0) { p('\nFAILED ' + (++bad)); document.title = 'FAIL'; return; }
+
+  hd('the tool is on the ToolKit page');
+  ev('setView("toolkit")');
+  ok = await untilN(() => D().querySelector('.tk-tools'));
+  ck('the ToolKit rendered', ok >= 0);
+  const btns = () => Array.from(D().querySelectorAll('.tk-tool strong'))
+    .map((b) => b.textContent.trim());
+  ck('Panorama has a button', btns().indexOf('Panorama') >= 0,
+     btns().join(' | '));
+
+  const hit = Array.from(D().querySelectorAll('.tk-tool'))
+    .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
+  hit.click();
+  ok = await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
+  ck('clicking it selects the tool', ok >= 0);
+  await sleep(300);
+  ck('the bad-channel scope card is NOT above it',
+     !D().querySelector('.tk-scope'));
+  ck('it drew its own panel', !!D().querySelector('.pn-setup'));
+
+  hd('pointing it at a recording');
+  ev('BARRY.panorama.openRecording("demo:long-session",'
+     + ' {label: "demo", t0: 0, t1: 180})');
+  ok = await untilN(() => ev('!!BARRY.panorama.estimate'
+                             + ' && !BARRY.panorama.estimate.error'), 200);
+  ck('the estimate came back', ok >= 0,
+     ev('JSON.stringify((BARRY.panorama.estimate||{}).error)'));
+  const plan = () => JSON.parse(ev('JSON.stringify(BARRY.panorama.estimate.plan)'));
+  const pl = plan();
+  ck('it decimated for the range asked', pl.decimate > 1,
+     'decimate ' + pl.decimate + ' to ' + pl.fs_used + ' Hz');
+  ck('2-200 Hz by default', pl.f_lo === 2 && pl.f_hi === 200,
+     pl.f_lo + '-' + pl.f_hi);
+  ck('it picked a channel on its own',
+     JSON.parse(ev('JSON.stringify(BARRY.panorama.state.channels)')).length === 1);
+  ck('the form says the step size before anything runs',
+     (D().querySelector('.pn-setup') || {}).textContent.indexOf('Hz bins') > 0);
+  ck('the cost is stated up front',
+     !!D().querySelector('.pn-cost-line strong'),
+     (D().querySelector('.pn-cost-line strong') || {}).textContent);
+  const notes = D().querySelectorAll('.pn-note').length;
+  ck('it says what it is about to do (' + notes + ' notes)', notes >= 4);
+
+  hd('running it');
+  ev('BARRY.panorama.run(true)');
+  ok = await untilN(() => D().querySelector('.pn-running'), 100);
+  ck('the waiting screen appeared', ok >= 0);
+  ck('with a place for the picture to build up',
+     !!D().querySelector('#pnPreviewImg'));
+  ck('and a Stop button',
+     Array.from(D().querySelectorAll('.pn-run-foot .btn'))
+       .some((b) => b.textContent.trim() === 'Stop'));
+
+  let sawStages = 0, sawPreview = false, sawEta = false;
+  const watch = setInterval(() => {
+    const st = D().querySelectorAll('#pnStages .comod-stage').length;
+    if (st > sawStages) sawStages = st;
+    const img = D().querySelector('#pnPreviewImg');
+    if (img && img.src && img.src.indexOf('image/png') > 0) sawPreview = true;
+    const eta = D().querySelector('#pnEta');
+    if (eta && eta.textContent.trim()) sawEta = true;
+  }, 150);
+
+  ok = await untilN(() => ev('!!BARRY.panorama.result'), 900);
+  clearInterval(watch);
+  ck('the run finished', ok >= 0, 'waited ' + ok);
+  ck('both stages were shown while it ran', sawStages >= 2, 'saw ' + sawStages);
+  ck('the spectrogram built up while waiting', sawPreview);
+  ck('it said how long was left', sawEta);
+
+  hd('the three steps, all on screen together');
+  await sleep(400);
+  const steps = Array.from(D().querySelectorAll('.pn-step-head strong'))
+    .map((s) => s.textContent.trim());
+  ck('three steps are present at once: ' + steps.join(' / '),
+     steps.length === 3);
+  ck('the form is still above them', !!D().querySelector('.pn-setup'));
+  ck('the waiting screen is gone', !D().querySelector('.pn-running'));
+
+  hd('step 1 — holistic');
+  const sg = D().querySelector('.pn-sg-img');
+  ck('the spectrogram is drawn', !!sg && sg.src.indexOf('image/png') > 0);
+  ck('its axes are drawn over it, not baked in',
+     !!D().querySelector('#pnSgAxes'));
+  const hcv = D().querySelector('#pnHist');
+  ck('the histogram has a canvas', !!hcv);
+  ck('the histogram canvas has real pixels',
+     !!hcv && hcv.width > 100 && hcv.height > 100,
+     hcv ? hcv.width + 'x' + hcv.height : 'none');
+  const radios = D().querySelectorAll('input[name="pnCount"]').length;
+  ck('both dominant-frequency rules are offered', radios === 2, radios + '');
+  ck('the no-peak count is stated',
+     (D().querySelector('.pn-pane') || {}).parentNode.textContent
+       .indexOf('no peak') > 0);
+
+  hd('step 2 — power spectrum');
+  const pcv = D().querySelector('#pnPsd');
+  ck('the spectrum has a canvas', !!pcv);
+  ck('the spectrum canvas has real pixels',
+     !!pcv && pcv.width > 100 && pcv.height > 100,
+     pcv ? pcv.width + 'x' + pcv.height : 'none');
+  const step2 = Array.from(D().querySelectorAll('.pn-step'))
+    .find((s) => (s.textContent || '').indexOf('Power spectrum') >= 0);
+  ck('it states the step size it achieved',
+     !!step2 && step2.textContent.indexOf('steps of') > 0);
+  ck('it states how many segments were averaged',
+     !!step2 && step2.textContent.indexOf('segments averaged') > 0);
+
+  hd('step 3 — save');
+  const step3 = Array.from(D().querySelectorAll('.pn-step'))
+    .find((s) => (s.textContent || '').indexOf('Save') >= 0);
+  ck('the save step offers a name', !!D().querySelector('#pnName'));
+  ck('with something already in it',
+     ((D().querySelector('#pnName') || {}).value || '').length > 3,
+     (D().querySelector('#pnName') || {}).value);
+  ck('and a button', !!step3
+     && Array.from(step3.querySelectorAll('.btn'))
+       .some((b) => b.textContent.indexOf('Save to Results') >= 0));
+
+  hd('switching the count rule redraws without another run');
+  const before = ev('BARRY.panorama.result.channels[0].hist.peak.join(",")');
+  const flat = ev('BARRY.panorama.result.channels[0].hist.flat.join(",")');
+  ck('both histograms came back from the one run',
+     before.length > 0 && flat.length > 0);
+  const rs = D().querySelectorAll('input[name="pnCount"]');
+  if (rs[1]) { rs[1].click(); await sleep(250); }
+  ck('still one run after switching rule', ev('!!BARRY.panorama.result'));
+
+  hd('it does not sit under another tool');
+  ev('BARRY.views.toolkit && document.querySelector(".tk-tool").click()');
+  await sleep(400);
+  ck('leaving the tool leaves no Panorama panel behind',
+     !D().querySelector('.pn-setup') || ev('BARRY.views.toolkit.tool()') === 'panorama');
+
+  p('\n' + (bad ? 'FAILED ' + bad : 'ALL PASS'));
+  document.title = bad ? ('FAIL ' + bad) : 'PASS';
+})();
+</script>

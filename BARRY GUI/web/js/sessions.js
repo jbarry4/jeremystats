@@ -542,7 +542,12 @@ BARRY.views.sessions = (function () {
        is what the log and the bank both file under. */
     const cont = continuityOf(s);
     if (flags.has('concat') && !(cont && cont.concat_issue)) return false;
-    if (flags.has('unpatched') && !(cont && cont.unpatched)) return false;
+    /* `unpatched` is computed server-side from what clock each banked set
+       is on, so a recording whose sets were detected in house is already
+       excluded. Stated here as well because this filter is the thing that
+       sends somebody off to correct something. */
+    if (flags.has('unpatched')
+        && !(cont && cont.unpatched && !cont.all_concat_safe)) return false;
     if (flags.has('unchecked') && cont) return false;
     /* Layer state, from the registry's own count rather than by asking the
        layers store per card: four hundred cards would be four hundred
@@ -1000,20 +1005,38 @@ BARRY.views.sessions = (function () {
     const c = continuityOf(s);
     if (!c || !c.concat_issue) return null;
     const fixed = !!c.patched;
+    /* Three states, not two. A set detected in house was never on the wrong
+       clock, so it has nothing to be corrected -- and calling that
+       "corrected" would put an event in the history that never happened.
+       "Born right" and "repaired" are different things. */
+    const safe = !!c.all_concat_safe && c.n_banked > 0;
     const worst = Number(c.max_time_error_ms) || 0;
     const chip = el('button', {
-      class: 'flagchip concat' + (fixed ? ' fixed' : ''),
-      title: c.n_segments + ' segments, ' + (c.n_gaps || 0) + ' gap(s). '
+      class: 'flagchip concat' + (fixed ? ' fixed' : '')
+             + (safe ? ' safe' : ''),
+      title: (safe ? 'The dentate spikes here are safe: detected in house '
+                     + 'from the raw .ncs files, so they were never on the '
+                     + 'concatenated clock and there is nothing to correct. '
+                     + 'The correction is refused for them — applying it '
+                     + 'would shift them a second time.\n\n'
+                     + 'The recording still has the gaps, though, and '
+                     + 'anything else read off it still has to reckon with '
+                     + 'them: Kilosort unit times for this session are in '
+                     + 'concatenated time.\n\n'
+                   : '')
+           + c.n_segments + ' segments, ' + (c.n_gaps || 0) + ' gap(s). '
            + 'Times taken from the concatenated file run up to '
            + (worst < 1 ? worst.toFixed(2) : worst.toFixed(1))
            + ' ms early against the raw recording.'
-           + (fixed
-              ? '\n\nThe events banked against it have been moved onto the '
-                + 'recording\u2019s own clock.'
-              : (c.n_banked
-                 ? '\n\n' + c.n_events + ' banked event(s) have NOT been '
-                   + 'corrected.'
-                 : '\n\nNothing is banked against it yet.'))
+           + (safe
+              ? ''
+              : fixed
+                ? '\n\nThe events banked against it have been moved onto '
+                  + 'the recording\u2019s own clock.'
+                : (c.n_banked
+                   ? '\n\n' + c.n_events + ' banked event(s) have NOT been '
+                     + 'corrected.'
+                   : '\n\nNothing is banked against it yet.'))
            + '\n\nClick for the gap table.',
       onclick: (e) => { e.stopPropagation(); openContinuity(s); },
     }, [
@@ -1021,8 +1044,11 @@ BARRY.views.sessions = (function () {
          missing. It is the thing being reported, at 9 px. */
       el('svg', { class: 'cc-ico', viewBox: '0 0 16 10',
         html: '<path d="M1 5h4M11 5h4M7 2.5v5" />' }),
+      /* Always the segment count. The conclusion is the colour and the
+         first line of the tooltip; this is the fact, and a list of
+         recordings is scanned for facts. */
       el('span', { text: c.n_segments + ' seg' }),
-      fixed ? el('svg', { class: 'cc-tick', viewBox: '0 0 12 12',
+      (fixed || safe) ? el('svg', { class: 'cc-tick', viewBox: '0 0 12 12',
         html: '<path d="m2.5 6.5 2.5 2.5 4.5-5"/>' }) : null,
     ]);
     return chip;

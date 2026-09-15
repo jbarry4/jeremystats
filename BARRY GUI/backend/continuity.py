@@ -82,6 +82,23 @@ def gap_map_sha(report):
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
+def breaks_sha(report):
+    """A hash of the exact breakpoint map, separate from `gap_map_sha`.
+
+    Separate deliberately -- see the module note. Incisor stamps this
+    alongside the other one, so a recording whose short records change
+    invalidates the detector's cache without disturbing anybody's correction.
+    """
+    body = {
+        "fs": round(float(report.get("fs") or 0), 6),
+        "t0_us": report.get("t0_us"),
+        "breaks": [[int(r[0]), int(r[1]), round(float(r[2]), 6)]
+                   for r in (report.get("breaks") or [])],
+    }
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
 def _stamp(path):
     """(size, mtime) of a file, or None if it is not there."""
     try:
@@ -91,9 +108,21 @@ def _stamp(path):
     return [int(st.st_size), int(st.st_mtime_ns)]
 
 
+# What a cached report contains. Bumped whenever `segment_ncs` starts
+# answering with something a previous version did not, because the cache is
+# keyed on the FILE -- size and mtime -- and a file that has not changed
+# would otherwise serve a report from before the new field existed for ever.
+# 2: the `breaks` map, `map_fs` and the residual statistics.
+# 3: `map_fs` measured end to end rather than by least squares. The fit was
+#    biased +3.9 ppm by the structure in the timestamp residuals, which is
+#    8 ms across a half-hour recording.
+# 4: anchors seated on each run's first record rather than on a fit.
+SCHEMA = 4
+
+
 def _key(ref, stamp, channels, strict):
     raw = json.dumps([os.path.normcase(os.path.abspath(ref)), stamp,
-                      int(channels), bool(strict)],
+                      int(channels), bool(strict), SCHEMA],
                      sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
@@ -252,6 +281,68 @@ def _numeric_order(names):
 # Toothy's time axis is `i / fs` over the concatenated segments. The map back
 # to the recording's own clock is a step: constant inside a segment, jumping
 # at each boundary by the gap that was closed there.
+def sample_to_true(report, i):
+    """Concatenated sample index -> true seconds from the first record.
+
+    Exact, where `concat_to_true` is exact only to the segment. A short
+    record whose residual is under the break tolerance -- 4267 us at 30 kHz
+    -- loses real time without starting a segment, so `segment_t0 + i/fs`
+    drifts by the accumulated total of those, and a dentate spike is 10-20 ms
+    wide. `report["breaks"]` names every record where that happens; between
+    two of them the axis is linear and this is arithmetic.
+
+    `None` past the end of the data, for the same reason `concat_to_true`
+    refuses to clamp: an index off the end is a fault somewhere else, and
+    quietly moving it to the last sample would hide that.
+    """
+    marks = (report or {}).get("breaks") or []
+    if not marks or i is None:
+        return None
+    i = int(i)
+    if i < 0 or i >= int(report.get("total_samples") or 0):
+        return None
+    t0_us = int(report.get("t0_us") or 0)
+    fallback = 1e6 / (float(report.get("fs") or 0) or 1.0)
+    # Walked from the end. A handful of rows on a real recording -- eight
+    # segment starts and a few lossy records on M8s9feb8 -- and the same
+    # reasoning `concat_to_true` gives: cheaper than a bisect's own overhead.
+    for k in range(len(marks) - 1, -1, -1):
+        row = marks[k]
+        base_i, base_us = int(row[0]), int(row[1])
+        if i >= base_i:
+            # The rate fitted to that run, not the header's. The header says
+            # 30000 and the measured rate over one segment of M8s9feb8 is
+            # 30000.1224, which is 11 ms across it.
+            per = float(row[2]) if len(row) > 2 else fallback
+            return (base_us - t0_us) / 1e6 + (i - base_i) * per / 1e6
+    return None
+
+
+def true_to_sample(report, t):
+    """True seconds -> concatenated sample index. The inverse of the above.
+
+    Exact where `t` is a record start, which is the case this exists for:
+    `read_ncs_range` returns the timestamp of the first record it read, and
+    a caller that wants to know WHICH samples it just got needs an index,
+    not a time. Locating them by time instead means the samples a reader
+    returns depend on the map, which is backwards.
+    """
+    marks = (report or {}).get("breaks") or []
+    if not marks or t is None:
+        return None
+    t = float(t)
+    t0_us = int(report.get("t0_us") or 0)
+    want_us = t0_us + t * 1e6
+    for k in range(len(marks) - 1, -1, -1):
+        row = marks[k]
+        base_i, base_us = int(row[0]), int(row[1])
+        if want_us >= base_us - 0.5:
+            per = float(row[2]) if len(row) > 2 else (
+                1e6 / (float(report.get("fs") or 1.0)))
+            return int(round(base_i + (want_us - base_us) / per))
+    return None
+
+
 def concat_to_true(report, t):
     """One concatenated second -> (true second, segment index).
 

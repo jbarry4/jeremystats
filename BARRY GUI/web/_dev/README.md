@@ -47,6 +47,10 @@ live server with no build step and no test framework:
 | `banklayers.html` | that the bank's two kinds stay separate while living in one view, that a sheet shows its runs and history, that a version's CSV comes from that version's snapshot rather than the sheet as it stands, and that snapshotting adds one |
 | `errctx.html` | that an error's context window holds only actions actually inside it (compared as moments, not strings — mixed timezones is what broke it), that an empty window answers ok rather than failing, and that a device being online is independent of its having anything to say |
 | `history.html` | that the shared scope really spans more than one machine, that the kind filter matches a family of actions rather than one verb, that the per-person counts add up, and that the answer never claims to be showing everyone when it is not |
+| `panorama.html` | Panorama end to end: that the tool owns the pane, that the cost and the step size are stated before anything runs, that the waiting screen shows both stages and builds the spectrogram up while you wait, and that all three steps end up on screen together. Forces a real run rather than taking the cached one, or there is nothing to watch |
+| `pngeo.html` | measures Panorama's boxes at two widths -- that the axes overlay sits exactly on the spectrogram it labels, that no canvas is zero-height, and that the two-column step 1 stacks rather than scrolling sideways. Names the offending element when something sticks out, which is how the colormap dropdown was caught being ninety-one pixels wider than the pane |
+| `pnpose.html` | poses Panorama with a finished run, for screenshots: `?t1=<seconds>`, `?wait=0` for the form alone |
+| `pnprobe.html` | a scratch page for one question at a time: currently, which ToolKit tools overflow at which widths |
 
 Run them by opening, with the server up:
 
