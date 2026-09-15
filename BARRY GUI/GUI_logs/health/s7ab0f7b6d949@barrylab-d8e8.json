@@ -8,23 +8,23 @@
     "checks": {
       "5fbaf478794c": [
         "set",
-        "2026-09-14T16:32:21.216060+00:00"
+        "2026-09-15T19:12:31.857810+00:00"
       ],
       "c1cd03c024c3": [
         "set",
-        "2026-09-14T15:21:31.951842+00:00"
+        "2026-09-14T16:22:06.566221+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T16:32:21.216060+00:00",
+    "at": "2026-09-15T19:12:31.857810+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "checks": [
     {
       "all_channels": false,
-      "at": "2026-09-14T15:21:31.951650+00:00",
+      "at": "2026-09-14T16:22:06.565541+00:00",
       "by": "Shahriar Tafti",
       "concat_duration_s": 1991.5637,
       "gap_map_sha": "abdaea3f5d3420a8",
@@ -39,12 +39,13 @@
       "n_probed": 4,
       "n_segments": 1,
       "seconds_lost": 0.0,
+      "seen": 2,
       "sub_threshold_lost_s": 0.0,
       "true_duration_s": 1991.549917
     },
     {
       "all_channels": false,
-      "at": "2026-09-14T16:32:21.210923+00:00",
+      "at": "2026-09-15T19:12:31.856809+00:00",
       "by": "Rain Younger",
       "concat_duration_s": 1991.5637,
       "gap_map_sha": "abdaea3f5d3420a8",
@@ -52,14 +53,14 @@
       "id": "5fbaf478794c",
       "level": "ok",
       "machine": "Strawbarry",
-      "max_time_error_ms": 0.0,
+      "max_time_error_ms": 0,
       "mismatches": 0,
       "n_gaps": 0,
       "n_ncs": null,
       "n_probed": 4,
       "n_segments": 1,
-      "seconds_lost": 0.0,
-      "sub_threshold_lost_s": 0.0,
+      "seconds_lost": 0,
+      "seen": 2,
       "true_duration_s": 1991.549917
     }
   ],

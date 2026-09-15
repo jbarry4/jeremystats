@@ -8,11 +8,11 @@
     "checks": {
       "87a66082c269": [
         "set",
-        "2026-09-14T19:07:41.574239+00:00"
+        "2026-09-14T19:08:13.677217+00:00"
       ],
       "ced9c6055e5f": [
         "set",
-        "2026-09-14T19:06:52.665500+00:00"
+        "2026-09-15T19:13:49.962394+00:00"
       ],
       "fa693fae50d7": [
         "set",
@@ -21,7 +21,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-14T19:07:41.574239+00:00",
+    "at": "2026-09-15T19:13:49.962394+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -48,8 +48,27 @@
       "true_duration_s": 1811.63777
     },
     {
+      "all_channels": true,
+      "at": "2026-09-14T19:07:41.572236+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1811.51996666667,
+      "gap_map_sha": "765b5e04aba4f411",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "87a66082c269",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 121.27466666675,
+      "mismatches": 0,
+      "n_gaps": 8,
+      "n_ncs": 64,
+      "n_probed": 64,
+      "n_segments": 9,
+      "seconds_lost": 0.124737,
+      "true_duration_s": 1811.63777
+    },
+    {
       "all_channels": false,
-      "at": "2026-09-14T19:06:52.665500+00:00",
+      "at": "2026-09-15T19:13:49.961397+00:00",
       "by": "Rain Younger",
       "concat_duration_s": 1811.51996666667,
       "gap_map_sha": "765b5e04aba4f411",
@@ -64,27 +83,7 @@
       "n_probed": 4,
       "n_segments": 9,
       "seconds_lost": 0.124737,
-      "seen": 5,
-      "true_duration_s": 1811.63777
-    },
-    {
-      "all_channels": true,
-      "at": "2026-09-14T19:07:41.572236+00:00",
-      "by": "Rain Younger",
-      "concat_duration_s": 1811.5199666666667,
-      "gap_map_sha": "765b5e04aba4f411",
-      "gap_rule": "spikeinterface-nonstrict",
-      "id": "87a66082c269",
-      "level": "warn",
-      "machine": "Strawbarry",
-      "max_time_error_ms": 121.27466666674991,
-      "mismatches": 0,
-      "n_gaps": 8,
-      "n_ncs": 64,
-      "n_probed": 64,
-      "n_segments": 9,
-      "seconds_lost": 0.124737,
-      "sub_threshold_lost_s": 0.001967,
+      "seen": 8,
       "true_duration_s": 1811.63777
     }
   ],

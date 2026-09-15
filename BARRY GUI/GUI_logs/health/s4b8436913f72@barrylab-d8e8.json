@@ -12,12 +12,12 @@
       ],
       "e314d12ccc95": [
         "set",
-        "2026-09-14T16:28:59.954236+00:00"
+        "2026-09-15T19:10:25.874583+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T16:28:59.954236+00:00",
+    "at": "2026-09-15T19:10:25.874583+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -43,7 +43,7 @@
     },
     {
       "all_channels": false,
-      "at": "2026-09-14T16:28:59.954236+00:00",
+      "at": "2026-09-15T19:10:25.874583+00:00",
       "by": "Rain Younger",
       "concat_duration_s": 2148.1077,
       "gap_map_sha": "cbe18b6ab7e1a7c5",
@@ -51,14 +51,14 @@
       "id": "e314d12ccc95",
       "level": "ok",
       "machine": "Strawbarry",
-      "max_time_error_ms": 0.0,
+      "max_time_error_ms": 0,
       "mismatches": 0,
       "n_gaps": 0,
       "n_ncs": null,
       "n_probed": 4,
       "n_segments": 1,
-      "seconds_lost": 0.0,
-      "sub_threshold_lost_s": 0.0,
+      "seconds_lost": 0,
+      "seen": 2,
       "true_duration_s": 2148.098597
     }
   ],
