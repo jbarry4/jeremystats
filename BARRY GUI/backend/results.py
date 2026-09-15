@@ -38,6 +38,11 @@ STAGE_OUTPUT_DIRS = ("pipeline output", "output", "figures", "figs")
 
 MAX_SCAN_FILES = 6000
 
+# The by-product lane under Results/. Written by save_output(lane="scratch"),
+# ignored by git, and skipped here so the catalogue is results only. Kept in
+# step with SCRATCH_DIR in app.py.
+SCRATCH_DIR = "_scratch"
+
 
 def _now():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
@@ -245,7 +250,14 @@ class Results:
         for root, dirs, files in os.walk(folder):
             if root[len(folder):].count(os.sep) >= depth:
                 dirs[:] = []
+            # Dot folders are caches. `_scratch` is the harness-and-debug
+            # lane: real files from real runs that nobody will ever cite, and
+            # the reason this folder stopped being readable. Both are skipped
+            # at the top level only -- a session legitimately named `_scratch`
+            # three folders down is not this.
             dirs[:] = [d for d in dirs if not d.startswith(".")]
+            if root == folder:
+                dirs[:] = [d for d in dirs if d != SCRATCH_DIR]
             for name in files:
                 if os.path.splitext(name)[1].lower() not in RESULT_EXTS:
                     continue
@@ -407,7 +419,11 @@ class Results:
             for d in dirs:
                 rel = os.path.relpath(os.path.join(root, d),
                                       self.outputs_dir).replace("\\", "/")
-                if rel.startswith("."):
+                # Dot folders are caches, and the by-product lane is not a
+                # folder anybody files into. Skipping it in the catalogue and
+                # not here would put it straight back on screen as three
+                # empty chips -- which is the debris again, just tidier.
+                if rel.startswith(".") or rel.split("/")[0] == SCRATCH_DIR:
                     continue
                 counts.setdefault(self.clean_folder(rel), 0)
         out = []

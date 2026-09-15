@@ -2728,7 +2728,8 @@ def api_figure_export():
     saved = None
     try:
         ident = layout.get("identity") or {}
-        saved = save_output(blob, name, subdir=ident.get("label"))
+        saved = save_output(blob, name, subdir=ident.get("label"),
+                            lane=lane_of(body))
         STORE.update_run(run["id"], {"output": saved})
     except Exception as exc:
         STORE.record_error("figure/save", "Could not write to Output/: %s" % exc,
@@ -3496,6 +3497,28 @@ def _recording_start_us(session_path):
 # ==========================================================================
 # Output folder -- where downloads land
 # ==========================================================================
+# The two lanes a saved file can land in, and the folder the second one uses.
+# The folder name comes from results.py rather than being spelled again here:
+# the writer, the catalogue and .gitignore all have to agree on it, and a typo
+# in any one of them puts harness output back in the gallery silently.
+SCRATCH_LANE = "scratch"
+SCRATCH_DIR = results.SCRATCH_DIR
+
+
+def lane_of(body=None):
+    """Which lane this request asked to be saved in. Exhibit unless it says.
+
+    Only a harness ever asks for scratch, and it asks explicitly rather than
+    being sniffed out of a header: the harness pages drive the real interface
+    from inside an iframe, so their requests carry the app's own Referer and
+    are indistinguishable from a person's. Saying so in the body is the only
+    honest signal there is.
+    """
+    asked = ((body or {}).get("lane")
+             or request.args.get("lane") or "").strip().lower()
+    return SCRATCH_LANE if asked == SCRATCH_LANE else "exhibit"
+
+
 def outputs_dir():
     """Where everything the GUI saves goes, and the only place Results reads.
 
@@ -3584,9 +3607,33 @@ def github_url_for(path):
     return "%s/tree/%s/%s" % (base, branch, quote(rel))
 
 
-def save_output(blob, filename, subdir=None):
-    """Write an exported file into the Output folder and report where it went."""
+def save_output(blob, filename, subdir=None, lane="exhibit"):
+    """Write an exported file into the Output folder and report where it went.
+
+    `lane` is which half of Results/ this belongs in, and it is the caller's
+    to declare rather than something guessed from the filename later.
+
+      exhibit  a result. Somebody made it on purpose, it is evidence, and it
+               is committed so a colleague can see it beside the log entry
+               that produced it.
+      scratch  a by-product. Harness screenshots, debug reports, the figure
+               a test rendered to prove rendering works. Real output of a
+               real run, and nobody will ever cite it.
+
+    They were the same folder until now, and the arithmetic of that is why
+    this argument exists: of 197 files in Results/, about 120 were harness
+    and debug by-products, 23 of them byte-identical copies of one another.
+    A folder that is 5% results is not a folder anybody reads.
+
+    Scratch goes to Results/_scratch/, which the catalogue skips and git
+    ignores. Underscore rather than a dot so it stays visible -- "send me
+    your debug report" is a thing people say, and a hidden folder would make
+    that harder, not easier.
+    """
     d = outputs_dir()
+    if lane == SCRATCH_LANE:
+        d = os.path.join(d, SCRATCH_DIR)
+        os.makedirs(d, exist_ok=True)
     if subdir:
         safe_sub = "".join(c for c in str(subdir)
                            if c.isalnum() or c in " -_.") .strip()
@@ -6098,7 +6145,8 @@ def api_toolkit_bad_channels_export():
 
     saved = None
     try:
-        saved = save_output(text.encode("utf-8"), name, subdir="ToolKit")
+        saved = save_output(text.encode("utf-8"), name, subdir="ToolKit",
+                            lane=lane_of())
     except Exception as exc:
         STORE.record_error("toolkit/save", "Could not write to Results/: %s"
                            % exc, None, {"name": name})
@@ -6183,7 +6231,8 @@ def api_deck_export():
 
     saved = None
     try:
-        saved = save_output(blob, name, subdir="Storyboards")
+        saved = save_output(blob, name, subdir="Storyboards",
+                            lane=lane_of(body))
     except Exception:
         saved = None
 
@@ -8685,10 +8734,15 @@ def api_debug_report():
     text = "\n".join(L)
     saved = None
     try:
+        # Scratch, always. A debug report is a by-product of something going
+        # wrong, it is read once by whoever it was sent to, and forty-nine of
+        # them had accumulated in the results folder where nobody wants them.
+        # Still written, still findable at Results/_scratch/Debug, just not
+        # filed among the figures.
         saved = save_output(
             text.encode("utf-8"),
             "debug-report-%s.txt" % time.strftime("%Y%m%d_%H%M%S"),
-            subdir="Debug")
+            subdir="Debug", lane=SCRATCH_LANE)
     except Exception:
         saved = None
     STORE.record_activity([{
