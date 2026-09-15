@@ -543,6 +543,11 @@ STAGES = [
     # somebody looked at a spectrum.
     ("spectrum read", "seconds"),
     ("spectrum", "channels"),
+    # Incisor. Its own names, for the reason given above the spectrum's: a
+    # stage name shared between two tools that count it differently corrupts
+    # the rate of whichever ran second.
+    ("ds read", "seconds"),
+    ("ds detect", "channels"),
     ("slow bank", "bands"),
     ("fast bank", "bands"),
     ("modulation index", "cells"),
@@ -569,6 +574,11 @@ _RATES = {
     # Measured here: 16 channels of a 2124 s recording, 33984 stage-units, in
     # 47.5 s wall -- so 1.4 ms of wall per second of recording per channel.
     # Flat (see _FLAT): these units are already counted in samples.
+    # Incisor reads at full rate and decimates like the spectrum does, but
+    # filters three bands afterwards instead of one transform. Seeded a shade
+    # higher and measured on the first run.
+    "ds read": 1.5e-3,            # per second of recording, per channel
+    "ds detect": 0.15,            # per channel
     "spectrum read": 1.4e-3,      # per second of recording, per channel
     # Near zero because the transforms are interleaved with the reads to keep
     # memory bounded, so their wall time is inside the stage above. This one
@@ -583,7 +593,7 @@ _RATES = {
 # went into it), or the stage's own units already carry the sample count (the
 # spectrum's, counted in seconds of recording). Normalising those a second
 # time would make the estimate scale as the square of the window.
-_FLAT = {"draw", "spectrum read", "spectrum"}
+_FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -599,7 +609,7 @@ _RATES_LOCK = threading.Lock()
 # -- it is not the order of magnitude a network share sounds like it should
 # be -- but a systematic one, and free to track now that the key exists. A
 # busier share at another site will be worse than this one.
-_PER_VOLUME = {"read", "decimate", "spectrum read"}
+_PER_VOLUME = {"read", "decimate", "spectrum read", "ds read"}
 
 
 def volume_key(path):

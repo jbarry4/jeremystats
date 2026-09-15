@@ -128,6 +128,7 @@ BARRY.views.toolkit = (function () {
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
+    if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     /* Kilosort has nothing to do with bad channels.
 
@@ -186,7 +187,12 @@ BARRY.views.toolkit = (function () {
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
-        toolButton('cfc', 'Braid',
+        toolButton('incisor', 'Incisor',
+                 'Dentate spike detection, on the recording\u2019s own '
+                 + 'clock. A port of Toothy\u2019s detector \u2014 checked '
+                 + 'against its code on identical input \u2014 so a set '
+                 + 'from here never needs the concatenation correction.'),
+      toolButton('cfc', 'Braid',
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
                    + 'in it is saved.'),
@@ -208,7 +214,10 @@ BARRY.views.toolkit = (function () {
             snapshot importer was showing it and asking which recordings to
             scope a folder read to. */
          (q.tool === 'curate' || q.tool === 'strata' || q.tool === 'cfc'
-          || q.tool === 'kilosort' || q.tool === 'snapshots')
+          || q.tool === 'kilosort' || q.tool === 'snapshots'
+          // Incisor picks its own recording and scans every channel, so the
+          // bad-channel scope card above would be describing something else.
+          || q.tool === 'incisor')
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
@@ -1968,6 +1977,20 @@ BARRY.views.toolkit = (function () {
      ================================================================== */
   let cfcReg = null;
 
+  /* Incisor needs the registry and nothing else -- it does its own
+     estimating once a recording is chosen. The rows come from the same
+     sixty-second cache every other tool uses, because reading the registry
+     takes eight seconds on this lab's data. */
+  async function loadIncisor() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'incisor') return;
+    BARRY.incisor.paint();
+  }
+
   async function loadCFC() {
     renderCFC();
     cfcReg = await registry();
@@ -2412,6 +2435,7 @@ BARRY.views.toolkit = (function () {
       return;
     }
     if (q.tool === 'strata') { renderStrata(); return; }
+    if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
@@ -2566,7 +2590,13 @@ BARRY.views.toolkit = (function () {
   }
 
   return {
-    init, onShow, refresh,
+    init,
+    /* The cached registry rows, flattened, for a tool that wants its own
+       session picker. Through here rather than each tool fetching, so one
+       sixty-second cache serves them all. */
+    registryRows: () => (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    tool: () => q.tool, onShow, refresh,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

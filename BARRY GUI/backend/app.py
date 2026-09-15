@@ -26,6 +26,7 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
+               incisor as incisormod,
                retime as retimemod,
                spectrum as spectrummod,
                device as devicemod,
@@ -1225,6 +1226,153 @@ def api_spectrum_run():
                    "fmax": spec["fmax"],
                    "whole": spec["t0"] <= 0
                             and spec["t1"] >= (sess.get("duration_s") or 0)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan})
+
+
+def _incisor_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    `invert` is read from the session rather than defaulted here, and travels
+    into the spec explicitly, because dentate spike detection is positive
+    peaks on a signed trace: the two conventions find opposite events and
+    both look entirely plausible. Measured on M8s9feb8, the lab's convention
+    (inverted) gives 1230 events at 1444 uV on the hilus channel and the
+    other gives four.
+    """
+    chans = body.get("channels")
+    if not chans:
+        chans = [c["index"] for c in (sess.get("channels") or [])]
+    spec = {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "invert": bool(sess.get("invert", True)),
+        "even_only": bool(sess.get("even_only")),
+        "estimator": (body.get("estimator") or "sd"),
+    }
+    for key, default in (("height_sd", incisormod.DS_HEIGHT_SD),
+                         ("abs_uv", incisormod.DS_ABS_THR_UV),
+                         ("dist_ms", incisormod.DS_DIST_MS),
+                         ("prom_uv", incisormod.DS_PROM_UV),
+                         ("wlen_ms", incisormod.DS_WLEN_MS),
+                         ("lfp_fs", incisormod.LFP_FS)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+    band = body.get("band") or incisormod.DS_BAND
+    spec["band"] = [float(band[0]), float(band[1])]
+    if body.get("threshold_uv"):
+        spec["threshold_uv"] = float(body["threshold_uv"])
+    return spec
+
+
+def _incisor_report(path):
+    """The segmentation every Incisor time is stamped from."""
+    rep = continuitymod.check(path)
+    if not rep or not rep.get("ok"):
+        raise ValueError(rep.get("error") if rep else "could not segment")
+    return rep
+
+
+@app.route("/api/incisor/estimate", methods=["POST"])
+def api_incisor_estimate():
+    """What a scan would do, and how long it would take here."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.estimate(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/estimate", exc, 400, {"path": body.get("path")})
+    key = incisormod.cache_key(spec, rep)
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec,
+        "cached": incisormod.cache_get(key) is not None,
+        "continuity": {
+            "n_segments": rep.get("n_segments"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "true_duration_s": rep.get("true_duration_s"),
+            "n_short_inside": rep.get("n_short_inside"),
+            "residual_sd_us": rep.get("map_residual_sd_us"),
+            "probed": rep.get("probed"),
+            "mismatches": rep.get("mismatches"),
+        },
+        # What the session already believes about its own anatomy, so the
+        # window can put the scan's answer beside it rather than over it.
+        "known": _known_channels(sess.get("path")),
+    })
+
+
+def _known_channels(path):
+    """Ripple, fissure and hilus as the registry already holds them.
+
+    Imported from the Toothy workbook by `tools/import_toothy.py` for 62
+    sessions and corroborated against the layer sheet in 57 of 57 cases where
+    both exist. Two independent sources agreeing is the best evidence either
+    of them could have, so the scan's estimate is shown BESIDE this rather
+    than replacing it.
+    """
+    # `all()` rather than `summary()`: the records straight out of the
+    # shards, cached against their signature, instead of the whole project
+    # tree -- which takes seconds on this lab's data and is three quarters
+    # of what `/api/registry` costs.
+    want = os.path.normcase(os.path.abspath(path or ""))
+    try:
+        for rec in (REG.all() or []):
+            for known in (rec.get("paths") or []):
+                if os.path.normcase(os.path.abspath(known)) == want:
+                    return {k: rec.get(k) for k in
+                            ("hilus_channel", "fissure_channel",
+                             "ripple_channel")
+                            if rec.get(k) is not None}
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {}
+
+
+@app.route("/api/incisor/scan", methods=["POST"])
+def api_incisor_scan():
+    """Detect on every chosen channel and say which one is the hilus.
+
+    One job, because Toothy's channel estimate is made FROM the per-channel
+    detection (`ephys.py:916`) -- scanning and picking are not separable
+    steps, and pretending otherwise would mean reading the recording twice.
+    Poll it on /api/cfc/job/<id>, which is not cfc-specific.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.plan_for(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/scan", exc, 400, {"path": body.get("path")})
+
+    key = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    steps = [("ds read", int(plan["span_s"] * plan["n_channels"])),
+             ("ds detect", plan["n_channels"])]
+
+    def work(job):
+        out = incisormod.run(sess, spec, rep, job)
+        incisormod.cache_put(key, out)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "incisor.scan",
+        "detail": {"channels": len(spec["channels"]),
+                   "segments": rep.get("n_segments"),
+                   "invert": spec["invert"],
+                   "height_sd": spec["height_sd"]},
     }])
     return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
                     "plan": plan})

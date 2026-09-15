@@ -480,6 +480,118 @@ BARRY.views.xplore = (function () {
   }
 
   /* ==================================================================
+     Channel lines -- a horizontal mark across a chosen channel
+     ==================================================================
+     Published by whoever cares (Incisor, today) rather than owned here:
+     this module knows where a channel is drawn and nothing about why it
+     matters. Each entry is {key, label, colour, number, onmove}, and
+     `number` is a CSC number rather than a lane, because a lane is a fact
+     about the current pane -- which may be showing every fourth channel --
+     and a channel is a fact about the probe.
+     ================================================================== */
+  let chanLines = [];
+  let dragLine = null;
+
+  function setChannelLines(sess, lines) {
+    chanLines = (lines || []).slice();
+    repaintTraces();
+  }
+
+  function channelLines() { return chanLines.slice(); }
+
+  function repaintTraces() {
+    XF.panes.forEach((p, i) => {
+      if (p && p.panel === 'traces') { try { drawPane(i); } catch (e) {} }
+    });
+  }
+
+  /* Which lane a CSC number is on, or -1 if this pane is not showing it. A
+     lookup rather than arithmetic, for the reason above. */
+  function laneOfNumber(win, number) {
+    if (!win || !win.series) return -1;
+    for (let i = 0; i < win.series.length; i += 1) {
+      if (Number(win.series[i].number) === Number(number)) return i;
+    }
+    return -1;
+  }
+
+  /* Drawn after the traces so it sits on top, and labelled at the left
+     where the channel names are, so the mark and the name read as one
+     thing. */
+  function drawChannelLines(ctx, win, padL, plotW, padTop, plotH) {
+    if (!chanLines.length || !win || !win.series || !win.series.length) return;
+    const lane = plotH / win.series.length;
+    ctx.save();
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(win, line.number);
+      if (i < 0) continue;
+      const y = Math.round(padTop + lane * (i + 0.5)) + 0.5;
+      const on = dragLine === line;
+      ctx.strokeStyle = line.colour || '#e5484d';
+      ctx.fillStyle = line.colour || '#e5484d';
+      ctx.lineWidth = on ? 3 : 2;
+      ctx.globalAlpha = on ? 1 : 0.8;
+      ctx.setLineDash(on ? [] : [7, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // A grip at the right, so it reads as something you can take hold of.
+      ctx.globalAlpha = 1;
+      ctx.fillRect(padL + plotW - 9, y - 6, 9, 12);
+      const label = line.label + '  ' + (win.series[i].label || '');
+      ctx.font = '600 10.5px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const w = ctx.measureText(label).width + 10;
+      ctx.globalAlpha = 0.92;
+      ctx.fillRect(padL + 4, y - 15, w, 14);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, padL + 9, y - 5);
+    }
+    ctx.restore();
+  }
+
+  /* Picked up within a fraction of a lane of the line; let go over whatever
+     lane the pointer is on, and the CSC NUMBER of that lane is what gets
+     reported -- never an index, which means something different in a pane
+     showing a subset. */
+  function channelLineAt(pane, x, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !chanLines.length) return null;
+    const padL = PAD_TRACES_L;
+    if (x < padL) return null;
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(win, line.number);
+      if (i < 0) continue;
+      const ly = geom.top + geom.lane * (i + 0.5);
+      if (Math.abs(y - ly) <= Math.max(5, geom.lane * 0.35)) return line;
+    }
+    return null;
+  }
+
+  function channelLineDrop(pane, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !dragLine) { dragLine = null; return; }
+    // The same clamp the readout uses, for the same reason.
+    const i = clamp(Math.floor((y - geom.top) / geom.lane), 0,
+                    win.series.length - 1);
+    const number = Number(win.series[i].number);
+    const line = dragLine;
+    dragLine = null;
+    if (Number(line.number) !== number) {
+      line.number = number;
+      if (typeof line.onmove === 'function') line.onmove(number);
+    }
+    repaintTraces();
+  }
+
+  /* ==================================================================
      Curation marks
      ==================================================================
      The candidate being decided, and its neighbours, drawn on every panel
@@ -6825,6 +6937,9 @@ BARRY.views.xplore = (function () {
     // Remember the lane geometry so the channel checkboxes can be lined up
     // with the traces they control.
     pane._geom = { top: padTop, padBottom: PAD.b, lane, n,
+                   // The horizontal extent too, so a channel line can be
+                   // hit-tested without recomputing what was just drawn.
+                   padL, plotW, plotH,
                    labels: win.series.map((x) => x.number) };
     pane._padTop = padTop;
     try {
@@ -6869,6 +6984,7 @@ BARRY.views.xplore = (function () {
        the same marks from the same data. The curate module still gets a
        turn afterwards for the label text, which only makes sense in the
        window doing the deciding. */
+    drawChannelLines(ctx, win, padL, plotW, padTop, plotH);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
     if (BARRY.curate && BARRY.curate.draw) {
@@ -7295,11 +7411,39 @@ BARRY.views.xplore = (function () {
       XF.focused = index; XF.active = pane.sessionId;
       if (e.altKey) { addEventAt(sess, canvas, e); return; }
       if (XF.measure || XF.placing) return;   // another handler owns this drag
+      /* A channel line gets first refusal. Inside this handler rather than
+         in one of its own: the canvas already has a mousedown that pans, so
+         a second listener would be two of them fighting over one press. */
+      const rect0 = canvas.getBoundingClientRect();
+      const hit = channelLineAt(pane, e.clientX - rect0.left,
+                                e.clientY - rect0.top);
+      if (hit) {
+        dragLine = hit;
+        canvas.style.cursor = 'ns-resize';
+        repaintTraces();
+        return;
+      }
       const w0 = winOf(pane, sess);
       drag = { x: e.clientX, t0: w0.t0, span: w0.span };
       canvas.style.cursor = 'grabbing';
     });
     const move = (e) => {
+      if (dragLine) {
+        // Followed live, snapped to a lane, so it is obvious which channel
+        // it will land on before the mouse is let go.
+        const rect = canvas.getBoundingClientRect();
+        const win = pane._win, geom = pane._geom;
+        if (win && geom) {
+          const i = clamp(Math.floor(((e.clientY - rect.top) - geom.top)
+                                     / geom.lane), 0, win.series.length - 1);
+          const number = Number(win.series[i].number);
+          if (Number(dragLine.number) !== number) {
+            dragLine.number = number;
+            repaintTraces();
+          }
+        }
+        return;
+      }
       if (drag) {
         const rect = canvas.getBoundingClientRect();
         const plotW = Math.max(1, rect.width - PAD_TRACES_L - PAD.r);
@@ -7307,9 +7451,25 @@ BARRY.views.xplore = (function () {
                   drag.span);
         return;
       }
+      // The cursor says a line can be taken hold of before it is.
+      const r2 = canvas.getBoundingClientRect();
+      if (channelLineAt(pane, e.clientX - r2.left, e.clientY - r2.top)) {
+        canvas.style.cursor = 'ns-resize';
+      } else if (canvas.style.cursor === 'ns-resize') {
+        canvas.style.cursor = 'crosshair';
+      }
       hoverTraces(pane, sess, canvas, readout, e);
     };
-    const up = () => { if (drag) { drag = null; canvas.style.cursor = 'crosshair'; } };
+    const up = (e) => {
+      if (dragLine) {
+        const rect = canvas.getBoundingClientRect();
+        channelLineDrop(pane, (e && e.clientY != null)
+                        ? e.clientY - rect.top : 0);
+        canvas.style.cursor = 'crosshair';
+        return;
+      }
+      if (drag) { drag = null; canvas.style.cursor = 'crosshair'; }
+    };
     onPane(pane, window, 'mousemove', move);
     onPane(pane, window, 'mouseup', up);
     canvas.addEventListener('mouseleave', () => readout.classList.remove('on'));
@@ -8241,6 +8401,7 @@ BARRY.views.xplore = (function () {
 
   return {
     init,
+    setChannelLines, channelLines,
     open: openSession,
     popOutPanes,
     /* Whatever recording is on screen. Braid's `enter()` with no argument
