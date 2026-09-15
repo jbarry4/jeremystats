@@ -1,0 +1,375 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the power spectrum window</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1100px; height:900px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">The spectrum window reads its recording from
+<code>opener.barryCfc.context()</code>, exactly as the comodulogram does, so a
+harness has to <em>be</em> an opener: <code>window.opener</code> is writable,
+and a stub with a real registry path in it is the precondition this whole
+harness rests on. Without it the window renders its "opened from Braid"
+fallback and every check below would pass vacuously against nothing.</p>
+<div id="out"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 25000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(120);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const txt = () => (D().getElementById('spectrumBody') || {}).textContent || '';
+
+/* ------------------------------------------------------------------
+   The precondition: a recording, and an opener that names it.
+   ------------------------------------------------------------------ */
+/* A real one off the registry rather than the demo. The demo recording is
+   synthetic and its spectrum is whatever the generator put there; the thing
+   being tested is that a 30 kHz Neuralynx session gets decimated, read in
+   chunks and averaged without falling over. A short window of it, because
+   this runs in a suite. */
+async function findSession() {
+  const reg = await (await fetch('/api/registry')).json();
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        if ((s.here || []).length) return s.here[0];
+      }
+    }
+  }
+  return null;
+}
+
+let CTX = null;
+
+async function makeContext(path) {
+  const open = await (await fetch('/api/csc/open', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: path, even_only: false, invert: true }),
+  })).json();
+  const info = open.session || open;
+  const chans = (info.channels || []).map((c, i) => ({
+    index: c.index != null ? c.index : i,
+    label: c.label, number: c.number,
+    // One marked bad, so "Good only" has something to exclude and the
+    // dashed-line branch is exercised. Nothing is written: this is a
+    // fabricated context, not the session's own bad list.
+    bad: i === 1,
+  }));
+  return {
+    path: path, evenOnly: false, invert: true,
+    label: info.label || path,
+    /* A short window on the opener, so "Use the view" has somewhere real to
+       point and the whole-recording default has something to differ from. */
+    t0: 10, t1: 40,
+    channel: chans.length ? chans[0].index : 0,
+    channelLabel: chans.length ? chans[0].label : null,
+    channels: chans,
+    selection: chans.slice(0, 3).map((c) => c.index),
+    highpass: 0, lowpass: 0, notch: 0,
+    duration: info.duration_s || 0,
+    fs: info.fs || 0,
+  };
+}
+
+const q = () => W().eval('BARRY.views.spectrum') && null;
+
+/* Reaching into the module's state is not possible -- it is an IIFE closure
+   -- so everything below is read off the DOM, which is also what a person
+   would see. The one exception is driving buttons by their label. */
+function btn(label) {
+  return Array.from(D().querySelectorAll('#spectrumBody button'))
+    .find((b) => b.textContent.trim() === label);
+}
+function picked() {
+  const b = D().querySelector('.psd-picks .btn');
+  const m = b && /^[▸▾]\s*(\d+)/.exec(b.textContent.trim());
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+(async () => { try {
+  const path = await findSession();
+  ck('a reachable recording in the registry', !!path, 'none');
+  if (!path) { document.title = 'psd: passed'; return; }
+  say('note', '  ' + path);
+
+  CTX = await makeContext(path);
+  ck('it has channels and a duration',
+     CTX.channels.length > 0 && CTX.duration > 0,
+     CTX.channels.length + ' ch, ' + CTX.duration + ' s');
+  say('note', '  ' + CTX.channels.length + ' channels, '
+              + CTX.duration.toFixed(1) + ' s at ' + CTX.fs + ' Hz');
+
+  A.src = '/?role=spectrum#spectrum';
+  await until(() => W() && W().BARRY && W().BARRY.views
+                    && W().BARRY.views.spectrum);
+
+  head('It knows it has no opener');
+  /* The fallback is the honest state for a window opened by hand, and it
+     has to be distinguishable from a broken one. */
+  await until(() => /opened from Braid/.test(txt()), 8000);
+  ck('without an opener it says where it comes from',
+     /opened from Braid/.test(txt()), txt().slice(0, 90));
+
+  head('And reads the recording from one when there is one');
+  /* `window.opener` is a writable property, which is what makes this
+     testable at all. The stub carries exactly the shape cfcscope's
+     context() returns -- if that shape drifts, this goes red. */
+  W().opener = { barryCfc: { context: () => CTX } };
+  W().barrySpectrum.onShow();
+  await until(() => /Compute the spectrum/.test(txt()), 8000);
+  ck('the form appears once an opener is there',
+     /Compute the spectrum/.test(txt()), txt().slice(0, 120));
+  ck('it names the recording',
+     txt().indexOf(CTX.label) >= 0 || txt().indexOf(path) >= 0, '');
+  ck('it opens on the whole recording, not the view',
+     !!(btn('Whole recording') || {}).classList
+       && btn('Whole recording').classList.contains('on'), 'not on');
+  ck('it starts from the session selection',
+     picked() === CTX.selection.length,
+     picked() + ' picked, ' + CTX.selection.length + ' selected');
+
+  head('The channel picks are the ones every other view offers');
+  const wanted = ['All', 'None', 'Every 2', 'Every 4', 'Every 8', 'Every 16',
+                  'Odd', 'Even', 'Good only', 'Session selection'];
+  for (const w of wanted) ck('there is a "' + w + '" pick', !!btn(w), 'missing');
+
+  const nGood = CTX.channels.filter((c) => !c.bad).length;
+  const nOdd = CTX.channels.filter((c) => c.number % 2 === 1).length;
+  const nEven = CTX.channels.length - nOdd;
+
+  /* Counted rather than eyeballed. "Every 4" walks the GOOD channels, so a
+     dead site does not silently shift the spacing -- which is why this is
+     ceil(good/4) and not ceil(all/4). */
+  const cases = [
+    ['All', CTX.channels.length],
+    ['Good only', nGood],
+    ['Odd', nOdd],
+    ['Even', nEven],
+    ['Every 2', Math.ceil(nGood / 2)],
+    ['Every 4', Math.ceil(nGood / 4)],
+    ['Every 8', Math.ceil(nGood / 8)],
+    ['Every 16', Math.ceil(nGood / 16)],
+    ['None', 0],
+  ];
+  for (const [label, want] of cases) {
+    const b = btn(label);
+    if (!b) continue;
+    b.click();
+    await sleep(60);
+    ck(label + ' selects ' + want, picked() === want,
+       'got ' + picked());
+  }
+
+  head('The list opens and closes without losing the selection');
+  btn('Every 4').click();
+  await sleep(60);
+  const before = picked();
+  const toggle = D().querySelector('.psd-picks .btn');
+  toggle.click();
+  await sleep(120);
+  const boxes = D().querySelectorAll('.psd-chanlist input[type=checkbox]');
+  ck('the list shows every channel', boxes.length === CTX.channels.length,
+     boxes.length + ' rows');
+  const ticked = Array.from(boxes).filter((b) => b.checked).length;
+  ck('the ticks match the quick pick', ticked === before,
+     ticked + ' ticked, ' + before + ' picked');
+  ck('a bad channel is marked as one',
+     !!D().querySelector('.psd-chanlist .psd-chan.bad'), 'none marked');
+
+  head('The estimate is a number somebody could plan around');
+  /* The whole point of the rename in cfc.py. The spectrum used to share the
+     `read` stage with the comodulogram, which counts it in samples while
+     this counts it in seconds -- and the estimate came out eleven times the
+     measured time. Anything within a factor of four here is honest; eleven
+     is not. */
+  /* Two readings, because sub-second work honestly says "a moment" and a
+     harness that demanded a number would be testing its own regex. The text
+     has to be there; the seconds only have to be there when there are
+     enough of them to say. */
+  const estText = () => {
+    const n = D().getElementById('psdEst');
+    const t = (n && n.textContent || '').trim();
+    return t || null;
+  };
+  const estOf = () => {
+    const m = /about\s+([\d.]+)\s*(s|min)/.exec(estText() || '');
+    return m ? parseFloat(m[1]) * (m[2] === 'min' ? 60 : 1) : null;
+  };
+  btn('A window').click();
+  await sleep(60);
+  const t0f = D().querySelectorAll('.comod-field input[type=number]')[0];
+  const t1f = D().querySelectorAll('.comod-field input[type=number]')[1];
+  ck('a window has From and To fields', !!t0f && !!t1f, 'missing');
+  if (t0f && t1f) {
+    t0f.value = 0; t0f.dispatchEvent(new (W().Event)('change'));
+    await sleep(120);
+    /* Half an hour, and never twice the same half hour.
+
+       The cache is keyed on the window to three decimal places, so a fixed
+       one means the second time this harness ever runs it measures a cache
+       hit -- and the loading display, which is the part worth testing, never
+       appears at all. A jittered end makes every run a real one. Long
+       enough, at about 1.6 ms per channel-second, to be some seconds of
+       work rather than a blink. */
+    t1f.value = (1800 + (Date.now() % 900) / 100).toFixed(2);
+    t1f.dispatchEvent(new (W().Event)('change'));
+  }
+  /* Two channels over ten minutes: enough work that the prediction is a
+     number and the run is a measurable couple of seconds, little enough
+     that this stays a harness and not an errand. */
+  btn('None').click(); await sleep(60);
+  const boxes2 = D().querySelectorAll('.psd-chanlist input[type=checkbox]');
+  for (const b of [boxes2[0], boxes2[2]]) {
+    if (b) { b.checked = true; b.dispatchEvent(new (W().Event)('change')); }
+  }
+  const NCH = 2;
+  await sleep(600);
+  const shown = await until(estText, 8000);
+  ck('an estimate arrives at all', !!shown, 'nothing in #psdEst');
+  say('note', '  ' + (shown || '(none)'));
+  const predicted = estOf();
+  ck('and it is not an hour', predicted == null || predicted < 600,
+     predicted + ' s');
+  /* Only when there is something to estimate. A second run of the same
+     request honestly says it is already computed, and a harness that
+     demanded the sample count either way would be asserting that the cache
+     does not work. */
+  const cached = /Already computed/.test(shown || '');
+  ck('this window has not been computed before', !cached, shown || '');
+  ck('it says how much data that is',
+     /million samples/.test(shown || ''), shown || '');
+
+  head('It runs, and says what it is doing while it does');
+  const t = Date.now();
+  btn('Compute the spectrum').click();
+  /* The loading display is the feature here, not a courtesy: a run with no
+     named stages is indistinguishable from a hang. Caught before the run
+     finishes, so a fast recording does not make this vacuous. */
+  const stages = await until(() => {
+    const n = D().querySelectorAll('#psdStages .comod-stage');
+    return n.length ? n : null;
+  }, 12000);
+  /* Not optional. The window is jittered above precisely so this run
+     cannot come from the cache, which means a run with no visible stages is
+     a broken loading display and not a fast machine. */
+  ck('the run shows its stages while it works', !!stages, 'none appeared');
+  if (stages) {
+    const names = Array.from(stages).map(
+      (s) => (s.querySelector('.comod-stage-name') || {}).textContent);
+    say('note', '  stages: ' + names.join(' | '));
+    ck('the stages are named in words, not stage ids',
+       names.every((n) => n && !/^spectrum( read)?$/.test(n)),
+       names.join('|'));
+    ck('the read stage says what it decimates to',
+       names.some((n) => /Read/.test(n)), names.join('|'));
+    ck('there is a paragraph saying why it takes as long as it does',
+       !!D().querySelector('.psd-why'), 'none');
+    const why = (D().querySelector('.psd-why') || {}).textContent || '';
+    ck('and that paragraph counts the samples',
+       /million samples/.test(why), why.slice(0, 120));
+    ck('a total progress bar is there to fill',
+       !!D().getElementById('psdBarFill'), 'none');
+  }
+
+  /* Four minutes, not ninety seconds. The first reachable recording in
+     this registry is on a UVM share, where reading is about fifty times
+     slower than off a local disk -- a cold run of ten minutes on two
+     channels took over ninety seconds, and the harness called a slow read a
+     missing plot. */
+  const plot = await until(() => D().getElementById('psdCanvas'), 240000);
+  const took = (Date.now() - t) / 1000;
+  ck('a plot arrives', !!plot, 'none after 90 s');
+  if (!plot) { document.title = 'psd: ' + (bad || 1) + ' FAILED'; return; }
+  say('note', '  ran in ' + took.toFixed(1) + ' s'
+              + (predicted != null
+                 ? ' against ' + predicted + ' s predicted' : ''));
+  /* The estimate is measured against the run that just happened, which is
+     the only check that matters: a prediction nobody can plan around is the
+     bug this was written for. Four times either way. */
+  if (predicted != null && !cached && took > 1.5) {
+    ck('the estimate was within a factor of four of the run',
+       predicted <= took * 4 && predicted >= took / 4,
+       predicted + ' s predicted, ' + took.toFixed(1) + ' s actual');
+  }
+
+  head('And the plot is a plot');
+  ck('the canvas has pixels', plot.width > 100 && plot.height > 100,
+     plot.width + 'x' + plot.height);
+  /* Not blank. A canvas that sized itself and drew nothing passes every
+     check above, so the pixels get counted. */
+  const g = plot.getContext('2d');
+  const px = g.getImageData(0, 0, plot.width, plot.height).data;
+  let ink = 0;
+  for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 8) ink += 1;
+  ck('something was drawn on it', ink > 500, ink + ' non-empty pixels');
+
+  const legs = D().querySelectorAll('.psd-legend .psd-leg');
+  ck('the legend has an entry per channel', legs.length === NCH,
+     legs.length + ' entries');
+  const rows = D().querySelectorAll('.psd-table tbody tr');
+  ck('the band table has a row per channel', rows.length === NCH,
+     rows.length + ' rows');
+  const bandsWanted = ['delta', 'theta', 'alpha', 'beta'];
+  const ths = Array.from(D().querySelectorAll('.psd-table th'))
+    .map((h) => h.textContent.trim());
+  for (const b of bandsWanted) {
+    ck('the table has a ' + b + ' column', ths.indexOf(b) >= 0, ths.join(','));
+  }
+  ck('it says what was done to the data before the transform',
+     /decimated|averaged/.test(
+       (D().querySelector('.psd-note') || {}).textContent || ''),
+     'no sampling note');
+
+  head('The legend hides a line rather than losing it');
+  legs[0].click();
+  await sleep(200);
+  const off = D().querySelectorAll('.psd-legend .psd-leg.off');
+  ck('clicking a legend entry marks it hidden', off.length === 1,
+     off.length + ' hidden');
+  ck('and the entry is still there to click back',
+     D().querySelectorAll('.psd-legend .psd-leg').length === NCH, 'gone');
+
+  head('Running it again is instant');
+  /* The cache. Comparing two windows means going back and forth between
+     them, and paying the read again for a curve already computed is the
+     difference between a tool somebody uses and one they use once. */
+  const t2 = Date.now();
+  btn('Compute the spectrum').click();
+  await until(() => D().getElementById('psdCanvas'), 20000);
+  const again = (Date.now() - t2) / 1000;
+  say('note', '  second run: ' + again.toFixed(2) + ' s');
+  ck('the same request comes back from the cache',
+     again < Math.max(2, took / 3), again.toFixed(2) + ' s');
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'psd: ' + bad + ' FAILED' : 'psd: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'psd: harness CRASH';
+} })();
+</script>

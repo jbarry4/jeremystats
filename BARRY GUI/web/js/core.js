@@ -1343,7 +1343,7 @@ BARRY.setErrorCount = function setErrorCount(n) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit', 'comod'];
+               'toolkit', 'comod', 'spectrum'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -2854,7 +2854,9 @@ BARRY.init = async function init() {
   /* A window opened for one thing should not offer to navigate away from
      it. Same idea as `aid-window` for the panel pop-outs: the app is the
      whole app, it just has no rail here. */
-  if (params.get('role') === 'comod') document.body.classList.add('solo-window');
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+    document.body.classList.add('solo-window');
+  }
   setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();

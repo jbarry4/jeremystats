@@ -1161,6 +1161,11 @@ def _spectrum_spec(body, sess):
         "fmax": float(body.get("fmax") or spectrummod.DEFAULT_FMAX),
         "segment_s": float(body.get("segment_s") or 8.0),
         "even_only": bool(sess.get("even_only")),
+        # Mains. `None` means "not said", which is 60 Hz here; an explicit
+        # 0 means somebody turned it off and wants the interference shown.
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+        "parameterize": bool(body.get("parameterize", True)),
     }
 
 
@@ -1205,8 +1210,7 @@ def api_spectrum_run():
 
     steps = [("spectrum read",
               int(plan["span_s"] * plan["n_channels"])),
-             ("spectrum", plan["n_channels"]),
-             ("draw", 1)]
+             ("spectrum", plan["n_channels"])]
 
     def work(job):
         out = spectrummod.run(sess, spec, job)
@@ -5346,6 +5350,11 @@ def api_session_retime():
     gid = body.get("gid") or ""
     kind = body.get("kind") or "ds"
     do_apply = bool(body.get("apply"))
+    # Which version supplies the times and the labels. Absent means the
+    # live set, which is the default and the common case.
+    from_version = body.get("from_version")
+    if from_version in ("", "current"):
+        from_version = None
     if not path or not entry_id:
         return jsonify({"ok": False,
                         "error": "Need the recording path and the entry."}), 400
@@ -5364,11 +5373,27 @@ def api_session_retime():
 
     who = (STORE.provenance() or {}).get("user")
     cur_set = CURATE.get(gid, kind) if gid else None
+
+    # Every version and whether the correction can run from it, always --
+    # this is what the picker is built from, and it has to be there even
+    # when the gate below refuses, because "already corrected" is exactly
+    # the case where somebody needs to pick an earlier one.
+    try:
+        offer_versions = BANK.retime_versions(entry_id, retimemod.TRUE)
+    except Exception:                                    # noqa: BLE001
+        offer_versions = {"versions": [], "current_version": None,
+                          "drops_fields": []}
+
     gate = retimemod.offer(rep, entry, cur_set, me=who)
-    if not gate.get("offer"):
+    if not gate.get("offer") and from_version is None:
         return jsonify({"ok": False, "offered": False,
                         "reason": gate.get("reason"),
-                        "basis": gate.get("basis")}), 409
+                        "basis": gate.get("basis"),
+                        # So the window can offer the way forward rather
+                        # than only the refusal: a set already on the
+                        # recording's clock can still be corrected again
+                        # from a version that predates that correction.
+                        "versions": offer_versions}), 409
 
     # The map the correction is derived from, and the hash that will be
     # stamped on what it writes. A later run against a folder that has
@@ -5381,20 +5406,37 @@ def api_session_retime():
         "applied": do_apply,
         "gap_map_sha": sha,
         "preview": retimemod.preview(rep, entry, gid=gid, kind=kind),
+        "versions": offer_versions,
+        "from_version": from_version,
         "continuity": {"n_segments": rep.get("n_segments"),
                        "max_time_error_ms": rep.get("max_time_error_ms"),
                        "seconds_lost": rep.get("seconds_lost")},
     }
+    # Correcting from an older version corrects the BANK only.
+    #
+    # The curation set holds the decisions people have made since that
+    # version, and rewriting it from a bank version they have moved on from
+    # would discard them. The curation set is a workbench with owners;
+    # picking a version out of a dropdown is not a mandate to reset it.
+    cur_v = (offer_versions or {}).get("current_version")
+    touch_set = bool(gid) and (from_version is None or from_version == cur_v)
+    if gid and not touch_set:
+        out["set_skipped"] = (
+            "Reading v%s rather than the current v%s, so only the banked "
+            "set is corrected. The curation set holds the decisions made "
+            "since v%s and is left exactly as it is."
+            % (from_version, cur_v, from_version))
+
     try:
         # The curation set first on a dry run, because it is the one that
         # can refuse for a reason worth seeing before anything is written.
-        if gid:
+        if touch_set:
             out["set"] = CURATE.retime(
                 gid, kind, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
                 dry_run=not do_apply, who=who)
         out["entry"] = BANK.retime(
             entry_id, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
-            dry_run=not do_apply, by=who)
+            dry_run=not do_apply, by=who, from_version=from_version)
     except Exception as exc:                             # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -5406,6 +5448,8 @@ def api_session_retime():
             "action": "events.retime",
             "detail": {"entry": entry_id, "gid": gid, "kind": kind,
                        "from": retimemod.CONCAT, "to": retimemod.TRUE,
+                       "from_version": from_version,
+                       "set_touched": touch_set,
                        "gap_map_sha": sha,
                        "n": (out.get("entry") or {}).get("moved"),
                        "version": (out.get("entry") or {}).get("version"),
@@ -7580,10 +7624,17 @@ def api_bank_version(entry_id, v):
     """Edit, archive or delete one version of an entry's history."""
     body = request.get_json(force=True, silent=True) or {}
     action = (body.get("action") or "edit").strip()
+    undo = None
     try:
         if action == "delete":
             rec = BANK.delete_version(entry_id, v)
             changed = ["deleted"]
+            # Deleting a correction puts the times back and drops the basis
+            # stamp, which is what makes the session show an unresolved
+            # segment issue again -- `patched` is computed from that stamp.
+            # Reported so the window can say so rather than leaving somebody
+            # to notice a filter change on their own.
+            undo = rec.get("undo")
         elif action in ("archive", "unarchive"):
             rec, changed = BANK.edit_version(
                 entry_id, v, {"archived": action == "archive"})
@@ -7605,10 +7656,74 @@ def api_bank_version(entry_id, v):
         "detail": {"entry": entry_id, "version": v, "changed": changed},
     }])
     mirror_bank_soon()
-    return jsonify({"ok": True, "changed": changed,
+    return jsonify({"ok": True, "changed": changed, "undo": undo,
                     "versions": [{k: val for k, val in x.items()
                                   if k != "snap"}
                                  for x in (rec.get("versions") or [])]})
+
+
+@app.route("/api/bank/<entry_id>/dedupe", methods=["POST"])
+def api_bank_dedupe(entry_id):
+    """Collapse rows of one entry that hold the same time twice.
+
+    Defaults to a dry run: the answer says which times are doubled, which
+    of them carry two different calls, and which copy each would keep.
+    Writing needs `dry_run: false`, and where any time is contested it also
+    needs `conflicts` set to "first" or "last" -- the collapse refuses to
+    pick somebody's call for them.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    dry = body.get("dry_run")
+    dry = True if dry is None else bool(dry)
+    try:
+        out = BANK.dedupe(entry_id,
+                          conflicts=body.get("conflicts"),
+                          note=(body.get("note") or None),
+                          by=body.get("by"),
+                          dry_run=dry)
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                                  # noqa: BLE001
+        return fail("bank/dedupe", exc, 400)
+
+    # The set the entry was banked from. If its doubles are still there the
+    # next re-bank puts these straight back, and finding that out after the
+    # fact is how somebody comes to run this twice.
+    rec = BANK.get(entry_id) or {}
+    try:
+        cur = CURATE.get(rec.get("gid"), rec.get("type"))
+        if cur:
+            seen, again = set(), 0
+            for ev in cur.get("events") or []:
+                key = BANK._dup_key(ev.get("start"))
+                if key is None:
+                    continue
+                if key in seen:
+                    again += 1
+                seen.add(key)
+            if again:
+                out["source_set_dupes"] = again
+                out["source_set_name"] = cur.get("name")
+    except Exception:                                         # noqa: BLE001
+        pass
+
+    if not dry and not out.get("error"):
+        STORE.record_activity([{
+            "action": "bank.dedupe",
+            "detail": {"id": entry_id, "version": out.get("version"),
+                       "removed": out.get("removed"),
+                       "conflicts": out.get("conflicts"),
+                       "policy": out.get("policy")},
+            "session": {"key": rec.get("session_key"),
+                        "label": rec.get("session_label")},
+        }])
+        mirror_bank_soon()
+    # A dry run that refuses still SUCCEEDED: answering "not without a
+    # choice, and here are the fourteen times it turns on" is the preview
+    # doing its job. `ok: false` makes the client's api() throw, which threw
+    # away the answer and left the panel with nothing to show -- so it is
+    # kept for a write that would not happen, and for a fault.
+    return jsonify({"ok": bool(dry) or not out.get("error"), **out})
 
 
 @app.route("/api/bank/<entry_id>/delete", methods=["POST"])

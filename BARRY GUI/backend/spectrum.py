@@ -42,7 +42,7 @@ import threading
 
 import numpy as np
 
-from . import cfc, csc
+from . import cfc, csc, specparam
 
 try:
     from scipy import signal as _sig
@@ -66,6 +66,29 @@ EDGE_SECONDS = 0.5
 # over Nyquist so the anti-alias filter's shoulder is outside the band shown.
 DEFAULT_FMAX = 200.0
 NYQUIST_MARGIN = 2.5
+
+# Where a band's rhythm is allowed to be centred, for the band-constrained
+# fit. Narrower than the band itself, so a Gaussian offered "theta" cannot
+# centre itself on the shoulder of the delta slope and call 3 Hz a theta
+# rhythm. Theta's bounds are the eNeuro paper's own numbers; the rest are
+# the middle of each band by the same logic.
+FIT_BANDS = [
+    {"name": "delta", "lo": 1.0, "hi": 4.0, "cf_lo": 1.5, "cf_hi": 3.5},
+    {"name": "theta", "lo": 4.0, "hi": 12.0, "cf_lo": 5.0, "cf_hi": 9.5},
+    {"name": "beta", "lo": 13.0, "hi": 30.0, "cf_lo": 15.0, "cf_hi": 28.0},
+    {"name": "low gamma", "lo": 30.0, "hi": 60.0,
+     "cf_lo": 33.0, "cf_hi": 57.0},
+    {"name": "high gamma", "lo": 60.0, "hi": 120.0,
+     "cf_lo": 65.0, "cf_hi": 115.0},
+]
+
+# Mains. 60 Hz in North America, and its harmonics, which land in both
+# gamma bands. `LINE_HALF_BW` is how far either side of each one gets
+# replaced -- wide enough to cover the peak and its skirts at 0.12 Hz bins,
+# narrow enough that 1.6% of the low-gamma band is affected and the rest is
+# untouched.
+LINE_HZ = 60.0
+LINE_HALF_BW = 2.0
 
 # Bands worth a number beside the curve. Reading a peak off a log plot is
 # guesswork; these are the answer to "how much theta", which is the question.
@@ -100,6 +123,10 @@ def cache_key(spec):
         "fmax": round(float(spec.get("fmax") or DEFAULT_FMAX), 3),
         "segment_s": round(float(spec.get("segment_s") or 8.0), 3),
         "even_only": bool(spec.get("even_only")),
+        # Both change the numbers, so both change the key. A cached curve
+        # with the mains still in it is not the same answer.
+        "line_hz": round(float(spec.get("line_hz") or 0.0), 3),
+        "parameterize": bool(spec.get("parameterize", True)),
     }
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
@@ -123,6 +150,52 @@ def cache_clear():
     with _CACHE_LOCK:
         _CACHE.clear()
         del _CACHE_ORDER[:]
+
+
+def line_bins(freqs, line_hz, fmax, half_bw=LINE_HALF_BW):
+    """Which bins the mains and its harmonics occupy, as a boolean mask."""
+    f = np.asarray(freqs, dtype=float)
+    mask = np.zeros(f.shape, dtype=bool)
+    if not line_hz or line_hz <= 0:
+        return mask, []
+    at = []
+    k = 1
+    while k * line_hz <= fmax:
+        centre = k * line_hz
+        hit = np.abs(f - centre) <= half_bw
+        if hit.any():
+            mask |= hit
+            at.append(centre)
+        k += 1
+    return mask, at
+
+
+def remove_line(freqs, pxx, mask):
+    """Bridge the notched bins, in log power, from the edges inward.
+
+    Interpolated rather than zeroed or left alone. Zeroing puts a hole in
+    the spectrum that reads as a real absence of power; leaving it means the
+    60 Hz spike dominates the plot, sits inside both gamma bands, and gets
+    fitted by the parameterisation as a very tall very narrow rhythm.
+
+    In log power because that is the space the spectrum is nearly straight
+    in, so a bridge across two hertz of it is a line rather than a sag.
+    """
+    if not mask.any():
+        return pxx, 0.0
+    f = np.asarray(freqs, dtype=float)
+    out = np.array(pxx, dtype=float, copy=True)
+    good = ~mask & (out > 0)
+    if good.sum() < 2:
+        return out, 0.0
+    before = float(np.trapezoid(out[mask], f[mask])) if mask.sum() > 1 else 0.0
+    filled = np.interp(np.log10(f[mask]), np.log10(f[good]),
+                       np.log10(out[good]))
+    out[mask] = np.power(10.0, filled)
+    after = float(np.trapezoid(out[mask], f[mask])) if mask.sum() > 1 else 0.0
+    # How much power was taken out, which is the honest measure of how bad
+    # the interference was.
+    return out, max(0.0, before - after)
 
 
 def target_rate(fmax):
@@ -157,6 +230,8 @@ def plan_for(session, spec):
     nper = int(2 ** round(math.log2(max(64.0, seconds * out_fs))))
     nper = max(64, min(nper, 1 << 20))
 
+    line_hz = spec.get("line_hz")
+    line_hz = LINE_HZ if line_hz is None else float(line_hz or 0.0)
     n_ch = len(spec.get("channels") or []) or 1
     chunks = max(1, int(math.ceil(span / CHUNK_SECONDS)))
     return {
@@ -167,6 +242,9 @@ def plan_for(session, spec):
         "fs_used": out_fs,
         "nperseg": nper,
         "resolution_hz": out_fs / nper if nper else 0.0,
+        "line_hz": line_hz,
+        "line_half_bw": LINE_HALF_BW,
+        "parameterize": bool(spec.get("parameterize", True)),
         "n_channels": n_ch,
         "chunks": chunks,
         "reads": chunks * n_ch,
@@ -175,6 +253,13 @@ def plan_for(session, spec):
         "segments_per_channel": int(max(1, span * out_fs / max(1, nper // 2))),
         "samples_read": int(span * fs * n_ch),
         "megasamples": span * fs * n_ch / 1e6,
+        # Said out loud, because it is why the same run costs a second here
+        # and a minute there, and because a wait nobody can account for is
+        # the thing the loading display exists to prevent.
+        "volume": cfc.volume_key(session.get("path") or spec.get("path")),
+        "network": bool((cfc.volume_key(session.get("path")
+                                        or spec.get("path")) or "")
+                        .startswith("\\\\")),
     }
 
 
@@ -185,7 +270,11 @@ def estimate(session, spec):
     # `cfc._FLAT` because their units are seconds of recording and channels,
     # which already say how many samples there are. Twice the window is twice
     # the wait, which is what somebody watching the bar expects.
-    seconds = (cfc.rate_for("spectrum read")
+    # Per volume: reading off the share is about 1.6x reading off local
+    # disk here, measured warm over ten minutes on two channels. Small, but
+    # systematic, and the same key will carry a worse share elsewhere.
+    where = cfc.volume_key(session.get("path") or spec.get("path"))
+    seconds = (cfc.rate_for("spectrum read", where)
                * plan["span_s"] * plan["n_channels"]
                + cfc.rate_for("spectrum") * plan["n_channels"])
     plan["seconds"] = round(max(0.2, seconds), 1)
@@ -306,6 +395,20 @@ def run(session, spec, job=None):
         if freqs is None:
             freqs = f
 
+        # ---- the mains, out of the spectrum rather than out of the signal
+        mask, line_at = line_bins(f, plan["line_hz"], plan["fmax"])
+        raw = pxx
+        pxx, line_power = remove_line(f, pxx, mask)
+
+        # ---- the slope, and what stands off it
+        # Fitted on the de-lined spectrum with those bins excluded anyway:
+        # an interpolated bridge is not a measurement and should not get a
+        # vote on where the slope goes.
+        fitted = specparam.fit(f, pxx, f_lo=max(1.0, float(f[0])),
+                               f_hi=plan["fmax"], ignore=mask,
+                               bands=FIT_BANDS) \
+            if plan["parameterize"] else None
+
         peak = int(np.argmax(pxx)) if pxx.size else 0
         total = float(np.trapezoid(pxx, f)) if pxx.size > 1 else 0.0
         bands = {}
@@ -313,15 +416,29 @@ def run(session, spec, job=None):
             m = (f >= lo) & (f < hi)
             power = float(np.trapezoid(pxx[m], f[m])) if m.sum() > 1 else 0.0
             sub = f[m]
+            pk = specparam.peak_in(fitted, lo, hi, name)
             bands[name] = {
                 "power": power,
                 "share": (power / total) if total > 0 else 0.0,
                 "peak_hz": float(sub[int(np.argmax(pxx[m]))]) if m.sum() else None,
+                # The rhythm, as distinct from the power in the band. None
+                # means the fit found no peak standing off the slope here --
+                # which is a finding, not a failure.
+                "osc_hz": pk["center_hz"] if pk else None,
+                "osc_db": pk["power_db"] if pk else None,
+                "osc_bw": pk["bandwidth_hz"] if pk else None,
             }
         rows.append({
             "index": index, "label": ch.get("label"),
             "number": ch.get("number"), "bad": bool(ch.get("bad")),
             "psd": [float(v) for v in pxx],
+            # What it looked like before the mains came out, so the removal
+            # can be seen rather than taken on trust.
+            "psd_raw": ([float(v) for v in raw] if mask.any() else None),
+            "line_bins": [int(v) for v in np.flatnonzero(mask)],
+            "line_at": line_at,
+            "line_power": line_power,
+            "fit": fitted,
             "peak_hz": float(f[peak]) if f.size else None,
             "peak_power": float(pxx[peak]) if pxx.size else None,
             "total_power": total,
@@ -335,8 +452,9 @@ def run(session, spec, job=None):
         # as a phase of their own without holding every channel in memory.
         job.begin("spectrum", of=len(channels), unit="channels")
         job.tick("spectrum", len(channels))
-        job.begin("draw", of=1, unit="images")
-        job.tick("draw", 1)
+        # No `draw` stage. Nothing is rendered here -- the window draws the
+        # plot from the numbers -- and a stage that represents no work is a
+        # lie in a list whose whole purpose is to say where the time went.
 
     ok = [r for r in rows if "psd" in r]
     return {
@@ -372,6 +490,39 @@ def _sampling_note(plan):
                     "%g Hz folds back into the band. The spectrum is only "
                     "valid up to %g Hz."
                     % (plan["fs_used"] / 2.0, plan["fmax"]),
+        })
+    if plan.get("line_hz"):
+        steps.append({
+            "what": "line noise removed",
+            "why": "mains interference at %g Hz and its harmonics sits inside "
+                   "both gamma bands, so leaving it makes those band powers "
+                   "a measurement of the building's wiring"
+                   % plan["line_hz"],
+            "at_hz": plan["line_hz"],
+            "half_bandwidth_hz": plan["line_half_bw"],
+            "lossy": True,
+            "reversible": False,
+            "note": "Taken out of the SPECTRUM, not out of the signal: the "
+                    "bins within %g Hz of %g Hz and its harmonics are "
+                    "replaced by a straight line across them in log power, "
+                    "and every other bin is exactly as measured. A notch "
+                    "filter on the recording would have altered everything. "
+                    "The replaced bins are shaded on the plot."
+                    % (plan["line_half_bw"], plan["line_hz"]),
+        })
+    if plan.get("parameterize"):
+        steps.append({
+            "what": "slope separated",
+            "why": "neural power falls off as roughly 1/f, so band power "
+                   "mostly measures that slope rather than any rhythm",
+            "method": "Donoghue et al. 2020, Nat Neurosci 23:1655",
+            "lossy": False,
+            "reversible": True,
+            "note": "The spectrum is modelled as an aperiodic component "
+                    "(offset, knee, exponent) plus Gaussian peaks. Nothing "
+                    "is removed from the data — the fit is drawn over it, "
+                    "and the peak heights are what a rhythm is worth once "
+                    "the slope underneath is accounted for.",
         })
     steps.append({
         "what": "averaged",

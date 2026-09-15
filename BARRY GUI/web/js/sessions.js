@@ -1477,30 +1477,102 @@ BARRY.views.sessions = (function () {
     return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
   }
 
-  async function previewRetime(sess, cont, entry) {
+  async function previewRetime(sess, cont, entry, fromVersion) {
     const num = (v, dp) => (v == null || !isFinite(v))
       ? '\u2014' : Number(v).toFixed(dp == null ? 3 : dp);
     const ms = (v) => (v == null || !isFinite(v)) ? '\u2014'
       : (Math.abs(v) < 1 ? num(v, 2) + ' ms'
          : (Math.abs(v) < 1000 ? num(v, 1) + ' ms' : num(v / 1e3, 3) + ' s'));
 
+    const ask = (v) => apiPost('/api/session/retime', {
+      path: sess.path, entry_id: entry.entry_id,
+      gid: (sess.stored && sess.stored.gid) || sess.gid || '', kind: 'ds',
+      from_version: v == null ? null : v,
+    });
+
     let res;
     try {
-      res = await apiPost('/api/session/retime', {
-        path: sess.path, entry_id: entry.entry_id,
-        gid: (sess.stored && sess.stored.gid) || sess.gid || '', kind: 'ds',
-      });
+      res = await ask(fromVersion);
     } catch (e) {
       toast('Could not work out the correction: ' + e.message, 'err');
       return;
     }
+    /* A refusal is not the end of it any more.
+
+       "Already on the recording's clock" used to close the window, which
+       was right when the only thing correctable was the live set. Correcting
+       again means reading a version that predates the correction, so the
+       refusal now offers that instead of only stating itself. */
     if (!res.ok && res.reason) {
-      toast(res.reason, 'err');
-      return;
+      const usable = (((res.versions || {}).versions) || [])
+        .filter((v) => v.usable);
+      if (!usable.length) {
+        toast(res.reason, 'err', 9000);
+        return;
+      }
+      const pick = await pickVersion(res.reason, usable,
+                                     (res.versions || {}).drops_fields);
+      if (pick == null) return;
+      try {
+        res = await ask(pick);
+      } catch (e) {
+        toast('Could not work out the correction: ' + e.message, 'err');
+        return;
+      }
+      if (!res.ok && res.reason) { toast(res.reason, 'err', 9000); return; }
+      fromVersion = pick;
     }
     const pv = res.preview || {};
     const ent = res.entry || {};
     const set = res.set || {};
+    const vinfo = res.versions || {};
+    const vrows = vinfo.versions || [];
+    const srcV = res.from_version == null ? vinfo.current_version
+                                          : res.from_version;
+
+    /* The version this is reading, and every other one it could.
+
+       Greyed rather than hidden where it cannot be a source: a version
+       missing from a list raises the question of why, and the answer --
+       "it is already corrected", "its snapshot has not synced here" -- is
+       worth more than a shorter list. */
+    const versionRow = !vrows.length ? null : el('div', { class: 'fix-box' }, [
+      el('h4', { text: 'Which version to correct' }),
+      el('p', { class: 'hint quiet',
+        text: 'Versions differ in the decisions on them, so this picks the '
+            + 'labels as well as the times. Whichever is read, the result '
+            + 'lands as a new version and nothing is overwritten.' }),
+      el('div', { class: 'ver-pick' }, vrows.map((v) => el('button', {
+        class: 'ver-chip' + (v.v === srcV ? ' on' : '')
+               + (v.usable ? '' : ' off'),
+        disabled: v.usable ? null : 'disabled',
+        title: v.usable
+          ? ((v.note || '') + (v.by ? '\n\u2014 ' + v.by : '')
+             + (v.at ? '\n' + v.at : ''))
+          : 'Cannot be corrected from: ' + v.why_not,
+        onclick: () => {
+          if (v.v === srcV) return;
+          closeModal();
+          previewRetime(sess, cont, entry, v.v);
+        },
+      }, [
+        el('strong', { text: 'v' + v.v }),
+        el('span', { class: 'ver-n', text: (v.n != null ? v.n : '?') + ' ev' }),
+        v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
+        v.retimed ? el('span', { class: 'ver-tag', text: 'corrected' }) : null,
+      ].filter(Boolean)))),
+      /* Two consequences of reading an older version, both stated where
+         the choice is made rather than in a response body. */
+      res.set_skipped
+        ? el('p', { class: 'warn-line', text: res.set_skipped })
+        : null,
+      (ent.drops_fields && ent.drops_fields.length)
+        ? el('p', { class: 'warn-line',
+            text: 'A version snapshot holds a start and a label only, so '
+                + ent.drops_fields.join(', ') + ' would not survive being '
+                + 'read back from it.' })
+        : null,
+    ].filter(Boolean));
 
     const table = (head, rows) => el('table', { class: 'gap-table' }, [
       el('thead', {}, [el('tr', {}, head.map((t) => el('th', { text: t })))]),
@@ -1597,6 +1669,7 @@ BARRY.views.sessions = (function () {
           + 'Every one keeps its label and its id \u2014 nothing is '
           + 're-detected, and no candidate is added or removed.' }),
       eventBar,
+      versionRow,
       el('h4', { text: 'How far each stretch of the recording moves' }),
       table(['stretch from (s)', 'to (s)', 'moves by'],
         (pv.shifts || []).map((g) => [
@@ -1690,8 +1763,13 @@ BARRY.views.sessions = (function () {
                       + ' event(s) move, by ' + ms(ent.shift_min_ms)
                       + ' to ' + ms(ent.shift_max_ms) + '.' }),
                   el('li', { text: 'The set becomes v' + vNext
+                      + ', read from v' + srcV
                       + '. v' + vNow + ' is kept with its snapshot, and '
-                      + 'restoring it is how this is undone.' }),
+                      + 'deleting v' + vNext + ' afterwards puts the times '
+                      + 'back and marks the recording unresolved again.' }),
+                  res.set_skipped
+                    ? el('li', { class: 'warn-line', text: res.set_skipped })
+                    : null,
                   /* A number when there is one, and the sentence
                      without it when there is not. */
                   el('li', { text: (set.decided != null
@@ -1700,9 +1778,11 @@ BARRY.views.sessions = (function () {
                       + ' \u2014 the edit is keyed on each event\u2019s id, '
                       + 'not on its time. No candidate is added or '
                       + 'removed.' }),
-                  el('li', { text: 'Running it again afterwards is refused, '
-                      + 'so it cannot be applied twice.' }),
-                ]),
+                  el('li', { text: 'This exact correction cannot land twice '
+                      + '\u2014 same map, same source version is refused. '
+                      + 'Running it again from a different version, or '
+                      + 'against a re-checked folder, is allowed.' }),
+                ].filter(Boolean)),
               ]),
               'Write v' + vNext);
             if (!ok) return;
@@ -1713,6 +1793,7 @@ BARRY.views.sessions = (function () {
                 path: sess.path, entry_id: entry.entry_id,
                 gid: (sess.stored && sess.stored.gid) || sess.gid || '',
                 kind: 'ds', apply: true,
+                from_version: res.from_version,
               });
               if (!done.ok) {
                 throw new Error((done.entry || {}).error
@@ -1722,8 +1803,13 @@ BARRY.views.sessions = (function () {
               closeModal();
               const v = (done.entry || {}).version;
               toast('Corrected. The set is now v' + v + ' on the '
-                    + 'recording\u2019s own clock; v' + (v - 1)
-                    + ' is kept in the version history.', 'ok');
+                    + 'recording\u2019s own clock, read from v' + srcV
+                    + '. Deleting v' + v + ' puts the times back and marks '
+                    + 'this recording unresolved again.', 'ok', 11000);
+              // The card still says "unpatched" until the cached summary
+              // is thrown away, and half a minute of that reads as a
+              // correction that did not work.
+              refreshHealth();
             } catch (err) {
               b.disabled = false;
               b.textContent = 'Apply the correction\u2026';
@@ -1733,6 +1819,68 @@ BARRY.views.sessions = (function () {
         }) : null,
       ]),
     ]));
+  }
+
+  /* Which version to read, asked on its own.
+
+     Used when the correction has already been run: there is no preview to
+     hang a picker off yet, because the server refused to build one until it
+     is told where to read from. */
+  function pickVersion(why, rows, drops) {
+    return new Promise((resolve) => {
+      let picked = null;
+      const chips = el('div', { class: 'ver-pick' });
+      const draw = () => {
+        chips.innerHTML = '';
+        rows.forEach((v) => chips.appendChild(el('button', {
+          class: 'ver-chip' + (v.v === picked ? ' on' : ''),
+          title: (v.note || '') + (v.by ? '\n\u2014 ' + v.by : ''),
+          onclick: () => { picked = v.v; draw(); go.disabled = false; },
+        }, [
+          el('strong', { text: 'v' + v.v }),
+          el('span', { class: 'ver-n',
+                       text: (v.n != null ? v.n : '?') + ' ev' }),
+          v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
+        ].filter(Boolean))));
+      };
+      const go = el('button', {
+        class: 'btn', text: 'Preview from this version', disabled: 'disabled',
+        onclick: () => { closeModal(); resolve(picked); },
+      });
+      draw();
+      showModal(el('div', { class: 'continuity-modal' }, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: 'Correct it again, from an earlier version' }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'close-x',
+            onclick: () => { closeModal(); resolve(null); },
+            html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/>'
+                + '</svg>' }),
+        ]),
+        el('div', { class: 'mb' }, [
+          el('p', { class: 'warn-line', text: why }),
+          el('p', { text: 'Correcting it again means reading a version from '
+              + 'before the correction \u2014 applying the shift to a set '
+              + 'that already has it would double every offset. These are '
+              + 'the versions that predate it.' }),
+          chips,
+          (drops && drops.length)
+            ? el('p', { class: 'hint quiet',
+                text: 'A snapshot holds a start and a label only, so '
+                    + drops.join(', ') + ' would not come back with it.' })
+            : null,
+        ].filter(Boolean)),
+        el('div', { class: 'mf' }, [
+          el('span', { class: 'hint quiet',
+                       text: 'This only builds a preview. Nothing is '
+                           + 'written until you apply it.' }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn ghost', text: 'Cancel',
+            onclick: () => { closeModal(); resolve(null); } }),
+          go,
+        ]),
+      ]));
+    });
   }
 
   /* ======================================================================
@@ -2076,10 +2224,24 @@ BARRY.views.sessions = (function () {
     BARRY.activity.log('sessions.mode', { mode });
   }
 
+  /* Forget the cached health summary and repaint if this view is up.
+
+     Called by anything that changes whether a recording counts as patched:
+     applying a correction, undoing one, or deleting the set it was applied
+     to. The thirty-second cache is right for scrolling and wrong for the
+     instant the answer changes. */
+  async function refreshHealth() {
+    continuity = null;
+    continuityAt = 0;
+    await loadContinuity(true);
+    if (BARRY.state && BARRY.state.view === 'sessions') render();
+  }
+
   return {
     init,
     picked: () => Array.from(picked),
     setMode,
+    refreshHealth,
     /* Forget that the registry has been read, so the next onShow reads it
        again. For web/_dev/motion.html, which checks that the skeleton is on
        screen during that read and gone after it -- and there is no way to
