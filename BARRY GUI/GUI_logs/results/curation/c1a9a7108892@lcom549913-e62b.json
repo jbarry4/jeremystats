@@ -1,0 +1,27 @@
+{
+  "_at": {
+    "key": "2026-09-14T14:01:31.573315+00:00",
+    "rel": "2026-09-14T14:01:31.573315+00:00",
+    "starred": "2026-09-14T14:01:31.573315+00:00",
+    "title": "2026-09-14T14:21:35.053059+00:00",
+    "updated": "2026-09-14T14:21:35.053059+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T14:21:35.053059+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_24.png",
+  "rel": "Storyboards/arrow harness_24.png",
+  "starred": false,
+  "tags": [],
+  "title": "arrow harness",
+  "updated": {
+    "at": "2026-09-14T10:21:35-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

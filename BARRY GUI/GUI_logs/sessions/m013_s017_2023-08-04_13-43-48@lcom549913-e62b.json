@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.665427+00:00",
     "session": "2026-09-04T15:57:01.665427+00:00",
     "start": "2026-09-04T15:57:01.665427+00:00",
-    "updated": "2026-09-10T20:35:47.259309+00:00",
-    "view_state": "2026-09-08T17:35:02.594758+00:00"
+    "updated": "2026-09-14T14:10:04.189478+00:00",
+    "view_state": "2026-09-12T18:51:27.114350+00:00"
   },
   "_keys": {
     "paths": {
@@ -66,14 +66,22 @@
         "set",
         "2026-09-08T18:00:52.077748+00:00"
       ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-12T18:25:02.536015+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-14T13:59:13.284782+00:00"
+      ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:47.259309+00:00"
+        "2026-09-14T14:10:04.189478+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T20:35:47.259309+00:00",
+    "at": "2026-09-14T14:10:04.189478+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -141,24 +149,40 @@
       "root": "D:/Data/Archive/PTEN Project/PTEN",
       "scan": "scan_e4c0479cd6"
     },
-    "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:47-04:00",
+    "barrylab-d8e8": {
+      "at": "2026-09-12T14:25:00-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
+      "path": "Y:\\ProcessedPtenData\\M13_pten\\HF4s17aug4\\2023-08-04_13-43-48",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-14T09:59:13-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s17aug4\\2023-08-04_13-43-48",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_f179140bc2"
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-14T10:10:04-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M13_s17\\2023-08-04_13-43-48",
       "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 17,
   "start": "2023-08-04T13:43:48",
   "updated": {
-    "at": "2026-09-10T16:35:47-04:00",
-    "email": "rain.younger@uvm.edu",
+    "at": "2026-09-14T10:10:04-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
-    "machine": "Bluebarry",
+    "machine": "Blackbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Isabella Piatek"
   },
   "view_state": {
     "channels": [
@@ -200,16 +224,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 0,
+    "hp": 5,
     "invert": true,
-    "lp": 0,
+    "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 1.22,
+    "span": 1,
     "stft_mode": null,
-    "t0": 829.994,
+    "t0": 5438.521,
     "ylim": null
   }
 }

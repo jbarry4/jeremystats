@@ -25,14 +25,14 @@
     "session": "2026-09-04T15:57:01.566631+00:00",
     "spike_labels": "2026-09-04T15:57:01.566631+00:00",
     "start": "2026-09-04T15:57:01.566631+00:00",
-    "updated": "2026-09-11T16:13:01.677633+00:00",
+    "updated": "2026-09-14T14:16:29.941480+00:00",
     "view_state": "2026-09-11T16:13:01.677633+00:00"
   },
   "_keys": {
     "paths": {
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
         "set",
-        "2026-09-09T20:25:19.120522+00:00"
+        "2026-09-14T14:16:29.941480+00:00"
       ],
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
         "set",
@@ -84,14 +84,18 @@
         "set",
         "2026-09-08T21:03:18.599744+00:00"
       ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-14T13:59:12.696115+00:00"
+      ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-11T15:57:31.584826+00:00"
+        "2026-09-14T14:10:03.689871+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-11T16:13:01.677633+00:00",
+    "at": "2026-09-14T14:16:29.941480+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -143,7 +147,8 @@
     "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline",
     "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
-    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00"
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -179,13 +184,21 @@
       "root": null,
       "scan": null
     },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-14T09:59:12-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_f179140bc2"
+    },
     "lcom549913-e62b": {
-      "at": "2026-09-11T11:57:27-04:00",
+      "at": "2026-09-14T10:10:03-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
-      "root": null,
-      "scan": null
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 2,
@@ -194,7 +207,7 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "at": "2026-09-11T12:13:01-04:00",
+    "at": "2026-09-14T10:16:29-04:00",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
