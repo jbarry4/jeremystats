@@ -397,9 +397,56 @@ BARRY.checkList = function checkList(checks, opts) {
 };
 
 /* A yes/no the user actually has to read, for anything destructive. */
-BARRY.confirm = function confirmBox(title, message, okLabel, danger) {
+/* `onOk` is optional, and it is the whole point of the fifth argument.
+ *
+ * Without it the dialog closes the instant you press the button and the
+ * caller's work starts against an empty screen. Every destructive action in
+ * the app goes through here -- twenty-three of them -- so that one line was
+ * the single largest source of "I clicked it, nothing happened, and then a
+ * second later it had". Forgetting a recording, archiving a device, deleting
+ * files off disk: dialog gone, nothing, toast.
+ *
+ * Pass an async function instead and the dialog holds its ground: the button
+ * says what it is doing and stops accepting clicks, and the box only closes
+ * once the work is actually done. A failure keeps it open and prints the
+ * reason where the question was, which is where the person is looking --
+ * rather than closing anyway and firing a toast about it.
+ */
+BARRY.confirm = function confirmBox(title, message, okLabel, danger, onOk) {
   return new Promise((resolve) => {
-    const done = (v) => { closeModal(); resolve(v); };
+    let busy = false;
+    const label = okLabel || 'Do it';
+    const why = el('p', { class: 'confirm-err hidden' });
+    const okBtn = el('button', { class: 'btn' + (danger ? ' danger' : ''),
+                                 text: label });
+
+    // Cancelling is refused while the work is in flight. There is nothing to
+    // cancel -- the request has gone -- and closing the box would only hide
+    // whether it worked.
+    const done = (v) => { if (busy) return; closeModal(); resolve(v); };
+
+    const go = async () => {
+      if (busy) return;
+      if (typeof onOk !== 'function') { done(true); return; }
+      busy = true;
+      okBtn.disabled = 'disabled';
+      okBtn.textContent = label + '…';
+      why.classList.add('hidden');
+      try {
+        await onOk();
+        busy = false;
+        closeModal();
+        resolve(true);
+      } catch (e) {
+        busy = false;
+        okBtn.disabled = null;
+        okBtn.textContent = label;
+        why.textContent = (e && e.message) ? e.message : String(e);
+        why.classList.remove('hidden');
+      }
+    };
+    okBtn.addEventListener('click', go);
+
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: title }),
@@ -411,13 +458,13 @@ BARRY.confirm = function confirmBox(title, message, okLabel, danger) {
         typeof message === 'string'
           ? el('p', { class: 'confirm-msg', text: message })
           : message,
+        why,
       ]),
       el('div', { class: 'mf' }, [
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: () => done(false) }),
-        el('button', { class: 'btn' + (danger ? ' danger' : ''),
-                       text: okLabel || 'Do it', onclick: () => done(true) }),
+        okBtn,
       ]),
     ]));
   });

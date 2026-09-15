@@ -1616,17 +1616,30 @@ BARRY.views.toolkit = (function () {
     };
     paint();
 
+    /* Optimistic, and the modal closes first on purpose here -- picking a
+       name from a list is a decision, and the list has served its purpose the
+       moment you make it.
+
+       What was wrong was what happened next: nothing, for a round trip, with
+       the card still showing the previous owner. Whoever you picked goes on
+       the card immediately now, and only an actual failure takes it off. */
     const save = async (who) => {
+      const was = st.assignee;
+      st.assignee = who || null;
       closeModal();
+      renderCuration();
+      toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
+            + 'has this one now.', 'ok', 4000);
       try {
         const res = await apiPost(
           '/api/curation/' + encodeURIComponent(st.gid) + '/'
           + encodeURIComponent(st.kind) + '/assign', { who: who });
-        if (res.set) Object.assign(st, res.set);
+        if (res.set) { Object.assign(st, res.set); renderCuration(); }
+      } catch (e) {
+        st.assignee = was;
         renderCuration();
-        toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
-              + 'has this one now.', 'ok', 4000);
-      } catch (e) { toast(e.message, 'err', 8000); }
+        toast('That did not save: ' + e.message, 'err', 8000);
+      }
     };
 
     showModal(el('div', {}, [
@@ -1672,21 +1685,36 @@ BARRY.views.toolkit = (function () {
     ]));
   }
 
+  /* The comment here used to say "change the list now rather than after a
+     round trip" and sat directly underneath the await, so it did neither: the
+     card stayed put for the whole request and was then followed by a reload
+     of every curation set and the entire recording registry -- the second of
+     which is over a second on a network share -- to carry one boolean.
+
+     Now it means it. The card moves on the click, the write follows, and a
+     failure puts it back and says so rather than leaving the list claiming
+     something that did not happen. Same shape as openSet just below. */
   async function archiveSet(st, on) {
+    const was = st.archived;
+    st.archived = on;
+    // The whole panel, not just the list: the filter chips carry counts, and
+    // archiving changes what those counts are counting.
+    renderCuration();
+    toast(on ? 'Archived. It is still there \u2014 the Archived filter '
+               + 'brings it back.'
+             : 'Back in the list.', 'ok', 5000);
     try {
-      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
-                    + encodeURIComponent(st.kind) + '/archive',
-                    { archived: on });
-      // Change the list now rather than after a round trip.
-      st.archived = on;
-      // The whole panel, not just the list: the filter chips carry counts,
-      // and archiving changes what those counts are counting.
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(st.gid) + '/'
+        + encodeURIComponent(st.kind) + '/archive', { archived: on });
+      // Reconcile with what the server actually stored, in case it knows
+      // something this copy did not -- but no reload: one field changed.
+      if (res && res.set) { Object.assign(st, res.set); renderCuration(); }
+    } catch (e) {
+      st.archived = was;
       renderCuration();
-      toast(on ? 'Archived. It is still there \u2014 the Archived filter '
-                 + 'brings it back.'
-               : 'Back in the list.', 'ok', 5000);
-      loadCuration();
-    } catch (e) { toast(e.message, 'err', 8000); }
+      toast('That did not save: ' + e.message, 'err', 8000);
+    }
   }
 
 

@@ -383,7 +383,80 @@ BARRY.debug = (function () {
 })();
 
 /* ---------- API ---------- */
+/* The one place that knows a request is outstanding.
+ *
+ * Every view used to answer "is anything happening?" for itself, or more
+ * often not at all -- a mutation would fire, the list would sit there showing
+ * the state before it, and a second later it would snap. api() is the single
+ * chokepoint every one of those goes through, so a counter here covers the
+ * lot, including the call sites nobody has got round to fixing properly.
+ *
+ * Two rules keep it from becoming wallpaper:
+ *
+ *   The pollers never raise it. The job dock ticks every 500ms, sync progress
+ *   every 300ms, presence every 20s. Counting those means the bar is simply
+ *   always on, which tells you nothing.
+ *
+ *   It waits 150ms before showing. Borrowed from BARRY.boot, which says it
+ *   better: complaining immediately teaches people to expect a wait that
+ *   usually is not there. Most requests here finish well inside that and the
+ *   bar never appears at all.
+ */
+const QUIET_PATHS = [
+  '/api/job/', '/api/sync/progress', '/api/sync/status', '/api/presence',
+  '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
+  '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
+  '/api/discover/', '/api/toolfeed', '/api/errors/client',
+];
+
+const BUSY = (function () {
+  let live = 0;
+  let show = null;
+  let bar = null;
+
+  function node() {
+    if (!bar) {
+      bar = el('div', { class: 'net-bar', 'aria-hidden': 'true' });
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function paint() {
+    if (live > 0) node().classList.add('on');
+    else if (bar) bar.classList.remove('on');
+  }
+  return {
+    start(path) {
+      if (QUIET_PATHS.some((p) => path.startsWith(p))) return false;
+      live += 1;
+      if (live === 1 && !show) show = setTimeout(() => { show = null; paint(); }, 150);
+      return true;
+    },
+    stop(counted) {
+      if (!counted) return;
+      live = Math.max(0, live - 1);
+      if (live === 0) {
+        if (show) { clearTimeout(show); show = null; }
+        paint();
+      }
+    },
+  };
+}());
+
+/* A wrapper rather than a `finally` threaded through the body: the real api()
+   below has five ways out, four of them throws, and counting down on each one
+   is exactly the kind of bookkeeping that gets a new exit path added past it
+   later and leaves the bar stuck on. */
 async function api(path, opts) {
+  const counted = BUSY.start(path.split('?')[0]);
+  try {
+    return await apiCall(path, opts);
+  } finally {
+    BUSY.stop(counted);
+  }
+}
+
+async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
   const record = (status, error) => BARRY.debug.request({
@@ -647,14 +720,51 @@ function keepFocus(render) {
   return out;
 }
 
+/* Returns a handle, so a message can be corrected rather than repeated.
+ *
+ * Nearly every call here is fire-and-forget and stays that way. But "Saving…"
+ * followed by "Saved" was impossible to say: with no handle, the second one
+ * is a second toast, and the first sits there for its full three seconds
+ * underneath it claiming the work is still going. So the app either said
+ * nothing during the wait or lied afterwards, and mostly chose nothing.
+ *
+ * `ms: 0` means "stay until I say otherwise", which is what a pending message
+ * wants -- the work decides when it is over, not a timer.
+ */
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);
-  setTimeout(() => {
+
+  let timer = null;
+  let gone = false;
+
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    if (timer) clearTimeout(timer);
     node.style.opacity = '0';
     node.style.transition = 'opacity .2s';
     setTimeout(() => node.remove(), 220);
-  }, ms || (kind === 'err' ? 6000 : 3200));
+  };
+
+  const arm = (hold, k) => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (hold === 0) return;                 // held open on purpose
+    timer = setTimeout(close, hold || (k === 'err' ? 6000 : 3200));
+  };
+  arm(ms, kind);
+
+  return {
+    update(text, nextKind, nextMs) {
+      if (gone) return this;
+      node.textContent = text;
+      node.className = 'toast' + (nextKind ? ' ' + nextKind : '');
+      arm(nextMs === undefined ? null : nextMs, nextKind);
+      return this;
+    },
+    close,
+  };
 }
 
 /* ---------- path prompt modal ---------- */
@@ -2721,7 +2831,24 @@ BARRY.skeleton = (function () {
     return () => { if (b.parentNode === host) host.removeChild(b); };
   }
 
-  return { block, into };
+  /* For a list that is already on screen, when the person who is looking at
+     it just caused it to be re-read.
+
+     `into` is no use here: it empties the host, and blanking a list somebody
+     is reading to tell them it is being re-read is worse than saying nothing.
+     That is exactly why the three views that use it gate it on the list being
+     empty -- and why deleting a bank entry, which re-reads seven megabytes of
+     shards, showed nothing at all and then snapped to the new list.
+
+     So: leave the rows where they are, dim them, and stop them taking clicks
+     until the answer lands. Same teardown contract as `into`. */
+  function stale(host) {
+    if (!host) return () => {};
+    host.classList.add('is-stale');
+    return () => host.classList.remove('is-stale');
+  }
+
+  return { block, into, stale };
 })();
 
 BARRY.init = async function init() {

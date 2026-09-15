@@ -38,14 +38,21 @@ BARRY.views.results = (function () {
   let unfiled = 0;
   let folderFilter = '';      // '' = everything, '~unfiled' = never filed
 
-  async function load(refresh) {
+  /* `mine` -- this re-read is the consequence of something the person just
+     did here: starred a selection, moved files into a folder, deleted some.
+
+     Two reads back to back, and with `refresh` the first one rescans the
+     output directory on disk as well. Blanking a populated list for that is
+     wrong, which is what the empty-only gate below is for; but showing
+     nothing at all while the grid still displays the twelve files you just
+     deleted is worse, and that is what it did. Dim it instead. */
+  async function load(refresh, mine) {
     const q = new URLSearchParams();
     if (refresh) q.set('refresh', '1');
-    /* Two reads back to back -- the catalogue and the folder tree -- and a
-       refresh rescans the output directory. Only when the panel is empty:
-       a refresh of a list already on screen should not blank it. */
+    const host = $('#resultsBody');
     const bones = items.length
-      ? null : BARRY.skeleton.into($('#resultsBody'), 'card', 5);
+      ? (mine ? BARRY.skeleton.stale(host) : null)
+      : BARRY.skeleton.into(host, 'card', 5);
     try {
       const res = await api('/api/results?' + q.toString());
       items = res.results || [];
@@ -246,7 +253,7 @@ BARRY.views.results = (function () {
       const res = await apiPost('/api/results/bulk',
                                 Object.assign({ ids }, patch));
       toast('Updated ' + res.touched + ' result(s)', 'ok');
-      await load(true);
+      await load(true, true);
     } catch (e) { toast(e.message, 'err'); }
   }
 
@@ -353,7 +360,7 @@ BARRY.views.results = (function () {
       const res = await apiPost('/api/results/folders/new', { name });
       folders = res.folders || folders;
       if (selected.size) await moveTo(res.folder);
-      else { toast('Made Results/' + res.folder + '.', 'ok'); await load(); }
+      else { toast('Made Results/' + res.folder + '.', 'ok'); await load(false, true); }
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -369,7 +376,7 @@ BARRY.views.results = (function () {
       for (const f of (res.failed || [])) toast(f, 'err', 8000);
       BARRY.activity.log('result.folder.move', { n: res.touched, folder });
       selected.clear();
-      await load();
+      await load(false, true);
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -381,7 +388,7 @@ BARRY.views.results = (function () {
       toast('Renamed, and moved ' + res.touched + ' result'
             + (res.touched === 1 ? '' : 's') + '.', 'ok');
       folderFilter = to;
-      await load();
+      await load(false, true);
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -421,7 +428,7 @@ BARRY.views.results = (function () {
       (r) => String(r.path || '').toLowerCase().startsWith(out));
     const outside = chosen.length - inside.length;
 
-    const ok = await BARRY.confirm(
+    await BARRY.confirm(
       'Delete ' + inside.length + ' file(s)?',
       el('div', {}, [
         el('p', { class: 'confirm-msg',
@@ -434,17 +441,19 @@ BARRY.views.results = (function () {
           el('pre', { text: inside.map((r) => r.name).join('\n') || '(nothing)' }),
         ]),
       ]),
-      'Delete them', true);
-    if (!ok || !inside.length) return;
-
-    try {
-      const res = await apiPost('/api/results/delete',
-                                { ids: inside.map((r) => r.id) });
-      selected.clear();
-      toast('Deleted ' + res.removed.length + ' file(s)', 'ok');
-      for (const f of (res.refused || [])) toast(f.error, 'err', 7000);
-      await load(true);
-    } catch (e) { toast(e.message, 'err'); }
+      'Delete them', true,
+      !inside.length ? null : async () => {
+        const res = await apiPost('/api/results/delete',
+                                  { ids: inside.map((r) => r.id) });
+        selected.clear();
+        toast('Deleted ' + res.removed.length + ' file(s)', 'ok');
+        for (const f of (res.refused || [])) toast(f.error, 'err', 7000);
+        /* Not awaited. The reload rescans the output directory on disk, and
+           holding the dialog open for a disk walk -- after the files are
+           already gone -- is making the person wait to be told about work
+           that is not theirs. The grid dims itself while it runs. */
+        load(true, true);
+      });
   }
 
   /* ======================================================================
@@ -880,7 +889,7 @@ BARRY.views.results = (function () {
   return {
     init,
     onShow: () => load(false),
-    reload: () => load(true),
+    reload: () => load(true, true),
     all: () => items,
     urlFor: fileUrl,
     /* Jump here with a search already applied -- used by History's
