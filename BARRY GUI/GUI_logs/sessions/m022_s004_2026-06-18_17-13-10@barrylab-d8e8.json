@@ -1,9 +1,9 @@
 {
   "_at": {
-    "bad_channels": "2026-09-11T17:19:44.622129+00:00",
+    "bad_channels": "2026-09-14T17:49:14.810691+00:00",
     "created": "2026-09-02T23:51:19.849758+00:00",
     "duration_s": "2026-09-04T15:57:01.695046+00:00",
-    "event_classes": "2026-09-10T19:35:14.476526+00:00",
+    "event_classes": "2026-09-14T15:57:07.936882+00:00",
     "first_seen_by": "2026-09-04T15:57:01.695046+00:00",
     "fs": "2026-09-04T15:57:01.695046+00:00",
     "gid": "2026-09-03T00:08:54.920283+00:00",
@@ -12,19 +12,19 @@
     "key": "2026-09-04T15:57:01.695046+00:00",
     "label": "2026-09-04T15:57:01.695046+00:00",
     "loose_key": "2026-09-04T15:57:01.695046+00:00",
-    "merged_in": "2026-09-10T19:20:06.577627+00:00",
+    "merged_in": "2026-09-14T15:43:24.799869+00:00",
     "mouse": "2026-09-04T15:57:01.695046+00:00",
     "n_channels": "2026-09-04T15:57:01.695046+00:00",
-    "note": "2026-09-10T19:19:59.639140+00:00",
-    "project": "2026-09-10T19:19:56.541243+00:00",
+    "note": "2026-09-14T15:43:17.150458+00:00",
+    "project": "2026-09-14T15:43:13.641359+00:00",
     "project_source": "2026-09-04T15:57:01.695046+00:00",
     "retired": "2026-09-04T15:57:01.695046+00:00",
     "schema": "2026-09-04T15:57:01.695046+00:00",
     "session": "2026-09-04T15:57:01.695046+00:00",
-    "spike_labels": "2026-09-10T19:29:37.276541+00:00",
+    "spike_labels": "2026-09-14T15:57:33.758064+00:00",
     "start": "2026-09-04T15:57:01.695046+00:00",
-    "updated": "2026-09-11T17:19:44.622129+00:00",
-    "view_state": "2026-09-10T21:09:07.669145+00:00"
+    "updated": "2026-09-14T17:49:14.810691+00:00",
+    "view_state": "2026-09-14T15:54:14.847148+00:00"
   },
   "_keys": {
     "paths": {
@@ -38,7 +38,7 @@
       ],
       "Z:\\harness\\split-me": [
         "set",
-        "2026-09-10T21:26:24.961218+00:00"
+        "2026-09-14T16:12:35.798784+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10": [
         "set",
@@ -72,17 +72,17 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-10T19:58:00.643635+00:00"
+        "2026-09-14T15:56:46.007390+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-11T17:19:44.622129+00:00",
+    "at": "2026-09-14T17:49:14.810691+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "bad_channels": [
-    33
+    20
   ],
   "created": {
     "at": "2026-09-02T18:50:49-04:00",
@@ -111,6 +111,16 @@
       "color": "#FFB81C",
       "name": "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0001).",
       "visible": true
+    },
+    "flow harness sd": {
+      "color": "#c9a6ff",
+      "name": "flow harness sd",
+      "visible": true
+    },
+    "flow harness uv": {
+      "color": "#f59fb4",
+      "name": "flow harness uv",
+      "visible": true
     }
   },
   "first_seen_by": "scan",
@@ -129,22 +139,30 @@
     "s2299aec053f4",
     "s2bc226ab01c5",
     "s314b7d404614",
+    "s3d3a563febaf",
     "s4b8d0f933cff",
     "s4cddfdd3aa83",
+    "s5083cd98d7f6",
     "s5e669d3d04bd",
+    "s7f9d72f68c39",
+    "s8b4ba1df0604",
     "s927d60f6b42f",
     "s9fa18a9a6fde",
     "s9fd89b2bbd5f",
+    "sa10d14b2f007",
     "sa2bead544933",
     "sae52d0caf0af",
     "sc3114d3e7ec1",
     "sc5367a9dad72",
     "sc56f9c905529",
     "sc5bf4cebe2eb",
+    "sc967d04b70cc",
     "sd068b16fbb99",
     "sd07c54ccd9d6",
+    "sd1b7f8e783f0",
     "sd8acfc67bc8c",
     "sdb4d4ba67d7d",
+    "sdde2ae8c2639",
     "sf8ab003d89b8"
   ],
   "mouse": 22,
@@ -205,7 +223,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-10T15:58:00-04:00",
+      "at": "2026-09-14T11:56:46-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
@@ -219,12 +237,12 @@
   },
   "start": "2026-06-18T17:13:10",
   "updated": {
-    "at": "2026-09-11T13:19:44-04:00",
+    "at": "2026-09-14T13:49:14-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "Bluebarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
@@ -266,17 +284,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 2,
-    "hp": 0,
+    "hp": 3,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 5,
+    "span": 12.8,
     "stft_mode": null,
-    "t0": 10,
-    "ylim": 2133.0312426885184
+    "t0": 1816.4394666666667,
+    "ylim": null
   }
 }

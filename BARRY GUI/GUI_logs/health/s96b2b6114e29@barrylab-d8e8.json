@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:36:00.082104+00:00",
+    "label": "2026-09-14T16:36:00.082104+00:00",
+    "path": "2026-09-14T16:36:00.082104+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "d58535dbd0e9": [
+        "set",
+        "2026-09-14T16:36:00.082104+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:36:00.082104+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:36:00.082104+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1796.0372666666667,
+      "gap_map_sha": "c64a26abb6fb880a",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "d58535dbd0e9",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 120215.60966666674,
+      "mismatches": 0,
+      "n_gaps": 43,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 44,
+      "seconds_lost": 120.151728,
+      "sub_threshold_lost_s": 0.07535,
+      "true_duration_s": 1916.252608
+    }
+  ],
+  "gid": "s96b2b6114e29",
+  "label": "PTENDKO m44 s4 2024-11-11",
+  "path": "Y:\\ProcessedPtenData\\PtenDKOM44\\m44s4nov11\\2024-11-11_15-44-50"
+}

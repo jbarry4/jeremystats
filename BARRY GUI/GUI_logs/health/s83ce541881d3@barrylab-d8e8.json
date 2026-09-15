@@ -1,0 +1,94 @@
+{
+  "_at": {
+    "gid": "2026-09-14T14:07:53.508578+00:00",
+    "label": "2026-09-14T15:21:31.513291+00:00",
+    "path": "2026-09-14T16:24:53.648434+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "46967c9661d7": [
+        "set",
+        "2026-09-14T14:07:53.508578+00:00"
+      ],
+      "58ef847a7aaf": [
+        "set",
+        "2026-09-14T15:42:24.183362+00:00"
+      ],
+      "f3fdb6b590f8": [
+        "set",
+        "2026-09-14T16:24:53.648434+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:24:53.648434+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T14:07:53.508417+00:00",
+      "by": "theexaminedexistence@gmail.com",
+      "concat_duration_s": 2124.3445,
+      "gap_map_sha": "724351c3a1ea17a1",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "46967c9661d7",
+      "level": "warn",
+      "machine": "DESKTOP-4H65AI7",
+      "max_time_error_ms": 121.92433333325425,
+      "mismatches": 0,
+      "n_gaps": 7,
+      "n_ncs": 64,
+      "n_probed": 4,
+      "n_segments": 8,
+      "seconds_lost": 0.122526,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 2124.466077
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-14T15:42:24.182220+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 2124.3445,
+      "gap_map_sha": "724351c3a1ea17a1",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "58ef847a7aaf",
+      "level": "warn",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 121.92433333325425,
+      "mismatches": 0,
+      "n_gaps": 7,
+      "n_ncs": 64,
+      "n_probed": 4,
+      "n_segments": 8,
+      "seconds_lost": 0.122526,
+      "seen": 41,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 2124.466077
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:24:53.647442+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 2124.3445,
+      "gap_map_sha": "724351c3a1ea17a1",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "f3fdb6b590f8",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 121.92433333325425,
+      "mismatches": 0,
+      "n_gaps": 7,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 8,
+      "seconds_lost": 0.122526,
+      "sub_threshold_lost_s": 0.007578,
+      "true_duration_s": 2124.466077
+    }
+  ],
+  "gid": "s83ce541881d3",
+  "label": "PTEN m8 s9 2024-02-09",
+  "path": "Y:\\ProcessedPtenData\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+}
