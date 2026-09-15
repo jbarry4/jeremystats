@@ -15,6 +15,222 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.15.6 - Incisor says what it read
+
+### Added
+
+- **Bad channels are removed from processing, and Incisor says so.** They
+  used to be read like any other, which meant a dead channel could win the
+  hilus, theta or ripple pick against the live ones. Now they are never read,
+  and step 2 says which ones were left out and names them - or says outright
+  that none are marked, because "nothing was removed" and "nothing was
+  checked" look identical when a panel only speaks up about the first.
+
+- **And says which probe configuration it was read as.** H3 or H10-D, every
+  channel or even-only, inverted or not, with the measurement behind the
+  even-only decision quoted. None of it changes when a dentate spike
+  happened; all of it changes which channels there were to find one on.
+
+- **Channels can be added and removed without leaving the panel.** A grid of
+  every channel in step 2, ticked for read and unticked for bad. The tick
+  writes through to the session record - the same one the trace view reads -
+  so a channel marked in either place is marked in both. Changing it throws
+  the scan away on purpose: every candidate time came out of reading a
+  particular set of channels, and a result left sitting under a selection it
+  no longer matches is the kind of thing that gets banked by mistake.
+
+### Changed
+
+- **The three landmarks are listed theta, ripple, hilus.** Down the probe -
+  fissure, pyramidal layer, hilus - rather than in the order the code
+  computes them, so reading the panel reads the same way as reading the
+  traces beside it.
+
+- **The traces window opens on a CSD of the even channels over five
+  seconds.** A laminar landmark is a boundary, and a boundary reads off a CSD
+  where it is a matter of opinion on sixty-four stacked traces. All three are
+  starting points and all three can be changed in the window; a pick on a
+  channel that view is not showing is marked at its own depth and labelled
+  hidden. `?even=1` and `?even=0` now work on any deep link; leaving it off
+  still lets the recording answer for itself.
+
+- **Step 3 says what changing the channel does and does not do.** The hilus,
+  theta and ripple picks are computed FROM the detection and never feed back
+  into it: every channel was detected on separately and carries its own
+  candidates, and every time is that candidate's own sample index put through
+  the .ncs record timestamps. So switching a channel swaps which set you are
+  looking at, instantly and with nothing read again, and moves no event by a
+  microsecond. The answer is now in the panel, and `time_basis` carries
+  `depends_on_channel: false` for anything reading the payload. What does
+  move the picks is the selection in step 2, which is why that is where the
+  channels are changed.
+
+- **Channel lines repaint on the rasters, not only on the traces.** They were
+  already drawn there - a landmark is easiest to read against the CSD bands -
+  but only the traces panes were repainted when one moved, so a dragged line
+  sat at its old position on a CSD until something else redrew it.
+
+---
+
+## 2026.09.15.5 - Panorama says what each control does
+
+### Fixed
+
+- **Clicking log or linear bins no longer takes the Holistic view with it.**
+  Reported, and the cause was worse than the symptom: the bin scale and the
+  bin count were part of the cache key, so changing either missed the cache,
+  which meant the result on screen really had become invalid and getting it
+  back meant another three-minute run of identical arithmetic. The control
+  cleared the panel because there was nothing left to show.
+
+  Neither is true now. A histogram is a count of the per-window dominant
+  frequencies, and those are already computed - so re-binning is arithmetic
+  on a few thousand floats. The spectrogram matrices are kept beside the
+  cached result, so re-colouring is a re-render. The bin count, log or linear
+  bins, the colormap and log power all change what is shown, leave the
+  numbers alone, and start no job. A setting that really does change the
+  measurement - the frequency range, the window lengths - still clears the
+  result, because it should.
+
+- **`/api/panorama/recolor` actually re-colours.** It returned the stored
+  picture, so choosing a different colormap handed back the one already on
+  screen.
+
+### Added
+
+- **Every control in Panorama explains itself.** A small `i` beside each one
+  opens a note under it - what the window length and the FFT length are each
+  doing, why the frequency range changes how sharp a question the dominant
+  frequency is, what the two counting rules actually count, and why the bins
+  are log-spaced by default. Under the control rather than as a tooltip, so
+  it can be read without holding the mouse still.
+
+- **How clearly the dominant peak won.** A window whose runner-up came within
+  a fifth of the winner is a coin toss between two broad bumps, and the
+  frequency that came out of it is not a finding. Measured at 84% of windows
+  on a real recording over 2-100 Hz and 0% on a synthetic one with a single
+  clean rhythm - so it is a property of asking a wide range of a 1/f
+  spectrum, not a fault in any recording. Said in the convergence panel,
+  where somebody is about to read a group difference off the curve.
+
+## 2026.09.15.4 - Panorama converges
+
+### Added
+
+- **The convergence view.** Every recording in a set, pooled into one curve
+  per group - PTEN against littermate, or by any attribute the colony sheet
+  carries. The individual recordings are drawn faintly behind each mean,
+  because a group mean over six recordings where one is bimodal looks exactly
+  like six mildly broad ones and only the individual lines say which.
+
+- **Two defaults that are arguments, not conveniences.** Each recording gets
+  **one vote**, not one vote per window: the sampling unit is the recording,
+  and windows inside one are not independent, so pooled counts have an
+  apparent n of tens of thousands and a real n of however many animals there
+  were. And the denominator is the windows that **have** a peak, not all of
+  them: a genotype that abolishes a rhythm has to show up as an absence
+  rather than as a slightly shorter curve. Both can be switched, and the
+  panel says which it used.
+
+- **The no-peak fraction is plotted in its own right**, beside a strip plot of
+  one number per recording. The pooled curve is the exploratory object; the
+  strip plot is the claim, and the thing a test can actually be run on. They
+  are drawn together so nobody reads a group difference off a curve whose n
+  is six without seeing the six.
+
+- **Custom groupings**, seeded from what the colony sheet already says so
+  nothing is retyped. A recording's whole membership is written at once, so
+  moving one between arms on one machine cannot leave it in both after a
+  merge - and a recording in two arms of the same axis is refused by name
+  rather than counted twice.
+
+- **Saving a convergence** writes the figure, one row per recording, and every
+  histogram long-form, with the set id and the question's hash in the
+  filename.
+
+- **How clearly the dominant peak won is now recorded.** A window whose
+  runner-up was within a fifth of the winner is a coin toss, and the
+  frequency that came out of it is not a finding. Recordings where that
+  happened often are flagged in the tree.
+
+### Checks
+
+- **`tools/check_panorama.py` compares the GUI with the command line.** On a
+  real recording at matched settings, the aperiodic exponent agrees to a
+  median of 0.002 and R-squared to 0.0002 - the two fit the same spectra.
+
+  They disagree about the dominant frequency in 9.4% of windows, and the
+  reason is now established rather than assumed: it is not the chunk size
+  (31% of disagreements near a chunk edge against 23% of all windows) and not
+  the recording's gap (1 of 160). In those windows the other's answer is a
+  peak in this one's fit too, at a median 0.947 of the winner's power, and
+  only 5 of the 160 are below 12 Hz. Theta - the rhythm anybody is asking
+  about - is essentially never in dispute. The two agree about the spectrum
+  and disagree about an argmax over numbers equal to three significant
+  figures, so the check judges the dominant frequency where the winning peak
+  actually won.
+
+## 2026.09.15.3 - Panorama over a set
+
+### Added
+
+- **Panorama runs over many recordings at once.** A *set* is a question and
+  the recordings to ask it of: pick them from the registry, say which channel
+  by anatomy, and it works through them one at a time. The tree shows where
+  each one got to while it runs - reading, fitting, done - with its
+  dominant-frequency histogram drawn as a sparkline the moment it finishes, so
+  the cohort takes shape while the run is still going. Click a row for that
+  recording's spectrogram, histogram and spectrum.
+
+- **The channel comes from the layer sheet, or from you.** CSC14 is a
+  different depth in every animal, so a set names an anatomical region and
+  each recording's channel is read from its StrataScope sheet. Any row can be
+  overridden by hand, and overridden rows say so - a channel chosen by hand is
+  evidence about that recording, a channel chosen by rule is evidence about
+  the rule. A recording with no sheet is left needing one rather than analysed
+  on whatever channel happened to be first, which would silently compare the
+  hilus in one animal with stratum radiatum in the next.
+
+- **Stopping costs nothing.** Every answer is filed the moment it lands, keyed
+  on the recording and the question rather than on the set. So Stop is a
+  pause, a restart mid-run loses only the recording that was in flight, and
+  adding a recording to a second set that asks the same thing is free. Running
+  a finished set again says there is nothing to do instead of spending an hour
+  proving it.
+
+- **Everything knowable before a run happens before it.** A recording with no
+  channel chosen, or no folder this machine can read, is shown as blocked with
+  the reason on its row - rather than waiting its turn behind thirty others
+  and then failing. Found by the harness: the registry holds a second,
+  pathless copy of each demo recording, and both took their turn before
+  failing.
+
+- **The question is frozen when the set is made.** Changing the frequency
+  range makes a new set rather than quietly mixing two answers in one
+  histogram. Two recordings measured over different ranges cannot be pooled
+  and nothing in the file would have said so.
+
+- **Sets survive a colleague.** Two people can run different halves of one set
+  from different machines and both halves keep - the per-recording state
+  merges key by key, the way layer sheets do. A recording whose job died with
+  a restarted process reads as *interrupted*, not as still running.
+
+### Changed
+
+- **Bulk gets a job stage of its own, counted in seconds of recording.** It
+  cannot reuse the single-recording stages: `Job.begin` closes whatever stage
+  is running, so a stage opens once per run, and bulk has to read, fit and
+  discard one recording before the next starts. Folding the fitting into
+  `spectrum read` instead would have taught the Spectrum view that reading
+  costs what fitting costs. Seconds rather than recordings so the estimate
+  holds for a set mixing twenty- and forty-minute sessions.
+
+- **The end of a spectrogram says why it is blank.** `open_session` reports a
+  duration from the records and `segment_ncs` reports when acquisition
+  actually stopped; on `M8s9feb8` they are 78 ms apart, so the last samples
+  correctly have no data. The panel now says so instead of ending in an
+  unexplained transparent sliver.
+
 ## 2026.09.15.2 - Panorama
 
 ### Added

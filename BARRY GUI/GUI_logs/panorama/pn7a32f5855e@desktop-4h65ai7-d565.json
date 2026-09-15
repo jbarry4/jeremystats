@@ -1,0 +1,127 @@
+{
+  "_at": {
+    "archived": "2026-09-15T23:21:09.770336+00:00",
+    "created": "2026-09-15T23:21:09.770336+00:00",
+    "grouping": "2026-09-15T23:21:09.770336+00:00",
+    "name": "2026-09-15T23:21:09.770336+00:00",
+    "note": "2026-09-15T23:21:09.770336+00:00",
+    "open": "2026-09-15T23:21:09.770336+00:00",
+    "params": "2026-09-15T23:21:09.770336+00:00",
+    "params_hash": "2026-09-15T23:21:09.770336+00:00",
+    "schema": "2026-09-15T23:21:09.770336+00:00",
+    "set_id": "2026-09-15T23:21:09.770336+00:00",
+    "updated": "2026-09-15T23:21:09.770336+00:00"
+  },
+  "_keys": {
+    "members": {
+      "sb62a39d58d41": [
+        "set",
+        "2026-09-15T23:21:09.770336+00:00"
+      ],
+      "sd03d2c55cbfb": [
+        "set",
+        "2026-09-15T23:21:09.770336+00:00"
+      ]
+    },
+    "state": {
+      "sb62a39d58d41": [
+        "set",
+        "2026-09-15T23:21:09.770336+00:00"
+      ],
+      "sd03d2c55cbfb": [
+        "set",
+        "2026-09-15T23:21:09.770336+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-15T23:21:09.770336+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "archived": false,
+  "created": {
+    "at": "2026-09-15T19:21:09-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "grouping": "auto",
+  "members": [
+    {
+      "added": {
+        "at": "2026-09-15T19:21:09-04:00",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": null,
+      "channel_from": "none",
+      "channel_label": null,
+      "enabled": true,
+      "gid": "sb62a39d58d41",
+      "id": "sb62a39d58d41",
+      "label": "KCNT1 m588 s4 2026-07-27",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0588\\KCNT1_m0588_s04_072726\\2026-07-27_16-48-23",
+      "region": "ca1_sr"
+    },
+    {
+      "added": {
+        "at": "2026-09-15T19:21:09-04:00",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": null,
+      "channel_from": "none",
+      "channel_label": null,
+      "enabled": true,
+      "gid": "sd03d2c55cbfb",
+      "id": "sd03d2c55cbfb",
+      "label": "KCNT1 m577 s2 2026-06-03",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0577\\KCNT1_m0577_s02_060326\\2026-06-03_15-32-45",
+      "region": "ca1_sr"
+    }
+  ],
+  "name": "Untitled set",
+  "note": null,
+  "open": true,
+  "params": {
+    "bins": 48,
+    "f_hi": 200.0,
+    "f_lo": 2.0,
+    "hist_scale": "log",
+    "line_hz": 60.0,
+    "step_s": 1.0,
+    "sub_s": 2.0,
+    "win_s": 8.0
+  },
+  "params_hash": "13d6de96c9cc",
+  "saved": [],
+  "schema": 1,
+  "set_id": "pn7a32f5855e",
+  "state": {
+    "sb62a39d58d41": {
+      "at": "2026-09-15T19:21:09-0400",
+      "status": "waiting"
+    },
+    "sd03d2c55cbfb": {
+      "at": "2026-09-15T19:21:09-0400",
+      "status": "waiting"
+    }
+  },
+  "updated": {
+    "at": "2026-09-15T19:21:09-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

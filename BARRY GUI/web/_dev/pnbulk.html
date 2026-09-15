@@ -1,0 +1,257 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Panorama over many recordings</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:42vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:58vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0#toolkit"></iframe>
+<script>
+/* Panorama over a set: which recordings, which channel, and where each one
+   got to.
+
+   Runs against the demo recordings, so it needs nothing mounted. It DOES
+   write -- a set, a result record per recording, a cached picture each --
+   and it deletes all of it at the end, the way presence.html clears up after
+   itself. If it fails partway the set is left behind on purpose: a harness
+   that tidies away the evidence is a harness you cannot debug.
+
+   The set it makes is named "HARNESS ..." so a stray one is obvious. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 1200, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => {
+  const f = document.getElementById('app');
+  const ev = (s) => f.contentWindow.eval(s);
+  const D = () => f.contentWindow.document;
+  let setId = null;
+
+  try {
+    hd('into the tool');
+    let ok = await untilN(() => ev('typeof BARRY') === 'object'
+                             && ev('!!BARRY.panorama'));
+    ck('Panorama is registered', ok >= 0);
+    if (ok < 0) { p('\nFAILED ' + (++bad)); document.title = 'FAIL'; return; }
+    ev('setView("toolkit")');
+    await untilN(() => D().querySelector('.tk-tools'));
+    const hit = Array.from(D().querySelectorAll('.tk-tool'))
+      .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
+    hit.click();
+    await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
+
+    hd('it offers one recording or many');
+    ck('two modes are offered',
+       D().querySelectorAll('.pn-modes .pill').length === 2);
+    ev('BARRY.panorama.setMode("many")');
+    ok = await untilN(() => ev('!!BARRY.panorama.sets'), 300);
+    ck('the sets loaded', ok >= 0);
+    ck('and it is showing the list, not the one-recording form',
+       !D().querySelector('.pn-setup') || !!D().querySelector('.pn-sets')
+       || !!D().querySelector('.pn-picks')
+       || (D().querySelector('#tkResult') || {}).textContent.indexOf('Sets') >= 0);
+
+    hd('building a set');
+    ev('BARRY.panorama.startBuild()');
+    await sleep(300);
+    ck('the builder opened', !!D().querySelector('.pn-picks'));
+    ck('it offers a layer rule', !!D().querySelector('.pn-pick'));
+    const regions = D().querySelectorAll('.pn-pick option').length;
+    ck('with the anatomical regions in it (' + regions + ')', regions > 5);
+    ck('and a list of recordings to tick',
+       D().querySelectorAll('.pn-pick-row').length > 0,
+       D().querySelectorAll('.pn-pick-row').length + ' rows');
+
+    // Drive it directly: the demo recordings are what this can rely on.
+    const gids = JSON.parse(ev(
+      'JSON.stringify((BARRY.views.toolkit.registryRows()||[])'
+      + '.filter(r => (r.label||"").indexOf("DEMO") === 0).map(r => r.gid))'));
+    ck('the demo recordings are in the registry (' + gids.length + ')',
+       gids.length >= 2, JSON.stringify(gids));
+
+    ev('(function(){ const b = BARRY.panorama.building;'
+       + ' b.name = "HARNESS bulk";'
+       + ' b.region = "hil"; b.fallback = "1"; b.t1 = 90;'
+       + ' ' + JSON.stringify(gids) + '.forEach(g => b.picked.add(g)); })()');
+    ev('BARRY.panorama.createSet()');
+    ok = await untilN(() => ev('!!BARRY.panorama.set'), 300);
+    ck('the set was made', ok >= 0);
+    setId = ev('BARRY.panorama.set.set_id');
+    p('   set ' + setId);
+
+    const members = JSON.parse(ev(
+      'JSON.stringify(BARRY.panorama.set.members)'));
+    ck('it has every recording (' + members.length + ')',
+       members.length === gids.length);
+    ck('channels fell back to CSC1, and say so',
+       members.every((m) => m.channel === 1 && m.channel_from === 'fallback'),
+       JSON.stringify(members.map((m) => [m.channel, m.channel_from])));
+
+    hd('the tree, before anything has run');
+    await sleep(400);
+    ck('a row per recording',
+       D().querySelectorAll('.pn-tree-row').length === members.length);
+    ck('every row is waiting',
+       D().querySelectorAll('.pn-tree-row.waiting').length === members.length);
+    ck('the question is stated', (D().querySelector('.pn-notes') || {})
+       .textContent.indexOf('Hz') > 0);
+
+    hd('running the set');
+    ev('BARRY.panorama.runSet()');
+    ok = await untilN(() => ev('!!BARRY.panorama.bulkJob'), 200);
+    ck('a job started', ok >= 0);
+    ck('with a stage bar', !!D().querySelector('#pnBulkStages'));
+
+    let sawRunning = false, sawStep = new Set(), bars = [];
+    const watch = setInterval(() => {
+      const r = D().querySelector('.pn-tree-row.running');
+      if (r) sawRunning = true;
+      D().querySelectorAll('.pn-tree-step').forEach((s) => {
+        const t = (s.textContent || '').split(' ')[0];
+        if (t) sawStep.add(t);
+      });
+      const fill = D().querySelector('#pnBulkStages .comod-mini-fill');
+      if (fill) bars.push(parseFloat(fill.style.width) || 0);
+    }, 200);
+
+    ok = await untilN(() => !ev('!!BARRY.panorama.bulkJob'), 1500);
+    clearInterval(watch);
+    ck('the run finished', ok >= 0, 'waited ' + ok);
+    ck('a row was seen running', sawRunning);
+    ck('rows reported what they were doing: '
+       + Array.from(sawStep).join(', '), sawStep.size >= 2);
+    ck('the bar never went backwards',
+       bars.length < 2 || bars.every((v, i) => i === 0 || v >= bars[i - 1]),
+       bars.length + ' samples');
+
+    hd('what the tree says now');
+    await sleep(700);
+    const done = D().querySelectorAll('.pn-tree-row.done').length;
+    const skipped = D().querySelectorAll('.pn-tree-row.skipped').length;
+    const failed = D().querySelectorAll('.pn-tree-row.failed').length;
+    p('   ' + done + ' done, ' + skipped + ' skipped, ' + failed + ' failed');
+    ck('nothing failed', failed === 0);
+    ck('every recording is either done or skipped for a stated reason',
+       done + skipped === members.length,
+       done + '+' + skipped + ' of ' + members.length);
+    /* The registry holds entries for recordings this machine cannot open --
+       the demo sessions appear twice, and the second copy has no folder. A
+       set has to say that up front rather than let the row wait its turn and
+       fail, which is what this checks. */
+    const why = Array.from(D().querySelectorAll('.pn-tree-row.skipped .pn-warn'))
+      .map((e) => e.textContent).filter(Boolean);
+    ck('every skipped row says why (' + why.length + ')',
+       why.length === skipped, JSON.stringify(why.slice(0, 2)));
+    const sparks = Array.from(D().querySelectorAll('.pn-spark'))
+      .filter((c) => c.width > 10);
+    ck('each finished row drew its histogram (' + sparks.length + ')',
+       sparks.length >= done);
+    const txt = (D().querySelector('#tkResult') || {}).textContent || '';
+    ck('the dominant frequency is on the row', txt.indexOf(' Hz') > 0);
+
+    hd('clicking a row');
+    // A finished row: a skipped one has no answer to show, which is
+    // correct behaviour and not what this is checking.
+    D().querySelector('.pn-tree-row.done').click();
+    ok = await untilN(() => D().querySelector('.pn-sg-img'), 300);
+    ck('it shows that recording’s spectrogram', ok >= 0);
+    const img = D().querySelector('.pn-sg-img');
+    ck('served from the cache by URL, not carried in the record',
+       !!img && img.src.indexOf('/spectrogram/') > 0, img ? img.src : '');
+    ck('and its histogram', !!D().querySelector('#pnHist'));
+    ck('and its power spectrum', !!D().querySelector('#pnPsd'));
+    const hcv = D().querySelector('#pnHist');
+    ck('with real pixels in them', !!hcv && hcv.width > 100,
+       hcv ? hcv.width + 'x' + hcv.height : 'none');
+
+    hd('converging');
+    ok = await untilN(() => ev('!!BARRY.panorama.converged'), 400);
+    ck('the histograms pooled', ok >= 0);
+    const cv = JSON.parse(ev('JSON.stringify(BARRY.panorama.converged)'));
+    p('   ' + cv.n_sessions + ' recordings in ' + cv.groups.length
+      + ' group(s): ' + cv.groups.map((g) => g.id + ' n=' + g.n).join(', '));
+    ck('every finished recording is in it', cv.n_sessions === done);
+    ck('the curve is drawn', (() => {
+      const c = D().querySelector('#pnConv');
+      return !!c && c.width > 100 && c.height > 100;
+    })(), (D().querySelector('#pnConv') || {}).width + 'px');
+    ck('and both strip plots beside it', (() => {
+      const a = D().querySelector('#pnStripHz');
+      const b = D().querySelector('#pnStripNo');
+      return !!a && !!b && a.width > 50 && b.width > 50;
+    })());
+    ck('the legend names each group and its n',
+       D().querySelectorAll('.pn-conv-key .pn-key').length
+       === cv.groups.length);
+
+    /* The two defaults are arguments, not conveniences, so the panel has to
+       offer the other of each rather than bury it. */
+    const txt2 = (D().querySelector('#tkResult') || {}).textContent || '';
+    ck('it says the weighting it used',
+       txt2.indexOf('per recording') > 0 && txt2.indexOf('by length') > 0);
+    ck('and offers the other dominant-frequency rule',
+       txt2.indexOf('tallest peak') > 0
+       && txt2.indexOf('flattened argmax') > 0);
+
+    /* A density: the area under one recording's curve is 1. */
+    const area = cv.sessions.length ? cv.sessions[0].density.reduce(
+      (a, v, i) => a + v * (cv.edges[i + 1] - cv.edges[i]), 0) : 0;
+    ck('each recording integrates to 1 (' + area.toFixed(6) + ')',
+       Math.abs(area - 1) < 1e-6);
+
+    hd('switching the weighting re-pools without re-running');
+    ev('BARRY.panorama.convOpts.weight = "window"; '
+       + 'BARRY.panorama.loadConverge()');
+    ok = await untilN(() => {
+      const c = ev('JSON.stringify((BARRY.panorama.converged||{}).weight)');
+      return c === '"window"';
+    }, 300);
+    ck('it re-pooled by recording length', ok >= 0);
+    ck('and started no new job', !ev('!!BARRY.panorama.bulkJob'));
+    ev('BARRY.panorama.convOpts.weight = "session"; '
+       + 'BARRY.panorama.loadConverge()');
+    await sleep(600);
+
+    hd('running it again does nothing');
+    ev('BARRY.panorama.runSet()');
+    await sleep(1200);
+    ck('no second job started', !ev('!!BARRY.panorama.bulkJob'));
+  } catch (e) {
+    ck('the harness itself ran to the end', false, e.message);
+  } finally {
+    if (setId && !bad) {
+      hd('clearing up');
+      try {
+        const r = await f.contentWindow.fetch(
+          '/api/panorama/sets/' + setId + '/delete',
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ results: true }) });
+        const d = await r.json();
+        p('   removed ' + JSON.stringify(d.removed));
+        ck('the set and its answers are gone', d.ok);
+      } catch (e) {
+        ck('cleanup', false, e.message);
+      }
+    } else if (setId) {
+      p('\n   set ' + setId + ' LEFT IN PLACE, because something failed');
+    }
+  }
+
+  p('\n' + (bad ? 'FAILED ' + bad : 'ALL PASS'));
+  document.title = bad ? ('FAIL ' + bad) : 'PASS';
+})();
+</script>

@@ -229,6 +229,21 @@ def plan_for(session, spec, report=None):
                         .startswith("\\\\")),
         "invert": bool(spec.get("invert", True)),
         "even_only": bool(session.get("even_only")),
+        # What was NOT scanned, and how the recording was read.
+        #
+        # None of this changes when a dentate spike happened -- a time comes
+        # from a sample index and the file's own record timestamps. What it
+        # changes is which channels there were to find one on, and the
+        # hilus, theta and ripple picks are argmaxes over exactly that set.
+        # So it is reported with the plan rather than left to be inferred
+        # from a channel count that came back smaller than the probe.
+        "excluded": list(spec.get("excluded") or []),
+        "n_excluded": len(spec.get("excluded") or []),
+        "bad_channels": list(spec.get("bad_channels") or []),
+        "probe": spec.get("probe") or "h3",
+        "probe_name": spec.get("probe_name") or "H3 (single linear array)",
+        "channel_scheme": session.get("channel_scheme") or None,
+        "n_csc_files": session.get("n_csc_files"),
     }
 
 
@@ -875,6 +890,14 @@ def run(session, spec, report, job=None):
             # should not have to measure that again.
             "residual_sd_us": report.get("map_residual_sd_us"),
             "residual_max_us": report.get("map_residual_max_us"),
+            # The channel picks below do not enter this, and saying so is
+            # worth a field: the three of them are computed FROM the
+            # detection and never feed back into it. A time is a sample
+            # index put through the record timestamps. Changing the hilus,
+            # theta or ripple channel changes which events you are looking
+            # at -- each channel was detected on separately and has its own
+            # list -- and moves none of them.
+            "depends_on_channel": False,
         },
         "continuity": {
             "n_segments": report.get("n_segments"),
@@ -933,6 +956,9 @@ def _params(spec, plan):
         "estimator": spec.get("estimator") or "sd",
         "invert": bool(spec.get("invert", True)),
         "even_only": bool(plan.get("even_only")),
+        "bad_channels_excluded": list(spec.get("bad_channels") or []),
+        "n_channels_scanned": int(plan.get("n_channels") or 0),
+        "probe": spec.get("probe") or "h3",
         "notes": [
             "Filtered per segment and pooled for the threshold, so the "
             "voltage step at each stitch is excluded; Toothy's np.std spans "
@@ -945,5 +971,15 @@ def _params(spec, plan):
             "variance in band), and one event in 193.",
             "Times are stamped through the record-level breakpoint map, not "
             "from a linear axis.",
+            "Channels marked bad on this session were not read at all, so "
+            "they cannot win the hilus, theta or ripple pick. Toothy keeps "
+            "them and nulls them out of the estimates afterwards "
+            "(ephys.py noise_idx); the three answers are the same either "
+            "way.",
+            "The hilus, theta and ripple channels are derived FROM the "
+            "detection, not used to produce it. Every event time here is a "
+            "sample index put through the record timestamps, so choosing a "
+            "different channel shows a different set of events and moves "
+            "none of them.",
         ],
     }

@@ -499,9 +499,21 @@ BARRY.views.xplore = (function () {
 
   function channelLines() { return chanLines.slice(); }
 
+  /* Not only the traces, whatever the name says.
+
+     `drawChannelLines` is called from the raster overlay as well -- a
+     laminar landmark is easiest to read against the CSD bands, which is
+     where somebody checking one actually looks -- so repainting only the
+     traces panes left a dragged line at its old position on a CSD until
+     something else happened to redraw it. Both kinds are repainted from
+     data already in hand; nothing is re-requested. */
   function repaintTraces() {
     XF.panes.forEach((p, i) => {
-      if (p && p.panel === 'traces') { try { drawPane(i); } catch (e) {} }
+      if (!p) return;
+      try {
+        if (p.panel === 'traces') drawPane(i);
+        else if (p._panelData) drawRasterGrid(p, p._panelData);
+      } catch (e) { /* one pane that cannot draw must not stop the others */ }
     });
   }
 

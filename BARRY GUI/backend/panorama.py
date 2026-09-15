@@ -186,7 +186,9 @@ def segments_for(session, ch, t0, t1):
     """
     whole = [(float(t0), float(t1))]
     none = {"n": 0, "seconds": 0.0, "checked": False, "n_segments": 1,
-            "paused_s": 0.0, "dropped_s": 0.0, "n_paused": 0, "n_dropped": 0}
+            "tail_s": 0.0,
+            "paused_s": 0.0, "dropped_s": 0.0, "n_paused": 0,
+            "n_dropped": 0}
     if (session or {}).get("source") != "ncs" or not ch.get("file"):
         # A .mat or the demo is already one continuous array: Toothy closed
         # the gaps before it was written, which is the problem this cannot
@@ -211,10 +213,18 @@ def segments_for(session, ch, t0, t1):
 
     inside = [g for g in (seg.get("gaps") or [])
               if t0 <= g.get("at_true_time_s", -1) <= t1]
+    # What the session claims beyond where the recording actually
+    # stopped. `open_session` reports a duration from the records and
+    # `segment_ncs` reports when acquisition ended, and on M8s9feb8 they
+    # are 78 ms apart -- so the last samples of the array correctly have
+    # no data, and the spectrogram ends with a transparent sliver. Said,
+    # because an unexplained blank edge is indistinguishable from a bug.
+    true_end = float(seg.get("true_duration_s") or 0.0)
     return out, {
         "n": len(inside),
         "seconds": round(sum(g["gap_s"] for g in inside), 6),
         "checked": True,
+        "tail_s": round(max(0.0, float(t1) - true_end), 6),
         "n_segments": len(out),
         "paused_s": round(sum(g["gap_s"] for g in inside if g.get("paused")), 6),
         "dropped_s": round(sum(g["gap_s"] for g in inside
@@ -426,7 +436,7 @@ def render(freqs, times, pxx, cmap="jet", scale="log10", n_rows=IMAGE_ROWS,
 # Dominant frequency, both ways
 # ==========================================================================
 def dominant(freqs, pxx, f_lo, f_hi, settings, job=None, stage=None,
-             done_base=0):
+             done_base=0, on_step=None):
     """Per-window fits, and the two answers to "which frequency was on top".
 
     `peak` is the tallest rhythm the fit actually found, and is None when it
@@ -442,6 +452,8 @@ def dominant(freqs, pxx, f_lo, f_hi, settings, job=None, stage=None,
     n = pxx.shape[1]
     out = {
         "peak_hz": np.full(n, np.nan), "peak_pw": np.full(n, np.nan),
+        # The runner-up, so "how clearly did it win" is answerable.
+        "peak2_pw": np.full(n, np.nan),
         "flat_hz": np.full(n, np.nan),
         "exponent": np.full(n, np.nan), "offset": np.full(n, np.nan),
         "r2": np.full(n, np.nan),
@@ -490,13 +502,28 @@ def dominant(freqs, pxx, f_lo, f_hi, settings, job=None, stage=None,
                 cf, pw = float(row[0]), float(row[1])
                 w = sel[run]
                 if not np.isfinite(out["peak_pw"][w]) or pw > out["peak_pw"][w]:
+                    # The old winner becomes the runner-up.
+                    out["peak2_pw"][w] = out["peak_pw"][w]
                     out["peak_hz"][w] = cf
                     out["peak_pw"][w] = pw
+                elif (not np.isfinite(out["peak2_pw"][w])
+                      or pw > out["peak2_pw"][w]):
+                    out["peak2_pw"][w] = pw
 
         if job and stage:
             job.tick(stage, int(done_base + start + sel.size))
+        if on_step:
+            on_step("fitting", int(start + sel.size), int(idx.size))
 
     out["n_nopeak"] = int(np.sum(np.isnan(out["peak_hz"][idx])))
+    # How far clear the winner was, as a fraction of its own height.
+    # 1.0 means it was the only peak; 0.05 means a coin toss, and the
+    # frequency that came out is not a finding.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        margin = 1.0 - (out["peak2_pw"] / out["peak_pw"])
+    margin[np.isnan(out["peak2_pw"]) & np.isfinite(out["peak_pw"])] = 1.0
+    margin[~np.isfinite(out["peak_pw"])] = np.nan
+    out["peak_margin"] = np.clip(margin, 0.0, 1.0)
     return out
 
 
@@ -641,11 +668,27 @@ _CACHE_ORDER = []
 _CACHE_LOCK = threading.Lock()
 CACHE_MAX = 8
 
+# The spectrogram matrices behind the cached results, kept apart from
+# them because they are numpy arrays and the results get serialised to
+# JSON. About 2.7 MB a channel at 0.5 Hz bins over half an hour, which
+# is what it costs to make changing the colormap instant instead of
+# three minutes.
+_MATS = {}
+_MATS_ORDER = []
+
 
 def cache_key(spec):
+    """What makes two runs the same run.
+
+    Only what changes a measurement. The bin count, the bin scale, the
+    colormap and the power scale are all presentation: they decide how
+    numbers already computed are shown, not what the numbers are. They
+    used to be in here, so choosing linear bins missed the cache and
+    asked for another three minutes of identical arithmetic.
+    """
     keep = {k: spec.get(k) for k in (
         "path", "channels", "t0", "t1", "f_lo", "f_hi", "sub_s", "win_s",
-        "step_s", "line_hz", "bins", "hist_scale", "even_only", "invert",
+        "step_s", "line_hz", "even_only", "invert",
         "peak_width_limits", "max_n_peaks", "min_peak_height",
         "aperiodic_mode") if spec.get(k) is not None}
     blob = json.dumps(keep, sort_keys=True, default=str)
@@ -660,23 +703,99 @@ def cache_get(key):
 def cache_put(key, value):
     with _CACHE_LOCK:
         if key not in _CACHE and len(_CACHE_ORDER) >= CACHE_MAX:
-            _CACHE.pop(_CACHE_ORDER.pop(0), None)
+            gone = _CACHE_ORDER.pop(0)
+            _CACHE.pop(gone, None)
+            _MATS.pop(gone, None)
         if key not in _CACHE:
             _CACHE_ORDER.append(key)
         _CACHE[key] = value
 
 
+def mats_put(key, mats):
+    """The spectrogram matrices for a cached run, by channel index."""
+    with _CACHE_LOCK:
+        _MATS[key] = mats
+
+
+def mats_get(key):
+    with _CACHE_LOCK:
+        return _MATS.get(key)
+
+
 def cache_clear():
     with _CACHE_LOCK:
         _CACHE.clear()
+        _MATS.clear()
         del _CACHE_ORDER[:]
+
+
+# ==========================================================================
+# Changing how it is shown, without computing it again
+# ==========================================================================
+def rebin(out, bins=None, scale=None):
+    """Re-cut the histograms from the per-window values already computed.
+
+    A histogram is a count of numbers that are already in the payload, so
+    changing the bin count or switching to linear bins is arithmetic on a
+    few thousand floats -- not a reason to read half an hour of recording
+    again. Mutates the result in place, so a save afterwards writes the
+    bins that are on screen.
+    """
+    bins = int(bins or DEFAULT_BINS)
+    scale = "linear" if scale == "linear" else "log"
+    plan = out.get("plan") or {}
+    f_lo, f_hi = plan.get("f_lo", DEFAULT_FLO), plan.get("f_hi", DEFAULT_FHI)
+    for ch in out.get("channels") or []:
+        w = ch.get("windows")
+        if not w:
+            continue
+        dom = {
+            "peak_hz": np.array([np.nan if v is None else v
+                                 for v in w.get("peak_hz") or []], float),
+            "flat_hz": np.array([np.nan if v is None else v
+                                 for v in w.get("flat_hz") or []], float),
+        }
+        old = ch.get("hist") or {}
+        dom["n_windows"] = old.get("n_windows", len(dom["peak_hz"]))
+        dom["n_rejected"] = old.get("n_rejected", 0)
+        dom["n_nopeak"] = old.get("n_nopeak", 0)
+        ch["hist"] = histogram(dom, f_lo, f_hi, bins, scale)
+        if ch["hist"]["n_used"]:
+            e = np.asarray(ch["hist"]["edges"], dtype=float)
+            centres = np.sqrt(e[:-1] * e[1:])
+            ch["modal_hz"] = float(
+                centres[int(np.argmax(ch["hist"]["peak"]))])
+    plan["bins"] = bins
+    plan["hist_scale"] = scale
+    return out
+
+
+def recolor(out, mats, cmap=None, scale=None):
+    """Re-render the spectrograms from the matrices, in a new palette.
+
+    The picture is a colouring of a matrix, and the matrix is held beside
+    the result for exactly this. Without it, choosing Viridis over Jet
+    meant reading the recording again.
+    """
+    cmap = cmap or "jet"
+    scale = "linear" if scale == "linear" else "log10"
+    for ch in out.get("channels") or []:
+        got = (mats or {}).get(ch.get("index"))
+        if not got:
+            continue
+        freqs, times, pxx = got
+        ch["spectrogram"] = render(freqs, times, pxx, cmap, scale)
+    plan = out.get("plan") or {}
+    plan["cmap"] = cmap
+    plan["scale"] = scale
+    return out
 
 
 # ==========================================================================
 # The run
 # ==========================================================================
 def read_channel(session, ch, plan, job=None, on_preview=None,
-                 read_base=0.0):
+                 read_base=0.0, on_step=None):
     """Pass one: read the channel and turn it into spectrogram columns.
 
     `read_base` is how far the read stage had got before this channel.
@@ -691,6 +810,8 @@ def read_channel(session, ch, plan, job=None, on_preview=None,
     def on_read(done):
         if job:
             job.tick("spectrum read", int(read_base + done))
+        if on_step:
+            on_step("reading", int(done), int(max(1.0, t1 - t0)))
 
     preview_state = {"at": 0.0}
 
@@ -737,8 +858,13 @@ def read_channel(session, ch, plan, job=None, on_preview=None,
     return head
 
 
-def fit_channel(got, plan, job=None, fit_base=0):
-    """Pass two: the fits, the histogram and the picture, for one channel."""
+def fit_channel(got, plan, job=None, fit_base=0, on_step=None, keep=None):
+    """Pass two: the fits, the histogram and the picture, for one channel.
+
+    `keep` is a dict the caller can pass to be handed the spectrogram
+    matrix back, so re-colouring later is a re-render rather than a
+    re-read. Left out, the matrix goes out of scope with the call.
+    """
     if "error" in got or "_pxx" not in got:
         return got
     freqs = got.pop("_freqs")
@@ -749,7 +875,8 @@ def fit_channel(got, plan, job=None, fit_base=0):
     n_samples = got.pop("_n_samples")
 
     dom = dominant(freqs, pxx, plan["f_lo"], plan["f_hi"], plan["fit"],
-                   job=job, stage="panorama windows", done_base=fit_base)
+                   job=job, stage="panorama windows", done_base=fit_base,
+                   on_step=on_step)
     hist = histogram(dom, plan["f_lo"], plan["f_hi"],
                      plan["bins"], plan["hist_scale"])
 
@@ -767,6 +894,8 @@ def fit_channel(got, plan, job=None, fit_base=0):
                           * np.asarray(hist["edges"][1:]))
         modal = float(centres[int(np.argmax(hist["peak"]))])
 
+    if keep is not None:
+        keep["mat"] = (freqs, times, pxx)
     got.update({
         "spectrogram": render(freqs, times, pxx, plan["cmap"], plan["scale"]),
         "freqs": [float(v) for v in freqs],
@@ -777,6 +906,9 @@ def fit_channel(got, plan, job=None, fit_base=0):
         "windows": {
             "t_s": [round(float(v), 4) for v in times],
             "peak_hz": _nlist(dom["peak_hz"]),
+            "peak_pw": _nlist(dom["peak_pw"]),
+            # How clearly it won. See the note in `dominant`.
+            "peak_margin": _nlist(dom["peak_margin"]),
             "flat_hz": _nlist(dom["flat_hz"]),
             "exponent": _nlist(dom["exponent"]),
             "r2": _nlist(dom["r2"]),
@@ -826,6 +958,7 @@ def run(session, spec, job=None, on_preview=None):
         job.begin("spectrum read",
                   of=int(plan["span_s"] * len(wanted)), unit="seconds")
     rows, read_base = [], 0.0
+    mats = {}
     for ch in wanted:
         if job:
             job.check()
@@ -852,7 +985,10 @@ def run(session, spec, job=None, on_preview=None):
         if job:
             job.check()
         try:
-            rows[i] = fit_channel(got, plan, job, fit_base)
+            keep = {}
+            rows[i] = fit_channel(got, plan, job, fit_base, keep=keep)
+            if keep.get("mat") is not None:
+                mats[rows[i].get("index")] = keep["mat"]
         except cfc.Canceled:
             raise
         except Exception as exc:                         # noqa: BLE001
@@ -868,6 +1004,9 @@ def run(session, spec, job=None, on_preview=None):
         "ok": True,
         "plan": plan,
         "channels": rows,
+        # Popped by the caller before this is sent anywhere: numpy
+        # arrays, kept so re-colouring is a re-render. See `recolor`.
+        "_mats": mats,
         "n_ok": len(ok),
         "units": "uV^2/Hz",
         "fit_engine": fit_engine(spec),
@@ -1034,11 +1173,284 @@ def tables(result, index=0):
     t = w.get("t_s") or []
     win_rows = [{"t_s": t[i],
                  "dominant_peak_hz": w["peak_hz"][i],
+                 # How clearly that peak won, as a fraction of its own
+                 # height. Saved because a dominant frequency that beat its
+                 # runner-up by two percent is not a finding, and a table
+                 # read six months later has no other way to say so.
+                 "dominant_peak_margin": (w.get("peak_margin") or [None] * len(t))[i],
+                 "dominant_peak_power": (w.get("peak_pw") or [None] * len(t))[i],
                  "dominant_flat_hz": w["flat_hz"][i],
                  "aperiodic_exponent": w["exponent"][i],
                  "r_squared": w["r2"][i]}
                 for i in range(len(t))]
     return psd_rows, hist_rows, win_rows
+
+
+# ==========================================================================
+# What a set keeps per recording
+# ==========================================================================
+def compact(got, plan, gid, params_hash, member=None):
+    """One recording's answer, small enough to commit and to sync.
+
+    The full payload carries a per-window table and a spectrogram as a data
+    URI -- a megabyte and more, which is right for a window somebody is
+    looking at and wrong for forty records in a repository. What survives is
+    what a figure or a statistic is made from: the two histograms, the
+    spectrum, the fit, and the counts needed to normalise them. The picture
+    goes to the cache and is redrawn from the recording if it is ever
+    missing.
+
+    `n_used` is carried rather than recomputed at read time. Every
+    convergence plot divides by it, and a denominator that each caller works
+    out for itself is a denominator that eventually two callers disagree on.
+    """
+    h = got.get("hist") or {}
+    member = member or {}
+    n_used = int(h.get("n_used") or 0)
+    return {
+        "schema": 1,
+        "gid": gid,
+        "params_hash": params_hash,
+        "session_label": member.get("label"),
+        "path_used": member.get("path"),
+        "channel": got.get("index"),
+        "channel_label": got.get("label"),
+        "channel_number": got.get("number"),
+        "channel_from": member.get("channel_from"),
+        "region": member.get("region"),
+        "bad_channel": bool(got.get("bad")),
+
+        "fs": plan.get("fs"),
+        "fs_used": plan.get("fs_used"),
+        "decimate": plan.get("decimate"),
+        "t0": plan.get("t0"), "t1": plan.get("t1"),
+        "win_s": plan.get("win_s"), "sub_s": plan.get("sub_s"),
+        "step_s": plan.get("step_s"), "nperseg": plan.get("nperseg"),
+        "resolution_hz": plan.get("resolution_hz"),
+
+        "edges": h.get("edges"),
+        "counts_peak": h.get("peak"),
+        "counts_flat": h.get("flat"),
+        "hist_scale": h.get("scale"),
+        "n_windows": int(h.get("n_windows") or 0),
+        "n_used": n_used,
+        "n_nopeak": int(h.get("n_nopeak") or 0),
+        "n_rejected": int(h.get("n_rejected") or 0),
+
+        "freqs": got.get("freqs"),
+        "psd": got.get("psd"),
+        "fit": got.get("fit"),
+        "line_at": got.get("line_at"),
+
+        "modal_hz": got.get("modal_hz"),
+        "median_hz": got.get("median_hz"),
+        # What fraction of the windows with a peak had a runner-up
+        # within a fifth of it. High means the dominant frequency in
+        # this recording was often a coin toss between broad bumps, and
+        # the histogram should be read knowing that.
+        "close_call_frac": _close_calls(got),
+        "gaps": got.get("gaps"),
+        "fit_engine": fit_engine(plan.get("fit") or {}),
+
+        # The picture's geometry without the picture: where its edges are,
+        # which frequency each row is, how wide it came out. Kept so a row
+        # in the tree can draw axes on the cached PNG without fetching the
+        # whole payload again -- and so that if the cache is gone, what is
+        # missing is only the pixels.
+        "image": {k: (got.get("spectrogram") or {}).get(k)
+                  for k in ("t0", "t1", "f_lo", "f_hi", "rows", "row_scale",
+                            "vmin", "vmax", "cmap", "scale", "n_cols",
+                            "n_rows")},
+    }
+
+
+def _close_calls(got, within=0.2):
+    """How often the winner did not win clearly."""
+    m = ((got or {}).get("windows") or {}).get("peak_margin") or []
+    vals = [v for v in m if v is not None]
+    if not vals:
+        return None
+    return round(sum(1 for v in vals if v < within) / float(len(vals)), 4)
+
+
+def png_bytes_of(got):
+    """The spectrogram out of a payload, as bytes for the cache."""
+    sg = (got or {}).get("spectrogram") or {}
+    if not sg.get("png"):
+        return None
+    return _png_bytes(sg["png"])
+
+
+# ==========================================================================
+# The convergence figure
+# ==========================================================================
+# Distinct, ordered, and not red-green. Groups are almost always two, and
+# the first two have to be tellable apart by somebody who cannot see red.
+GROUP_COLORS = ["#154734", "#d1495b", "#30638e", "#8a6fbf", "#a86a00",
+                "#3f6b35", "#7c7c7c"]
+
+
+def converge_figure(conv, title=None, names=None):
+    """Three panels: the pooled curves, then the two claims. PNG bytes.
+
+    The pooled curve is the exploratory object -- it shows the shape of a
+    cohort. The strip plots beside it are what a statistic is run on: one
+    number per recording, which is the sampling unit. Drawing them together
+    is deliberate, so nobody reads a group difference off a curve whose n is
+    six without seeing the six.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from . import export
+
+    names = names or {}
+    centres = np.asarray(conv.get("centres") or [], dtype=float)
+    groups = conv.get("groups") or []
+    sessions = conv.get("sessions") or []
+    if centres.size < 2 or not groups:
+        raise ValueError("Nothing to draw yet.")
+
+    fig = plt.figure(figsize=(13.5, 5.6), facecolor="white")
+    gs = fig.add_gridspec(1, 3, width_ratios=[2.1, 1.0, 1.0], wspace=0.28,
+                          left=0.06, right=0.985, top=0.85, bottom=0.14)
+
+    color = {}
+    for i, g in enumerate(groups):
+        color[g["id"]] = GROUP_COLORS[i % len(GROUP_COLORS)]
+
+    # ---- the curves
+    ax = fig.add_subplot(gs[0, 0])
+    per_group = {}
+    for s in sessions:
+        for gid in (s.get("groups") or ["__ungrouped__"]):
+            per_group.setdefault(gid, []).append(s)
+    for g in groups:
+        c = color[g["id"]]
+        # The individual recordings first, behind. Not optional: a mean over
+        # six recordings where one is bimodal looks exactly like six mildly
+        # broad ones.
+        for s in per_group.get(g["id"], []):
+            ax.plot(centres, s["density"], color=c, lw=0.7, alpha=0.30)
+        mean = np.asarray(g["mean"], dtype=float)
+        sem = np.asarray(g["sem"], dtype=float)
+        if np.any(sem > 0):
+            ax.fill_between(centres, mean - sem, mean + sem, color=c,
+                            alpha=0.18, linewidth=0)
+        label = "%s (n=%d)" % (names.get(g["id"], g["id"]), g["n"])
+        if g.get("nopeak_mean") is not None:
+            label += ", %.0f%% no peak" % (100 * g["nopeak_mean"])
+        ax.plot(centres, mean, color=c, lw=2.0, label=label)
+    ax.set_xscale("log")
+    ax.set_xlabel("dominant frequency (Hz)", color=export.INK)
+    ax.set_ylabel("fraction of analysed windows, per Hz", color=export.INK)
+    ax.grid(True, which="both", color=export.GRID, lw=0.6)
+    ax.legend(frameon=False, fontsize=8)
+    ax.set_title("pooled histograms", fontsize=10,
+                 color=export.UVM_GREEN, loc="left")
+
+    # ---- one number per recording
+    axm = fig.add_subplot(gs[0, 1])
+    _strip(axm, groups, per_group, color, names, "modal_hz",
+           "dominant frequency (Hz)", export)
+    axm.set_title("per recording", fontsize=10, color=export.UVM_GREEN,
+                  loc="left")
+
+    axn = fig.add_subplot(gs[0, 2])
+    _strip(axn, groups, per_group, color, names, "nopeak_frac",
+           "windows with no peak", export, pct=True)
+    axn.set_title("how often there was no rhythm at all", fontsize=10,
+                  color=export.UVM_GREEN, loc="left")
+
+    head = title or "Panorama"
+    fig.suptitle(head, fontsize=13, color=export.UVM_GREEN, x=0.06,
+                 ha="left", weight="bold")
+    bits = ["%d recordings" % conv.get("n_sessions", 0),
+            "dominant = %s" % ("flattened argmax"
+                               if conv.get("dominant") == "flat"
+                               else "tallest fitted peak"),
+            ("one vote per recording" if conv.get("weight") != "window"
+             else "weighted by recording length")]
+    if conv.get("no_windows"):
+        bits.append("%d had no analysable windows"
+                    % len(conv["no_windows"]))
+    if conv.get("not_run"):
+        bits.append("%d not run" % len(conv["not_run"]))
+    fig.text(0.06, 0.935, "  ·  ".join(bits), fontsize=8.5,
+             color=export.MUTED)
+
+    for a in (ax, axm, axn):
+        a.tick_params(colors=export.MUTED, labelsize=8)
+        for sp in a.spines.values():
+            sp.set_color(export.GRID)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, facecolor="white")
+    plt.close(fig)
+    return buf.getvalue()
+
+
+def _strip(ax, groups, per_group, color, names, field, ylabel, export,
+           pct=False):
+    """One dot per recording, and the group mean as a bar.
+
+    Jittered on x so two recordings with the same value are two dots rather
+    than one -- the count is the thing being read off this.
+    """
+    rng = np.random.default_rng(7)      # fixed, so the figure is reproducible
+    ticks, labels = [], []
+    for i, g in enumerate(groups):
+        rows = per_group.get(g["id"], [])
+        vals = [r.get(field) for r in rows
+                if r.get(field) is not None]
+        if not vals:
+            continue
+        vals = np.asarray(vals, dtype=float)
+        if pct:
+            vals = vals * 100.0
+        x = i + (rng.random(vals.size) - 0.5) * 0.28
+        ax.scatter(x, vals, s=22, color=color[g["id"]], alpha=0.75,
+                   linewidths=0)
+        ax.hlines(float(np.mean(vals)), i - 0.24, i + 0.24,
+                  color=color[g["id"]], lw=2.0)
+        ticks.append(i)
+        labels.append("%s\nn=%d" % (names.get(g["id"], g["id"]), len(vals)))
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(labels, fontsize=8)
+    ax.set_xlim(-0.6, max(0.6, len(groups) - 0.4))
+    ax.set_ylabel(ylabel + (" (%)" if pct else ""), color=export.INK)
+    ax.grid(True, axis="y", color=export.GRID, lw=0.6)
+
+
+def converge_tables(conv, names=None):
+    """The two tables behind the figure, as rows for `extras.to_csv`."""
+    names = names or {}
+    edges = conv.get("edges") or []
+    per_rows, long_rows = [], []
+    for s in conv.get("sessions") or []:
+        grp = ", ".join(names.get(g, g) for g in (s.get("groups") or [])) \
+            or "Ungrouped"
+        per_rows.append({
+            "gid": s["gid"], "recording": s.get("label"), "group": grp,
+            "n_windows": s.get("n_windows"), "n_used": s.get("n_used"),
+            "n_nopeak": s.get("n_nopeak"),
+            "nopeak_fraction": (None if s.get("nopeak_frac") is None
+                                else round(s["nopeak_frac"], 6)),
+            "modal_hz": s.get("modal_hz"), "median_hz": s.get("median_hz"),
+            "aperiodic_exponent": s.get("exponent"),
+        })
+        for i, d in enumerate(s.get("density") or []):
+            if i + 1 >= len(edges):
+                break
+            long_rows.append({
+                "gid": s["gid"], "recording": s.get("label"), "group": grp,
+                "f_lo": round(edges[i], 6), "f_hi": round(edges[i + 1], 6),
+                "count": (s.get("counts") or [None] * (i + 1))[i]
+                         if s.get("counts") else None,
+                "density": round(float(d), 9),
+            })
+    return per_rows, long_rows
 
 
 # ==========================================================================

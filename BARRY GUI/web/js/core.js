@@ -2877,7 +2877,16 @@ BARRY.init = async function init() {
   requestAnimationFrame(() => BARRY.boot.clear());
 
   if (cscPath && BARRY.views.xplore) {
-    BARRY.views.xplore.open(cscPath).then((sess) => {
+    /* `?even=1` forces the even-channel read, `?even=0` forces the whole
+       list, and no `even` at all leaves the recording to answer for itself
+       -- which is the default, because neither answer is right for both
+       rigs. Incisor's traces window asks for even, because a CSD wants one
+       line of contacts and that is what the 32-channel probe on 64 inputs
+       is. */
+    const evenArg = params.get('even');
+    const openOpts = evenArg == null ? undefined
+      : { evenOnly: evenArg !== '0' && evenArg !== 'false' };
+    BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));

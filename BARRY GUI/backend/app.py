@@ -28,6 +28,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                healthlog as healthlogmod,
                incisor as incisormod,
                panorama as panoramamod,
+               panoramaset as pnsetmod,
                retime as retimemod,
                spectrum as spectrummod,
                device as devicemod,
@@ -712,6 +713,40 @@ def api_session_bad():
     return jsonify({"ok": True, "session": rec})
 
 
+@app.route("/api/session/bad-for-path", methods=["POST"])
+def api_session_bad_for_path():
+    """The same thing as `/api/session/bad`, for a caller holding a path.
+
+    The trace view has the identity because it opened the recording. A tool
+    panel does not -- Incisor picks a registry row and a folder -- and
+    making it open the whole recording just to learn its mouse and session
+    is a lot of reading for a checkbox. The identity is worked out here
+    instead, from the same path and header the scan itself uses, so both
+    ways of marking a channel bad land on one record.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    identity = ids.identify(sess["path"], header_time=_header_time(sess))
+    if not identity or identity.get("mouse") is None:
+        return jsonify({
+            "ok": False,
+            "error": "This recording's mouse and session could not be read "
+                     "from its path, so bad channels cannot be remembered "
+                     "for it. Rename the folder to include m<N> and s<N>, "
+                     "or mark them in the trace view."}), 400
+    try:
+        rec = STORE.set_bad_channels(identity,
+                                     body.get("bad_channels") or [],
+                                     body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("session/bad-for-path", exc, 400,
+                    {"path": sess.get("path")})
+    return jsonify({"ok": True, "session": rec,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
+
+
 @app.route("/api/session/note", methods=["POST"])
 def api_session_note():
     """Free-text notes and the quality flag, both keyed on session identity."""
@@ -1362,7 +1397,13 @@ def api_panorama_run():
                 job.set_preview(uri)
 
         out = panoramamod.run(sess, spec, job, on_preview=on_preview)
+        # The spectrogram matrices ride out of `run` so they can be
+        # kept for re-colouring, and come straight back off before the
+        # result goes anywhere near jsonify -- they are numpy arrays.
+        mats = out.pop("_mats", None)
         panoramamod.cache_put(key, out)
+        if mats:
+            panoramamod.mats_put(key, mats)
         return out
 
     job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
@@ -1394,15 +1435,64 @@ def api_panorama_recolor():
         spec = _panorama_spec(body, sess)
     except Exception as exc:                             # noqa: BLE001
         return fail("panorama/recolor", exc, 400, {"path": body.get("path")})
-    hit = panoramamod.cache_get(panoramamod.cache_key(spec))
+    key = panoramamod.cache_key(spec)
+    hit = panoramamod.cache_get(key)
     if hit is None:
         return jsonify({"ok": False,
                         "error": "That run is no longer held here. Run it "
                                  "again and the picture comes back with "
                                  "it."}), 409
+    mats = panoramamod.mats_get(key)
+    if not mats:
+        # The numbers are still here but the matrices have been evicted, so
+        # the picture cannot be re-coloured without reading again. Said,
+        # rather than silently handing back the old colours.
+        return jsonify({"ok": False,
+                        "error": "The picture behind this run is no longer "
+                                 "held. Run it again to change the "
+                                 "colours."}), 409
+    try:
+        panoramamod.recolor(hit, mats, spec.get("cmap"), spec.get("scale"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/recolor", exc, 400, {"path": body.get("path")})
     return jsonify({"ok": True,
                     "channels": [{"index": c.get("index"),
                                   "spectrogram": c.get("spectrogram")}
+                                 for c in hit.get("channels") or []]})
+
+
+@app.route("/api/panorama/rebin", methods=["POST"])
+def api_panorama_rebin():
+    """Re-cut the histograms, from numbers already computed.
+
+    A histogram is a count of the per-window dominant frequencies, and those
+    are already in the held result -- so changing the bin count or switching
+    to linear bins is arithmetic on a few thousand floats. It used to be
+    part of the cache key, which made it a reason to read half an hour of
+    recording again.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/rebin", exc, 400, {"path": body.get("path")})
+    hit = panoramamod.cache_get(panoramamod.cache_key(spec))
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again."}), 409
+    try:
+        # In place, so a save afterwards writes the bins on screen.
+        panoramamod.rebin(hit, spec.get("bins"), spec.get("hist_scale"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/rebin", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True,
+                    "channels": [{"index": c.get("index"),
+                                  "hist": c.get("hist"),
+                                  "modal_hz": c.get("modal_hz")}
                                  for c in hit.get("channels") or []]})
 
 
@@ -1491,7 +1581,13 @@ def api_panorama_save():
                     "n_windows": ch["hist"]["n_windows"],
                     "n_used": ch["hist"]["n_used"],
                     "n_nopeak": ch["hist"]["n_nopeak"],
-                    "n_rejected": ch["hist"]["n_rejected"]},
+                    "n_rejected": ch["hist"]["n_rejected"],
+                    # How often the dominant peak only just won. Over a
+                    # wide range this is high for almost any recording,
+                    # which is the point: a modal frequency of 41 Hz out
+                    # of a set of coin tosses is not the same claim as one
+                    # out of a clear rhythm, and the file has to say which.
+                    "close_call_frac": panoramamod._close_calls(ch)},
         "notes": out.get("notes"),
         "provenance": STORE.provenance(),
     }, indent=1, sort_keys=True).encode("utf-8"), "_params.json")
@@ -1527,6 +1623,705 @@ def api_panorama_save():
                     "run": run.get("id") if isinstance(run, dict) else None})
 
 
+# ==========================================================================
+# Panorama over many recordings
+#
+# The tool asks one question of every recording in a set, one at a time, and
+# files each answer as it lands. Everything durable is in `panoramaset.py`;
+# this is the HTTP around it plus the two things only the app knows -- how to
+# open a recording, and what the layer sheets say.
+# ==========================================================================
+PNSETS = pnsetmod.Sets(LOGS_DIR, STORE)
+
+
+def _pn_opener(member):
+    """Open one recording for the bulk worker.
+
+    Deliberately NOT `_session_for`. That cache holds six and evicts by
+    iterating a plain dict while request threads insert into it, so a run
+    over forty recordings would both thrash it and race it -- and it would
+    evict whatever the person at the keyboard has open. The worker is
+    sequential, so it holds one session and lets it go.
+    """
+    path = (member or {}).get("path")
+    if not path:
+        return {"ok": False, "error": "no path recorded for this session"}
+    try:
+        return csc.open_session(path)
+    except Exception as exc:                             # noqa: BLE001
+        return {"ok": False, "error": str(exc)[:200]}
+
+
+def _pn_channel_for(gid, region, fallback=None):
+    """Which channel to analyse, and how that was decided.
+
+    The layer sheet first, because a channel number means a different depth
+    in every animal and the sheet is where somebody already wrote down what
+    is where. A set-wide fallback number second, marked as such. Otherwise
+    nothing -- shown as needing a sheet rather than analysed on whatever
+    channel happened to be first, which would silently compare the hilus in
+    one animal with stratum radiatum in the next.
+    """
+    if region:
+        rec = LAYERS.get(gid)
+        labels = (rec or {}).get("labels") or {}
+        hits = sorted(int(n) for n, r in labels.items() if r == region)
+        if hits:
+            return {"channel": hits[0], "channel_from": "layers",
+                    "region": region,
+                    "channel_label": "CSC%d" % hits[0],
+                    "alternatives": hits[1:]}
+    if fallback is not None:
+        return {"channel": int(fallback), "channel_from": "fallback",
+                "region": region, "channel_label": "CSC%d" % int(fallback)}
+    return {"channel": None, "channel_from": "none", "region": region}
+
+
+def _pn_member_rows(gids, region=None, fallback=None):
+    """Turn a list of recordings into set members, channels resolved."""
+    out = []
+    for gid in gids:
+        # Through `_session_by_gid`, so the demo recordings work: they are
+        # not in the registry on purpose, and every route that looks a gid
+        # up has to know that or they arrive as "unidentified".
+        rec = _session_by_gid(gid) or {}
+        # `loadable` before `here` before `paths`: a folder can outlive its
+        # contents, and a set assembled on the rig and opened on a laptop
+        # should say "not reachable" rather than fail at run time.
+        path = ((rec.get("loadable") or rec.get("here") or rec.get("paths")
+                 or [None])[0])
+        got = _pn_channel_for(gid, region, fallback)
+        got.update({
+            "gid": gid,
+            "label": rec.get("label") or rec.get("key") or gid,
+            "path": path,
+        })
+        out.append(got)
+    return out
+
+
+@app.route("/api/panorama/sets")
+def api_panorama_sets():
+    """Every set this lab has, newest first."""
+    rows = []
+    for rec in PNSETS.all(include_archived=bool(request.args.get("archived"))):
+        state = rec.get("state") or {}
+        members = [m for m in (rec.get("members") or [])
+                   if m.get("enabled", True)]
+        counts = {}
+        for m in members:
+            st = (state.get(m["id"]) or {}).get("status") or "waiting"
+            counts[st] = counts.get(st, 0) + 1
+        rows.append({
+            "set_id": rec["set_id"], "name": rec.get("name"),
+            "params": rec.get("params"), "params_hash": rec.get("params_hash"),
+            "n_members": len(members), "counts": counts,
+            "grouping": rec.get("grouping"),
+            "archived": bool(rec.get("archived")),
+            "created": rec.get("created"), "updated": rec.get("updated"),
+            "saved": len(rec.get("saved") or []),
+        })
+    return jsonify({"ok": True, "sets": rows,
+                    "regions": [dict(r) for r in layers.REGIONS]})
+
+
+@app.route("/api/panorama/sets", methods=["POST"])
+def api_panorama_set_create():
+    """A new set: a question, and the recordings to ask it of."""
+    body = request.get_json(force=True) or {}
+    gids = [g for g in (body.get("gids") or []) if g]
+    if not gids:
+        return jsonify({"ok": False,
+                        "error": "Pick at least one recording."}), 400
+    try:
+        params = _panorama_params(body)
+        members = _pn_member_rows(gids, body.get("region"),
+                                  body.get("fallback_channel"))
+        rec = PNSETS.create(body.get("name"), params, members,
+                            grouping=body.get("grouping") or "auto",
+                            note=body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-create", exc, 400, {"n": len(gids)})
+    STORE.record_activity([{
+        "action": "panorama.set_create",
+        "detail": {"name": rec.get("name"), "n": len(rec.get("members") or []),
+                   "region": body.get("region")},
+    }])
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+def _panorama_params(body):
+    """The question a set asks, with the defaults filled in.
+
+    The same fields `_panorama_spec` takes, minus the recording and the
+    channel -- those vary per member -- and minus the colormap, which does
+    not change any number.
+    """
+    f_lo = float(body.get("f_lo") or panoramamod.DEFAULT_FLO)
+    f_hi = float(body.get("f_hi") or panoramamod.DEFAULT_FHI)
+    if f_hi <= f_lo:
+        f_hi = max(f_lo * 2.0, panoramamod.DEFAULT_FHI)
+    out = {
+        "f_lo": f_lo, "f_hi": f_hi,
+        "sub_s": float(body.get("sub_s") or panoramamod.DEFAULT_SUB_S),
+        "win_s": float(body.get("win_s") or panoramamod.DEFAULT_WIN_S),
+        "step_s": float(body.get("step_s") or panoramamod.DEFAULT_STEP_S),
+        "bins": int(body.get("bins") or panoramamod.DEFAULT_BINS),
+        "hist_scale": ("linear" if body.get("hist_scale") == "linear"
+                       else "log"),
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+    }
+    if body.get("t0") is not None:
+        out["t0"] = float(body["t0"])
+    if body.get("t1") is not None:
+        out["t1"] = float(body["t1"])
+    for k in ("peak_width_limits", "max_n_peaks", "min_peak_height",
+              "aperiodic_mode"):
+        if body.get(k) is not None:
+            out[k] = body[k]
+    return out
+
+
+def _pn_tree(rec):
+    """A set as the tree draws it: members, state, and each one's numbers."""
+    ph = rec.get("params_hash")
+    state = rec.get("state") or {}
+    rows = []
+    for m in rec.get("members") or []:
+        gid = m["id"]
+        st = dict(state.get(gid) or {})
+        res = PNSETS.result_get(gid, ph)
+        row = dict(m)
+        row["status"] = st.get("status") or "waiting"
+        row["error"] = st.get("error")
+        # Why it cannot run, worked out now rather than when its turn comes.
+        if not m.get("path"):
+            row["blocked_why"] = "no folder this machine can read"
+        elif m.get("channel") is None:
+            row["blocked_why"] = "no channel chosen"
+        row["job"] = st.get("job")
+        row["at"] = st.get("at")
+        if res:
+            row.update({
+                "n_windows": res.get("n_windows"),
+                "n_used": res.get("n_used"),
+                "n_nopeak": res.get("n_nopeak"),
+                "modal_hz": res.get("modal_hz"),
+                "median_hz": res.get("median_hz"),
+                "exponent": (res.get("fit") or {}).get("exponent"),
+                "r2": (res.get("fit") or {}).get("r_squared"),
+                "gap_s": (res.get("gaps") or {}).get("seconds"),
+                "gap_n": (res.get("gaps") or {}).get("n"),
+                # How often the dominant frequency was a coin toss between
+                # two near-equal peaks. High means this recording's
+                # histogram is mostly about which of several broad bumps
+                # happened to win, and should be read knowing that.
+                "close_call": res.get("close_call_frac"),
+                # The sparkline. Counts only -- the edges are the set's and
+                # are sent once, beside the tree, rather than forty times.
+                "spark": res.get("counts_peak"),
+                "seconds": (res.get("computed") or {}).get("seconds"),
+                "has_png": PNSETS.has_png(gid, ph),
+            })
+            if row["status"] == "waiting":
+                # Computed under this question by somebody, sometime -- the
+                # set's own state map just has not heard about it.
+                row["status"] = "done"
+                row["cached"] = True
+        rows.append(row)
+    edges = None
+    for m in rows:
+        res = PNSETS.result_get(m["id"], ph)
+        if res and res.get("edges"):
+            edges = res["edges"]
+            break
+    return {
+        "set_id": rec["set_id"], "name": rec.get("name"),
+        "note": rec.get("note"),
+        "params": rec.get("params"), "params_hash": ph,
+        "grouping": rec.get("grouping"),
+        "archived": bool(rec.get("archived")),
+        "created": rec.get("created"), "updated": rec.get("updated"),
+        "saved": rec.get("saved") or [],
+        "members": rows,
+        "edges": edges,
+    }
+
+
+@app.route("/api/panorama/sets/<set_id>")
+def api_panorama_set(set_id):
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    # A member whose job went away with the last process is interrupted, not
+    # running. Done on read so a reload tells the truth without anybody
+    # having to press anything.
+    if PNSETS.reconcile(rec, cfcmod.exists):
+        PNSETS._write(rec)
+    return jsonify({"ok": True, "set": _pn_tree(rec),
+                    "regions": [dict(r) for r in layers.REGIONS]})
+
+
+@app.route("/api/panorama/sets/<set_id>/members", methods=["POST"])
+def api_panorama_set_members(set_id):
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if body.get("remove"):
+        rec = PNSETS.remove_member(set_id, body["remove"])
+        return jsonify({"ok": True, "set": _pn_tree(rec)})
+    gids = [g for g in (body.get("gids") or []) if g]
+    if not gids:
+        return jsonify({"ok": False, "error": "Nothing to add."}), 400
+    members = _pn_member_rows(gids, body.get("region")
+                              or (rec.get("members") or [{}])[0].get("region"),
+                              body.get("fallback_channel"))
+    rec = PNSETS.add_members(set_id, members)
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+@app.route("/api/panorama/sets/<set_id>/channel", methods=["POST"])
+def api_panorama_set_channel(set_id):
+    """Override one recording's channel, or re-resolve every one by rule."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if body.get("gid"):
+        ch = body.get("channel")
+        rec = PNSETS.set_channel(
+            set_id, body["gid"],
+            None if ch in (None, "") else int(ch),
+            channel_label=(None if ch in (None, "") else "CSC%d" % int(ch)),
+            how="manual")
+        return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+    region = body.get("region")
+    fallback = body.get("fallback_channel")
+    keep_manual = body.get("keep_manual", True)
+    for m in list(rec.get("members") or []):
+        if keep_manual and m.get("channel_from") == "manual":
+            continue
+        got = _pn_channel_for(m["id"], region, fallback)
+        PNSETS.set_channel(set_id, m["id"], got["channel"],
+                           channel_label=got.get("channel_label"),
+                           how=got["channel_from"], region=region)
+    return jsonify({"ok": True, "set": _pn_tree(PNSETS.get(set_id))})
+
+
+@app.route("/api/panorama/sets/<set_id>/estimate", methods=["POST"])
+def api_panorama_set_estimate(set_id):
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    body = request.get_json(force=True) or {}
+    force = bool(body.get("force"))
+    split = PNSETS.pending(rec, force=force)
+    try:
+        plan = pnsetmod.plan_for_set(rec, _pn_opener, split["todo"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-estimate", exc, 400, {"set": set_id})
+    return jsonify({"ok": True, "plan": plan,
+                    "todo": len(split["todo"]),
+                    "cached": len(split["cached"]),
+                    "blocked": [m["id"] for m in split["blocked"]]})
+
+
+@app.route("/api/panorama/sets/<set_id>/run", methods=["POST"])
+def api_panorama_set_run(set_id):
+    """Start the set. Poll it on /api/cfc/job/<id> like everything else."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if not panoramamod.HAVE_FOOOF:
+        return jsonify({
+            "ok": False,
+            "error": "Panorama's per-window fits need the `fooof` package, "
+                     "which is not installed here. Run `pip install -r "
+                     "requirements.txt` in the BARRY GUI folder.",
+        }), 501
+
+    force = bool(body.get("force"))
+    split = PNSETS.pending(rec, force=force)
+    if not split["todo"]:
+        return jsonify({"ok": True, "nothing": True,
+                        "set": _pn_tree(rec),
+                        "cached": len(split["cached"]),
+                        "blocked": [m["id"] for m in split["blocked"]]})
+    try:
+        plan = pnsetmod.plan_for_set(rec, _pn_opener, split["todo"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-run", exc, 400, {"set": set_id})
+
+    steps = [("panorama bulk", int(max(1, plan["span_s"])))]
+    where = cfcmod.volume_key((split["todo"][0] or {}).get("path"))
+
+    def work(job):
+        return pnsetmod.run_set(PNSETS, set_id, _pn_opener, job, force=force)
+
+    job = cfcmod.start({"set_id": set_id, "path": (split["todo"][0] or {}).get("path")},
+                       steps, work, 1.0, where)
+    STORE.record_activity([{
+        "action": "panorama.set_run",
+        "detail": {"set": rec.get("name"), "n": len(split["todo"]),
+                   "cached": len(split["cached"]),
+                   "span_s": plan["span_s"]},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "plan": plan})
+
+
+# ==========================================================================
+# Converging a set
+# ==========================================================================
+def _pn_auto_groups(rec, attr="group"):
+    """Groups derived from what the lab already wrote down.
+
+    No grouping record, nothing to maintain: the mouse's own attribute
+    first -- which is where PTEN and CTL are already recorded -- then the
+    cohort the folders name, then the project. Materialised into a real
+    grouping only when somebody edits it, the way `layers.ensure` copies
+    REGIONS in, so a set grouped today still means what it meant if the
+    project labels are corrected next month.
+    """
+    idx = MICE.index()
+    assign, names = {}, {}
+    for m in rec.get("members") or []:
+        gid = m["id"]
+        got = _session_by_gid(gid) or {}
+        attrs = ((idx.get(str(got.get("project"))) or {})
+                 .get(str(got.get("mouse"))) or {}).get("attrs") or {}
+        label = (attrs.get(attr) or got.get("cohort")
+                 or got.get("project") or "").strip()
+        if not label:
+            assign[gid] = []
+            continue
+        key = "auto:" + label
+        assign[gid] = [key]
+        names[key] = label
+    return assign, names
+
+
+def _pn_grouping_for(rec, body):
+    """(groups_of, names) for however this set is grouped.
+
+    `facet` narrows a stored grouping to one axis -- genotype, say -- which
+    is what makes "at most one group per recording" checkable: PTEN and
+    female are not rival groups and a recording in both is not
+    double-counted, but PTEN and CTL are.
+    """
+    which = body.get("grouping") or rec.get("grouping") or "auto"
+    if which == "auto" or not which:
+        assign, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        return (lambda g: assign.get(g, [])), names
+
+    got = PNSETS.grouping_get(which)
+    if not got:
+        # Named a grouping that is not here -- another machine's, most
+        # likely. Derived beats wrong.
+        assign, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        return (lambda g: assign.get(g, [])), names
+
+    facet = body.get("facet")
+    defs = {g["id"]: g for g in (got.get("groups") or [])}
+    names = {k: v.get("name") or k for k, v in defs.items()}
+    assign = got.get("assign") or {}
+
+    def groups_of(gid):
+        ids = [g for g in (assign.get(gid) or []) if g in defs]
+        if facet:
+            ids = [g for g in ids if defs[g].get("facet") == facet]
+        return ids
+
+    return groups_of, names
+
+
+@app.route("/api/panorama/sets/<set_id>/converge", methods=["POST"])
+def api_panorama_converge(set_id):
+    """Every recording's histogram, pooled by group. The point of a set."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    try:
+        groups_of, names = _pn_grouping_for(rec, body)
+        conv = pnsetmod.converge(
+            PNSETS, rec, groups_of,
+            dominant=("flat" if body.get("dominant") == "flat" else "peak"),
+            weight=("window" if body.get("weight") == "window"
+                    else "session"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/converge", exc, 400, {"set": set_id})
+    if not conv.get("ok"):
+        return jsonify(conv), 409
+    conv["names"] = names
+    conv["grouping"] = body.get("grouping") or rec.get("grouping") or "auto"
+    conv["attr"] = body.get("attr") or "group"
+    conv["attributes"] = [a for a in MICE.attributes()
+                          if a.get("n") or a.get("suggested")]
+    return jsonify({"ok": True, "converged": conv})
+
+
+@app.route("/api/panorama/groupings")
+def api_panorama_groupings():
+    return jsonify({"ok": True,
+                    "groupings": [{"id": g["id"], "name": g.get("name"),
+                                   "groups": g.get("groups") or [],
+                                   "n_assigned": len(g.get("assign") or {}),
+                                   "updated": g.get("updated")}
+                                  for g in PNSETS.grouping_all()]})
+
+
+@app.route("/api/panorama/groupings", methods=["POST"])
+def api_panorama_grouping_create():
+    """A custom grouping, seeded from the derived one so nothing is retyped."""
+    body = request.get_json(force=True) or {}
+    set_id = body.get("set_id")
+    groups, assign = body.get("groups"), body.get("assign")
+    if set_id and not groups:
+        rec = PNSETS.get(set_id)
+        if not rec:
+            return jsonify({"ok": False, "error": "No such set."}), 404
+        auto, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        facet = body.get("attr") or "group"
+        groups = [{"id": k, "name": v, "facet": facet, "order": i}
+                  for i, (k, v) in enumerate(sorted(names.items(),
+                                                    key=lambda kv: kv[1]))]
+        assign = auto
+    rec2 = PNSETS.grouping_create(body.get("name") or "Custom grouping",
+                                  groups=groups, assign=assign,
+                                  note=body.get("note"))
+    if set_id:
+        PNSETS.set_grouping(set_id, rec2["id"])
+    return jsonify({"ok": True, "grouping": rec2})
+
+
+@app.route("/api/panorama/groupings/<gid_>", methods=["POST"])
+def api_panorama_grouping_edit(gid_):
+    body = request.get_json(force=True) or {}
+    if body.get("assign") is not None and body.get("gid"):
+        rec = PNSETS.grouping_assign(gid_, body["gid"], body["assign"])
+    else:
+        rec = PNSETS.grouping_edit(gid_, groups=body.get("groups"),
+                                   name=body.get("name"),
+                                   note=body.get("note"))
+    if not rec:
+        return jsonify({"ok": False, "error": "No such grouping."}), 404
+    return jsonify({"ok": True, "grouping": rec})
+
+
+@app.route("/api/panorama/sets/<set_id>/save", methods=["POST"])
+def api_panorama_set_save(set_id):
+    """The convergence figure and the two tables behind it, into Results/.
+
+    `set_id` and the question's hash go in the filename. `save_output` never
+    clobbers -- it appends `_2` -- so repeats accumulate, and the hash is
+    what tells you which run a stray `_3` belongs to.
+    """
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    try:
+        groups_of, names = _pn_grouping_for(rec, body)
+        conv = pnsetmod.converge(
+            PNSETS, rec, groups_of,
+            dominant=("flat" if body.get("dominant") == "flat" else "peak"),
+            weight=("window" if body.get("weight") == "window"
+                    else "session"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-save", exc, 400, {"set": set_id})
+    if not conv.get("ok"):
+        return jsonify(conv), 409
+
+    label = str(body.get("name") or rec.get("name") or "panorama").strip()
+    stem = "".join(c if (c.isalnum() or c in " -_.") else "-"
+                   for c in label).strip().replace(" ", "_")[:60]
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    stem = "converge_%s_%s_%s_%s" % (stem or "set", set_id,
+                                     rec.get("params_hash"), stamp)
+
+    head = ("# Jarvis Panorama -- convergence -- %s -- %d recordings -- "
+            "%.3g-%.3g Hz -- dominant by %s -- %s -- taken %s\n"
+            % (label, conv.get("n_sessions", 0),
+               (rec.get("params") or {}).get("f_lo"),
+               (rec.get("params") or {}).get("f_hi"),
+               conv.get("dominant"),
+               ("one vote per recording" if conv.get("weight") != "window"
+                else "weighted by recording length"),
+               time.strftime("%Y-%m-%dT%H:%M:%S")))
+
+    per_rows, long_rows = panoramamod.converge_tables(conv, names)
+    written, errors = [], []
+
+    def put(blob, suffix):
+        try:
+            written.append(save_output(blob, stem + suffix,
+                                       subdir="Panorama"))
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("%s: %s" % (suffix, exc))
+            STORE.record_error("panorama/set-save", str(exc), None,
+                               {"name": stem + suffix})
+
+    try:
+        put(panoramamod.converge_figure(conv, title=label, names=names),
+            ".png")
+    except Exception as exc:                             # noqa: BLE001
+        errors.append("figure: %s" % exc)
+        STORE.record_error("panorama/converge-figure", str(exc), None,
+                           {"set": set_id})
+
+    put((head + extras.to_csv(per_rows)).encode("utf-8"), "_recordings.csv")
+    put((head + extras.to_csv(long_rows)).encode("utf-8"), "_histograms.csv")
+    put(json.dumps({
+        "tool": "panorama", "kind": "convergence",
+        "set_id": set_id, "name": rec.get("name"),
+        "params": rec.get("params"), "params_hash": rec.get("params_hash"),
+        "grouping": conv.get("grouping"), "attr": conv.get("attr"),
+        "group_names": names,
+        "dominant": conv.get("dominant"), "weight": conv.get("weight"),
+        "groups": [{k: g[k] for k in ("id", "n", "modal_hz", "nopeak_mean",
+                                      "gids")}
+                   for g in conv.get("groups") or []],
+        "n_sessions": conv.get("n_sessions"),
+        "not_run": conv.get("not_run"),
+        "no_windows": conv.get("no_windows"),
+        "in_several_groups": conv.get("in_several_groups"),
+        "provenance": STORE.provenance(),
+    }, indent=1, sort_keys=True).encode("utf-8"), "_params.json")
+
+    if not written:
+        return jsonify({"ok": False,
+                        "error": "Nothing could be written to Results/: "
+                                 + "; ".join(errors)}), 500
+
+    run = STORE.record_run({
+        "kind": "panorama", "script": "Panorama convergence",
+        "label": "Panorama convergence -- " + label,
+        "status": "done", "format": "png",
+        "parameters": {"set_id": set_id,
+                       "params_hash": rec.get("params_hash"),
+                       "dominant": conv.get("dominant"),
+                       "weight": conv.get("weight"),
+                       "grouping": conv.get("grouping"),
+                       "n_recordings": conv.get("n_sessions")},
+        "output": written[0], "outputs": written,
+    })
+    PNSETS.record_saved(set_id, {"kind": "convergence",
+                                 "result_rel": written[0]["rel"],
+                                 "run": run.get("id")})
+    STORE.record_activity([{
+        "action": "panorama.converge_save",
+        "detail": {"set": rec.get("name"), "files": len(written),
+                   "recordings": conv.get("n_sessions")},
+    }])
+    return jsonify({"ok": True, "folder": "Results/Panorama",
+                    "files": [w["rel"] for w in written],
+                    "errors": errors,
+                    "run": run.get("id") if isinstance(run, dict) else None})
+
+
+@app.route("/api/panorama/sets/<set_id>/archive", methods=["POST"])
+def api_panorama_set_archive(set_id):
+    """Put a set away without losing it. The usual way to finish with one."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.archive(set_id, bool(body.get("on", True)))
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+@app.route("/api/panorama/sets/<set_id>/delete", methods=["POST"])
+def api_panorama_set_delete(set_id):
+    """Delete a set, and optionally the answers computed for it.
+
+    The answers are keyed on the recording and the question, not on the set,
+    so another set may be relying on them -- which is why they are NOT
+    removed unless asked for. `results: true` is for a harness clearing up
+    after itself, and for somebody who really does want the numbers gone.
+    """
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    ph = rec.get("params_hash")
+    gone = {"sets": 0, "results": 0, "pictures": 0}
+
+    if body.get("results"):
+        for m in rec.get("members") or []:
+            gid = m["id"]
+            if PNSETS.results.erase(PNSETS.result_base(gid, ph)):
+                gone["results"] += 1
+            p = PNSETS.png_path(gid, ph)
+            try:
+                if os.path.exists(p):
+                    os.remove(p)
+                    gone["pictures"] += 1
+            except OSError:
+                pass
+
+    gone["sets"] = PNSETS.book.erase(shards.safe_base(set_id)) or 0
+    STORE.record_activity([{
+        "action": "panorama.set_delete",
+        "detail": {"set": rec.get("name"), "results": gone["results"]},
+    }])
+    return jsonify({"ok": True, "removed": gone})
+
+
+@app.route("/api/panorama/sets/<set_id>/result/<gid>")
+def api_panorama_set_result(set_id, gid):
+    """One recording's answer, for when a row in the tree is clicked."""
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    got = PNSETS.result_get(gid, rec["params_hash"])
+    if not got:
+        return jsonify({"ok": False,
+                        "error": "That recording has not been run under "
+                                 "this set's settings yet."}), 404
+    return jsonify({"ok": True, "result": got,
+                    "has_png": PNSETS.has_png(gid, rec["params_hash"])})
+
+
+@app.route("/api/panorama/sets/<set_id>/spectrogram/<gid>.png")
+def api_panorama_set_png(set_id, gid):
+    """The cached picture. Not in the record -- see panoramaset.py."""
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    path = PNSETS.png_path(gid, rec["params_hash"])
+    if not os.path.exists(path):
+        return jsonify({"ok": False,
+                        "error": "No picture held for that recording."}), 404
+    return send_file(path, mimetype="image/png")
+
+
+def _stored_for(sess):
+    """The saved record for an open session, or `{}`.
+
+    Bad channels and the chosen probe are not in the `.ncs` files -- they are
+    decisions somebody made about this recording -- so anything that has to
+    honour them must look them up the same way the trace view does: by
+    identity, not by path. Two machines with the recording on different
+    drives are the same session and must get the same answer.
+    """
+    try:
+        if sess.get("source") == "demo":
+            spec = demomod.get(sess.get("path")) or {}
+            return {"bad_channels": list(spec.get("bad") or [])}
+        identity = ids.identify(sess.get("path"),
+                                header_time=_header_time(sess))
+        rec, _how = STORE.get_session(identity)
+        return rec or {}
+    except Exception:                                    # noqa: BLE001
+        # A recording whose record cannot be found is scanned whole rather
+        # than not at all -- but it is not silently treated as having no
+        # bad channels, because the panel reports what this returned.
+        return {}
+
+
 def _incisor_spec(body, sess):
     """What the run is being asked for, with the defaults filled in.
 
@@ -1537,15 +2332,58 @@ def _incisor_spec(body, sess):
     (inverted) gives 1230 events at 1444 uV on the hilus channel and the
     other gives four.
     """
+    stored = _stored_for(sess)
+
+    # Bad channels are dropped from the scan, not merely down-weighted.
+    #
+    # Toothy keeps detecting on them and nulls them out of the three
+    # estimates afterwards (`noise_idx`, `ephys.py:892/902/916`). Dropping
+    # them instead gives the same three answers for less reading, and it
+    # means the channel list in the reply IS the list that was looked at --
+    # a ranking table with a dead channel sitting in it invites somebody to
+    # pick the dead channel.
+    #
+    # `None` means the caller did not say, so the session's own record
+    # decides. An explicit list -- including an empty one -- overrides it,
+    # which is how the panel offers "scan it with this one put back".
+    if body.get("bad_channels") is None:
+        bad = {int(b) for b in (stored.get("bad_channels") or [])}
+    else:
+        bad = {int(b) for b in body["bad_channels"]}
+
+    all_ch = sess.get("channels") or []
+    by_index = {int(c["index"]): c for c in all_ch}
     chans = body.get("channels")
     if not chans:
-        chans = [c["index"] for c in (sess.get("channels") or [])]
+        chans = [c["index"] for c in all_ch]
+    chans = [int(c) for c in chans if int(c) in by_index]
+    kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
+    dropped = [i for i in chans if int(by_index[i]["number"]) in bad]
+    if not kept:
+        raise ValueError(
+            "Every channel in this recording is marked bad, so there is "
+            "nothing to scan. Put at least one back and run it again.")
+
+    probe_id = (stored.get("view_state") or {}).get("probe") or "h3"
+    probe = probebook.get(probe_id) or {}
     spec = {
         "path": sess.get("path"),
-        "channels": [int(c) for c in chans],
+        "channels": kept,
         "invert": bool(sess.get("invert", True)),
         "even_only": bool(sess.get("even_only")),
         "estimator": (body.get("estimator") or "sd"),
+        # Carried so the answer can say what it left out, rather than
+        # quietly returning a shorter list than it was asked for. `channels`
+        # is in the cache key, so changing the bad set re-scans by itself.
+        "bad_channels": sorted(bad),
+        "excluded": [{"index": i, "number": int(by_index[i]["number"]),
+                      "label": by_index[i].get("label")} for i in dropped],
+        # The detector does not use this -- only a CSD cares which contacts
+        # are neighbours -- but it decides how the traces window lays the
+        # recording out, and a scan that does not say which probe it was
+        # read as leaves the reader to guess.
+        "probe": probe_id,
+        "probe_name": probe.get("name") or probe_id,
     }
     for key, default in (("height_sd", incisormod.DS_HEIGHT_SD),
                          ("abs_uv", incisormod.DS_ABS_THR_UV),
@@ -1599,6 +2437,15 @@ def api_incisor_estimate():
         # What the session already believes about its own anatomy, so the
         # window can put the scan's answer beside it rather than over it.
         "known": _known_channels(sess.get("path")),
+        # Every channel in the recording, marked. The plan says how many
+        # were scanned and which were left out; this is what a panel needs
+        # to let somebody change that -- and it is the full list, including
+        # the ones being skipped, because you cannot put a channel back from
+        # a list it is not in.
+        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": int(c["number"]) in set(spec["bad_channels"])}
+                     for c in (sess.get("channels") or [])],
     })
 
 
