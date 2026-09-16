@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccknows: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* What does the cluster know, and what does it keep quiet about?
+
+   The assertion to write first, because this codebase has made the mistake
+   once already: a recording nobody has established an answer for must draw
+   NOTHING. Most of a fresh scan has no gid -- exact ids are minted when
+   headers are read -- and reading a missing answer as "the cluster cannot
+   reach this" would put an upload badge on hundreds of recordings that are
+   sitting on the share it mounts. `canOpen` in sessions.js carries a comment
+   about the identical bug, where a missing field read as "not on this
+   machine" hid every recording that was certainly openable.
+
+   The second assertion is about colour. Green is for "reads it in place",
+   which is a guarantee. A staged copy is in scratch, which VACC purges
+   without notice, so it is warning-coloured -- the same argument
+   `.flagchip.concat.safe` already makes about green reading as "nothing to
+   see here". */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(60);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+
+  say('=== the module is there and answers offline ===');
+  check('BARRY.vacc exists', ev('typeof BARRY.vacc') === 'object');
+  check('and has the three things the interface needs',
+        ev('typeof BARRY.vacc.of') === 'function'
+        && ev('typeof BARRY.vacc.status') === 'function'
+        && ev('typeof BARRY.vacc.showVacc') === 'function');
+
+  const st = JSON.parse(await ev('fetch("/api/vacc/status").then(r=>r.text())'));
+  check('/api/vacc/status answers', st.ok === true, JSON.stringify(st).slice(0, 120));
+  check('and says plainly whether there is an account here',
+        typeof st.configured === 'boolean' && typeof st.available === 'boolean',
+        'configured=' + st.configured + ' available=' + st.available);
+  check('an unreachable cluster is not an error, it is a sentence',
+        st.available === true || (typeof st.why === 'string' && st.why.length > 0),
+        st.why);
+
+  say('');
+  say('=== what it can reach is arithmetic, not a connection ===');
+  const kn = JSON.parse(await ev('fetch("/api/vacc/knows").then(r=>r.text())'));
+  check('/api/vacc/knows answers with the cluster down', kn.ok === true);
+  const c = kn.counts || {};
+  const total = (c.native || 0) + (c.staged || 0) + (c['local-only'] || 0)
+              + (c.unknown || 0);
+  check('every recording got exactly one verdict',
+        total === Object.keys(kn.knows || {}).length,
+        total + ' verdicts, ' + Object.keys(kn.knows || {}).length + ' recordings');
+  check('the four states are the only four',
+        Object.values(kn.knows || {}).every(
+          (v) => ['native', 'staged', 'local-only', 'unknown'].indexOf(v.state) >= 0),
+        [...new Set(Object.values(kn.knows || {}).map((v) => v.state))].join(' '));
+  check('a native verdict carries the remote path it resolved to',
+        Object.values(kn.knows || {}).filter((v) => v.state === 'native')
+          .every((v) => typeof v.remote === 'string' && v.remote.startsWith('/')),
+        JSON.stringify(Object.values(kn.knows || {})
+          .filter((v) => v.state === 'native')[0] || null));
+  say('    ' + JSON.stringify(c), 'note');
+
+  say('');
+  say('=== absent is not negative ===');
+  await ev('BARRY.vacc.loadKnows()');
+  await sleep(400);
+  // A row with no gid: the ordinary case straight after a scan.
+  check('a recording with no gid gets no chip',
+        ev('BARRY.vacc.of({ label: "nothing" })') === null,
+        String(ev('JSON.stringify(BARRY.vacc.of({label:"nothing"}))')));
+  check('a gid the cluster has never heard of gets no chip',
+        ev('BARRY.vacc.of({ gid: "sZZZZnotreal" })') === null,
+        String(ev('JSON.stringify(BARRY.vacc.of({gid:"sZZZZnotreal"}))')));
+  const anyGid = Object.keys(kn.knows || {})[0];
+  if (anyGid) {
+    check('a gid it does know comes back with a state',
+          ev('!!(BARRY.vacc.of({ gid: "' + anyGid + '" }) || {}).state'),
+          anyGid);
+  }
+
+  say('');
+  say('=== and local-only draws nothing either ===');
+  // Only the two affirmative states draw. "Cannot reach it" is not news on a
+  // card; it is the default for anything not on the share.
+  const local = Object.entries(kn.knows || {})
+    .filter(([, v]) => v.state === 'local-only').map(([g]) => g)[0];
+  const native = Object.entries(kn.knows || {})
+    .filter(([, v]) => v.state === 'native').map(([g]) => g)[0];
+  const chipFor = (gid) => ev(
+    '(function(){ var v = BARRY.views.sessions; '
+    + 'var s = { gid: ' + JSON.stringify(gid) + ' };'
+    + 'var got = BARRY.vacc.of(s);'
+    + 'return got ? got.state : "none"; })()');
+  if (local) check('a local-only recording resolves as such',
+                   chipFor(local) === 'local-only', chipFor(local));
+  if (native) check('a native one resolves as native',
+                    chipFor(native) === 'native', chipFor(native));
+
+  say('');
+  say('=== the colours say what they mean ===');
+  const D = frame.contentDocument;
+  const probe = D.createElement('span');
+  probe.className = 'flagchip vacc native';
+  D.body.appendChild(probe);
+  const nativeColor = getComputedStyle(probe).color;
+  probe.className = 'flagchip vacc staged';
+  const stagedColor = getComputedStyle(probe).color;
+  probe.remove();
+  const tok = (n) => getComputedStyle(D.documentElement).getPropertyValue(n).trim();
+  const asRgb = (hex) => {
+    const p = D.createElement('span');
+    p.style.color = hex; D.body.appendChild(p);
+    const v = getComputedStyle(p).color; p.remove(); return v;
+  };
+  check('native is the ok colour', nativeColor === asRgb(tok('--ok')),
+        nativeColor + ' vs ' + asRgb(tok('--ok')));
+  check('staged is the WARNING colour, because scratch is purged',
+        stagedColor === asRgb(tok('--warn')),
+        stagedColor + ' vs ' + asRgb(tok('--warn')));
+  check('and the two are not the same', nativeColor !== stagedColor);
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vaccknows: ' + fails + ' FAILED' : 'vaccknows: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vaccknows CRASH'; });
+</script></body></html>

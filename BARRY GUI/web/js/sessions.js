@@ -993,6 +993,7 @@ BARRY.views.sessions = (function () {
           text: 'remembered',
         }) : null,
         concatChip(s),
+        vaccChip(s),
         healthPill(s),
         noteChip(s),
       ]),
@@ -1006,6 +1007,37 @@ BARRY.views.sessions = (function () {
      costs nothing per card and says nothing at all about a recording nobody
      has checked -- which is the honest answer for one, and not the same as
      saying it is clean. */
+  /* What the cluster makes of this recording, or nothing at all.
+
+     Four states and only two of them draw. `BARRY.vacc.of` returns null for
+     a recording nobody has established an answer for -- which is most of a
+     fresh scan, because exact ids are minted when headers are read and a
+     scanned row often has no gid. Reading that as "the cluster cannot reach
+     it" would put an upload badge on four hundred recordings that are
+     already sitting on the share it mounts.
+
+     This is the same mistake `canOpen` above documents: a missing field read
+     as "no" hid every recording that was certainly openable. Absent is not
+     negative, and the only honest thing to draw for it is nothing. */
+  function vaccChip(s) {
+    if (!BARRY.vacc) return null;
+    const got = BARRY.vacc.of(s);
+    if (!got) return null;
+    if (got.state !== 'native' && got.state !== 'staged') return null;
+    const native = got.state === 'native';
+    return el('span', {
+      class: 'flagchip vacc ' + got.state,
+      text: native ? 'VACC' : 'VACC copy',
+      title: native
+        ? 'The cluster reads this one where it already is — ' + got.remote
+          + '\n\nNothing to upload: it is on a share VACC mounts.'
+        : 'A copy of this recording is in cluster scratch.\n\n'
+          + 'Scratch is not storage — VACC may clear it without notice, so '
+          + 'this is a cache and never the only copy. If it goes, the next '
+          + 'run puts it back.',
+    });
+  }
+
   function concatChip(s) {
     const c = continuityOf(s);
     if (!c || !c.concat_issue) return null;

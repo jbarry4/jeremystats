@@ -327,6 +327,22 @@ BARRY.incisor = (function () {
     if (job) host.appendChild(stageCard());
     if (res) host.appendChild(channelCard());
     if (res) host.appendChild(resultCard());
+    /* Drawn now, and again on the next frame.
+
+       Now, because a frame is not guaranteed to come: `requestAnimationFrame`
+       does not fire in a background tab, and a panel whose plots are blank
+       until you look at it twice is worse than one that costs a layout. The
+       nodes are in the live document by this point, so reading
+       `clientWidth` flushes layout and the canvas sizes correctly -- which
+       is the thing the rAF was there to wait for.
+
+       And again on the next frame, because the first measurement can still
+       be taken before a scrollbar appears or a webfont settles, and the
+       second one is a redraw of three small canvases from data already in
+       hand. Found by a harness: after a repick the canvases were still at
+       the HTML default 300x150 with nothing on them, because under a
+       virtual-time budget the rAF had not run yet. */
+    if (res) { wirePlots(); drawPlots(); requestAnimationFrame(drawPlots); }
   }
 
   function head() {
@@ -714,6 +730,420 @@ BARRY.incisor = (function () {
     }
   }
 
+  /* ==================================================================
+     Every channel, three ways
+     ==================================================================
+     Toothy's `ephys.py:1144 plot_channel_events` draws exactly these three
+     beside its channel picker, and people have been reading them for years:
+     how many dentate spikes each channel carried, how big they were, and
+     how far each one stood above its own surround. They are here because
+     the hilus pick is an argmax over the first and second of them, and an
+     argmax is a number -- these are the picture it came out of, which is
+     what tells you whether the pick is obvious or a coin toss.
+
+     Same colours as Toothy, deliberately: seaborn's cubehelix at
+     `dark=0.2, light=0.9, rot=0.4`, light for little and dark for a lot. A
+     plot somebody already knows how to read should not change its palette
+     on the way into a second tool.
+     ================================================================== */
+
+  /* Is the page dark? Read off the background token rather than off the
+     theme's name: there are ten themes and the list grows, and what this
+     needs to know is one thing about the pixels behind the plot.
+
+     Read ONCE per draw, into `dark` below. `BARRY.token` is a
+     `getComputedStyle` on the document element, and `cubehelix` is called
+     per mark -- sixty-four channels of four hundred amplitudes is
+     twenty-five thousand marks, and asking the style system the same
+     question twenty-five thousand times to draw one small canvas is a
+     forced layout per dot. */
+  function readDark() {
+    const bg = BARRY.token('--bg', '#ffffff').trim();
+    let r = 255, g = 255, b = 255;
+    let m = bg.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      const hex = m[1].length === 3
+        ? m[1].split('').map((c) => c + c).join('') : m[1];
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    } else if ((m = bg.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/))) {
+      r = +m[1]; g = +m[2]; b = +m[3];
+    }
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128;
+  }
+
+  /* Green's cubehelix, the matplotlib formula (`_cm.cubehelix`), at
+     seaborn's `dark=0.2, light=0.9, rot=0.4` -- Toothy's palette, so that a
+     plot somebody has been reading for two years looks like itself here.
+     `t` is 0 for the smallest value and 1 for the largest.
+
+     Which END the largest value gets depends on the page, and this is the
+     one place the copy is deliberately not exact. Toothy draws on white,
+     where seaborn's walk from light to dark puts the busiest channel at the
+     darkest, most prominent point. On a dark theme that same walk makes the
+     busiest channel the one you cannot see -- measured on screen: the tall
+     bars came out near-black on a near-black ground. So the ramp is
+     oriented to the background rather than to the source: "a lot" is always
+     the end that stands out, which is the thing the colour is FOR. On the
+     light themes it is Toothy's ramp exactly. */
+  let dark = false;   // set by drawPlots, before anything is coloured
+  function cubehelix(t) {
+    const LIGHT = 0.9, DARK = 0.2, START = 0.0, ROT = 0.4, HUE = 0.8;
+    const u = Math.max(0, Math.min(1, t || 0));
+    const lo = dark ? DARK : LIGHT;
+    const hi = dark ? LIGHT : DARK;
+    const x = lo + (hi - lo) * u;
+    const a = HUE * x * (1 - x) / 2;
+    const phi = 2 * Math.PI * (START / 3 + ROT * x);
+    const cos = Math.cos(phi), sin = Math.sin(phi);
+    const ch = (p0, p1) => Math.round(255 * Math.max(0, Math.min(1,
+      x + a * (p0 * cos + p1 * sin))));
+    return 'rgb(' + ch(-0.14861, 1.78277) + ',' + ch(-0.29227, -0.90649)
+         + ',' + ch(1.97294, 0.0) + ')';
+  }
+  /* A channel that was not read. Toothy greys its noise channels in place
+     rather than dropping them, and so does this: a gap you can see is the
+     point -- it is how "CSC41 is excluded" reads off the plot instead of
+     off a sentence above it. */
+  const GREY = 'rgba(150,150,150,0.55)';
+
+  /* The x axis every plot shares: every channel on the probe, in order,
+     whether or not it was read. `est.channels` is the whole list and
+     `res.channels` only the scanned ones, so the axis comes from the first
+     and the data from the second. */
+  function plotAxis() {
+    const all = (est && est.channels) || [];
+    const by = {};
+    for (const c of (res && res.channels) || []) by[Number(c.number)] = c;
+    const axis = (all.length ? all : (res && res.channels) || [])
+      .map((c) => Number(c.number)).sort((a, b) => a - b);
+    return { axis, by };
+  }
+
+  /* Deterministic jitter, so a redraw does not reshuffle the dots.
+
+     seaborn's stripplot jitters within the category so that events at the
+     same amplitude are not one dot. Its jitter is random; this one is a
+     hash of the channel and the index, which looks the same and stops the
+     cloud crawling every time the panel repaints. */
+  function jitter(ch, i) {
+    const h = Math.sin(ch * 127.1 + i * 311.7) * 43758.5453;
+    return (h - Math.floor(h)) - 0.5;
+  }
+
+  /* Size from the canvas's OWN laid-out width. `parentNode.clientWidth`
+     includes the card's padding, which is how Panorama's canvases came out
+     wider than the box they sit in. */
+  function plotCanvas(id, h) {
+    const cv = document.getElementById(id);
+    if (!cv || !cv.parentNode) return null;
+    cv.style.width = '100%';
+    const w = Math.max(160, Math.round(
+      cv.clientWidth || cv.getBoundingClientRect().width
+      || cv.parentNode.clientWidth));
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    cv.style.height = h + 'px';
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    return { cv, g, W: w, H: h };
+  }
+
+  const PLOT_PAD = { l: 44, r: 8, t: 22, b: 26 };
+
+  /* The frame the three share: the chosen channel's band behind
+     everything, the axes, the channel ticks and the two titles. Returns the
+     scales, because every caller then needs them. */
+  function plotFrame(c, axis, title, ylab, ymax, ymin) {
+    const { g, W, H } = c;
+    const k = {
+      text: BARRY.token('--text', '#222'),
+      dim: BARRY.token('--text-3', '#888'),
+      faint: BARRY.token('--border', '#ddd'),
+    };
+    const P = PLOT_PAD;
+    const plotW = Math.max(10, W - P.l - P.r);
+    const plotH = Math.max(10, H - P.t - P.b);
+    const lo = ymin || 0;
+    const hi = (ymax > lo) ? ymax : lo + 1;
+    // Half a step of margin at each end, so the first and last channel are
+    // not drawn on the axis line. Toothy's `xmargin=0.05`.
+    const step = plotW / Math.max(1, axis.length);
+    const sx = (num) => {
+      const i = axis.indexOf(Number(num));
+      return P.l + (i < 0 ? 0 : (i + 0.5) * step);
+    };
+    const sy = (v) => P.t + plotH - ((v - lo) / (hi - lo)) * plotH;
+
+    // The chosen hilus channel, behind the data. Toothy marks it with an
+    // `axvspan` for the same reason: the pick has to be findable in the
+    // picture without counting ticks across to it.
+    const hil = chosen.hilus;
+    if (hil != null && axis.indexOf(Number(hil)) >= 0) {
+      g.fillStyle = BARRY.token('--accent', '#FFB81C');
+      g.globalAlpha = 0.22;
+      g.fillRect(sx(hil) - step / 2, P.t, Math.max(2, step), plotH);
+      g.globalAlpha = 1;
+    }
+
+    g.strokeStyle = k.faint;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(P.l + 0.5, P.t);
+    g.lineTo(P.l + 0.5, P.t + plotH + 0.5);
+    g.lineTo(W - P.r, P.t + plotH + 0.5);
+    g.stroke();
+
+    g.font = '600 11px system-ui, sans-serif';
+    g.fillStyle = k.text;
+    g.textAlign = 'center';
+    g.fillText(title, P.l + plotW / 2, 12);
+
+    g.font = '9.5px system-ui, sans-serif';
+    g.fillStyle = k.dim;
+    // About ten of them, on round numbers, the way Toothy's MaxNLocator
+    // does it -- not every channel, which is unreadable at sixty-four.
+    const every = Math.max(1, Math.ceil(axis.length / 9));
+    g.textAlign = 'center';
+    for (let i = 0; i < axis.length; i += every) {
+      g.fillText(String(axis[i]), sx(axis[i]), H - P.b + 12);
+    }
+    g.textAlign = 'right';
+    // Three, not two. Top and bottom alone leave the reader interpolating
+    // across a hundred and twenty pixels to place a bar, which is most of
+    // what these are looked at for.
+    g.fillText(fmtTick(hi), P.l - 4, P.t + 4);
+    g.fillText(fmtTick((lo + hi) / 2), P.l - 4, P.t + plotH / 2 + 3);
+    g.fillText(fmtTick(lo), P.l - 4, P.t + plotH + 3);
+    g.save();
+    g.translate(10, P.t + plotH / 2);
+    g.rotate(-Math.PI / 2);
+    g.textAlign = 'center';
+    g.fillText(ylab, 0, 0);
+    g.restore();
+    return { sx, sy, step, plotW, plotH, P, lo, hi };
+  }
+
+  /* A count is a count. The first version ran every axis through the same
+     decimal rule and labelled the event axis "73.0" and "0.00", which reads
+     as a measurement with a precision it does not have -- there is no such
+     thing as 73.0 dentate spikes. Whole numbers print whole. */
+  const fmtTick = (v) => {
+    if (!isFinite(v)) return '';
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+    if (Math.abs(v) >= 100) return String(Math.round(v));
+    if (Math.abs(v) >= 1) return (Math.round(v * 10) / 10).toFixed(1);
+    return (Math.round(v * 100) / 100).toFixed(2);
+  };
+
+  /* 1. How many. Toothy's `ax0`: a bar per channel, coloured by its own
+     height, which is half of what the hilus argmax multiplies. */
+  function drawCount() {
+    const c = plotCanvas('incPlotCount', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    const ns = axis.map((n) => Number((by[n] || {}).n || 0));
+    const top = Math.max(1, Math.max.apply(null, ns));
+    const f = plotFrame(c, axis, 'DS count', '# events', top);
+    const g = c.g;
+    for (let i = 0; i < axis.length; i += 1) {
+      const row = by[axis[i]];
+      const x = f.sx(axis[i]);
+      const w = Math.max(1, f.step * 0.8);
+      if (!row) { drawGap(g, x, f); continue; }
+      g.fillStyle = cubehelix(ns[i] / top);
+      const y = f.sy(ns[i]);
+      g.fillRect(x - w / 2, y, w, f.P.t + f.plotH - y);
+    }
+  }
+
+  /* A channel that was not read: a thin grey column the full height, so it
+     is obviously absent rather than obviously zero. Those are different
+     facts and a bar of height nothing says the wrong one. */
+  function drawGap(g, x, f) {
+    g.fillStyle = GREY;
+    g.globalAlpha = 0.18;
+    g.fillRect(x - 1, f.P.t, 2, f.plotH);
+    g.globalAlpha = 1;
+  }
+
+  /* 2. How big. Toothy's `ax1`: a stripplot of EVERY event's amplitude,
+     hued by the amplitude itself. What travels here is a sample of at most
+     four hundred per channel, taken at an even stride -- see
+     `AMP_SAMPLE_MAX` in incisor.py. The count above is exact; this is the
+     shape of the distribution, which is all it is read for. */
+  function drawAmp() {
+    const c = plotCanvas('incPlotAmp', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    let top = 0, bot = Infinity;
+    for (const n of axis) {
+      for (const a of ((by[n] || {}).amp_sample || [])) {
+        if (a > top) top = a;
+        if (a < bot) bot = a;
+      }
+    }
+    /* Scaled to the amplitudes, not to zero.
+
+       A bar chart has to start at zero or its bars lie about their ratios.
+       A cloud of amplitudes does not, and pinning this one to zero wasted
+       the lower two thirds of the panel on the range below the detection
+       threshold -- which is empty BY CONSTRUCTION, since nothing under the
+       threshold is an event. Toothy's axis starts at its data too. */
+    if (!isFinite(bot) || top <= 0) { bot = 0; top = 1; }
+    const pad = (top - bot) * 0.06 || 1;
+    const f = plotFrame(c, axis, 'DS amplitude', 'Amplitude µV',
+                        top + pad, Math.max(0, bot - pad));
+    const g = c.g;
+    const rad = Math.max(0.7, Math.min(1.8, f.step * 0.14));
+    for (const n of axis) {
+      const row = by[n];
+      if (!row) { drawGap(g, f.sx(n), f); continue; }
+      const xs = f.sx(n);
+      const amps = row.amp_sample || [];
+      for (let i = 0; i < amps.length; i += 1) {
+        g.fillStyle = cubehelix(amps[i] / top);
+        g.beginPath();
+        g.arc(xs + jitter(n, i) * f.step * 0.7, f.sy(amps[i]), rad, 0,
+              Math.PI * 2);
+        g.fill();
+      }
+    }
+  }
+
+  /* 3. How far above the surround. Toothy's `ax2`: the mean of
+     `width_height` with its standard error, drawn as a bar through a ring.
+     `width_height` is where `peak_widths(rel_height=0.5)` measured the
+     width -- the trace level halfway down the peak's own prominence --
+     and "prominence / 2" is Toothy's name for that axis, kept. */
+  function drawProm() {
+    const c = plotCanvas('incPlotProm', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    let top = 0, bot = Infinity;
+    for (const n of axis) {
+      const r = by[n];
+      if (!r || r.width_height_mean == null) continue;
+      top = Math.max(top, r.width_height_mean + (r.width_height_sem || 0));
+      bot = Math.min(bot, r.width_height_mean - (r.width_height_sem || 0));
+    }
+    if (!isFinite(bot)) { bot = 0; top = 1; }
+    const pad = (top - bot) * 0.12 || 1;
+    const f = plotFrame(c, axis, 'DS height above surround',
+                        'prominence / 2', top + pad, bot - pad);
+    const g = c.g;
+    const rad = Math.max(2.5, Math.min(5, f.step * 0.35));
+    for (const n of axis) {
+      const r = by[n];
+      if (!r) { drawGap(g, f.sx(n), f); continue; }
+      if (r.width_height_mean == null) continue;
+      const t = (r.width_height_mean - f.lo) / (f.hi - f.lo);
+      const col = cubehelix(t);
+      const x = f.sx(n), y = f.sy(r.width_height_mean);
+      const e = r.width_height_sem || 0;
+      g.strokeStyle = col;
+      g.lineWidth = Math.max(1.5, Math.min(3.5, f.step * 0.22));
+      g.beginPath();
+      g.moveTo(x, f.sy(r.width_height_mean - e));
+      g.lineTo(x, f.sy(r.width_height_mean + e));
+      g.stroke();
+      // White first, then a wash of the same colour over it: Toothy draws
+      // the ring twice for this, and the white is what keeps a ring legible
+      // where the error bars of its neighbours run behind it.
+      g.fillStyle = BARRY.token('--bg', '#fff');
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.2; g.fillStyle = col;
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = col;
+      g.lineWidth = 2;
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.stroke();
+    }
+  }
+
+  function drawPlots() {
+    if (!res || !document.getElementById('incPlotCount')) return;
+    // Once, here, for every mark in all three. See `readDark`.
+    dark = readDark();
+    try { drawCount(); drawAmp(); drawProm(); } catch (e) { /* non-fatal */ }
+  }
+
+  /* Which channel is under a pointer at `x` on any of the three. They
+     share an axis, so one function serves all of them. */
+  function channelAtX(cv, x) {
+    const { axis } = plotAxis();
+    if (!axis.length) return null;
+    const w = cv.getBoundingClientRect().width;
+    const step = Math.max(1, (w - PLOT_PAD.l - PLOT_PAD.r) / axis.length);
+    const i = Math.floor((x - PLOT_PAD.l) / step);
+    return axis[Math.max(0, Math.min(axis.length - 1, i))];
+  }
+
+  function plotBlock() {
+    const box = el('div', {});
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'The three Toothy draws beside its own channel picker, on this '
+          + 'scan. The hilus pick is an argmax over normalised count × '
+          + 'normalised amplitude, so the first two plots are the picture '
+          + 'that argmax came out of. Click any of them to put the hilus on '
+          + 'that channel. Grey columns were not read.' }));
+    const wrap = el('div', { class: 'inc-plots' });
+    for (const id of ['incPlotCount', 'incPlotAmp', 'incPlotProm']) {
+      const cv = el('canvas', {
+        id, class: 'inc-plot',
+        title: 'Click to put the hilus on this channel',
+        onclick: (e) => {
+          const n = channelAtX(e.target,
+                               e.clientX - e.target.getBoundingClientRect().left);
+          if (n == null) return;
+          chosen.hilus = Number(n);
+          pushLines(); paint();
+        },
+        onmousemove: (e) => {
+          const n = channelAtX(e.target,
+                               e.clientX - e.target.getBoundingClientRect().left);
+          const out = document.getElementById('incPlotRead');
+          if (!out || n == null) return;
+          const { by } = plotAxis();
+          const r = by[Number(n)];
+          out.textContent = r
+            ? ('CSC' + n + ' — ' + r.n + ' candidate'
+               + (r.n === 1 ? '' : 's') + ', mean '
+               + (r.mean_amp || 0).toFixed(0) + ' µV, '
+               + (r.width_height_mean == null ? 'no height'
+                  : (r.width_height_mean.toFixed(2) + ' above surround')))
+            : ('CSC' + n + ' — not read');
+        },
+        onmouseleave: () => {
+          const out = document.getElementById('incPlotRead');
+          if (out) out.textContent = '';
+        },
+      });
+      wrap.appendChild(cv);
+    }
+    box.appendChild(wrap);
+    box.appendChild(el('p', { class: 'hint quiet inc-plot-read',
+                              id: 'incPlotRead', text: '' }));
+    return box;
+  }
+
+  /* Redrawn on a resize, because the canvases are sized from their laid-out
+     width and a narrower pane is a different picture, not the same one
+     squashed. Attached once. */
+  let plotsWired = false;
+  function wirePlots() {
+    if (plotsWired) return;
+    plotsWired = true;
+    let t = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(drawPlots, 160);
+    });
+  }
+
   /* ---------------- step 3: the channel ---------------- */
   function channelCard() {
     const box = el('div', { class: 'card' });
@@ -740,7 +1170,10 @@ BARRY.incisor = (function () {
           + 'came out of the scan, so switching one costs nothing and '
           + 'nothing is read again. To move the picks themselves, add or '
           + 'remove channels in step 2 and scan again.' }));
+    box.appendChild(plotBlock());
     const known = (est && est.known) || {};
+
+    const most = (res.alternates || {}).most_spikes;
 
     let unresolved = false;
     for (const r of ROLES) {
@@ -788,6 +1221,27 @@ BARRY.incisor = (function () {
                 chosen[r.key] = pick.number; pushLines(); paint();
               },
             }) : null,
+            /* The other answer to the same question, offered as a button.
+               Toothy's estimate -- and so this one -- is an argmax over a
+               PRODUCT of normalised amplitude and normalised count, which
+               is usually the right trade and sometimes is not: a hilus site
+               next to a quiet one can come second on amplitude while
+               carrying nearly every spike in the recording. Pressing this
+               is somebody saying they mean the count. */
+            (r.key === 'hilus' && most) ? el('button', {
+              class: 'btn ghost sm'
+                     + (Number(now) === Number(most.number) ? ' on' : ''),
+              text: 'Most spikes: ' + most.label,
+              title: most.label + ' carried the most dentate spikes of any '
+                   + 'channel scanned (' + (most.value || 0) + ', ahead of '
+                   + 'the next by ' + (100 * (most.margin || 0)).toFixed(0)
+                   + '%). That is not the same claim as “this is the '
+                   + 'hilus”: the scan’s own pick weighs amplitude as well '
+                   + 'as count.',
+              onclick: () => {
+                chosen.hilus = Number(most.number); pushLines(); paint();
+              },
+            }) : null,
           ].filter(Boolean)),
           el('p', { class: 'hint quiet',
             text: pick
@@ -805,6 +1259,16 @@ BARRY.incisor = (function () {
                      + 'own data says is worth a look, not a coin toss.')
                   : ('agrees with the CSC' + was + ' on file for this '
                      + 'recording') })
+            : null,
+          (r.key === 'hilus' && most && pick
+           && Number(most.number) !== Number(pick.number))
+            ? el('p', { class: 'hint quiet',
+                text: 'The most dentate spikes are on ' + most.label
+                    + ' (' + (most.value || 0) + '), not on ' + pick.label
+                    + '. The scan weighs how big they are as well as how '
+                    + 'many, so the two part company when a channel carries '
+                    + 'a lot of small events. The plots above are that '
+                    + 'disagreement drawn out.' })
             : null,
           (pick && !clash && pick.margin < 0.1)
             ? el('p', { class: 'hint warn',
@@ -1072,6 +1536,12 @@ BARRY.incisor = (function () {
     _traceUrl: traceUrl,
     _setBad: setBadSet,
     _refresh: refreshEstimate,
+    /* The plots' own axis arithmetic, so a harness can ask "which channel
+       is under this pixel" with the same function the click handler uses
+       rather than a second copy of it to drift from the first. */
+    _plotAxis: plotAxis,
+    _channelAtX: channelAtX,
+    _drawPlots: drawPlots,
     _choose: (key, number) => {
       chosen[key] = number == null ? null : Number(number);
       pushLines(); paint();

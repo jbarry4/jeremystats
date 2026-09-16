@@ -12,6 +12,7 @@ const BARRY = {
     jobSeq: 0,          // last log line seen for that job
     poll: null,
     theme: 'dark',
+    vacc: false,        // VACC Mode -- the look, not the capability
   },
   views: {},
 };
@@ -2583,10 +2584,22 @@ function applyTheme(theme, remember) {
       BARRY.prefs.set('themes', all);
     }
   }
+  repaintThemedSurfaces();
+}
+
+/* Everything that reads a CSS token once and keeps the answer.
+
+   A canvas paints from `BARRY.token()` at draw time and then holds those
+   colors until something asks it to draw again, so changing the tokens under
+   it leaves the last palette on screen -- the trace stays green on a pink
+   interface until you happen to pan. Which surfaces those are is not
+   obvious and the list has been wrong before, so it lives in one function
+   and every path that changes a token calls it. `applyTheme` is one such
+   path; VACC Mode is about to be the second. */
+function repaintThemedSurfaces() {
   paintFavicon();
-  // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
-  // Same for the explainer's figures, if it happens to be open.
+  // The explainer's figures, if it happens to be open.
   if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
@@ -2652,6 +2665,77 @@ function paintFavicon() {
   link.type = 'image/svg+xml';
   link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
 }
+
+/* ==========================================================================
+   VACC Mode
+
+   A second attribute on the root, orthogonal to the theme: `data-theme` says
+   which palette, `data-vacc` says how hard it is running. The CSS layer adds
+   six `--fire-*` tokens and touches none of the thirty a theme defines, which
+   `web/_dev/vaccskin.html` asserts token by token across all ten.
+
+   It is a display preference and nothing else. It never gates a control --
+   turning the glow off because your eyes hurt must not take away the Cancel
+   button for a job still running on a shared cluster. What the cluster can
+   do is `/api/vacc/status`; this is only what it looks like while it does it.
+   ========================================================================== */
+function applyVacc(on, remember) {
+  on = !!on;
+  BARRY.state.vacc = on;
+  if (on) document.documentElement.dataset.vacc = 'on';
+  else delete document.documentElement.dataset.vacc;
+
+  const label = $('#vaccToggle span');
+  if (label) label.textContent = on ? 'VACC on' : 'VACC';
+  const btn = $('#vaccToggle');
+  if (btn) btn.classList.toggle('on', on);
+
+  if (remember !== false) {
+    // Same split as the theme, for the same reason: localStorage so the
+    // first paint is already right with nothing fetched, and a map keyed by
+    // hostname so the rig and the laptop disagree without overwriting each
+    // other. See PREFS_SPEC in store.py -- the key is merged per host.
+    try { localStorage.setItem('barry.vacc', on ? '1' : ''); } catch (e) { /* private */ }
+    const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+    if (host) {
+      const all = Object.assign({}, BARRY.prefs.get('vacc', {}) || {});
+      all[host] = on;
+      BARRY.prefs.set('vacc', all);
+    }
+  }
+  // Same three surfaces as a theme change: the tokens moved, and anything
+  // holding a color it read earlier is now holding the wrong one.
+  repaintThemedSurfaces();
+}
+
+function vaccForThisMachine() {
+  const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+  const byHost = BARRY.prefs.get('vacc', {}) || {};
+  if (host && Object.prototype.hasOwnProperty.call(byHost, host)) return !!byHost[host];
+  try {
+    return localStorage.getItem('barry.vacc') === '1';
+  } catch (e) { /* private mode */ }
+  return false;
+}
+
+/* Whether a VACC job is being polled right now. The pulse is the only
+   animated thing the mode adds and it runs off this, so that the interface
+   is lit because the cluster is working rather than because somebody once
+   flipped a switch. Reference-counted: two jobs at once must not have the
+   first one to finish stop the pulse for the second. */
+BARRY.vaccBusy = (function () {
+  let n = 0;
+  const paint = () => {
+    if (n > 0) document.documentElement.dataset.vaccBusy = '1';
+    else delete document.documentElement.dataset.vaccBusy;
+  };
+  return {
+    start() { n += 1; paint(); },
+    stop() { n = Math.max(0, n - 1); paint(); },
+    reset() { n = 0; paint(); },
+    get count() { return n; },
+  };
+})();
 
 function themeForThisMachine() {
   const host = ((BARRY.state.catalog || {}).system || {}).hostname;
@@ -2855,10 +2939,21 @@ BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
   // A ?theme= in the URL wins but is not remembered -- it is for a link, not
   // a preference.
-  const urlTheme = new URLSearchParams(location.search).get('theme');
+  const q0 = new URLSearchParams(location.search);
+  const urlTheme = q0.get('theme');
   let saved = null;
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
+
+  // VACC Mode reads the same way and for the same reason -- before anything
+  // is fetched, so the first paint is already right. `?vacc=` wins and is not
+  // remembered: it is how a pop-out inherits the window it came from, which
+  // is a link rather than a preference.
+  const urlVacc = q0.get('vacc');
+  let savedVacc = false;
+  try { savedVacc = localStorage.getItem('barry.vacc') === '1'; } catch (e) { /* ignore */ }
+  applyVacc(urlVacc === null ? savedVacc : urlVacc === 'on' || urlVacc === '1',
+            urlVacc === null);
 
   BARRY.boot.say('wiring up the interface');
 
@@ -2873,6 +2968,14 @@ BARRY.init = async function init() {
   BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
+
+  const vaccBtn = $('#vaccToggle');
+  if (vaccBtn) {
+    vaccBtn.addEventListener('click', () => {
+      applyVacc(!BARRY.state.vacc);
+      BARRY.activity.log('vacc.mode', { on: BARRY.state.vacc });
+    });
+  }
 
   $('#syncBtn').addEventListener('click', showSync);
   const goBtn = $('#syncNowBtn');
@@ -2955,7 +3058,19 @@ BARRY.init = async function init() {
   if (mine && mine !== BARRY.state.theme) applyTheme(mine);
   else applyTheme(BARRY.state.theme, true);   // records it for this machine
 
+  // Same reconciliation for VACC Mode, and skipped entirely when the URL
+  // asked for a particular state -- a pop-out must keep what it was handed
+  // rather than adopting this machine's preference a second later.
+  if (new URLSearchParams(location.search).get('vacc') === null) {
+    const mineVacc = vaccForThisMachine();
+    if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
+  }
+
   BARRY.activity.init();
+  // Asked once, here, rather than on a timer: a permanent poller for a
+  // cluster nobody is using is what the tool feed's stop() discipline
+  // exists to prevent. It also decides whether the rail chip appears.
+  if (BARRY.vacc) BARRY.vacc.init();
   // Housekeeping lives inside the Sessions view rather than owning a rail
   // slot, so it is wired here rather than by the view loop.
   if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();

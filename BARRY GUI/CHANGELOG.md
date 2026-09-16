@@ -15,6 +15,360 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.16.5 - Band power on the strip, a version to work from, and layers you can just look at
+
+### Added
+
+- **Theta power across the whole recording, on the overview strip.** The strip
+  has always drawn average magnitude, which answers "is there signal here" and
+  not much else. It can now draw the power in a band you choose instead, with
+  the edges settable and presets for the usual ones, as absolute power, as a
+  fraction of the 1-100 Hz total, or against a delta reference. This is the
+  line `theta_through_time.py` draws, on the true time axis, with the 60 Hz
+  line bridged out of the total and a gap in the recording coming through as a
+  hole rather than as zero power. What is cached is the spectrogram surface
+  rather than the line, so moving a band edge is an integral over numbers
+  already in memory, not another read of the disk.
+
+- **Which banked version a curation sitting carries on from.** A set is one row
+  per recording per kind, but the bank behind it keeps every pass anybody ever
+  banked - seven of them on one real entry. Picking a set up said nothing about
+  which of those the sitting continued, so banking always landed on top of
+  whatever was newest, which silently buries the work that came after whenever
+  somebody goes back to an earlier pass on purpose. Both doors now ask, and
+  every row says what pressing it will do before it is pressed: `continues from
+  v4 as v5`, or `branches off v1 as v1.1, leaving what came after it alone`.
+  Switching while a set is on the bench puts the current version down and picks
+  the chosen one up, says how many decisions that will change first, and clears
+  the undo history - replaying a decision across a switch would put a call
+  nobody made into a pass they did not make it in. Versions banked without a
+  snapshot cannot be worked from, so they are shown greyed with the reason
+  rather than offered and then refused.
+
+- **Layer bands in XploreFinder, read-only.** The layers a recording has been
+  given in StrataScope can now be shown in the ordinary viewer, from the
+  per-pane More menu, at three strengths and with a colour key of the regions
+  actually in the sheet. It is a look, not an edit: no rail, no keyboard, no
+  mode, and the only request it makes is a GET. The bands are painted into the
+  pane canvas underneath the marks and the traces, so they sit behind
+  everything else rather than covering it, and nothing can swallow a click.
+
+### Fixed
+
+- **The layer overlay no longer paints channels onto a frequency axis.** The
+  overlay was extended from the traces onto every image panel, which is right
+  for the panels whose rows are channels - the CSD, a stacked time-frequency
+  view - and wrong for the ones whose vertical axis is frequency. A
+  single-channel spectrogram or scalogram has no channel rows to report, and
+  the band-power map has none either, so the overlay fell through to its
+  every-channel default and laid the layer colours evenly down a frequency
+  axis: the hilus band sitting across 40-60 Hz as though it meant something.
+  Sixty-one bands and four boundary rules, in the right place for a picture
+  that was not there. It now draws only where a lane is genuinely a channel,
+  which is worse-looking and correct.
+
+- **A window that was handed the layers can now draw them.** `sess.strata` has
+  carried the labels and the regions since it was written, put there for the
+  reason the curation marks are published the same way: a pop-out page has its
+  own session objects and none of the labelling module's private state. But the
+  overlay checked for that private state before doing anything, so any window
+  not doing the labelling stopped at the first line and the payload was never
+  once drawn from. The comment beside it has described the intended behaviour
+  all along; it is now true.
+
+- **The DS span no longer freezes at one second.** Moving through detected
+  events re-derived the window width from a preference that was not being
+  written, so a span set by hand was thrown away at the next jump and every
+  recording came back at 1.00 s. The manual zoom is now adopted and kept.
+
+- **The bank import harness tested the wrong recording.** It typed the mouse
+  rather than the whole session label, so the picker offered the first session
+  that animal ever had instead of the one with the banked entry, and then
+  clicked an option class the picker does not render - so nothing was selected
+  at all and the wizard kept its default. The "already exists" check downstream
+  then failed on a recording that genuinely has no set, reporting a fault in
+  the interface that was really a fault in the harness. It now types the label,
+  clicks what the picker actually draws, and asserts its own starting state
+  first.
+
+## 2026.09.16.4 - Incisor draws the channel it is choosing between
+
+### Added
+
+- **Toothy's three channel plots, in the Incisor panel.** DS count, DS
+  amplitude and DS height above surround, drawn from the scan that is on
+  screen - the same three `ephys.py:1144 plot_channel_events` puts beside
+  Toothy's own channel picker, in the same cubehelix palette, so a plot
+  people have been reading for years looks like itself here. The hilus
+  estimate is an argmax over normalised count x normalised amplitude; these
+  are the picture that argmax came out of, which is what says whether the
+  pick was obvious or a coin toss.
+
+- **Click a plot to put the hilus on that channel.** All three share one
+  axis and any of them takes the click. The chosen channel is banded behind
+  the data in all three at once, and hovering reads out that channel's
+  count, mean amplitude and mean height.
+
+- **"Most spikes" as its own answer.** The scan's pick weighs how big the
+  events are as well as how many, which is usually the right trade and
+  sometimes is not - a hilus site next to a quiet one can come second on
+  amplitude while carrying nearly every spike in the recording. Measured on
+  PTEN m1 s2: the scan picks CSC41 at 27 events and 601 microvolt mean,
+  while CSC42 carries 79. The button names the channel and its count, and
+  the panel says in words when the two part company. It is offered, never
+  applied: "the most events are here" and "the hilus is here" are different
+  claims and the second is the one being banked.
+
+- **Channels that were not read are drawn as grey columns rather than left
+  out.** A gap you can see is how "CSC59 is excluded" reads off the plot
+  instead of off a sentence above it, and an absent channel and a channel
+  with no events are different facts that a bar of height nothing conflates.
+
+### Changed
+
+- **The amplitude axis is scaled to the amplitudes.** Pinning it to zero
+  spent the lower two thirds of the panel on the range below the detection
+  threshold, which is empty by construction. The count axis still starts at
+  zero, because a bar chart that does not lies about its ratios, and it
+  labels whole numbers whole - there is no such thing as 73.0 dentate
+  spikes.
+
+- **The colour ramp is oriented to the background, not copied blind.**
+  Seaborn's walk from light to dark puts the busiest channel at the darkest
+  point, which is right on Toothy's white figure and invisible on a dark
+  theme - measured on screen, the tall bars came out near-black on a
+  near-black ground. "A lot" is now always the end that stands out. On the
+  light themes it is Toothy's ramp exactly.
+
+- **The plots are drawn synchronously as well as on the next frame.**
+  `requestAnimationFrame` does not fire in a background tab, and a panel
+  whose plots are blank until you look at it twice is worse than one that
+  costs a layout flush. Found by a harness: after a repick the canvases were
+  still at the HTML default 300x150 with nothing on them.
+
+### Fixed
+
+- **A scan carries the shape statistics the plots need.** Each channel now
+  reports the mean half-prominence height with its standard error - Toothy's
+  `width_height`, taken the same way its `.agg('sem')` takes it - and a
+  sample of at most four hundred amplitudes, strided so it spans the
+  recording rather than its first minutes. The sample exists because all of
+  them is not affordable: sixty-four channels of every event is the payload
+  that arrives as a 200 with a body that will not parse. The count beside it
+  is exact and is never taken from the sample.
+
+---
+
+## 2026.09.16.3 - The cluster, and what it can already read
+
+### Added
+
+- **VACC Mode.** A switch in the rail foot that turns the interface up and
+  turns the cluster on, because they are the same thing: the interface is
+  fired up *because* the cluster is live. `data-vacc` is a second attribute
+  on the root, orthogonal to `data-theme`, and it adds six `--fire-*` tokens
+  and touches none of the thirty a theme defines.
+
+  That restraint is not tidiness. `--accent-soft` and `--on-accent` are
+  hand-written per theme rather than derived, and `--on-accent` is *measured
+  ink* for one exact accent -- #14231b on the gold, #ffffff on the light
+  themes. CSS has no contrast function, so mixing a hotter accent here would
+  produce text nobody has checked can be read on it. `vaccskin.html` reads
+  all thirty tokens in all ten themes with the mode off and on and asserts
+  every one is byte-identical, so the claim is checked rather than promised.
+
+  Ten themes, three blocks. Everything is mixed from the theme's own accent,
+  so a theme added later is covered the day it is added -- and the light
+  family gets weight and edge instead of glow, because a bloom on parchment's
+  #faf6ef is a coffee stain and on jirai-shiro it is a greetings card.
+
+  One thing pulses, and only while a job is actually being polled: `opacity`
+  on one pseudo-element, never a shadow or a filter, because xplore repaints
+  its canvases every pan frame and an animated shadow above them drags the
+  whole stack with it. A permanently glowing workbench is one people quietly
+  stop using, and it would also be a lie.
+
+- **What VACC knows.** Every recording now says whether the cluster can
+  already read it, and **357 of 582 can** -- 61%, with no transfer of any
+  kind. The lab keeps most of its recordings on `bigdata_jbarry`, which VACC
+  mounts at `/netfiles/bigdata_jbarry`, so what looked like a file-transfer
+  problem is mostly a path-mapping one.
+
+  Asked of the RECORDING, not of the path in front of you, and that is the
+  whole design. 2544 recorded paths begin with `Y:`, and `net use` on this
+  computer reports no mappings at all -- those paths were written by a
+  different machine. But a recording carries every path it has ever been
+  opened from on any machine, unioned, so the UNC spelling a colleague
+  recorded answers for the drive letter this one cannot expand. Mapping by
+  drive letter alone would have found 117 of the 582; going through the
+  registry finds 357.
+
+  Four states, and the fourth earns its place: `unknown` draws nothing.
+  Exact ids are only minted when headers are read, so most of a fresh scan
+  has no gid, and reading a missing answer as "the cluster cannot reach
+  this" would have put an upload badge on four hundred recordings already
+  sitting on the share. `canOpen` in sessions.js carries a comment about the
+  identical mistake. A staged copy takes the warning colour rather than the
+  green one, because scratch is purged without notice and green would read
+  as a guarantee.
+
+### Fixed
+
+- **A run on the cluster would have corrupted every estimate on this
+  computer.** `_learn` folded each measurement into the volume-blind key as
+  well as the per-volume one -- right for a second disk, wrong for a second
+  machine -- and `_PER_VOLUME` covers only the four reading stages, so
+  `ds detect`, `panorama windows`, `panorama pool` and the rest collapsed to
+  the bare name whatever ran them.
+
+  Measured: one cluster run drags this machine's `ds detect` rate from 0.15
+  to 0.108, a 28% shift, and at 0.7/0.3 it takes about ten local runs to wash
+  back out. It runs both ways -- the cluster's ETA would have quoted the
+  desktop. Nothing had happened yet, which is the only reason this is a note
+  rather than a repair.
+
+  Fixed in `_key`, deliberately not by adding stages to `_PER_VOLUME`:
+  `_stage_stamp` hashes that set, so widening it would have dropped every
+  affected rate on every machine in the lab at the next start.
+  `tools/test_rates.py` asserts the membership so the wrong fix fails loudly.
+
+- **Queue wait is not a rate.** It is seconds at three in the morning and
+  hours before a deadline, and a running mean over the two describes
+  neither -- while `eta` would have added it to the total from t=0, making
+  the bar wrong from the first paint rather than settling. `vacc queue` is in
+  a new `_NOLEARN`; slurm answers the question properly with `squeue --start`.
+
+### Changed
+
+- `applyTheme`'s three repaint calls are now `repaintThemedSurfaces()`. Which
+  surfaces read a token once and keep the answer is not obvious, the list has
+  been wrong before, and there are now two things that change tokens.
+
+- **The cluster is not an empty machine waiting to be filled.**
+  `/gpfs2/scratch/sakhava1` already holds 1.3 TB and **120 recordings** across
+  four projects -- KCNT1 Urethane, IED, DEWEY/HOF and Wheel -- all 64-channel,
+  all put there before any of this existed. Thirty-three of them are
+  recordings the registry already knows, matched by `ids.identify` run on the
+  remote path: the same code that identifies a local folder, from the path
+  string alone, so nothing about identity is reimplemented for the cluster and
+  the two cannot drift. Another eighty-four are real recordings Jarvis has
+  never been shown, and they are reported rather than dropped.
+
+  So while the netfiles share is unreadable, there are still thirty-three
+  recordings that can be run on the cluster today with no transfer at all.
+  A listing of scratch is never written down: it is a filesystem that gets
+  purged without notice, and a durable record of it would be a claim with an
+  expiry date. Asked, cached five minutes, and re-asked on a button.
+
+- **Incisor now runs on the cluster, and gets the same answer.** Measured on
+  `s0a9e96cf1739`, a recording that exists both on scratch and on this
+  machine's D: drive: four channels, **691 dentate spikes, and not one of
+  them stamped at a different microsecond**. The channel picks agree, the
+  per-channel counts agree, and `abs_us` -- the one identity that does not
+  depend on which tool made the number -- is identical throughout. Eleven
+  seconds here, thirty-two on the cluster including the queue.
+
+  It is the same arithmetic because it is the same code. `vacc_run.py`
+  imports `backend.incisor` and calls the `run()` the desktop calls; the
+  backend is tarred over ssh and unpacked into a workspace keyed by content
+  hash, so an unchanged tree skips the upload. The continuity report travels
+  with the spec rather than being recomputed, because it is inside the cache
+  key and a segmentation that came out even slightly differently there would
+  file the answer under a name no local run ever looks for.
+
+  The environment was built to match: miniforge 26.7.2-py3.14 against this
+  machine's 3.14.4, numpy 2.5.3 against 2.4.6, scipy 1.18.1 against 1.18.0,
+  and fooof 1.1.1 against 1.1.1 -- exact where it matters most, since fooof
+  is the fitter. `env_check` records all of it.
+
+### The parity check lied three times before it worked
+
+Written down because each lie was a confident pass, and because the shape of
+them is the same shape every time: a check that cannot say how much it
+checked can quietly check nothing.
+
+- Four channels were picked without looking and all four were silent. Zero
+  events here, zero there, reported as agreement. It now scans for channels
+  that have events and **fails** if none do.
+- The local result keys `_rows` by int; the one off the cluster arrives
+  through JSON, which has no integer keys. Indexing the remote with an int
+  found nothing, `zip` yielded no pairs, and a loop that compared NOTHING
+  reported a maximum difference of exactly zero.
+- The event's time field is `start`, not `t`. Asking for `t` got `None` from
+  both sides, and `None == None`.
+
+`tools/check_vacc_parity.py` now prints how many events it compared and
+asserts that the number equals how many there were.
+
+### What the real cluster taught, once there was a key on it
+
+Four things, and three of them would have been invisible from here.
+
+- **The share is mounted and the account cannot read it.**
+  `/netfiles/bigdata_jbarry` is exactly where the path map says, and 357
+  recordings resolve onto it. It is also `drwxrws--- jbarry4 root`, and every
+  lab member's primary group is `pi-jbarry4`. So the only account that can
+  read the lab's own share is the PI's, and the group it is shared to is one
+  nobody is in. Nothing in this feature can run until that is changed.
+
+  Which is why "VACC mounts this" and "you can read it" are now two separate
+  facts on the status payload rather than one. A path map is a lab-wide fact
+  and stays one; whether the person sitting here can open what it points at
+  has a different answer per account, and answering the first while being
+  asked the second sends somebody to debug a job that was never going to be
+  able to open its input.
+
+- **`quota -s` never returns on the login node.** Measured: whoami 1 ms,
+  squeue and sinfo 6 ms, quota a flat 5003 ms, which is the `timeout 5`
+  expiring every single time for an answer that never arrives. It was in the
+  probe, so the probe took 61 s. Moved behind a button; the probe is now
+  0.4 s, which is 150x, from deleting one line.
+
+- **sacct does not print the id you asked about.** `sbatch --parsable` hands
+  back a raw numeric id; for anything in an array sacct prints the
+  array-and-task form beside it -- measured, `sacct -j 999999` answers
+  `999467_3|999999|COMPLETED`. Keying on what it prints loses the job, and
+  the poller then fails a run that finished an hour and forty-nine minutes
+  ago as vanished. Keyed on `JobIDRaw` now, with the printed form kept for
+  anything shown to a person.
+
+- **And one that was ours.** `subprocess.Popen(text=True)` translates
+  newlines on Windows, so every script sent to the cluster arrived with CRLF.
+  bash read the last line of a one-line script as `fi\r` and reported a
+  syntax error, and a `$(whoami)` inside a `printf` picked the stray CR up and
+  returned `sakhava1\r` -- which produced a malformed answer from a cluster
+  that was replying perfectly, and read exactly like the login node doing
+  something strange to command substitution. The pipes are binary now and the
+  encoding is done by hand. A comment blaming the cluster has been corrected.
+
+  Worth recording next to it: the first round-trip figure written into this
+  feature was eleven seconds, and every poll interval was set from it. It came
+  from a shell loop whose `date +%s` had one-second resolution and whose own
+  `timeout` and subshells dominated the measurement. Six consecutive calls
+  measured properly: 389, 395, 417, 417, 433, 441 ms. The harness was being
+  measured, not the cluster.
+
+### Checks
+
+- `vaccskin.html` (53), `vaccmode.html` (21), `vaccquiet.html` (23) and
+  `vaccknows.html` (18). `vaccskin` is two-sided on purpose: the unchanged
+  side alone passes if the layer does nothing, which is exactly its state
+  before the tokens land, so the changed side asserts the mode is real and
+  that `color-mix` actually *resolved* -- a typo'd token stays a literal
+  string and looks like it applied.
+- `vaccquiet` walks every element for a running animation with the mode on
+  and no job live, and measures body text and every `on-` pair against 7:1
+  and 4.5:1 in all ten themes with the mode on.
+- `tools/test_rates.py`, `tools/test_vaccpaths.py`, `tools/vacc_check.py` and
+  `tools/test_vaccrun.py` -- the last two drive the whole cluster state
+  machine against a stubbed login node, because every interesting thing about
+  a remote job is a failure and none of them can be produced on demand
+  against a real one. Timeout, out of memory, a dead node, a cancel arriving
+  before the job id does, and the window where a finished job is in neither
+  `squeue` nor `sacct` and a naive poller calls it vanished.
+
+---
+
 ## 2026.09.16.2 - Rooms, and a result that says what it is of
 
 ### Added

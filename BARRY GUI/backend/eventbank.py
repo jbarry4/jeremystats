@@ -22,7 +22,7 @@ import threading
 import time
 import uuid
 
-from . import shards
+from . import shards, versions as versionsmod
 from datetime import datetime, timezone
 
 SCHEMA = 1
@@ -222,9 +222,19 @@ class EventBank:
         for rec in self.all():
             row = {k: v for k, v in rec.items() if k != "events"}
             if row.get("versions"):
+                # The name each version is known by, worked out from what
+                # each was based on. Computed here rather than stored: a
+                # name depends on the whole history, and a stored one
+                # would go stale the moment a branch arrived from another
+                # machine.
+                # Per ROW, not per version number: this bank really does
+                # hold entries whose numbers repeat, where two machines
+                # minted the same one and the union rightly kept both.
+                # Keyed on the number, two versions would share a name.
                 row["versions"] = [
-                    {k: v for k, v in ver.items() if k != "snap"}
-                    for ver in row["versions"]]
+                    dict({k: v for k, v in ver.items() if k != "snap"},
+                         label=nm, has_snap=bool(ver.get("snap")))
+                    for ver, nm in versionsmod.label_rows(row["versions"])]
             out.append(row)
         self._summaries = out
         self._sum_stamp = stamp
@@ -496,6 +506,22 @@ class EventBank:
             # numbering it 1 would make the first real pass v2 and leave the
             # history claiming a pass that never happened.
             first_import = (not versions) and not rec["specified"]
+            # Which version this pass was worked from.
+            #
+            # The stored number stays a plain increasing integer -- it is
+            # what the cloud table and the sync are keyed on. This is
+            # what makes the LINEAGE recoverable: a pass based on v1
+            # while v2 and v3 already existed is a branch off v1, and
+            # `versions.labels` reads that back out as "v1.1". Without
+            # it, going back to an earlier version and carrying on left
+            # a history claiming the work came after everything before
+            # it.
+            #
+            # Absent means "from whatever was newest", which is what
+            # every pass did before there was a choice.
+            based_on = entry.get("based_on")
+            if based_on is None and not first_import:
+                based_on = versionsmod.based_on_default(versions)
             fresh = {
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
@@ -504,6 +530,8 @@ class EventBank:
                 # A stable key, so two machines' histories union instead
                 # of one replacing the other.
                 "id": uuid.uuid4().hex[:12],
+                # The version this one was worked from, by stored id.
+                "from_v": (None if first_import else based_on),
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -544,6 +572,9 @@ class EventBank:
             # pass that decided them.
             if (not prior) and rec["specified"] and len(versions) == 1:
                 fresh["v"] = 1
+                # The unsorted list going in below it IS what this pass
+                # was done to, whatever the caller said.
+                fresh["from_v"] = 0
                 versions.insert(0, {
                     "v": 0,
                     "id": "v0-" + uuid.uuid4().hex[:8],
@@ -1076,6 +1107,12 @@ class EventBank:
                 ("%s|%s|%s|%s" % (entry_id, gap_map_sha, target, src_v)
                  ).encode("utf-8")).hexdigest()[:10],
             "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+            # A correction applied to a chosen version is a branch off that
+            # version, not a continuation of whatever happened to be newest.
+            # Without this, re-timing v1 while v2 and v3 existed produced a
+            # v4 whose history claimed it came after them.
+            "from_v": (src_v if src_v is not None
+                       else versionsmod.based_on_default(versions)),
             "at": _now(),
             "by": who,
             "note": note or (

@@ -778,7 +778,27 @@ BARRY.strata = (function () {
      The overlay on the rasters
      ================================================================== */
   function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes) {
-    if (!s || !sheet) return;
+    if (!s) return;
+
+    /* Module state while the labelling mode is open; the payload on the
+       session when it is not.
+
+       The guard here used to be `!sheet`, which is set only by enter()
+       and cleared by exit(), so every window that was not doing the labelling
+       -- the pop-out, and anything asking for a read-only look -- returned
+       immediately however much the payload below it held. The comment that
+       follows has described the intended behaviour since it was written;
+       this is the line that makes it true.
+
+       With the mode open these all resolve to the module's own, so the
+       labelling window is unaffected. */
+    const pay = s.strata || null;
+    const labels = (sheet && sheet.labels) || (pay && pay.labels) || null;
+    const regs = (regions && regions.length)
+      ? regions : ((pay && pay.regions) || []);
+    if (!labels) return;
+    const labelAt = (num) => labels[String(num)] || null;
+    const regAt = (id) => regs.find((r) => r.id === id) || null;
     /* `s.strata` is how the aid window knows there is a sheet to draw: it is
        a separate page with its own session objects and no module state.
 
@@ -790,8 +810,27 @@ BARRY.strata = (function () {
        the recording being the one under the sheet. */
     const mine = s.identity && s.identity.gid === gid;
     if (!s.strata && !mine) return;
-    let chans = channels();
+    /* Off the session being drawn, not the module's: in a pop-out the module
+       has no session at all, and channels() would answer with an empty
+       list. They are the same object in the labelling window. */
+    let chans = (s.info && s.info.channels) || channels();
     if (!chans.length) return;
+
+    /* ...but only where a lane is a channel.
+
+       A raster whose y axis is frequency -- a single-channel spectrogram
+       or scalogram, or the band-power map -- has no channel rows to report
+       and so reports none. Falling through to the every-channel default
+       below painted the layer colours evenly down a frequency axis: the
+       hilus band sitting across 40-60 Hz as though it meant something.
+       That is worse than drawing nothing, because it looks deliberate.
+
+       Tested as "was a panel passed, and did it decline to name rows"
+       rather than "are there rows": the traces pass no panel object at
+       all (xplore.js:7701) and they are channel lanes, so requiring rows
+       outright would turn the overlay off where it started. */
+    if (panelRes && !(Array.isArray(panelRes.rows)
+                      && panelRes.rows.length)) return;
 
     /* An image panel says which rows it actually drew.
 
@@ -817,7 +856,7 @@ BARRY.strata = (function () {
     if (alpha > 0) {
       ctx.globalAlpha = alpha;
       for (let i = 0; i < chans.length; i++) {
-        const reg = regionOf(labelOf(chans[i].number));
+        const reg = regAt(labelAt(chans[i].number));
         if (!reg) continue;
         ctx.fillStyle = reg.color;
         ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
@@ -856,9 +895,9 @@ BARRY.strata = (function () {
     ctx.lineWidth = 1;
     let prev = null;
     for (let i = 0; i < chans.length; i++) {
-      const id = labelOf(chans[i].number);
+      const id = labelAt(chans[i].number);
       if (prev !== null && id !== prev) {
-        const reg = regionOf(id) || regionOf(prev);
+        const reg = regAt(id) || regAt(prev);
         ctx.strokeStyle = reg ? reg.color : P.accent;
         ctx.beginPath();
         ctx.moveTo(x0, Math.round(y0 + i * lane) + 0.5);

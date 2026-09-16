@@ -1232,8 +1232,16 @@ class Curation:
         return n, self.progress(rec)
 
     @shards.atomic
-    def open_set(self, gid, kind, on=True, who=None, unarchive=False):
+    def open_set(self, gid, kind, on=True, who=None, unarchive=False,
+                 based_on=None):
         """Put a set on the workbench, or take it off.
+
+        `based_on` is which banked version this pass was picked up from.
+        Remembered so that banking it afterwards lands in the right place
+        in the history: a pass worked from v1 while v2 and v3 exist is a
+        branch off v1, not a fourth pass on top of them. Left out, it
+        means whatever was newest, which is what every pick-up meant
+        before there was a choice.
 
         Closing is not archiving and it is not finishing: nothing is
         hidden, nothing is required first, and the decisions are already
@@ -1272,9 +1280,34 @@ class Curation:
                 rec.pop("archived_by", None)
             if not (rec.get("assignee") or "").strip() and who:
                 rec["assignee"] = who
+            if based_on is not None:
+                rec["based_on"] = based_on
+                rec["based_on_at"] = _now()
         else:
             rec["open"] = False
             rec["closed_at"] = _now()
+            # `based_on` stays. Putting a set down does not decide where
+            # the work belongs in the history -- banking does, and that
+            # can happen long after, from the shelf.
+        return self._write(rec)
+
+    @shards.atomic
+    def set_based_on(self, gid, kind, v):
+        """Say which banked version the work now on the bench came from.
+
+        Called when a version is put back into the set: from that moment
+        the decisions on the bench are that version's, plus whatever is
+        done to them next, so that is what the next bank branches from.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        if v is None:
+            rec.pop("based_on", None)
+            rec.pop("based_on_at", None)
+        else:
+            rec["based_on"] = v
+            rec["based_on_at"] = _now()
         return self._write(rec)
 
     @shards.atomic

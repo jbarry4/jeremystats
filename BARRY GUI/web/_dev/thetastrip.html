@@ -1,0 +1,342 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>thetastrip — theta power on the overview strip, with settable band edges</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Asked for: the whole-recording overview strip shows "average
+magnitude"; it should also be able to show theta power, with the band edges
+settable. demo:long-session is a 900 s synthetic carrying an 8.1 Hz sine whose
+amplitude is scaled by depth — demo.py gives channel d 120 * (0.45 + 0.55 *
+sin(pi * d)) uV, so the 120 is what the middle of the probe gets and CSC1, at
+depth 0, gets 54. A sine of amplitude A carries A^2/2, so 4-12 Hz power on
+CSC1 should come out near 1458 uV^2, and should be nearly ALL of the 1-100 Hz
+power — a steady strong line. Beta on the same channel should be nothing. If
+the band edges are not really being used, theta and beta come back the same.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* Generous iteration counts throughout: --virtual-time-budget fast-forwards
+   the timers, so these loops spin far faster than wall clock and a count
+   that looks like a minute can run out while the server is still reading. */
+async function until(fn, tries = 3000) {
+  for (let i = 0; i < tries; i++) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(100);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const ev = (src) => W().eval(src);
+const J = (src) => { const s = ev('JSON.stringify(' + src + ')');
+                     return s ? JSON.parse(s) : null; };
+
+const S = 'BARRY.views.xplore.state';
+const SESS = '(function(){var S=' + S + ';return S.sessions[S.active];})()';
+
+const stripBtn = () => D().querySelector('.ctl-menu[data-menu="Strip"]');
+const stripVal = () => {
+  const b = stripBtn();
+  const v = b && b.querySelector('.ctl-menu-value');
+  return v ? v.textContent.trim() : null;
+};
+const pop = () => D().querySelector('.ctl-pop');
+const popBtn = (text) => Array.from((pop() || D()).querySelectorAll('button'))
+  .find((b) => b.textContent.trim() === text);
+const openPop = async () => {
+  if (pop()) { stripBtn().click(); await sleep(200); }
+  stripBtn().click();
+  await sleep(300);
+  return pop();
+};
+const closePop = async () => { if (pop()) { stripBtn().click(); await sleep(150); } };
+
+/* The overview strip's own canvas, so "it drew something different" is a
+   claim about pixels rather than about state. */
+const miniURL = () => {
+  const c = D().querySelector('.pane-timebar canvas');
+  return c ? c.toDataURL() : null;
+};
+
+/* Wait for a band profile matching this band to have landed. */
+async function awaitBand(lo, hi) {
+  return await until(() => {
+    const ob = J(SESS + '.overviewBand');
+    if (ob && ob.ok && ob.band
+        && Math.abs(ob.band.lo - lo) < 1e-6 && Math.abs(ob.band.hi - hi) < 1e-6) {
+      return ob;
+    }
+    const err = ev(SESS + '.overviewBandErr || ""');
+    if (err) { say('note', '  server said: ' + err); return null; }
+    return null;
+  }, 800);
+}
+
+const med = (a) => {
+  const f = a.filter((v) => v !== null && isFinite(v)).sort((x, y) => x - y);
+  return f.length ? f[Math.floor(f.length / 2)] : NaN;
+};
+
+(async () => { try {
+  const thrown = [];
+  /* Short counts on every wait. --virtual-time-budget fast-forwards timers,
+     so an `until` that never succeeds spends its whole count of virtual
+     milliseconds in no real time at all -- a 3000 x 100 ms loop here ate
+     the entire 300 s budget before the first check ever ran, and the dump
+     came back with an empty report that looked like a crash. */
+  say('note', 'booting');
+  const ready = await until(
+    () => W().BARRY && W().BARRY.views && W().BARRY.views.xplore, 300);
+  say('note', '  app ' + (ready ? 'ready' : 'not ready yet'));
+  W().addEventListener('error', (e) => thrown.push(String(e.message)));
+
+  ev("setView('xplore')");
+  await sleep(300);
+  await ev("BARRY.views.xplore.open('demo:long-session')");
+  const opened = await until(
+    () => ev('Object.keys(' + S + '.sessions).length') > 0, 300);
+  say('note', '  session ' + (opened ? 'open' : 'NEVER OPENED'));
+  await sleep(500);
+
+  /* ---------- 1. the control is there and says what it is ---------- */
+  ck('the Strip control is in the pane control strip', !!stripBtn(),
+     'no .ctl-menu[data-menu="Strip"]');
+  ck('and starts on the amplitude profile', stripVal() === 'amplitude',
+     String(stripVal()));
+
+  const ampPNG = await until(() => {
+    const ov = J(SESS + '.overview');
+    return (ov && ov.ok) ? miniURL() : null;
+  }, 2000);
+  ck('the amplitude overview loaded and the strip painted', !!ampPNG,
+     'no overview / no canvas');
+
+  /* ---------- 2. switching to band power ---------- */
+  let p = await openPop();
+  ck('the Strip popover opens', !!p, 'no .ctl-pop');
+  ck('it offers both profiles',
+     !!popBtn('Average magnitude') && !!popBtn('Band power'),
+     (p ? p.textContent.slice(0, 120) : ''));
+
+  popBtn('Band power').click();
+  await sleep(200);
+  const theta = await awaitBand(4, 12);
+  ck('a 4-12 Hz band profile came back', !!(theta && theta.ok),
+     JSON.stringify(theta && theta.error));
+
+  if (theta) {
+    say('note', '  ' + theta.label);
+    say('note', '  read ' + theta.duration_s + ' s at ' + theta.fs_used
+              + ' Hz (decimate ' + theta.decimate + '), ' + theta.n_columns
+              + ' columns -> ' + theta.bins + ' bins, ' + theta.resolution_hz
+              + ' Hz resolution, ' + theta.surface_s + ' s');
+    const mAbs = med(theta.abs), mRel = med(theta.rel), mRat = med(theta.ratio);
+    say('note', '  median: abs=' + mAbs.toFixed(1) + ' uV^2   rel='
+              + mRel.toFixed(4) + '   ratio=' + mRat.toFixed(2));
+
+    ck('it did NOT read at the full 30 kHz', theta.fs_used <= 500,
+       String(theta.fs_used));
+    ck('all three measures are there and the right length',
+       theta.abs.length === theta.bins && theta.rel.length === theta.bins
+       && theta.ratio.length === theta.bins,
+       [theta.abs.length, theta.rel.length, theta.ratio.length].join('/'));
+    ck('it says which band it used',
+       theta.band.lo === 4 && theta.band.hi === 12, JSON.stringify(theta.band));
+    ck('and which measure, in words', typeof theta.what === 'string'
+       && /uV\^2/.test(theta.what), String(theta.what));
+    ck('and 60 Hz was bridged out of the total', theta.line_hz === 60,
+       String(theta.line_hz));
+
+    /* The physics check, and the sharpest one here.
+
+       demo.py gives each channel a theta amplitude of
+       120 * (0.45 + 0.55 * sin(pi * depth)) uV, and this is CSC1 -- depth 0,
+       so 54 uV. A sine of amplitude A carries A^2/2 of power, which is
+       1458 uV^2. If the integral, the decimation by 120, the uV scaling or
+       the band edges were wrong, this number would not land on it. */
+    ck('theta power is the synthetic sine’s own amplitude squared / 2 '
+       + '(54 uV on CSC1 -> 1458)',
+       mAbs > 1200 && mAbs < 1800, mAbs.toFixed(1) + ' uV^2, wanted ~1458');
+    ck('and it is almost all the power in the channel', mRel > 0.7,
+       mRel.toFixed(4));
+    /* Steady, not bursty: this demo has one continuous sine. */
+    const spread = theta.p95 / theta.p5;
+    ck('and it is steady across the recording (p95/p5 < 3)', spread < 3,
+       'p5=' + theta.p5 + ' p95=' + theta.p95);
+  }
+
+  /* ---------- 3. the strip actually repainted ---------- */
+  await closePop();
+  await sleep(400);
+  const bandPNG = miniURL();
+  ck('the strip drew something different from the amplitude profile',
+     !!bandPNG && !!ampPNG && bandPNG !== ampPNG,
+     'canvas identical');
+  ck('the control now names the band', /4.*12 Hz/.test(stripVal() || ''),
+     String(stripVal()));
+
+  /* ---------- 4. the band edges are really used ---------- */
+  p = await openPop();
+  const beta = popBtn('beta');
+  ck('band presets are offered', !!beta, 'no beta preset');
+  if (beta) {
+    beta.click();
+    const b = await awaitBand(13, 30);
+    ck('a 13-30 Hz profile came back', !!(b && b.ok), 'no beta profile');
+    if (b && theta) {
+      const rb = med(b.rel), rt = med(theta.rel);
+      say('note', '  beta rel=' + rb.toFixed(5) + '  vs theta rel='
+                + rt.toFixed(5));
+      /* If the edges were ignored, these would be equal. */
+      ck('beta is far weaker than theta on this channel', rb < rt / 20,
+         rb + ' vs ' + rt);
+      ck('the strip says the new band', /13.*30 Hz/.test(stripVal() || ''),
+         String(stripVal()));
+    }
+  }
+
+  /* ---------- 5. typed band edges ---------- */
+  p = await openPop();
+  const boxes = Array.from(p.querySelectorAll('input[type="number"]'));
+  ck('the band edges are editable numbers', boxes.length >= 2,
+     String(boxes.length));
+  if (boxes.length >= 2) {
+    const change = () => new (W().Event)('change');
+    boxes[0].value = '6'; boxes[0].dispatchEvent(change());
+    await sleep(300);
+    p = await openPop();
+    const b2 = Array.from(p.querySelectorAll('input[type="number"]'));
+    b2[1].value = '10'; b2[1].dispatchEvent(change());
+    const narrow = await awaitBand(6, 10);
+    ck('a typed 6-10 Hz band is honoured', !!(narrow && narrow.ok),
+       JSON.stringify(J(SESS + '.stripBand')));
+    if (narrow) {
+      const mn = med(narrow.abs);
+      say('note', '  6-10 Hz abs=' + mn.toFixed(1) + ' uV^2 (4-12 was '
+                + med(theta.abs).toFixed(1) + ')');
+      /* An 8.1 Hz sine is entirely inside 6-10, so narrowing must not lose
+         it -- but the noise floor either side goes, so it must not GAIN
+         either. */
+      ck('narrowing onto the 8.1 Hz sine keeps its power',
+         mn > med(theta.abs) * 0.6 && mn <= med(theta.abs) * 1.05,
+         mn.toFixed(1) + ' vs ' + med(theta.abs).toFixed(1));
+      /* The surface is cached server-side, so a band change is a re-integral
+         rather than a re-read. */
+      ck('the second read was served from the cached surface',
+         narrow.cached === true, String(narrow.cached));
+    }
+  }
+
+  /* ---------- 6. the measures switch without refetching ---------- */
+  const before = ev(SESS + '.overviewBand && ' + SESS + '.overviewBand._key');
+  await closePop(); await sleep(300);
+  const absPNG = miniURL();
+  p = await openPop();
+  const rel = popBtn('Relative');
+  ck('the relative measure is offered', !!rel, 'no Relative button');
+  if (rel) {
+    rel.click();
+    await sleep(400);
+    const after = ev(SESS + '.overviewBand && ' + SESS + '.overviewBand._key');
+    ck('switching measure reuses what was already downloaded', after === before,
+       String(before) + ' -> ' + String(after));
+    ck('and the control says so', /rel/.test(stripVal() || ''),
+       String(stripVal()));
+    /* The measure the payload was FETCHED with is whichever was asked for
+       first; the strip must label what it is drawing now, not that. */
+    p = await openPop();
+    const note = Array.from(p.querySelectorAll('.ctl-pop-note'))
+      .map((n) => n.textContent).join(' ');
+    ck('the strip describes the measure it is actually drawing',
+       /rel\. power/.test(note), note.slice(0, 160));
+    await closePop();
+    await sleep(400);
+    ck('and it redrew the line for the new measure', miniURL() !== absPNG,
+       'canvas unchanged');
+  }
+  await closePop();
+  await sleep(300);
+
+  /* ---------- 7. back to amplitude ---------- */
+  p = await openPop();
+  popBtn('Average magnitude').click();
+  await sleep(300);
+  await closePop();
+  await sleep(400);
+  ck('it goes back to the amplitude profile', stripVal() === 'amplitude',
+     String(stripVal()));
+  ck('and the amplitude strip is drawn again', miniURL() === ampPNG,
+     'canvas differs from the original amplitude paint');
+
+  /* ---------- 8. a real recording, if this machine has one ----------
+     The demo is one continuous array. A real .ncs recording has gaps, and a
+     gap must arrive as null and break the line rather than arrive as zero
+     and draw a floor. M1ptens2oct2 has one 24 ms dropout at about 583 s,
+     which is exactly one bin of 700. */
+  const REAL = 'D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03';
+  let reach = false;
+  try {
+    reach = !!(await ev('BARRY.views.xplore.open(' + JSON.stringify(REAL) + ')'));
+  } catch (e) { reach = false; }
+  const real = await until(() => {
+    const s = J(SESS);
+    return (s && /M1ptens2oct2/.test(String(s.path))) ? s : null;
+  }, 600);
+  if (!real) {
+    say('note', '  real recording not reachable from here \u2014 skipped');
+  } else {
+    say('note', '  opened ' + real.path + '  (' + Math.round(real.span) + ' s window)');
+    p = await openPop();
+    popBtn('Band power').click();
+    const rb = await awaitBand(4, 12);
+    ck('a band profile off a real 28.5 min recording', !!(rb && rb.ok),
+       String(ev(SESS + '.overviewBandErr || "no profile"')));
+    if (rb) {
+      say('note', '  ' + rb.label);
+      say('note', '  ' + rb.n_valid + '/' + rb.bins + ' bins, read ' + rb.surface_s
+                + ' s, gaps: ' + JSON.stringify(rb.gaps && {
+                  n: rb.gaps.n, seconds: rb.gaps.seconds,
+                  segments: rb.gaps.n_segments }));
+      say('note', '  median abs=' + med(rb.abs).toFixed(1) + ' uV^2   rel='
+                + med(rb.rel).toFixed(4) + '   ratio=' + med(rb.ratio).toFixed(3));
+      ck('it did not read 28.5 minutes at full rate', rb.fs_used <= 500,
+         String(rb.fs_used));
+      ck('the recording\u2019s gap arrives as null, not as zero',
+         rb.abs.some((v) => v === null) && rb.n_valid < rb.bins,
+         rb.n_valid + '/' + rb.bins);
+      ck('and real theta is a share of the power, not all of it',
+         med(rb.rel) > 0.02 && med(rb.rel) < 0.8, med(rb.rel).toFixed(4));
+      await closePop();
+      await sleep(400);
+      ck('the strip painted it', !!miniURL(), 'no canvas');
+    }
+  }
+
+  ck('nothing threw while drawing any of it', thrown.length === 0,
+     thrown.join(' | '));
+
+} catch (e) {
+  say('bad', 'threw: ' + (e && e.stack ? e.stack : e));
+}
+  say('note', 'done');
+  document.title = 'DONE ok=' + (out.querySelectorAll('.ok').length)
+                 + ' fail=' + bad;
+})();
+</script>
