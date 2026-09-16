@@ -194,6 +194,13 @@ BARRY.views.results = (function () {
   const fileUrl = (r, dl) =>
     '/api/results/file?id=' + encodeURIComponent(r.id) + (dl ? '&download=1' : '');
 
+  /* The card and the compare cell use this; the full-size preview does
+     not. Serving the original as its own thumbnail meant a grid of
+     thirty figures was some forty-five megabytes, every one of them
+     decoded at full resolution to be drawn at 150 pixels. */
+  const thumbUrl = (r) =>
+    '/api/results/thumb?id=' + encodeURIComponent(r.id);
+
   /* ---------- rendering ---------- */
   function render() {
     const host = $('#resultsBody');
@@ -248,7 +255,7 @@ BARRY.views.results = (function () {
       el('div', { class: 'cmp-cell' }, [
         el('div', { class: 'im', onclick: () => preview(r) }, [
           r.type === 'image'
-            ? el('img', { src: fileUrl(r), alt: '', loading: 'lazy' })
+            ? el('img', { src: thumbUrl(r), alt: '', loading: 'lazy' })
             : el('span', { class: 'noimg',
                 text: (r.ext || '').replace('.', '').toUpperCase() || 'FILE' }),
         ]),
@@ -842,7 +849,7 @@ BARRY.views.results = (function () {
         onclick: () => preview(r),
       }, [
         r.type === 'image'
-          ? el('img', { src: fileUrl(r), alt: '', loading: 'lazy' })
+          ? el('img', { src: thumbUrl(r), alt: '', loading: 'lazy' })
           : el('span', { class: 'noimg',
               text: (r.ext || '').replace('.', '').toUpperCase() || 'FILE' }),
       ]),

@@ -42,7 +42,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                people as peoplemod,
                pipeline, prewarm,
                probes as probebook, rebuild,
-               registry, results, runner, sessreg, shards, spikesort, store,
+               registry, results, runner, sessreg, shards, spikesort, store, thumbs,
                storyboard, sysinfo, toolfeed, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -3752,6 +3752,35 @@ def api_results_file():
     return send_file(rec["path"], conditional=True,
                      as_attachment=as_attachment,
                      download_name=rec["name"] if as_attachment else None)
+
+
+@app.route("/api/results/thumb")
+def api_results_thumb():
+    """A small picture of a result, for the grid.
+
+    The grid used the original as its own thumbnail: a figure off the builder
+    averages a megabyte and a half here, so thirty cards was forty-five
+    megabytes to draw thirty postage stamps, each decoded at full size to be
+    scaled down. Falls through to the original whenever a thumbnail cannot be
+    made, because a slow card beats an empty one.
+    """
+    rec = RESULTS.resolve({
+        "result_id": request.args.get("id", ""),
+        "rel": request.args.get("rel"),
+        "name": request.args.get("name"),
+    })
+    if not rec or not os.path.isfile(rec["path"]):
+        return jsonify({"ok": False, "error": "No such result."}), 404
+    small = None
+    if rec.get("type") == "image":
+        small = thumbs.thumb_for(rec["path"],
+                                 os.path.join(LOGS_DIR, ".cache", "thumbs"))
+    # max-age rather than no-store: the name is a hash of the file's size and
+    # mtime, so a changed figure is a different URL and this one can be kept.
+    resp = send_file(small or rec["path"], conditional=True)
+    if small:
+        resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
 
 
 @app.route("/api/results/curate", methods=["POST"])
@@ -8632,6 +8661,19 @@ def api_housekeeping_clean():
         res = extras.housekeeping_clean(body.get("paths") or [], REPO_ROOT)
     except Exception as exc:
         return fail("housekeeping/clean", exc, 400)
+    # Thumbnails are derived and rebuild themselves, so the only question is
+    # whether the folder has got big. Swept here rather than on the hot path:
+    # a cache that tidies itself while somebody is waiting for a page has
+    # turned a saving into a stall.
+    try:
+        freed = thumbs.sweep(os.path.join(LOGS_DIR, ".cache", "thumbs"))
+        if freed:
+            res["freed"] = (res.get("freed") or 0) + freed
+            res.setdefault("notes", []).append(
+                "Dropped %.1f MB of thumbnails, which rebuild as they are "
+                "looked at." % (freed / 1e6))
+    except Exception:                                    # noqa: BLE001
+        pass
     STORE.record_activity([{
         "action": "housekeeping.clean",
         "detail": {"removed": len(res.get("removed") or []),

@@ -219,7 +219,41 @@ async function until(fn, ms = 12000) {
         typeof find('C:\\Users\\nothing') === 'number', 'threw');
   find('');
 
-  head('8. Anything thrown?');
+  head('8. Is the grid asking for thumbnails, not whole figures?');
+  const pics = rows.filter((r) => r.type === 'image');
+  if (!pics.length) {
+    say('note', '  no image results here to check');
+  } else {
+    const r0 = pics[0];
+    const big = await fetch('/api/results/file?id=' + encodeURIComponent(r0.id));
+    const small = await fetch('/api/results/thumb?id=' + encodeURIComponent(r0.id));
+    const nBig = (await big.blob()).size;
+    const nSmall = (await small.blob()).size;
+    say('note', '  ' + (r0.title || r0.name).slice(0, 40) + ': '
+        + Math.round(nBig / 1024) + ' KB -> ' + Math.round(nSmall / 1024) + ' KB');
+    check('a thumbnail is served', small.ok, 'HTTP ' + small.status);
+    check('and it is markedly smaller than the original', nSmall < nBig / 4,
+          nBig + ' -> ' + nSmall);
+    /* The cards must actually use it. Pointing the endpoint at a smaller
+       picture and then leaving the grid on the original is the version of
+       this change that measures well and changes nothing. */
+    ev("BARRY.views.results.setView('grid')");
+    await sleep(300);
+    const srcs = Array.from(D.querySelectorAll('#resultsBody .res-thumb img'))
+      .map((i) => i.getAttribute('src') || '');
+    check('every card in the grid asks for a thumbnail',
+          srcs.length > 0 && srcs.every((u) => u.includes('/api/results/thumb')),
+          srcs.filter((u) => !u.includes('/api/results/thumb')).length
+          + ' of ' + srcs.length + ' asked for the full file');
+    /* ...and the full-size preview must NOT, or opening a figure shows you a
+       320-pixel version of it. */
+    const full = ev("BARRY.views.results.urlFor(BARRY.views.results.all()"
+                    + ".find(function (x) { return x.type === 'image'; }))");
+    check('the full-size preview still asks for the original',
+          String(full).includes('/api/results/file'), String(full));
+  }
+
+  head('9. Anything thrown?');
   check('no uncaught errors in the app', errors.length === 0,
         errors.slice(0, 2).join(' | '));
 
