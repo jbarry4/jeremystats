@@ -1,24 +1,24 @@
 {
   "_at": {
-    "created": "2026-09-14T16:19:43.125693+00:00",
-    "id": "2026-09-14T16:19:43.125693+00:00",
-    "schema": "2026-09-14T16:19:43.125693+00:00",
-    "slides": "2026-09-14T16:19:43.125693+00:00",
-    "title": "2026-09-14T16:19:43.125693+00:00",
-    "updated": "2026-09-14T16:19:43.125693+00:00"
+    "created": "2026-09-14T16:19:31.320877+00:00",
+    "id": "2026-09-14T16:20:02.328102+00:00",
+    "schema": "2026-09-14T16:20:02.328102+00:00",
+    "slides": "2026-09-16T13:25:59.220954+00:00",
+    "title": "2026-09-14T16:20:02.328102+00:00",
+    "updated": "2026-09-14T16:20:02.328102+00:00"
   },
   "_shard": {
-    "at": "2026-09-14T16:19:43.125693+00:00",
+    "at": "2026-09-16T13:25:59.220954+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-14T12:19:43-04:00",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-09-14T12:19:31-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "id": "deck_bbcda315",
   "schema": 1,
@@ -36,9 +36,9 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "iar4ze7q",
+          "id": "1fb64e2822ad",
           "name": "KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
-          "rel": "KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
+          "rel": "KCNT1/m1609/s1 2026-07-15/Figures/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
           "result_id": "bc71d288d798",
           "type": "result",
           "w": 0.84,
@@ -57,9 +57,9 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "isa4w32v",
+          "id": "e206ad2e48a8",
           "name": "PTEN m7 s2 2023-08-22_20260902_152927.png",
-          "rel": "Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+          "rel": "PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
           "result_id": "4bf34a4654a8",
           "type": "result",
           "w": 0.84,
@@ -100,9 +100,9 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "igiuryv4",
+          "id": "343ef3246d7a",
           "name": "PTEN m1 s2 2023-10-02_20260903_113520.png",
-          "rel": "PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png",
+          "rel": "PTEN/m1/s2 2023-10-02/Figures/PTEN m1 s2 2023-10-02_20260903_113520.png",
           "result_id": "c98259ac5f66",
           "type": "result",
           "w": 0.84,
@@ -140,11 +140,11 @@
   ],
   "title": "For Angelina!",
   "updated": {
-    "at": "2026-09-14T12:19:43-04:00",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-09-14T12:20:02-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Isabella Piatek"
   }
 }

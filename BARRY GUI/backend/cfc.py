@@ -560,6 +560,20 @@ STAGES = [
     # which is why its very first run can quote an honest ETA.
     ("panorama windows", "windows"),
     ("panorama pool", "sessions"),
+    # A run over many recordings, counted in seconds of RECORDING rather
+    # than in sessions.
+    #
+    # Its own stage, and only one, because a bulk run cannot use the two
+    # above. `begin` closes whatever stage is running, so a stage may be
+    # opened once per run -- and bulk has to read, fit and discard one
+    # session before the next starts, which makes reading and fitting
+    # interleave. Folding the fitting into "spectrum read" instead would
+    # teach the Spectrum view that reading costs what fitting costs.
+    #
+    # Seconds rather than sessions so the rate is stable across a set
+    # mixing twenty-minute and forty-minute recordings. Which session is
+    # at which step is carried by `Job.members`, not by stages.
+    ("panorama bulk", "seconds"),
 ]
 
 # Seconds per unit, measured on the machine this was built on: a 60 s window at
@@ -601,6 +615,10 @@ _RATES = {
     # 397 frequency bins, in 57.9 s wall.
     "panorama windows": 6.5e-2,   # per window
     "panorama pool": 0.05,        # per session
+    # Read plus fit, per second of recording. The read is about 2.5 ms
+    # and the fit about 65 ms a window at one window a second, so the
+    # fit dominates and this is close to the two added together.
+    "panorama bulk": 7.0e-2,      # per second of recording
 }
 # Stages the per-megasample normalisation must NOT be applied to: either the
 # cost does not scale with the window at all (`draw` -- one picture, whatever
@@ -608,7 +626,7 @@ _RATES = {
 # spectrum's, counted in seconds of recording). Normalising those a second
 # time would make the estimate scale as the square of the window.
 _FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect",
-         "panorama windows", "panorama pool"}
+         "panorama windows", "panorama pool", "panorama bulk"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -624,7 +642,8 @@ _RATES_LOCK = threading.Lock()
 # -- it is not the order of magnitude a network share sounds like it should
 # be -- but a systematic one, and free to track now that the key exists. A
 # busier share at another site will be worse than this one.
-_PER_VOLUME = {"read", "decimate", "spectrum read", "ds read"}
+_PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
+               "panorama bulk"}
 
 
 def volume_key(path):

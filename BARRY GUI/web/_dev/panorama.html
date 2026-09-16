@@ -111,7 +111,13 @@ const hd = (t) => p('\n== ' + t + ' ==');
     if (eta && eta.textContent.trim()) sawEta = true;
   }, 150);
 
-  ok = await untilN(() => ev('!!BARRY.panorama.result'), 900);
+  /* Generous, because of how the suite runs this.
+     `run_harnesses.py` drives Edge with --virtual-time-budget, which
+     fast-forwards timers -- so this loop can burn all its iterations
+     while the server is still doing the real forty seconds of work,
+     and the run looks like it never finished. It passed alone and
+     failed in the sweep, twice, for exactly that. */
+  ok = await untilN(() => ev('!!BARRY.panorama.result'), 3000);
   clearInterval(watch);
   ck('the run finished', ok >= 0, 'waited ' + ok);
   ck('both stages were shown while it ran', sawStages >= 2, 'saw ' + sawStages);

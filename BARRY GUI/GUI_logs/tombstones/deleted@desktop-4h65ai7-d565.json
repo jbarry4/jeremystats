@@ -100,6 +100,10 @@
         "set",
         "2026-09-14T16:19:13.149133+00:00"
       ],
+      "deck:deck_2535d384": [
+        "set",
+        "2026-09-16T13:32:42.344975+00:00"
+      ],
       "deck:deck_2631ffc9": [
         "set",
         "2026-09-15T21:20:48.162625+00:00"
@@ -147,6 +151,10 @@
       "deck:deck_479d1bb6": [
         "set",
         "2026-09-09T05:45:10.716647+00:00"
+      ],
+      "deck:deck_47bd3104": [
+        "set",
+        "2026-09-16T13:32:42.344975+00:00"
       ],
       "deck:deck_4ad9cd45": [
         "set",
@@ -267,6 +275,10 @@
       "deck:deck_6dc23404": [
         "set",
         "2026-09-04T15:57:52.788226+00:00"
+      ],
+      "deck:deck_6dcacd50": [
+        "set",
+        "2026-09-15T22:54:15.548570+00:00"
       ],
       "deck:deck_6f059742": [
         "set",
@@ -740,6 +752,10 @@
         "set",
         "2026-09-09T16:05:43.683447+00:00"
       ],
+      "result:2022-08-02/2022-08-02_20260902_202327.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
       "result:Debug/debug-report-20260903_100900.txt": [
         "set",
         "2026-09-03T14:18:56.029176+00:00"
@@ -836,6 +852,10 @@
         "set",
         "2026-09-14T18:37:51.642028+00:00"
       ],
+      "result:HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
         "2026-09-03T14:57:23.662650+00:00"
@@ -871,6 +891,14 @@
       "result:HarnessFolder/Panels/rebuild harness_20260914_105733.png": [
         "set",
         "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
       ],
       "result:HarnessFolder/arrow harness.png": [
         "set",
@@ -1000,9 +1028,21 @@
         "set",
         "2026-09-10T18:30:59.354091+00:00"
       ],
+      "result:HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessFolder/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T14:57:23.613554+00:00"
+      ],
+      "result:HarnessFolder/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessFolder/rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
       ],
       "result:HarnessRenamed/Panels/arrow harness_11.png": [
         "set",
@@ -1092,6 +1132,10 @@
         "set",
         "2026-09-14T18:38:07.354841+00:00"
       ],
+      "result:HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
         "2026-09-03T14:57:24.101795+00:00"
@@ -1127,6 +1171,14 @@
       "result:HarnessRenamed/Panels/rebuild harness_20260914_105733.png": [
         "set",
         "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
       ],
       "result:HarnessRenamed/arrow harness.png": [
         "set",
@@ -1256,9 +1308,29 @@
         "set",
         "2026-09-10T18:30:59.354091+00:00"
       ],
+      "result:HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T14:57:24.013833+00:00"
+      ],
+      "result:HarnessRenamed/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessRenamed/rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
+      ],
+      "result:KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:PTEN m11 s10 2023-07-25/PTEN m11 s10 2023-07-25_20260902_175716.png": [
         "set",
@@ -1275,6 +1347,30 @@
       "result:PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_152927.png": [
         "set",
         "2026-09-03T13:37:42.201448+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png": [
+        "set",
+        "2026-09-16T13:28:49.605433+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "gone",
+        "2026-09-16T13:32:13.070027+00:00"
+      ],
+      "result:Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "gone",
+        "2026-09-16T13:32:14.420646+00:00"
       ],
       "result:Storyboards/arrow harness.png": [
         "gone",
@@ -1388,9 +1484,29 @@
         "gone",
         "2026-09-10T00:23:39.193780+00:00"
       ],
+      "result:TEST/m34 s5 2024-06-10_20260902_170623.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
       "result:Test Figures/m34 s5 2024-06-10_20260902_170116.png": [
-        "gone",
-        "2026-09-03T14:57:24.111089+00:00"
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:Test Figures/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
@@ -1501,8 +1617,12 @@
         "2026-09-15T20:50:31.468604+00:00"
       ],
       "result:ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:_scratch/harness/rebuild harness_20260916_085523.png": [
         "gone",
-        "2026-09-10T18:30:46.700733+00:00"
+        "2026-09-16T13:00:35.461050+00:00"
       ],
       "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
@@ -1511,6 +1631,14 @@
       "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T13:37:42.218702+00:00"
+      ],
+      "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:rebuild harness_20260903_094929.png": [
         "set",
@@ -1555,6 +1683,22 @@
       "result:rebuild harness_20260914_105733.png": [
         "gone",
         "2026-09-14T15:41:42.218956+00:00"
+      ],
+      "result:rebuild harness_20260915_205305.png": [
+        "set",
+        "2026-09-16T12:57:20.545688+00:00"
+      ],
+      "result:rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T12:57:20.545688+00:00"
+      ],
+      "result:rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:25:23.590506+00:00"
+      ],
+      "result:rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:25:19.306619+00:00"
       ],
       "session:s005e83535b0b": [
         "set",
@@ -2011,7 +2155,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-15T21:20:48.162625+00:00",
+    "at": "2026-09-16T13:32:42.344975+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -2232,6 +2376,15 @@
       "synced": true,
       "synced_at": "2026-09-14T12:19:13-0400"
     },
+    "deck:deck_2535d384": {
+      "at": "2026-09-16T09:32:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2535d384",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:42-0400"
+    },
     "deck:deck_2631ffc9": {
       "at": "2026-09-15T17:20:32-0400",
       "by": "desktop-4h65ai7-d565",
@@ -2339,6 +2492,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T01:45:10-0400"
+    },
+    "deck:deck_47bd3104": {
+      "at": "2026-09-16T09:32:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_47bd3104",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:42-0400"
     },
     "deck:deck_4ad9cd45": {
       "at": "2026-09-03T11:42:08-0400",
@@ -2609,6 +2771,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-04T11:58:05-0400"
+    },
+    "deck:deck_6dcacd50": {
+      "at": "2026-09-15T18:54:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_6dcacd50",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T18:54:15-0400"
     },
     "deck:deck_6f059742": {
       "at": "2026-09-09T20:00:08-0400",
@@ -3656,6 +3827,15 @@
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "result:2022-08-02/2022-08-02_20260902_202327.png": {
+      "at": "2026-09-16T09:25:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "2022-08-02/2022-08-02_20260902_202327.png",
+      "kind": "result",
+      "note": "moved to _unassigned/Figures/2022-08-02_20260902_202327.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
     "result:Debug/debug-report-20260903_100900.txt": {
       "at": "2026-09-03T10:18:56-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3872,6 +4052,15 @@
       "synced": true,
       "synced_at": "2026-09-14T14:37:51-0400"
     },
+    "result:HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": {
+      "at": "2026-09-16T09:32:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3952,6 +4141,24 @@
       "note": "moved to HarnessRenamed/Panels/rebuild harness_20260914_105733.png",
       "synced": true,
       "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T09:00:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:23:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
     },
     "result:HarnessFolder/arrow harness.png": {
       "at": "2026-09-09T03:11:50-0400",
@@ -4241,6 +4448,15 @@
       "synced": true,
       "synced_at": "2026-09-10T14:30:59-0400"
     },
+    "result:HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": {
+      "at": "2026-09-16T09:32:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessFolder/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T10:57:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4249,6 +4465,24 @@
       "note": "moved to HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png",
       "synced": true,
       "synced_at": "2026-09-03T10:57:27-0400"
+    },
+    "result:HarnessFolder/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:00:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessFolder/rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:23:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
     },
     "result:HarnessRenamed/Panels/arrow harness_11.png": {
       "at": "2026-09-09T21:10:38-0400",
@@ -4448,6 +4682,15 @@
       "synced": true,
       "synced_at": "2026-09-14T14:38:07-0400"
     },
+    "result:HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": {
+      "at": "2026-09-16T09:32:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "kind": "result",
+      "note": "moved to Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:24-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4528,6 +4771,24 @@
       "note": "moved to rebuild harness_20260914_105733.png",
       "synced": true,
       "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T09:00:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:23:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
     },
     "result:HarnessRenamed/arrow harness.png": {
       "at": "2026-09-09T03:11:51-0400",
@@ -4817,6 +5078,15 @@
       "synced": true,
       "synced_at": "2026-09-10T14:30:59-0400"
     },
+    "result:HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": {
+      "at": "2026-09-16T09:32:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "kind": "result",
+      "note": "moved to Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T10:57:24-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4825,6 +5095,42 @@
       "note": "moved to Test Figures/m34 s5 2024-06-10_20260902_170623.png",
       "synced": true,
       "synced_at": "2026-09-03T10:57:27-0400"
+    },
+    "result:HarnessRenamed/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:00:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessRenamed/rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:23:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
+    },
+    "result:KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png": {
+      "at": "2026-09-16T09:25:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
+      "kind": "result",
+      "note": "moved to KCNT1/m1609/s1 2026-07-15/Figures/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png": {
+      "at": "2026-09-16T09:25:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png",
+      "kind": "result",
+      "note": "moved to PTEN/m1/s2 2023-10-02/Figures/PTEN m1 s2 2023-10-02_20260903_113520.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:PTEN m11 s10 2023-07-25/PTEN m11 s10 2023-07-25_20260902_175716.png": {
       "at": "2026-09-03T09:37:42-0400",
@@ -4862,6 +5168,42 @@
       "synced": true,
       "synced_at": "2026-09-03T09:46:21-0400"
     },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png": {
+      "at": "2026-09-16T09:28:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:28:49-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv": {
+      "at": "2026-09-16T09:25:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv": {
+      "at": "2026-09-16T09:25:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv": {
+      "at": "2026-09-16T09:25:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
     "result:Storyboards/arrow harness_6.png": {
       "at": "2026-09-09T18:44:29-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4870,6 +5212,60 @@
       "note": "moved to HarnessFolder/arrow harness_6.png",
       "synced": true,
       "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:TEST/m34 s5 2024-06-10_20260902_170623.png": {
+      "at": "2026-09-16T09:25:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "TEST/m34 s5 2024-06-10_20260902_170623.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m34/s5 2024-06-10/Figures/m34 s5 2024-06-10_20260902_170623.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png": {
+      "at": "2026-09-16T09:25:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png",
+      "kind": "result",
+      "note": "moved to PTEN/m11/s10 2023-07-25/Figures/PTEN m11 s10 2023-07-25_20260902_175716.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png": {
+      "at": "2026-09-16T09:25:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png",
+      "kind": "result",
+      "note": "moved to PTEN/m11/s10 2023-07-25/Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png": {
+      "at": "2026-09-16T09:26:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+      "kind": "result",
+      "note": "moved to PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png": {
+      "at": "2026-09-16T09:25:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+      "kind": "result",
+      "note": "moved to PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/m34 s5 2024-06-10_20260902_170116.png": {
+      "at": "2026-09-16T09:25:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/m34 s5 2024-06-10_20260902_170116.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m34/s5 2024-06-10/Figures/m34 s5 2024-06-10_20260902_170116.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:Test Figures/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T16:46:32-0400",
@@ -4907,6 +5303,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:59:47-0400"
     },
+    "result:ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": {
+      "at": "2026-09-16T09:25:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "kind": "result",
+      "note": "moved to Unfiled/m3/s7 2023-09-22/ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
     "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T09:37:42-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4924,6 +5329,24 @@
       "note": "duplicate created by a sync",
       "synced": true,
       "synced_at": "2026-09-03T09:46:21-0400"
+    },
+    "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png": {
+      "at": "2026-09-16T09:25:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m41/s1 2024-11-26/Figures/m41 s1 2024-11-26_20260909_112539.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png": {
+      "at": "2026-09-16T09:25:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m41/s1 2024-11-26/Figures/m41 s1 2024-11-26_20260909_112542.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:rebuild harness_20260903_094929.png": {
       "at": "2026-09-03T09:50:50-0400",
@@ -4951,6 +5374,42 @@
       "note": "harness",
       "synced": true,
       "synced_at": "2026-09-03T10:59:47-0400"
+    },
+    "result:rebuild harness_20260915_205305.png": {
+      "at": "2026-09-16T08:56:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260915_205305.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260915_205305.png",
+      "synced": true,
+      "synced_at": "2026-09-16T08:57:20-0400"
+    },
+    "result:rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T08:56:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T08:57:20-0400"
+    },
+    "result:rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:25:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:25:23-0400"
+    },
+    "result:rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:25:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:25:19-0400"
     },
     "session:s005e83535b0b": {
       "at": "2026-09-09T01:32:45-0400",

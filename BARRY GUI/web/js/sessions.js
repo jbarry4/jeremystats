@@ -185,9 +185,14 @@ BARRY.views.sessions = (function () {
     /* The registry read takes about five seconds on a full catalogue, and
        this view opened as an empty box for all of it -- which reads as "no
        sessions" rather than "not yet". Only when there is nothing already on
-       screen: refreshing a list that is already there should not blank it. */
+       screen: refreshing a list that is already there should not blank it.
+
+       `force` is only ever passed by something the person just did -- they
+       accepted a held-back folder, or applied a time correction -- and five
+       seconds of a tree that still shows the old state, with nothing to say
+       so, is the same complaint in a slower view. Dim it for those. */
     const bones = sessions.length
-      ? null
+      ? (force ? BARRY.skeleton.stale($('#sessTree')) : null)
       : BARRY.skeleton.into($('#sessTree'), 'card', 6);
     const sub = $('#sessSub');
     if (bones && sub) sub.textContent = 'Reading the catalogue\u2026';
@@ -1946,15 +1951,30 @@ BARRY.views.sessions = (function () {
     return el('span', { class: 'flagchip', text: 'note', title: n });
   }
 
+  /* The most-clicked write in the app, and it used to wait on the server
+     before the chip moved -- so going down a list flagging recordings meant a
+     pause after every single one, on the one action people repeat dozens of
+     times in a sitting.
+
+     The answer is already known locally: you pressed "review", so the chip
+     says review. The write follows, the server's copy of the record replaces
+     the guess when it lands, and a failure puts the old flag back and says so
+     rather than leaving a mark nobody made. */
   async function setQuality(s, quality) {
+    const was = s.stored;
+    s.stored = Object.assign({}, s.stored || {}, { quality: quality || null });
+    renderTree();
+    toast(quality ? 'Marked ' + (s.identity.label || s.name) + ' "' + quality + '"'
+                  : 'Cleared the flag', 'ok', 2400);
     try {
       const res = await apiPost('/api/session/note',
                                 { identity: s.identity, quality });
-      s.stored = res.session || s.stored;
+      if (res.session) { s.stored = res.session; renderTree(); }
+    } catch (e) {
+      s.stored = was;
       renderTree();
-      toast(quality ? 'Marked ' + (s.identity.label || s.name) + ' "' + quality + '"'
-                    : 'Cleared the flag', 'ok', 2400);
-    } catch (e) { toast(e.message, 'err'); }
+      toast('That did not save: ' + e.message, 'err', 8000);
+    }
   }
 
   function editNote(s) {

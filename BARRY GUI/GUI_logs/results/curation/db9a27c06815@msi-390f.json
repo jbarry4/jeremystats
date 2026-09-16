@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-14T01:44:24.708445+00:00",
+    "rel": "2026-09-14T01:44:24.708445+00:00",
+    "starred": "2026-09-14T01:44:24.708445+00:00",
+    "title": "2026-09-14T01:44:24.708445+00:00",
+    "updated": "2026-09-14T01:44:24.708445+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T01:44:24.708445+00:00",
+    "machine": "msi-390f",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_4.png",
+  "rel": "Storyboards/arrow harness_4.png",
+  "starred": false,
+  "title": "arrow harness",
+  "updated": {
+    "at": "2026-09-13T21:44:24-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  }
+}

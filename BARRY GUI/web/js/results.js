@@ -24,6 +24,10 @@ BARRY.views.results = (function () {
   let selected = new Set();
   let view = 'grid';          // 'grid' | 'list' | 'compare'
   let sortBy = 'created';     // 'created' | 'title' | 'session' | 'bytes'
+  /* Which headings the list is broken into. Remembered, because it is a
+     way of working rather than a one-off: somebody who thinks by animal
+     thinks by animal every time they open this. */
+  let groupBy = '';           // '' | 'animal' | 'tool' | 'day' | 'run'
   let collections = [];       // saved searches, synced through preferences
 
   /* Folders, which are not the same thing as tags and not the same thing as
@@ -38,14 +42,21 @@ BARRY.views.results = (function () {
   let unfiled = 0;
   let folderFilter = '';      // '' = everything, '~unfiled' = never filed
 
-  async function load(refresh) {
+  /* `mine` -- this re-read is the consequence of something the person just
+     did here: starred a selection, moved files into a folder, deleted some.
+
+     Two reads back to back, and with `refresh` the first one rescans the
+     output directory on disk as well. Blanking a populated list for that is
+     wrong, which is what the empty-only gate below is for; but showing
+     nothing at all while the grid still displays the twelve files you just
+     deleted is worse, and that is what it did. Dim it instead. */
+  async function load(refresh, mine) {
     const q = new URLSearchParams();
     if (refresh) q.set('refresh', '1');
-    /* Two reads back to back -- the catalogue and the folder tree -- and a
-       refresh rescans the output directory. Only when the panel is empty:
-       a refresh of a list already on screen should not blank it. */
+    const host = $('#resultsBody');
     const bones = items.length
-      ? null : BARRY.skeleton.into($('#resultsBody'), 'card', 5);
+      ? (mine ? BARRY.skeleton.stale(host) : null)
+      : BARRY.skeleton.into(host, 'card', 5);
     try {
       const res = await api('/api/results?' + q.toString());
       items = res.results || [];
@@ -61,6 +72,7 @@ BARRY.views.results = (function () {
       if (bones) bones();
     }
     collections = BARRY.prefs.get('result_collections', []) || [];
+    groupBy = BARRY.prefs.get('result_group', groupBy) || '';
     render();
   }
 
@@ -86,12 +98,82 @@ BARRY.views.results = (function () {
       }
       if (sessionFilter && r.session_key !== sessionFilter) return false;
       if (starredOnly && !r.starred) return false;
-      if (!q) return true;
-      const hay = [r.title, r.name, r.session_label, r.author, r.notes,
-                   r.script, r.machine, (r.tags || []).join(' ')]
-                   .join(' ').toLowerCase();
-      return hay.includes(q);
+      return matches(r, q);
     }).sort(sorter);
+  }
+
+  /* ======================================================================
+     Searching by a field, not just by any text anywhere
+
+     `mouse:306` used to match a figure of m3060, a figure whose notes said
+     "306 windows", and a file saved at 13:06. One substring over everything
+     is the right default and the wrong only option -- it cannot express the
+     question people actually have, which is nearly always about one field.
+
+         panorama m306            both, as text, as before
+         tool:panorama mouse:306  the tool and the animal, exactly
+         project:PTEN on:2023-08  every PTEN recording made that month
+         tag:figure3 by:rain      hers, tagged that
+
+     Terms are ANDed. An unrecognised prefix is left as plain text on
+     purpose: a Windows path is full of colons and typing one should search
+     for it, not silently match nothing.
+     ====================================================================== */
+  const FIELDS = {
+    project: (r) => r.project,
+    mouse: (r) => (r.mouse == null ? null : 'm' + r.mouse),
+    session: (r) => (r.session_no == null ? null : 's' + r.session_no),
+    on: (r) => r.recorded_on || (r.created || '').slice(0, 10),
+    tool: (r) => r.script || r.kind,
+    kind: (r) => r.kind,
+    type: (r) => r.type,
+    by: (r) => r.author,
+    machine: (r) => r.machine,
+    tag: (r) => (r.tags || []).join(' '),
+    run: (r) => r.run_id,
+    gid: (r) => r.gid,
+    title: (r) => r.title || r.name,
+  };
+
+  /* Quoted phrases hold together; everything else splits on spaces. */
+  function terms(q) {
+    const out = [];
+    const re = /(?:([a-z_]+):)?(?:"([^"]*)"|(\S+))/gi;
+    let m;
+    while ((m = re.exec(q))) {
+      const key = (m[1] || '').toLowerCase();
+      const val = (m[2] !== undefined ? m[2] : m[3] || '').toLowerCase();
+      if (!val) continue;
+      out.push(FIELDS[key] ? { key, val } : { key: null, val: m[0].toLowerCase() });
+    }
+    return out;
+  }
+
+  function matches(r, q) {
+    if (!q) return true;
+    const hay = [r.title, r.name, r.session_label, r.author, r.notes,
+                 r.script, r.machine, r.project, r.rel,
+                 (r.tags || []).join(' ')].join(' ').toLowerCase();
+    for (const t of terms(q)) {
+      if (!t.key) {
+        if (!hay.includes(t.val)) return false;
+        continue;
+      }
+      const got = String(FIELDS[t.key](r) || '').toLowerCase();
+      if (!got) return false;
+      if (t.key === 'mouse' || t.key === 'session') {
+        /* Anchored, because these are the ones that bite: `mouse:306`
+           matching m3060 is a wrong answer that looks like a right one.
+           The leading letter is optional on both sides, so 306 and m306
+           are the same question. */
+        if (got.replace(/^[ms]/, '') !== t.val.replace(/^[ms]/, '')) return false;
+      } else if (!got.includes(t.val)) {
+        /* Everything else is a prefix or substring on purpose: `on:2023-08`
+           should give you the month, and `tool:pan` should find Panorama. */
+        return false;
+      }
+    }
+    return true;
   }
 
   function sorter(a, b) {
@@ -111,6 +193,13 @@ BARRY.views.results = (function () {
 
   const fileUrl = (r, dl) =>
     '/api/results/file?id=' + encodeURIComponent(r.id) + (dl ? '&download=1' : '');
+
+  /* The card and the compare cell use this; the full-size preview does
+     not. Serving the original as its own thumbnail meant a grid of
+     thirty figures was some forty-five megabytes, every one of them
+     decoded at full resolution to be drawn at 150 pixels. */
+  const thumbUrl = (r) =>
+    '/api/results/thumb?id=' + encodeURIComponent(r.id);
 
   /* ---------- rendering ---------- */
   function render() {
@@ -166,7 +255,7 @@ BARRY.views.results = (function () {
       el('div', { class: 'cmp-cell' }, [
         el('div', { class: 'im', onclick: () => preview(r) }, [
           r.type === 'image'
-            ? el('img', { src: fileUrl(r), alt: '', loading: 'lazy' })
+            ? el('img', { src: thumbUrl(r), alt: '', loading: 'lazy' })
             : el('span', { class: 'noimg',
                 text: (r.ext || '').replace('.', '').toUpperCase() || 'FILE' }),
         ]),
@@ -246,7 +335,7 @@ BARRY.views.results = (function () {
       const res = await apiPost('/api/results/bulk',
                                 Object.assign({ ids }, patch));
       toast('Updated ' + res.touched + ' result(s)', 'ok');
-      await load(true);
+      await load(true, true);
     } catch (e) { toast(e.message, 'err'); }
   }
 
@@ -353,7 +442,7 @@ BARRY.views.results = (function () {
       const res = await apiPost('/api/results/folders/new', { name });
       folders = res.folders || folders;
       if (selected.size) await moveTo(res.folder);
-      else { toast('Made Results/' + res.folder + '.', 'ok'); await load(); }
+      else { toast('Made Results/' + res.folder + '.', 'ok'); await load(false, true); }
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -369,7 +458,7 @@ BARRY.views.results = (function () {
       for (const f of (res.failed || [])) toast(f, 'err', 8000);
       BARRY.activity.log('result.folder.move', { n: res.touched, folder });
       selected.clear();
-      await load();
+      await load(false, true);
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -381,7 +470,7 @@ BARRY.views.results = (function () {
       toast('Renamed, and moved ' + res.touched + ' result'
             + (res.touched === 1 ? '' : 's') + '.', 'ok');
       folderFilter = to;
-      await load();
+      await load(false, true);
     } catch (e) { toast(e.message, 'err', 8000); }
   }
 
@@ -421,7 +510,7 @@ BARRY.views.results = (function () {
       (r) => String(r.path || '').toLowerCase().startsWith(out));
     const outside = chosen.length - inside.length;
 
-    const ok = await BARRY.confirm(
+    await BARRY.confirm(
       'Delete ' + inside.length + ' file(s)?',
       el('div', {}, [
         el('p', { class: 'confirm-msg',
@@ -434,17 +523,19 @@ BARRY.views.results = (function () {
           el('pre', { text: inside.map((r) => r.name).join('\n') || '(nothing)' }),
         ]),
       ]),
-      'Delete them', true);
-    if (!ok || !inside.length) return;
-
-    try {
-      const res = await apiPost('/api/results/delete',
-                                { ids: inside.map((r) => r.id) });
-      selected.clear();
-      toast('Deleted ' + res.removed.length + ' file(s)', 'ok');
-      for (const f of (res.refused || [])) toast(f.error, 'err', 7000);
-      await load(true);
-    } catch (e) { toast(e.message, 'err'); }
+      'Delete them', true,
+      !inside.length ? null : async () => {
+        const res = await apiPost('/api/results/delete',
+                                  { ids: inside.map((r) => r.id) });
+        selected.clear();
+        toast('Deleted ' + res.removed.length + ' file(s)', 'ok');
+        for (const f of (res.refused || [])) toast(f.error, 'err', 7000);
+        /* Not awaited. The reload rescans the output directory on disk, and
+           holding the dialog open for a disk walk -- after the files are
+           already gone -- is making the person wait to be told about work
+           that is not theirs. The grid dims itself while it runs. */
+        load(true, true);
+      });
   }
 
   /* ======================================================================
@@ -543,7 +634,11 @@ BARRY.views.results = (function () {
         html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
       el('input', {
         type: 'search', value: query,
-        placeholder: 'Search titles, tags, sessions, notes…',
+        placeholder: 'Search, or mouse:306  tool:panorama  project:PTEN…',
+        title: 'Plain words search everything. A prefix searches one field:'
+             + '\n  project:  mouse:  session:  on:  tool:  kind:  type:'
+             + '\n  by:  machine:  tag:  run:  gid:  title:'
+             + '\nTerms are combined. Use "quotes" for a phrase.',
         oninput: debounceInput(
           (e) => { query = e.target.value; keepFocus(render); }, 140),
       }),
@@ -594,6 +689,19 @@ BARRY.views.results = (function () {
         value: v, text: t, selected: sortBy === v ? 'selected' : null,
       }))));
 
+    bar.appendChild(el('select', {
+      title: 'Break the list into rooms',
+      onchange: (e) => {
+        groupBy = e.target.value;
+        BARRY.prefs.set('result_group', groupBy);
+        BARRY.activity.log('result.group', { by: groupBy || 'none' });
+        render();
+      },
+    }, GROUPINGS.map((g) => el('option', {
+      value: g.id, text: g.name,
+      selected: groupBy === g.id ? 'selected' : null,
+    }))));
+
     bar.appendChild(el('div', { class: 'seg' }, [
       el('button', { class: view === 'grid' ? 'active' : '', text: 'Grid',
                      onclick: () => { view = 'grid'; render(); } }),
@@ -606,10 +714,116 @@ BARRY.views.results = (function () {
     return bar;
   }
 
+  /* ======================================================================
+     Rooms
+
+     Four hundred results in one flat grid, newest first, is a pile. It is
+     browsable for the twenty minutes after you made something and useless
+     after that, because the only question it answers is "what did I just
+     do" -- and the question people actually have is "what do we have on
+     m306", or "what has Panorama produced", or "what came out of Tuesday".
+
+     So the list gets headings. Which headings is a choice, because those
+     three questions want different ones, and none of them is the default
+     more often than the others.
+
+     Grouping is not filtering. Everything still shown, just in rooms.
+     ====================================================================== */
+  const GROUPINGS = [
+    { id: '', name: 'Ungrouped', of: () => null },
+    {
+      id: 'animal', name: 'By animal',
+      of: (r) => (r.project || r.mouse)
+        ? [r.project || 'Unfiled',
+           r.mouse != null ? 'm' + r.mouse : 'unknown mouse',
+           r.session_no != null
+             ? 's' + r.session_no + (r.recorded_on ? '  ' + r.recorded_on : '')
+             : (r.session_label || '')].filter(Boolean).join('  ›  ')
+        : null,
+    },
+    {
+      id: 'tool', name: 'By tool',
+      of: (r) => r.script || TOOL_NAMES[r.kind] || TOOL_NAMES[r.type] || 'Other',
+    },
+    {
+      id: 'day', name: 'By day',
+      of: (r) => (r.created || '').slice(0, 10) || null,
+    },
+    {
+      id: 'run', name: 'By run',
+      of: (r) => r.run_id ? (r.title || r.run_id) : null,
+    },
+  ];
+
+  const TOOL_NAMES = {
+    figure: 'Figure builder', panorama: 'Panorama', toolkit: 'ToolKit',
+    deck: 'Storyboard', install: 'Install', file: 'Filed by hand',
+  };
+
+  const groupingOf = (id) => GROUPINGS.find((g) => g.id === id) || GROUPINGS[0];
+
+  /* Everything that falls outside the grouping goes in one room at the end
+     rather than each getting a heading of its own. A lab-wide bad-channel
+     export genuinely belongs to no animal, and forty headings reading
+     "unknown mouse" is not an answer -- it is the pile again, with chrome. */
+  function inRooms(list) {
+    const g = groupingOf(groupBy);
+    if (!g.id) return [{ name: null, rows: list }];
+    const rooms = new Map();
+    const rest = [];
+    for (const r of list) {
+      const k = g.of(r);
+      if (!k) { rest.push(r); continue; }
+      if (!rooms.has(k)) rooms.set(k, []);
+      rooms.get(k).push(r);
+    }
+    const out = Array.from(rooms, ([name, rows]) => ({ name, rows }));
+    out.sort((a, b) => String(a.name).localeCompare(String(b.name),
+                                                    undefined, { numeric: true }));
+    if (rest.length) {
+      out.push({ name: g.id === 'animal' ? 'Not about one animal' : 'Everything else',
+                 rows: rest, aside: true });
+    }
+    return out;
+  }
+
   function grid(list) {
-    const g = el('div', { class: 'res-grid' });
-    for (const r of list) g.appendChild(card(r));
-    return g;
+    const rooms = inRooms(list);
+    if (rooms.length === 1 && !rooms[0].name) {
+      const g = el('div', { class: 'res-grid' });
+      for (const r of list) g.appendChild(card(r));
+      return g;
+    }
+    const wrap = el('div', { class: 'res-rooms' });
+    for (const room of rooms) {
+      wrap.appendChild(roomHead(room));
+      const g = el('div', { class: 'res-grid' });
+      for (const r of room.rows) g.appendChild(card(r));
+      wrap.appendChild(g);
+    }
+    return wrap;
+  }
+
+  /* The heading doubles as a way to take the whole room: selecting eleven
+     figures to compare or to tag is the thing you came to a room to do. */
+  function roomHead(room) {
+    const ids = room.rows.map((r) => r.id);
+    const all = ids.length && ids.every((i) => selected.has(i));
+    return el('div', { class: 'room-head' + (room.aside ? ' aside' : '') }, [
+      el('h3', { text: room.name }),
+      el('span', { class: 'room-n',
+                   text: room.rows.length + (room.rows.length === 1
+                                             ? ' result' : ' results') }),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: all ? 'Clear' : 'Select all',
+        onclick: () => {
+          for (const i of ids) { if (all) selected.delete(i); else selected.add(i); }
+          render();
+        },
+      }),
+    ]);
   }
 
   function card(r) {
@@ -635,7 +849,7 @@ BARRY.views.results = (function () {
         onclick: () => preview(r),
       }, [
         r.type === 'image'
-          ? el('img', { src: fileUrl(r), alt: '', loading: 'lazy' })
+          ? el('img', { src: thumbUrl(r), alt: '', loading: 'lazy' })
           : el('span', { class: 'noimg',
               text: (r.ext || '').replace('.', '').toUpperCase() || 'FILE' }),
       ]),
@@ -666,7 +880,11 @@ BARRY.views.results = (function () {
         r.run_id ? el('button', {
           class: 'mini', text: 'Run',
           title: 'Show the run that produced this: ' + r.run_id,
-          onclick: () => { setView('history'); BARRY.views.history.reload(); },
+          onclick: () => {
+            setView('history');
+            if (BARRY.views.history.show) BARRY.views.history.show(r.run_id);
+            else BARRY.views.history.reload();
+          },
         }) : null,
       ]),
     ]);
@@ -676,17 +894,116 @@ BARRY.views.results = (function () {
      carries enough to make it again. Anything else in Results -- a plot from
      a script, a file dropped in by hand -- has no recipe, so it gets no
      button rather than a button that cannot work. */
+  /* What the registry can do about this result, if anything.
+   *
+   * This was `r.kind !== 'figure'`, which hid the button on everything else
+   * rather than showing an empty one -- and rebuild.py was good enough that
+   * hiding it was the loss. The backend registry now says which kinds have a
+   * plan, and this asks it instead of asking whether the word "figure"
+   * appears. Kinds it has never heard of still get nothing, which is right:
+   * a manifest CSV has no meaningful "make this again".
+   */
+  const REBUILDABLE = {
+    figure: { label: 'Rebuild', why: 'Check what this figure needs, then '
+                                     + 'walk through remaking it' },
+    panorama: { label: 'Re-open', why: 'Open Panorama on the numbers this '
+                                       + 'was drawn from' },
+    toolkit: { label: 'Ask again', why: 'Run the same query and say whether '
+                                        + 'the answer has moved' },
+    deck: { label: 'Re-export', why: 'Check the deck and its slides are '
+                                     + 'still here' },
+  };
+
   function rebuildBtn(r) {
-    if (!r.run_id || r.kind !== 'figure' || !BARRY.figrebuild) return null;
+    const can = r.run_id && REBUILDABLE[r.kind];
+    if (!can) return null;
+    /* A figure keeps its own dialog -- figrebuild.js audits, walks the steps
+       and hands over the builder, and none of that is worth replacing with
+       something generic. The rest open the plan. */
+    if (r.kind === 'figure') {
+      if (!BARRY.figrebuild) return null;
+      return el('button', {
+        class: 'mini', text: can.label, title: can.why,
+        onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
+      });
+    }
     return el('button', {
-      class: 'mini', text: 'Rebuild',
-      title: 'Check what this figure needs, then walk through remaking it',
-      onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
+      class: 'mini', text: can.label, title: can.why,
+      onclick: (e) => { e.stopPropagation(); showPlan(r); },
     });
   }
 
+  /* The plan for a non-figure result: what it would take, what stands in the
+     way, and -- where the tool kept its answers -- whether it still comes out
+     the same. Read before anything is done, so a missing drive is a sentence
+     here rather than a failure partway through. */
+  async function showPlan(r) {
+    const body = el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: r.title || r.name }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      /* Built here rather than borrowed: eventimport.js has a
+         loadingBody() that does exactly this and it is private to that
+         module's closure, so calling it would throw. */
+      el('div', { class: 'mb' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px;'
+                         + 'padding:22px' }, [
+          el('span', { class: 'spin' }),
+          el('span', { text: 'Reading what it would take…' }),
+        ]),
+      ]),
+    ]);
+    showModal(body);
+    let plan;
+    try {
+      plan = await api('/api/recipe/' + encodeURIComponent(r.run_id));
+    } catch (e) {
+      body.querySelector('.mb').replaceChildren(
+        el('p', { class: 'confirm-err', text: e.message }));
+      return;
+    }
+    const steps = el('div', { class: 'rb-steps' }, (plan.steps || []).map((s) =>
+      el('div', { class: 'rb-step', 'data-state': s.status }, [
+        el('span', { class: 'rb-dot ' + s.status }),
+        el('div', { class: 'rb-title' }, [
+          el('span', { text: s.title }),
+          el('span', { class: 'rb-did', text: s.what || '' }),
+        ]),
+      ])));
+    const mb = body.querySelector('.mb');
+    mb.replaceChildren(steps);
+    if ((plan.offer || {}).can_verify) {
+      const out = el('p', { class: 'hint' });
+      mb.appendChild(el('div', { class: 'coll-row' }, [
+        el('button', {
+          class: 'btn', text: 'Does it still come out the same?',
+          onclick: async (e) => {
+            const b = e.target;
+            b.disabled = 'disabled';
+            b.textContent = 'Asking again…';
+            try {
+              const got = await apiPost('/api/recipe/'
+                + encodeURIComponent(r.run_id) + '/verify', {});
+              out.textContent = got.note || '';
+              out.className = 'hint' + (got.same ? '' : ' warn');
+            } catch (err) {
+              out.textContent = err.message;
+              out.className = 'confirm-err';
+            }
+            b.disabled = null;
+            b.textContent = 'Ask again';
+          },
+        }),
+      ]));
+      mb.appendChild(out);
+    }
+  }
+
   function table(list) {
-    const rows = list.map((r) => el('tr', {}, [
+    const rowOf = (r) => el('tr', {}, [
       el('td', {}, [el('button', {
         class: 'res-pick' + (selected.has(r.id) ? ' on' : ''),
         style: 'position:static',
@@ -714,13 +1031,29 @@ BARRY.views.results = (function () {
                  text: BARRY.when(r.created, 'minute') }),
       el('td', { text: fmtBytes(r.bytes) }),
       el('td', { text: (r.tags || []).join(', ') }),
-    ]));
+    ]);
+
+    /* The rooms are rows in the same table rather than a table each, so the
+       columns stay lined up down the whole page. A heading that only lines up
+       with the rows directly under it is four tables pretending to be one. */
+    const body = [];
+    for (const room of inRooms(list)) {
+      if (room.name) {
+        body.push(el('tr', { class: 'room-row' + (room.aside ? ' aside' : '') }, [
+          el('td', { colspan: '9' }, [
+            el('strong', { text: room.name }),
+            el('span', { class: 'room-n', text: room.rows.length }),
+          ]),
+        ]));
+      }
+      for (const r of room.rows) body.push(rowOf(r));
+    }
     return el('div', { class: 'res-table-wrap' }, [
       el('table', { class: 'res-table' }, [
         el('thead', {}, [el('tr', {}, ['', '', 'Title', 'Type', 'Session', 'By',
                                        'Created', 'Size', 'Tags']
           .map((h) => el('th', { text: h })))]),
-        el('tbody', {}, rows),
+        el('tbody', {}, body),
       ]),
     ]);
   }
@@ -781,27 +1114,111 @@ BARRY.views.results = (function () {
     ]));
   }
 
+  /* ======================================================================
+     The placard
+
+     This was a definition list ending in JSON.stringify(parameters), which is
+     the shape of an answer without being one. "Which recording is this of"
+     was a label you could read and not follow; "what else came out of that
+     run" was unanswerable; and the settings -- the part somebody is actually
+     here for six months later -- arrived as one unbroken line of braces.
+
+     So: every fact that points at something is a way of getting there, and
+     the settings are a table.
+     ====================================================================== */
   function provenance(r) {
+    const box = el('div', { class: 'prov' });
     const kv = el('dl', { class: 'kv' });
-    const add = (k, v) => {
+    const add = (k, v, go) => {
       if (v === null || v === undefined || v === '') return;
       kv.appendChild(el('dt', { text: k }));
-      kv.appendChild(el('dd', { text: typeof v === 'object' ? JSON.stringify(v) : String(v) }));
+      kv.appendChild(el('dd', {}, [
+        go ? el('a', { href: '#', text: String(v),
+                       onclick: (e) => { e.preventDefault(); go(); } })
+           : el('span', { text: String(v) }),
+      ]));
     };
-    add('File', r.path);
-    add('Kind', r.kind);
+
+    /* The recording first, because that is the question -- and clicking it
+       opens the recording rather than naming it and leaving you to go and
+       find it. */
+    if (r.session_label) {
+      add('Recording', r.session_label, r.session_path
+        ? () => { closeModal(); setView('xplore');
+                  BARRY.views.xplore.open(r.session_path); }
+        : null);
+    }
+    if (r.project || r.mouse != null) {
+      const who = [r.project, r.mouse != null ? 'm' + r.mouse : null,
+                   r.session_no != null ? 's' + r.session_no : null,
+                   r.recorded_on].filter(Boolean).join('  ');
+      add('Animal', who, () => {
+        closeModal();
+        const q = [r.project ? 'project:' + r.project : '',
+                   r.mouse != null ? 'mouse:' + r.mouse : ''].filter(Boolean);
+        query = q.join(' ');
+        view = 'grid';
+        render();
+      });
+    }
     add('Made by', r.author);
-    add('Machine', r.machine);
-    add('Created', r.created);
-    add('Session', r.session_label);
-    add('Run id', r.run_id);
-    if (r.parameters && Object.keys(r.parameters).length) {
-      add('Parameters', r.parameters);
+    add('On', r.machine);
+    add('When', r.created ? BARRY.whenRaw(r.created) : null);
+    // Which code, which is the half that used to be unanswerable.
+    if (r.app_version || r.commit) {
+      add('Version', [r.app_version, r.commit && '(' + r.commit + ')']
+        .filter(Boolean).join(' '));
+    }
+    add('Tool', r.script);
+    if (r.run_id) {
+      add('Run', r.run_id, () => {
+        closeModal();
+        setView('history');
+        if (BARRY.views.history.show) BARRY.views.history.show(r.run_id);
+        else BARRY.views.history.reload();
+      });
+    }
+    add('File', r.rel || r.path);
+    box.appendChild(kv);
+
+    /* Everything else from the same run. The four CSVs beside a Panorama
+       figure are one piece of work, and the catalogue lists them as five
+       unrelated rows. */
+    if (r.run_id) {
+      const kin = items.filter((x) => x.run_id === r.run_id && x.id !== r.id);
+      if (kin.length) {
+        box.appendChild(el('div', { class: 'section-label',
+                                    text: 'Saved with it' }));
+        box.appendChild(el('div', { class: 'prov-kin' }, kin.map((x) =>
+          el('button', {
+            class: 'pill', text: x.name, title: 'Open ' + x.name,
+            onclick: () => { closeModal(); preview(x); },
+          }))));
+      }
+    }
+
+    /* The settings, as a table. This is what a rebuild reads back, and what
+       tells two figures of the same recording apart. */
+    const p = r.parameters || {};
+    const keys = Object.keys(p).sort();
+    if (keys.length) {
+      box.appendChild(el('div', { class: 'section-label', text: 'Settings' }));
+      box.appendChild(el('table', { class: 'prov-params' }, [
+        el('tbody', {}, keys.map((k) => el('tr', {}, [
+          el('td', { text: k }),
+          el('td', { text: Array.isArray(p[k]) ? p[k].join(', ')
+                           : (p[k] && typeof p[k] === 'object')
+                             ? JSON.stringify(p[k]) : String(p[k]) }),
+        ]))),
+      ]));
     }
     if ((r.panels || []).length) {
-      add('Panels', r.panels.map((p) => p.panel).join(', '));
+      box.appendChild(el('div', { class: 'section-label', text: 'Panels' }));
+      box.appendChild(el('div', { class: 'prov-kin' },
+        r.panels.map((pl) => el('span', { class: 'pill',
+                                          text: pl.title || pl.panel }))));
     }
-    return kv;
+    return box;
   }
 
   function preview(r) {
@@ -880,11 +1297,34 @@ BARRY.views.results = (function () {
   return {
     init,
     onShow: () => load(false),
-    reload: () => load(true),
+    reload: () => load(true, true),
     all: () => items,
     urlFor: fileUrl,
     /* Jump here with a search already applied -- used by History's
        "show in Results". */
     search: (q) => { query = q || ''; view = 'grid'; render(); },
+    /* Driving the view from outside it. The harness needs these, and so does
+       anything that wants to hand somebody a room rather than a search --
+       "show me what we have on m306" is a grouping and a filter, not a
+       string to match. */
+    groupBy: (by) => {
+      if (by === undefined) return groupBy;
+      groupBy = groupingOf(by).id;
+      BARRY.prefs.set('result_group', groupBy);
+      render();
+      return groupBy;
+    },
+    setView: (v) => { view = v || 'grid'; render(); return view; },
+    selectedCount: () => selected.size,
+    /* How many the current search and filters leave, as against how many
+       there are. `all()` is the catalogue; this is what is on screen. */
+    shownCount: () => visible().length,
+    /* Open one result's placard by id, without having to find its card and
+       click it first. */
+    describe: (id) => {
+      const r = items.find((x) => x.id === id);
+      if (r) editTags(r);
+      return !!r;
+    },
   };
 })();

@@ -475,19 +475,45 @@ BARRY.figrebuild = (function () {
           moved.push('the event marks');
         }
 
-        /* The window, the filters and the gain live on the session too, and
-           a session opened since the steps ran has the file's own rather
-           than the figure's. */
-        if (swapped) {
-          if (isFinite(want.t0)) sess.t0 = want.t0;
-          if (isFinite(want.t1) && isFinite(want.t0)) {
-            sess.span = Math.max(0.001, want.t1 - want.t0);
-          }
-          sess.hp = want.highpass || 0;
-          sess.lp = want.lowpass || 0;
-          sess.notch = want.notch || 0;
-          if (want.gain) sess.gain = want.gain;
-          moved.push('the window and the filters');
+        /* The window, the filters and the gain, checked the same way as
+           everything above rather than only when the session was swapped.
+
+           This used to be `if (swapped)`, on the reasoning that a session
+           re-opened since the steps ran has the file's own window rather
+           than the figure's. True, and not the only way to lose it: anything
+           that moves the window *on the session already on screen* -- a jump
+           to an event mark, a late view-state restore -- leaves `swapped`
+           false, so none of this ran and the step reported that the window
+           matched the recipe while it did not.
+
+           Which is the exact failure this step was written to catch, in the
+           one shape it was not looking for. It is intermittent because it
+           needs a late write to land inside the pause above, so it shows up
+           when something else has been using the session first and not when
+           the rebuild is run on its own. */
+        const wantSpan = (isFinite(want.t1) && isFinite(want.t0))
+          ? Math.max(0.001, want.t1 - want.t0) : null;
+        if (isFinite(want.t0)
+            && (Math.abs((sess.t0 || 0) - want.t0) > 0.01
+                || (wantSpan !== null
+                    && Math.abs((sess.span || 0) - wantSpan) > 0.01))) {
+          sess.t0 = want.t0;
+          if (wantSpan !== null) sess.span = wantSpan;
+          moved.push('the window');
+        }
+        const wantHp = want.highpass || 0;
+        const wantLp = want.lowpass || 0;
+        const wantNotch = want.notch || 0;
+        if ((sess.hp || 0) !== wantHp || (sess.lp || 0) !== wantLp
+            || (sess.notch || 0) !== wantNotch) {
+          sess.hp = wantHp;
+          sess.lp = wantLp;
+          sess.notch = wantNotch;
+          moved.push('the filters');
+        }
+        if (want.gain && (sess.gain || 1) !== want.gain) {
+          sess.gain = want.gain;
+          moved.push('the gain');
         }
 
         if (moved.length) BARRY.views.xplore.refreshAll();

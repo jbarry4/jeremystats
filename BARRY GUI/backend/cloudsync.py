@@ -54,6 +54,11 @@ ORDER = [
     # A rig that checked forty recordings and a desktop that checked twelve
     # should both be able to ask which of the fifty-two have gaps.
     "health_checks",
+    # What a tool has already worked out, keyed on the recording and on
+    # the settings that change the answer. Late because nothing
+    # references it, and both directions: the whole point is that a
+    # colleague's scan answers your question without being re-run.
+    "tool_results",
 ]
 PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 
@@ -224,7 +229,7 @@ class Sync:
 
     def __init__(self, logs_dir, store, bank=None, curate=None, layers=None,
                  mice=None, results=None, repo_root=None, feedback=None,
-                 people=None, health=None):
+                 people=None, health=None, vaults=None):
         self.logs = os.path.abspath(logs_dir)
         self.store = store
         self.bank = bank
@@ -235,6 +240,11 @@ class Sync:
         self.feedback = feedback
         self.people = people
         self.health = health
+        # {tool name: toolresults.ToolResults}. What each tool has already
+        # worked out, so a colleague's scan answers your question rather than
+        # being run again. Optional: a Sync built without them simply sends
+        # no vault rows, which is what every caller that predates them does.
+        self.vaults = vaults or {}
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -644,6 +654,16 @@ class Sync:
                 # in the GUI moves the file, so this is the folder you would
                 # see if you opened Results/ in Explorer.
                 "folder": r.get("folder"),
+                # What it is of. The run record has always known; the
+                # catalogue used to drop it, so "what do we have on m306"
+                # could only ever be a text search over labels.
+                "project": r.get("project"),
+                "mouse": _int(r.get("mouse")),
+                "session_no": _int(r.get("session_no")),
+                "recorded_on": r.get("recorded_on"),
+                "tool": r.get("script") or r.get("kind"),
+                "app_version": r.get("app_version"),
+                "commit_sha": r.get("commit"),
                 "tags": list(r.get("tags") or []),
                 "notes": r.get("notes"),
                 "starred": bool(r.get("starred")),
@@ -655,6 +675,62 @@ class Sync:
                 "updated_by": up.get("user") or self.machine,
             })
         return {"results": out}
+
+    def rows_tool_results(self):
+        """The vault: one row per (tool, recording, question).
+
+        The numbers only. The picture each of these is drawn into is
+        megabytes and regenerable from them in milliseconds, so it stays in
+        GUI_logs/.cache and never leaves the machine that made it.
+        """
+        out = []
+        for tool, vault in (self.vaults or {}).items():
+            for r in vault.all():
+                gid = r.get("gid")
+                ph = r.get("params_hash")
+                if not gid or not ph:
+                    continue
+                comp = r.get("computed") or {}
+                up = _prov(r, "updated") or comp
+                out.append({
+                    "id": "%s:%s:%s" % (tool, gid, ph),
+                    "tool": tool,
+                    "gid": gid,
+                    "params_hash": ph,
+                    # What was asked. A tool that keeps its settings under
+                    # `spec` says so; one that keeps them at the top level --
+                    # Panorama does -- is read using the field list the vault
+                    # already hashes on, rather than this file having to know
+                    # each tool's parameters by name.
+                    "spec": (r.get("spec")
+                             or {k: r.get(k) for k in (vault.keys or ())
+                                 if r.get(k) is not None}),
+                    # Everything that is not bookkeeping is the answer. Listed
+                    # by exclusion rather than by name because each tool's
+                    # numbers are its own -- naming them here would mean this
+                    # file had to change every time a tool learned to measure
+                    # something new.
+                    "numbers": {k: v for k, v in r.items()
+                                if not k.startswith("_")
+                                and k not in ("gid", "params_hash", "spec",
+                                              "computed", "updated", "tool",
+                                              "fit_engine", "session_label",
+                                              "region", "channel_label")},
+                    "engine": r.get("fit_engine"),
+                    "session_label": r.get("session_label"),
+                    "region": r.get("region"),
+                    "channel_label": r.get("channel_label"),
+                    "seconds": _num(comp.get("seconds")),
+                    "computed_at": cloud.ts(comp.get("at")),
+                    "computed_by": up.get("user"),
+                    "machine": comp.get("machine") or up.get("machine"),
+                    "app_version": up.get("app_version"),
+                    "commit_sha": up.get("commit"),
+                    "updated_at": (cloud.ts(up.get("at"))
+                                   or cloud.ts(comp.get("at")) or UNSTAMPED),
+                    "updated_by": up.get("user") or self.machine,
+                })
+        return {"tool_results": out}
 
     def rows_storyboards(self):
         out = []
@@ -694,6 +770,16 @@ class Sync:
                 "duration_s": _num(r.get("duration_s")),
                 "machine": prov.get("machine"),
                 "git_user": prov.get("user"),
+                "app_version": prov.get("app_version"),
+                "commit_sha": prov.get("commit"),
+                # The complete layout a rebuild reads back. It has always been
+                # on the run record here and has never travelled, so a
+                # colleague could see that a figure was made and not rebuild
+                # it. `panels` is part of the recipe, not a summary of it --
+                # a summary is exactly what cannot be rebuilt from.
+                "recipe": {k: v for k, v in r.items()
+                           if k in ("panels", "recipe", "layout", "format",
+                                    "problems")} or None,
                 "updated_at": cloud.ts(prov.get("at")) or cloud.now(),
             })
         return {"runs": out}
@@ -885,6 +971,11 @@ class Sync:
         rows.update(self.rows_feedback())
         rows.update(self.rows_people())
         rows.update(self.rows_health_checks())
+        # Called, not merely declared. bank_snapshots was in ORDER and in
+        # ON_CONFLICT from the day it shipped and never built here, so it
+        # sent nothing at all against a hundred and fifty-eight local
+        # snapshots. One missing line, invisible from either end.
+        rows.update(self.rows_tool_results())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())

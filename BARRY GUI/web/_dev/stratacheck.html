@@ -260,14 +260,31 @@ async function untilN(fn, tries = 300, gap = 100) {
      so a drag flag scoped to the render was thrown away by the first
      channel it painted. */
   const midDrag = labelled();
+  /* Ask whether the three rows the drag went over are labelled, not whether
+     the total went up by three.
+
+     The count version assumed rows unl+1..unl+3 started blank, and nothing
+     ever made them so -- findBlank() only promises that `unl` is. If one of
+     them already carried this brush's region, paint() correctly does nothing
+     and the total does not move, so the check failed on a drag that had
+     worked perfectly. Which of them were blank depended on what the previous
+     run of this harness had left behind, so it passed and failed in turns on
+     identical code. */
+  const dragged = [1, 2, 3].map((k) => unl + k);
   for (const k of [1, 2, 3]) {
     over(D.querySelectorAll('.strata-rows .strata-row')[unl + k]);
     await sleep(120);
   }
   await sleep(400);
-  say('note', '  after dragging over three more: ' + labelled());
+  const nowRows = D.querySelectorAll('.strata-rows .strata-row');
+  const painted = dragged.filter((i) => nowRows[i]
+                                && nowRows[i].classList.contains('has'));
+  say('note', '  after dragging over three more: ' + labelled()
+      + ' (' + painted.length + '/3 of the dragged rows are labelled)');
   check('dragging paints the channels it passes over',
-        labelled() >= midDrag + 3, midDrag + ' -> ' + labelled());
+        painted.length === 3,
+        painted.length + ' of 3 rows labelled; count ' + midDrag
+        + ' -> ' + labelled());
 
   W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true }));
   await sleep(200);

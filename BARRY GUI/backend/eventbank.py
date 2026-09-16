@@ -19,6 +19,7 @@ import os
 import platform
 import re
 import threading
+import time
 import uuid
 
 from . import shards
@@ -120,14 +121,50 @@ class EventBank:
             "versions": shards.BYID,
         }, store)
         self.book.absorb_legacy()
-        self._cache = None
-        self._stamp = None
+        self._drop_cache()
 
     # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
+    def _drop_cache(self):
+        """Forget everything read from disk. Called by every write.
+
+        One method rather than a line per write site, because there are eight
+        of them and `summaries` and the id index are derived from `all` -- so
+        a write that dropped only `_cache` would leave the other two holding
+        the previous answer. They are also fingerprint-checked, but a
+        fingerprint is (count, newest mtime, total mtime) and mtime is only
+        good to the second on some filesystems: two writes inside one tick
+        are indistinguishable. Dropping them outright is the part that does
+        not depend on the clock.
+        """
+        self._cache = None
+        self._stamp = None
+        self._summaries = None
+        self._sum_stamp = None
+        self._by_id = None
+        self._id_stamp = None
+        self._fp = None
+        self._fp_at = 0.0
+
+    # How long a fingerprint is trusted without re-taking it. This only
+    # governs how fast a change made *outside this process* is noticed -- a
+    # git pull, or the sync applying a colleague's entry. Our own writes call
+    # _drop_cache and are seen immediately regardless.
+    FINGERPRINT_TTL = 0.25
+
     def _fingerprint(self):
-        """Changes when any entry does, so a colleague's pull is picked up."""
+        """Changes when any entry does, so a colleague's pull is picked up.
+
+        Memoised for a quarter of a second, because taking it means a stat of
+        every shard in the bank and the three readers that check it -- all(),
+        summaries() and get() -- are usually called within one request. Forty
+        get() calls in a loop meant forty sweeps of a hundred and fifty files
+        to answer forty dictionary lookups.
+        """
+        now = time.time()
+        if self._fp is not None and now - self._fp_at < self.FINGERPRINT_TTL:
+            return self._fp
         count = newest = total = 0
         try:
             with os.scandir(self.root) as it:
@@ -143,7 +180,9 @@ class EventBank:
                     newest = max(newest, mt)
         except OSError:
             pass
-        return (count, newest, total)
+        self._fp = (count, newest, total)
+        self._fp_at = now
+        return self._fp
 
     def all(self):
         stamp = self._fingerprint()
@@ -168,7 +207,17 @@ class EventBank:
         on one entry, and several megabytes across a bank once everything
         has a history. The listing does not need them; opening an entry
         fetches the whole record, which does.
+
+        Cached on the same fingerprint as `all()`, because it was rebuilding
+        every record on every call and `/api/bank` asks for it twice: once
+        directly and once inside `tree()`. So a hundred and fifty entries,
+        each with its version history, were stripped and rebuilt twice per
+        request -- and every write drops the cache, which is why the request
+        right after a delete was the slow one.
         """
+        stamp = self._fingerprint()
+        if self._summaries is not None and stamp == self._sum_stamp:
+            return self._summaries
         out = []
         for rec in self.all():
             row = {k: v for k, v in rec.items() if k != "events"}
@@ -177,13 +226,22 @@ class EventBank:
                     {k: v for k, v in ver.items() if k != "snap"}
                     for ver in row["versions"]]
             out.append(row)
+        self._summaries = out
+        self._sum_stamp = stamp
         return out
 
     def get(self, entry_id):
-        for rec in self.all():
-            if rec.get("id") == entry_id:
-                return rec
-        return None
+        """One entry by id.
+
+        Through an index rather than a scan of the whole bank: this is called
+        once per id inside loops that walk a selection, so the linear version
+        made those quadratic.
+        """
+        stamp = self._fingerprint()
+        if self._by_id is None or stamp != self._id_stamp:
+            self._by_id = {r.get("id"): r for r in self.all() if r.get("id")}
+            self._id_stamp = stamp
+        return self._by_id.get(entry_id)
 
     def tree(self):
         """Grouped project -> mouse -> session, which is how people look."""
@@ -550,7 +608,7 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         rec["path"] = self.book.mine(base)
         rec["replaced"] = bool(prior)
         rec["new_version"] = bool(moved) and bool(prior)
@@ -661,7 +719,7 @@ class EventBank:
         with _LOCK:
             base = self._base_for_id(entry_id)
             rec = self.book.write(base, rec) if base else rec
-            self._cache = None
+            self._drop_cache()
         return rec
 
     @shards.atomic
@@ -709,7 +767,7 @@ class EventBank:
             base = self._base_for_id(eid)
             if base:
                 self.book.write(base, live)
-            self._cache = None
+            self._drop_cache()
             n += hit
         return n
 
@@ -1072,7 +1130,7 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         report["time_basis"] = rec["time_basis"]
@@ -1374,7 +1432,7 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         return report
@@ -1683,7 +1741,7 @@ class EventBank:
         """Write a record back under the id it already has."""
         base = self._base_for_id(rec["id"]) or self._base_of(rec)
         out = self.book.write(base, rec)
-        self._cache = None
+        self._drop_cache()
         return out
 
     def delete(self, entry_id):
@@ -1692,7 +1750,7 @@ class EventBank:
             return False
         with _LOCK:
             gone = self.book.erase(base)
-            self._cache = None
+            self._drop_cache()
         return bool(gone)
 
     def _base_for_id(self, entry_id):

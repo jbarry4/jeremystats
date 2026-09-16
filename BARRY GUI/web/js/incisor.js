@@ -67,6 +67,8 @@ BARRY.incisor = (function () {
   let res = null;        // the finished scan
   let chosen = {};       // hilus / theta / ripple, after any correction
   let banking = false;
+  let savingBad = false; // a bad-channel change on its way to the record
+  let editorOpen = false;// the channel editor, kept open across repaints
 
   const round2 = (v) => Math.round((v || 0) * 100) / 100;
   const human = (s) => (s == null ? ''
@@ -82,13 +84,18 @@ BARRY.incisor = (function () {
   /* The three landmarks, in Toothy's colours: DS red, ripple green, theta
      blue (`README.md:274`). Named once so the panel, the lines on the
      traces and the legend cannot drift apart. */
+  /* Listed in depth order, not in the order the code computes them.
+     Theta sits at the fissure, the ripple channel in the pyramidal layer
+     above the hilus, and the hilus below both -- so reading them down the
+     panel reads them down the probe, which is how somebody looking at the
+     traces beside it is already reading them. */
   const ROLES = [
-    { key: 'hilus', label: 'Hilus (DS)', colour: '#e5484d',
-      why: 'where the dentate spikes are detected' },
     { key: 'theta', label: 'Theta', colour: '#3b82f6',
       why: 'most power in 6–10 Hz' },
     { key: 'ripple', label: 'Ripple', colour: '#22c55e',
       why: 'most ripple power relative to theta' },
+    { key: 'hilus', label: 'Hilus (DS)', colour: '#e5484d',
+      why: 'where the dentate spikes are detected' },
   ];
   /* Which registry field corroborates which pick. `fissure_channel` is the
      landmark the theta estimate is about -- the workbook records the
@@ -218,16 +225,9 @@ BARRY.incisor = (function () {
       return traceWin;
     }
     if (!q.path) return null;
-    const args = new URLSearchParams({
-      csc: q.path,
-      panes: JSON.stringify([{ panel: 'traces' }]),
-      chrome: 'notabs,noheads',
-      role: 'incisor',
-      theme: (BARRY.state && BARRY.state.theme) || 'dark',
-    });
-    traceWin = window.open(location.origin + '/?' + args.toString()
-                           + '#xplore', 'barry-incisor-traces',
-                          'width=1180,height=900,menubar=no,toolbar=no');
+    const url = traceUrl();
+    traceWin = window.open(url, 'barry-incisor-traces',
+                           'width=1180,height=900,menubar=no,toolbar=no');
     if (!traceWin) {
       toast('The traces window was blocked. Allow pop-ups for 127.0.0.1, '
             + 'then press “Show them on the traces” again.', 'err', 9000);
@@ -246,6 +246,32 @@ BARRY.incisor = (function () {
     toast('The traces window did not finish opening that recording.',
           'err', 8000);
     return traceWin;
+  }
+
+  function traceUrl() {
+    /* What it opens on.
+
+       A CSD rather than the traces: this window exists to check a laminar
+       landmark, and a landmark is a boundary -- the sink/source reversal at
+       the fissure and the hilar sink are visible as bands on a CSD and are
+       a matter of opinion on sixty-four stacked traces. Even channels,
+       because a CSD wants one line of contacts at a known spacing and that
+       is what the 32-channel probe on 64 inputs actually is. Five seconds,
+       because a dentate spike is tens of milliseconds and a ten-second
+       window puts three hundred of them in a pane.
+
+       Starting points, not a cage: the window is the whole application and
+       every one of them can be changed in it. */
+    const args = new URLSearchParams({
+      csc: q.path,
+      panes: JSON.stringify([{ panel: 'csd' }]),
+      even: '1',
+      span: '5',
+      chrome: 'notabs,noheads',
+      role: 'incisor',
+      theme: (BARRY.state && BARRY.state.theme) || 'dark',
+    });
+    return location.origin + '/?' + args.toString() + '#xplore';
   }
 
   /* Returns whether the lines actually landed, so the caller can keep
@@ -374,6 +400,7 @@ BARRY.incisor = (function () {
             + 'be detected until that is resolved.' }));
       return box;
     }
+    box.appendChild(selection());
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
         class: 'btn', text: job ? 'Scanning…' : 'Scan',
@@ -387,6 +414,132 @@ BARRY.incisor = (function () {
     ]));
     box.appendChild(params());
     return box;
+  }
+
+  /* ---------------- what is being scanned ----------------
+     Said out loud rather than left to be inferred from a channel count.
+     Sixty-two channels on a sixty-four channel probe looks exactly like
+     sixty-four unless the panel says two were dropped -- and the hilus,
+     theta and ripple picks are argmaxes over whatever set was scanned, so
+     what was left out is part of the answer rather than a detail of it. */
+  function selection() {
+    const p = (est && est.plan) || {};
+    const all = (est && est.channels) || [];
+    const bad = all.filter((c) => c.bad);
+    const total = all.length || p.n_channels || 0;
+    const box = el('div', { class: 'inc-selection' });
+
+    box.appendChild(el('p', { class: 'inc-sel-head',
+      text: p.n_channels + ' of ' + total + ' channel'
+          + (total === 1 ? '' : 's') + ' will be read' }));
+
+    /* Both ways round. "None are marked" is a fact about this recording
+       too, and a panel that only speaks when something was removed leaves
+       you unable to tell that from a panel that never checked. */
+    box.appendChild(el('p', { class: bad.length ? 'hint' : 'hint quiet',
+      style: 'max-width:78ch',
+      text: bad.length
+        ? (bad.length + ' channel' + (bad.length === 1 ? '' : 's')
+           + ' marked bad on this session '
+           + (bad.length === 1 ? 'has' : 'have')
+           + ' been removed from processing — '
+           + bad.map((c) => c.label).join(', ')
+           + '. They are not read at all, so they cannot win any of the '
+           + 'three channel picks and no candidate comes off them.')
+        : 'No channels are marked bad on this session, so every one of '
+          + 'them is read.' }));
+
+    /* How the file is read and how the probe is laid out. Neither changes
+       when an event happened; both change which channels there were. */
+    const scheme = p.channel_scheme || null;
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Probe configuration: ' + (p.probe_name || p.probe || 'H3')
+          + '  ·  ' + (p.even_only ? 'even-numbered channels only'
+                                        : 'every channel')
+          + (p.n_csc_files ? ' of ' + p.n_csc_files + ' CSC files' : '')
+          + '  ·  ' + (p.invert ? 'inverted, the lab convention'
+                                     : 'not inverted') }));
+    if (scheme && scheme.why) {
+      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+        text: 'Chosen by measurement: ' + scheme.why + '.' }));
+    }
+
+    box.appendChild(chanEditor(all, bad));
+    return box;
+  }
+
+  /* Putting a channel back, or taking one out, and generating the times
+     again.
+
+     The tick writes through to the session record -- the same one the trace
+     view reads and the same one every other tool honours -- rather than to
+     a copy held in this panel, so a channel marked bad in either place is
+     bad in both. */
+  function chanEditor(all, bad) {
+    const d = el('details', {
+      class: 'inc-chan-edit', open: editorOpen ? 'open' : null,
+      ontoggle: (e) => { editorOpen = e.target.open; },
+    }, [
+      el('summary', { text: 'Add or remove channels, and scan again' }),
+      el('p', { class: 'hint quiet', style: 'max-width:74ch',
+        text: 'Unticking a channel marks it bad for this session '
+            + 'everywhere. Changing it discards the scan on purpose: every '
+            + 'candidate time came out of reading a particular set of '
+            + 'channels, and a result sitting under a selection it no '
+            + 'longer matches is the kind of thing that gets banked by '
+            + 'mistake. Press Scan to generate them again.' }),
+    ]);
+    const grid = el('div', { class: 'inc-chan-grid' });
+    for (const c of all) {
+      grid.appendChild(el('label', {
+        class: 'inc-chan' + (c.bad ? ' bad' : ''),
+        title: c.bad ? c.label + ' is marked bad and is not read'
+                     : c.label + ' is read',
+      }, [
+        el('input', {
+          type: 'checkbox', checked: c.bad ? null : 'checked',
+          disabled: savingBad ? 'disabled' : null,
+          onchange: (e) => setBad(c.number, !e.target.checked),
+        }),
+        el('span', { text: c.label }),
+      ]));
+    }
+    d.appendChild(grid);
+    d.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', { class: 'btn ghost sm', text: 'Put them all back',
+        disabled: (savingBad || !bad.length) ? 'disabled' : null,
+        onclick: () => setBadSet([]) }),
+      savingBad ? el('span', { class: 'hint quiet', text: 'Saving…' })
+                : null,
+    ].filter(Boolean)));
+    return d;
+  }
+
+  function setBad(number, bad) {
+    const now = new Set(((est && est.channels) || [])
+      .filter((c) => c.bad).map((c) => Number(c.number)));
+    if (bad) now.add(Number(number)); else now.delete(Number(number));
+    setBadSet(Array.from(now));
+  }
+
+  async function setBadSet(numbers) {
+    if (!q.path || savingBad) return;
+    savingBad = true; paint();
+    try {
+      await apiPost('/api/session/bad-for-path', {
+        path: q.path,
+        bad_channels: numbers.map(Number).sort((a, b) => a - b),
+      });
+    } catch (e) {
+      savingBad = false; paint();
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    savingBad = false;
+    reset();            // the scan was made from a different set of channels
+    editorOpen = true;  // survives the repaint, so you can untick two
+    await refreshEstimate();
+    paint();
   }
 
   function params() {
@@ -566,6 +719,27 @@ BARRY.incisor = (function () {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
                                 text: '3. Which channel' }));
+    /* The question this step invites, answered before it is asked.
+
+       The three picks are computed FROM the detection -- normalised
+       amplitude x count for the hilus, band power for the other two -- so
+       they cannot have fed back into it. Every channel was detected on
+       separately and carries its own candidates; each time is that
+       candidate's own sample index put through the .ncs record timestamps,
+       which is one clock for the whole file. So switching a channel here
+       swaps which set you are looking at, instantly and with nothing read
+       again, and moves no event by a microsecond.
+
+       What DOES move the picks is step 2: a channel added to or removed
+       from the scan changes the set each argmax runs over. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Changing a channel here changes which candidates you are '
+          + 'looking at, not when any of them happened — every channel '
+          + 'was detected on separately, and every time came from the '
+          + '.ncs record timestamps rather than from the channel. The picks '
+          + 'came out of the scan, so switching one costs nothing and '
+          + 'nothing is read again. To move the picks themselves, add or '
+          + 'remove channels in step 2 and scan again.' }));
     const known = (est && est.known) || {};
 
     let unresolved = false;
@@ -577,10 +751,20 @@ BARRY.incisor = (function () {
       const now = chosen[r.key];
       if (now == null) unresolved = true;
 
+      /* The candidate count, on the hilus list only. That is the number
+         that changes what step 4 banks, so seeing it in the list is the
+         difference between choosing a channel and guessing at one. On the
+         theta and ripple lists it would be the DS count, which has nothing
+         to do with either pick, so it is left off. */
+      const nOn = (c) => Number((res.n_by_channel || {})[String(c.index)] || 0);
       const opts = (res.channels || []).map((c) => el('option', {
         value: c.number,
         selected: Number(now) === Number(c.number) ? 'selected' : null,
-        text: c.label + (c.bad ? '  (bad)' : ''),
+        text: c.label + (c.bad ? '  (bad)' : '')
+              + (r.key === 'hilus'
+                  ? '  — ' + nOn(c) + ' candidate'
+                    + (nOn(c) === 1 ? '' : 's')
+                  : ''),
       }));
 
       box.appendChild(el('div', { class: 'inc-role' }, [
@@ -650,6 +834,21 @@ BARRY.incisor = (function () {
       unresolved ? el('span', { class: 'hint warn',
         text: 'Choose a channel above before banking.' }) : null,
     ].filter(Boolean)));
+    /* What it opens on, before it opens.
+
+       It is a starting point and all three can be changed in the window,
+       but two of them are worth knowing in advance: on a probe where every
+       channel carries signal, even-only shows half the contacts, and a pick
+       on an odd channel then appears as a marked band at its own depth
+       rather than as a line on a lane. Better said here than discovered
+       there. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'It opens on a CSD of the even-numbered channels over five '
+          + 'seconds — a laminar boundary is a boundary, and it reads '
+          + 'off a CSD where it is a matter of opinion on sixty-four '
+          + 'stacked traces. All three can be changed in the window. A pick '
+          + 'on a channel that view is not showing is marked at its own '
+          + 'depth and labelled hidden.' }));
     return box;
   }
 
@@ -751,8 +950,14 @@ BARRY.incisor = (function () {
     const who = await BARRY.profile.who();
     if (!who) return;
     /* Fetched now rather than carried since the scan: out of the same cache
-       the scan filled, so this costs a small request and no reading. */
+       the scan filled, so this costs a small request and no reading.
+
+       The busy state used to start three lines below this, after the profile
+       lookup and this request had both completed -- so pressing Bank showed
+       nothing at all and then a confirmation dialog appeared out of nowhere,
+       which is the whole complaint in one button. */
     let evs;
+    banking = true; paint();
     try {
       const got = await apiPost('/api/incisor/events',
                                 body({ channel: row.index }));
@@ -761,6 +966,10 @@ BARRY.incisor = (function () {
       toast('Those candidates are no longer cached — run the scan again. ('
             + e.message + ')', 'err', 9000);
       return;
+    } finally {
+      // Down again for the dialog: the question is the person's to answer in
+      // their own time, and a button that says "Banking…" behind it is a lie.
+      banking = false; paint();
     }
     if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
     const ok = await BARRY.confirm(
@@ -856,6 +1065,13 @@ BARRY.incisor = (function () {
     /* For the harness and for XploreFinder: what is selected now, and a way
        to set it without a mouse. */
     _state: () => ({ q, est, res, chosen }),
+    /* The order the landmarks are listed in, the window's starting URL, and
+       a way to mark a channel bad -- three things a harness has to read
+       without a mouse or a pop-up blocker in the way. */
+    _roles: () => ROLES.map((r) => r.key),
+    _traceUrl: traceUrl,
+    _setBad: setBadSet,
+    _refresh: refreshEstimate,
     _choose: (key, number) => {
       chosen[key] = number == null ? null : Number(number);
       pushLines(); paint();
