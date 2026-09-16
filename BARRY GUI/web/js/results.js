@@ -98,12 +98,82 @@ BARRY.views.results = (function () {
       }
       if (sessionFilter && r.session_key !== sessionFilter) return false;
       if (starredOnly && !r.starred) return false;
-      if (!q) return true;
-      const hay = [r.title, r.name, r.session_label, r.author, r.notes,
-                   r.script, r.machine, (r.tags || []).join(' ')]
-                   .join(' ').toLowerCase();
-      return hay.includes(q);
+      return matches(r, q);
     }).sort(sorter);
+  }
+
+  /* ======================================================================
+     Searching by a field, not just by any text anywhere
+
+     `mouse:306` used to match a figure of m3060, a figure whose notes said
+     "306 windows", and a file saved at 13:06. One substring over everything
+     is the right default and the wrong only option -- it cannot express the
+     question people actually have, which is nearly always about one field.
+
+         panorama m306            both, as text, as before
+         tool:panorama mouse:306  the tool and the animal, exactly
+         project:PTEN on:2023-08  every PTEN recording made that month
+         tag:figure3 by:rain      hers, tagged that
+
+     Terms are ANDed. An unrecognised prefix is left as plain text on
+     purpose: a Windows path is full of colons and typing one should search
+     for it, not silently match nothing.
+     ====================================================================== */
+  const FIELDS = {
+    project: (r) => r.project,
+    mouse: (r) => (r.mouse == null ? null : 'm' + r.mouse),
+    session: (r) => (r.session_no == null ? null : 's' + r.session_no),
+    on: (r) => r.recorded_on || (r.created || '').slice(0, 10),
+    tool: (r) => r.script || r.kind,
+    kind: (r) => r.kind,
+    type: (r) => r.type,
+    by: (r) => r.author,
+    machine: (r) => r.machine,
+    tag: (r) => (r.tags || []).join(' '),
+    run: (r) => r.run_id,
+    gid: (r) => r.gid,
+    title: (r) => r.title || r.name,
+  };
+
+  /* Quoted phrases hold together; everything else splits on spaces. */
+  function terms(q) {
+    const out = [];
+    const re = /(?:([a-z_]+):)?(?:"([^"]*)"|(\S+))/gi;
+    let m;
+    while ((m = re.exec(q))) {
+      const key = (m[1] || '').toLowerCase();
+      const val = (m[2] !== undefined ? m[2] : m[3] || '').toLowerCase();
+      if (!val) continue;
+      out.push(FIELDS[key] ? { key, val } : { key: null, val: m[0].toLowerCase() });
+    }
+    return out;
+  }
+
+  function matches(r, q) {
+    if (!q) return true;
+    const hay = [r.title, r.name, r.session_label, r.author, r.notes,
+                 r.script, r.machine, r.project, r.rel,
+                 (r.tags || []).join(' ')].join(' ').toLowerCase();
+    for (const t of terms(q)) {
+      if (!t.key) {
+        if (!hay.includes(t.val)) return false;
+        continue;
+      }
+      const got = String(FIELDS[t.key](r) || '').toLowerCase();
+      if (!got) return false;
+      if (t.key === 'mouse' || t.key === 'session') {
+        /* Anchored, because these are the ones that bite: `mouse:306`
+           matching m3060 is a wrong answer that looks like a right one.
+           The leading letter is optional on both sides, so 306 and m306
+           are the same question. */
+        if (got.replace(/^[ms]/, '') !== t.val.replace(/^[ms]/, '')) return false;
+      } else if (!got.includes(t.val)) {
+        /* Everything else is a prefix or substring on purpose: `on:2023-08`
+           should give you the month, and `tool:pan` should find Panorama. */
+        return false;
+      }
+    }
+    return true;
   }
 
   function sorter(a, b) {
@@ -557,7 +627,11 @@ BARRY.views.results = (function () {
         html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
       el('input', {
         type: 'search', value: query,
-        placeholder: 'Search titles, tags, sessions, notes…',
+        placeholder: 'Search, or mouse:306  tool:panorama  project:PTEN…',
+        title: 'Plain words search everything. A prefix searches one field:'
+             + '\n  project:  mouse:  session:  on:  tool:  kind:  type:'
+             + '\n  by:  machine:  tag:  run:  gid:  title:'
+             + '\nTerms are combined. Use "quotes" for a phrase.',
         oninput: debounceInput(
           (e) => { query = e.target.value; keepFocus(render); }, 140),
       }),
@@ -1048,5 +1122,8 @@ BARRY.views.results = (function () {
     },
     setView: (v) => { view = v || 'grid'; render(); return view; },
     selectedCount: () => selected.size,
+    /* How many the current search and filters leave, as against how many
+       there are. `all()` is the catalogue; this is what is on screen. */
+    shownCount: () => visible().length,
   };
 })();

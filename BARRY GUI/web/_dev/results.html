@@ -173,7 +173,53 @@ async function until(fn, ms = 12000) {
   ev("BARRY.views.results.groupBy('')");
   await sleep(200);
 
-  head('7. Anything thrown?');
+  head('7. Does searching one field search only that field?');
+  /* The point of `mouse:306` is that it is narrower than typing 306, and the
+     way it goes wrong is matching m3060 -- a wrong answer that looks exactly
+     like a right one, which is why it is asserted rather than eyeballed. */
+  const find = (q) => {
+    ev("BARRY.views.results.search(" + JSON.stringify(q) + ")");
+    return ev('BARRY.views.results.shownCount()');
+  };
+  const all = find('');
+  check('an empty search shows everything', all === flat, all + ' vs ' + flat);
+
+  const anyMouse = rows.find((r) => r.mouse != null);
+  if (anyMouse) {
+    const m = anyMouse.mouse;
+    const exact = find('mouse:' + m);
+    const withM = find('mouse:m' + m);
+    say('note', '  mouse:' + m + ' -> ' + exact + ', mouse:m' + m + ' -> ' + withM);
+    check('a field search finds something', exact > 0, String(exact));
+    check('and m306 asks the same question as 306', exact === withM,
+          exact + ' vs ' + withM);
+    check('it is narrower than the whole catalogue', exact < all,
+          exact + ' of ' + all);
+    // The anchoring: a prefix of the number must not match the number.
+    const stub = String(m).slice(0, -1);
+    if (stub) {
+      const loose = find('mouse:' + stub);
+      const same = rows.filter((r) => String(r.mouse) === stub).length;
+      check('mouse:' + stub + ' does not match m' + m, loose === same,
+            loose + ' matched, ' + same + ' actually are m' + stub);
+    }
+  } else {
+    say('note', '  no result names an animal here, so field search is '
+        + 'checked on `type:` instead');
+  }
+
+  const tables = find('type:table');
+  const reallyTables = rows.filter((r) => r.type === 'table').length;
+  check('type:table finds exactly the tables', tables === reallyTables,
+        tables + ' found, ' + reallyTables + ' in the catalogue');
+
+  check('an unknown prefix is searched as plain text, not dropped',
+        find('nosuchfield:zzzz') === 0, 'matched something');
+  check('a path with a colon does not explode',
+        typeof find('C:\\Users\\nothing') === 'number', 'threw');
+  find('');
+
+  head('8. Anything thrown?');
   check('no uncaught errors in the app', errors.length === 0,
         errors.slice(0, 2).join(' | '));
 
