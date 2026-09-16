@@ -42,7 +42,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                people as peoplemod,
                pipeline, prewarm,
                probes as probebook, rebuild,
-               registry, results, runner, sessreg, shards, spikesort, store, thumbs, toolresults,
+               registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
                storyboard, sysinfo, toolfeed, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -2700,6 +2700,246 @@ def api_cfc_job_preview(job_id):
     if not uri:
         return jsonify({"ok": True, "png": None, "rev": rev})
     return jsonify({"ok": True, "png": uri, "rev": rev})
+
+
+def _figure_plan(run):
+    """What it would take to rebuild this figure. The original, unchanged --
+    only moved, so the registry owns it rather than one route."""
+    rec, complete = rebuild.recipe_for(run)
+    steps, _problems = rebuild.audit(
+        rec, complete,
+        [p["id"] for p in analysis.PANELS],
+        [c["id"] for c in analysis.COLORMAPS],
+        list(compose.PAGE_PRESETS.keys()),
+        STORE.all_sessions())
+    worst = "ok"
+    for st in steps:
+        if st["status"] == "missing":
+            worst = "missing"
+            break
+        if st["status"] == "warn":
+            worst = "warn"
+    return {"recipe": rec, "complete": complete, "steps": steps,
+            "verdict": worst}
+
+
+def _panorama_plan(run):
+    """Panorama kept its answers, so most of this is already done.
+
+    A figure has to be made again from the recording. A Panorama does not:
+    the numbers behind it are in the vault under the recording and the
+    settings that produced them, so re-opening it is a read, and the only
+    open question is whether the recording is still reachable for a *fresh*
+    run to compare against.
+    """
+    sess = run.get("session") or {}
+    gid = sess.get("gid")
+    params = run.get("parameters") or {}
+    ph = pnsetmod.params_hash(params) if params else None
+    kept = bool(gid and ph and PNSETS.result_get(gid, ph))
+    here = [p for p in (sess.get("paths") or [sess.get("path")]) if p]
+    reachable = any(os.path.isdir(p) for p in here)
+
+    steps = [
+        {"id": "answer", "title": "Find the numbers it was drawn from",
+         "status": "ok" if kept else "warn",
+         "what": ("Kept, under this recording and these settings."
+                  if kept else
+                  "Not kept -- this ran before Panorama filed its answers, "
+                  "so the figure can be re-made but not compared."),
+         },
+        {"id": "recording", "title": "Locate the recording",
+         "status": "ok" if reachable else "missing",
+         "what": (here[0] if reachable else
+                  "None of its paths are reachable from this machine."),
+         },
+    ]
+    return {
+        "recipe": {"gid": gid, "params_hash": ph, "parameters": params,
+                   "label": run.get("label")},
+        "complete": kept,
+        "steps": steps,
+        "verdict": "ok" if kept and reachable else
+                   ("warn" if reachable else "missing"),
+    }
+
+
+def _panorama_verify(run):
+    """Is the answer still the answer?
+
+    Compares against the numbers, not the picture. A colormap change is not a
+    result changing, and a result changing is not hidden by a rendering that
+    happens to look the same.
+    """
+    sess = run.get("session") or {}
+    gid = sess.get("gid")
+    params = run.get("parameters") or {}
+    ph = pnsetmod.params_hash(params) if params else None
+    was = PNSETS.result_get(gid, ph) if (gid and ph) else None
+    if not was:
+        raise LookupError("This ran before Panorama kept its answers, so "
+                          "there is nothing to compare a new run against.")
+    return {"gid": gid, "params_hash": ph,
+            "computed": was.get("computed"),
+            "summary": {k: was.get(k) for k in
+                        ("modal_hz", "median_hz", "n_used", "n_windows",
+                         "n_nopeak", "n_rejected") if k in was}}
+
+
+def _toolkit_plan(run):
+    """A ToolKit export is a query, so re-running it is cheap and exact.
+
+    Nothing has to be read off a drive: the scope names which recordings, the
+    registry holds their bad channels, and the answer falls out. What can
+    change is the answer -- somebody marks a channel bad next week and the
+    same question returns a different list, which is the point of asking it
+    again rather than a reason not to.
+    """
+    params = run.get("parameters") or {}
+    args = {k: params.get(k) for k in
+            ("scope", "key", "mouse", "group", "date_from", "date_to")}
+    args["scope"] = args.get("scope") or "all"
+    try:
+        picked = toolkit.select(STORE.all_sessions(), **args)
+        err = None
+    except Exception as exc:                             # noqa: BLE001
+        picked, err = [], str(exc)
+    was = _int_or_none((run.get("summary") or {}).get("rows")) \
+        or _int_or_none(run.get("rows"))
+    steps = [
+        {"id": "scope", "title": "Read the scope back",
+         "status": "ok" if not err else "missing",
+         "what": err or toolkit.scope_label(**args)},
+        {"id": "sessions", "title": "Find the recordings it covered",
+         "status": "ok" if picked else "warn",
+         "what": ("%d recording(s) match that scope now." % len(picked))
+                 if picked else
+                 "No recording matches that scope any more."},
+    ]
+    if was is not None:
+        steps.append({"id": "rows", "title": "What it found when it ran",
+                      "status": "ok", "what": "%d row(s)." % was})
+    return {"recipe": dict(args, form=params.get("form"),
+                           include_clean=params.get("include_clean")),
+            "complete": not err,
+            "steps": steps,
+            "verdict": "missing" if err else ("ok" if picked else "warn")}
+
+
+def _toolkit_verify(run):
+    """Ask the same question again and say whether the answer moved."""
+    params = run.get("parameters") or {}
+    args = {k: params.get(k) for k in
+            ("scope", "key", "mouse", "group", "date_from", "date_to")}
+    args["scope"] = args.get("scope") or "all"
+    form = params.get("form") or "long"
+    picked = toolkit.select(STORE.all_sessions(), **args)
+    rows = toolkit.rows(picked, form,
+                        include_clean=bool(params.get("include_clean")))
+    was = _int_or_none((run.get("summary") or {}).get("rows")) \
+        or _int_or_none(run.get("rows"))
+    now = len(rows)
+    return {
+        "scope": toolkit.scope_label(**args),
+        "was": was, "now": now,
+        "same": (was is None or was == now),
+        "note": ("It still comes out the same: %d row(s)." % now)
+                if was == now else
+                ("It was %s row(s) and is now %d -- bad channels have been "
+                 "marked or cleared since." % (was, now) if was is not None
+                 else "The original did not record how many rows it found, "
+                      "so there is nothing to compare %d against." % now),
+    }
+
+
+def _deck_plan(run):
+    """A deck export is re-runnable as long as the deck is still there.
+
+    And as long as its slides still point at results that exist -- which is
+    the part that rots, because a slide holds a result id and filing a result
+    into a folder changes it. `_repoint` exists for exactly that, so this
+    checks the outcome rather than assuming it worked.
+    """
+    deck_id = (run.get("parameters") or {}).get("id") or run.get("deck_id")
+    deck = RESULTS.get_deck(deck_id) if deck_id else None
+    slides = (deck or {}).get("slides") or []
+    dangling = 0
+    for sl in slides:
+        for it in (sl.get("items") or []):
+            rid = it.get("result_id") or it.get("id")
+            if rid and not RESULTS.resolve({"result_id": rid}):
+                dangling += 1
+    steps = [
+        {"id": "deck", "title": "Find the deck",
+         "status": "ok" if deck else "missing",
+         "what": ((deck or {}).get("title") or deck_id or "(no id recorded)")
+                 if deck else
+                 "That deck is not on this machine. It may not have been "
+                 "committed, or it was deleted."},
+        {"id": "slides", "title": "Check the slides still point at something",
+         "status": "ok" if (deck and not dangling) else
+                   ("warn" if deck else "missing"),
+         "what": ("There is no deck to check." if not deck
+                  else "%d slide(s), all resolving." % len(slides)
+                  if not dangling
+                  else "%d slide item(s) point at a result that is not here."
+                       % dangling)},
+    ]
+    return {"recipe": {"id": deck_id, "slides": len(slides)},
+            "complete": bool(deck),
+            "steps": steps,
+            "verdict": "missing" if not deck else
+                       ("warn" if dangling else "ok")}
+
+
+def _int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+recipemod.register("figure", "Rebuild\u2026", _figure_plan)
+recipemod.register("panorama", "Re-open\u2026", _panorama_plan,
+                   verify=_panorama_verify)
+recipemod.register("toolkit", "Run it again\u2026", _toolkit_plan,
+                   verify=_toolkit_verify)
+recipemod.register("deck", "Re-export\u2026", _deck_plan)
+
+
+@app.route("/api/recipe/<run_id>")
+def api_recipe(run_id):
+    """What it would take to make this again -- whatever kind it is.
+
+    The figure-only route below stays, because figrebuild.js calls it and a
+    rebuild is not the thing to break while generalising rebuilds.
+    """
+    run = STORE.get_run(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "No run " + run_id}), 404
+    try:
+        plan = recipemod.plan_for(run)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("recipe", exc, 400, {"run": run_id})
+    return jsonify({"ok": True, "run": run,
+                    "offer": recipemod.offer(run), **plan})
+
+
+@app.route("/api/recipe/<run_id>/verify", methods=["POST"])
+def api_recipe_verify(run_id):
+    """Does it still come out the same?"""
+    run = STORE.get_run(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "No run " + run_id}), 404
+    try:
+        got = recipemod.verify(run)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("recipe/verify", exc, 400, {"run": run_id})
+    return jsonify({"ok": True, **got})
 
 
 @app.route("/api/figure/recipe/<run_id>")
