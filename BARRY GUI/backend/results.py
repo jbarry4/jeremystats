@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 
@@ -42,6 +43,53 @@ MAX_SCAN_FILES = 6000
 # ignored by git, and skipped here so the catalogue is results only. Kept in
 # step with SCRATCH_DIR in app.py.
 SCRATCH_DIR = "_scratch"
+
+
+# Pulling the animal out of a name.
+#
+# Most results carry a run record that already says which project, mouse and
+# session they came from. The ones that do not are files a colleague committed,
+# or a tool wrote before it learned to file a run -- and those are exactly the
+# ones somebody is hunting for. Every naming convention the lab uses puts the
+# same three facts in the name, so read them back out rather than showing the
+# file as belonging to nothing:
+#
+#   PTEN m1 s2 2023-10-02              a session folder
+#   KCNT1_m306_s1_2026-02-24_CSC1...   a Panorama stem
+#   m41 s1 2024-11-26                  no project named
+MSD = re.compile(
+    r"(?:^|[/_ ])(?:(?P<project>[A-Za-z][A-Za-z0-9]{1,15})[_ ])?"
+    r"m(?P<mouse>\d{1,5})[_ ]s(?P<session>\d{1,4})"
+    r"(?:[_ ](?P<date>\d{4}-\d{2}-\d{2}))?", re.I)
+
+DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+
+
+def _date_of(text):
+    m = DATE.search(str(text or ""))
+    return m.group(1) if m else None
+
+
+def _facets_of(text):
+    """{project, mouse, session_no, recorded_on} read off a name, or blanks."""
+    out = {"project": None, "mouse": None, "session_no": None,
+           "recorded_on": _date_of(text)}
+    m = MSD.search(str(text or ""))
+    if not m:
+        return out
+    proj = m.group("project")
+    # "harness_m99_s1" and the like: a word that is plainly not a project.
+    if proj and proj.lower() in ("harness", "demo", "test", "rebuild", "arrow"):
+        proj = None
+    out["project"] = proj.upper() if proj else None
+    try:
+        out["mouse"] = int(m.group("mouse"))
+        out["session_no"] = int(m.group("session"))
+    except (TypeError, ValueError):
+        pass
+    if m.group("date"):
+        out["recorded_on"] = m.group("date")
+    return out
 
 
 def _now():
@@ -106,6 +154,15 @@ class Results:
             full = os.path.abspath(path)
             if not self._inside(full):
                 continue        # an older record from before the move
+            # The by-product lane, which the folder scan below also skips.
+            # Skipping it there and not here put every harness figure back in
+            # the catalogue by the other door: those files were written by a
+            # real run, so they have a run record, and this loop is the run
+            # records. It reads fine and is wrong in exactly the way that is
+            # hardest to notice -- the folder looks clean and the view does
+            # not.
+            if self._in_scratch(full):
+                continue
             if not os.path.isfile(full):
                 # The run says it made this and the file is not there any
                 # more -- moved by hand, deleted, or on another machine. The
@@ -136,7 +193,14 @@ class Results:
                 # but there is nothing to attach it to either.
                 guess = os.path.join(self.outputs_dir,
                                      (meta.get("rel") or key).replace("/", os.sep))
-                if os.path.isfile(guess) and self._inside(guess):
+                # The third door into the catalogue, and the one that kept
+                # eighty-one harness files in it after both the others were
+                # shut. Sweeping them into the by-product lane carried their
+                # tags and stars along -- correctly, that is what move() is
+                # for -- so their curation records now point at _scratch, and
+                # this loop faithfully rebuilt a catalogue entry from each.
+                if (os.path.isfile(guess) and self._inside(guess)
+                        and not self._in_scratch(guess)):
                     items[os.path.abspath(guess)] = dict(
                         self._from_file(os.path.abspath(guess), "sidecar"),
                         **clean)
@@ -144,6 +208,15 @@ class Results:
         out = sorted(items.values(), key=lambda r: r.get("mtime") or 0, reverse=True)
         self._cache = {"at": time.time(), "items": out}
         return out
+
+    def _in_scratch(self, path):
+        """Is this in the by-product lane? Cased and separator-normalised,
+        because on Windows the same file arrives spelled both ways."""
+        try:
+            rel = os.path.relpath(os.path.abspath(path), self.outputs_dir)
+        except (TypeError, ValueError):
+            return False
+        return rel.replace("\\", "/").lower().split("/")[0] == SCRATCH_DIR
 
     def _inside(self, path):
         """Is this path inside the Results folder? Nothing else is cataloged."""
@@ -200,6 +273,26 @@ class Results:
             "panels": rec.get("panels") or [],
             "github": out.get("github"),
             "rel": out.get("rel"),
+            # What the run already knew and the catalogue was dropping.
+            #
+            # A result could say which session it came from, as a label --
+            # "PTEN m1 s2 2023-10-02" -- and nothing else. So the only way to
+            # group results by animal was to parse that string back apart,
+            # and the only way to find everything from one recording was to
+            # hope its label had been spelled the same way every time. The
+            # gid is the identity the rest of the app uses; project, mouse and
+            # session are what people actually look by.
+            "gid": sess.get("gid"),
+            "project": sess.get("group"),
+            "mouse": sess.get("mouse"),
+            "session_no": sess.get("session"),
+            "recorded_on": sess.get("date") or _date_of(sess.get("label")),
+            # `script` was in the search haystack from the beginning and was
+            # never once set, so searching for the tool that made something
+            # matched nothing.
+            "script": rec.get("script"),
+            "app_version": prov.get("app_version"),
+            "commit": prov.get("commit"),
         })
         return base
 
@@ -241,6 +334,11 @@ class Results:
             "kind": "file",
             "tags": [],
             "notes": "",
+            # Read off the name, since there is no run record to ask.
+            # The folder is tried first: a file inside "PTEN m1 s2
+            # 2023-10-02" belongs to that recording whatever it is
+            # called, and a Panorama stem names the animal itself.
+            **_facets_of(shown if MSD.search(shown) else name),
         }
 
     def _scan_dir(self, folder, items, source, depth=4):
