@@ -1,5 +1,5 @@
 """
-app.py -- The BARRY GUI local server.
+app.py -- The Jarvis local server.
 
 Serves the single-page frontend and a JSON API over the repo and the data.
 Binds to 127.0.0.1 only: this is a local workbench, not a service.
@@ -10,6 +10,7 @@ code runs on Windows and macOS.
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import os
 import shutil
@@ -22,7 +23,15 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
-from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
+from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
+               compose, continuity as continuitymod, csc,
+               healthlog as healthlogmod,
+               incisor as incisormod,
+               panorama as panoramamod,
+               panoramaset as pnsetmod,
+               retime as retimemod,
+               spectrum as spectrummod,
+               device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
                dsimport,
@@ -33,8 +42,8 @@ from . import (analysis, cloud as cloudmod, cloudsync, compose, csc,
                people as peoplemod,
                pipeline, prewarm,
                probes as probebook, rebuild,
-               registry, results, runner, sessreg, shards, spikesort, store,
-               storyboard, sysinfo, toolkit, video)
+               registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
+               storyboard, sysinfo, toolfeed, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -49,12 +58,40 @@ STORE = store.Store(LOGS_DIR, auto_stage=False)
 # rule as everything else that gets edited, so two people never write the
 # same file.
 FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
+# How fast this machine is at each stage of a comodulogram, remembered between
+# runs so the progress estimate is right on the rig as well as here. A cache of
+# timings, nothing more -- deleting the file costs one wrong estimate.
+cfcmod.configure(LOGS_DIR)
+# Whether a recording is one continuous block or several, keyed on the
+# reference file's size and mtime. A clean folder is decided by two records
+# per channel, so the check runs on every health report rather than being a
+# deep-check extra; the cache is what keeps a re-scan of the archive from
+# re-reading the ones that are not clean.
+continuitymod.configure(LOGS_DIR)
+# When each recording was last checked for gaps, by whom, and what the answer
+# was. Kept because "which of these three hundred have a problem" is a
+# question about the archive, and a check that runs when you open one session
+# cannot answer it.
+HEALTHLOG = healthlogmod.HealthLog(LOGS_DIR, STORE)
 # Who you are, said once. Everything attributed -- curation, banking, layer
 # sheets, figures, runs -- goes through STORE.provenance(), which prefers
 # this over the git identity. Wired after the Store exists because it needs
 # one, and back onto it so provenance() can see it.
 PROFILE = profilemod.Profile(LOGS_DIR, STORE)
 STORE.profile = PROFILE
+
+# What this COMPUTER is called, in a record of its own. It used to be a
+# profile field, which meant every path that saved a profile could rename
+# the machine -- and that name is stamped on every error, action and run.
+DEVICE = devicemod.Device(LOGS_DIR, STORE)
+STORE.device = DEVICE
+# Once, at start-up. Without it a machine that has already been named would
+# revert to its hostname the first time it runs this build, and since the
+# name is on every row the history would fork.
+_adopted = DEVICE.adopt(PROFILE)
+# So the profile dialog can SAY what this computer is called without being
+# able to change it.
+PROFILE.device = DEVICE
 
 _CATALOG = {"items": [], "sections": [], "scanned": 0}
 _SESSIONS = {}          # cache key -> opened session
@@ -393,7 +430,7 @@ def api_discover_status(job_id):
     include = job.status == "done"
     data = job.snapshot(include_sessions=include)
     if include:
-        # A finished scan is the one moment BARRY has the whole picture of a
+        # A finished scan is the one moment Jarvis has the whole picture of a
         # drive, so everything it walked past gets written into the registry
         # -- not just the handful anyone happens to open. Done once per job:
         # the status route is polled, and re-registering on every poll would
@@ -610,9 +647,20 @@ def api_csc_window():
             lowpass=float(body.get("lowpass", 0) or 0),
             notch=float(body.get("notch", 0) or 0),
             mode=body.get("mode", "voltage"),
-            spacing_um=float(body.get("spacing_um", 50) or 50))
+            spacing_um=float(body.get("spacing_um", 50) or 50),
+            full_rate=bool(body.get("full_rate")))
     except Exception as exc:
         return fail("csc/window", exc, 400, {"path": body.get("path")})
+    if not win.get("ok"):
+        return jsonify(win), 400
+    # The same steps a panel reports, so the trace view can wear the same
+    # badge. This route does not go through `render_panel`.
+    steps = analysis.window_steps(win.get("sampling"))
+    win["sampling"] = steps
+    win["downsampled"] = any(x.get("lossy") for x in steps)
+    win["reversible"] = any(x.get("lossy") and x.get("reversible", True)
+                            for x in steps)
+    win["full_rate"] = bool(body.get("full_rate"))
     bad = set(int(b) for b in (body.get("bad_channels") or []))
     if bad:
         for s in win.get("series", []):
@@ -663,6 +711,40 @@ def api_session_bad():
     except Exception as exc:
         return fail("session/bad", exc, 400, {"identity": identity})
     return jsonify({"ok": True, "session": rec})
+
+
+@app.route("/api/session/bad-for-path", methods=["POST"])
+def api_session_bad_for_path():
+    """The same thing as `/api/session/bad`, for a caller holding a path.
+
+    The trace view has the identity because it opened the recording. A tool
+    panel does not -- Incisor picks a registry row and a folder -- and
+    making it open the whole recording just to learn its mouse and session
+    is a lot of reading for a checkbox. The identity is worked out here
+    instead, from the same path and header the scan itself uses, so both
+    ways of marking a channel bad land on one record.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    identity = ids.identify(sess["path"], header_time=_header_time(sess))
+    if not identity or identity.get("mouse") is None:
+        return jsonify({
+            "ok": False,
+            "error": "This recording's mouse and session could not be read "
+                     "from its path, so bad channels cannot be remembered "
+                     "for it. Rename the folder to include m<N> and s<N>, "
+                     "or mark them in the trace view."}), 400
+    try:
+        rec = STORE.set_bad_channels(identity,
+                                     body.get("bad_channels") or [],
+                                     body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("session/bad-for-path", exc, 400,
+                    {"path": sess.get("path")})
+    return jsonify({"ok": True, "session": rec,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
 
 
 @app.route("/api/session/note", methods=["POST"])
@@ -781,7 +863,7 @@ def api_sync_status():
                     "root": LOGS_DIR, "index": idx,
                     "auto_stage": STORE.auto_stage,
                     # Carried on a poll that already happens, so noticing
-                    # that BARRY needs restarting costs no extra request.
+                    # that Jarvis needs restarting costs no extra request.
                     "code_changed": _code_changed(),
                     "started_at": _STARTED_AT,
                     "conflicts": conflict_audit()})
@@ -976,6 +1058,1890 @@ def api_panel_cache():
     return jsonify({"ok": True, "cache": prewarm.stats()})
 
 
+# ==========================================================================
+# Cross-frequency coupling
+#
+# A comodulogram is not a panel. A panel is a fraction of a second and
+# redraws when the window moves; this is two seconds without surrogates and
+# half a minute with them, so it cannot happen inside the request that asked
+# for it and it has to be able to say where it has got to.
+#
+# Hence a job: POST starts one and gets an id back at once, the client polls
+# the id, and the result is fetched when the job says it is done. The same
+# shape as /api/job/<id> for script runs, deliberately, so the client's
+# polling is one idiom rather than two.
+# ==========================================================================
+def _cfc_spec(body, sess):
+    """Fill a request out into the full spec the cache is keyed on.
+
+    Every default lives here rather than in the renderer, so the cache key and
+    the thing that ran can never be built from different numbers -- which is
+    how a cache returns somebody else's answer.
+    """
+    spec = {
+        "path": sess.get("path"),
+        "channel": body.get("channel"),
+        "t0": float(body.get("t0", 0) or 0),
+        "t1": float(body.get("t1", 0) or 0),
+        # Tort's grid unless the caller names another. See cfc.TORT_*.
+        "slow_lo": float(body.get("slow_lo") or cfcmod.TORT_PHASE[0]),
+        "slow_hi": float(body.get("slow_hi") or cfcmod.TORT_PHASE[1]),
+        "slow_step": float(body.get("slow_step") or cfcmod.TORT_PHASE[2]),
+        "slow_bw": float(body.get("slow_bw") or cfcmod.TORT_PHASE_BW),
+        "fast_lo": float(body.get("fast_lo") or cfcmod.TORT_AMP[0]),
+        "fast_hi": float(body.get("fast_hi") or cfcmod.TORT_AMP[1]),
+        "fast_step": float(body.get("fast_step") or cfcmod.TORT_AMP[2]),
+        "fast_bw": float(body.get("fast_bw") or cfcmod.TORT_AMP_BW),
+        "nsurr": int(body.get("nsurr", 0) or 0),
+        "seed": int(body.get("seed", 42) or 42),
+        "nbin": int(body.get("nbin", cfcmod.NBIN) or cfcmod.NBIN),
+        "target_fs": float(body.get("target_fs", 3000) or 3000),
+        "highpass": float(body.get("highpass", 0) or 0),
+        "lowpass": float(body.get("lowpass", 0) or 0),
+        "notch": float(body.get("notch", 0) or 0),
+        # Jet: MATLAB's default when CallerRoutine.m was written, so a
+        # map from here reads like a map from the paper.
+        "cmap": body.get("cmap") or "jet",
+        "invert": bool(body.get("invert", True)),
+    }
+    if spec["channel"] is None:
+        picked = body.get("channels") or []
+        spec["channel"] = int(picked[0]) if picked else 0
+    spec["channel"] = int(spec["channel"])
+    return spec
+
+
+@app.route("/api/cfc/estimate", methods=["POST"])
+def api_cfc_estimate():
+    """What that run would cost, before anybody commits to it.
+
+    Shown next to the surrogate checkbox. Turning surrogates on multiplies the
+    wait by about ten, and a number there is the difference between a decision
+    and a surprise. The rates behind it are what this machine actually
+    measured on its last run, not a guess.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    spec = _cfc_spec(body, sess)
+    out = cfcmod.estimate(spec)
+    out["ok"] = True
+    out["cached"] = cfcmod.cache_get(cfcmod.cache_key(spec)) is not None
+    return jsonify(out)
+
+
+@app.route("/api/cfc/comodulogram", methods=["POST"])
+def api_cfc_comodulogram():
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    spec = _cfc_spec(body, sess)
+
+    key = cfcmod.cache_key(spec)
+    hit = cfcmod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        # Comparing two windows means going back and forth between them, and
+        # paying half a minute again for a map already made is the difference
+        # between a tool somebody uses and one they use once.
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    n_slow = len(cfcmod.grid(spec["slow_lo"], spec["slow_hi"], spec["slow_step"]))
+    n_fast = len(cfcmod.grid(spec["fast_lo"], spec["fast_hi"], spec["fast_step"]))
+    plan = [("read", 1), ("decimate", 1),
+            ("slow bank", n_slow), ("fast bank", n_fast),
+            ("modulation index", n_slow * n_fast)]
+    if spec["nsurr"]:
+        plan.append(("surrogates", n_slow * spec["nsurr"]))
+    plan.append(("draw", 1))
+
+    def work(job):
+        out = analysis.run_comodulogram(sess, spec, job)
+        cfcmod.cache_put(key, out)
+        return out
+
+    # How big the window is, so the progress estimate is comparable between a
+    # ten-second look and a two-minute one.
+    job = cfcmod.start(spec, plan, work, cfcmod.msamples(spec))
+    STORE.record_activity([{
+        "action": "cfc.comodulogram",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channel": spec["channel"], "nsurr": spec["nsurr"],
+                   "cells": n_slow * n_fast},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
+
+
+def _spectrum_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    An empty window means the whole recording, which is the thing this view
+    is for -- "where does the power sit in this session" is not a question
+    about a ten-second look.
+    """
+    dur = float(sess.get("duration_s") or 0.0)
+    t0 = float(body.get("t0") or 0.0)
+    t1 = float(body.get("t1") or 0.0)
+    if t1 <= t0:
+        t0, t1 = 0.0, dur
+    chans = body.get("channels")
+    if not chans:
+        # Whatever the session has selected, or the first channel. Never all
+        # sixty-four by accident: that is a minute of work nobody asked for.
+        chans = [c["index"] for c in (sess.get("channels") or [])][:1]
+    return {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "t0": max(0.0, t0),
+        "t1": min(t1, dur) if dur else t1,
+        "fmax": float(body.get("fmax") or spectrummod.DEFAULT_FMAX),
+        "segment_s": float(body.get("segment_s") or 8.0),
+        "even_only": bool(sess.get("even_only")),
+        # Mains. `None` means "not said", which is 60 Hz here; an explicit
+        # 0 means somebody turned it off and wants the interference shown.
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+        "parameterize": bool(body.get("parameterize", True)),
+    }
+
+
+@app.route("/api/spectrum/estimate", methods=["POST"])
+def api_spectrum_estimate():
+    """What a run would do, and how long it would take here.
+
+    Asked before anything is read, so the window can say what it is about to
+    cost rather than going quiet for a minute.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _spectrum_spec(body, sess)
+        plan = spectrummod.estimate(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("spectrum/estimate", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True, "plan": plan, "spec": spec,
+                    "cached": spectrummod.cache_get(
+                        spectrummod.cache_key(spec)) is not None})
+
+
+@app.route("/api/spectrum/run", methods=["POST"])
+def api_spectrum_run():
+    """Start one. Poll it on /api/cfc/job/<id>, which is not cfc-specific."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _spectrum_spec(body, sess)
+        plan = spectrummod.plan_for(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("spectrum/run", exc, 400, {"path": body.get("path")})
+
+    key = spectrummod.cache_key(spec)
+    hit = spectrummod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    steps = [("spectrum read",
+              int(plan["span_s"] * plan["n_channels"])),
+             ("spectrum", plan["n_channels"])]
+
+    def work(job):
+        out = spectrummod.run(sess, spec, job)
+        spectrummod.cache_put(key, out)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "spectrum.run",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channels": len(spec["channels"]),
+                   "fmax": spec["fmax"],
+                   "whole": spec["t0"] <= 0
+                            and spec["t1"] >= (sess.get("duration_s") or 0)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan})
+
+
+# ==========================================================================
+# Panorama -- the whole recording, spectrally, end to end
+#
+# The same three-call contract as the spectrum: estimate what it will cost,
+# start it, poll it on /api/cfc/job/<id>. Deliberately not its own job
+# system -- there is one, it learns how fast this machine is, and a second
+# would start from zero.
+# ==========================================================================
+def _panorama_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    An empty window means the whole recording, which is the entire point of
+    this tool: "what did this session do" is not a question about a
+    ten-second look.
+    """
+    dur = float(sess.get("duration_s") or 0.0)
+    t0 = float(body.get("t0") or 0.0)
+    t1 = float(body.get("t1") or 0.0)
+    if t1 <= t0:
+        t0, t1 = 0.0, dur
+    chans = body.get("channels")
+    if not chans:
+        # One channel, never all sixty-four by accident -- that is an hour of
+        # fitting nobody asked for.
+        chans = [c["index"] for c in (sess.get("channels") or [])][:1]
+    spec = {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "t0": max(0.0, t0),
+        "t1": min(t1, dur) if dur else t1,
+        "f_lo": float(body.get("f_lo") or panoramamod.DEFAULT_FLO),
+        "f_hi": float(body.get("f_hi") or panoramamod.DEFAULT_FHI),
+        "sub_s": float(body.get("sub_s") or panoramamod.DEFAULT_SUB_S),
+        "win_s": float(body.get("win_s") or panoramamod.DEFAULT_WIN_S),
+        "step_s": float(body.get("step_s") or panoramamod.DEFAULT_STEP_S),
+        "bins": int(body.get("bins") or panoramamod.DEFAULT_BINS),
+        "hist_scale": ("linear" if body.get("hist_scale") == "linear"
+                       else "log"),
+        "cmap": str(body.get("cmap") or "jet"),
+        "scale": ("linear" if body.get("scale") == "linear" else "log10"),
+        "even_only": bool(sess.get("even_only")),
+        # Mains. `None` means "not said", which is 60 Hz here; an explicit 0
+        # means somebody turned it off and wants the interference shown.
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+    }
+    for k in ("peak_width_limits", "max_n_peaks", "min_peak_height",
+              "aperiodic_mode"):
+        if body.get(k) is not None:
+            spec[k] = body[k]
+    return spec
+
+
+@app.route("/api/panorama/estimate", methods=["POST"])
+def api_panorama_estimate():
+    """What a run would do, and how long it would take here."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+        got = panoramamod.estimate(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/estimate", exc, 400, {"path": body.get("path")})
+    # The channel list rides along with the estimate rather than being a
+    # second call: the estimate has already opened the session to work out
+    # what the run would cost, and the form needs both before it can be
+    # filled in at all.
+    chans = [{"index": c.get("index"), "number": c.get("number"),
+              "label": c.get("label"), "bad": bool(c.get("bad"))}
+             for c in (sess.get("channels") or [])]
+    return jsonify({"ok": True, "plan": got["plan"], "spec": spec,
+                    "seconds": got["seconds"], "read_s": got["read_s"],
+                    "fit_s": got["fit_s"], "notes": got["notes"],
+                    "engine": panoramamod.fit_engine(spec),
+                    "colormaps": [dict(c) for c in analysis.COLORMAPS],
+                    "session": {"duration_s": sess.get("duration_s"),
+                                "fs": sess.get("fs"),
+                                "channels": chans},
+                    "cached": panoramamod.cache_get(
+                        panoramamod.cache_key(spec)) is not None})
+
+
+@app.route("/api/panorama/run", methods=["POST"])
+def api_panorama_run():
+    """Start one. Poll it on /api/cfc/job/<id>, which is not cfc-specific."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+        plan = panoramamod.plan_for(sess, spec)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/run", exc, 400, {"path": body.get("path")})
+
+    if not panoramamod.HAVE_FOOOF:
+        return jsonify({
+            "ok": False,
+            "error": "Panorama's per-window fits need the `fooof` package, "
+                     "which is not installed here. Run `pip install -r "
+                     "requirements.txt` in the BARRY GUI folder.",
+        }), 501
+
+    key = panoramamod.cache_key(spec)
+    hit = panoramamod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    n_ch = plan["n_channels"]
+    steps = [("spectrum read", int(plan["span_s"] * n_ch)),
+             ("panorama windows", int(plan["n_windows"] * n_ch))]
+
+    def work(job):
+        state = {}
+
+        def on_preview(x, upto, plan_, st):
+            # Throttled here rather than in the module: how often a picture
+            # is worth re-encoding is a question about the screen watching
+            # it, not about the arithmetic.
+            now = time.time()
+            if now - state.get("at", 0) < 1.5:
+                return
+            uri = panoramamod.preview_png(x, upto, plan_, st)
+            if uri:
+                state["at"] = now
+                job.set_preview(uri)
+
+        out = panoramamod.run(sess, spec, job, on_preview=on_preview)
+        # The spectrogram matrices ride out of `run` so they can be
+        # kept for re-colouring, and come straight back off before the
+        # result goes anywhere near jsonify -- they are numpy arrays.
+        mats = out.pop("_mats", None)
+        panoramamod.cache_put(key, out)
+        if mats:
+            panoramamod.mats_put(key, mats)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "panorama.run",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channels": len(spec["channels"]),
+                   "f_lo": spec["f_lo"], "f_hi": spec["f_hi"],
+                   "windows": plan["n_windows"],
+                   "whole": spec["t0"] <= 0
+                            and spec["t1"] >= (sess.get("duration_s") or 0)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan, "notes": panoramamod.notes_for(plan)})
+
+
+@app.route("/api/panorama/recolor", methods=["POST"])
+def api_panorama_recolor():
+    """The same spectrogram under a different colormap or scale.
+
+    From the cached result, so changing Jet for Viridis costs a re-encode
+    rather than reading the recording again.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/recolor", exc, 400, {"path": body.get("path")})
+    key = panoramamod.cache_key(spec)
+    hit = panoramamod.cache_get(key)
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again and the picture comes back with "
+                                 "it."}), 409
+    mats = panoramamod.mats_get(key)
+    if not mats:
+        # The numbers are still here but the matrices have been evicted, so
+        # the picture cannot be re-coloured without reading again. Said,
+        # rather than silently handing back the old colours.
+        return jsonify({"ok": False,
+                        "error": "The picture behind this run is no longer "
+                                 "held. Run it again to change the "
+                                 "colours."}), 409
+    try:
+        panoramamod.recolor(hit, mats, spec.get("cmap"), spec.get("scale"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/recolor", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True,
+                    "channels": [{"index": c.get("index"),
+                                  "spectrogram": c.get("spectrogram")}
+                                 for c in hit.get("channels") or []]})
+
+
+@app.route("/api/panorama/rebin", methods=["POST"])
+def api_panorama_rebin():
+    """Re-cut the histograms, from numbers already computed.
+
+    A histogram is a count of the per-window dominant frequencies, and those
+    are already in the held result -- so changing the bin count or switching
+    to linear bins is arithmetic on a few thousand floats. It used to be
+    part of the cache key, which made it a reason to read half an hour of
+    recording again.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/rebin", exc, 400, {"path": body.get("path")})
+    hit = panoramamod.cache_get(panoramamod.cache_key(spec))
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again."}), 409
+    try:
+        # In place, so a save afterwards writes the bins on screen.
+        panoramamod.rebin(hit, spec.get("bins"), spec.get("hist_scale"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/rebin", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True,
+                    "channels": [{"index": c.get("index"),
+                                  "hist": c.get("hist"),
+                                  "modal_hz": c.get("modal_hz")}
+                                 for c in hit.get("channels") or []]})
+
+
+@app.route("/api/panorama/save", methods=["POST"])
+def api_panorama_save():
+    """Step 3. The figure and the numbers behind it, into Results/.
+
+    Five files under one stem, not one: a picture cannot be re-plotted and a
+    CSV cannot be looked at. The JSON carries every setting including which
+    fitter produced the numbers, so a figure found in six months can be
+    explained without anybody having to remember.
+
+    `results.py` catalogues Results/ by scanning, so nothing is registered
+    here -- the files appear in the Results view, go into the repo, and are
+    mirrored to the cloud bucket, on their own.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _panorama_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/save", exc, 400, {"path": body.get("path")})
+
+    out = panoramamod.cache_get(panoramamod.cache_key(spec))
+    if out is None:
+        return jsonify({"ok": False,
+                        "error": "That run is no longer held here. Run it "
+                                 "again and Save will have something to "
+                                 "write."}), 409
+
+    index = max(0, int(body.get("index") or 0))
+    counting = "flat" if body.get("counting") == "flat" else "peak"
+    rows = out.get("channels") or []
+    if index >= len(rows) or "hist" not in rows[index]:
+        return jsonify({"ok": False,
+                        "error": "That channel produced nothing to save."}), 400
+    ch = rows[index]
+
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    label = str(body.get("name") or "panorama").strip() or "panorama"
+    stem = "".join(c if (c.isalnum() or c in " -_.") else "-"
+                   for c in label).strip().replace(" ", "_")[:70]
+    stem = "%s_%s" % (stem or "panorama", stamp)
+
+    head = ("# Jarvis Panorama -- %s -- %s -- %.3g-%.3g Hz -- %s windows of "
+            "%.3g s every %.3g s -- taken %s\n"
+            % (label, ch.get("label") or "", spec["f_lo"], spec["f_hi"],
+               "{:,}".format(ch["hist"]["n_windows"]), spec["win_s"],
+               spec["step_s"], time.strftime("%Y-%m-%dT%H:%M:%S")))
+
+    psd_rows, hist_rows, win_rows = panoramamod.tables(out, index)
+    written, errors = [], []
+
+    def put(blob, suffix):
+        try:
+            got = save_output(blob, stem + suffix, subdir="Panorama")
+            written.append(got)
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("%s: %s" % (suffix, exc))
+            STORE.record_error("panorama/save", str(exc), None,
+                               {"name": stem + suffix})
+
+    try:
+        put(panoramamod.figure(out, index, counting, title=label), ".png")
+    except Exception as exc:                             # noqa: BLE001
+        errors.append("figure: %s" % exc)
+        STORE.record_error("panorama/figure", str(exc), None, {"stem": stem})
+
+    put((head + extras.to_csv(psd_rows)).encode("utf-8"), "_psd.csv")
+    put((head + extras.to_csv(hist_rows)).encode("utf-8"), "_histogram.csv")
+    put((head + extras.to_csv(win_rows)).encode("utf-8"), "_windows.csv")
+    put(json.dumps({
+        "tool": "panorama",
+        "label": label,
+        "spec": spec,
+        "plan": out.get("plan"),
+        "fit_engine": out.get("fit_engine"),
+        "counting": counting,
+        "channel": {"index": ch.get("index"), "label": ch.get("label"),
+                    "number": ch.get("number"), "bad": ch.get("bad")},
+        "gaps": ch.get("gaps"),
+        "summary": {"modal_hz": ch.get("modal_hz"),
+                    "median_hz": ch.get("median_hz"),
+                    "n_windows": ch["hist"]["n_windows"],
+                    "n_used": ch["hist"]["n_used"],
+                    "n_nopeak": ch["hist"]["n_nopeak"],
+                    "n_rejected": ch["hist"]["n_rejected"],
+                    # How often the dominant peak only just won. Over a
+                    # wide range this is high for almost any recording,
+                    # which is the point: a modal frequency of 41 Hz out
+                    # of a set of coin tosses is not the same claim as one
+                    # out of a clear rhythm, and the file has to say which.
+                    "close_call_frac": panoramamod._close_calls(ch)},
+        "notes": out.get("notes"),
+        "provenance": STORE.provenance(),
+    }, indent=1, sort_keys=True).encode("utf-8"), "_params.json")
+
+    if not written:
+        return jsonify({"ok": False,
+                        "error": "Nothing could be written to Results/: "
+                                 + "; ".join(errors)}), 500
+
+    run = STORE.record_run({
+        "kind": "panorama", "script": "Panorama",
+        "label": "Panorama -- " + label,
+        "status": "done", "format": "png",
+        "parameters": {"f_lo": spec["f_lo"], "f_hi": spec["f_hi"],
+                       "t0": spec["t0"], "t1": spec["t1"],
+                       "win_s": spec["win_s"], "sub_s": spec["sub_s"],
+                       "step_s": spec["step_s"], "bins": spec["bins"],
+                       "counting": counting,
+                       "channel": ch.get("label")},
+        "output": written[0],
+        "outputs": written,
+    })
+    STORE.record_activity([{
+        "action": "panorama.save",
+        "detail": {"label": label, "files": len(written),
+                   "channel": ch.get("label")},
+    }])
+    return jsonify({"ok": True,
+                    "folder": "Results/Panorama",
+                    "files": [w["rel"] for w in written],
+                    "saved": written,
+                    "errors": errors,
+                    "run": run.get("id") if isinstance(run, dict) else None})
+
+
+# ==========================================================================
+# Panorama over many recordings
+#
+# The tool asks one question of every recording in a set, one at a time, and
+# files each answer as it lands. Everything durable is in `panoramaset.py`;
+# this is the HTTP around it plus the two things only the app knows -- how to
+# open a recording, and what the layer sheets say.
+# ==========================================================================
+PNSETS = pnsetmod.Sets(LOGS_DIR, STORE)
+
+# Incisor's answers, kept.
+#
+# Its cache was a dictionary in memory holding eight entries. Scan a ninth
+# recording and the first is gone; restart the app and they all are -- which
+# is why "those candidates are no longer cached, run the scan again" is a
+# sentence this app has to say. A scan is minutes of reading; being told to
+# do it again because somebody restarted Jarvis is not a cache miss, it is
+# lost work.
+#
+# Split the same way panoramaset splits Panorama's, and for the same reason.
+# The durable half is small -- which channel is the hilus and how that was
+# decided, the parameters, the counts -- and is committed and synced, so a
+# colleague's scan answers your question without being re-run. The per-
+# channel event lists are megabytes and regenerable from the recording, so
+# they go to .cache, which git ignores.
+INCISOR_VAULT = toolresults.ToolResults(LOGS_DIR, "incisor", STORE)
+
+
+def _incisor_remember(sess, spec, key, out):
+    """File a finished scan: the numbers durably, the events as cache."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return False
+    try:
+        with open(INCISOR_VAULT.cached_path(gid, key, ".json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("incisor.cache", exc, None, {"gid": gid})
+    try:
+        rec = dict(_incisor_public(out))
+        rec.update({
+            "gid": gid,
+            "params_hash": key,
+            "session_label": (sess.get("identity") or {}).get("label"),
+            "path_used": sess.get("path"),
+            "spec": {k: v for k, v in (spec or {}).items() if k != "channels"},
+            "n_channels": len((spec or {}).get("channels") or []),
+            "computed": STORE.provenance(),
+        })
+        INCISOR_VAULT.put(rec)
+        return True
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("incisor.remember", exc, None, {"gid": gid})
+        return False
+
+
+def _incisor_recall(sess, key):
+    """The full scan back, from disk, when memory has forgotten it."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return None
+    path = INCISOR_VAULT.cached_path(gid, key, ".json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            out = json.load(fh)
+    except Exception:                                    # noqa: BLE001
+        return None
+    # Back into memory, so the next channel change does not read disk again.
+    incisormod.cache_put(key, out)
+    return out
+
+
+def _pn_opener(member):
+    """Open one recording for the bulk worker.
+
+    Deliberately NOT `_session_for`. That cache holds six and evicts by
+    iterating a plain dict while request threads insert into it, so a run
+    over forty recordings would both thrash it and race it -- and it would
+    evict whatever the person at the keyboard has open. The worker is
+    sequential, so it holds one session and lets it go.
+    """
+    path = (member or {}).get("path")
+    if not path:
+        return {"ok": False, "error": "no path recorded for this session"}
+    try:
+        return csc.open_session(path)
+    except Exception as exc:                             # noqa: BLE001
+        return {"ok": False, "error": str(exc)[:200]}
+
+
+def _pn_channel_for(gid, region, fallback=None):
+    """Which channel to analyse, and how that was decided.
+
+    The layer sheet first, because a channel number means a different depth
+    in every animal and the sheet is where somebody already wrote down what
+    is where. A set-wide fallback number second, marked as such. Otherwise
+    nothing -- shown as needing a sheet rather than analysed on whatever
+    channel happened to be first, which would silently compare the hilus in
+    one animal with stratum radiatum in the next.
+    """
+    if region:
+        rec = LAYERS.get(gid)
+        labels = (rec or {}).get("labels") or {}
+        hits = sorted(int(n) for n, r in labels.items() if r == region)
+        if hits:
+            return {"channel": hits[0], "channel_from": "layers",
+                    "region": region,
+                    "channel_label": "CSC%d" % hits[0],
+                    "alternatives": hits[1:]}
+    if fallback is not None:
+        return {"channel": int(fallback), "channel_from": "fallback",
+                "region": region, "channel_label": "CSC%d" % int(fallback)}
+    return {"channel": None, "channel_from": "none", "region": region}
+
+
+def _pn_member_rows(gids, region=None, fallback=None):
+    """Turn a list of recordings into set members, channels resolved."""
+    out = []
+    for gid in gids:
+        # Through `_session_by_gid`, so the demo recordings work: they are
+        # not in the registry on purpose, and every route that looks a gid
+        # up has to know that or they arrive as "unidentified".
+        rec = _session_by_gid(gid) or {}
+        # `loadable` before `here` before `paths`: a folder can outlive its
+        # contents, and a set assembled on the rig and opened on a laptop
+        # should say "not reachable" rather than fail at run time.
+        path = ((rec.get("loadable") or rec.get("here") or rec.get("paths")
+                 or [None])[0])
+        got = _pn_channel_for(gid, region, fallback)
+        got.update({
+            "gid": gid,
+            "label": rec.get("label") or rec.get("key") or gid,
+            "path": path,
+        })
+        out.append(got)
+    return out
+
+
+@app.route("/api/panorama/sets")
+def api_panorama_sets():
+    """Every set this lab has, newest first."""
+    rows = []
+    for rec in PNSETS.all(include_archived=bool(request.args.get("archived"))):
+        state = rec.get("state") or {}
+        members = [m for m in (rec.get("members") or [])
+                   if m.get("enabled", True)]
+        counts = {}
+        for m in members:
+            st = (state.get(m["id"]) or {}).get("status") or "waiting"
+            counts[st] = counts.get(st, 0) + 1
+        rows.append({
+            "set_id": rec["set_id"], "name": rec.get("name"),
+            "params": rec.get("params"), "params_hash": rec.get("params_hash"),
+            "n_members": len(members), "counts": counts,
+            "grouping": rec.get("grouping"),
+            "archived": bool(rec.get("archived")),
+            "created": rec.get("created"), "updated": rec.get("updated"),
+            "saved": len(rec.get("saved") or []),
+        })
+    return jsonify({"ok": True, "sets": rows,
+                    "regions": [dict(r) for r in layers.REGIONS]})
+
+
+@app.route("/api/panorama/sets", methods=["POST"])
+def api_panorama_set_create():
+    """A new set: a question, and the recordings to ask it of."""
+    body = request.get_json(force=True) or {}
+    gids = [g for g in (body.get("gids") or []) if g]
+    if not gids:
+        return jsonify({"ok": False,
+                        "error": "Pick at least one recording."}), 400
+    try:
+        params = _panorama_params(body)
+        members = _pn_member_rows(gids, body.get("region"),
+                                  body.get("fallback_channel"))
+        rec = PNSETS.create(body.get("name"), params, members,
+                            grouping=body.get("grouping") or "auto",
+                            note=body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-create", exc, 400, {"n": len(gids)})
+    STORE.record_activity([{
+        "action": "panorama.set_create",
+        "detail": {"name": rec.get("name"), "n": len(rec.get("members") or []),
+                   "region": body.get("region")},
+    }])
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+def _panorama_params(body):
+    """The question a set asks, with the defaults filled in.
+
+    The same fields `_panorama_spec` takes, minus the recording and the
+    channel -- those vary per member -- and minus the colormap, which does
+    not change any number.
+    """
+    f_lo = float(body.get("f_lo") or panoramamod.DEFAULT_FLO)
+    f_hi = float(body.get("f_hi") or panoramamod.DEFAULT_FHI)
+    if f_hi <= f_lo:
+        f_hi = max(f_lo * 2.0, panoramamod.DEFAULT_FHI)
+    out = {
+        "f_lo": f_lo, "f_hi": f_hi,
+        "sub_s": float(body.get("sub_s") or panoramamod.DEFAULT_SUB_S),
+        "win_s": float(body.get("win_s") or panoramamod.DEFAULT_WIN_S),
+        "step_s": float(body.get("step_s") or panoramamod.DEFAULT_STEP_S),
+        "bins": int(body.get("bins") or panoramamod.DEFAULT_BINS),
+        "hist_scale": ("linear" if body.get("hist_scale") == "linear"
+                       else "log"),
+        "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
+                    else float(body.get("line_hz") or 0.0)),
+    }
+    if body.get("t0") is not None:
+        out["t0"] = float(body["t0"])
+    if body.get("t1") is not None:
+        out["t1"] = float(body["t1"])
+    for k in ("peak_width_limits", "max_n_peaks", "min_peak_height",
+              "aperiodic_mode"):
+        if body.get(k) is not None:
+            out[k] = body[k]
+    return out
+
+
+def _pn_tree(rec):
+    """A set as the tree draws it: members, state, and each one's numbers."""
+    ph = rec.get("params_hash")
+    state = rec.get("state") or {}
+    rows = []
+    for m in rec.get("members") or []:
+        gid = m["id"]
+        st = dict(state.get(gid) or {})
+        res = PNSETS.result_get(gid, ph)
+        row = dict(m)
+        row["status"] = st.get("status") or "waiting"
+        row["error"] = st.get("error")
+        # Why it cannot run, worked out now rather than when its turn comes.
+        if not m.get("path"):
+            row["blocked_why"] = "no folder this machine can read"
+        elif m.get("channel") is None:
+            row["blocked_why"] = "no channel chosen"
+        row["job"] = st.get("job")
+        row["at"] = st.get("at")
+        if res:
+            row.update({
+                "n_windows": res.get("n_windows"),
+                "n_used": res.get("n_used"),
+                "n_nopeak": res.get("n_nopeak"),
+                "modal_hz": res.get("modal_hz"),
+                "median_hz": res.get("median_hz"),
+                "exponent": (res.get("fit") or {}).get("exponent"),
+                "r2": (res.get("fit") or {}).get("r_squared"),
+                "gap_s": (res.get("gaps") or {}).get("seconds"),
+                "gap_n": (res.get("gaps") or {}).get("n"),
+                # How often the dominant frequency was a coin toss between
+                # two near-equal peaks. High means this recording's
+                # histogram is mostly about which of several broad bumps
+                # happened to win, and should be read knowing that.
+                "close_call": res.get("close_call_frac"),
+                # The sparkline. Counts only -- the edges are the set's and
+                # are sent once, beside the tree, rather than forty times.
+                "spark": res.get("counts_peak"),
+                "seconds": (res.get("computed") or {}).get("seconds"),
+                "has_png": PNSETS.has_png(gid, ph),
+            })
+            if row["status"] == "waiting":
+                # Computed under this question by somebody, sometime -- the
+                # set's own state map just has not heard about it.
+                row["status"] = "done"
+                row["cached"] = True
+        rows.append(row)
+    edges = None
+    for m in rows:
+        res = PNSETS.result_get(m["id"], ph)
+        if res and res.get("edges"):
+            edges = res["edges"]
+            break
+    return {
+        "set_id": rec["set_id"], "name": rec.get("name"),
+        "note": rec.get("note"),
+        "params": rec.get("params"), "params_hash": ph,
+        "grouping": rec.get("grouping"),
+        "archived": bool(rec.get("archived")),
+        "created": rec.get("created"), "updated": rec.get("updated"),
+        "saved": rec.get("saved") or [],
+        "members": rows,
+        "edges": edges,
+    }
+
+
+@app.route("/api/panorama/sets/<set_id>")
+def api_panorama_set(set_id):
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    # A member whose job went away with the last process is interrupted, not
+    # running. Done on read so a reload tells the truth without anybody
+    # having to press anything.
+    if PNSETS.reconcile(rec, cfcmod.exists):
+        PNSETS._write(rec)
+    return jsonify({"ok": True, "set": _pn_tree(rec),
+                    "regions": [dict(r) for r in layers.REGIONS]})
+
+
+@app.route("/api/panorama/sets/<set_id>/members", methods=["POST"])
+def api_panorama_set_members(set_id):
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if body.get("remove"):
+        rec = PNSETS.remove_member(set_id, body["remove"])
+        return jsonify({"ok": True, "set": _pn_tree(rec)})
+    gids = [g for g in (body.get("gids") or []) if g]
+    if not gids:
+        return jsonify({"ok": False, "error": "Nothing to add."}), 400
+    members = _pn_member_rows(gids, body.get("region")
+                              or (rec.get("members") or [{}])[0].get("region"),
+                              body.get("fallback_channel"))
+    rec = PNSETS.add_members(set_id, members)
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+@app.route("/api/panorama/sets/<set_id>/channel", methods=["POST"])
+def api_panorama_set_channel(set_id):
+    """Override one recording's channel, or re-resolve every one by rule."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if body.get("gid"):
+        ch = body.get("channel")
+        rec = PNSETS.set_channel(
+            set_id, body["gid"],
+            None if ch in (None, "") else int(ch),
+            channel_label=(None if ch in (None, "") else "CSC%d" % int(ch)),
+            how="manual")
+        return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+    region = body.get("region")
+    fallback = body.get("fallback_channel")
+    keep_manual = body.get("keep_manual", True)
+    for m in list(rec.get("members") or []):
+        if keep_manual and m.get("channel_from") == "manual":
+            continue
+        got = _pn_channel_for(m["id"], region, fallback)
+        PNSETS.set_channel(set_id, m["id"], got["channel"],
+                           channel_label=got.get("channel_label"),
+                           how=got["channel_from"], region=region)
+    return jsonify({"ok": True, "set": _pn_tree(PNSETS.get(set_id))})
+
+
+@app.route("/api/panorama/sets/<set_id>/estimate", methods=["POST"])
+def api_panorama_set_estimate(set_id):
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    body = request.get_json(force=True) or {}
+    force = bool(body.get("force"))
+    split = PNSETS.pending(rec, force=force)
+    try:
+        plan = pnsetmod.plan_for_set(rec, _pn_opener, split["todo"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-estimate", exc, 400, {"set": set_id})
+    return jsonify({"ok": True, "plan": plan,
+                    "todo": len(split["todo"]),
+                    "cached": len(split["cached"]),
+                    "blocked": [m["id"] for m in split["blocked"]]})
+
+
+@app.route("/api/panorama/sets/<set_id>/run", methods=["POST"])
+def api_panorama_set_run(set_id):
+    """Start the set. Poll it on /api/cfc/job/<id> like everything else."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    if not panoramamod.HAVE_FOOOF:
+        return jsonify({
+            "ok": False,
+            "error": "Panorama's per-window fits need the `fooof` package, "
+                     "which is not installed here. Run `pip install -r "
+                     "requirements.txt` in the BARRY GUI folder.",
+        }), 501
+
+    force = bool(body.get("force"))
+    split = PNSETS.pending(rec, force=force)
+    if not split["todo"]:
+        return jsonify({"ok": True, "nothing": True,
+                        "set": _pn_tree(rec),
+                        "cached": len(split["cached"]),
+                        "blocked": [m["id"] for m in split["blocked"]]})
+    try:
+        plan = pnsetmod.plan_for_set(rec, _pn_opener, split["todo"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-run", exc, 400, {"set": set_id})
+
+    steps = [("panorama bulk", int(max(1, plan["span_s"])))]
+    where = cfcmod.volume_key((split["todo"][0] or {}).get("path"))
+
+    def work(job):
+        return pnsetmod.run_set(PNSETS, set_id, _pn_opener, job, force=force)
+
+    job = cfcmod.start({"set_id": set_id, "path": (split["todo"][0] or {}).get("path")},
+                       steps, work, 1.0, where)
+    STORE.record_activity([{
+        "action": "panorama.set_run",
+        "detail": {"set": rec.get("name"), "n": len(split["todo"]),
+                   "cached": len(split["cached"]),
+                   "span_s": plan["span_s"]},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "plan": plan})
+
+
+# ==========================================================================
+# Converging a set
+# ==========================================================================
+def _pn_auto_groups(rec, attr="group"):
+    """Groups derived from what the lab already wrote down.
+
+    No grouping record, nothing to maintain: the mouse's own attribute
+    first -- which is where PTEN and CTL are already recorded -- then the
+    cohort the folders name, then the project. Materialised into a real
+    grouping only when somebody edits it, the way `layers.ensure` copies
+    REGIONS in, so a set grouped today still means what it meant if the
+    project labels are corrected next month.
+    """
+    idx = MICE.index()
+    assign, names = {}, {}
+    for m in rec.get("members") or []:
+        gid = m["id"]
+        got = _session_by_gid(gid) or {}
+        attrs = ((idx.get(str(got.get("project"))) or {})
+                 .get(str(got.get("mouse"))) or {}).get("attrs") or {}
+        label = (attrs.get(attr) or got.get("cohort")
+                 or got.get("project") or "").strip()
+        if not label:
+            assign[gid] = []
+            continue
+        key = "auto:" + label
+        assign[gid] = [key]
+        names[key] = label
+    return assign, names
+
+
+def _pn_grouping_for(rec, body):
+    """(groups_of, names) for however this set is grouped.
+
+    `facet` narrows a stored grouping to one axis -- genotype, say -- which
+    is what makes "at most one group per recording" checkable: PTEN and
+    female are not rival groups and a recording in both is not
+    double-counted, but PTEN and CTL are.
+    """
+    which = body.get("grouping") or rec.get("grouping") or "auto"
+    if which == "auto" or not which:
+        assign, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        return (lambda g: assign.get(g, [])), names
+
+    got = PNSETS.grouping_get(which)
+    if not got:
+        # Named a grouping that is not here -- another machine's, most
+        # likely. Derived beats wrong.
+        assign, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        return (lambda g: assign.get(g, [])), names
+
+    facet = body.get("facet")
+    defs = {g["id"]: g for g in (got.get("groups") or [])}
+    names = {k: v.get("name") or k for k, v in defs.items()}
+    assign = got.get("assign") or {}
+
+    def groups_of(gid):
+        ids = [g for g in (assign.get(gid) or []) if g in defs]
+        if facet:
+            ids = [g for g in ids if defs[g].get("facet") == facet]
+        return ids
+
+    return groups_of, names
+
+
+@app.route("/api/panorama/sets/<set_id>/converge", methods=["POST"])
+def api_panorama_converge(set_id):
+    """Every recording's histogram, pooled by group. The point of a set."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    try:
+        groups_of, names = _pn_grouping_for(rec, body)
+        conv = pnsetmod.converge(
+            PNSETS, rec, groups_of,
+            dominant=("flat" if body.get("dominant") == "flat" else "peak"),
+            weight=("window" if body.get("weight") == "window"
+                    else "session"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/converge", exc, 400, {"set": set_id})
+    if not conv.get("ok"):
+        return jsonify(conv), 409
+    conv["names"] = names
+    conv["grouping"] = body.get("grouping") or rec.get("grouping") or "auto"
+    conv["attr"] = body.get("attr") or "group"
+    conv["attributes"] = [a for a in MICE.attributes()
+                          if a.get("n") or a.get("suggested")]
+    return jsonify({"ok": True, "converged": conv})
+
+
+@app.route("/api/panorama/groupings")
+def api_panorama_groupings():
+    return jsonify({"ok": True,
+                    "groupings": [{"id": g["id"], "name": g.get("name"),
+                                   "groups": g.get("groups") or [],
+                                   "n_assigned": len(g.get("assign") or {}),
+                                   "updated": g.get("updated")}
+                                  for g in PNSETS.grouping_all()]})
+
+
+@app.route("/api/panorama/groupings", methods=["POST"])
+def api_panorama_grouping_create():
+    """A custom grouping, seeded from the derived one so nothing is retyped."""
+    body = request.get_json(force=True) or {}
+    set_id = body.get("set_id")
+    groups, assign = body.get("groups"), body.get("assign")
+    if set_id and not groups:
+        rec = PNSETS.get(set_id)
+        if not rec:
+            return jsonify({"ok": False, "error": "No such set."}), 404
+        auto, names = _pn_auto_groups(rec, body.get("attr") or "group")
+        facet = body.get("attr") or "group"
+        groups = [{"id": k, "name": v, "facet": facet, "order": i}
+                  for i, (k, v) in enumerate(sorted(names.items(),
+                                                    key=lambda kv: kv[1]))]
+        assign = auto
+    rec2 = PNSETS.grouping_create(body.get("name") or "Custom grouping",
+                                  groups=groups, assign=assign,
+                                  note=body.get("note"))
+    if set_id:
+        PNSETS.set_grouping(set_id, rec2["id"])
+    return jsonify({"ok": True, "grouping": rec2})
+
+
+@app.route("/api/panorama/groupings/<gid_>", methods=["POST"])
+def api_panorama_grouping_edit(gid_):
+    body = request.get_json(force=True) or {}
+    if body.get("assign") is not None and body.get("gid"):
+        rec = PNSETS.grouping_assign(gid_, body["gid"], body["assign"])
+    else:
+        rec = PNSETS.grouping_edit(gid_, groups=body.get("groups"),
+                                   name=body.get("name"),
+                                   note=body.get("note"))
+    if not rec:
+        return jsonify({"ok": False, "error": "No such grouping."}), 404
+    return jsonify({"ok": True, "grouping": rec})
+
+
+@app.route("/api/panorama/sets/<set_id>/save", methods=["POST"])
+def api_panorama_set_save(set_id):
+    """The convergence figure and the two tables behind it, into Results/.
+
+    `set_id` and the question's hash go in the filename. `save_output` never
+    clobbers -- it appends `_2` -- so repeats accumulate, and the hash is
+    what tells you which run a stray `_3` belongs to.
+    """
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    try:
+        groups_of, names = _pn_grouping_for(rec, body)
+        conv = pnsetmod.converge(
+            PNSETS, rec, groups_of,
+            dominant=("flat" if body.get("dominant") == "flat" else "peak"),
+            weight=("window" if body.get("weight") == "window"
+                    else "session"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("panorama/set-save", exc, 400, {"set": set_id})
+    if not conv.get("ok"):
+        return jsonify(conv), 409
+
+    label = str(body.get("name") or rec.get("name") or "panorama").strip()
+    stem = "".join(c if (c.isalnum() or c in " -_.") else "-"
+                   for c in label).strip().replace(" ", "_")[:60]
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    stem = "converge_%s_%s_%s_%s" % (stem or "set", set_id,
+                                     rec.get("params_hash"), stamp)
+
+    head = ("# Jarvis Panorama -- convergence -- %s -- %d recordings -- "
+            "%.3g-%.3g Hz -- dominant by %s -- %s -- taken %s\n"
+            % (label, conv.get("n_sessions", 0),
+               (rec.get("params") or {}).get("f_lo"),
+               (rec.get("params") or {}).get("f_hi"),
+               conv.get("dominant"),
+               ("one vote per recording" if conv.get("weight") != "window"
+                else "weighted by recording length"),
+               time.strftime("%Y-%m-%dT%H:%M:%S")))
+
+    per_rows, long_rows = panoramamod.converge_tables(conv, names)
+    written, errors = [], []
+
+    def put(blob, suffix):
+        try:
+            written.append(save_output(blob, stem + suffix,
+                                       subdir="Panorama"))
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("%s: %s" % (suffix, exc))
+            STORE.record_error("panorama/set-save", str(exc), None,
+                               {"name": stem + suffix})
+
+    try:
+        put(panoramamod.converge_figure(conv, title=label, names=names),
+            ".png")
+    except Exception as exc:                             # noqa: BLE001
+        errors.append("figure: %s" % exc)
+        STORE.record_error("panorama/converge-figure", str(exc), None,
+                           {"set": set_id})
+
+    put((head + extras.to_csv(per_rows)).encode("utf-8"), "_recordings.csv")
+    put((head + extras.to_csv(long_rows)).encode("utf-8"), "_histograms.csv")
+    put(json.dumps({
+        "tool": "panorama", "kind": "convergence",
+        "set_id": set_id, "name": rec.get("name"),
+        "params": rec.get("params"), "params_hash": rec.get("params_hash"),
+        "grouping": conv.get("grouping"), "attr": conv.get("attr"),
+        "group_names": names,
+        "dominant": conv.get("dominant"), "weight": conv.get("weight"),
+        "groups": [{k: g[k] for k in ("id", "n", "modal_hz", "nopeak_mean",
+                                      "gids")}
+                   for g in conv.get("groups") or []],
+        "n_sessions": conv.get("n_sessions"),
+        "not_run": conv.get("not_run"),
+        "no_windows": conv.get("no_windows"),
+        "in_several_groups": conv.get("in_several_groups"),
+        "provenance": STORE.provenance(),
+    }, indent=1, sort_keys=True).encode("utf-8"), "_params.json")
+
+    if not written:
+        return jsonify({"ok": False,
+                        "error": "Nothing could be written to Results/: "
+                                 + "; ".join(errors)}), 500
+
+    run = STORE.record_run({
+        "kind": "panorama", "script": "Panorama convergence",
+        "label": "Panorama convergence -- " + label,
+        "status": "done", "format": "png",
+        "parameters": {"set_id": set_id,
+                       "params_hash": rec.get("params_hash"),
+                       "dominant": conv.get("dominant"),
+                       "weight": conv.get("weight"),
+                       "grouping": conv.get("grouping"),
+                       "n_recordings": conv.get("n_sessions")},
+        "output": written[0], "outputs": written,
+    })
+    PNSETS.record_saved(set_id, {"kind": "convergence",
+                                 "result_rel": written[0]["rel"],
+                                 "run": run.get("id")})
+    STORE.record_activity([{
+        "action": "panorama.converge_save",
+        "detail": {"set": rec.get("name"), "files": len(written),
+                   "recordings": conv.get("n_sessions")},
+    }])
+    return jsonify({"ok": True, "folder": "Results/Panorama",
+                    "files": [w["rel"] for w in written],
+                    "errors": errors,
+                    "run": run.get("id") if isinstance(run, dict) else None})
+
+
+@app.route("/api/panorama/sets/<set_id>/archive", methods=["POST"])
+def api_panorama_set_archive(set_id):
+    """Put a set away without losing it. The usual way to finish with one."""
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.archive(set_id, bool(body.get("on", True)))
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    return jsonify({"ok": True, "set": _pn_tree(rec)})
+
+
+@app.route("/api/panorama/sets/<set_id>/delete", methods=["POST"])
+def api_panorama_set_delete(set_id):
+    """Delete a set, and optionally the answers computed for it.
+
+    The answers are keyed on the recording and the question, not on the set,
+    so another set may be relying on them -- which is why they are NOT
+    removed unless asked for. `results: true` is for a harness clearing up
+    after itself, and for somebody who really does want the numbers gone.
+    """
+    body = request.get_json(force=True) or {}
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    ph = rec.get("params_hash")
+    gone = {"sets": 0, "results": 0, "pictures": 0}
+
+    if body.get("results"):
+        for m in rec.get("members") or []:
+            gid = m["id"]
+            if PNSETS.results.erase(PNSETS.result_base(gid, ph)):
+                gone["results"] += 1
+            p = PNSETS.png_path(gid, ph)
+            try:
+                if os.path.exists(p):
+                    os.remove(p)
+                    gone["pictures"] += 1
+            except OSError:
+                pass
+
+    gone["sets"] = PNSETS.book.erase(shards.safe_base(set_id)) or 0
+    STORE.record_activity([{
+        "action": "panorama.set_delete",
+        "detail": {"set": rec.get("name"), "results": gone["results"]},
+    }])
+    return jsonify({"ok": True, "removed": gone})
+
+
+@app.route("/api/panorama/sets/<set_id>/result/<gid>")
+def api_panorama_set_result(set_id, gid):
+    """One recording's answer, for when a row in the tree is clicked."""
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    got = PNSETS.result_get(gid, rec["params_hash"])
+    if not got:
+        return jsonify({"ok": False,
+                        "error": "That recording has not been run under "
+                                 "this set's settings yet."}), 404
+    return jsonify({"ok": True, "result": got,
+                    "has_png": PNSETS.has_png(gid, rec["params_hash"])})
+
+
+@app.route("/api/panorama/sets/<set_id>/spectrogram/<gid>.png")
+def api_panorama_set_png(set_id, gid):
+    """The cached picture. Not in the record -- see panoramaset.py."""
+    rec = PNSETS.get(set_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such set."}), 404
+    path = PNSETS.png_path(gid, rec["params_hash"])
+    if not os.path.exists(path):
+        return jsonify({"ok": False,
+                        "error": "No picture held for that recording."}), 404
+    return send_file(path, mimetype="image/png")
+
+
+def _stored_for(sess):
+    """The saved record for an open session, or `{}`.
+
+    Bad channels and the chosen probe are not in the `.ncs` files -- they are
+    decisions somebody made about this recording -- so anything that has to
+    honour them must look them up the same way the trace view does: by
+    identity, not by path. Two machines with the recording on different
+    drives are the same session and must get the same answer.
+    """
+    try:
+        if sess.get("source") == "demo":
+            spec = demomod.get(sess.get("path")) or {}
+            return {"bad_channels": list(spec.get("bad") or [])}
+        identity = ids.identify(sess.get("path"),
+                                header_time=_header_time(sess))
+        rec, _how = STORE.get_session(identity)
+        return rec or {}
+    except Exception:                                    # noqa: BLE001
+        # A recording whose record cannot be found is scanned whole rather
+        # than not at all -- but it is not silently treated as having no
+        # bad channels, because the panel reports what this returned.
+        return {}
+
+
+def _incisor_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    `invert` is read from the session rather than defaulted here, and travels
+    into the spec explicitly, because dentate spike detection is positive
+    peaks on a signed trace: the two conventions find opposite events and
+    both look entirely plausible. Measured on M8s9feb8, the lab's convention
+    (inverted) gives 1230 events at 1444 uV on the hilus channel and the
+    other gives four.
+    """
+    stored = _stored_for(sess)
+
+    # Bad channels are dropped from the scan, not merely down-weighted.
+    #
+    # Toothy keeps detecting on them and nulls them out of the three
+    # estimates afterwards (`noise_idx`, `ephys.py:892/902/916`). Dropping
+    # them instead gives the same three answers for less reading, and it
+    # means the channel list in the reply IS the list that was looked at --
+    # a ranking table with a dead channel sitting in it invites somebody to
+    # pick the dead channel.
+    #
+    # `None` means the caller did not say, so the session's own record
+    # decides. An explicit list -- including an empty one -- overrides it,
+    # which is how the panel offers "scan it with this one put back".
+    if body.get("bad_channels") is None:
+        bad = {int(b) for b in (stored.get("bad_channels") or [])}
+    else:
+        bad = {int(b) for b in body["bad_channels"]}
+
+    all_ch = sess.get("channels") or []
+    by_index = {int(c["index"]): c for c in all_ch}
+    chans = body.get("channels")
+    if not chans:
+        chans = [c["index"] for c in all_ch]
+    chans = [int(c) for c in chans if int(c) in by_index]
+    kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
+    dropped = [i for i in chans if int(by_index[i]["number"]) in bad]
+    if not kept:
+        raise ValueError(
+            "Every channel in this recording is marked bad, so there is "
+            "nothing to scan. Put at least one back and run it again.")
+
+    probe_id = (stored.get("view_state") or {}).get("probe") or "h3"
+    probe = probebook.get(probe_id) or {}
+    spec = {
+        "path": sess.get("path"),
+        "channels": kept,
+        "invert": bool(sess.get("invert", True)),
+        "even_only": bool(sess.get("even_only")),
+        "estimator": (body.get("estimator") or "sd"),
+        # Carried so the answer can say what it left out, rather than
+        # quietly returning a shorter list than it was asked for. `channels`
+        # is in the cache key, so changing the bad set re-scans by itself.
+        "bad_channels": sorted(bad),
+        "excluded": [{"index": i, "number": int(by_index[i]["number"]),
+                      "label": by_index[i].get("label")} for i in dropped],
+        # The detector does not use this -- only a CSD cares which contacts
+        # are neighbours -- but it decides how the traces window lays the
+        # recording out, and a scan that does not say which probe it was
+        # read as leaves the reader to guess.
+        "probe": probe_id,
+        "probe_name": probe.get("name") or probe_id,
+    }
+    for key, default in (("height_sd", incisormod.DS_HEIGHT_SD),
+                         ("abs_uv", incisormod.DS_ABS_THR_UV),
+                         ("dist_ms", incisormod.DS_DIST_MS),
+                         ("prom_uv", incisormod.DS_PROM_UV),
+                         ("wlen_ms", incisormod.DS_WLEN_MS),
+                         ("lfp_fs", incisormod.LFP_FS)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+    band = body.get("band") or incisormod.DS_BAND
+    spec["band"] = [float(band[0]), float(band[1])]
+    if body.get("threshold_uv"):
+        spec["threshold_uv"] = float(body["threshold_uv"])
+    return spec
+
+
+def _incisor_report(path):
+    """The segmentation every Incisor time is stamped from."""
+    rep = continuitymod.check(path)
+    if not rep or not rep.get("ok"):
+        raise ValueError(rep.get("error") if rep else "could not segment")
+    return rep
+
+
+@app.route("/api/incisor/estimate", methods=["POST"])
+def api_incisor_estimate():
+    """What a scan would do, and how long it would take here."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.estimate(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/estimate", exc, 400, {"path": body.get("path")})
+    key = incisormod.cache_key(spec, rep)
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec,
+        "cached": incisormod.cache_get(key) is not None,
+        "continuity": {
+            "n_segments": rep.get("n_segments"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "true_duration_s": rep.get("true_duration_s"),
+            "n_short_inside": rep.get("n_short_inside"),
+            "residual_sd_us": rep.get("map_residual_sd_us"),
+            "probed": rep.get("probed"),
+            "mismatches": rep.get("mismatches"),
+        },
+        # What the session already believes about its own anatomy, so the
+        # window can put the scan's answer beside it rather than over it.
+        "known": _known_channels(sess.get("path")),
+        # Every channel in the recording, marked. The plan says how many
+        # were scanned and which were left out; this is what a panel needs
+        # to let somebody change that -- and it is the full list, including
+        # the ones being skipped, because you cannot put a channel back from
+        # a list it is not in.
+        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": int(c["number"]) in set(spec["bad_channels"])}
+                     for c in (sess.get("channels") or [])],
+    })
+
+
+def _known_channels(path):
+    """Ripple, fissure and hilus as the registry already holds them.
+
+    Imported from the Toothy workbook by `tools/import_toothy.py` for 62
+    sessions and corroborated against the layer sheet in 57 of 57 cases where
+    both exist. Two independent sources agreeing is the best evidence either
+    of them could have, so the scan's estimate is shown BESIDE this rather
+    than replacing it.
+    """
+    # `all()` rather than `summary()`: the records straight out of the
+    # shards, cached against their signature, instead of the whole project
+    # tree -- which takes seconds on this lab's data and is three quarters
+    # of what `/api/registry` costs.
+    want = os.path.normcase(os.path.abspath(path or ""))
+    try:
+        for rec in (REG.all() or []):
+            for known in (rec.get("paths") or []):
+                if os.path.normcase(os.path.abspath(known)) == want:
+                    return {k: rec.get(k) for k in
+                            ("hilus_channel", "fissure_channel",
+                             "ripple_channel")
+                            if rec.get(k) is not None}
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {}
+
+
+def _incisor_public(out):
+    """The answer without the per-channel event lists.
+
+    They stay in the cache for `/api/incisor/events`. Sending all of them to
+    draw one channel is sixty-four times the payload, and a response big
+    enough to be truncated in transit arrives as a 200 that will not parse.
+    """
+    return {k: v for k, v in (out or {}).items() if not k.startswith("_")}
+
+
+@app.route("/api/incisor/events", methods=["POST"])
+def api_incisor_events():
+    """One channel's events from the scan already run.
+
+    Out of the cache, so changing the channel in the panel costs a small
+    request rather than reading the recording again. A miss is honest about
+    itself -- the caller should re-scan rather than be given nothing that
+    looks like an answer.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/events", exc, 400, {"path": body.get("path")})
+    ekey = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That scan is not on this machine. "
+                                 "Run it again."}), 409
+    try:
+        index = int(body.get("channel"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Which channel?"}), 400
+    evs = incisormod.events_for(hit, index)
+    return jsonify({"ok": True, "channel": index, "n": len(evs),
+                    "events": evs})
+
+
+@app.route("/api/incisor/scan", methods=["POST"])
+def api_incisor_scan():
+    """Detect on every chosen channel and say which one is the hilus.
+
+    One job, because Toothy's channel estimate is made FROM the per-channel
+    detection (`ephys.py:916`) -- scanning and picking are not separable
+    steps, and pretending otherwise would mean reading the recording twice.
+    Poll it on /api/cfc/job/<id>, which is not cfc-specific.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.plan_for(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/scan", exc, 400, {"path": body.get("path")})
+
+    key = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(key)
+    if hit is None and not body.get("force"):
+        # Asked and answered before, on this machine or a colleague's.
+        hit = _incisor_recall(sess, key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True,
+                        "result": _incisor_public(hit)})
+
+    steps = [("ds read", int(plan["span_s"] * plan["n_channels"])),
+             ("ds detect", plan["n_channels"])]
+
+    def work(job):
+        out = incisormod.run(sess, spec, rep, job)
+        incisormod.cache_put(key, out)
+        _incisor_remember(sess, spec, key, out)
+        # The job's result is what the client fetches, so the private rows
+        # come off here rather than being serialised and thrown away.
+        return _incisor_public(out)
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "incisor.scan",
+        "detail": {"channels": len(spec["channels"]),
+                   "segments": rep.get("n_segments"),
+                   "invert": spec["invert"],
+                   "height_sd": spec["height_sd"]},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan})
+
+
+@app.route("/api/cfc/cache")
+def api_cfc_cache():
+    """What the comodulogram cache is holding. Diagnostic; ?clear=1 empties it.
+
+    Same shape as /api/panel/cache, and there for the same two reasons: to be
+    able to see whether a repeat really was a repeat, and to be able to force
+    a recompute without editing the request. A harness needs the second one --
+    a run that comes back cached never shows a progress display, so checks
+    aimed at the progress display fail on a feature that works.
+    """
+    if request.args.get("clear"):
+        cfcmod.cache_clear()
+    return jsonify({"ok": True, "cleared": bool(request.args.get("clear"))})
+
+
+@app.route("/api/cfc/job/<job_id>")
+def api_cfc_job(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run. It may have "
+                                              "finished long enough ago to "
+                                              "have been dropped."}), 404
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/cfc/job/<job_id>/cancel", methods=["POST"])
+def api_cfc_cancel(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    job.cancel()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/cfc/result/<job_id>")
+def api_cfc_result(job_id):
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    snap = job.snapshot()
+    if snap["status"] != "done":
+        return jsonify({"ok": False, "status": snap["status"],
+                        "error": snap.get("error")
+                                 or "That run has not finished."}), 409
+    return jsonify({"ok": True, "result": job.result, "job": snap})
+
+
+@app.route("/api/cfc/job/<job_id>/preview")
+def api_cfc_job_preview(job_id):
+    """The picture a run has built so far, for the waiting screen.
+
+    Its own route, not part of the job snapshot: the snapshot is polled
+    several times a second by every tool, and sixty kilobytes of base64
+    riding along with it would be two hundred kilobytes a second of
+    nothing for the tools that have no preview. The snapshot carries
+    `preview_rev`, an integer, and the caller asks for the image when
+    that changes.
+    """
+    job = cfcmod.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "No such run."}), 404
+    uri, rev = job.preview()
+    if not uri:
+        return jsonify({"ok": True, "png": None, "rev": rev})
+    return jsonify({"ok": True, "png": uri, "rev": rev})
+
+
+def _figure_plan(run):
+    """What it would take to rebuild this figure. The original, unchanged --
+    only moved, so the registry owns it rather than one route."""
+    rec, complete = rebuild.recipe_for(run)
+    steps, _problems = rebuild.audit(
+        rec, complete,
+        [p["id"] for p in analysis.PANELS],
+        [c["id"] for c in analysis.COLORMAPS],
+        list(compose.PAGE_PRESETS.keys()),
+        STORE.all_sessions())
+    worst = "ok"
+    for st in steps:
+        if st["status"] == "missing":
+            worst = "missing"
+            break
+        if st["status"] == "warn":
+            worst = "warn"
+    return {"recipe": rec, "complete": complete, "steps": steps,
+            "verdict": worst}
+
+
+def _panorama_plan(run):
+    """Panorama kept its answers, so most of this is already done.
+
+    A figure has to be made again from the recording. A Panorama does not:
+    the numbers behind it are in the vault under the recording and the
+    settings that produced them, so re-opening it is a read, and the only
+    open question is whether the recording is still reachable for a *fresh*
+    run to compare against.
+    """
+    sess = run.get("session") or {}
+    gid = sess.get("gid")
+    params = run.get("parameters") or {}
+    ph = pnsetmod.params_hash(params) if params else None
+    kept = bool(gid and ph and PNSETS.result_get(gid, ph))
+    here = [p for p in (sess.get("paths") or [sess.get("path")]) if p]
+    reachable = any(os.path.isdir(p) for p in here)
+
+    steps = [
+        {"id": "answer", "title": "Find the numbers it was drawn from",
+         "status": "ok" if kept else "warn",
+         "what": ("Kept, under this recording and these settings."
+                  if kept else
+                  "Not kept -- this ran before Panorama filed its answers, "
+                  "so the figure can be re-made but not compared."),
+         },
+        {"id": "recording", "title": "Locate the recording",
+         "status": "ok" if reachable else "missing",
+         "what": (here[0] if reachable else
+                  "None of its paths are reachable from this machine."),
+         },
+    ]
+    return {
+        "recipe": {"gid": gid, "params_hash": ph, "parameters": params,
+                   "label": run.get("label")},
+        "complete": kept,
+        "steps": steps,
+        "verdict": "ok" if kept and reachable else
+                   ("warn" if reachable else "missing"),
+    }
+
+
+def _panorama_verify(run):
+    """Is the answer still the answer?
+
+    Compares against the numbers, not the picture. A colormap change is not a
+    result changing, and a result changing is not hidden by a rendering that
+    happens to look the same.
+    """
+    sess = run.get("session") or {}
+    gid = sess.get("gid")
+    params = run.get("parameters") or {}
+    ph = pnsetmod.params_hash(params) if params else None
+    was = PNSETS.result_get(gid, ph) if (gid and ph) else None
+    if not was:
+        raise LookupError("This ran before Panorama kept its answers, so "
+                          "there is nothing to compare a new run against.")
+    return {"gid": gid, "params_hash": ph,
+            "computed": was.get("computed"),
+            "summary": {k: was.get(k) for k in
+                        ("modal_hz", "median_hz", "n_used", "n_windows",
+                         "n_nopeak", "n_rejected") if k in was}}
+
+
+def _toolkit_plan(run):
+    """A ToolKit export is a query, so re-running it is cheap and exact.
+
+    Nothing has to be read off a drive: the scope names which recordings, the
+    registry holds their bad channels, and the answer falls out. What can
+    change is the answer -- somebody marks a channel bad next week and the
+    same question returns a different list, which is the point of asking it
+    again rather than a reason not to.
+    """
+    params = run.get("parameters") or {}
+    args = {k: params.get(k) for k in
+            ("scope", "key", "mouse", "group", "date_from", "date_to")}
+    args["scope"] = args.get("scope") or "all"
+    try:
+        picked = toolkit.select(STORE.all_sessions(), **args)
+        err = None
+    except Exception as exc:                             # noqa: BLE001
+        picked, err = [], str(exc)
+    was = _int_or_none((run.get("summary") or {}).get("rows")) \
+        or _int_or_none(run.get("rows"))
+    steps = [
+        {"id": "scope", "title": "Read the scope back",
+         "status": "ok" if not err else "missing",
+         "what": err or toolkit.scope_label(**args)},
+        {"id": "sessions", "title": "Find the recordings it covered",
+         "status": "ok" if picked else "warn",
+         "what": ("%d recording(s) match that scope now." % len(picked))
+                 if picked else
+                 "No recording matches that scope any more."},
+    ]
+    if was is not None:
+        steps.append({"id": "rows", "title": "What it found when it ran",
+                      "status": "ok", "what": "%d row(s)." % was})
+    return {"recipe": dict(args, form=params.get("form"),
+                           include_clean=params.get("include_clean")),
+            "complete": not err,
+            "steps": steps,
+            "verdict": "missing" if err else ("ok" if picked else "warn")}
+
+
+def _toolkit_verify(run):
+    """Ask the same question again and say whether the answer moved."""
+    params = run.get("parameters") or {}
+    args = {k: params.get(k) for k in
+            ("scope", "key", "mouse", "group", "date_from", "date_to")}
+    args["scope"] = args.get("scope") or "all"
+    form = params.get("form") or "long"
+    picked = toolkit.select(STORE.all_sessions(), **args)
+    rows = toolkit.rows(picked, form,
+                        include_clean=bool(params.get("include_clean")))
+    was = _int_or_none((run.get("summary") or {}).get("rows")) \
+        or _int_or_none(run.get("rows"))
+    now = len(rows)
+    return {
+        "scope": toolkit.scope_label(**args),
+        "was": was, "now": now,
+        "same": (was is None or was == now),
+        "note": ("It still comes out the same: %d row(s)." % now)
+                if was == now else
+                ("It was %s row(s) and is now %d -- bad channels have been "
+                 "marked or cleared since." % (was, now) if was is not None
+                 else "The original did not record how many rows it found, "
+                      "so there is nothing to compare %d against." % now),
+    }
+
+
+def _deck_plan(run):
+    """A deck export is re-runnable as long as the deck is still there.
+
+    And as long as its slides still point at results that exist -- which is
+    the part that rots, because a slide holds a result id and filing a result
+    into a folder changes it. `_repoint` exists for exactly that, so this
+    checks the outcome rather than assuming it worked.
+    """
+    deck_id = (run.get("parameters") or {}).get("id") or run.get("deck_id")
+    deck = RESULTS.get_deck(deck_id) if deck_id else None
+    slides = (deck or {}).get("slides") or []
+    dangling = 0
+    for sl in slides:
+        for it in (sl.get("items") or []):
+            rid = it.get("result_id") or it.get("id")
+            if rid and not RESULTS.resolve({"result_id": rid}):
+                dangling += 1
+    steps = [
+        {"id": "deck", "title": "Find the deck",
+         "status": "ok" if deck else "missing",
+         "what": ((deck or {}).get("title") or deck_id or "(no id recorded)")
+                 if deck else
+                 "That deck is not on this machine. It may not have been "
+                 "committed, or it was deleted."},
+        {"id": "slides", "title": "Check the slides still point at something",
+         "status": "ok" if (deck and not dangling) else
+                   ("warn" if deck else "missing"),
+         "what": ("There is no deck to check." if not deck
+                  else "%d slide(s), all resolving." % len(slides)
+                  if not dangling
+                  else "%d slide item(s) point at a result that is not here."
+                       % dangling)},
+    ]
+    return {"recipe": {"id": deck_id, "slides": len(slides)},
+            "complete": bool(deck),
+            "steps": steps,
+            "verdict": "missing" if not deck else
+                       ("warn" if dangling else "ok")}
+
+
+def _int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+recipemod.register("figure", "Rebuild\u2026", _figure_plan)
+recipemod.register("panorama", "Re-open\u2026", _panorama_plan,
+                   verify=_panorama_verify)
+recipemod.register("toolkit", "Run it again\u2026", _toolkit_plan,
+                   verify=_toolkit_verify)
+recipemod.register("deck", "Re-export\u2026", _deck_plan)
+
+
+@app.route("/api/recipe/<run_id>")
+def api_recipe(run_id):
+    """What it would take to make this again -- whatever kind it is.
+
+    The figure-only route below stays, because figrebuild.js calls it and a
+    rebuild is not the thing to break while generalising rebuilds.
+    """
+    run = STORE.get_run(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "No run " + run_id}), 404
+    try:
+        plan = recipemod.plan_for(run)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("recipe", exc, 400, {"run": run_id})
+    return jsonify({"ok": True, "run": run,
+                    "offer": recipemod.offer(run), **plan})
+
+
+@app.route("/api/recipe/<run_id>/verify", methods=["POST"])
+def api_recipe_verify(run_id):
+    """Does it still come out the same?"""
+    run = STORE.get_run(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "No run " + run_id}), 404
+    try:
+        got = recipemod.verify(run)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return fail("recipe/verify", exc, 400, {"run": run_id})
+    return jsonify({"ok": True, **got})
+
+
 @app.route("/api/figure/recipe/<run_id>")
 def api_figure_recipe(run_id):
     """What it would take to rebuild this figure, and what stands in the way.
@@ -1071,7 +3037,8 @@ def api_figure_export():
     saved = None
     try:
         ident = layout.get("identity") or {}
-        saved = save_output(blob, name, subdir=ident.get("label"))
+        saved = save_output(blob, name, subdir=ident.get("label"),
+                            lane=lane_of(body))
         STORE.update_run(run["id"], {"output": saved})
     except Exception as exc:
         STORE.record_error("figure/save", "Could not write to Output/: %s" % exc,
@@ -1595,6 +3562,37 @@ def api_activity():
     })
 
 
+@app.route("/api/toolfeed/<tool>")
+def api_toolfeed(tool):
+    """What has happened in one tool, newest first, from the shared table.
+
+    The tool id is the ToolKit's own -- `curate`, `strata`, `cfc`,
+    `kilosort`, `snapshots`, `bad` -- and an id with no entry falls back to
+    its own name as the action prefix, so a toolkit added next year has a
+    feed without anybody registering it.
+
+    Supabase when there is a key and it answers; this machine's own log when
+    there is not. Which one it was comes back in `source`, because "nobody
+    else is working on this" and "I could not ask" look identical on screen
+    and are not the same fact.
+    """
+    try:
+        limit = int(request.args.get("limit") or toolfeed.LIMIT)
+    except (TypeError, ValueError):
+        limit = toolfeed.LIMIT
+    got = toolfeed.feed(STORE, CLOUD.cloud, tool, limit=limit,
+                        since=request.args.get("since") or None)
+    return jsonify(got)
+
+
+@app.route("/api/toolfeed")
+def api_toolfeed_tools():
+    """Which tools have a feed, for anything that wants to list them."""
+    return jsonify({"ok": True, "tools": [
+        {"id": k, "name": v["name"], "prefixes": v["prefixes"]}
+        for k, v in sorted(toolfeed.TOOLS.items())]})
+
+
 @app.route("/api/activity/who")
 def api_activity_who():
     """Who has done what, and where -- the shape of the shared log.
@@ -1622,7 +3620,12 @@ def api_activity_who():
                             (machines, r.get("machine") or "unknown")):
             slot = bucket.setdefault(key, {"n": 0, "last": None})
             slot["n"] += 1
-            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+            # As a moment, not as text. These rows do not share an
+            # offset -- what came from the shared table is UTC and what was
+            # written here is local -- so the string test this replaces
+            # could hold a row that is not the latest one.
+            if not slot["last"] or extras.marked_after(slot["last"],
+                                                       r.get("at")):
                 slot["last"] = r.get("at")
         # Grouped by the part before the dot: "curation" rather than
         # "curation.enter", because the shape of somebody's week is about
@@ -1803,6 +3806,28 @@ def _recording_start_us(session_path):
 # ==========================================================================
 # Output folder -- where downloads land
 # ==========================================================================
+# The two lanes a saved file can land in, and the folder the second one uses.
+# The folder name comes from results.py rather than being spelled again here:
+# the writer, the catalogue and .gitignore all have to agree on it, and a typo
+# in any one of them puts harness output back in the gallery silently.
+SCRATCH_LANE = "scratch"
+SCRATCH_DIR = results.SCRATCH_DIR
+
+
+def lane_of(body=None):
+    """Which lane this request asked to be saved in. Exhibit unless it says.
+
+    Only a harness ever asks for scratch, and it asks explicitly rather than
+    being sniffed out of a header: the harness pages drive the real interface
+    from inside an iframe, so their requests carry the app's own Referer and
+    are indistinguishable from a person's. Saying so in the body is the only
+    honest signal there is.
+    """
+    asked = ((body or {}).get("lane")
+             or request.args.get("lane") or "").strip().lower()
+    return SCRATCH_LANE if asked == SCRATCH_LANE else "exhibit"
+
+
 def outputs_dir():
     """Where everything the GUI saves goes, and the only place Results reads.
 
@@ -1891,9 +3916,33 @@ def github_url_for(path):
     return "%s/tree/%s/%s" % (base, branch, quote(rel))
 
 
-def save_output(blob, filename, subdir=None):
-    """Write an exported file into the Output folder and report where it went."""
+def save_output(blob, filename, subdir=None, lane="exhibit"):
+    """Write an exported file into the Output folder and report where it went.
+
+    `lane` is which half of Results/ this belongs in, and it is the caller's
+    to declare rather than something guessed from the filename later.
+
+      exhibit  a result. Somebody made it on purpose, it is evidence, and it
+               is committed so a colleague can see it beside the log entry
+               that produced it.
+      scratch  a by-product. Harness screenshots, debug reports, the figure
+               a test rendered to prove rendering works. Real output of a
+               real run, and nobody will ever cite it.
+
+    They were the same folder until now, and the arithmetic of that is why
+    this argument exists: of 197 files in Results/, about 120 were harness
+    and debug by-products, 23 of them byte-identical copies of one another.
+    A folder that is 5% results is not a folder anybody reads.
+
+    Scratch goes to Results/_scratch/, which the catalogue skips and git
+    ignores. Underscore rather than a dot so it stays visible -- "send me
+    your debug report" is a thing people say, and a hidden folder would make
+    that harder, not easier.
+    """
     d = outputs_dir()
+    if lane == SCRATCH_LANE:
+        d = os.path.join(d, SCRATCH_DIR)
+        os.makedirs(d, exist_ok=True)
     if subdir:
         safe_sub = "".join(c for c in str(subdir)
                            if c.isalnum() or c in " -_.") .strip()
@@ -1922,7 +3971,7 @@ def save_output(blob, filename, subdir=None):
 RESULTS = results.Results(STORE, outputs_dir(), REPO_ROOT)
 
 # Data roots the user has scanned. Session folders are searched for stage
-# output so a MATLAB figure is cataloged even though BARRY did not make it.
+# output so a MATLAB figure is cataloged even though Jarvis did not make it.
 _KNOWN_ROOTS = []
 
 
@@ -2012,6 +4061,35 @@ def api_results_file():
     return send_file(rec["path"], conditional=True,
                      as_attachment=as_attachment,
                      download_name=rec["name"] if as_attachment else None)
+
+
+@app.route("/api/results/thumb")
+def api_results_thumb():
+    """A small picture of a result, for the grid.
+
+    The grid used the original as its own thumbnail: a figure off the builder
+    averages a megabyte and a half here, so thirty cards was forty-five
+    megabytes to draw thirty postage stamps, each decoded at full size to be
+    scaled down. Falls through to the original whenever a thumbnail cannot be
+    made, because a slow card beats an empty one.
+    """
+    rec = RESULTS.resolve({
+        "result_id": request.args.get("id", ""),
+        "rel": request.args.get("rel"),
+        "name": request.args.get("name"),
+    })
+    if not rec or not os.path.isfile(rec["path"]):
+        return jsonify({"ok": False, "error": "No such result."}), 404
+    small = None
+    if rec.get("type") == "image":
+        small = thumbs.thumb_for(rec["path"],
+                                 os.path.join(LOGS_DIR, ".cache", "thumbs"))
+    # max-age rather than no-store: the name is a hash of the file's size and
+    # mtime, so a changed figure is a different URL and this one can be kept.
+    resp = send_file(small or rec["path"], conditional=True)
+    if small:
+        resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
 
 
 @app.route("/api/results/curate", methods=["POST"])
@@ -2225,6 +4303,68 @@ def api_layers_clear(gid):
     return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
 
 
+@app.route("/api/layers/<gid>/open", methods=["POST"])
+def api_layers_open(gid):
+    """Put a sheet on the workbench, or take it off."""
+    body = request.get_json(silent=True) or {}
+    on = bool(body.get("on", True))
+    try:
+        rec = LAYERS.open_set(gid, on, who=body.get("who"),
+                              unarchive=bool(body.get("unarchive")))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.open",
+                            "detail": {"gid": gid, "on": on}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/archive", methods=["POST"])
+def api_layers_archive(gid):
+    body = request.get_json(silent=True) or {}
+    on = bool(body.get("on", True))
+    try:
+        rec = LAYERS.archive(gid, on)
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.archive",
+                            "detail": {"gid": gid, "on": on}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/assign", methods=["POST"])
+def api_layers_assign(gid):
+    body = request.get_json(silent=True) or {}
+    try:
+        rec = LAYERS.assign(gid, body.get("who"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.assign",
+                            "detail": {"gid": gid,
+                                       "who": body.get("who")}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/<gid>/rename", methods=["POST"])
+def api_layers_rename(gid):
+    body = request.get_json(silent=True) or {}
+    try:
+        rec = LAYERS.rename(gid, body.get("name"))
+    except layers.LayerError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "layers.rename",
+                            "detail": {"gid": gid,
+                                       "name": body.get("name")}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/layers/close-all", methods=["POST"])
+def api_layers_close_all():
+    gone = LAYERS.close_all()
+    STORE.record_activity([{"action": "layers.close_all",
+                            "detail": {"n": len(gone)}}])
+    return jsonify({"ok": True, "closed": gone})
+
+
 @app.route("/api/layers/<gid>/delete", methods=["POST"])
 def api_layers_delete(gid):
     return jsonify({"ok": LAYERS.delete(gid)})
@@ -2237,7 +4377,7 @@ def api_layers_export(gid):
         return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
     rows = LAYERS.rows(rec)
     prog = LAYERS.progress(rec)
-    head = ("# BARRY GUI layer labels -- %s -- %d of %d channels labelled "
+    head = ("# Jarvis layer labels -- %s -- %d of %d channels labelled "
             "-- taken %s\n"
             % (rec.get("session_label") or gid, prog["labelled"],
                prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
@@ -2367,7 +4507,7 @@ def api_curation_from_bank():
     entry_id = (body.get("entry") or "").strip()
     if kind not in curation.KINDS:
         return jsonify({"ok": False,
-                        "error": "%r is not a kind of curation this BARRY "
+                        "error": "%r is not a kind of curation this Jarvis "
                                  "knows about." % kind}), 400
 
     ent = BANK.get(entry_id) if entry_id else None
@@ -2776,12 +4916,32 @@ def api_people():
 
 @app.route("/api/people/add", methods=["POST"])
 def api_people_add():
-    """Put somebody on the roster before they have touched anything."""
+    """Put somebody on the roster, or edit what it says about them.
+
+    `aliases` is accepted because it is how a merge is expressed: the
+    records keep the name each machine stamped on them -- deliberately,
+    provenance is not editable -- and an alias on the surviving entry is
+    what folds them at read time. Without it here there was no way to
+    merge two names except by editing a shard by hand.
+    """
     body = request.get_json(force=True, silent=True) or {}
+    extra = {}
+    if "aliases" in body:
+        got = body.get("aliases")
+        if isinstance(got, (list, tuple)):
+            # Lower-cased, because the fold is case-insensitive and storing
+            # both "Rain" and "rain" as aliases of the same person is two
+            # entries for one statement.
+            extra["aliases"] = sorted({str(a).strip().lower()
+                                       for a in got if str(a).strip()})
+        elif got in (None, ""):
+            extra["aliases"] = []
+    if "archived" in body:
+        extra["archived"] = bool(body.get("archived"))
     try:
         PEOPLE.add(body.get("name"), body.get("email"), body.get("note"),
                    role=body.get("role"), initials=body.get("initials"),
-                   orcid=body.get("orcid"))
+                   orcid=body.get("orcid"), **extra)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, **PEOPLE.roster(CURATE, BANK)})
@@ -2806,6 +4966,36 @@ def api_people_forget():
 # Names a harness may create and destroy. Anything else is somebody's
 # colleague, and this route will not touch it.
 _TEST_PERSON = "zz "
+
+
+@app.route("/api/device")
+def api_device():
+    """What this computer is called, and how firmly.
+
+    Separate from the profile on purpose. Switching who this machine credits
+    work to must not be able to rename the machine, and when the two shared
+    a record it could -- measured: one computer filed errors under five
+    different names while two computers were both set to the same one.
+    """
+    got = DEVICE.get(PROFILE)
+    got["adopted_from_profile"] = _adopted
+    return jsonify({"ok": True, "device": got})
+
+
+@app.route("/api/device", methods=["POST"])
+def api_device_save():
+    """Name this computer. Empty puts it back to the hostname.
+
+    Nothing about a person is touched here, and nothing here travels with a
+    profile: the record is a shard belonging to this machine.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    got = DEVICE.save(body.get("name"))
+    STORE.record_activity([{
+        "action": "device.rename",
+        "detail": {"name": got.get("name"), "id": got.get("id")},
+    }])
+    return jsonify({"ok": True, "device": got})
 
 
 @app.route("/api/people/_test_purge", methods=["POST"])
@@ -2844,6 +5034,23 @@ def api_people_test_purge():
             except Exception:                            # noqa: BLE001
                 pass
     return jsonify({"ok": True, "removed": gone, "removed_shared": cloud_gone})
+
+
+@app.route("/api/people/retired")
+def api_people_retired():
+    """Names that have been merged away or removed from the roster.
+
+    Worth exposing because the logs keep them: the activity and error logs
+    record whatever name each machine believed at the time, on purpose, so a
+    merged-away colleague still appears in them. A reader -- or a check --
+    needs to be able to tell "a name that used to be somebody" from "a name
+    nothing has ever heard of".
+    """
+    try:
+        names = sorted(PEOPLE.retired())
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 500
+    return jsonify({"ok": True, "names": names})
 
 
 @app.route("/api/people/archive", methods=["POST"])
@@ -3264,7 +5471,7 @@ def api_curation_bank(gid, kind):
             "by_label": bundle["by_label"],
             "label_names": bundle["label_names"],
             "pipeline": (body.get("pipeline")
-                         or "BARRY curation (" + kind + ")"),
+                         or "Jarvis curation (" + kind + ")"),
             "added_by": body.get("added_by"),
             "version_note": body.get("note"),
             # What the bank needs to tell a guess from a decision.
@@ -3365,7 +5572,7 @@ def api_curation_banked(gid, kind):
     # banked under its own name yet. `curated_entries` only knows about
     # entries this set has already written, and an import has no
     # `curation_label` -- so a set whose history is v0 (the detector) plus v1
-    # (a sort done before BARRY) looked untouched here, and the dialog
+    # (a sort done before Jarvis) looked untouched here, and the dialog
     # offered to write "version 1" while the route was about to write v2.
     # Asked the same way the bank route asks, so the two cannot disagree.
     if ent is None:
@@ -3638,7 +5845,7 @@ def api_curation_export(gid, kind):
         return jsonify({"ok": False, "error": "No such curation set."}), 404
     rows = CURATE.rows(rec)
     prog = CURATE.progress(rec)
-    head = ("# BARRY GUI event curation -- %s -- %s -- %d of %d specified "
+    head = ("# Jarvis event curation -- %s -- %s -- %d of %d specified "
             "-- taken %s\n"
             % (rec.get("session_label") or gid, kind, prog["specified"],
                prog["total"], time.strftime("%Y-%m-%dT%H:%M:%S")))
@@ -3663,37 +5870,155 @@ def api_curation_export(gid, kind):
 # The session registry -- one record per recording, with a permanent id
 # ==========================================================================
 
-def _attachments(rec):
+def _attach_index(bulk=False):
+    """The figure catalogue and the deck list, read once.
+
+    `_attachments` asked for both per recording, so the housekeeping view
+    read the same two stores five hundred times -- 1.7 s of `list_decks` and
+    6060 directory listings for one request. Passing an index in makes the
+    same answers cost one read.
+
+    Figures are indexed the three ways the matching asks about them. Deck
+    titles are only listed, because the test is "the recording's label
+    appears in this title" and a substring cannot be indexed -- but the cost
+    was the reading, not the test.
+    """
+    # Sets of figure positions, not counts.
+    #
+    # The test is "this figure matches by key OR by label OR by path", and one
+    # figure can match on more than one -- so counting per dimension and
+    # taking the larger under-counts a recording whose figures match on
+    # different fields, and adding them double-counts the ones that match on
+    # two. The union of positions is the same arithmetic the loop did.
+    by_key, by_label, by_path = {}, {}, {}
+    for i, r in enumerate(RESULTS.catalog()):
+        k = r.get("session_key")
+        if k:
+            by_key.setdefault(k, set()).add(i)
+        lab = r.get("session_label")
+        if lab:
+            by_label.setdefault(lab, set()).add(i)
+        pth = r.get("session_path")
+        if pth:
+            by_path.setdefault(pth, set()).add(i)
+    idx = {
+        "fig_key": by_key, "fig_label": by_label, "fig_path": by_path,
+        "deck_titles": [d.get("title") or "" for d in RESULTS.list_decks()],
+    }
+    if bulk:
+        idx.update(_bulk_index())
+    return idx
+
+
+def _bulk_index():
+    """The bank, the curation sets and the layer sets, read once each.
+
+    Only worth building for a whole tree. `_attachments` asked each of these
+    stores per recording, which over 526 records was 950 ms of re-scanning
+    the same 66 banked entries, 585 ms of curation reads and 153 ms of layer
+    reads. In bulk the same answers are one read apiece.
+
+    A single recording does NOT use this -- three direct reads for one record
+    are cheaper than reading every store to answer about one.
+    """
+    # The bank, indexed the five ways `for_session` asks about it.
+    #
+    # Sets of entry positions, unioned. `for_session` is an elif-chain, so
+    # every entry falls into exactly one of exact/strong/weak and the count
+    # is "entries matching any of the five tests" -- which is the union, and
+    # is the same arithmetic as the length of the three lists together.
+    bank = {"gid": {}, "key": {}, "loose": {}, "ms": {}, "mouse": {}}
+    for i, r in enumerate(BANK.summaries()):
+        for slot, val in (("gid", r.get("gid")),
+                          ("key", r.get("session_key")),
+                          ("loose", r.get("session_loose_key")),
+                          ("ms", (r.get("mouse"), r.get("session"))),
+                          ("mouse", r.get("mouse"))):
+            if slot in ("ms", "mouse"):
+                # Matched with `is not None`, as the chain does -- a mouse
+                # numbered 0 is a mouse.
+                if val is None or (slot == "ms" and None in val):
+                    continue
+            elif not val:
+                continue
+            bank[slot].setdefault(val, set()).add(i)
+
+    # How many events are curated against each recording, summed over kinds
+    # the way the count wants it. Curation records carry their own gid.
+    cur = {}
+    for r in CURATE.all():
+        gid = r.get("gid")
+        if gid:
+            cur[gid] = cur.get(gid, 0) + (CURATE.progress(r).get("total")
+                                          or 0)
+
+    layers = {}
+    for r in LAYERS.all():
+        gid = r.get("gid")
+        if gid:
+            layers[gid] = len(r.get("labels") or {})
+    return {"bank": bank, "cur_total": cur, "layer_n": layers}
+
+
+def _attachments(rec, idx=None):
     """What is hanging off this recording, counted for the housekeeping view.
 
     Counted rather than listed: the view wants to say "3 figures, 1 deck" at a
     glance and fetch the detail only when a row is opened.
+
+    `idx` is `_attach_index()`, shared across a whole tree. Without one this
+    builds its own, which is what the single-recording routes want.
     """
+    idx = idx or _attach_index()
     key = rec.get("key")
     loose = rec.get("loose_key")
     label = rec.get("label")
     paths = set(rec.get("paths") or [])
 
-    figures = 0
-    for r in RESULTS.catalog():
-        if (r.get("session_key") and r["session_key"] == key) \
-                or (label and r.get("session_label") == label) \
-                or (r.get("session_path") in paths):
-            figures += 1
+    # The same three ways a figure can belong to a recording. Unioned, not
+    # summed and not maxed: the loop this replaces counted each figure once
+    # if it matched by key, by label OR by path, so a figure matching two of
+    # them must not count twice and figures matching different ones must
+    # both count.
+    hit = set()
+    if key:
+        hit |= idx["fig_key"].get(key, set())
+    if label:
+        hit |= idx["fig_label"].get(label, set())
+    for pth in paths:
+        hit |= idx["fig_path"].get(pth, set())
+    figures = len(hit)
 
     decks = 0
-    for d in RESULTS.list_decks():
-        if label and label in (d.get("title") or ""):
-            decks += 1
+    if label:
+        for title in idx["deck_titles"]:
+            if label in title:
+                decks += 1
 
     banked = 0
     try:
-        banked = len(BANK.for_session({
-            "gid": rec.get("gid"),
-            "key": key, "loose_key": loose,
-            "mouse": rec.get("mouse"), "session": rec.get("session"),
-            "start": rec.get("start"),
-        }) or [])
+        if "bank" in idx:
+            # The same five tests as `for_session`, answered from the index.
+            bidx, mouse = idx["bank"], rec.get("mouse")
+            got = set()
+            if rec.get("gid"):
+                got |= bidx["gid"].get(rec["gid"], set())
+            if key:
+                got |= bidx["key"].get(key, set())
+            if loose:
+                got |= bidx["loose"].get(loose, set())
+            if mouse is not None and rec.get("session") is not None:
+                got |= bidx["ms"].get((mouse, rec.get("session")), set())
+            if mouse is not None:
+                got |= bidx["mouse"].get(mouse, set())
+            banked = len(got)
+        else:
+            banked = len(BANK.for_session({
+                "gid": rec.get("gid"),
+                "key": key, "loose_key": loose,
+                "mouse": rec.get("mouse"), "session": rec.get("session"),
+                "start": rec.get("start"),
+            }) or [])
     except Exception:                              # noqa: BLE001
         banked = 0
 
@@ -3704,8 +6029,15 @@ def _attachments(rec):
         "decks": decks,
         "banked": banked,
         "spike_sets": len(spikes),
-        "layers": len((LAYERS.get(rec.get("gid")) or {}).get("labels") or {}),
-        "ds": sum((CURATE.progress(c).get("total") or 0) for c in [CURATE.get(rec.get("gid"), k) for k in curation.KINDS] if c),
+        "layers": (idx["layer_n"].get(rec.get("gid"), 0)
+                   if "layer_n" in idx
+                   else len((LAYERS.get(rec.get("gid")) or {}).get("labels")
+                            or {})),
+        "ds": (idx["cur_total"].get(rec.get("gid"), 0)
+               if "cur_total" in idx
+               else sum((CURATE.progress(c).get("total") or 0)
+                        for c in [CURATE.get(rec.get("gid"), k)
+                                  for k in curation.KINDS] if c)),
         "note": bool(rec.get("note")),
     }
 
@@ -3749,10 +6081,38 @@ def _demo_project():
 
 @app.route("/api/registry")
 def api_registry():
-    """Every recording BARRY has met, as a project / mouse / session tree."""
+    """Every recording Jarvis has met, as a project / mouse / session tree."""
     if request.args.get("backfill"):
         REG.backfill()
-    tree = REG.tree(_attachments)
+    # One index for the whole tree: `_attachments` used to read the figure
+    # catalogue and the deck list once per recording, which is 508 reads of
+    # the same two stores for one request.
+    idx = _attach_index(bulk=True)
+    tree = REG.tree(lambda rec: _attachments(rec, idx))
+
+    # Which of these THIS computer has met, marked on the row.
+    #
+    # Not a machine-id lookup: sightings are keyed on the label a machine
+    # was using at the time, so this one computer's are filed under three
+    # different names and an id lookup matched none of 476 recordings.
+    names = _my_names()
+    seen_n = [0]
+
+    def mark(node):
+        if isinstance(node, dict):
+            if node.get("gid") and "paths" in node:
+                got = REG.seen_by(node, names)
+                node["seen_here"] = got
+                if got:
+                    seen_n[0] += 1
+            for v in node.values():
+                mark(v)
+        elif isinstance(node, list):
+            for v in node:
+                mark(v)
+
+    mark(tree)
+
     if not request.args.get("no_demo"):
         # Last, so real data is what you see first -- but always there, so
         # a machine with nothing mounted is not an empty application.
@@ -3765,6 +6125,10 @@ def api_registry():
         "demo_paths": [demomod.path_for(s)
                        for s in demomod.SESSIONS.values()],
         "total": len([r for r in REG.all() if not r.get("retired")]),
+        # How many this computer has actually met, so the local view can say
+        # what it is showing rather than looking like a shorter catalogue.
+        "seen_here": seen_n[0],
+        "my_names": sorted(names),
         # So the tree can branch on any of them without a second round trip.
         "mice": MICE.index(),
         "attributes": MICE.attributes(),
@@ -3901,7 +6265,7 @@ def api_registry_retire():
 
     Retired, not deleted: the record stays, so anything already pointing at
     its id still resolves, and it stops appearing in the tree. Nothing on the
-    recording drive is touched -- BARRY does not delete data it did not
+    recording drive is touched -- Jarvis does not delete data it did not
     write, and an aborted acquisition is still the lab's to keep or bin.
     """
     body = request.get_json(force=True) or {}
@@ -3930,12 +6294,24 @@ def api_registry_retire():
 
 @app.route("/api/registry/<gid>/forget", methods=["POST"])
 def api_registry_forget(gid):
-    """Drop a record entirely.
+    """Drop a record entirely, and keep it dropped.
 
     For a recording that should never have been registered -- a scratch copy,
     a test tree, a folder that was moved and re-registered under a new name.
-    The recording itself is untouched; only what BARRY remembers about it
-    goes. Opening or scanning it again starts a fresh record.
+    The recording itself is untouched; only what Jarvis remembers about it
+    goes.
+
+    It stays gone. The record is erased and a tombstone is written against
+    its permanent id, so a colleague's copy of the registry does not push it
+    back and the next scan of that drive does not re-register it. That is the
+    point of the button: a scratch copy that creeps back on every scan has
+    not been forgotten.
+
+    This used to claim that "opening or scanning it again starts a fresh
+    record", which is not what happens -- the scan finds the folder, reports
+    it catalogued, and nothing appears, because the tombstone retires the row
+    the moment it returns. Bringing one back is a deliberate act, not a side
+    effect of walking a drive.
     """
     rec = REG.by_gid(gid)
     if not rec:
@@ -4097,7 +6473,7 @@ def api_toolkit_bad_channels_export():
     # A header comment line, so a CSV opened months later still says what it
     # was a list of and when it was taken.
     stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
-    head = ("# BARRY GUI bad-channel export -- %s -- %d row(s) from %d "
+    head = ("# Jarvis bad-channel export -- %s -- %d row(s) from %d "
             "session(s) -- taken %s\n"
             % (toolkit.scope_label(**args), len(rows), len(picked), stamp))
     text = head + body
@@ -4107,7 +6483,8 @@ def api_toolkit_bad_channels_export():
 
     saved = None
     try:
-        saved = save_output(text.encode("utf-8"), name, subdir="ToolKit")
+        saved = save_output(text.encode("utf-8"), name, subdir="ToolKit",
+                            lane=lane_of())
     except Exception as exc:
         STORE.record_error("toolkit/save", "Could not write to Results/: %s"
                            % exc, None, {"name": name})
@@ -4192,7 +6569,8 @@ def api_deck_export():
 
     saved = None
     try:
-        saved = save_output(blob, name, subdir="Storyboards")
+        saved = save_output(blob, name, subdir="Storyboards",
+                            lane=lane_of(body))
     except Exception:
         saved = None
 
@@ -4258,7 +6636,7 @@ def api_pipeline_preflight():
         else:
             add("bad", "MATLAB",
                 "These stages need MATLAB and it was not found on PATH. "
-                "Run the setup script, or set BARRY_MATLAB to the executable.")
+                "Run the setup script, or set Jarvis_MATLAB to the executable.")
     if "python" in langs:
         add("ok", "Python", "%s (%s)" % (sysinfo.describe()["python"],
                                          sys.executable))
@@ -4439,16 +6817,389 @@ def api_session_health():
     out = []
     for p in paths[:60]:
         try:
-            out.append(extras.session_health(p, deep=deep))
+            rep = extras.session_health(p, deep=deep)
         except Exception as exc:
             out.append({"path": p, "level": "bad", "checks": [
                 {"level": "bad", "name": "check failed", "message": str(exc)}]})
+            continue
+        # File what the continuity check found.
+        #
+        # `session_health` runs it and returns the answer, which is why the
+        # report on screen is right -- and nothing kept it, so the archive
+        # log held only the sessions somebody had aimed the continuity route
+        # at by hand. Checking a hundred and eighty-nine recordings flagged
+        # the ones with gaps and left the filter with nothing to filter.
+        cont = rep.get("continuity")
+        if cont and cont.get("ok"):
+            gid = _gid_for_path(p)
+            if gid:
+                rep["gid"] = gid
+                try:
+                    HEALTHLOG.record(gid, p, cont,
+                                     label=(rep.get("identity") or {}).get(
+                                         "label"),
+                                     deep=bool(deep))
+                except Exception as exc:                 # noqa: BLE001
+                    app.logger.warning("health log: %s", exc)
+        out.append(rep)
     STORE.record_activity([{
         "action": "session.health",
         "detail": {"n": len(out), "deep": deep,
                    "levels": [o.get("level") for o in out]},
     }])
     return jsonify({"ok": True, "reports": out})
+
+
+def _gid_for_path(path):
+    """Which registered session is this folder?
+
+    Through the registry's own path list, which is how the application
+    decides two names are one recording. NOT through `ids.identify`: the
+    bank and the health log key on the registry's session id, and matching
+    on the identity string silently returns nothing -- which reads as "this
+    recording has nothing filed against it".
+    """
+    if not path:
+        return None
+    want = os.path.normcase(os.path.abspath(path)).rstrip("\\/")
+    try:
+        for rec in REG.all():
+            for entry in (rec.get("paths") or []):
+                where = entry.get("path") if isinstance(entry, dict) else entry
+                if not where:
+                    continue
+                if os.path.normcase(os.path.abspath(where)).rstrip("\\/") \
+                        == want:
+                    return rec.get("gid")
+    except Exception:                                    # noqa: BLE001
+        return None
+    return None
+
+
+@app.route("/api/health/summary")
+def api_health_summary():
+    """What is known about every recording anybody has checked.
+
+    One row per session: when it was last checked and by whom, whether it
+    has gaps, what is banked against it, and whether that has been
+    re-timed. The session list filters on this -- which is the point of
+    keeping the checks at all.
+    """
+    try:
+        rows = HEALTHLOG.summary(BANK)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    issues = [r for r in rows.values() if r.get("concat_issue")]
+    return jsonify({
+        "ok": True,
+        "sessions": rows,
+        "n_checked": len(rows),
+        "n_concat": len(issues),
+        "n_unpatched": len([r for r in rows.values() if r.get("unpatched")]),
+    })
+
+
+@app.route("/api/session/healthlog", methods=["POST"])
+def api_session_healthlog():
+    """One recording's check history, beside what is banked against it.
+
+    The two together are the question people actually have: this recording
+    has gaps -- was anything built from it before that was known, and by
+    whom?
+    """
+    body = request.get_json(force=True) or {}
+    gid = body.get("gid") or _gid_for_path(body.get("path"))
+    if not gid:
+        return jsonify({"ok": False, "unknown_session": True,
+                        "reason": "That folder is not in the session "
+                                  "registry, so there is nothing filed "
+                                  "against it."}), 200
+
+    rec = HEALTHLOG.get(gid) or {}
+    checks = sorted((rec.get("checks") or []),
+                    key=lambda c: extras.moment_key(c.get("at")),
+                    reverse=True)
+    entries = []
+    for e in BANK.all():
+        if e.get("gid") != gid:
+            continue
+        basis = e.get("time_basis") or {}
+        added = e.get("added") or {}
+        entries.append({
+            "entry_id": e.get("id"),
+            "name": e.get("name"),
+            "type": e.get("type"),
+            "n": e.get("n"),
+            "pipeline": (e.get("source") or {}).get("pipeline"),
+            "added_at": added.get("at"),
+            "added_by": added.get("by"),
+            "added_on": added.get("machine"),
+            "versions": len(e.get("versions") or []),
+            "time_basis": basis.get("kind"),
+            "retimed_at": basis.get("at"),
+            "retimed_by": basis.get("by"),
+            "retimed_map": basis.get("gap_map_sha"),
+            "patched": basis.get("kind") == retimemod.TRUE,
+        })
+    return jsonify({
+        "ok": True, "gid": gid,
+        "path": rec.get("path"), "label": rec.get("label"),
+        "checks": checks, "n_checks": len(checks),
+        "latest": healthlogmod.HealthLog.latest(rec),
+        "banked": entries,
+    })
+
+
+@app.route("/api/session/continuity", methods=["POST"])
+def api_session_continuity():
+    """The whole segment map for one recording.
+
+    The health report carries a capped version of this so a sixty-session
+    scan cannot return a hundred thousand rows; the details panel asks here
+    for the rest. `refresh` skips the cache, which is the honest thing to
+    offer after somebody has re-copied a folder.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    if not path:
+        return jsonify({"ok": False, "error": "No path."}), 400
+    try:
+        rep = continuitymod.check(
+            path,
+            all_channels=bool(body.get("all_channels")),
+            strict=bool(body.get("strict")),
+            use_cache=not bool(body.get("refresh")))
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    if rep is None:
+        return jsonify({"ok": False,
+                        "error": "No .ncs files in that folder."}), 404
+    # Filed against the session, so the archive can be asked about this
+    # later rather than the answer being thrown away with the response.
+    gid = body.get("gid") or _gid_for_path(path)
+    try:
+        HEALTHLOG.record(gid, path, rep, label=body.get("label"),
+                         deep=bool(body.get("all_channels")))
+    except Exception as exc:                             # noqa: BLE001
+        app.logger.warning("health log: %s", exc)
+    rep["gid"] = gid
+
+    STORE.record_activity([{
+        "action": "session.continuity",
+        "detail": {"path": path, "gid": gid,
+                   "segments": rep.get("n_segments"),
+                   "seconds_lost": rep.get("seconds_lost"),
+                   "gap_map_sha": rep.get("gap_map_sha"),
+                   "cached": rep.get("cached"),
+                   "all_channels": bool(body.get("all_channels"))},
+    }])
+    return jsonify(rep)
+
+
+@app.route("/api/session/timebasis", methods=["POST"])
+def api_session_timebasis():
+    """Which clock this session's banked events are on, and the evidence.
+
+    Reads. Writes nothing, and is the only one of the two that the health
+    report calls -- so a report can say what is wrong without anything being
+    able to act on it by accident.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    gid = body.get("gid") or ""
+    kind = body.get("kind") or "ds"
+    if not path and not gid:
+        return jsonify({"ok": False, "error": "Need a path or a gid."}), 400
+
+    rep = None
+    if path:
+        try:
+            rep = continuitymod.check(path)
+        except Exception:                                # noqa: BLE001
+            rep = None
+
+    # Which session this folder is, if the caller did not say. A row built
+    # from a scan rather than from the registry has no gid, and answering
+    # "nothing is banked" because none was supplied is a statement about the
+    # data made on the strength of a missing parameter.
+    if not gid and path:
+        want = os.path.normcase(os.path.abspath(path)).rstrip("\\/")
+        for rec in REG.all():
+            for entry in (rec.get("paths") or []):
+                where = entry.get("path") if isinstance(entry, dict) else entry
+                if not where:
+                    continue
+                if os.path.normcase(os.path.abspath(where)).rstrip("\\/") \
+                        == want:
+                    gid = rec.get("gid")
+                    break
+            if gid:
+                break
+        out_gid_resolved = bool(gid)
+    else:
+        out_gid_resolved = bool(gid)
+
+    if not gid:
+        # Said plainly rather than answered as an empty list.
+        return jsonify({
+            "ok": True, "gid": None, "unknown_session": True,
+            "n_entries": 0, "entries": [],
+            "reason": ("This folder is not in the session registry, so there "
+                       "is no way to tell which banked sets belong to it. "
+                       "Scan it in first."),
+        })
+
+    # Every banked entry for this session, each with its own answer -- two
+    # sets on one recording can be on different clocks and averaging that
+    # into one verdict would be the wrong kind of tidy.
+    entries = [e for e in BANK.all() if e.get("gid") == gid]
+    who = (STORE.provenance() or {}).get("user")
+    cur_set = CURATE.get(gid, kind) if gid else None
+
+    out = {"ok": True, "gid": gid, "n_entries": len(entries), "entries": [],
+           "gid_resolved": out_gid_resolved}
+    if rep and rep.get("ok"):
+        out["continuity"] = {
+            "n_segments": rep.get("n_segments"),
+            "max_time_error_ms": rep.get("max_time_error_ms"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "gap_map_sha": rep.get("gap_map_sha"),
+        }
+    for e in entries:
+        gate = retimemod.offer(rep, e, cur_set, me=who)
+        out["entries"].append({
+            "entry_id": e.get("id"),
+            "name": e.get("name"),
+            "type": e.get("type"),
+            "n": e.get("n"),
+            "pipeline": (e.get("source") or {}).get("pipeline"),
+            "basis": gate.get("basis"),
+            "correctable": bool(gate.get("offer")),
+            "reason": gate.get("reason"),
+        })
+    return jsonify(out)
+
+
+@app.route("/api/session/retime", methods=["POST"])
+def api_session_retime():
+    """Move a banked event set from Toothy's clock to the recording's own.
+
+    Preview by default. `apply: true` writes, and only then -- there is no
+    path through here that rewrites a timestamp because a flag was omitted.
+    """
+    body = request.get_json(force=True) or {}
+    path = body.get("path") or ""
+    entry_id = body.get("entry_id") or ""
+    gid = body.get("gid") or ""
+    kind = body.get("kind") or "ds"
+    do_apply = bool(body.get("apply"))
+    # Which version supplies the times and the labels. Absent means the
+    # live set, which is the default and the common case.
+    from_version = body.get("from_version")
+    if from_version in ("", "current"):
+        from_version = None
+    if not path or not entry_id:
+        return jsonify({"ok": False,
+                        "error": "Need the recording path and the entry."}), 400
+
+    try:
+        rep = continuitymod.check(path)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    if not rep or not rep.get("ok"):
+        return jsonify({"ok": False,
+                        "error": "Could not segment that recording."}), 400
+
+    entry = BANK.get(entry_id)
+    if not entry:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+
+    who = (STORE.provenance() or {}).get("user")
+    cur_set = CURATE.get(gid, kind) if gid else None
+
+    # Every version and whether the correction can run from it, always --
+    # this is what the picker is built from, and it has to be there even
+    # when the gate below refuses, because "already corrected" is exactly
+    # the case where somebody needs to pick an earlier one.
+    try:
+        offer_versions = BANK.retime_versions(entry_id, retimemod.TRUE)
+    except Exception:                                    # noqa: BLE001
+        offer_versions = {"versions": [], "current_version": None,
+                          "drops_fields": []}
+
+    gate = retimemod.offer(rep, entry, cur_set, me=who)
+    if not gate.get("offer") and from_version is None:
+        return jsonify({"ok": False, "offered": False,
+                        "reason": gate.get("reason"),
+                        "basis": gate.get("basis"),
+                        # So the window can offer the way forward rather
+                        # than only the refusal: a set already on the
+                        # recording's clock can still be corrected again
+                        # from a version that predates that correction.
+                        "versions": offer_versions}), 409
+
+    # The map the correction is derived from, and the hash that will be
+    # stamped on what it writes. A later run against a folder that has
+    # changed under the entry will not match this, which is the point.
+    sha = rep.get("gap_map_sha")
+    mapping = lambda t: continuitymod.concat_to_true(rep, t)
+
+    out = {
+        "ok": True,
+        "applied": do_apply,
+        "gap_map_sha": sha,
+        "preview": retimemod.preview(rep, entry, gid=gid, kind=kind),
+        "versions": offer_versions,
+        "from_version": from_version,
+        "continuity": {"n_segments": rep.get("n_segments"),
+                       "max_time_error_ms": rep.get("max_time_error_ms"),
+                       "seconds_lost": rep.get("seconds_lost")},
+    }
+    # Correcting from an older version corrects the BANK only.
+    #
+    # The curation set holds the decisions people have made since that
+    # version, and rewriting it from a bank version they have moved on from
+    # would discard them. The curation set is a workbench with owners;
+    # picking a version out of a dropdown is not a mandate to reset it.
+    cur_v = (offer_versions or {}).get("current_version")
+    touch_set = bool(gid) and (from_version is None or from_version == cur_v)
+    if gid and not touch_set:
+        out["set_skipped"] = (
+            "Reading v%s rather than the current v%s, so only the banked "
+            "set is corrected. The curation set holds the decisions made "
+            "since v%s and is left exactly as it is."
+            % (from_version, cur_v, from_version))
+
+    try:
+        # The curation set first on a dry run, because it is the one that
+        # can refuse for a reason worth seeing before anything is written.
+        if touch_set:
+            out["set"] = CURATE.retime(
+                gid, kind, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
+                dry_run=not do_apply, who=who)
+        out["entry"] = BANK.retime(
+            entry_id, mapping, retimemod.TRUE, retimemod.CONCAT, sha,
+            dry_run=not do_apply, by=who, from_version=from_version)
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    if (out.get("set") or {}).get("error") or (out.get("entry") or {}).get("error"):
+        out["ok"] = False
+
+    if do_apply and out["ok"]:
+        STORE.record_activity([{
+            "action": "events.retime",
+            "detail": {"entry": entry_id, "gid": gid, "kind": kind,
+                       "from": retimemod.CONCAT, "to": retimemod.TRUE,
+                       "from_version": from_version,
+                       "set_touched": touch_set,
+                       "gap_map_sha": sha,
+                       "n": (out.get("entry") or {}).get("moved"),
+                       "version": (out.get("entry") or {}).get("version"),
+                       "shift_max_ms": (out.get("entry") or {}).get(
+                           "shift_max_ms")},
+        }])
+    return jsonify(out)
 
 
 @app.route("/api/session/manifest", methods=["POST"])
@@ -4490,6 +7241,143 @@ def api_csc_overview():
 # ==========================================================================
 # Errors: grouping and triage
 # ==========================================================================
+# ==========================================================================
+# The JSON shards, as a backup you can look at
+#
+# Supabase is the primary route now. This is the redundancy: the copy that
+# survives an unreachable database, the copy that holds the version
+# snapshots that are too large to send, and the copy a fresh `git clone`
+# arrives with. A backup nobody can inspect is a backup nobody trusts.
+# ==========================================================================
+# What each folder under GUI_logs is for, so the list reads as something
+# other than a directory dump.
+_SHARD_WHAT = {
+    "activity": "every action, per machine per day",
+    "errors": "the error log, per machine per day",
+    "runs": "what was run, with its parameters",
+    "sessions": "the recording registry",
+    "curation": "curation sets and every decision in them",
+    "event_bank": "banked entries and their version snapshots",
+    "layers": "StrataScope layer sheets",
+    "mice": "the colony",
+    "prefs": "profiles, this computer's name, preferences",
+    "presets": "saved filter and analysis presets",
+    "results": "the figure catalogue",
+    "storyboards": "decks",
+    "feedback": "reports filed from the interface",
+    "tombstones": "what has been deleted, so a delete travels",
+}
+
+# Enough to read a shard, not enough to stream a gigabyte into a browser.
+SHARD_MAX = 400_000
+
+
+def _shard_root():
+    return LOGS_DIR
+
+
+@app.route("/api/backup/json")
+def api_backup_json():
+    """What the redundancy copy holds, by folder and by file."""
+    root = _shard_root()
+    groups = []
+    total_files = total_bytes = 0
+    for name in sorted(os.listdir(root)):
+        folder = os.path.join(root, name)
+        if not os.path.isdir(folder):
+            continue
+        # `.cache` and friends are Jarvis's own working files, not a copy of
+        # anything -- listing them as part of the backup invites somebody to
+        # treat them as one.
+        if name.startswith("."):
+            continue
+        files = []
+        for fn in sorted(os.listdir(folder)):
+            full = os.path.join(folder, fn)
+            if not os.path.isfile(full):
+                continue
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            # `base@machine.json` -- the shard naming. Split so the list can
+            # say whose a file is, which is the whole point of sharding.
+            stem = fn.rsplit(".", 1)[0]
+            base, _, machine = stem.partition("@")
+            files.append({
+                "name": fn, "base": base or stem,
+                "machine": machine or None,
+                "mine": machine == shards.machine_id(),
+                "bytes": st.st_size,
+                "at": datetime.datetime.fromtimestamp(
+                    st.st_mtime).astimezone().isoformat(timespec="seconds"),
+            })
+            total_files += 1
+            total_bytes += st.st_size
+        if not files:
+            continue
+        files.sort(key=lambda f: f["at"], reverse=True)
+        groups.append({
+            "folder": name,
+            "what": _SHARD_WHAT.get(name),
+            "n": len(files),
+            "bytes": sum(f["bytes"] for f in files),
+            "machines": sorted({f["machine"] for f in files if f["machine"]}),
+            "files": files,
+        })
+    groups.sort(key=lambda g: -g["bytes"])
+    return jsonify({
+        "ok": True, "root": root,
+        "folders": groups,
+        "files": total_files, "bytes": total_bytes,
+        # Said here rather than left to be inferred: this is the backup, and
+        # what it is a backup OF is the shared database.
+        "role": ("The redundancy copy. Supabase is the primary route; this "
+                 "is what survives an unreachable database, what holds the "
+                 "version snapshots that are too large to send, and what a "
+                 "fresh clone of the repository arrives with."),
+    })
+
+
+@app.route("/api/backup/json/<folder>/<name>")
+def api_backup_json_one(folder, name):
+    """One shard, as it is on disk.
+
+    Read-only, and pinned inside GUI_logs: the file name comes from a URL,
+    so it is checked against the resolved path rather than trusted to be
+    free of "..".
+    """
+    root = os.path.abspath(_shard_root())
+    full = os.path.abspath(os.path.join(root, folder, name))
+    if not full.startswith(root + os.sep) or not os.path.isfile(full):
+        return jsonify({"ok": False, "error": "No such shard."}), 404
+    try:
+        size = os.path.getsize(full)
+        with io.open(full, encoding="utf-8", errors="replace") as fh:
+            text = fh.read(SHARD_MAX + 1)
+    except OSError as exc:
+        return jsonify({"ok": False, "error": str(exc)[:200]}), 500
+    clipped = len(text) > SHARD_MAX
+    if clipped:
+        text = text[:SHARD_MAX]
+    pretty = text
+    try:
+        # JSONL -- one record per line -- in the day logs; a single object
+        # everywhere else. Both are shown as they are, only re-indented.
+        if not clipped:
+            if text.lstrip().startswith("{") and "\n{" in text:
+                rows = [json.loads(l) for l in text.splitlines() if l.strip()]
+                pretty = json.dumps(rows, indent=1)[:SHARD_MAX]
+            else:
+                pretty = json.dumps(json.loads(text), indent=1)[:SHARD_MAX]
+    except Exception:                                    # noqa: BLE001
+        pretty = text                    # unparseable is worth seeing raw
+    return jsonify({
+        "ok": True, "folder": folder, "name": name,
+        "bytes": size, "clipped": clipped, "text": pretty,
+    })
+
+
 @app.route("/api/errors/client", methods=["POST"])
 def api_errors_client():
     """A fault the interface noticed about itself.
@@ -4515,10 +7403,213 @@ def api_errors_client():
     return jsonify({"ok": True, "id": (rec or {}).get("id")})
 
 
+# Which machines have been archived, and when that was last asked.
+#
+# The flag lives in Supabase (migration 10) because two people archiving two
+# different computers through a last-write-wins pref would each undo the
+# other. Cached for a minute: it is read on every error list and changes
+# about twice a year.
+_ARCHIVED_SEEN = {"at": 0.0, "ids": frozenset()}
+
+
+def _archived_machines(max_age=60.0):
+    """The ids of computers taken off the lists, or an empty set."""
+    now = time.time()
+    if now - _ARCHIVED_SEEN["at"] < max_age:
+        return _ARCHIVED_SEEN["ids"]
+    ids = frozenset()
+    if CLOUD.cloud.configured:
+        try:
+            rows = CLOUD.cloud.select(
+                "machines", query="archived=is.true&select=id", limit=500)
+            ids = frozenset(str(r.get("id")) for r in rows if r.get("id"))
+        except Exception:                            # noqa: BLE001
+            # An unreachable database must not empty the error feed, and it
+            # must not hide anything either: no answer means no filtering.
+            ids = _ARCHIVED_SEEN["ids"]
+    _ARCHIVED_SEEN["at"] = now
+    _ARCHIVED_SEEN["ids"] = ids
+    return ids
+
+
+def _drop_archived(recs, want):
+    """Rows from archived computers, unless asked for all of them.
+
+    Returns (kept, hidden_count, ids). Matched on `shard` -- the id --
+    because `machine` is the friendly name and this lab has four names in
+    its logs for three computers.
+    """
+    if want == "all":
+        return recs, 0, frozenset()
+    gone = _archived_machines()
+    if not gone:
+        return recs, 0, gone
+    def retired(rec):
+        shard = str(rec.get("shard") or "")
+        if shard:
+            # A row that knows which computer wrote it is identified by
+            # that and nothing else.
+            return shard in gone
+        # And one that does not falls back to the friendly name -- which is
+        # what `host_of` does to decide the identity in the first place. The
+        # two used to disagree, so a name-only machine could be archived and
+        # its rows stayed.
+        return str(rec.get("machine") or "") in gone
+
+    kept = [r for r in recs if not retired(r)]
+    return kept, len(recs) - len(kept), gone
+
+
+@app.route("/api/errors/export")
+def api_errors_export():
+    """Every unresolved error, with the activity around each occurrence.
+
+    A traceback says what broke; the actions before it say why. So each
+    occurrence is printed with the log either side of it, on one clock, in
+    one file -- which is the thing somebody can actually read through when
+    a dozen faults need clearing at once.
+
+    `?machines=all` includes archived computers, `?days=N` limits how far
+    back to look, `?all=1` includes the ones already marked resolved.
+    """
+    want_all = request.args.get("all") == "1"
+    try:
+        days = int(request.args.get("days") or 0)
+    except (TypeError, ValueError):
+        days = 0
+
+    recs = STORE.list_errors(limit=4000)
+    recs, hidden_n, hidden_ids = _drop_archived(
+        recs, request.args.get("machines") or "active")
+    if days > 0:
+        cut = time.time() - days * 86400
+        recs = [r for r in recs
+                if (extras.moment_key(r.get("at")) or 0) >= cut]
+
+    book = STORE.resolved_errors()
+    acts = STORE.list_activity(limit=8000)
+    # Oldest first, so "what happened around this" can be sliced by time.
+    acts = sorted(acts, key=lambda a: extras.moment_key(a.get("at")))
+
+    # Group by the same signature the errors view groups on: where it
+    # happened plus the first line of what it said.
+    groups = {}
+    for r in recs:
+        sig = "%s | %s" % (r.get("where") or "?",
+                           str(r.get("message") or "").split("\n")[0][:120])
+        groups.setdefault(sig, []).append(r)
+
+    def resolved(sig, rows):
+        mark = (book or {}).get(sig) or {}
+        if not mark:
+            return False
+        return all(extras.marked_after(r.get("at"), mark.get("at"))
+                   for r in rows)
+
+    live = [(sig, rows) for sig, rows in groups.items()
+            if want_all or not resolved(sig, rows)]
+    live.sort(key=lambda kv: max(extras.moment_key(r.get("at"))
+                                 for r in kv[1]), reverse=True)
+
+    sysdesc = sysinfo.describe()
+    L = []
+    L.append("Jarvis -- open errors, with the log around them")
+    L.append("generated   " + time.strftime("%Y-%m-%d %H:%M:%S"))
+    L.append("machine     %s / %s" % (sysdesc.get("hostname"),
+                                      shards.machine_id()))
+    L.append("version     %s" % (NOTES.read().get("version")
+                                 if NOTES else "?"))
+    L.append("scope       %d group(s) %s, from %d error(s) on record"
+             % (len(live), "including resolved" if want_all else "open",
+                len(recs)))
+    if hidden_n:
+        L.append("excluded    %d from archived computer(s): %s"
+                 % (hidden_n, ", ".join(sorted(hidden_ids))))
+    L.append("")
+    L.append("Each group below is one fault. Under each occurrence is what "
+             "this machine")
+    L.append("was doing either side of it -- the traceback says what broke, "
+             "the actions")
+    L.append("say why.")
+
+    for i, (sig, rows) in enumerate(live[:60], 1):
+        rows = sorted(rows, key=lambda r: extras.moment_key(r.get("at")),
+                      reverse=True)
+        machines = sorted({str(r.get("machine") or r.get("shard") or "?")
+                           for r in rows})
+        L.append("")
+        L.append("=" * 74)
+        L.append("%d/%d  %s  x%d" % (i, min(len(live), 60),
+                                     rows[0].get("where") or "?", len(rows)))
+        L.append("=" * 74)
+        L.append("first seen  %s" % (rows[-1].get("at") or "?"))
+        L.append("last seen   %s" % (rows[0].get("at") or "?"))
+        L.append("machines    %s" % ", ".join(machines))
+        L.append("")
+        L.append(str(rows[0].get("message") or "").strip()[:2000])
+
+        ctx = rows[0].get("context")
+        if isinstance(ctx, dict) and ctx:
+            L.append("")
+            L.append("context")
+            for k in sorted(ctx):
+                L.append("    %-16s %s" % (k, str(ctx[k])[:200]))
+
+        tb = rows[0].get("detail") or rows[0].get("stack")
+        if tb:
+            L.append("")
+            L.append("traceback")
+            for line in str(tb).strip().split("\n")[-24:]:
+                L.append("    " + line[:200])
+
+        for r in rows[:3]:
+            when = extras.moment_key(r.get("at"))
+            L.append("")
+            L.append("--- around %s on %s ---"
+                     % (r.get("at") or "?",
+                        r.get("machine") or r.get("shard") or "?"))
+            near = [a for a in acts
+                    if abs((extras.moment_key(a.get("at")) or 0) - when) <= 120]
+            if not near:
+                L.append("    (nothing in the activity log within two "
+                         "minutes)")
+                continue
+            # Twelve either side, and the error in its place among them.
+            before = [a for a in near
+                      if (extras.moment_key(a.get("at")) or 0) <= when][-12:]
+            after = [a for a in near
+                     if (extras.moment_key(a.get("at")) or 0) > when][:12]
+            for a in before:
+                L.append("    %+6.1fs  %-24s %s"
+                         % ((extras.moment_key(a.get("at")) or 0) - when,
+                            a.get("action") or "?",
+                            json.dumps(a.get("detail") or {},
+                                       default=str)[:120]))
+            L.append("    %+6.1fs  %s" % (0.0, ">>> THE ERROR <<<"))
+            for a in after:
+                L.append("    %+6.1fs  %-24s %s"
+                         % ((extras.moment_key(a.get("at")) or 0) - when,
+                            a.get("action") or "?",
+                            json.dumps(a.get("detail") or {},
+                                       default=str)[:120]))
+
+    if len(live) > 60:
+        L.append("")
+        L.append("... and %d more group(s), not printed." % (len(live) - 60))
+
+    text = "\n".join(L) + "\n"
+    name = "jarvis-open-errors-%s.txt" % time.strftime("%Y%m%d_%H%M%S")
+    return Response(text, mimetype="text/plain; charset=utf-8", headers={
+        "Content-Disposition": 'attachment; filename="%s"' % name})
+
+
 @app.route("/api/errors/grouped")
 def api_errors_grouped():
     recs = STORE.list_errors(limit=int(request.args.get("limit", 600)),
                              day=request.args.get("day") or None)
+    # A retired computer's faults are not this week's problem.
+    recs, hidden_n, hidden_ids = _drop_archived(
+        recs, request.args.get("machines") or "active")
     book = STORE.resolved_errors()
 
     # An occurrence counts as resolved only if it happened BEFORE somebody
@@ -4537,7 +7628,12 @@ def api_errors_grouped():
         mark = (book.get(extras.mark_key(extras.signature(r),
                                          extras.host_of(r)))
                 or book.get(extras.signature(r)))
-        r["resolved"] = bool(mark) and (r.get("at") or "") <= (mark.get("at") or "")
+        # Compared as times, not as text: an error pulled from the shared
+        # table is UTC and a mark written here is local, so the string test
+        # this replaces called an error newer than the mark that resolved
+        # it and left it red for good.
+        r["resolved"] = bool(mark) and extras.marked_after(
+            r.get("at"), mark.get("at"))
 
     groups = extras.group_errors(recs, per_machine=per_machine)
 
@@ -4554,6 +7650,16 @@ def api_errors_grouped():
                     known[m["id"]] = m["hostname"]
         except Exception:                                # noqa: BLE001
             known = {}
+    # ...except for this computer, which knows its own name better than the
+    # table does. `machines.hostname` is only as fresh as the last successful
+    # push, so a rename that has not been pushed yet -- and somebody renaming
+    # a machine while the sync is failing is exactly that -- left every error
+    # here labelled with the name before last, with nothing on screen saying
+    # why. The local record changes the moment the name is saved.
+    my_id = shards.machine_id()
+    my_name = ((STORE.provenance() or {}).get("machine") or "").strip()
+    if my_id and my_name:
+        known[my_id] = my_name
 
     for g in groups:
         mid = g.get("machine")
@@ -4579,14 +7685,22 @@ def api_errors_grouped():
         if not g["resolved"]:
             # It was closed and has happened again since.
             g["reopened"] = True
+            # "Since the mark" compared as a time, for the same reason the
+            # resolved test above is: an error from the shared table is UTC
+            # and a mark written here is local, so as text a row from this
+            # afternoon can sort either side of a mark from this evening.
             g["reopened_at"] = next(
                 (r.get("at") for r in reversed(g["records"])
-                 if (r.get("at") or "") > (mark.get("at") or "")),
+                 if not extras.marked_after(r.get("at"), mark.get("at"))),
                 g.get("last"))
     return jsonify({"ok": True, "groups": groups, "days": STORE.error_days(),
                     "total": len(recs),
                     "unresolved": sum(1 for g in groups if not g["resolved"]),
-                    "reopened": sum(1 for g in groups if g.get("reopened"))})
+                    "reopened": sum(1 for g in groups if g.get("reopened")),
+                    # Said, not silently applied: a list that hides rows
+                    # without saying so is a list nobody can trust.
+                    "hidden_archived": hidden_n,
+                    "archived_machines": sorted(hidden_ids)})
 
 
 @app.route("/api/errors/resolve", methods=["POST"])
@@ -4893,6 +8007,29 @@ COLUMN_MIGRATIONS = {
     "reference_channels_source": "07_reference_channels.sql",
     "aliases": "08_people_aliases.sql",
     "archived": "09_people_archived.sql",
+    "versions": "11_bank_versions.sql",
+    "version": "11_bank_versions.sql",
+    "orcid": "12_people_orcid.sql",
+    "is_open": "13_layer_bench.sql",
+    "opened_at": "13_layer_bench.sql",
+    "opened_by": "13_layer_bench.sql",
+    # A whole table, not a column -- but the probe asks for a column OF a
+    # table, and a missing table answers "does not exist" the same way a
+    # missing column does. So asking for this one column is how a machine
+    # finds out that `bank_snapshots` has never been created.
+    "sha256": "14_bank_snapshots.sql",
+    # Same trick again: a missing table answers a column probe exactly as a
+    # missing column does, so asking for this one is how a machine finds out
+    # that health_checks has never been created.
+    "gap_map_sha": "15_health_checks.sql",
+    # `results` learning what it is of, and `runs` learning which code made
+    # it. Two columns rather than one because they are on different tables,
+    # and a machine can have run half a migration.
+    "recorded_on": "16_results_museum.sql",
+    "recipe": "16_results_museum.sql",
+    # And the third trick of the same kind: tool_results is a whole table,
+    # and a column probe is how a machine finds out it was never created.
+    "params_hash": "16_results_museum.sql",
 }
 
 
@@ -4915,6 +8052,17 @@ COLUMN_TABLES = {
     "reference_channels_source": "sessions",
     "aliases": "people",
     "archived": "people",
+    "versions": "bank_entries",
+    "version": "bank_entries",
+    "orcid": "people",
+    "is_open": "layer_sheets",
+    "opened_at": "layer_sheets",
+    "opened_by": "layer_sheets",
+    "sha256": "bank_snapshots",
+    "gap_map_sha": "health_checks",
+    "recorded_on": "results",
+    "recipe": "runs",
+    "params_hash": "tool_results",
 }
 
 
@@ -5119,7 +8267,12 @@ def api_digest():
                                              "who": set(), "last": None})
             slot["n"] += 1
             slot["who"].add(who)
-            if not slot["last"] or str(r.get("at")) > str(slot["last"]):
+            # As a moment, not as text. These rows do not share an
+            # offset -- what came from the shared table is UTC and what was
+            # written here is local -- so the string test this replaces
+            # could hold a row that is not the latest one.
+            if not slot["last"] or extras.marked_after(slot["last"],
+                                                       r.get("at")):
                 slot["last"] = r.get("at")
 
     try:
@@ -5209,23 +8362,70 @@ def api_devices():
     log_names = set(newest)
     claimed = set()
 
+    # Rows that say only a name.
+    #
+    # The error feed groups by `host_of`, which is the shard when there is
+    # one and the friendly name when there is not -- so a pre-shard row is
+    # filed under a key like "Bluebarry" that is NOT any machine's id. That
+    # key is offered in the picker, so it has to be offerable here too, or
+    # four computers are filterable and unarchivable.
+    #
+    # Deliberately not folded into `unclaimed_names`: a device is called
+    # Bluebarry, so the name reads as claimed there and disappears. And
+    # folding it into that device would be a guess -- three computers in
+    # this lab answer to Bluebarry, which is exactly why the row cannot be
+    # attributed to one of them.
+    name_only = {}
+    try:
+        ids = {str(m.get("id")) for m in machines if m.get("id")}
+        for rec in (STORE.list_errors(limit=4000) or []):
+            # Exactly the key the feed groups under.
+            key = str(extras.host_of(rec) or "").strip()
+            if not key or key == "unknown" or key in ids:
+                continue
+            # A shard id decodes: hostname slug, hyphen, four hex. A name
+            # does not. NOT `if rec.get("shard")` -- that field holds a
+            # friendly name on these rows, which is the whole reason they
+            # end up as their own key.
+            if extras.real_host(key) and "-" in key:
+                continue
+            name_only[key] = name_only.get(key, 0) + 1
+    except Exception:                                    # noqa: BLE001
+        name_only = {}
+
     out = []
     for m in machines:
         seen = presencemod._age_s(m.get("last_seen"))
         host = m.get("hostname")
         real = _real_host(m.get("id"))
+        # What to call it. For every other machine that is the table, which
+        # is the only thing here that has heard of them. For this one it is
+        # the local record: the table is only as fresh as the last successful
+        # push, so while the sync is down this row would keep showing the
+        # name before last -- including in the panel somebody opens to rename
+        # it. `host` stays what it was, because the counts below and the
+        # also-known-as matching are keyed on the name the log rows carry.
+        shown = host
+        if m.get("id") == mine:
+            shown = ((STORE.provenance() or {}).get("machine")
+                     or "").strip() or host
         # Rows written under this machine's other names. Matched on the
         # friendly name or the real hostname and nothing looser -- a fuzzy
         # match here would have folded StrawBarry into Strawbarry, and they
         # are two people's computers.
         aka = sorted(
             n for n in log_names
-            if n and n.lower() in {(host or "").lower(), (real or "").lower()}
-            and n != host)
+            if n and n.lower() in {(host or "").lower(), (real or "").lower(),
+                                   (shown or "").lower()} - {""}
+            and n != shown)
         claimed.update(aka)
-        if host:
-            claimed.add(host)
-        got = newest.get(host) or {}
+        for name in (host, shown):
+            if name:
+                claimed.add(name)
+        # Keyed on the name being shown, not on the table's copy of it: rows
+        # written since a rename carry the new name, and `aka` deliberately
+        # leaves that one out.
+        got = newest.get(shown) or {}
         # Counted under every name it has answered to.
         for other in aka:
             more = newest.get(other) or {}
@@ -5235,9 +8435,13 @@ def api_devices():
                     got[key] = more[key]
         out.append({
             "id": m.get("id"),
-            "hostname": host,
+            "hostname": shown,
             # What to put on screen: "Bluebarry (DESKTOP-4H65AI7)".
-            "label": _machine_label(host, m.get("id")),
+            "label": _machine_label(shown, m.get("id")),
+            # What the shared table still has, when this machine has been
+            # renamed and the new name has not reached it. The panel says so
+            # rather than showing two names and leaving it a mystery.
+            "pushed_name": host if shown != host else None,
             "real_host": real,
             "also_known_as": aka,
             "archived": bool(m.get("archived")),
@@ -5271,6 +8475,14 @@ def api_devices():
         # machines would get merged.
         "unclaimed_names": sorted(n for n in log_names
                                   if n and n not in claimed),
+        # Keys the error feed offers that are names rather than computers.
+        # Each carries how many rows are filed under it, because "25 errors
+        # nobody can attribute" and "1" are different problems.
+        "name_only_machines": [
+            {"name": n, "n_errors": c,
+             "archived": n in _archived_machines()}
+            for n, c in sorted(name_only.items(),
+                               key=lambda kv: (-kv[1], kv[0]))],
         # Labels that more than one computer answers to. The hazard, and the
         # reason the real hostname is shown in brackets: `machines.hostname`
         # is pushed from `provenance().machine`, which is the free-text
@@ -5289,7 +8501,7 @@ def api_devices():
 # `machines.id` is `slug(platform.node())` plus a four-character hash of the
 # MAC address, so it decodes the real computer name -- which the friendly
 # name often is not. Bluebarry is DESKTOP-4H65AI7; StrawBarry is LCOM549913
-# and Strawbarry is BARRYLAB, and those last two are different computers
+# and Strawbarry is JarvisLAB, and those last two are different computers
 # whose friendly names differ by the case of one letter.
 #
 # So a machine is shown as "Friendly (ACTUAL)" whenever the two differ. It
@@ -5304,6 +8516,42 @@ def _by_label(machines):
         if name and m.get("id"):
             out.setdefault(name, set()).add(m["id"])
     return out
+
+
+def _my_names():
+    """Every spelling this computer answers to.
+
+    Its id, the label it is called now, the hostname it reports, and the
+    older labels the logs have it under. Used wherever "did THIS machine do
+    this" has to be answered against records keyed on a label that changes.
+    """
+    out = set()
+    mid = shards.machine_id()
+    out.add(mid)
+    real = _real_host(mid)
+    if real:
+        out.add(real)
+    try:
+        got = DEVICE.get(PROFILE) or {}
+        for k in ("name", "real"):
+            if got.get(k):
+                out.add(got[k])
+    except Exception:                                    # noqa: BLE001
+        pass
+    try:
+        if (STORE.provenance() or {}).get("machine"):
+            out.add(STORE.provenance()["machine"])
+    except Exception:                                    # noqa: BLE001
+        pass
+    # And whatever the device table says this id has been called.
+    if CLOUD.cloud.configured:
+        try:
+            for m in (CLOUD.cloud.select("machines", limit=200) or []):
+                if m.get("id") == mid and m.get("hostname"):
+                    out.add(m["hostname"])
+        except Exception:                                # noqa: BLE001
+            pass
+    return {n for n in out if n}
 
 
 def _real_host(machine_id):
@@ -5354,9 +8602,25 @@ def api_devices_archive():
                         "error": "The machine list lives in the shared "
                                  "database, so archiving one needs a "
                                  "connection."}), 400
+    # A name with no computer behind it. Rows written before errors carried
+    # a shard are filed under the friendly name, so the feed offers names
+    # the `machines` table has never heard of -- and a patch on a row that
+    # does not exist succeeds and changes nothing, which looks exactly like
+    # archiving and is not. So the name is filed as a machine of its own:
+    # honest, because it IS a computer whose logs are here, and it makes the
+    # picker and the manager agree about what exists.
+    name_only = bool(body.get("name_only"))
     try:
-        CLOUD.cloud.patch_rows("machines", "id=eq.%s" % _q(mid),
-                               {"archived": want})
+        if name_only:
+            CLOUD.cloud.upsert("machines", [{
+                "id": mid,
+                "hostname": mid,
+                "archived": want,
+                "updated_at": cloudmod.now(),
+            }], on_conflict="id")
+        else:
+            CLOUD.cloud.patch_rows("machines", "id=eq.%s" % _q(mid),
+                                   {"archived": want})
     except Exception as exc:                             # noqa: BLE001
         msg = str(exc)
         if "42703" in msg or "PGRST204" in msg:
@@ -5367,9 +8631,14 @@ def api_devices_archive():
                          ".sql and try again.",
                 "run": "10_machines_archived.sql"}), 400
         return jsonify({"ok": False, "error": msg[:200]}), 502
+    # The answer this route just changed is cached for a minute, and the
+    # error feed filters on it. Without dropping it here, a machine stayed
+    # in the picker for up to sixty seconds after being archived and the
+    # click looked like it had done nothing.
+    _ARCHIVED_SEEN["at"] = 0.0
     STORE.record_activity([{
         "action": "device.archive",
-        "detail": {"id": mid, "archived": want},
+        "detail": {"id": mid, "archived": want, "name_only": name_only},
     }])
     return jsonify({"ok": True, "id": mid, "archived": want})
 
@@ -5386,7 +8655,7 @@ def api_errors_bundle():
 
     sysdesc = sysinfo.describe()
     lines = [
-        "BARRY GUI diagnostic bundle",
+        "Jarvis diagnostic bundle",
         "generated  " + time.strftime("%Y-%m-%d %H:%M:%S"),
         "repo       " + REPO_ROOT,
         "machine    %s / %s %s (%s)" % (sysdesc.get("hostname"),
@@ -5712,6 +8981,19 @@ def api_housekeeping_clean():
         res = extras.housekeeping_clean(body.get("paths") or [], REPO_ROOT)
     except Exception as exc:
         return fail("housekeeping/clean", exc, 400)
+    # Thumbnails are derived and rebuild themselves, so the only question is
+    # whether the folder has got big. Swept here rather than on the hot path:
+    # a cache that tidies itself while somebody is waiting for a page has
+    # turned a saving into a stall.
+    try:
+        freed = thumbs.sweep(os.path.join(LOGS_DIR, ".cache", "thumbs"))
+        if freed:
+            res["freed"] = (res.get("freed") or 0) + freed
+            res.setdefault("notes", []).append(
+                "Dropped %.1f MB of thumbnails, which rebuild as they are "
+                "looked at." % (freed / 1e6))
+    except Exception:                                    # noqa: BLE001
+        pass
     STORE.record_activity([{
         "action": "housekeeping.clean",
         "detail": {"removed": len(res.get("removed") or []),
@@ -5753,7 +9035,7 @@ def api_debug_report():
     body = request.get_json(force=True) or {}
     sysdesc = sysinfo.describe()
     L = []
-    L.append("BARRY GUI debug report")
+    L.append("Jarvis debug report")
     L.append("generated  " + time.strftime("%Y-%m-%d %H:%M:%S"))
     L.append("machine    %s / %s %s" % (sysdesc.get("hostname"),
                                         sysdesc.get("os"), sysdesc.get("release")))
@@ -5814,10 +9096,15 @@ def api_debug_report():
     text = "\n".join(L)
     saved = None
     try:
+        # Scratch, always. A debug report is a by-product of something going
+        # wrong, it is read once by whoever it was sent to, and forty-nine of
+        # them had accumulated in the results folder where nobody wants them.
+        # Still written, still findable at Results/_scratch/Debug, just not
+        # filed among the figures.
         saved = save_output(
             text.encode("utf-8"),
             "debug-report-%s.txt" % time.strftime("%Y%m%d_%H%M%S"),
-            subdir="Debug")
+            subdir="Debug", lane=SCRATCH_LANE)
     except Exception:
         saved = None
     STORE.record_activity([{
@@ -5840,6 +9127,10 @@ MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
 PEOPLE = peoplemod.People(LOGS_DIR, STORE, PROFILE)
+# So removing somebody from the roster survives the next sync. Without it
+# another machine still holding the name pushes its copy back and the pull
+# re-creates it -- measured, on a merge and on a harness probe.
+PEOPLE.tombs = RESULTS.tombs
 # The version, read from the one place it is written: the newest
 # heading in CHANGELOG.md.
 NOTES = notesmod.Notes(APP_DIR, REPO_ROOT)
@@ -6069,10 +9360,16 @@ def api_bank_add():
         return fail("bank/add", exc, 400)
     STORE.record_activity([{
         "action": "bank.add",
-        "detail": {"id": rec["id"], "project": rec["project"],
-                   "mouse": rec["mouse"], "session": rec["session"],
-                   "type": rec["type"], "n": rec["n"],
-                   "pipeline": rec["source"]["pipeline"]},
+        # `.get`, not `[...]`. These are the fields of an activity line, not
+        # a contract: a set banked without a mouse -- a detector's output,
+        # filed before anybody has said which animal it is -- writes a record
+        # whose null keys the shard writer drops, and `rec["mouse"]` then
+        # raised KeyError('mouse'). The bank had already succeeded, so the
+        # entry existed and the caller was told "Not banked: 'mouse'".
+        "detail": {"id": rec.get("id"), "project": rec.get("project"),
+                   "mouse": rec.get("mouse"), "session": rec.get("session"),
+                   "type": rec.get("type"), "n": rec.get("n"),
+                   "pipeline": (rec.get("source") or {}).get("pipeline")},
         "session": {"key": rec.get("session_key"),
                     "label": rec.get("session_label")},
     }])
@@ -6105,10 +9402,17 @@ def api_bank_version(entry_id, v):
     """Edit, archive or delete one version of an entry's history."""
     body = request.get_json(force=True, silent=True) or {}
     action = (body.get("action") or "edit").strip()
+    undo = None
     try:
         if action == "delete":
             rec = BANK.delete_version(entry_id, v)
             changed = ["deleted"]
+            # Deleting a correction puts the times back and drops the basis
+            # stamp, which is what makes the session show an unresolved
+            # segment issue again -- `patched` is computed from that stamp.
+            # Reported so the window can say so rather than leaving somebody
+            # to notice a filter change on their own.
+            undo = rec.get("undo")
         elif action in ("archive", "unarchive"):
             rec, changed = BANK.edit_version(
                 entry_id, v, {"archived": action == "archive"})
@@ -6130,10 +9434,74 @@ def api_bank_version(entry_id, v):
         "detail": {"entry": entry_id, "version": v, "changed": changed},
     }])
     mirror_bank_soon()
-    return jsonify({"ok": True, "changed": changed,
+    return jsonify({"ok": True, "changed": changed, "undo": undo,
                     "versions": [{k: val for k, val in x.items()
                                   if k != "snap"}
                                  for x in (rec.get("versions") or [])]})
+
+
+@app.route("/api/bank/<entry_id>/dedupe", methods=["POST"])
+def api_bank_dedupe(entry_id):
+    """Collapse rows of one entry that hold the same time twice.
+
+    Defaults to a dry run: the answer says which times are doubled, which
+    of them carry two different calls, and which copy each would keep.
+    Writing needs `dry_run: false`, and where any time is contested it also
+    needs `conflicts` set to "first" or "last" -- the collapse refuses to
+    pick somebody's call for them.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    dry = body.get("dry_run")
+    dry = True if dry is None else bool(dry)
+    try:
+        out = BANK.dedupe(entry_id,
+                          conflicts=body.get("conflicts"),
+                          note=(body.get("note") or None),
+                          by=body.get("by"),
+                          dry_run=dry)
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                                  # noqa: BLE001
+        return fail("bank/dedupe", exc, 400)
+
+    # The set the entry was banked from. If its doubles are still there the
+    # next re-bank puts these straight back, and finding that out after the
+    # fact is how somebody comes to run this twice.
+    rec = BANK.get(entry_id) or {}
+    try:
+        cur = CURATE.get(rec.get("gid"), rec.get("type"))
+        if cur:
+            seen, again = set(), 0
+            for ev in cur.get("events") or []:
+                key = BANK._dup_key(ev.get("start"))
+                if key is None:
+                    continue
+                if key in seen:
+                    again += 1
+                seen.add(key)
+            if again:
+                out["source_set_dupes"] = again
+                out["source_set_name"] = cur.get("name")
+    except Exception:                                         # noqa: BLE001
+        pass
+
+    if not dry and not out.get("error"):
+        STORE.record_activity([{
+            "action": "bank.dedupe",
+            "detail": {"id": entry_id, "version": out.get("version"),
+                       "removed": out.get("removed"),
+                       "conflicts": out.get("conflicts"),
+                       "policy": out.get("policy")},
+            "session": {"key": rec.get("session_key"),
+                        "label": rec.get("session_label")},
+        }])
+        mirror_bank_soon()
+    # A dry run that refuses still SUCCEEDED: answering "not without a
+    # choice, and here are the fourteen times it turns on" is the preview
+    # doing its job. `ok: false` makes the client's api() throw, which threw
+    # away the answer and left the panel with nothing to show -- so it is
+    # kept for a write that would not happen, and for a fault.
+    return jsonify({"ok": bool(dry) or not out.get("error"), **out})
 
 
 @app.route("/api/bank/<entry_id>/delete", methods=["POST"])
@@ -6291,7 +9659,7 @@ def api_bank_export():
 # ==========================================================================
 # Nothing here runs Kilosort in-process. A sort takes an hour and holds a GPU;
 # it belongs in its own process, with its output streamed, cancellable, and
-# recorded as a run like everything else BARRY launches.
+# recorded as a run like everything else Jarvis launches.
 @app.route("/api/kilosort/check")
 def api_kilosort_check():
     """What this machine has, and what it is missing."""
@@ -6303,7 +9671,7 @@ def api_kilosort_check():
 def api_kilosort_plan():
     """What a run would do, before anything is launched.
 
-    Bad channels come from BARRY's own record of the recording when the
+    Bad channels come from Jarvis's own record of the recording when the
     caller does not name them, which is the point: the numbers people marked
     while looking at the traces are the numbers that should be excluded, and
     nobody should be retyping them into a second place.
@@ -6412,7 +9780,7 @@ def api_kilosort_runs():
 def api_phy_open():
     """Launch Phy on a results folder.
 
-    Phy is a desktop app with its own window; BARRY starts it and gets out of
+    Phy is a desktop app with its own window; Jarvis starts it and gets out of
     the way. Its console output still comes back as a job, because when it
     refuses to start the reason is on stderr.
     """
@@ -6473,15 +9841,20 @@ def api_kilosort_terminal():
 # ==========================================================================
 # Supabase -- the shared copy
 #
-# BARRY writes locally first, always. The files are what make it work on a
+# Jarvis writes locally first, always. The files are what make it work on a
 # rig with no network and on a drive that is not mounted; this pushes what
 # they hold to Postgres and brings back what other machines have changed.
 # Nothing here is on the critical path of anything: if the sync is down,
-# BARRY carries on and catches up later.
+# Jarvis carries on and catches up later.
 # ==========================================================================
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
-    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE)
+    results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE,
+    health=HEALTHLOG,
+    # What each tool has already worked out. Panorama's is the set runner's
+    # own; Incisor's is the one that stops "run the scan again" being the
+    # answer to a restart.
+    vaults={"panorama": PNSETS.vault, "incisor": INCISOR_VAULT})
 
 # Who is curating what, right now. Cloud-only by design -- see
 # backend/presence.py: a presence row that survives a restart is a lie.
@@ -6503,10 +9876,29 @@ def _cloud_results():
 def cloud_sync_once(push=True, pull=True, files=False):
     """One round trip. Never raises: a sync that fails is a status line,
     not an interruption to whatever someone is doing."""
+    # `ok=False` explicitly on both of these. They return a copy of the LAST
+    # sync's record, and that record's `ok` belongs to a run that already
+    # finished -- so a refusal after a good sync came back saying ok, and the
+    # button reported the previous run's "sent 5, brought back 3" as though
+    # this press had done something.
     if not CLOUD.cloud.configured:
-        return dict(_cloud_last, error="not configured")
+        return dict(_cloud_last, ok=False, error="not configured")
     if not _cloud_lock.acquire(blocking=False):
-        return dict(_cloud_last, error="a sync is already running")
+        # Which step, and how long it has been on it. Pressing the button
+        # again is what somebody does when a sync looks stuck, so this is
+        # the moment to say what it is actually doing -- and a step that has
+        # been going for a minute is the difference between "wait" and "it
+        # is hung on a request that will not time out for another fifty
+        # seconds", which nothing on screen could tell you before.
+        step = dict(_sync_step)
+        where = " ".join(str(x) for x in (step.get("phase"), step.get("table"))
+                         if x) or "running"
+        age = presencemod._age_s(step.get("at"))
+        return dict(_cloud_last, ok=False, error=(
+            "A sync is already running (%s%s), so this one did nothing. If "
+            "that does not move, it is stuck on that step."
+            % (where, "" if age is None else ", %ds on that step"
+               % int(age))))
     try:
         _cloud_last["running"] = True
         _cloud_results()
@@ -6565,7 +9957,7 @@ def cloud_sync_once(push=True, pull=True, files=False):
         _cloud_last["failures"] = _cloud_last.get("failures", 0) + 1
         # A clock that is ahead of the server's is not something retrying
         # fixes. Every attempt fails identically and logs the same line, so
-        # the automatic sync stands down until BARRY is restarted -- by which
+        # the automatic sync stands down until Jarvis is restarted -- by which
         # time the clock has either been set or it has not. Syncing by hand
         # still works, so there is a way to test the fix without a restart.
         msg = str(exc)
@@ -6615,7 +10007,7 @@ def _cloud_backoff(fails, blocked):
     took sync offline for half an hour, which is indistinguishable from it
     being broken.
 
-    A clock that is ahead used to stand sync down until BARRY was restarted.
+    A clock that is ahead used to stand sync down until Jarvis was restarted.
     Windows fixes its own clock eventually, and ten minutes is a reasonable
     time to look again; being silently offline until somebody restarts is
     not.
@@ -6807,7 +10199,16 @@ def api_cloud_sync():
     res = cloud_sync_once(push=body.get("push", True),
                           pull=body.get("pull", True),
                           files=body.get("files", True))
-    return jsonify({"ok": bool(res.get("ok")), "last": res})
+    out = {"ok": bool(res.get("ok")), "last": res}
+    # The reason at the top level, where the client's `api()` looks for it.
+    # It only reads `error` there, so a failure whose reason sat one level
+    # down in `last` was thrown away and reported as "Request failed (200)"
+    # -- which is how a bug report about the sync arrived saying nothing at
+    # all about why it failed.
+    if not out["ok"]:
+        out["error"] = (res.get("error")
+                        or "The sync did not finish and did not say why.")
+    return jsonify(out)
 
 
 @app.route("/api/cloud/key", methods=["POST"])

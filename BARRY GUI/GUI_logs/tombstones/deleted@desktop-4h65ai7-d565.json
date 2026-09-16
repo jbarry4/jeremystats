@@ -8,21 +8,121 @@
         "set",
         "2026-09-09T03:45:44.227404+00:00"
       ],
+      "deck:deck_01a7a82e": [
+        "set",
+        "2026-09-11T17:16:59.781895+00:00"
+      ],
+      "deck:deck_03202e29": [
+        "set",
+        "2026-09-14T19:00:11.352018+00:00"
+      ],
+      "deck:deck_03bfc16c": [
+        "set",
+        "2026-09-09T21:40:46.375301+00:00"
+      ],
+      "deck:deck_042053e4": [
+        "set",
+        "2026-09-09T22:28:54.507782+00:00"
+      ],
       "deck:deck_072567c9": [
         "set",
         "2026-09-09T13:46:14.061027+00:00"
+      ],
+      "deck:deck_07802fc0": [
+        "set",
+        "2026-09-14T16:49:26.109775+00:00"
+      ],
+      "deck:deck_07927048": [
+        "set",
+        "2026-09-10T21:11:16.688721+00:00"
+      ],
+      "deck:deck_080cbb1d": [
+        "set",
+        "2026-09-10T19:25:55.335387+00:00"
+      ],
+      "deck:deck_0903665b": [
+        "set",
+        "2026-09-10T19:04:49.690733+00:00"
+      ],
+      "deck:deck_0b7abd6e": [
+        "set",
+        "2026-09-14T17:04:42.662077+00:00"
+      ],
+      "deck:deck_126429bd": [
+        "set",
+        "2026-09-09T19:06:49.584228+00:00"
       ],
       "deck:deck_15cbb554": [
         "set",
         "2026-09-09T06:42:45.565419+00:00"
       ],
+      "deck:deck_172cfd7b": [
+        "set",
+        "2026-09-10T22:09:48.325964+00:00"
+      ],
+      "deck:deck_17f08914": [
+        "set",
+        "2026-09-10T19:33:13.647015+00:00"
+      ],
+      "deck:deck_181936ad": [
+        "set",
+        "2026-09-09T23:34:30.851686+00:00"
+      ],
+      "deck:deck_191d7db9": [
+        "set",
+        "2026-09-10T18:17:14.718296+00:00"
+      ],
+      "deck:deck_1a243952": [
+        "set",
+        "2026-09-09T19:06:49.584228+00:00"
+      ],
+      "deck:deck_1df7dd40": [
+        "set",
+        "2026-09-14T18:18:10.065688+00:00"
+      ],
+      "deck:deck_1f10e823": [
+        "set",
+        "2026-09-15T21:06:19.089359+00:00"
+      ],
       "deck:deck_1f5ec4f1": [
         "set",
         "2026-09-09T13:46:23.884220+00:00"
       ],
+      "deck:deck_1faaec26": [
+        "set",
+        "2026-09-10T19:04:49.690733+00:00"
+      ],
       "deck:deck_1fe89c4e": [
         "set",
         "2026-09-03T13:49:59.989200+00:00"
+      ],
+      "deck:deck_2483c05e": [
+        "set",
+        "2026-09-14T16:19:13.149133+00:00"
+      ],
+      "deck:deck_2535d384": [
+        "set",
+        "2026-09-16T13:32:42.344975+00:00"
+      ],
+      "deck:deck_2631ffc9": [
+        "set",
+        "2026-09-15T21:20:48.162625+00:00"
+      ],
+      "deck:deck_274e3118": [
+        "set",
+        "2026-09-15T20:26:37.783981+00:00"
+      ],
+      "deck:deck_29391a7a": [
+        "set",
+        "2026-09-10T01:24:52.112581+00:00"
+      ],
+      "deck:deck_2afac330": [
+        "set",
+        "2026-09-10T00:11:35.914825+00:00"
+      ],
+      "deck:deck_2cd70180": [
+        "set",
+        "2026-09-11T18:09:49.580064+00:00"
       ],
       "deck:deck_2efbb24b": [
         "set",
@@ -52,9 +152,33 @@
         "set",
         "2026-09-09T05:45:10.716647+00:00"
       ],
+      "deck:deck_47bd3104": [
+        "set",
+        "2026-09-16T13:32:42.344975+00:00"
+      ],
       "deck:deck_4ad9cd45": [
         "set",
         "2026-09-03T15:42:08.350883+00:00"
+      ],
+      "deck:deck_4c52a372": [
+        "set",
+        "2026-09-10T00:07:08.917836+00:00"
+      ],
+      "deck:deck_4c6fc02d": [
+        "set",
+        "2026-09-14T16:03:17.071225+00:00"
+      ],
+      "deck:deck_4cc56fb8": [
+        "set",
+        "2026-09-09T23:40:48.977317+00:00"
+      ],
+      "deck:deck_4cd7fd40": [
+        "set",
+        "2026-09-10T18:17:14.718296+00:00"
+      ],
+      "deck:deck_4d39ccff": [
+        "set",
+        "2026-09-10T01:59:46.306490+00:00"
       ],
       "deck:deck_4ebd0879": [
         "set",
@@ -76,6 +200,30 @@
         "set",
         "2026-09-09T13:46:14.061027+00:00"
       ],
+      "deck:deck_57c875b3": [
+        "set",
+        "2026-09-09T20:08:58.683760+00:00"
+      ],
+      "deck:deck_5818915e": [
+        "set",
+        "2026-09-14T14:29:21.777484+00:00"
+      ],
+      "deck:deck_589ee45e": [
+        "set",
+        "2026-09-10T00:11:35.914825+00:00"
+      ],
+      "deck:deck_58f29f8a": [
+        "set",
+        "2026-09-14T17:51:24.891406+00:00"
+      ],
+      "deck:deck_59174add": [
+        "set",
+        "2026-09-10T00:57:53.433961+00:00"
+      ],
+      "deck:deck_598528c0": [
+        "set",
+        "2026-09-15T21:06:19.089359+00:00"
+      ],
       "deck:deck_59d941b6": [
         "set",
         "2026-09-09T04:12:07.185774+00:00"
@@ -84,33 +232,109 @@
         "set",
         "2026-09-09T07:27:08.968964+00:00"
       ],
+      "deck:deck_5ca03f5b": [
+        "set",
+        "2026-09-14T15:22:40.842848+00:00"
+      ],
+      "deck:deck_5ccd029e": [
+        "set",
+        "2026-09-10T01:17:43.866653+00:00"
+      ],
+      "deck:deck_5d6359b6": [
+        "set",
+        "2026-09-10T00:51:31.360979+00:00"
+      ],
       "deck:deck_5f192036": [
         "set",
         "2026-09-09T05:13:46.219221+00:00"
+      ],
+      "deck:deck_64ce4b2a": [
+        "set",
+        "2026-09-10T18:38:13.180561+00:00"
       ],
       "deck:deck_679e4142": [
         "set",
         "2026-09-09T13:46:14.061027+00:00"
       ],
+      "deck:deck_684bbdc9": [
+        "set",
+        "2026-09-14T17:00:15.462063+00:00"
+      ],
+      "deck:deck_69370c1f": [
+        "set",
+        "2026-09-11T18:38:19.838676+00:00"
+      ],
+      "deck:deck_6a215438": [
+        "set",
+        "2026-09-09T22:52:24.854105+00:00"
+      ],
+      "deck:deck_6c260890": [
+        "set",
+        "2026-09-09T19:24:51.743392+00:00"
+      ],
       "deck:deck_6dc23404": [
         "set",
         "2026-09-04T15:57:52.788226+00:00"
+      ],
+      "deck:deck_6dcacd50": [
+        "set",
+        "2026-09-15T22:54:15.548570+00:00"
+      ],
+      "deck:deck_6f059742": [
+        "set",
+        "2026-09-10T00:00:35.598865+00:00"
+      ],
+      "deck:deck_7083ab40": [
+        "set",
+        "2026-09-14T13:43:24.887055+00:00"
+      ],
+      "deck:deck_71058b8a": [
+        "set",
+        "2026-09-09T20:18:29.710181+00:00"
       ],
       "deck:deck_7147941d": [
         "set",
         "2026-09-09T06:11:25.101505+00:00"
       ],
+      "deck:deck_715c8422": [
+        "set",
+        "2026-09-09T23:40:48.977317+00:00"
+      ],
       "deck:deck_72f7cedb": [
         "set",
         "2026-09-03T14:56:18.833878+00:00"
+      ],
+      "deck:deck_74768fa9": [
+        "set",
+        "2026-09-10T01:40:03.372127+00:00"
+      ],
+      "deck:deck_74d9172a": [
+        "set",
+        "2026-09-11T18:38:19.838676+00:00"
+      ],
+      "deck:deck_78913345": [
+        "set",
+        "2026-09-10T00:51:31.360979+00:00"
       ],
       "deck:deck_79c104af": [
         "set",
         "2026-09-03T14:59:17.858168+00:00"
       ],
+      "deck:deck_7a4f53fb": [
+        "set",
+        "2026-09-11T16:49:42.873795+00:00"
+      ],
       "deck:deck_7cb229ab": [
         "set",
         "2026-09-09T06:49:16.637438+00:00"
+      ],
+      "deck:deck_7d2e901b": [
+        "set",
+        "2026-09-10T00:30:33.342765+00:00"
+      ],
+      "deck:deck_7d92070b": [
+        "set",
+        "2026-09-14T18:48:59.045582+00:00"
       ],
       "deck:deck_7db50da2": [
         "set",
@@ -120,25 +344,141 @@
         "set",
         "2026-09-03T14:16:16.566320+00:00"
       ],
+      "deck:deck_7f37d837": [
+        "set",
+        "2026-09-11T16:30:17.732748+00:00"
+      ],
+      "deck:deck_7f4f05ea": [
+        "set",
+        "2026-09-11T15:39:55.509070+00:00"
+      ],
+      "deck:deck_803c2b2c": [
+        "set",
+        "2026-09-11T17:56:49.010644+00:00"
+      ],
       "deck:deck_8219a36e": [
         "set",
         "2026-09-03T13:50:10.468722+00:00"
+      ],
+      "deck:deck_8248b611": [
+        "set",
+        "2026-09-09T19:44:24.001313+00:00"
+      ],
+      "deck:deck_82dffc8d": [
+        "set",
+        "2026-09-14T18:48:59.045582+00:00"
+      ],
+      "deck:deck_85852b49": [
+        "set",
+        "2026-09-14T15:52:19.522742+00:00"
+      ],
+      "deck:deck_87305bf3": [
+        "set",
+        "2026-09-14T17:24:43.449539+00:00"
       ],
       "deck:deck_894c6508": [
         "set",
         "2026-09-03T14:18:30.786944+00:00"
       ],
+      "deck:deck_89ebad7c": [
+        "set",
+        "2026-09-10T19:25:55.335387+00:00"
+      ],
       "deck:deck_8c18a3c9": [
         "set",
         "2026-09-09T13:46:23.884220+00:00"
+      ],
+      "deck:deck_8eb94cd6": [
+        "set",
+        "2026-09-11T15:28:55.844428+00:00"
+      ],
+      "deck:deck_94ef537d": [
+        "set",
+        "2026-09-09T22:28:54.507782+00:00"
+      ],
+      "deck:deck_9539617c": [
+        "set",
+        "2026-09-15T20:26:53.275713+00:00"
+      ],
+      "deck:deck_95b56e0b": [
+        "set",
+        "2026-09-10T21:42:38.296220+00:00"
+      ],
+      "deck:deck_95dd4138": [
+        "set",
+        "2026-09-14T16:49:26.109775+00:00"
+      ],
+      "deck:deck_960263b6": [
+        "set",
+        "2026-09-09T19:24:51.743392+00:00"
+      ],
+      "deck:deck_962fc068": [
+        "set",
+        "2026-09-09T23:00:37.987405+00:00"
+      ],
+      "deck:deck_9d32a950": [
+        "set",
+        "2026-09-10T21:38:11.130604+00:00"
+      ],
+      "deck:deck_9deed0bd": [
+        "set",
+        "2026-09-10T18:46:44.847772+00:00"
+      ],
+      "deck:deck_9f1bd684": [
+        "set",
+        "2026-09-11T17:16:59.781895+00:00"
+      ],
+      "deck:deck_a00a3793": [
+        "set",
+        "2026-09-10T21:11:16.688721+00:00"
+      ],
+      "deck:deck_a0e8b825": [
+        "set",
+        "2026-09-09T23:27:20.274148+00:00"
       ],
       "deck:deck_a17a6f70": [
         "set",
         "2026-09-09T04:33:13.479215+00:00"
       ],
+      "deck:deck_a3fb0665": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "deck:deck_a487ba7a": [
+        "set",
+        "2026-09-14T15:22:40.842848+00:00"
+      ],
+      "deck:deck_a4beef9b": [
+        "set",
+        "2026-09-14T17:51:24.891406+00:00"
+      ],
+      "deck:deck_a6bb7589": [
+        "set",
+        "2026-09-10T20:39:57.604993+00:00"
+      ],
+      "deck:deck_aaafefce": [
+        "set",
+        "2026-09-09T21:18:53.162335+00:00"
+      ],
+      "deck:deck_ac03a120": [
+        "set",
+        "2026-09-09T21:18:53.162335+00:00"
+      ],
+      "deck:deck_ac08e945": [
+        "set",
+        "2026-09-11T17:45:11.820141+00:00"
+      ],
+      "deck:deck_acb1446d": [
+        "set",
+        "2026-09-10T01:59:46.306490+00:00"
+      ],
       "deck:deck_ae4d8967": [
         "set",
         "2026-09-09T02:46:53.575332+00:00"
+      ],
+      "deck:deck_aeed6024": [
+        "set",
+        "2026-09-10T22:03:10.913801+00:00"
       ],
       "deck:deck_b3118cab": [
         "set",
@@ -148,9 +488,17 @@
         "set",
         "2026-09-09T13:46:23.884220+00:00"
       ],
+      "deck:deck_b9b80b60": [
+        "set",
+        "2026-09-09T22:52:45.144240+00:00"
+      ],
       "deck:deck_ba237e87": [
         "set",
         "2026-09-09T03:23:08.366493+00:00"
+      ],
+      "deck:deck_bc79571e": [
+        "set",
+        "2026-09-14T18:03:23.647815+00:00"
       ],
       "deck:deck_c155e22a": [
         "set",
@@ -160,9 +508,25 @@
         "set",
         "2026-09-09T07:20:17.192588+00:00"
       ],
+      "deck:deck_c2363764": [
+        "set",
+        "2026-09-10T00:00:35.598865+00:00"
+      ],
       "deck:deck_c29db24c": [
         "set",
         "2026-09-03T20:24:04.380884+00:00"
+      ],
+      "deck:deck_c3710141": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "deck:deck_c8563707": [
+        "set",
+        "2026-09-14T17:24:43.449539+00:00"
+      ],
+      "deck:deck_ca9b6a36": [
+        "set",
+        "2026-09-09T19:44:24.001313+00:00"
       ],
       "deck:deck_cbdc93c9": [
         "set",
@@ -172,21 +536,125 @@
         "set",
         "2026-09-09T13:46:14.061027+00:00"
       ],
+      "deck:deck_cc718c8d": [
+        "set",
+        "2026-09-10T00:46:00.592337+00:00"
+      ],
+      "deck:deck_cd8a3fe2": [
+        "set",
+        "2026-09-10T01:40:03.372127+00:00"
+      ],
+      "deck:deck_ce0a7296": [
+        "set",
+        "2026-09-10T22:03:10.913801+00:00"
+      ],
+      "deck:deck_ce15ae82": [
+        "set",
+        "2026-09-10T16:43:04.965413+00:00"
+      ],
+      "deck:deck_ce53e375": [
+        "set",
+        "2026-09-10T18:38:13.180561+00:00"
+      ],
       "deck:deck_d0f43f79": [
         "set",
         "2026-09-09T05:32:12.614375+00:00"
+      ],
+      "deck:deck_d10e3c82": [
+        "set",
+        "2026-09-10T00:30:33.342765+00:00"
       ],
       "deck:deck_d2b5c1a4": [
         "set",
         "2026-09-09T06:04:36.723185+00:00"
       ],
+      "deck:deck_d2fb7092": [
+        "set",
+        "2026-09-11T18:49:25.781722+00:00"
+      ],
+      "deck:deck_d38d7009": [
+        "set",
+        "2026-09-11T17:45:11.820141+00:00"
+      ],
+      "deck:deck_d3dc2c27": [
+        "set",
+        "2026-09-10T16:43:04.965413+00:00"
+      ],
+      "deck:deck_d3fc5f95": [
+        "set",
+        "2026-09-11T15:20:20.605140+00:00"
+      ],
+      "deck:deck_d8394cb1": [
+        "set",
+        "2026-09-09T21:48:31.639702+00:00"
+      ],
+      "deck:deck_d922f32d": [
+        "set",
+        "2026-09-10T00:46:00.592337+00:00"
+      ],
       "deck:deck_dc237bef": [
         "set",
         "2026-09-09T06:23:19.658551+00:00"
       ],
+      "deck:deck_dc9ec8d7": [
+        "set",
+        "2026-09-11T16:30:17.732748+00:00"
+      ],
+      "deck:deck_de32f144": [
+        "set",
+        "2026-09-14T15:52:19.522742+00:00"
+      ],
       "deck:deck_df32a1c6": [
         "set",
         "2026-09-09T07:20:17.192588+00:00"
+      ],
+      "deck:deck_df69530f": [
+        "set",
+        "2026-09-10T21:42:38.296220+00:00"
+      ],
+      "deck:deck_dfc619c9": [
+        "set",
+        "2026-09-10T02:07:29.359938+00:00"
+      ],
+      "deck:deck_e194e954": [
+        "set",
+        "2026-09-09T23:07:33.305167+00:00"
+      ],
+      "deck:deck_e33667fd": [
+        "set",
+        "2026-09-09T23:27:20.274148+00:00"
+      ],
+      "deck:deck_e5b0d56c": [
+        "set",
+        "2026-09-10T01:17:43.866653+00:00"
+      ],
+      "deck:deck_e6d778f5": [
+        "set",
+        "2026-09-14T13:43:24.887055+00:00"
+      ],
+      "deck:deck_e74433f9": [
+        "set",
+        "2026-09-14T14:29:21.777484+00:00"
+      ],
+      "deck:deck_e7954a69": [
+        "set",
+        "2026-09-11T15:29:09.051863+00:00"
+      ],
+      "deck:deck_e79b8f13": [
+        "set",
+        "2026-09-10T00:57:53.433961+00:00"
+      ],
+      "deck:deck_e879165b": [
+        "set",
+        "2026-09-11T16:49:42.873795+00:00"
+      ],
+      "deck:deck_ea33a492": [
+        "set",
+        "2026-09-14T16:19:13.149133+00:00"
+      ],
+      "deck:deck_ea55a655": [
+        "set",
+        "2026-09-14T18:18:10.065688+00:00"
       ],
       "deck:deck_eae33055": [
         "set",
@@ -204,25 +672,89 @@
         "set",
         "2026-09-09T13:46:14.061027+00:00"
       ],
+      "deck:deck_f213c2c1": [
+        "set",
+        "2026-09-09T23:07:33.305167+00:00"
+      ],
       "deck:deck_f281b3dd": [
         "set",
         "2026-09-09T05:32:12.614375+00:00"
+      ],
+      "deck:deck_f2c0d8a6": [
+        "set",
+        "2026-09-14T19:06:43.847553+00:00"
       ],
       "deck:deck_f2d7f167": [
         "set",
         "2026-09-09T14:08:39.510361+00:00"
       ],
+      "deck:deck_f4d6994f": [
+        "set",
+        "2026-09-09T20:08:58.683760+00:00"
+      ],
       "deck:deck_f714e93d": [
         "set",
         "2026-09-09T04:27:41.015885+00:00"
+      ],
+      "deck:deck_f825ad54": [
+        "set",
+        "2026-09-10T00:38:15.108530+00:00"
       ],
       "deck:deck_f8fe9bc9": [
         "set",
         "2026-09-03T13:47:55.870940+00:00"
       ],
+      "deck:deck_fab6a013": [
+        "set",
+        "2026-09-09T21:40:46.375301+00:00"
+      ],
+      "deck:deck_fd68da7a": [
+        "set",
+        "2026-09-11T18:09:49.580064+00:00"
+      ],
       "deck:deck_fd936800": [
         "set",
         "2026-09-09T03:37:41.966363+00:00"
+      ],
+      "deck:deck_fff9da1c": [
+        "set",
+        "2026-09-11T15:20:20.605140+00:00"
+      ],
+      "person:Harness Probe Person": [
+        "set",
+        "2026-09-15T21:01:17.652591+00:00"
+      ],
+      "person:Rain": [
+        "set",
+        "2026-09-09T16:16:59.837538+00:00"
+      ],
+      "person:Rain Younger": [
+        "gone",
+        "2026-09-09T16:09:16.429262+00:00"
+      ],
+      "person:zz autosync probe": [
+        "set",
+        "2026-09-09T17:43:06.158198+00:00"
+      ],
+      "person:zz edit probe": [
+        "set",
+        "2026-09-15T21:01:27.462836+00:00"
+      ],
+      "person:zz edit probe renamed": [
+        "set",
+        "2026-09-09T17:41:16.293577+00:00"
+      ],
+      "person:zz probe person": [
+        "set",
+        "2026-09-09T16:05:43.471119+00:00"
+      ],
+      "person:zz test machine": [
+        "set",
+        "2026-09-09T16:05:43.683447+00:00"
+      ],
+      "result:2022-08-02/2022-08-02_20260902_202327.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:Debug/debug-report-20260903_100900.txt": [
         "set",
@@ -231,6 +763,30 @@
       "result:Debug/debug-report-20260903_103922.txt": [
         "set",
         "2026-09-03T14:59:42.575616+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_11.png": [
+        "set",
+        "2026-09-10T01:10:58.920136+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_15.png": [
+        "set",
+        "2026-09-10T18:30:59.354091+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_17.png": [
+        "set",
+        "2026-09-10T21:24:47.990546+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_21.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_3.png": [
+        "set",
+        "2026-09-09T19:58:41.060707+00:00"
+      ],
+      "result:HarnessFolder/Panels/arrow harness_30.png": [
+        "set",
+        "2026-09-15T20:50:38.754787+00:00"
       ],
       "result:HarnessFolder/Panels/bad-channels_all_20260908_213823.csv": [
         "set",
@@ -243,6 +799,62 @@
       "result:HarnessFolder/Panels/bad-channels_all_20260909_024902.csv": [
         "set",
         "2026-09-09T07:12:01.552185+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260909_190000.csv": [
+        "set",
+        "2026-09-09T23:20:04.304722+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260909_193334.csv": [
+        "set",
+        "2026-09-09T23:52:57.039794+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260909_200650.csv": [
+        "set",
+        "2026-09-10T00:23:51.157636+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260909_212431.csv": [
+        "set",
+        "2026-09-10T01:52:50.672066+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260909_220634.csv": [
+        "set",
+        "2026-09-10T16:56:38.218124+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260910_144550.csv": [
+        "set",
+        "2026-09-10T19:18:51.051341+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260910_173715.csv": [
+        "set",
+        "2026-09-10T21:56:34.095202+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260910_180926.csv": [
+        "set",
+        "2026-09-12T23:55:40.916038+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260911_135601.csv": [
+        "set",
+        "2026-09-11T18:29:07.613517+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260911_144832.csv": [
+        "set",
+        "2026-09-14T14:01:43.915060+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260914_120233.csv": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260914_125942.csv": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
+      "result:HarnessFolder/Panels/bad-channels_all_20260914_140245.csv": [
+        "set",
+        "2026-09-14T18:37:51.642028+00:00"
+      ],
+      "result:HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
       ],
       "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
@@ -264,9 +876,121 @@
         "set",
         "2026-09-09T06:34:51.981586+00:00"
       ],
+      "result:HarnessFolder/Panels/rebuild harness_20260909_170411.png": [
+        "set",
+        "2026-09-09T21:32:09.283291+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260909_180116.png": [
+        "set",
+        "2026-09-09T22:44:44.052970+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260911_134428.png": [
+        "set",
+        "2026-09-11T18:09:07.080000+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260914_105733.png": [
+        "set",
+        "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessFolder/Panels/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
+      ],
       "result:HarnessFolder/arrow harness.png": [
         "set",
         "2026-09-09T07:12:01.552185+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_12.png": [
+        "set",
+        "2026-09-10T01:10:58.920136+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_13.png": [
+        "set",
+        "2026-09-10T01:52:50.672066+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_14.png": [
+        "set",
+        "2026-09-10T16:56:38.218124+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_16.png": [
+        "set",
+        "2026-09-10T19:18:51.051341+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_18.png": [
+        "set",
+        "2026-09-10T21:24:47.990546+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_19.png": [
+        "set",
+        "2026-09-10T21:56:34.095202+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_20.png": [
+        "set",
+        "2026-09-12T23:55:40.916038+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_21.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_22.png": [
+        "set",
+        "2026-09-11T17:34:49.767395+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_23.png": [
+        "set",
+        "2026-09-11T18:29:07.613517+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_24.png": [
+        "set",
+        "2026-09-14T14:01:43.915060+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_25.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_26.png": [
+        "set",
+        "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_27.png": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_28.png": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_29.png": [
+        "set",
+        "2026-09-14T18:37:51.642028+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_4.png": [
+        "set",
+        "2026-09-09T19:58:41.060707+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_5.png": [
+        "set",
+        "2026-09-09T21:32:09.283291+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_6.png": [
+        "set",
+        "2026-09-09T22:44:44.052970+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_7.png": [
+        "set",
+        "2026-09-09T23:20:04.304722+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_8.png": [
+        "set",
+        "2026-09-09T23:52:57.039794+00:00"
+      ],
+      "result:HarnessFolder/arrow harness_9.png": [
+        "set",
+        "2026-09-10T00:23:51.157636+00:00"
       ],
       "result:HarnessFolder/bad-channels_all_20260908_214904.csv": [
         "set",
@@ -292,9 +1016,57 @@
         "set",
         "2026-09-09T06:34:51.981586+00:00"
       ],
+      "result:HarnessFolder/bad-channels_all_20260911_135601.csv": [
+        "set",
+        "2026-09-11T18:09:07.080000+00:00"
+      ],
+      "result:HarnessFolder/bad-channels_all_20260915_164815.csv": [
+        "set",
+        "2026-09-15T20:50:38.754787+00:00"
+      ],
+      "result:HarnessFolder/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": [
+        "set",
+        "2026-09-10T18:30:59.354091+00:00"
+      ],
+      "result:HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessFolder/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T14:57:23.613554+00:00"
+      ],
+      "result:HarnessFolder/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessFolder/rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_11.png": [
+        "set",
+        "2026-09-10T01:10:58.920136+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_15.png": [
+        "set",
+        "2026-09-10T18:30:59.354091+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_17.png": [
+        "set",
+        "2026-09-10T21:24:47.990546+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_21.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_3.png": [
+        "set",
+        "2026-09-09T19:58:41.060707+00:00"
+      ],
+      "result:HarnessRenamed/Panels/arrow harness_30.png": [
+        "set",
+        "2026-09-15T20:50:38.754787+00:00"
       ],
       "result:HarnessRenamed/Panels/bad-channels_all_20260908_213823.csv": [
         "set",
@@ -307,6 +1079,62 @@
       "result:HarnessRenamed/Panels/bad-channels_all_20260909_024902.csv": [
         "set",
         "2026-09-09T07:12:01.552185+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260909_190000.csv": [
+        "set",
+        "2026-09-09T23:20:04.304722+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260909_193334.csv": [
+        "set",
+        "2026-09-09T23:52:57.039794+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260909_200650.csv": [
+        "set",
+        "2026-09-10T00:23:51.157636+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260909_212431.csv": [
+        "set",
+        "2026-09-10T01:52:50.672066+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260909_220634.csv": [
+        "set",
+        "2026-09-10T16:56:38.218124+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260910_144550.csv": [
+        "set",
+        "2026-09-10T19:18:51.051341+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260910_173715.csv": [
+        "set",
+        "2026-09-10T21:56:34.095202+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260910_180926.csv": [
+        "set",
+        "2026-09-12T23:55:40.916038+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260911_135601.csv": [
+        "set",
+        "2026-09-11T18:29:07.613517+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260911_144832.csv": [
+        "set",
+        "2026-09-14T14:01:43.915060+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
+      "result:HarnessRenamed/Panels/bad-channels_all_20260914_140245.csv": [
+        "set",
+        "2026-09-14T18:38:07.354841+00:00"
+      ],
+      "result:HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
       ],
       "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
@@ -328,9 +1156,121 @@
         "set",
         "2026-09-09T06:34:51.981586+00:00"
       ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260909_170411.png": [
+        "set",
+        "2026-09-09T21:32:09.283291+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260909_180116.png": [
+        "set",
+        "2026-09-09T22:44:44.052970+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260911_134428.png": [
+        "set",
+        "2026-09-11T18:09:07.080000+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260914_105733.png": [
+        "set",
+        "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessRenamed/Panels/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
+      ],
       "result:HarnessRenamed/arrow harness.png": [
         "set",
         "2026-09-09T07:12:01.552185+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_12.png": [
+        "set",
+        "2026-09-10T01:10:58.920136+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_13.png": [
+        "set",
+        "2026-09-10T01:52:50.672066+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_14.png": [
+        "set",
+        "2026-09-10T16:56:38.218124+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_16.png": [
+        "set",
+        "2026-09-10T19:18:51.051341+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_18.png": [
+        "set",
+        "2026-09-10T21:24:47.990546+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_19.png": [
+        "set",
+        "2026-09-10T21:56:34.095202+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_20.png": [
+        "set",
+        "2026-09-12T23:55:40.916038+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_21.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_22.png": [
+        "set",
+        "2026-09-11T17:34:49.767395+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_23.png": [
+        "set",
+        "2026-09-11T18:29:07.613517+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_24.png": [
+        "set",
+        "2026-09-14T14:01:43.915060+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_25.png": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_26.png": [
+        "set",
+        "2026-09-14T15:42:01.117896+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_27.png": [
+        "set",
+        "2026-09-14T16:38:44.415678+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_28.png": [
+        "set",
+        "2026-09-14T17:44:55.787453+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_29.png": [
+        "set",
+        "2026-09-14T18:37:51.642028+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_4.png": [
+        "set",
+        "2026-09-09T19:58:41.060707+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_5.png": [
+        "set",
+        "2026-09-09T21:32:09.283291+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_6.png": [
+        "set",
+        "2026-09-09T22:44:44.052970+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_7.png": [
+        "set",
+        "2026-09-09T23:20:04.304722+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_8.png": [
+        "set",
+        "2026-09-09T23:52:57.039794+00:00"
+      ],
+      "result:HarnessRenamed/arrow harness_9.png": [
+        "set",
+        "2026-09-10T00:23:51.157636+00:00"
       ],
       "result:HarnessRenamed/bad-channels_all_20260908_214904.csv": [
         "set",
@@ -356,9 +1296,41 @@
         "set",
         "2026-09-09T06:34:51.981586+00:00"
       ],
+      "result:HarnessRenamed/bad-channels_all_20260911_135601.csv": [
+        "set",
+        "2026-09-11T18:09:07.080000+00:00"
+      ],
+      "result:HarnessRenamed/bad-channels_all_20260915_164815.csv": [
+        "set",
+        "2026-09-15T20:50:38.754787+00:00"
+      ],
+      "result:HarnessRenamed/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": [
+        "set",
+        "2026-09-10T18:30:59.354091+00:00"
+      ],
+      "result:HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "set",
+        "2026-09-16T13:32:24.964228+00:00"
+      ],
       "result:HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T14:57:24.013833+00:00"
+      ],
+      "result:HarnessRenamed/rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:00:46.245002+00:00"
+      ],
+      "result:HarnessRenamed/rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:24:01.400164+00:00"
+      ],
+      "result:KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:PTEN m11 s10 2023-07-25/PTEN m11 s10 2023-07-25_20260902_175716.png": [
         "set",
@@ -376,13 +1348,165 @@
         "set",
         "2026-09-03T13:37:42.201448+00:00"
       ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png": [
+        "set",
+        "2026-09-16T13:28:49.605433+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": [
+        "gone",
+        "2026-09-16T13:32:13.070027+00:00"
+      ],
+      "result:Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": [
+        "gone",
+        "2026-09-16T13:32:14.420646+00:00"
+      ],
       "result:Storyboards/arrow harness.png": [
         "gone",
         "2026-09-09T07:11:51.947609+00:00"
       ],
-      "result:Test Figures/m34 s5 2024-06-10_20260902_170116.png": [
+      "result:Storyboards/arrow harness_11.png": [
         "gone",
-        "2026-09-03T14:57:24.111089+00:00"
+        "2026-09-10T01:10:38.450518+00:00"
+      ],
+      "result:Storyboards/arrow harness_12.png": [
+        "gone",
+        "2026-09-10T01:10:38.210883+00:00"
+      ],
+      "result:Storyboards/arrow harness_13.png": [
+        "gone",
+        "2026-09-10T01:52:30.986268+00:00"
+      ],
+      "result:Storyboards/arrow harness_14.png": [
+        "gone",
+        "2026-09-10T16:56:19.794964+00:00"
+      ],
+      "result:Storyboards/arrow harness_15.png": [
+        "gone",
+        "2026-09-10T18:30:47.087573+00:00"
+      ],
+      "result:Storyboards/arrow harness_16.png": [
+        "gone",
+        "2026-09-10T19:18:38.778946+00:00"
+      ],
+      "result:Storyboards/arrow harness_17.png": [
+        "gone",
+        "2026-09-10T21:24:41.943855+00:00"
+      ],
+      "result:Storyboards/arrow harness_18.png": [
+        "gone",
+        "2026-09-10T21:24:41.519134+00:00"
+      ],
+      "result:Storyboards/arrow harness_19.png": [
+        "gone",
+        "2026-09-10T21:55:52.561842+00:00"
+      ],
+      "result:Storyboards/arrow harness_20.png": [
+        "gone",
+        "2026-09-11T15:20:52.276044+00:00"
+      ],
+      "result:Storyboards/arrow harness_21.png": [
+        "gone",
+        "2026-09-14T14:48:07.977911+00:00"
+      ],
+      "result:Storyboards/arrow harness_22.png": [
+        "gone",
+        "2026-09-11T17:34:25.984641+00:00"
+      ],
+      "result:Storyboards/arrow harness_23.png": [
+        "gone",
+        "2026-09-11T18:28:46.269577+00:00"
+      ],
+      "result:Storyboards/arrow harness_24.png": [
+        "gone",
+        "2026-09-14T14:01:31.793446+00:00"
+      ],
+      "result:Storyboards/arrow harness_25.png": [
+        "gone",
+        "2026-09-14T14:48:07.373145+00:00"
+      ],
+      "result:Storyboards/arrow harness_26.png": [
+        "gone",
+        "2026-09-14T15:41:41.644815+00:00"
+      ],
+      "result:Storyboards/arrow harness_27.png": [
+        "gone",
+        "2026-09-14T16:38:34.704229+00:00"
+      ],
+      "result:Storyboards/arrow harness_28.png": [
+        "gone",
+        "2026-09-14T17:44:42.914350+00:00"
+      ],
+      "result:Storyboards/arrow harness_29.png": [
+        "gone",
+        "2026-09-14T18:37:50.613027+00:00"
+      ],
+      "result:Storyboards/arrow harness_3.png": [
+        "gone",
+        "2026-09-09T19:58:31.434085+00:00"
+      ],
+      "result:Storyboards/arrow harness_30.png": [
+        "gone",
+        "2026-09-15T20:50:32.250325+00:00"
+      ],
+      "result:Storyboards/arrow harness_4.png": [
+        "gone",
+        "2026-09-09T19:58:31.251808+00:00"
+      ],
+      "result:Storyboards/arrow harness_5.png": [
+        "gone",
+        "2026-09-09T21:32:07.969260+00:00"
+      ],
+      "result:Storyboards/arrow harness_6.png": [
+        "set",
+        "2026-09-09T22:44:44.052970+00:00"
+      ],
+      "result:Storyboards/arrow harness_7.png": [
+        "gone",
+        "2026-09-09T23:19:50.752133+00:00"
+      ],
+      "result:Storyboards/arrow harness_8.png": [
+        "gone",
+        "2026-09-09T23:52:50.441320+00:00"
+      ],
+      "result:Storyboards/arrow harness_9.png": [
+        "gone",
+        "2026-09-10T00:23:39.193780+00:00"
+      ],
+      "result:TEST/m34 s5 2024-06-10_20260902_170623.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:Test Figures/m34 s5 2024-06-10_20260902_170116.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:Test Figures/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
@@ -436,6 +1560,70 @@
         "gone",
         "2026-09-09T07:11:52.101012+00:00"
       ],
+      "result:ToolKit/bad-channels_all_20260909_190000.csv": [
+        "gone",
+        "2026-09-09T23:19:51.012564+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260909_193334.csv": [
+        "gone",
+        "2026-09-09T23:52:50.685280+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260909_200650.csv": [
+        "gone",
+        "2026-09-10T00:23:39.408039+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260909_212431.csv": [
+        "gone",
+        "2026-09-10T01:52:31.230828+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260909_220634.csv": [
+        "gone",
+        "2026-09-10T16:56:20.039705+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260910_144550.csv": [
+        "gone",
+        "2026-09-10T19:18:39.207845+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260910_173715.csv": [
+        "gone",
+        "2026-09-10T21:55:53.047857+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260910_180926.csv": [
+        "gone",
+        "2026-09-11T15:20:52.715792+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260911_135601.csv": [
+        "gone",
+        "2026-09-11T18:28:46.764260+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260911_144832.csv": [
+        "gone",
+        "2026-09-14T14:01:32.363910+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260914_120233.csv": [
+        "gone",
+        "2026-09-14T16:38:35.387300+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260914_125942.csv": [
+        "gone",
+        "2026-09-14T17:44:43.602150+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260914_140245.csv": [
+        "gone",
+        "2026-09-14T18:37:51.275018+00:00"
+      ],
+      "result:ToolKit/bad-channels_all_20260915_164815.csv": [
+        "gone",
+        "2026-09-15T20:50:31.468604+00:00"
+      ],
+      "result:ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:_scratch/harness/rebuild harness_20260916_085523.png": [
+        "gone",
+        "2026-09-16T13:00:35.461050+00:00"
+      ],
       "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170116.png": [
         "set",
         "2026-09-03T13:37:42.209764+00:00"
@@ -443,6 +1631,14 @@
       "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170623.png": [
         "set",
         "2026-09-03T13:37:42.218702+00:00"
+      ],
+      "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
+      ],
+      "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png": [
+        "set",
+        "2026-09-16T13:26:34.371319+00:00"
       ],
       "result:rebuild harness_20260903_094929.png": [
         "set",
@@ -472,54 +1668,494 @@
         "gone",
         "2026-09-09T06:34:39.941435+00:00"
       ],
+      "result:rebuild harness_20260909_170411.png": [
+        "gone",
+        "2026-09-09T21:32:08.148642+00:00"
+      ],
+      "result:rebuild harness_20260909_180116.png": [
+        "gone",
+        "2026-09-09T22:44:31.642860+00:00"
+      ],
+      "result:rebuild harness_20260911_134428.png": [
+        "gone",
+        "2026-09-11T18:08:58.901648+00:00"
+      ],
+      "result:rebuild harness_20260914_105733.png": [
+        "gone",
+        "2026-09-14T15:41:42.218956+00:00"
+      ],
+      "result:rebuild harness_20260915_205305.png": [
+        "set",
+        "2026-09-16T12:57:20.545688+00:00"
+      ],
+      "result:rebuild harness_20260916_085523.png": [
+        "set",
+        "2026-09-16T12:57:20.545688+00:00"
+      ],
+      "result:rebuild harness_20260916_085852.png": [
+        "set",
+        "2026-09-16T13:25:23.590506+00:00"
+      ],
+      "result:rebuild harness_20260916_090109.png": [
+        "set",
+        "2026-09-16T13:25:19.306619+00:00"
+      ],
       "session:s005e83535b0b": [
         "set",
         "2026-09-09T05:32:50.897266+00:00"
+      ],
+      "session:s02f8344b6e97": [
+        "set",
+        "2026-09-10T01:54:14.976887+00:00"
+      ],
+      "session:s04907448c9ce": [
+        "set",
+        "2026-09-10T18:40:08.047023+00:00"
       ],
       "session:s06ce2499908c": [
         "set",
         "2026-09-03T14:11:46.094756+00:00"
       ],
+      "session:s07416c84e5cc": [
+        "set",
+        "2026-09-14T17:52:13.155844+00:00"
+      ],
+      "session:s07727a320146": [
+        "set",
+        "2026-09-09T22:10:59.384629+00:00"
+      ],
+      "session:s0cd6feff46de": [
+        "set",
+        "2026-09-14T15:54:07.085627+00:00"
+      ],
+      "session:s11f6f6a124a4": [
+        "set",
+        "2026-09-09T23:29:01.945076+00:00"
+      ],
       "session:s138295c4e40c": [
         "set",
         "2026-09-09T06:43:23.646946+00:00"
+      ],
+      "session:s167885b6e510": [
+        "set",
+        "2026-09-09T21:41:08.930619+00:00"
+      ],
+      "session:s1aaa0760ac5e": [
+        "set",
+        "2026-09-15T21:07:52.500818+00:00"
+      ],
+      "session:s1b0dae11125c": [
+        "set",
+        "2026-09-11T17:47:30.866416+00:00"
+      ],
+      "session:s1b33ed1d644a": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "session:s1e39ca71f844": [
+        "set",
+        "2026-09-10T01:18:57.908072+00:00"
+      ],
+      "session:s21c92498a38f": [
+        "set",
+        "2026-09-15T21:07:52.500818+00:00"
+      ],
+      "session:s222c25e258fd": [
+        "set",
+        "2026-09-09T22:46:33.977294+00:00"
+      ],
+      "session:s2299aec053f4": [
+        "set",
+        "2026-09-09T23:54:39.445683+00:00"
+      ],
+      "session:s2980e4675a37": [
+        "set",
+        "2026-09-11T18:40:54.706415+00:00"
       ],
       "session:s2bc226ab01c5": [
         "set",
         "2026-09-03T14:57:38.203340+00:00"
       ],
+      "session:s32c20a0dfe09": [
+        "set",
+        "2026-09-09T22:54:59.462309+00:00"
+      ],
       "session:s33970a523516": [
         "set",
         "2026-09-09T04:59:51.452431+00:00"
+      ],
+      "session:s33c5acf3c76c": [
+        "set",
+        "2026-09-09T22:11:30.231413+00:00"
+      ],
+      "session:s375f13cc72e2": [
+        "set",
+        "2026-09-09T23:29:01.945076+00:00"
+      ],
+      "session:s3aba70a88b23": [
+        "set",
+        "2026-09-14T18:49:44.179465+00:00"
       ],
       "session:s3b23776ea810": [
         "set",
         "2026-09-03T14:56:51.204243+00:00"
       ],
+      "session:s3d3a563febaf": [
+        "set",
+        "2026-09-14T14:04:05.577454+00:00"
+      ],
+      "session:s3f1b9cc37033": [
+        "set",
+        "2026-09-14T15:54:07.085627+00:00"
+      ],
+      "session:s45bae70722f2": [
+        "set",
+        "2026-09-09T21:40:49.585274+00:00"
+      ],
+      "session:s45d9856ac9f3": [
+        "set",
+        "2026-09-09T22:19:40.353235+00:00"
+      ],
+      "session:s49f993968445": [
+        "set",
+        "2026-09-14T18:49:44.179465+00:00"
+      ],
+      "session:s4b8d0f933cff": [
+        "set",
+        "2026-09-10T01:12:15.803168+00:00"
+      ],
+      "session:s4d77fa7c7734": [
+        "set",
+        "2026-09-09T21:40:46.375301+00:00"
+      ],
+      "session:s5083cd98d7f6": [
+        "set",
+        "2026-09-11T15:22:41.799041+00:00"
+      ],
+      "session:s546b30e34520": [
+        "set",
+        "2026-09-10T18:58:57.449608+00:00"
+      ],
+      "session:s558b5849f795": [
+        "set",
+        "2026-09-11T15:30:56.925482+00:00"
+      ],
+      "session:s576ceb464cf7": [
+        "set",
+        "2026-09-10T18:40:08.047023+00:00"
+      ],
+      "session:s5a25f99bbded": [
+        "set",
+        "2026-09-10T19:27:35.063747+00:00"
+      ],
+      "session:s5a81fb85e12c": [
+        "set",
+        "2026-09-10T22:04:19.472731+00:00"
+      ],
+      "session:s5dcc9a257598": [
+        "set",
+        "2026-09-10T00:32:53.852873+00:00"
+      ],
+      "session:s5e669d3d04bd": [
+        "set",
+        "2026-09-09T21:33:58.093507+00:00"
+      ],
+      "session:s5f3834ed71ad": [
+        "set",
+        "2026-09-10T00:32:53.852873+00:00"
+      ],
+      "session:s63147ebdefdb": [
+        "set",
+        "2026-09-10T02:01:46.776186+00:00"
+      ],
+      "session:s6456fc4e5f54": [
+        "set",
+        "2026-09-14T18:50:32.852392+00:00"
+      ],
+      "session:s65f86dcf3612": [
+        "set",
+        "2026-09-09T22:19:40.353235+00:00"
+      ],
+      "session:s688714d2a058": [
+        "set",
+        "2026-09-09T22:19:40.353235+00:00"
+      ],
       "session:s69cf561a98cf": [
         "set",
         "2026-09-09T04:28:21.551321+00:00"
+      ],
+      "session:s6ada3cc64ab3": [
+        "set",
+        "2026-09-11T18:40:54.706415+00:00"
+      ],
+      "session:s6b22d84ed556": [
+        "set",
+        "2026-09-14T18:49:44.179465+00:00"
       ],
       "session:s6bd0e2e77fda": [
         "set",
         "2026-09-09T03:40:59.876596+00:00"
       ],
+      "session:s6dbdd0aa3864": [
+        "set",
+        "2026-09-10T02:01:46.776186+00:00"
+      ],
+      "session:s707caf655590": [
+        "set",
+        "2026-09-15T21:07:52.500818+00:00"
+      ],
+      "session:s72881ef9bacc": [
+        "set",
+        "2026-09-11T15:30:56.925482+00:00"
+      ],
+      "session:s7c4f6c0f89e5": [
+        "set",
+        "2026-09-09T22:54:59.462309+00:00"
+      ],
+      "session:s7f9d72f68c39": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "session:s80a1854faab3": [
+        "set",
+        "2026-09-10T19:27:35.063747+00:00"
+      ],
+      "session:s80e9a80cb126": [
+        "set",
+        "2026-09-09T22:19:40.353235+00:00"
+      ],
+      "session:s89a5254ca5a2": [
+        "set",
+        "2026-09-10T21:32:41.364807+00:00"
+      ],
+      "session:s8a509c74a9f3": [
+        "set",
+        "2026-09-11T17:47:30.866416+00:00"
+      ],
+      "session:s8b4ba1df0604": [
+        "set",
+        "2026-09-10T21:27:03.024299+00:00"
+      ],
+      "session:s8da54a731877": [
+        "set",
+        "2026-09-14T16:40:37.913502+00:00"
+      ],
+      "session:s8ede8f90e463": [
+        "set",
+        "2026-09-10T18:58:57.449608+00:00"
+      ],
+      "session:s8f733e144c35": [
+        "set",
+        "2026-09-09T22:18:23.710526+00:00"
+      ],
+      "session:s927d60f6b42f": [
+        "set",
+        "2026-09-10T00:25:30.082176+00:00"
+      ],
       "session:s96c776f67cdd": [
         "set",
         "2026-09-09T07:20:59.261261+00:00"
+      ],
+      "session:s97a929d6d193": [
+        "set",
+        "2026-09-10T21:32:41.364807+00:00"
+      ],
+      "session:s97acdb9cada6": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "session:s9b0bc1c585f7": [
+        "set",
+        "2026-09-09T22:10:59.384629+00:00"
+      ],
+      "session:s9b3c0d322b6f": [
+        "set",
+        "2026-09-10T22:04:19.472731+00:00"
+      ],
+      "session:s9dee670696a8": [
+        "set",
+        "2026-09-14T15:54:07.085627+00:00"
+      ],
+      "session:s9e336c3b1a3f": [
+        "set",
+        "2026-09-10T01:18:57.908072+00:00"
+      ],
+      "session:s9f73bcc0a047": [
+        "set",
+        "2026-09-10T18:38:52.082161+00:00"
+      ],
+      "session:s9fa18a9a6fde": [
+        "set",
+        "2026-09-09T20:23:36.233539+00:00"
+      ],
+      "session:sa03df3679661": [
+        "set",
+        "2026-09-09T22:18:23.710526+00:00"
+      ],
+      "session:sa10d14b2f007": [
+        "set",
+        "2026-09-11T18:30:37.954359+00:00"
+      ],
+      "session:sa2a65114b1f5": [
+        "set",
+        "2026-09-10T18:58:57.449608+00:00"
+      ],
+      "session:sabfb26334c5c": [
+        "set",
+        "2026-09-11T18:40:54.706415+00:00"
       ],
       "session:sae52d0caf0af": [
         "set",
         "2026-09-03T13:48:28.158697+00:00"
       ],
+      "session:sb30a6d0d1e34": [
+        "set",
+        "2026-09-11T17:47:30.866416+00:00"
+      ],
+      "session:sb4c120affbe5": [
+        "set",
+        "2026-09-10T21:32:41.364807+00:00"
+      ],
+      "session:sb58f1e1a7225": [
+        "set",
+        "2026-09-10T00:01:42.047039+00:00"
+      ],
+      "session:sb653125c9831": [
+        "set",
+        "2026-09-14T17:47:14.503446+00:00"
+      ],
+      "session:sb6a0e8b3dd3a": [
+        "set",
+        "2026-09-10T22:04:19.472731+00:00"
+      ],
+      "session:sb7e2aeb2bbc6": [
+        "set",
+        "2026-09-10T00:01:42.047039+00:00"
+      ],
+      "session:sb9585fb14523": [
+        "set",
+        "2026-09-10T00:32:53.852873+00:00"
+      ],
+      "session:sbc22e3d0da57": [
+        "set",
+        "2026-09-15T20:53:20.462314+00:00"
+      ],
+      "session:sc2b162171c64": [
+        "set",
+        "2026-09-09T21:40:49.585274+00:00"
+      ],
+      "session:sc465dda35a78": [
+        "set",
+        "2026-09-09T22:54:59.462309+00:00"
+      ],
+      "session:sc5367a9dad72": [
+        "set",
+        "2026-09-10T19:20:18.762805+00:00"
+      ],
+      "session:sc75444877c41": [
+        "set",
+        "2026-09-10T01:18:57.908072+00:00"
+      ],
+      "session:sc7b221af4515": [
+        "set",
+        "2026-09-09T22:10:59.384629+00:00"
+      ],
+      "session:sc8af2da18179": [
+        "set",
+        "2026-09-15T14:17:44.712693+00:00"
+      ],
+      "session:sc967d04b70cc": [
+        "set",
+        "2026-09-11T17:36:20.910637+00:00"
+      ],
+      "session:scc73a1a363ce": [
+        "set",
+        "2026-09-15T21:06:54.287684+00:00"
+      ],
+      "session:sd07c54ccd9d6": [
+        "set",
+        "2026-09-10T18:32:35.568970+00:00"
+      ],
+      "session:sd1b7f8e783f0": [
+        "set",
+        "2026-09-10T21:57:40.738911+00:00"
+      ],
+      "session:sd47d8eb2d5b4": [
+        "set",
+        "2026-09-14T14:59:30.933863+00:00"
+      ],
+      "session:sd71c78e8b271": [
+        "set",
+        "2026-09-10T18:40:08.047023+00:00"
+      ],
+      "session:sd7b587e83e10": [
+        "set",
+        "2026-09-10T19:27:35.063747+00:00"
+      ],
+      "session:sd8ab5709f3c9": [
+        "set",
+        "2026-09-14T16:51:10.626871+00:00"
+      ],
+      "session:sdb4d4ba67d7d": [
+        "set",
+        "2026-09-09T23:21:41.106861+00:00"
+      ],
+      "session:sdc8229e27f2a": [
+        "set",
+        "2026-09-14T18:39:58.807694+00:00"
+      ],
+      "session:sdcfe916eaad4": [
+        "set",
+        "2026-09-09T21:41:08.930619+00:00"
+      ],
+      "session:sdde2ae8c2639": [
+        "set",
+        "2026-09-14T15:43:37.704174+00:00"
+      ],
+      "session:sdfabb8c2570d": [
+        "set",
+        "2026-09-10T02:01:46.776186+00:00"
+      ],
+      "session:se32fc5b8416f": [
+        "set",
+        "2026-09-10T00:01:42.047039+00:00"
+      ],
+      "session:se7b86528f50c": [
+        "set",
+        "2026-09-09T23:29:01.945076+00:00"
+      ],
+      "session:se8773e41337d": [
+        "set",
+        "2026-09-14T18:50:32.852392+00:00"
+      ],
+      "session:sea2827591c87": [
+        "set",
+        "2026-09-11T15:30:56.925482+00:00"
+      ],
+      "session:seecb85f9faeb": [
+        "set",
+        "2026-09-14T16:51:10.626871+00:00"
+      ],
+      "session:sf23d52694bd7": [
+        "gone",
+        "2026-09-09T21:20:32.980621+00:00"
+      ],
+      "session:sf40f60db339a": [
+        "set",
+        "2026-09-09T22:18:23.710526+00:00"
+      ],
       "session:sf8ab003d89b8": [
         "set",
         "2026-09-03T14:16:39.642437+00:00"
+      ],
+      "session:sfa1dc4f065ef": [
+        "set",
+        "2026-09-09T22:19:40.353235+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T14:08:39.510361+00:00",
+    "at": "2026-09-16T13:32:42.344975+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -533,6 +2169,42 @@
       "synced": true,
       "synced_at": "2026-09-08T23:45:44-0400"
     },
+    "deck:deck_01a7a82e": {
+      "at": "2026-09-11T13:15:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_01a7a82e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T13:16:59-0400"
+    },
+    "deck:deck_03202e29": {
+      "at": "2026-09-14T14:59:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_03202e29",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T15:00:11-0400"
+    },
+    "deck:deck_03bfc16c": {
+      "at": "2026-09-09T17:39:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_03bfc16c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T17:40:46-0400"
+    },
+    "deck:deck_042053e4": {
+      "at": "2026-09-09T18:28:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_042053e4",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T18:28:54-0400"
+    },
     "deck:deck_072567c9": {
       "at": "2026-09-09T09:46:02-0400",
       "by": "desktop-4h65ai7-d565",
@@ -541,6 +2213,60 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
+    },
+    "deck:deck_07802fc0": {
+      "at": "2026-09-14T12:49:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_07802fc0",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:49:26-0400"
+    },
+    "deck:deck_07927048": {
+      "at": "2026-09-10T17:10:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_07927048",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T17:11:16-0400"
+    },
+    "deck:deck_080cbb1d": {
+      "at": "2026-09-10T15:25:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_080cbb1d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T15:25:55-0400"
+    },
+    "deck:deck_0903665b": {
+      "at": "2026-09-10T15:04:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_0903665b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T15:04:49-0400"
+    },
+    "deck:deck_0b7abd6e": {
+      "at": "2026-09-14T13:04:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_0b7abd6e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:04:42-0400"
+    },
+    "deck:deck_126429bd": {
+      "at": "2026-09-09T15:06:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_126429bd",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:06:49-0400"
     },
     "deck:deck_15cbb554": {
       "at": "2026-09-09T02:42:33-0400",
@@ -551,6 +2277,69 @@
       "synced": true,
       "synced_at": "2026-09-09T02:42:45-0400"
     },
+    "deck:deck_172cfd7b": {
+      "at": "2026-09-10T18:09:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_172cfd7b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T18:09:48-0400"
+    },
+    "deck:deck_17f08914": {
+      "at": "2026-09-10T15:32:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_17f08914",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T15:33:13-0400"
+    },
+    "deck:deck_181936ad": {
+      "at": "2026-09-09T19:33:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_181936ad",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:34:30-0400"
+    },
+    "deck:deck_191d7db9": {
+      "at": "2026-09-10T14:16:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_191d7db9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T14:17:14-0400"
+    },
+    "deck:deck_1a243952": {
+      "at": "2026-09-09T15:06:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_1a243952",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:06:49-0400"
+    },
+    "deck:deck_1df7dd40": {
+      "at": "2026-09-14T14:17:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_1df7dd40",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T14:18:10-0400"
+    },
+    "deck:deck_1f10e823": {
+      "at": "2026-09-15T17:05:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_1f10e823",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T17:06:19-0400"
+    },
     "deck:deck_1f5ec4f1": {
       "at": "2026-09-09T09:46:17-0400",
       "by": "desktop-4h65ai7-d565",
@@ -560,6 +2349,15 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:23-0400"
     },
+    "deck:deck_1faaec26": {
+      "at": "2026-09-10T15:04:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_1faaec26",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T15:04:49-0400"
+    },
     "deck:deck_1fe89c4e": {
       "at": "2026-09-03T09:49:59-0400",
       "by": "desktop-4h65ai7-d565",
@@ -568,6 +2366,69 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T09:50:10-0400"
+    },
+    "deck:deck_2483c05e": {
+      "at": "2026-09-14T12:18:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2483c05e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:19:13-0400"
+    },
+    "deck:deck_2535d384": {
+      "at": "2026-09-16T09:32:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2535d384",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:42-0400"
+    },
+    "deck:deck_2631ffc9": {
+      "at": "2026-09-15T17:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2631ffc9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T17:20:48-0400"
+    },
+    "deck:deck_274e3118": {
+      "at": "2026-09-15T16:26:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_274e3118",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T16:26:37-0400"
+    },
+    "deck:deck_29391a7a": {
+      "at": "2026-09-09T21:24:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_29391a7a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:24:52-0400"
+    },
+    "deck:deck_2afac330": {
+      "at": "2026-09-09T20:11:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2afac330",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:11:35-0400"
+    },
+    "deck:deck_2cd70180": {
+      "at": "2026-09-11T14:09:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_2cd70180",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:49-0400"
     },
     "deck:deck_2efbb24b": {
       "at": "2026-09-09T00:42:30-0400",
@@ -632,6 +2493,15 @@
       "synced": true,
       "synced_at": "2026-09-09T01:45:10-0400"
     },
+    "deck:deck_47bd3104": {
+      "at": "2026-09-16T09:32:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_47bd3104",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:42-0400"
+    },
     "deck:deck_4ad9cd45": {
       "at": "2026-09-03T11:42:08-0400",
       "by": "desktop-4h65ai7-d565",
@@ -640,6 +2510,51 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T11:42:45-0400"
+    },
+    "deck:deck_4c52a372": {
+      "at": "2026-09-09T20:06:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4c52a372",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:07:08-0400"
+    },
+    "deck:deck_4c6fc02d": {
+      "at": "2026-09-14T12:02:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4c6fc02d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:03:17-0400"
+    },
+    "deck:deck_4cc56fb8": {
+      "at": "2026-09-09T19:40:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4cc56fb8",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:40:48-0400"
+    },
+    "deck:deck_4cd7fd40": {
+      "at": "2026-09-10T14:16:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4cd7fd40",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T14:17:14-0400"
+    },
+    "deck:deck_4d39ccff": {
+      "at": "2026-09-09T21:59:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_4d39ccff",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:59:46-0400"
     },
     "deck:deck_4ebd0879": {
       "at": "2026-09-08T23:01:58-0400",
@@ -686,6 +2601,60 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
     },
+    "deck:deck_57c875b3": {
+      "at": "2026-09-09T16:08:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_57c875b3",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T16:08:58-0400"
+    },
+    "deck:deck_5818915e": {
+      "at": "2026-09-14T10:28:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_5818915e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T10:29:21-0400"
+    },
+    "deck:deck_589ee45e": {
+      "at": "2026-09-09T20:11:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_589ee45e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:11:35-0400"
+    },
+    "deck:deck_58f29f8a": {
+      "at": "2026-09-14T13:51:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_58f29f8a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:51:24-0400"
+    },
+    "deck:deck_59174add": {
+      "at": "2026-09-09T20:57:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_59174add",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:57:53-0400"
+    },
+    "deck:deck_598528c0": {
+      "at": "2026-09-15T17:05:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_598528c0",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T17:06:19-0400"
+    },
     "deck:deck_59d941b6": {
       "at": "2026-09-09T00:11:45-0400",
       "by": "desktop-4h65ai7-d565",
@@ -704,6 +2673,33 @@
       "synced": true,
       "synced_at": "2026-09-09T03:27:08-0400"
     },
+    "deck:deck_5ca03f5b": {
+      "at": "2026-09-14T11:22:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_5ca03f5b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T11:22:40-0400"
+    },
+    "deck:deck_5ccd029e": {
+      "at": "2026-09-09T21:17:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_5ccd029e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:17:43-0400"
+    },
+    "deck:deck_5d6359b6": {
+      "at": "2026-09-09T20:51:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_5d6359b6",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:51:31-0400"
+    },
     "deck:deck_5f192036": {
       "at": "2026-09-09T01:13:36-0400",
       "by": "desktop-4h65ai7-d565",
@@ -712,6 +2708,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T01:13:46-0400"
+    },
+    "deck:deck_64ce4b2a": {
+      "at": "2026-09-10T14:37:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_64ce4b2a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T14:38:13-0400"
     },
     "deck:deck_679e4142": {
       "at": "2026-09-09T09:46:10-0400",
@@ -722,6 +2727,42 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
     },
+    "deck:deck_684bbdc9": {
+      "at": "2026-09-14T13:00:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_684bbdc9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:00:15-0400"
+    },
+    "deck:deck_69370c1f": {
+      "at": "2026-09-11T14:38:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_69370c1f",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T14:38:19-0400"
+    },
+    "deck:deck_6a215438": {
+      "at": "2026-09-09T18:52:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_6a215438",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T18:52:24-0400"
+    },
+    "deck:deck_6c260890": {
+      "at": "2026-09-09T15:24:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_6c260890",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:24:51-0400"
+    },
     "deck:deck_6dc23404": {
       "at": "2026-09-04T11:57:52-0400",
       "by": "desktop-4h65ai7-d565",
@@ -730,6 +2771,42 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-04T11:58:05-0400"
+    },
+    "deck:deck_6dcacd50": {
+      "at": "2026-09-15T18:54:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_6dcacd50",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T18:54:15-0400"
+    },
+    "deck:deck_6f059742": {
+      "at": "2026-09-09T20:00:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_6f059742",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:00:35-0400"
+    },
+    "deck:deck_7083ab40": {
+      "at": "2026-09-14T09:40:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7083ab40",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T09:43:24-0400"
+    },
+    "deck:deck_71058b8a": {
+      "at": "2026-09-09T16:18:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_71058b8a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T16:18:29-0400"
     },
     "deck:deck_7147941d": {
       "at": "2026-09-09T02:11:18-0400",
@@ -740,6 +2817,15 @@
       "synced": true,
       "synced_at": "2026-09-09T02:11:25-0400"
     },
+    "deck:deck_715c8422": {
+      "at": "2026-09-09T19:40:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_715c8422",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:40:48-0400"
+    },
     "deck:deck_72f7cedb": {
       "at": "2026-09-03T10:56:18-0400",
       "by": "desktop-4h65ai7-d565",
@@ -748,6 +2834,33 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T10:56:35-0400"
+    },
+    "deck:deck_74768fa9": {
+      "at": "2026-09-09T21:39:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_74768fa9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:40:03-0400"
+    },
+    "deck:deck_74d9172a": {
+      "at": "2026-09-11T14:38:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_74d9172a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T14:38:19-0400"
+    },
+    "deck:deck_78913345": {
+      "at": "2026-09-09T20:51:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_78913345",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:51:31-0400"
     },
     "deck:deck_79c104af": {
       "at": "2026-09-03T10:59:17-0400",
@@ -758,6 +2871,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:59:25-0400"
     },
+    "deck:deck_7a4f53fb": {
+      "at": "2026-09-11T12:49:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7a4f53fb",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T12:49:42-0400"
+    },
     "deck:deck_7cb229ab": {
       "at": "2026-09-09T02:49:09-0400",
       "by": "desktop-4h65ai7-d565",
@@ -766,6 +2888,24 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T02:49:16-0400"
+    },
+    "deck:deck_7d2e901b": {
+      "at": "2026-09-09T20:30:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7d2e901b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:30:33-0400"
+    },
+    "deck:deck_7d92070b": {
+      "at": "2026-09-14T14:48:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7d92070b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T14:48:59-0400"
     },
     "deck:deck_7db50da2": {
       "at": "2026-09-09T02:42:30-0400",
@@ -785,6 +2925,33 @@
       "synced": true,
       "synced_at": "2026-09-03T10:16:51-0400"
     },
+    "deck:deck_7f37d837": {
+      "at": "2026-09-11T12:29:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7f37d837",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T12:30:17-0400"
+    },
+    "deck:deck_7f4f05ea": {
+      "at": "2026-09-11T11:39:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_7f4f05ea",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T11:39:55-0400"
+    },
+    "deck:deck_803c2b2c": {
+      "at": "2026-09-11T13:56:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_803c2b2c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T13:56:49-0400"
+    },
     "deck:deck_8219a36e": {
       "at": "2026-09-03T09:50:10-0400",
       "by": "desktop-4h65ai7-d565",
@@ -793,6 +2960,42 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T09:50:54-0400"
+    },
+    "deck:deck_8248b611": {
+      "at": "2026-09-09T15:44:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_8248b611",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:44:24-0400"
+    },
+    "deck:deck_82dffc8d": {
+      "at": "2026-09-14T14:48:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_82dffc8d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T14:48:59-0400"
+    },
+    "deck:deck_85852b49": {
+      "at": "2026-09-14T11:52:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_85852b49",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T11:52:19-0400"
+    },
+    "deck:deck_87305bf3": {
+      "at": "2026-09-14T13:24:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_87305bf3",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:24:43-0400"
     },
     "deck:deck_894c6508": {
       "at": "2026-09-03T10:18:30-0400",
@@ -803,6 +3006,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:18:54-0400"
     },
+    "deck:deck_89ebad7c": {
+      "at": "2026-09-10T15:25:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_89ebad7c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T15:25:55-0400"
+    },
     "deck:deck_8c18a3c9": {
       "at": "2026-09-09T09:46:15-0400",
       "by": "desktop-4h65ai7-d565",
@@ -811,6 +3023,114 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T09:46:23-0400"
+    },
+    "deck:deck_8eb94cd6": {
+      "at": "2026-09-11T11:28:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_8eb94cd6",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T11:28:55-0400"
+    },
+    "deck:deck_94ef537d": {
+      "at": "2026-09-09T18:28:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_94ef537d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T18:28:54-0400"
+    },
+    "deck:deck_9539617c": {
+      "at": "2026-09-15T16:26:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_9539617c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-15T16:26:53-0400"
+    },
+    "deck:deck_95b56e0b": {
+      "at": "2026-09-10T17:41:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_95b56e0b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T17:42:38-0400"
+    },
+    "deck:deck_95dd4138": {
+      "at": "2026-09-14T12:49:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_95dd4138",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:49:26-0400"
+    },
+    "deck:deck_960263b6": {
+      "at": "2026-09-09T15:24:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_960263b6",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:24:51-0400"
+    },
+    "deck:deck_962fc068": {
+      "at": "2026-09-09T19:00:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_962fc068",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:00:37-0400"
+    },
+    "deck:deck_9d32a950": {
+      "at": "2026-09-10T17:37:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_9d32a950",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T17:38:11-0400"
+    },
+    "deck:deck_9deed0bd": {
+      "at": "2026-09-10T14:45:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_9deed0bd",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T14:46:44-0400"
+    },
+    "deck:deck_9f1bd684": {
+      "at": "2026-09-11T13:15:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_9f1bd684",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T13:16:59-0400"
+    },
+    "deck:deck_a00a3793": {
+      "at": "2026-09-10T17:10:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a00a3793",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T17:11:16-0400"
+    },
+    "deck:deck_a0e8b825": {
+      "at": "2026-09-09T19:27:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a0e8b825",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:27:20-0400"
     },
     "deck:deck_a17a6f70": {
       "at": "2026-09-09T00:33:06-0400",
@@ -821,6 +3141,78 @@
       "synced": true,
       "synced_at": "2026-09-09T00:33:13-0400"
     },
+    "deck:deck_a3fb0665": {
+      "at": "2026-09-14T10:58:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a3fb0665",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "deck:deck_a487ba7a": {
+      "at": "2026-09-14T11:22:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a487ba7a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T11:22:40-0400"
+    },
+    "deck:deck_a4beef9b": {
+      "at": "2026-09-14T13:51:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a4beef9b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:51:24-0400"
+    },
+    "deck:deck_a6bb7589": {
+      "at": "2026-09-10T16:39:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a6bb7589",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T16:39:57-0400"
+    },
+    "deck:deck_aaafefce": {
+      "at": "2026-09-09T17:18:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_aaafefce",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T17:18:53-0400"
+    },
+    "deck:deck_ac03a120": {
+      "at": "2026-09-09T17:18:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ac03a120",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T17:18:53-0400"
+    },
+    "deck:deck_ac08e945": {
+      "at": "2026-09-11T13:44:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ac08e945",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T13:45:11-0400"
+    },
+    "deck:deck_acb1446d": {
+      "at": "2026-09-09T21:59:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_acb1446d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:59:46-0400"
+    },
     "deck:deck_ae4d8967": {
       "at": "2026-09-08T22:46:43-0400",
       "by": "desktop-4h65ai7-d565",
@@ -829,6 +3221,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-08T22:46:53-0400"
+    },
+    "deck:deck_aeed6024": {
+      "at": "2026-09-10T18:02:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_aeed6024",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T18:03:10-0400"
     },
     "deck:deck_b3118cab": {
       "at": "2026-09-08T23:37:30-0400",
@@ -848,6 +3249,15 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:23-0400"
     },
+    "deck:deck_b9b80b60": {
+      "at": "2026-09-09T18:52:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_b9b80b60",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T18:52:45-0400"
+    },
     "deck:deck_ba237e87": {
       "at": "2026-09-08T23:22:26-0400",
       "by": "desktop-4h65ai7-d565",
@@ -856,6 +3266,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-08T23:23:08-0400"
+    },
+    "deck:deck_bc79571e": {
+      "at": "2026-09-14T14:03:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_bc79571e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T14:03:23-0400"
     },
     "deck:deck_c155e22a": {
       "at": "2026-09-09T09:46:11-0400",
@@ -875,6 +3294,15 @@
       "synced": true,
       "synced_at": "2026-09-09T03:20:17-0400"
     },
+    "deck:deck_c2363764": {
+      "at": "2026-09-09T20:00:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_c2363764",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:00:35-0400"
+    },
     "deck:deck_c29db24c": {
       "at": "2026-09-03T16:24:04-0400",
       "by": "desktop-4h65ai7-d565",
@@ -883,6 +3311,33 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-03T16:25:47-0400"
+    },
+    "deck:deck_c3710141": {
+      "at": "2026-09-14T10:58:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_c3710141",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "deck:deck_c8563707": {
+      "at": "2026-09-14T13:24:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_c8563707",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T13:24:43-0400"
+    },
+    "deck:deck_ca9b6a36": {
+      "at": "2026-09-09T15:44:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ca9b6a36",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T15:44:24-0400"
     },
     "deck:deck_cbdc93c9": {
       "at": "2026-09-09T00:58:44-0400",
@@ -902,6 +3357,51 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
     },
+    "deck:deck_cc718c8d": {
+      "at": "2026-09-09T20:45:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_cc718c8d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:46:00-0400"
+    },
+    "deck:deck_cd8a3fe2": {
+      "at": "2026-09-09T21:39:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_cd8a3fe2",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:40:03-0400"
+    },
+    "deck:deck_ce0a7296": {
+      "at": "2026-09-10T18:02:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ce0a7296",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T18:03:10-0400"
+    },
+    "deck:deck_ce15ae82": {
+      "at": "2026-09-10T12:42:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ce15ae82",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T12:43:04-0400"
+    },
+    "deck:deck_ce53e375": {
+      "at": "2026-09-10T14:38:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ce53e375",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T14:38:13-0400"
+    },
     "deck:deck_d0f43f79": {
       "at": "2026-09-09T01:31:59-0400",
       "by": "desktop-4h65ai7-d565",
@@ -910,6 +3410,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T01:32:12-0400"
+    },
+    "deck:deck_d10e3c82": {
+      "at": "2026-09-09T20:30:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d10e3c82",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:30:33-0400"
     },
     "deck:deck_d2b5c1a4": {
       "at": "2026-09-09T02:04:26-0400",
@@ -920,6 +3429,60 @@
       "synced": true,
       "synced_at": "2026-09-09T02:04:36-0400"
     },
+    "deck:deck_d2fb7092": {
+      "at": "2026-09-11T14:48:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d2fb7092",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T14:49:25-0400"
+    },
+    "deck:deck_d38d7009": {
+      "at": "2026-09-11T13:44:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d38d7009",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T13:45:11-0400"
+    },
+    "deck:deck_d3dc2c27": {
+      "at": "2026-09-10T12:42:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d3dc2c27",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T12:43:04-0400"
+    },
+    "deck:deck_d3fc5f95": {
+      "at": "2026-09-11T11:04:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d3fc5f95",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T11:20:20-0400"
+    },
+    "deck:deck_d8394cb1": {
+      "at": "2026-09-09T17:47:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d8394cb1",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T17:48:31-0400"
+    },
+    "deck:deck_d922f32d": {
+      "at": "2026-09-09T20:45:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_d922f32d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:46:00-0400"
+    },
     "deck:deck_dc237bef": {
       "at": "2026-09-09T02:23:07-0400",
       "by": "desktop-4h65ai7-d565",
@@ -929,6 +3492,24 @@
       "synced": true,
       "synced_at": "2026-09-09T02:23:19-0400"
     },
+    "deck:deck_dc9ec8d7": {
+      "at": "2026-09-11T12:29:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_dc9ec8d7",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T12:30:17-0400"
+    },
+    "deck:deck_de32f144": {
+      "at": "2026-09-14T11:52:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_de32f144",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T11:52:19-0400"
+    },
     "deck:deck_df32a1c6": {
       "at": "2026-09-09T03:20:04-0400",
       "by": "desktop-4h65ai7-d565",
@@ -937,6 +3518,114 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T03:20:17-0400"
+    },
+    "deck:deck_df69530f": {
+      "at": "2026-09-10T17:41:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_df69530f",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-10T17:42:38-0400"
+    },
+    "deck:deck_dfc619c9": {
+      "at": "2026-09-09T22:06:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_dfc619c9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T22:07:29-0400"
+    },
+    "deck:deck_e194e954": {
+      "at": "2026-09-09T19:07:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e194e954",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:07:33-0400"
+    },
+    "deck:deck_e33667fd": {
+      "at": "2026-09-09T19:27:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e33667fd",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:27:20-0400"
+    },
+    "deck:deck_e5b0d56c": {
+      "at": "2026-09-09T21:17:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e5b0d56c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T21:17:43-0400"
+    },
+    "deck:deck_e6d778f5": {
+      "at": "2026-09-14T09:40:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e6d778f5",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T09:43:24-0400"
+    },
+    "deck:deck_e74433f9": {
+      "at": "2026-09-14T10:28:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e74433f9",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T10:29:21-0400"
+    },
+    "deck:deck_e7954a69": {
+      "at": "2026-09-11T11:28:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e7954a69",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T11:29:09-0400"
+    },
+    "deck:deck_e79b8f13": {
+      "at": "2026-09-09T20:57:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e79b8f13",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:57:53-0400"
+    },
+    "deck:deck_e879165b": {
+      "at": "2026-09-11T12:49:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_e879165b",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T12:49:42-0400"
+    },
+    "deck:deck_ea33a492": {
+      "at": "2026-09-14T12:18:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ea33a492",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T12:19:13-0400"
+    },
+    "deck:deck_ea55a655": {
+      "at": "2026-09-14T14:17:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_ea55a655",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T14:18:10-0400"
     },
     "deck:deck_eae33055": {
       "at": "2026-09-09T09:46:03-0400",
@@ -974,6 +3663,15 @@
       "synced": true,
       "synced_at": "2026-09-09T09:46:14-0400"
     },
+    "deck:deck_f213c2c1": {
+      "at": "2026-09-09T19:07:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_f213c2c1",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T19:07:33-0400"
+    },
     "deck:deck_f281b3dd": {
       "at": "2026-09-09T01:32:02-0400",
       "by": "desktop-4h65ai7-d565",
@@ -982,6 +3680,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T01:32:12-0400"
+    },
+    "deck:deck_f2c0d8a6": {
+      "at": "2026-09-14T15:06:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_f2c0d8a6",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-14T15:06:43-0400"
     },
     "deck:deck_f2d7f167": {
       "at": "2026-09-09T10:08:31-0400",
@@ -992,6 +3699,15 @@
       "synced": true,
       "synced_at": "2026-09-09T10:08:39-0400"
     },
+    "deck:deck_f4d6994f": {
+      "at": "2026-09-09T16:08:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_f4d6994f",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T16:08:58-0400"
+    },
     "deck:deck_f714e93d": {
       "at": "2026-09-09T00:27:25-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1000,6 +3716,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-09T00:27:41-0400"
+    },
+    "deck:deck_f825ad54": {
+      "at": "2026-09-09T20:37:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_f825ad54",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T20:38:15-0400"
     },
     "deck:deck_f8fe9bc9": {
       "at": "2026-09-03T09:47:55-0400",
@@ -1010,6 +3735,24 @@
       "synced": true,
       "synced_at": "2026-09-03T09:48:06-0400"
     },
+    "deck:deck_fab6a013": {
+      "at": "2026-09-09T17:40:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_fab6a013",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-09T17:40:46-0400"
+    },
+    "deck:deck_fd68da7a": {
+      "at": "2026-09-11T14:09:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_fd68da7a",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:49-0400"
+    },
     "deck:deck_fd936800": {
       "at": "2026-09-08T23:37:31-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1018,6 +3761,80 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-08T23:37:41-0400"
+    },
+    "deck:deck_fff9da1c": {
+      "at": "2026-09-11T11:04:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_fff9da1c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-11T11:20:20-0400"
+    },
+    "person:Harness Probe Person": {
+      "at": "2026-09-15T17:01:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Harness Probe Person",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:Rain": {
+      "at": "2026-09-09T12:16:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Rain",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz autosync probe": {
+      "at": "2026-09-09T13:43:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz autosync probe",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz edit probe": {
+      "at": "2026-09-15T17:01:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz edit probe",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz edit probe renamed": {
+      "at": "2026-09-09T13:41:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz edit probe renamed",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz probe person": {
+      "at": "2026-09-09T12:05:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz probe person",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:zz test machine": {
+      "at": "2026-09-09T12:05:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "zz test machine",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "result:2022-08-02/2022-08-02_20260902_202327.png": {
+      "at": "2026-09-16T09:25:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "2022-08-02/2022-08-02_20260902_202327.png",
+      "kind": "result",
+      "note": "moved to _unassigned/Figures/2022-08-02_20260902_202327.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:Debug/debug-report-20260903_100900.txt": {
       "at": "2026-09-03T10:18:56-0400",
@@ -1036,6 +3853,60 @@
       "note": "harness",
       "synced": true,
       "synced_at": "2026-09-03T10:59:47-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_11.png": {
+      "at": "2026-09-09T21:10:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_11.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_11.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:10:58-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_15.png": {
+      "at": "2026-09-10T14:30:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_15.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_15.png",
+      "synced": true,
+      "synced_at": "2026-09-10T14:30:59-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_17.png": {
+      "at": "2026-09-10T17:24:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_17.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_17.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:24:47-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_21.png": {
+      "at": "2026-09-14T10:48:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_21.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_21.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_3.png": {
+      "at": "2026-09-09T15:58:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_3.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_3.png",
+      "synced": true,
+      "synced_at": "2026-09-09T15:58:41-0400"
+    },
+    "result:HarnessFolder/Panels/arrow harness_30.png": {
+      "at": "2026-09-15T16:50:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/arrow harness_30.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/arrow harness_30.png",
+      "synced": true,
+      "synced_at": "2026-09-15T16:50:38-0400"
     },
     "result:HarnessFolder/Panels/bad-channels_all_20260908_213823.csv": {
       "at": "2026-09-08T23:31:13-0400",
@@ -1063,6 +3934,132 @@
       "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_024902.csv",
       "synced": true,
       "synced_at": "2026-09-09T03:12:01-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260909_190000.csv": {
+      "at": "2026-09-09T19:19:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260909_190000.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_190000.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T19:20:04-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260909_193334.csv": {
+      "at": "2026-09-09T19:52:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260909_193334.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_193334.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T19:52:57-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260909_200650.csv": {
+      "at": "2026-09-09T20:23:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260909_200650.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_200650.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T20:23:51-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260909_212431.csv": {
+      "at": "2026-09-09T21:52:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260909_212431.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_212431.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T21:52:50-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260909_220634.csv": {
+      "at": "2026-09-10T12:56:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260909_220634.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260909_220634.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T12:56:38-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260910_144550.csv": {
+      "at": "2026-09-10T15:18:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260910_144550.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260910_144550.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T15:18:51-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260910_173715.csv": {
+      "at": "2026-09-10T17:55:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260910_173715.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260910_173715.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T17:56:34-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260910_180926.csv": {
+      "at": "2026-09-11T11:20:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260910_180926.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260910_180926.csv",
+      "synced": true,
+      "synced_at": "2026-09-12T19:55:40-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260911_135601.csv": {
+      "at": "2026-09-11T14:28:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260911_135601.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260911_135601.csv",
+      "synced": true,
+      "synced_at": "2026-09-11T14:29:07-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260911_144832.csv": {
+      "at": "2026-09-14T10:01:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260911_144832.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260911_144832.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T10:01:43-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260914_120233.csv": {
+      "at": "2026-09-14T12:38:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260914_120233.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260914_125942.csv": {
+      "at": "2026-09-14T13:44:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260914_125942.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
+    "result:HarnessFolder/Panels/bad-channels_all_20260914_140245.csv": {
+      "at": "2026-09-14T14:37:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/bad-channels_all_20260914_140245.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/bad-channels_all_20260914_140245.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T14:37:51-0400"
+    },
+    "result:HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": {
+      "at": "2026-09-16T09:32:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
     },
     "result:HarnessFolder/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:23-0400",
@@ -1109,6 +4106,60 @@
       "synced": true,
       "synced_at": "2026-09-09T02:34:51-0400"
     },
+    "result:HarnessFolder/Panels/rebuild harness_20260909_170411.png": {
+      "at": "2026-09-09T17:32:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260909_170411.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260909_170411.png",
+      "synced": true,
+      "synced_at": "2026-09-09T17:32:09-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260909_180116.png": {
+      "at": "2026-09-09T18:44:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260909_180116.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260909_180116.png",
+      "synced": true,
+      "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260911_134428.png": {
+      "at": "2026-09-11T14:08:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260911_134428.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260911_134428.png",
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:07-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260914_105733.png": {
+      "at": "2026-09-14T11:41:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260914_105733.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260914_105733.png",
+      "synced": true,
+      "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T09:00:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessFolder/Panels/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:23:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/Panels/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/Panels/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
+    },
     "result:HarnessFolder/arrow harness.png": {
       "at": "2026-09-09T03:11:50-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1117,6 +4168,204 @@
       "note": "moved to HarnessRenamed/arrow harness.png",
       "synced": true,
       "synced_at": "2026-09-09T03:12:01-0400"
+    },
+    "result:HarnessFolder/arrow harness_12.png": {
+      "at": "2026-09-09T21:10:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_12.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_12.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:10:58-0400"
+    },
+    "result:HarnessFolder/arrow harness_13.png": {
+      "at": "2026-09-09T21:52:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_13.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_13.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:52:50-0400"
+    },
+    "result:HarnessFolder/arrow harness_14.png": {
+      "at": "2026-09-10T12:56:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_14.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_14.png",
+      "synced": true,
+      "synced_at": "2026-09-10T12:56:38-0400"
+    },
+    "result:HarnessFolder/arrow harness_16.png": {
+      "at": "2026-09-10T15:18:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_16.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_16.png",
+      "synced": true,
+      "synced_at": "2026-09-10T15:18:51-0400"
+    },
+    "result:HarnessFolder/arrow harness_18.png": {
+      "at": "2026-09-10T17:24:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_18.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_18.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:24:47-0400"
+    },
+    "result:HarnessFolder/arrow harness_19.png": {
+      "at": "2026-09-10T17:55:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_19.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_19.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:56:34-0400"
+    },
+    "result:HarnessFolder/arrow harness_20.png": {
+      "at": "2026-09-11T11:20:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_20.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_20.png",
+      "synced": true,
+      "synced_at": "2026-09-12T19:55:40-0400"
+    },
+    "result:HarnessFolder/arrow harness_21.png": {
+      "at": "2026-09-14T10:48:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_21.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_21.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessFolder/arrow harness_22.png": {
+      "at": "2026-09-11T13:34:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_22.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_22.png",
+      "synced": true,
+      "synced_at": "2026-09-11T13:34:49-0400"
+    },
+    "result:HarnessFolder/arrow harness_23.png": {
+      "at": "2026-09-11T14:28:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_23.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_23.png",
+      "synced": true,
+      "synced_at": "2026-09-11T14:29:07-0400"
+    },
+    "result:HarnessFolder/arrow harness_24.png": {
+      "at": "2026-09-14T10:01:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_24.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_24.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:01:43-0400"
+    },
+    "result:HarnessFolder/arrow harness_25.png": {
+      "at": "2026-09-14T10:48:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_25.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_25.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessFolder/arrow harness_26.png": {
+      "at": "2026-09-14T11:41:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_26.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_26.png",
+      "synced": true,
+      "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessFolder/arrow harness_27.png": {
+      "at": "2026-09-14T12:38:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_27.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_27.png",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessFolder/arrow harness_28.png": {
+      "at": "2026-09-14T13:44:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_28.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_28.png",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
+    "result:HarnessFolder/arrow harness_29.png": {
+      "at": "2026-09-14T14:37:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_29.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_29.png",
+      "synced": true,
+      "synced_at": "2026-09-14T14:37:51-0400"
+    },
+    "result:HarnessFolder/arrow harness_4.png": {
+      "at": "2026-09-09T15:58:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_4.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_4.png",
+      "synced": true,
+      "synced_at": "2026-09-09T15:58:41-0400"
+    },
+    "result:HarnessFolder/arrow harness_5.png": {
+      "at": "2026-09-09T17:32:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_5.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_5.png",
+      "synced": true,
+      "synced_at": "2026-09-09T17:32:09-0400"
+    },
+    "result:HarnessFolder/arrow harness_6.png": {
+      "at": "2026-09-09T18:44:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_6.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_6.png",
+      "synced": true,
+      "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:HarnessFolder/arrow harness_7.png": {
+      "at": "2026-09-09T19:19:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_7.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_7.png",
+      "synced": true,
+      "synced_at": "2026-09-09T19:20:04-0400"
+    },
+    "result:HarnessFolder/arrow harness_8.png": {
+      "at": "2026-09-09T19:52:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_8.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_8.png",
+      "synced": true,
+      "synced_at": "2026-09-09T19:52:57-0400"
+    },
+    "result:HarnessFolder/arrow harness_9.png": {
+      "at": "2026-09-09T20:23:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/arrow harness_9.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/arrow harness_9.png",
+      "synced": true,
+      "synced_at": "2026-09-09T20:23:51-0400"
     },
     "result:HarnessFolder/bad-channels_all_20260908_214904.csv": {
       "at": "2026-09-08T23:31:13-0400",
@@ -1172,6 +4421,42 @@
       "synced": true,
       "synced_at": "2026-09-09T02:34:51-0400"
     },
+    "result:HarnessFolder/bad-channels_all_20260911_135601.csv": {
+      "at": "2026-09-11T14:08:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/bad-channels_all_20260911_135601.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/bad-channels_all_20260911_135601.csv",
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:07-0400"
+    },
+    "result:HarnessFolder/bad-channels_all_20260915_164815.csv": {
+      "at": "2026-09-15T16:50:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/bad-channels_all_20260915_164815.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/bad-channels_all_20260915_164815.csv",
+      "synced": true,
+      "synced_at": "2026-09-15T16:50:38-0400"
+    },
+    "result:HarnessFolder/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": {
+      "at": "2026-09-10T14:30:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T14:30:59-0400"
+    },
+    "result:HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": {
+      "at": "2026-09-16T09:32:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessFolder/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T10:57:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1180,6 +4465,78 @@
       "note": "moved to HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png",
       "synced": true,
       "synced_at": "2026-09-03T10:57:27-0400"
+    },
+    "result:HarnessFolder/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:00:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessFolder/rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:23:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessFolder/rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to HarnessRenamed/rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_11.png": {
+      "at": "2026-09-09T21:10:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_11.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_11.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:10:58-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_15.png": {
+      "at": "2026-09-10T14:30:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_15.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_15.png",
+      "synced": true,
+      "synced_at": "2026-09-10T14:30:59-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_17.png": {
+      "at": "2026-09-10T17:24:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_17.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_17.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:24:47-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_21.png": {
+      "at": "2026-09-14T10:48:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_21.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_21.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_3.png": {
+      "at": "2026-09-09T15:58:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_3.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_3.png",
+      "synced": true,
+      "synced_at": "2026-09-09T15:58:41-0400"
+    },
+    "result:HarnessRenamed/Panels/arrow harness_30.png": {
+      "at": "2026-09-15T16:50:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/arrow harness_30.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_30.png",
+      "synced": true,
+      "synced_at": "2026-09-15T16:50:38-0400"
     },
     "result:HarnessRenamed/Panels/bad-channels_all_20260908_213823.csv": {
       "at": "2026-09-08T23:31:14-0400",
@@ -1207,6 +4564,132 @@
       "note": "moved to ToolKit/bad-channels_all_20260909_024902.csv",
       "synced": true,
       "synced_at": "2026-09-09T03:12:01-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260909_190000.csv": {
+      "at": "2026-09-09T19:19:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260909_190000.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260909_190000.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T19:20:04-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260909_193334.csv": {
+      "at": "2026-09-09T19:52:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260909_193334.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260909_193334.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T19:52:57-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260909_200650.csv": {
+      "at": "2026-09-09T20:23:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260909_200650.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260909_200650.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T20:23:51-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260909_212431.csv": {
+      "at": "2026-09-09T21:52:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260909_212431.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260909_212431.csv",
+      "synced": true,
+      "synced_at": "2026-09-09T21:52:50-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260909_220634.csv": {
+      "at": "2026-09-10T12:56:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260909_220634.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260909_220634.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T12:56:38-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260910_144550.csv": {
+      "at": "2026-09-10T15:18:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260910_144550.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260910_144550.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T15:18:51-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260910_173715.csv": {
+      "at": "2026-09-10T17:55:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260910_173715.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260910_173715.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T17:56:34-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260910_180926.csv": {
+      "at": "2026-09-11T11:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260910_180926.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260910_180926.csv",
+      "synced": true,
+      "synced_at": "2026-09-12T19:55:40-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260911_135601.csv": {
+      "at": "2026-09-11T14:28:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260911_135601.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260911_135601.csv",
+      "synced": true,
+      "synced_at": "2026-09-11T14:29:07-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260911_144832.csv": {
+      "at": "2026-09-14T10:01:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260911_144832.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260911_144832.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T10:01:43-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv": {
+      "at": "2026-09-14T12:38:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260914_120233.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260914_120233.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv": {
+      "at": "2026-09-14T13:44:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260914_125942.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260914_125942.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
+    "result:HarnessRenamed/Panels/bad-channels_all_20260914_140245.csv": {
+      "at": "2026-09-14T14:37:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/bad-channels_all_20260914_140245.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260914_140245.csv",
+      "synced": true,
+      "synced_at": "2026-09-14T14:38:07-0400"
+    },
+    "result:HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv": {
+      "at": "2026-09-16T09:32:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "kind": "result",
+      "note": "moved to Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
     },
     "result:HarnessRenamed/Panels/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T10:57:24-0400",
@@ -1253,6 +4736,60 @@
       "synced": true,
       "synced_at": "2026-09-09T02:34:51-0400"
     },
+    "result:HarnessRenamed/Panels/rebuild harness_20260909_170411.png": {
+      "at": "2026-09-09T17:32:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260909_170411.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260909_170411.png",
+      "synced": true,
+      "synced_at": "2026-09-09T17:32:09-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260909_180116.png": {
+      "at": "2026-09-09T18:44:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260909_180116.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260909_180116.png",
+      "synced": true,
+      "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260911_134428.png": {
+      "at": "2026-09-11T14:08:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260911_134428.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260911_134428.png",
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:07-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260914_105733.png": {
+      "at": "2026-09-14T11:41:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260914_105733.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260914_105733.png",
+      "synced": true,
+      "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T09:00:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessRenamed/Panels/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:23:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/Panels/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
+    },
     "result:HarnessRenamed/arrow harness.png": {
       "at": "2026-09-09T03:11:51-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1261,6 +4798,204 @@
       "note": "moved to Storyboards/arrow harness.png",
       "synced": true,
       "synced_at": "2026-09-09T03:12:01-0400"
+    },
+    "result:HarnessRenamed/arrow harness_12.png": {
+      "at": "2026-09-09T21:10:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_12.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_12.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:10:58-0400"
+    },
+    "result:HarnessRenamed/arrow harness_13.png": {
+      "at": "2026-09-09T21:52:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_13.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_13.png",
+      "synced": true,
+      "synced_at": "2026-09-09T21:52:50-0400"
+    },
+    "result:HarnessRenamed/arrow harness_14.png": {
+      "at": "2026-09-10T12:56:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_14.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_14.png",
+      "synced": true,
+      "synced_at": "2026-09-10T12:56:38-0400"
+    },
+    "result:HarnessRenamed/arrow harness_16.png": {
+      "at": "2026-09-10T15:18:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_16.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_16.png",
+      "synced": true,
+      "synced_at": "2026-09-10T15:18:51-0400"
+    },
+    "result:HarnessRenamed/arrow harness_18.png": {
+      "at": "2026-09-10T17:24:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_18.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_18.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:24:47-0400"
+    },
+    "result:HarnessRenamed/arrow harness_19.png": {
+      "at": "2026-09-10T17:55:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_19.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_19.png",
+      "synced": true,
+      "synced_at": "2026-09-10T17:56:34-0400"
+    },
+    "result:HarnessRenamed/arrow harness_20.png": {
+      "at": "2026-09-11T11:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_20.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_20.png",
+      "synced": true,
+      "synced_at": "2026-09-12T19:55:40-0400"
+    },
+    "result:HarnessRenamed/arrow harness_21.png": {
+      "at": "2026-09-14T10:48:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_21.png",
+      "kind": "result",
+      "note": "moved to arrow harness_21_2.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessRenamed/arrow harness_22.png": {
+      "at": "2026-09-11T13:34:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_22.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_22.png",
+      "synced": true,
+      "synced_at": "2026-09-11T13:34:49-0400"
+    },
+    "result:HarnessRenamed/arrow harness_23.png": {
+      "at": "2026-09-11T14:28:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_23.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_23.png",
+      "synced": true,
+      "synced_at": "2026-09-11T14:29:07-0400"
+    },
+    "result:HarnessRenamed/arrow harness_24.png": {
+      "at": "2026-09-14T10:01:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_24.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_24.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:01:43-0400"
+    },
+    "result:HarnessRenamed/arrow harness_25.png": {
+      "at": "2026-09-14T10:48:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_25.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_25.png",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "result:HarnessRenamed/arrow harness_26.png": {
+      "at": "2026-09-14T11:41:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_26.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_26.png",
+      "synced": true,
+      "synced_at": "2026-09-14T11:42:01-0400"
+    },
+    "result:HarnessRenamed/arrow harness_27.png": {
+      "at": "2026-09-14T12:38:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_27.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_27.png",
+      "synced": true,
+      "synced_at": "2026-09-14T12:38:44-0400"
+    },
+    "result:HarnessRenamed/arrow harness_28.png": {
+      "at": "2026-09-14T13:44:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_28.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_28.png",
+      "synced": true,
+      "synced_at": "2026-09-14T13:44:55-0400"
+    },
+    "result:HarnessRenamed/arrow harness_29.png": {
+      "at": "2026-09-14T14:37:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_29.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_29.png",
+      "synced": true,
+      "synced_at": "2026-09-14T14:37:51-0400"
+    },
+    "result:HarnessRenamed/arrow harness_4.png": {
+      "at": "2026-09-09T15:58:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_4.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_4.png",
+      "synced": true,
+      "synced_at": "2026-09-09T15:58:41-0400"
+    },
+    "result:HarnessRenamed/arrow harness_5.png": {
+      "at": "2026-09-09T17:32:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_5.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_5.png",
+      "synced": true,
+      "synced_at": "2026-09-09T17:32:09-0400"
+    },
+    "result:HarnessRenamed/arrow harness_6.png": {
+      "at": "2026-09-09T18:44:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_6.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_6_2.png",
+      "synced": true,
+      "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:HarnessRenamed/arrow harness_7.png": {
+      "at": "2026-09-09T19:19:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_7.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_7.png",
+      "synced": true,
+      "synced_at": "2026-09-09T19:20:04-0400"
+    },
+    "result:HarnessRenamed/arrow harness_8.png": {
+      "at": "2026-09-09T19:52:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_8.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_8.png",
+      "synced": true,
+      "synced_at": "2026-09-09T19:52:57-0400"
+    },
+    "result:HarnessRenamed/arrow harness_9.png": {
+      "at": "2026-09-09T20:23:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/arrow harness_9.png",
+      "kind": "result",
+      "note": "moved to Storyboards/arrow harness_9.png",
+      "synced": true,
+      "synced_at": "2026-09-09T20:23:51-0400"
     },
     "result:HarnessRenamed/bad-channels_all_20260908_214904.csv": {
       "at": "2026-09-08T23:31:14-0400",
@@ -1316,6 +5051,42 @@
       "synced": true,
       "synced_at": "2026-09-09T02:34:51-0400"
     },
+    "result:HarnessRenamed/bad-channels_all_20260911_135601.csv": {
+      "at": "2026-09-11T14:08:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/bad-channels_all_20260911_135601.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260911_135601.csv",
+      "synced": true,
+      "synced_at": "2026-09-11T14:09:07-0400"
+    },
+    "result:HarnessRenamed/bad-channels_all_20260915_164815.csv": {
+      "at": "2026-09-15T16:50:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/bad-channels_all_20260915_164815.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_all_20260915_164815.csv",
+      "synced": true,
+      "synced_at": "2026-09-15T16:50:38-0400"
+    },
+    "result:HarnessRenamed/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": {
+      "at": "2026-09-10T14:30:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "kind": "result",
+      "note": "moved to ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "synced": true,
+      "synced_at": "2026-09-10T14:30:59-0400"
+    },
+    "result:HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv": {
+      "at": "2026-09-16T09:32:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "kind": "result",
+      "note": "moved to Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_histograms.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:32:24-0400"
+    },
     "result:HarnessRenamed/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T10:57:24-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1324,6 +5095,42 @@
       "note": "moved to Test Figures/m34 s5 2024-06-10_20260902_170623.png",
       "synced": true,
       "synced_at": "2026-09-03T10:57:27-0400"
+    },
+    "result:HarnessRenamed/rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:00:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:00:46-0400"
+    },
+    "result:HarnessRenamed/rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:23:41-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "HarnessRenamed/rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:24:01-0400"
+    },
+    "result:KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png": {
+      "at": "2026-09-16T09:25:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "KCNT1 m1609 s1 2026-07-15/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
+      "kind": "result",
+      "note": "moved to KCNT1/m1609/s1 2026-07-15/Figures/KCNT1 m1609 s1 2026-07-15_20260904_121249.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png": {
+      "at": "2026-09-16T09:25:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "PTEN m1 s2 2023-10-02/PTEN m1 s2 2023-10-02_20260903_113520.png",
+      "kind": "result",
+      "note": "moved to PTEN/m1/s2 2023-10-02/Figures/PTEN m1 s2 2023-10-02_20260903_113520.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:PTEN m11 s10 2023-07-25/PTEN m11 s10 2023-07-25_20260902_175716.png": {
       "at": "2026-09-03T09:37:42-0400",
@@ -1361,6 +5168,105 @@
       "synced": true,
       "synced_at": "2026-09-03T09:46:21-0400"
     },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png": {
+      "at": "2026-09-16T09:28:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:28:49-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv": {
+      "at": "2026-09-16T09:25:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_histogram.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv": {
+      "at": "2026-09-16T09:25:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_psd.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv": {
+      "at": "2026-09-16T09:25:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv",
+      "kind": "result",
+      "note": "moved to KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Storyboards/arrow harness_6.png": {
+      "at": "2026-09-09T18:44:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Storyboards/arrow harness_6.png",
+      "kind": "result",
+      "note": "moved to HarnessFolder/arrow harness_6.png",
+      "synced": true,
+      "synced_at": "2026-09-09T18:44:44-0400"
+    },
+    "result:TEST/m34 s5 2024-06-10_20260902_170623.png": {
+      "at": "2026-09-16T09:25:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "TEST/m34 s5 2024-06-10_20260902_170623.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m34/s5 2024-06-10/Figures/m34 s5 2024-06-10_20260902_170623.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png": {
+      "at": "2026-09-16T09:25:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m11 s10 2023-07-25_20260902_175716.png",
+      "kind": "result",
+      "note": "moved to PTEN/m11/s10 2023-07-25/Figures/PTEN m11 s10 2023-07-25_20260902_175716.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png": {
+      "at": "2026-09-16T09:25:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png",
+      "kind": "result",
+      "note": "moved to PTEN/m11/s10 2023-07-25/Figures/PTEN m11 s10 2023-07-25_20260902_175716_2.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png": {
+      "at": "2026-09-16T09:26:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+      "kind": "result",
+      "note": "moved to PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png": {
+      "at": "2026-09-16T09:25:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+      "kind": "result",
+      "note": "moved to PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:Test Figures/m34 s5 2024-06-10_20260902_170116.png": {
+      "at": "2026-09-16T09:25:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Test Figures/m34 s5 2024-06-10_20260902_170116.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m34/s5 2024-06-10/Figures/m34 s5 2024-06-10_20260902_170116.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
     "result:Test Figures/m34 s5 2024-06-10_20260902_170623.png": {
       "at": "2026-09-03T16:46:32-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1397,6 +5303,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:59:47-0400"
     },
+    "result:ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv": {
+      "at": "2026-09-16T09:25:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "kind": "result",
+      "note": "moved to Unfiled/m3/s7 2023-09-22/ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
     "result:m34 s5 2024-06-10/m34 s5 2024-06-10_20260902_170116.png": {
       "at": "2026-09-03T09:37:42-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1414,6 +5329,24 @@
       "note": "duplicate created by a sync",
       "synced": true,
       "synced_at": "2026-09-03T09:46:21-0400"
+    },
+    "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png": {
+      "at": "2026-09-16T09:25:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112539.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m41/s1 2024-11-26/Figures/m41 s1 2024-11-26_20260909_112539.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
+    },
+    "result:m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png": {
+      "at": "2026-09-16T09:25:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "m41 s1 2024-11-26/m41 s1 2024-11-26_20260909_112542.png",
+      "kind": "result",
+      "note": "moved to Unfiled/m41/s1 2024-11-26/Figures/m41 s1 2024-11-26_20260909_112542.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:26:34-0400"
     },
     "result:rebuild harness_20260903_094929.png": {
       "at": "2026-09-03T09:50:50-0400",
@@ -1442,6 +5375,42 @@
       "synced": true,
       "synced_at": "2026-09-03T10:59:47-0400"
     },
+    "result:rebuild harness_20260915_205305.png": {
+      "at": "2026-09-16T08:56:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260915_205305.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260915_205305.png",
+      "synced": true,
+      "synced_at": "2026-09-16T08:57:20-0400"
+    },
+    "result:rebuild harness_20260916_085523.png": {
+      "at": "2026-09-16T08:56:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_085523.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085523.png",
+      "synced": true,
+      "synced_at": "2026-09-16T08:57:20-0400"
+    },
+    "result:rebuild harness_20260916_085852.png": {
+      "at": "2026-09-16T09:25:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_085852.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_085852.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:25:23-0400"
+    },
+    "result:rebuild harness_20260916_090109.png": {
+      "at": "2026-09-16T09:25:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "rebuild harness_20260916_090109.png",
+      "kind": "result",
+      "note": "moved to _scratch/harness/rebuild harness_20260916_090109.png",
+      "synced": true,
+      "synced_at": "2026-09-16T09:25:19-0400"
+    },
     "session:s005e83535b0b": {
       "at": "2026-09-09T01:32:45-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1450,6 +5419,24 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-09T01:32:50-0400"
+    },
+    "session:s02f8344b6e97": {
+      "at": "2026-09-09T21:54:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s02f8344b6e97",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T21:54:14-0400"
+    },
+    "session:s04907448c9ce": {
+      "at": "2026-09-10T14:39:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s04907448c9ce",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:40:08-0400"
     },
     "session:s06ce2499908c": {
       "at": "2026-09-03T10:11:46-0400",
@@ -1460,6 +5447,42 @@
       "synced": true,
       "synced_at": "2026-09-03T10:12:05-0400"
     },
+    "session:s07416c84e5cc": {
+      "at": "2026-09-14T13:52:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s07416c84e5cc",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:52:13-0400"
+    },
+    "session:s07727a320146": {
+      "at": "2026-09-09T18:10:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s07727a320146",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:10:59-0400"
+    },
+    "session:s0cd6feff46de": {
+      "at": "2026-09-14T11:53:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0cd6feff46de",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T11:54:07-0400"
+    },
+    "session:s11f6f6a124a4": {
+      "at": "2026-09-09T19:28:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s11f6f6a124a4",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T19:29:01-0400"
+    },
     "session:s138295c4e40c": {
       "at": "2026-09-09T02:43:17-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1468,6 +5491,87 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-09T02:43:23-0400"
+    },
+    "session:s167885b6e510": {
+      "at": "2026-09-09T17:40:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s167885b6e510",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:41:08-0400"
+    },
+    "session:s1aaa0760ac5e": {
+      "at": "2026-09-15T17:07:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1aaa0760ac5e",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T17:07:52-0400"
+    },
+    "session:s1b0dae11125c": {
+      "at": "2026-09-11T13:46:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1b0dae11125c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T13:47:30-0400"
+    },
+    "session:s1b33ed1d644a": {
+      "at": "2026-09-14T10:59:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1b33ed1d644a",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "session:s1e39ca71f844": {
+      "at": "2026-09-09T21:18:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1e39ca71f844",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T21:18:57-0400"
+    },
+    "session:s21c92498a38f": {
+      "at": "2026-09-15T17:07:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s21c92498a38f",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T17:07:52-0400"
+    },
+    "session:s222c25e258fd": {
+      "at": "2026-09-09T18:46:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s222c25e258fd",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:46:33-0400"
+    },
+    "session:s2299aec053f4": {
+      "at": "2026-09-09T19:54:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2299aec053f4",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T19:54:39-0400"
+    },
+    "session:s2980e4675a37": {
+      "at": "2026-09-11T14:39:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2980e4675a37",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T14:40:54-0400"
     },
     "session:s2bc226ab01c5": {
       "at": "2026-09-03T10:57:38-0400",
@@ -1478,6 +5582,15 @@
       "synced": true,
       "synced_at": "2026-09-03T10:57:42-0400"
     },
+    "session:s32c20a0dfe09": {
+      "at": "2026-09-09T18:54:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s32c20a0dfe09",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:54:59-0400"
+    },
     "session:s33970a523516": {
       "at": "2026-09-09T00:59:27-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1486,6 +5599,33 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-09T00:59:51-0400"
+    },
+    "session:s33c5acf3c76c": {
+      "at": "2026-09-09T18:10:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s33c5acf3c76c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:11:30-0400"
+    },
+    "session:s375f13cc72e2": {
+      "at": "2026-09-09T19:28:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s375f13cc72e2",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T19:29:01-0400"
+    },
+    "session:s3aba70a88b23": {
+      "at": "2026-09-14T14:49:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3aba70a88b23",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:49:44-0400"
     },
     "session:s3b23776ea810": {
       "at": "2026-09-03T10:56:51-0400",
@@ -1496,6 +5636,186 @@
       "synced": true,
       "synced_at": "2026-09-03T10:57:21-0400"
     },
+    "session:s3d3a563febaf": {
+      "at": "2026-09-14T10:03:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3d3a563febaf",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T10:04:05-0400"
+    },
+    "session:s3f1b9cc37033": {
+      "at": "2026-09-14T11:53:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3f1b9cc37033",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T11:54:07-0400"
+    },
+    "session:s45bae70722f2": {
+      "at": "2026-09-09T17:40:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s45bae70722f2",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:40:49-0400"
+    },
+    "session:s45d9856ac9f3": {
+      "at": "2026-09-09T18:19:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s45d9856ac9f3",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:19:40-0400"
+    },
+    "session:s49f993968445": {
+      "at": "2026-09-14T14:49:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s49f993968445",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:49:44-0400"
+    },
+    "session:s4b8d0f933cff": {
+      "at": "2026-09-09T21:12:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4b8d0f933cff",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T21:12:15-0400"
+    },
+    "session:s4d77fa7c7734": {
+      "at": "2026-09-09T17:40:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4d77fa7c7734",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:40:46-0400"
+    },
+    "session:s5083cd98d7f6": {
+      "at": "2026-09-11T11:22:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5083cd98d7f6",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T11:22:41-0400"
+    },
+    "session:s546b30e34520": {
+      "at": "2026-09-10T14:58:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s546b30e34520",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:58:57-0400"
+    },
+    "session:s558b5849f795": {
+      "at": "2026-09-11T11:30:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s558b5849f795",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T11:30:56-0400"
+    },
+    "session:s576ceb464cf7": {
+      "at": "2026-09-10T14:39:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s576ceb464cf7",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:40:08-0400"
+    },
+    "session:s5a25f99bbded": {
+      "at": "2026-09-10T15:26:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5a25f99bbded",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T15:27:35-0400"
+    },
+    "session:s5a81fb85e12c": {
+      "at": "2026-09-10T18:03:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5a81fb85e12c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T18:04:19-0400"
+    },
+    "session:s5dcc9a257598": {
+      "at": "2026-09-09T20:32:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5dcc9a257598",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:32:53-0400"
+    },
+    "session:s5e669d3d04bd": {
+      "at": "2026-09-09T17:33:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5e669d3d04bd",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:33:58-0400"
+    },
+    "session:s5f3834ed71ad": {
+      "at": "2026-09-09T20:32:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5f3834ed71ad",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:32:53-0400"
+    },
+    "session:s63147ebdefdb": {
+      "at": "2026-09-09T22:00:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s63147ebdefdb",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:s6456fc4e5f54": {
+      "at": "2026-09-14T14:50:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6456fc4e5f54",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:50:32-0400"
+    },
+    "session:s65f86dcf3612": {
+      "at": "2026-09-09T18:19:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s65f86dcf3612",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:19:40-0400"
+    },
+    "session:s688714d2a058": {
+      "at": "2026-09-09T18:19:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s688714d2a058",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:19:40-0400"
+    },
     "session:s69cf561a98cf": {
       "at": "2026-09-09T00:28:08-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1504,6 +5824,24 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-09T00:28:21-0400"
+    },
+    "session:s6ada3cc64ab3": {
+      "at": "2026-09-11T14:39:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6ada3cc64ab3",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T14:40:54-0400"
+    },
+    "session:s6b22d84ed556": {
+      "at": "2026-09-14T14:49:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6b22d84ed556",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:49:44-0400"
     },
     "session:s6bd0e2e77fda": {
       "at": "2026-09-08T23:40:37-0400",
@@ -1514,6 +5852,132 @@
       "synced": true,
       "synced_at": "2026-09-08T23:40:59-0400"
     },
+    "session:s6dbdd0aa3864": {
+      "at": "2026-09-09T22:00:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6dbdd0aa3864",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:s707caf655590": {
+      "at": "2026-09-15T17:07:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s707caf655590",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T17:07:52-0400"
+    },
+    "session:s72881ef9bacc": {
+      "at": "2026-09-11T11:30:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s72881ef9bacc",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T11:30:56-0400"
+    },
+    "session:s7c4f6c0f89e5": {
+      "at": "2026-09-09T18:53:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7c4f6c0f89e5",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:54:59-0400"
+    },
+    "session:s7f9d72f68c39": {
+      "at": "2026-09-14T10:49:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7f9d72f68c39",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "session:s80a1854faab3": {
+      "at": "2026-09-10T15:27:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s80a1854faab3",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T15:27:35-0400"
+    },
+    "session:s80e9a80cb126": {
+      "at": "2026-09-09T18:19:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s80e9a80cb126",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:19:40-0400"
+    },
+    "session:s89a5254ca5a2": {
+      "at": "2026-09-10T17:32:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s89a5254ca5a2",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T17:32:41-0400"
+    },
+    "session:s8a509c74a9f3": {
+      "at": "2026-09-11T13:46:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8a509c74a9f3",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T13:47:30-0400"
+    },
+    "session:s8b4ba1df0604": {
+      "at": "2026-09-10T17:26:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8b4ba1df0604",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T17:27:03-0400"
+    },
+    "session:s8da54a731877": {
+      "at": "2026-09-14T12:40:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8da54a731877",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:40:37-0400"
+    },
+    "session:s8ede8f90e463": {
+      "at": "2026-09-10T14:58:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8ede8f90e463",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:58:57-0400"
+    },
+    "session:s8f733e144c35": {
+      "at": "2026-09-09T18:17:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8f733e144c35",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:18:23-0400"
+    },
+    "session:s927d60f6b42f": {
+      "at": "2026-09-09T20:25:21-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s927d60f6b42f",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:25:30-0400"
+    },
     "session:s96c776f67cdd": {
       "at": "2026-09-09T03:20:52-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1522,6 +5986,114 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-09T03:20:59-0400"
+    },
+    "session:s97a929d6d193": {
+      "at": "2026-09-10T17:32:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s97a929d6d193",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T17:32:41-0400"
+    },
+    "session:s97acdb9cada6": {
+      "at": "2026-09-14T10:59:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s97acdb9cada6",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "session:s9b0bc1c585f7": {
+      "at": "2026-09-09T18:10:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9b0bc1c585f7",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:10:59-0400"
+    },
+    "session:s9b3c0d322b6f": {
+      "at": "2026-09-10T18:03:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9b3c0d322b6f",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T18:04:19-0400"
+    },
+    "session:s9dee670696a8": {
+      "at": "2026-09-14T11:53:34-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9dee670696a8",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T11:54:07-0400"
+    },
+    "session:s9e336c3b1a3f": {
+      "at": "2026-09-09T21:18:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9e336c3b1a3f",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T21:18:57-0400"
+    },
+    "session:s9f73bcc0a047": {
+      "at": "2026-09-10T14:38:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9f73bcc0a047",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:38:52-0400"
+    },
+    "session:s9fa18a9a6fde": {
+      "at": "2026-09-09T16:23:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9fa18a9a6fde",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T16:23:36-0400"
+    },
+    "session:sa03df3679661": {
+      "at": "2026-09-09T18:17:12-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa03df3679661",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:18:23-0400"
+    },
+    "session:sa10d14b2f007": {
+      "at": "2026-09-11T14:30:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa10d14b2f007",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T14:30:37-0400"
+    },
+    "session:sa2a65114b1f5": {
+      "at": "2026-09-10T14:58:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa2a65114b1f5",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:58:57-0400"
+    },
+    "session:sabfb26334c5c": {
+      "at": "2026-09-11T14:39:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sabfb26334c5c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T14:40:54-0400"
     },
     "session:sae52d0caf0af": {
       "at": "2026-09-03T09:48:28-0400",
@@ -1532,6 +6104,303 @@
       "synced": true,
       "synced_at": "2026-09-03T09:50:10-0400"
     },
+    "session:sb30a6d0d1e34": {
+      "at": "2026-09-11T13:46:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb30a6d0d1e34",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T13:47:30-0400"
+    },
+    "session:sb4c120affbe5": {
+      "at": "2026-09-10T17:32:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb4c120affbe5",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T17:32:41-0400"
+    },
+    "session:sb58f1e1a7225": {
+      "at": "2026-09-09T20:01:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb58f1e1a7225",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:01:42-0400"
+    },
+    "session:sb653125c9831": {
+      "at": "2026-09-14T13:47:05-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb653125c9831",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T13:47:14-0400"
+    },
+    "session:sb6a0e8b3dd3a": {
+      "at": "2026-09-10T18:03:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb6a0e8b3dd3a",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T18:04:19-0400"
+    },
+    "session:sb7e2aeb2bbc6": {
+      "at": "2026-09-09T20:01:38-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7e2aeb2bbc6",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:01:42-0400"
+    },
+    "session:sb9585fb14523": {
+      "at": "2026-09-09T20:32:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb9585fb14523",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:32:53-0400"
+    },
+    "session:sbc22e3d0da57": {
+      "at": "2026-09-15T16:52:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sbc22e3d0da57",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T16:53:20-0400"
+    },
+    "session:sc2b162171c64": {
+      "at": "2026-09-09T17:40:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc2b162171c64",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:40:49-0400"
+    },
+    "session:sc465dda35a78": {
+      "at": "2026-09-09T18:53:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc465dda35a78",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:54:59-0400"
+    },
+    "session:sc5367a9dad72": {
+      "at": "2026-09-10T15:20:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc5367a9dad72",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T15:20:18-0400"
+    },
+    "session:sc75444877c41": {
+      "at": "2026-09-09T21:18:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc75444877c41",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T21:18:57-0400"
+    },
+    "session:sc7b221af4515": {
+      "at": "2026-09-09T18:10:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc7b221af4515",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:10:59-0400"
+    },
+    "session:sc8af2da18179": {
+      "at": "2026-09-15T10:17:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc8af2da18179",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T10:17:44-0400"
+    },
+    "session:sc967d04b70cc": {
+      "at": "2026-09-11T13:36:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc967d04b70cc",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T13:36:20-0400"
+    },
+    "session:scc73a1a363ce": {
+      "at": "2026-09-15T17:06:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scc73a1a363ce",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-15T17:06:54-0400"
+    },
+    "session:sd07c54ccd9d6": {
+      "at": "2026-09-10T14:32:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd07c54ccd9d6",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:32:35-0400"
+    },
+    "session:sd1b7f8e783f0": {
+      "at": "2026-09-10T17:57:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd1b7f8e783f0",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T17:57:40-0400"
+    },
+    "session:sd47d8eb2d5b4": {
+      "at": "2026-09-14T10:59:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd47d8eb2d5b4",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T10:59:30-0400"
+    },
+    "session:sd71c78e8b271": {
+      "at": "2026-09-10T14:39:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd71c78e8b271",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T14:40:08-0400"
+    },
+    "session:sd7b587e83e10": {
+      "at": "2026-09-10T15:26:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd7b587e83e10",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-10T15:27:35-0400"
+    },
+    "session:sd8ab5709f3c9": {
+      "at": "2026-09-14T12:50:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd8ab5709f3c9",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:51:10-0400"
+    },
+    "session:sdb4d4ba67d7d": {
+      "at": "2026-09-09T19:21:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdb4d4ba67d7d",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T19:21:41-0400"
+    },
+    "session:sdc8229e27f2a": {
+      "at": "2026-09-14T14:39:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdc8229e27f2a",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:39:58-0400"
+    },
+    "session:sdcfe916eaad4": {
+      "at": "2026-09-09T17:40:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdcfe916eaad4",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T17:41:08-0400"
+    },
+    "session:sdde2ae8c2639": {
+      "at": "2026-09-14T11:43:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdde2ae8c2639",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T11:43:37-0400"
+    },
+    "session:sdfabb8c2570d": {
+      "at": "2026-09-09T22:00:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdfabb8c2570d",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:se32fc5b8416f": {
+      "at": "2026-09-09T20:01:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se32fc5b8416f",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T20:01:42-0400"
+    },
+    "session:se7b86528f50c": {
+      "at": "2026-09-09T19:28:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se7b86528f50c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T19:29:01-0400"
+    },
+    "session:se8773e41337d": {
+      "at": "2026-09-14T14:50:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se8773e41337d",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T14:50:32-0400"
+    },
+    "session:sea2827591c87": {
+      "at": "2026-09-11T11:30:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sea2827591c87",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-11T11:30:56-0400"
+    },
+    "session:seecb85f9faeb": {
+      "at": "2026-09-14T12:50:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "seecb85f9faeb",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-14T12:51:10-0400"
+    },
+    "session:sf40f60db339a": {
+      "at": "2026-09-09T18:17:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf40f60db339a",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:18:23-0400"
+    },
     "session:sf8ab003d89b8": {
       "at": "2026-09-03T10:16:39-0400",
       "by": "desktop-4h65ai7-d565",
@@ -1540,6 +6409,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-03T10:16:51-0400"
+    },
+    "session:sfa1dc4f065ef": {
+      "at": "2026-09-09T18:19:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfa1dc4f065ef",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-09T18:19:40-0400"
     }
   },
   "schema": 1

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Who is curating what, at this moment.
 
-Everything else BARRY stores is a record of something that happened, and is
+Everything else Jarvis stores is a record of something that happened, and is
 still true tomorrow. This is the opposite: a claim that somebody is at their
 keyboard right now, which stops being true the moment a lid closes and sends
 nothing to say so. Two consequences shape the whole module.

@@ -1,9 +1,9 @@
 """
-cloud.py -- BARRY's Supabase sync.
+cloud.py -- Jarvis's Supabase sync.
 
 Why both this and the files
 ---------------------------
-The per-machine JSON files stay. They are what makes BARRY work on a rig with
+The per-machine JSON files stay. They are what makes Jarvis work on a rig with
 no network, on a drive that is not mounted, and at 2am when the internet is
 out -- and they are why nothing has ever been lost. Postgres is the shared
 source of truth; the files are the local buffer and the offline queue.
@@ -31,7 +31,7 @@ Two files, and the difference between them is the whole point.
     GUI_logs/.cloud.json      gitignored. The key, on this machine only.
 
 So a clone already knows where to go, and only has to be told the key once --
-which BARRY asks for when it starts rather than making anyone edit a file.
+which Jarvis asks for when it starts rather than making anyone edit a file.
 
 The key is never written to a tracked path: save_shared_config() drops it,
 load_config() refuses to use one found there and says so instead, and
@@ -40,7 +40,7 @@ anyway, rotate it in the Supabase dashboard. That is the only real fix and it
 takes a minute.
 
 The environment beats both, for a rig that would rather keep it in a shell
-profile: BARRY_SUPABASE_URL and BARRY_SUPABASE_KEY.
+profile: Jarvis_SUPABASE_URL and Jarvis_SUPABASE_KEY.
 """
 from __future__ import annotations
 
@@ -179,8 +179,8 @@ def load_config(logs_dir):
     cfg = dict(shared)
     cfg.update(_read(config_path(logs_dir)))
 
-    url = os.environ.get("BARRY_SUPABASE_URL") or cfg.get("url")
-    key = os.environ.get("BARRY_SUPABASE_KEY") or cfg.get("key")
+    url = os.environ.get("Jarvis_SUPABASE_URL") or cfg.get("url")
+    key = os.environ.get("Jarvis_SUPABASE_KEY") or cfg.get("key")
     if url and not url.startswith("http"):
         # A bare project id is what people have to hand.
         url = "https://%s.supabase.co" % url
@@ -198,7 +198,7 @@ def load_config(logs_dir):
         "project": cfg.get("project")
         or (re.sub(r"^https://([^.]+)\..*$", r"\1", url) if url else None),
         # A project is set but no key yet -- which is exactly the state a
-        # fresh clone is in, and what makes BARRY ask for one.
+        # fresh clone is in, and what makes Jarvis ask for one.
         "needs_key": bool(url) and not key,
         "key_in_repo": leaked,
     }
@@ -211,8 +211,8 @@ def save_shared_config(logs_dir, **patch):
     cur = _read(p)
     cur.update({k: v for k, v in patch.items() if v is not None})
     cur["_note"] = (
-        "Which Supabase project BARRY syncs to. Tracked on purpose, so a "
-        "clone knows where to go. The key is NOT here: BARRY asks for it the "
+        "Which Supabase project Jarvis syncs to. Tracked on purpose, so a "
+        "clone knows where to go. The key is NOT here: Jarvis asks for it the "
         "first time it starts and keeps it in GUI_logs/.cloud.json, which "
         "git ignores.")
     tmp = p + ".tmp"
@@ -251,7 +251,7 @@ def looks_like_a_key(text):
         return False, "Nothing pasted."
     if t.startswith("sb_publishable_") or t.startswith("eyJ") and \
             "anon" in t:
-        return False, ("That is the publishable key. BARRY needs the secret "
+        return False, ("That is the publishable key. Jarvis needs the secret "
                        "one (it starts sb_secret_), because the publishable "
                        "key is deliberately given no access at all.")
     if not (t.startswith("sb_secret_") or t.startswith("eyJ")):
@@ -270,9 +270,9 @@ _OFFSET = re.compile(r"([+-]\d{2})(\d{2})$")
 
 
 def ts(value):
-    """Anything BARRY writes, as something Postgres will accept -- or None.
+    """Anything Jarvis writes, as something Postgres will accept -- or None.
 
-    BARRY has three timestamp shapes in its logs: local with a `-0400` style
+    Jarvis has three timestamp shapes in its logs: local with a `-0400` style
     offset, UTC with microseconds from the shard layer, and bare
     `YYYY-MM-DD HH:MM:SS` from Neuralynx headers. A bad one returns None
     rather than failing the push, because a missing `made_at` is a small
@@ -291,14 +291,67 @@ def ts(value):
     s = s.replace(" ", "T", 1) if re.match(r"^\d{4}-\d\d-\d\d ", s) else s
     s = _OFFSET.sub(r"\1:\2", s)          # -0400 -> -04:00
     try:
-        datetime.fromisoformat(s.replace("Z", "+00:00"))
-        return s
+        got = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
+    # Normalised to UTC, not handed back as written.
+    #
+    # A timestamptz column stores an instant, so the offset in the text was
+    # never information the database kept -- but it WAS information the
+    # incremental push compared, as text, against a UTC "since". Vermont is
+    # UTC-4, so "2026-09-09T14:55:51-04:00" -- written four minutes ago --
+    # sorted before "2026-09-09T18:55:06+00:00" and the row was dropped as
+    # older than the last push. Every edit made during a working day was
+    # invisible to the incremental push and travelled only on a full one.
+    if got.tzinfo is None:
+        # Naive means a Neuralynx header or an old shard write, both of
+        # which are local wall-clock time on the machine that wrote them.
+        got = got.astimezone()
+    return got.astimezone(timezone.utc).isoformat()
 
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def _one_per_key(rows, on_conflict):
+    """Collapse rows that share a conflict key, keeping the last.
+
+    Postgres refuses a batch that would touch one row twice -- "ON CONFLICT DO
+    UPDATE command cannot affect row a second time" -- and it is right to:
+    it cannot know which of the two duplicates was meant, and applying both
+    in one statement would make the answer depend on arrival order.
+
+    So the choice is made here, where the order is known: the builders append
+    in the order they read their shards, so the later row is the newer fact.
+
+    Without a stated conflict key the primary key is the target, and here
+    that is `id` on every table that has one -- which is where this actually
+    bit: `errors` is keyed on `id`, is not in the ON_CONFLICT map, and two
+    shards holding the same failure produced two rows with one id.
+    """
+    keys = [k.strip() for k in str(on_conflict or "").split(",") if k.strip()]
+    if not keys:
+        if all(isinstance(r, dict) and r.get("id") is not None for r in rows):
+            keys = ["id"]
+        else:
+            return rows
+    seen = {}
+    order = []
+    for r in rows:
+        ident = tuple(r.get(k) for k in keys)
+        if any(v is None for v in ident):
+            # Not identifiable, so not a duplicate of anything; let the
+            # database decide what to do with it.
+            order.append(("keep", r))
+            continue
+        if ident not in seen:
+            order.append(("key", ident))
+        seen[ident] = r
+    out = []
+    for kind, val in order:
+        out.append(val if kind == "keep" else seen[val])
+    return out
 
 
 # ==========================================================================
@@ -327,8 +380,8 @@ class Cloud:
         if not self.configured:
             raise NotConfigured(
                 "No Supabase project configured. Run "
-                "tools/cloud_setup.py, or set BARRY_SUPABASE_URL and "
-                "BARRY_SUPABASE_KEY.")
+                "tools/cloud_setup.py, or set Jarvis_SUPABASE_URL and "
+                "Jarvis_SUPABASE_KEY.")
         h = {
             "apikey": self.cfg["key"],
             "Authorization": "Bearer " + self.cfg["key"],
@@ -420,6 +473,7 @@ class Cloud:
         rows = [r for r in (rows or []) if r]
         if not rows:
             return 0
+        rows = _one_per_key(rows, on_conflict)
         prefer = "resolution=merge-duplicates,return=minimal"
         sent = 0
         # A column the database has not got yet is dropped and the batch
@@ -568,7 +622,7 @@ class Cloud:
 
         This is a cache, not data: it can be rebuilt by syncing again. So a
         failure to write it must not be reported as a sync failure, which is
-        what was happening -- two BARRYs against the same GUI_logs contended
+        what was happening -- two Jarviss against the same GUI_logs contended
         for a shared "cloud_state.json.tmp" and the "Permission denied" that
         came back was logged as though the whole sync had broken.
         """
@@ -576,7 +630,7 @@ class Cloud:
         st = self.state()
         st.update(patch or {})
         target = self._state_path()
-        # Private per process and attempt, so two BARRYs cannot collide.
+        # Private per process and attempt, so two Jarviss cannot collide.
         tmp = "%s.%d.%s.tmp" % (target, os.getpid(), _uuid.uuid4().hex[:6])
         try:
             with open(tmp, "w", encoding="utf-8", newline="\n") as fh:

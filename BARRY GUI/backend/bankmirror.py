@@ -4,7 +4,7 @@ bankmirror.py -- The Event Bank, as folders you can open.
 The bank lives in GUI_logs as one JSON file per entry, named for git's
 benefit rather than a person's. That is the right shape for a record and the
 wrong shape for finding the dentate spikes for m34 s8 when you are not in
-BARRY -- which is most of the time, for most people.
+Jarvis -- which is most of the time, for most people.
 
 So this writes the same content out again, laid out the way the Event Bank
 view groups it:
@@ -23,7 +23,7 @@ produces byte-identical files, so it is safe to commit and cannot conflict.
 Delete the whole tree and the next sync rebuilds it.
 
 The CSV is the point. It opens in Excel, it goes into MATLAB in one line, and
-it does not need anything of BARRY's to read.
+it does not need anything of Jarvis's to read.
 """
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ import re
 FOLDER = "Data Bank"
 README = """# Data Bank
 
-Written by BARRY, from the Event Bank. Open anything here in Excel or MATLAB;
-nothing needs BARRY to read it.
+Written by Jarvis, from the Event Bank. Open anything here in Excel or MATLAB;
+nothing needs Jarvis to read it.
 
     <Project>/m<mouse>/s<session> <date>/<type> - <name>.csv     the times
     <Project>/m<mouse>/s<session> <date>/<type> - <name>.json    everything else
@@ -50,7 +50,7 @@ label says what they called it. They are different claims and the bank does
 not blur them.
 
 This folder is generated. Edit it and the next sync writes over you -- change
-things in BARRY, or in the database, and they land here.
+things in Jarvis, or in the database, and they land here.
 """
 
 
@@ -117,12 +117,36 @@ class BankMirror:
         self.store = store
 
     # ------------------------------------------------------------------
+    def _safe_write(self, path, body):
+        """Write one file, and report rather than raise when it will not.
+
+        Windows refuses a rename while anything holds the target open, and
+        OneDrive holds files open to upload them -- for longer than the six
+        retries inside the atomic write. This tree is derived and can be
+        rebuilt at any time, so a file that loses that race is recorded and
+        skipped. Raising instead took down the whole sync.
+        """
+        try:
+            return _write_if_changed(path, body)
+        except OSError as exc:                           # noqa: BLE001
+            self._locked.append({"path": path, "error": str(exc)[:160]})
+            return False
+
     def rebuild(self, prune=True):
-        """Write the tree. Returns what changed."""
+        """Write the tree. Returns what changed, and what it could not.
+
+        A file that will not write is counted and skipped rather than
+        raised. This tree is derived -- every byte of it can be rebuilt from
+        the bank -- so one locked file is a nuisance. The sync cycle it was
+        raising through is not: a lab member whose repository sits inside
+        OneDrive had every sync die on one `.json.tmp` rename, which meant
+        they never pulled anybody's curation at all.
+        """
         os.makedirs(self.root, exist_ok=True)
         written, wanted = 0, set()
+        self._locked = []
 
-        if _write_if_changed(os.path.join(self.root, "README.md"), README):
+        if self._safe_write(os.path.join(self.root, "README.md"), README):
             written += 1
         wanted.add(os.path.join(self.root, "README.md"))
 
@@ -146,7 +170,7 @@ class BankMirror:
                     ev.get("label") or "",
                 ])
             csv_path = os.path.join(folder, stem + ".csv")
-            if _write_if_changed(csv_path, _csv(
+            if self._safe_write(csv_path, _csv(
                     rows, ["start_s", "end_s", "channel", "amplitude",
                            "label"])):
                 written += 1
@@ -158,7 +182,7 @@ class BankMirror:
             meta["n_events"] = len(events)
             meta["times_file"] = os.path.basename(csv_path)
             json_path = os.path.join(folder, stem + ".json")
-            if _write_if_changed(json_path, json.dumps(
+            if self._safe_write(json_path, json.dumps(
                     meta, indent=2, sort_keys=True, default=str) + "\n"):
                 written += 1
             wanted.add(json_path)
@@ -184,14 +208,14 @@ class BankMirror:
                                                  or "Unfiled", "Unfiled"),
                                 _safe("m%s" % rec["mouse"]), "_mouse.json")
             body = {k: v for k, v in rec.items() if not k.startswith("_")}
-            if _write_if_changed(path, json.dumps(
+            if self._safe_write(path, json.dumps(
                     body, indent=2, sort_keys=True, default=str) + "\n"):
                 written += 1
             wanted.add(path)
 
         # ---- the index ------------------------------------------------
         idx = os.path.join(self.root, "_index.csv")
-        if _write_if_changed(idx, _csv(index, [
+        if self._safe_write(idx, _csv(index, [
                 "project", "mouse", "session", "date", "type", "name",
                 "n_events", "specified", "curation_label", "pipeline",
                 "added_by", "added_at", "gid", "entry_id", "times_file"])):
@@ -199,13 +223,19 @@ class BankMirror:
         wanted.add(idx)
 
         removed = self._prune(wanted) if prune else 0
-        return {"written": written, "removed": removed,
-                "entries": len(index), "root": self.root}
+        out = {"written": written, "removed": removed,
+               "entries": len(index), "root": self.root}
+        # Named, not just counted. "The Data Bank looks incomplete" is a
+        # mystery; "these four files were locked" is something to act on.
+        if self._locked:
+            out["locked"] = len(self._locked)
+            out["locked_files"] = self._locked[:12]
+        return out
 
     def _prune(self, wanted):
         """Take away what the bank no longer has.
 
-        Without this, deleting an entry in BARRY leaves its CSV sitting in a
+        Without this, deleting an entry in Jarvis leaves its CSV sitting in a
         folder looking exactly as authoritative as the real ones.
         """
         removed = 0

@@ -10,7 +10,7 @@
    time anyone re-exports, and when it is slightly off every label is off by a
    fraction of a channel with nothing on screen to say so.
 
-   Here the panels are drawn from the recording, so BARRY already knows which
+   Here the panels are drawn from the recording, so Jarvis already knows which
    lane is channel 14. There is nothing to crop and nothing to drift. And
    because it is not a snapshot, you can filter, change the window, or zoom
    into the theta while you decide -- which is what you actually want when a
@@ -29,6 +29,9 @@ BARRY.strata = (function () {
   let brush = null;      // the region a drag paints, when one is armed
   let hover = -1;
   let saving = 0;
+  /* Bumped by every paint. A reply is only allowed to replace the sheet
+     if it is still the newest one outstanding -- see paint(). */
+  let paintSeq = 0;
 
   /* Which channels are picked out, by CSC number.
 
@@ -115,6 +118,24 @@ BARRY.strata = (function () {
     }
     sheet = started.sheet;
     regions = sheet.regions || [];
+
+    /* Opening it is what puts it on the bench, the same as event curation.
+       Nothing else does: a sheet that exists because a scan made one is not
+       work in progress, it is a row. */
+    apiPost('/api/layers/' + encodeURIComponent(gid) + '/open', { on: true })
+      .then((res) => { if (res && res.sheet) sheet.assignee = res.sheet.assignee; })
+      .catch((e) => {
+        /* An archived sheet is not put on the bench by being labelled --
+           that would un-archive it as a side effect of looking at it, which
+           is the thing archiving is meant to survive. Labelling still
+           works and still saves. */
+        if (/archived/i.test((e && e.message) || '')) {
+          toast('This sheet is archived, so it is not on the bench. '
+                + 'Labelling it still works and still saves; take it out of '
+                + 'the archive from the ToolKit if you want it back in the '
+                + 'list.', null, 8000);
+        }
+      });
 
     // Said in the shell, not just in a toolbar: a mode you can be in
     // without noticing is one you make mistakes in.
@@ -377,14 +398,53 @@ BARRY.strata = (function () {
 
   /* Give every selected channel a layer. This is what a tag click and a
      number key both end up calling. */
+  /* One request, not one per channel.
+
+     This was `for (const n of nums) await paint(n, regionId)`, so labelling a
+     selection of thirty-two channels was thirty-two POSTs in series, each
+     waiting on the last, each rewriting and re-fingerprinting the whole sheet
+     server-side. The route has taken a `labels` map the whole time -- and
+     layers.set_many is `@shards.atomic`, so the batch is also one write
+     instead of thirty-two chances to interleave with somebody else's. */
   async function labelPicked(regionId) {
     if (!picked.size) return false;
     const nums = Array.from(picked);
-    for (const n of nums) await paint(n, regionId);
+    const was = {};
+    const labels = {};
+    for (const n of nums) {
+      const key = String(n);
+      was[key] = sheet && sheet.labels[key] ? sheet.labels[key] : null;
+      labels[key] = regionId || null;
+      if (!sheet) continue;
+      if (regionId) sheet.labels[key] = regionId; else delete sheet.labels[key];
+    }
+    recount();
     /* The selection stays. Labelling a run and then finding one channel
        wrong is the common case, and clearing it would mean picking the
        whole run again to fix one. */
-    render();
+    patchRows(nums);
+
+    const mine = ++paintSeq;
+    saving += 1;
+    updateSaving();
+    try {
+      const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
+                                + '/set', { labels });
+      if (mine === paintSeq) sheet = res.sheet;
+    } catch (e) {
+      if (sheet) {
+        for (const key of Object.keys(was)) {
+          if (was[key]) sheet.labels[key] = was[key];
+          else delete sheet.labels[key];
+        }
+      }
+      recount();
+      toast('That did not save: ' + e.message, 'err', 8000);
+      patchRows(nums);
+    } finally {
+      saving -= 1;
+      updateSaving();
+    }
     return true;
   }
 
@@ -573,22 +633,77 @@ BARRY.strata = (function () {
     if (was === region) return;
     if (region) sheet.labels[key] = region; else delete sheet.labels[key];
     recount();
-    render();
+    patchRows([channel]);
 
+    /* Dragging across a rail fires one of these per channel, and they come
+       back in whatever order the server finishes them. `sheet = res.sheet`
+       replaced the entire sheet with the server's copy, so a slow answer
+       from the first channel of a drag would land after the last and undo
+       everything painted in between -- the channel count going backwards
+       mid-drag, which is exactly what stratacheck catches intermittently.
+
+       So: take the server's copy only if nothing has been painted since.
+       Same guard the bank and toolkit views already use for late replies. */
+    const mine = ++paintSeq;
     saving += 1;
     updateSaving();
     try {
       const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
                                 + '/set', { channel, region });
-      sheet = res.sheet;
+      if (mine === paintSeq) sheet = res.sheet;
     } catch (e) {
       if (was) sheet.labels[key] = was; else delete sheet.labels[key];
+      recount();
       toast('That did not save: ' + e.message, 'err', 8000);
-      render();
+      patchRows([channel]);
     } finally {
       saving -= 1;
       updateSaving();
     }
+  }
+
+  /* Update the rows a change actually touched, instead of rebuilding the rail.
+   *
+   * paint() used to call render(), and render() rebuilds every row element
+   * from scratch. During a drag that means destroying the element the cursor
+   * is currently over, sixty-four times, once per channel painted -- so a
+   * stroke can land on a node that is already detached and simply not
+   * register. That is why "dragging paints the channels it passes over"
+   * fails about half the time: the drag paints the first channel and then
+   * pulls the floor out from under itself.
+   *
+   * The rows are stable now and only their appearance changes. The run
+   * labels still get rebuilt, because a label change genuinely reshapes them,
+   * but they sit after the rows and nothing is dragging across them.
+   */
+  function patchRows(nums) {
+    const list = $('#strataRail') && $('#strataRail').querySelector('.strata-rows');
+    if (!list) { render(); return; }
+    const want = new Set((nums || []).map(Number));
+    channels().forEach((c, i) => {
+      if (want.size && !want.has(c.number)) return;
+      const row = list.children[i];
+      if (!row || !row.classList || !row.classList.contains('strata-row')) return;
+      const id = labelOf(c.number);
+      const reg = regionOf(id);
+      row.className = 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : '')
+                    + (picked.has(c.number) ? ' picked' : '');
+      if (reg) row.style.setProperty('--cat', reg.color);
+      else row.style.removeProperty('--cat');
+      row.title = c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled')
+                + '\nClick to select · shift-click for a range · then a '
+                + 'layer below, or its number';
+      const name = row.querySelector('.strata-name');
+      if (name) name.textContent = reg ? reg.name : '—';
+    });
+    // The runs are derived from every label, so they are rebuilt whole --
+    // but they are appended after the rows, so replacing them cannot pull a
+    // row out from under a drag.
+    const old = list.querySelector('.strata-spans');
+    const fresh = runLabels();
+    if (old) list.replaceChild(fresh, old);
+    else list.appendChild(fresh);
+    alignRail();
   }
 
   function recount() {

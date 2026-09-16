@@ -2,57 +2,74 @@
   "_at": {
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-09T05:34:27.255453+00:00",
-    "radio": "2026-09-09T15:08:44.752142+00:00",
-    "recent_scripts": "2026-09-08T17:57:22.088905+00:00",
-    "smoke_probe": "2026-09-09T07:22:47.225719+00:00",
+    "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
+    "radio": "2026-09-15T21:04:56.695923+00:00",
+    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "result_group": "2026-09-16T13:32:20.412633+00:00",
+    "smoke_probe": "2026-09-16T13:29:27.056832+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-09T15:13:24.607675+00:00"
+    "updated": "2026-09-16T14:33:02.535445+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-09T07:22:47.391689+00:00"
+        "2026-09-16T13:29:32.069129+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
         "2026-09-08T17:57:22.389722+00:00"
+      ],
+      "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m": [
+        "gone",
+        "2026-09-09T20:11:56.968885+00:00"
       ]
     },
     "themes": {
       "BarryLab": [
         "set",
-        "2026-09-04T15:57:01.925044+00:00"
+        "2026-09-09T15:33:56.426615+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-08T15:39:52.477222+00:00"
+        "2026-09-14T14:16:13.956005+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
       ],
       "LCOM549913": [
         "set",
         "2026-09-08T17:53:47.145828+00:00"
+      ],
+      "MSI": [
+        "gone",
+        "2026-09-09T15:29:08.445863+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:13:24.607675+00:00",
+    "at": "2026-09-16T14:33:02.535445+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "demo:long-session"
+    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
   },
   "radio": {
     "agreed": true,
-    "small": false,
-    "station": "DA7wDV4MbNo",
+    "small": true,
+    "station": "4xDzrJKXOOY",
     "volume": 55
   },
   "recent_scripts": [
     "IED/03_IED_Detection/vacc_ied_detect.m",
+    "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
+    "IED/08_Anatomical_Labeling/blank_png_gen.py",
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
+    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
     "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
     "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
     "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
@@ -61,11 +78,13 @@
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
     "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
+  "result_group": "",
   "smoke_probe": null,
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "horizon-night",
+    "DESKTOP-4H65AI7": "jirai-yami",
+    "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-09T11:13:24-04:00"
+  "updated": "2026-09-16T10:33:02-04:00"
 }

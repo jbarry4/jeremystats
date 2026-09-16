@@ -11,13 +11,14 @@ import csv
 import io
 import os
 import re
+from datetime import datetime
 import shutil
 import threading
 import time
 
 import numpy as np
 
-from . import csc, ids, nlx
+from . import continuity, csc, ids, nlx
 
 
 # ==========================================================================
@@ -116,8 +117,21 @@ def session_health(path, deep=False):
             out["start_time"] = nlx.header_start_time(hdr)
             size = os.path.getsize(first)
             n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
-            dur = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+
+            # The recording's own clock, from the first and last record --
+            # two seeks. `n_records * 512 / fs` assumes every record is full
+            # and is a third answer to "how long is it", agreeing with
+            # neither the raw file nor anything Toothy produced.
+            times = None
+            try:
+                times = nlx.record_times(first)
+            except Exception:                            # noqa: BLE001
+                times = None
+            dur = ((times or {}).get("true_duration_s")
+                   or (n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0))
             out["duration_s"] = dur
+            out["record_duration_s"] = (n_rec * nlx.SAMPLES_PER_RECORD / fs
+                                        if fs else 0.0)
             if not fs:
                 out["checks"].append(_c("warn", "sample rate",
                                         "Header has no SamplingFrequency."))
@@ -148,6 +162,43 @@ def session_health(path, deep=False):
             out["checks"].append(_c("warn", "header",
                                     "Could not read the header: %s" % exc))
 
+    # ---- continuity: one block, or several? ----
+    # Cheetah closes a record early on a hiccup and the next timestamp jumps;
+    # neo calls that a segment break and Toothy concatenates across it, which
+    # closes the gap and labels everything after it too early. Eight of the
+    # twenty-five PTEN recordings are like this and nothing here said so.
+    #
+    # Cheap on a clean folder -- two records per channel decide it -- so it
+    # runs on every health check rather than being a deep-check extra, and
+    # the answer is cached against the reference file's size and mtime.
+    if ncs:
+        try:
+            cont = continuity.check(path, all_channels=bool(deep))
+        except Exception as exc:                         # noqa: BLE001
+            cont = None
+            out["checks"].append(_c("warn", "continuity",
+                                    "Could not check for gaps: %s" % exc))
+        if cont:
+            out["continuity"] = _continuity_summary(cont)
+            out["checks"].extend(continuity.checks(cont))
+            if cont.get("ok") and cont.get("n_segments", 1) > 1:
+                # Two durations that differ by more than a sample is the
+                # whole problem in one line. Only said when it is true: on a
+                # clean recording they are the same number.
+                out["concat_duration_s"] = cont.get("concat_duration_s")
+                # To the millisecond, because _dur rounds to the second and
+                # both of these are 35 m 24 s -- printing the same string
+                # twice and calling it a discrepancy.
+                out["checks"].append(_c(
+                    "warn", "two durations",
+                    "%.3f s on the recording's clock, %.3f s once the gaps "
+                    "are closed -- %s apart. Toothy, the LFP arrays and "
+                    "kilosort are on the second; the raw files, .nev marks "
+                    "and video are on the first."
+                    % (cont["true_duration_s"], cont["concat_duration_s"],
+                       continuity._ms((cont["true_duration_s"]
+                                       - cont["concat_duration_s"]) * 1e3))))
+
     # ---- companions ----
     out["checks"].append(_c(
         "ok" if vids else "warn", "video",
@@ -177,6 +228,51 @@ def session_health(path, deep=False):
             out["checks"].append(_c("warn", "signal probe", str(exc)))
 
     return _grade(out)
+
+
+def _continuity_summary(rep, max_rows=60):
+    """The fields the UI and a --json consumer need, bounded.
+
+    A report goes into every scan result and a handful of pathological files
+    could carry hundreds of segments each; the gap table and segment map are
+    capped here and the full ones stay behind /api/session/continuity.
+    """
+    if not rep or not rep.get("ok"):
+        return {"ok": False, "error": (rep or {}).get("error")}
+    segs = rep.get("segments") or []
+    gaps = rep.get("gaps") or []
+    return {
+        "ok": True,
+        "n_segments": rep.get("n_segments"),
+        "n_gaps": len(gaps),
+        "seconds_lost": rep.get("seconds_lost"),
+        "samples_lost": rep.get("samples_lost"),
+        "seconds_paused": rep.get("seconds_paused"),
+        "n_pauses": rep.get("n_pauses"),
+        "seconds_dropped": rep.get("seconds_dropped"),
+        "n_dropouts": rep.get("n_dropouts"),
+        "max_time_error_ms": rep.get("max_time_error_ms"),
+        "true_duration_s": rep.get("true_duration_s"),
+        "concat_duration_s": rep.get("concat_duration_s"),
+        "record_duration_s": rep.get("record_duration_s"),
+        "clock_drift_s": rep.get("clock_drift_s"),
+        "implied_fs": rep.get("implied_fs"),
+        "n_short_records": rep.get("n_short_records"),
+        "n_short_inside": rep.get("n_short_inside"),
+        "sub_threshold_lost_s": rep.get("sub_threshold_lost_s"),
+        "unused_record_slots": rep.get("unused_record_slots"),
+        "gap_rule": rep.get("gap_rule"),
+        "gap_tolerance_us": rep.get("gap_tolerance_us"),
+        "gap_map_sha": rep.get("gap_map_sha"),
+        "reference": rep.get("reference"),
+        "probed": rep.get("probed"),
+        "mismatches": rep.get("mismatches"),
+        "fast_path": rep.get("fast_path"),
+        "cached": rep.get("cached"),
+        "truncated": len(segs) > max_rows or len(gaps) > max_rows,
+        "segments": segs[:max_rows],
+        "gaps": gaps[:max_rows],
+    }
 
 
 def _deep_signal_checks(folder, ncs):
@@ -421,6 +517,65 @@ def mark_key(sig, machine=None):
     all still work.
     """
     return "%s%s%s" % (sig, MARK_SEP, machine) if machine else sig
+
+
+# "-0400" -> "-04:00", which `fromisoformat` needs.
+_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
+def marked_after(at, mark_at):
+    """Did the mark come at or after the thing it is marking?
+
+    Compared as times. This was `(at or "") <= (mark_at or "")`, a string
+    test that is only right while both stamps carry the same offset -- and
+    an error pulled from the shared table is UTC while a mark written here
+    is local, so an error at "2026-09-10T00:37:57+00:00" read as newer than
+    a mark made three minutes later at "2026-09-09T20:40:45-04:00" and
+    stayed red however many times it was resolved.
+
+    A stamp that cannot be parsed falls back to the string comparison,
+    which is what the old code did with all of them.
+    """
+    if not mark_at:
+        return False
+    if not at:
+        return True
+    a, b = _instant(at), _instant(mark_at)
+    if a is None or b is None:
+        return str(at) <= str(mark_at)
+    return a <= b
+
+
+def _instant(stamp):
+    """An ISO-ish stamp as a comparable moment, or None."""
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    text = _OFFSET_RE.sub(r"\1:\2", text.replace(" ", "T", 1))
+    try:
+        got = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if got.tzinfo is None:
+        # A stamp with no offset is this machine's wall clock, which is what
+        # wrote it.
+        got = got.astimezone()
+    return got
+
+
+def moment_key(stamp):
+    """A stamp as a number to sort on.
+
+    The lists that use this hold a mix of offsets -- what came from Supabase
+    is UTC, what was written here is local -- so sorting them as text put a
+    row from "2026-09-09T20:41-04:00" below one from "2026-09-10T00:37+00:00"
+    that is four minutes older.
+
+    Unreadable or missing sorts as the epoch, which is where the empty
+    string this replaces already sorted it.
+    """
+    got = _instant(stamp)
+    return got.timestamp() if got is not None else 0.0
 
 
 def host_of(rec):
@@ -737,7 +892,7 @@ def _free_bytes(path):
 # Scratch runner
 # ==========================================================================
 SCRATCH_PREAMBLE = (
-    "# BARRY scratch. The repo and BARRY's own readers are importable, and\n"
+    "# Jarvis scratch. The repo and Jarvis's own readers are importable, and\n"
     "# these names are already bound for you.\n"
     "import os, sys, glob, json, math\n"
     "import numpy as np\n"
@@ -745,7 +900,7 @@ SCRATCH_PREAMBLE = (
 
 
 def scratch_source(body, repo_root, app_dir):
-    """Wrap a snippet so the repo and BARRY's backend are both importable."""
+    """Wrap a snippet so the repo and Jarvis's backend are both importable."""
     header = ("import sys\n"
               "sys.path.insert(0, %r)\n"
               "sys.path.insert(0, %r)\n"

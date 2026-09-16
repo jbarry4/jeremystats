@@ -8,19 +8,19 @@
       ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-09T15:09:17.015193+00:00"
+        "2026-09-15T21:01:17.623007+00:00"
       ],
       "Isabella Piatek": [
         "set",
-        "2026-09-09T13:38:41.337782+00:00"
+        "2026-09-14T14:09:33.869433+00:00"
       ],
       "Rain": [
-        "set",
-        "2026-09-09T15:09:21.659088+00:00"
+        "gone",
+        "2026-09-09T16:16:59.815503+00:00"
       ],
       "Rain Younger": [
         "set",
-        "2026-09-09T13:41:55.408098+00:00"
+        "2026-09-15T21:01:16.260715+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,15 +28,23 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-09T15:06:08.629162+00:00"
+        "2026-09-14T13:26:58.987348+00:00"
+      ],
+      "Sylvia Clouse": [
+        "set",
+        "2026-09-14T13:26:54.957774+00:00"
       ],
       "TEST": [
         "set",
-        "2026-09-09T14:23:28.610811+00:00"
+        "2026-09-09T15:28:39.468505+00:00"
       ],
       "ZZ probe": [
         "gone",
         "2026-09-09T15:00:39.515682+00:00"
+      ],
+      "a colleague": [
+        "set",
+        "2026-09-09T20:26:47.358238+00:00"
       ],
       "bankback@harness": [
         "set",
@@ -54,6 +62,10 @@
         "set",
         "2026-09-09T13:38:41.361783+00:00"
       ],
+      "spikeflow@harness": [
+        "set",
+        "2026-09-11T15:24:04.935071+00:00"
+      ],
       "theexaminedexistence@gmail.com": [
         "set",
         "2026-09-09T13:38:41.305714+00:00"
@@ -62,13 +74,17 @@
         "set",
         "2026-09-09T13:38:41.369698+00:00"
       ],
+      "zz autosync probe": [
+        "gone",
+        "2026-09-09T17:43:06.141700+00:00"
+      ],
       "zz edit probe": [
         "gone",
-        "2026-09-09T15:13:28.000823+00:00"
+        "2026-09-15T21:01:27.434546+00:00"
       ],
       "zz edit probe renamed": [
         "gone",
-        "2026-09-09T15:13:21.967374+00:00"
+        "2026-09-09T17:41:16.273728+00:00"
       ],
       "zz probe A": [
         "gone",
@@ -77,23 +93,11 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:13:28.000823+00:00",
+    "at": "2026-09-15T21:01:27.434546+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": [
-    {
-      "aliases": [
-        "rain younger"
-      ],
-      "archived": true,
-      "at": "2026-09-09T15:09:21.658575+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-09T15:09:21.658585+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain",
-      "name": "Rain"
-    },
     {
       "archived": true,
       "at": "2026-09-09T03:23:25.620635+00:00",
@@ -137,16 +141,6 @@
       "role": null
     },
     {
-      "at": "2026-09-08T21:23:16.555182+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T13:38:41.337781+00:00",
-      "email": "Isabella.Piatek@uvm.edu",
-      "id": "Isabella Piatek",
-      "initials": "IP",
-      "name": "Isabella Piatek",
-      "role": "Graduate Student"
-    },
-    {
       "at": "2026-09-08T18:54:41.436836+00:00",
       "by": "Rain Younger",
       "edited_at": "2026-09-09T13:38:41.353783+00:00",
@@ -171,35 +165,75 @@
       "name": "unknown"
     },
     {
+      "archived": true,
+      "at": "2026-09-09T14:23:28.606785+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-09-09T15:28:39.468504+00:00",
+      "id": "TEST",
+      "name": "TEST"
+    },
+    {
+      "archived": true,
+      "at": "2026-09-09T19:31:52.332901+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-09T20:26:47.358237+00:00",
+      "id": "a colleague",
+      "name": "a colleague"
+    },
+    {
+      "at": "2026-09-08T21:23:16.555182+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-09-14T14:09:33.867425+00:00",
+      "email": "Isabella.Piatek@uvm.edu",
+      "id": "Isabella Piatek",
+      "initials": "IP",
+      "name": "Isabella Piatek",
+      "role": "Graduate Student"
+    },
+    {
+      "at": "2026-09-09T15:29:28.090683+00:00",
+      "by": "Sylvia Clouse",
+      "edited_at": "2026-09-14T13:26:54.957070+00:00",
+      "email": "seclouse@uvm.edu",
+      "id": "Sylvia Clouse",
+      "initials": "SC",
+      "name": "Sylvia Clouse",
+      "role": "Undergraduate Student"
+    },
+    {
       "aliases": [
         "shahriar",
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "zz edit probe renamed",
-      "edited_at": "2026-09-09T15:06:08.628694+00:00",
-      "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-14T13:26:58.986884+00:00",
+      "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
-      "role": "Gradstudent"
+      "role": "Graduate Student"
     },
     {
-      "at": "2026-09-08T21:24:06.731205+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T13:41:55.408097+00:00",
+      "archived": true,
+      "at": "2026-09-10T18:42:52.900818+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-11T15:24:04.935070+00:00",
+      "id": "spikeflow@harness",
+      "name": "spikeflow@harness"
+    },
+    {
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-15T21:01:15.872405+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-09-15T21:01:16.259782+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
       "initials": "RY",
       "name": "Rain Younger",
-      "role": "Gradstudent"
-    },
-    {
-      "at": "2026-09-09T14:23:28.606785+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-09T14:23:28.606786+00:00",
-      "id": "TEST",
-      "name": "TEST"
+      "role": "Graduate Student"
     }
   ]
 }

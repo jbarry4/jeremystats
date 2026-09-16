@@ -32,8 +32,8 @@ never installs anything without asking.
 
 | | |
 |---|---|
-| **Windows** | double-click **`Start BARRY GUI.bat`** |
-| **macOS** | double-click **`Start BARRY GUI.command`** |
+| **Windows** | double-click **`Wake up Jarvis.bat`** |
+| **macOS** | double-click **`Wake up Jarvis.command`** |
 | **Either** | `python start.py` |
 
 It prints what it found and opens `http://127.0.0.1:8733/`. Stop with `Ctrl+C`.
@@ -716,7 +716,7 @@ http://127.0.0.1:8733/?theme=light#explorer
 ```
 BARRY GUI/
   Setup Windows.bat / Setup Mac.command      one-time install
-  Start BARRY GUI.bat / .command             launchers
+  Wake up Jarvis.bat / .command             launchers
   setup.py  start.py  requirements.txt
   backend/
     app.py          Flask routes (86 of them)

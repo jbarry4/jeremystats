@@ -24,7 +24,7 @@ import os
 import re
 import time
 
-from . import shards
+from . import extras, shards
 
 KINDS = {
     "bug": "Something is broken",
@@ -46,6 +46,15 @@ _SAFE = re.compile(r"[^A-Za-z0-9_.-]+")
 def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()) \
         + time.strftime("%z")
+
+
+# An overlay is one machine's triage of a report somebody else filed:
+# `<id>~<machine>.json` beside the filer's `<id>@<machine>.json`. A separate
+# sigil rather than `@` because the shard layer must NOT read an overlay as
+# another machine's copy of the base record -- but the machine name is still
+# in the name, which is what makes an overlay unable to conflict. Named here
+# because `tools/conflict_check.py` has to recognise it too.
+OVERLAY_SIGIL = "~"
 
 
 class Feedback:
@@ -99,8 +108,12 @@ class Feedback:
             # Two machines can only hold the same report as filed if
             # somebody copied a file by hand. The earlier one is the
             # original.
-            if rid not in base or (rec.get("at") or "") < (
-                    base[rid].get("at") or ""):
+            # Earlier wins, compared as a time. A copy pulled from the
+            # shared table is UTC and one written here carries this
+            # machine's offset, so as text the later of the two can sort
+            # first and the wrong copy becomes the original.
+            if rid not in base or extras.marked_after(
+                    rec.get("at"), base[rid].get("at")):
                 base[rid] = rec
 
         out = []
@@ -120,12 +133,16 @@ class Feedback:
                             notes.append(n)
                     if ov.get("state") and (
                             newest is None
-                            or (ov.get("state_at") or "") > (newest.get("state_at") or "")):
+                            or extras.marked_after(newest.get("state_at"),
+                                                   ov.get("state_at"))):
                         newest = ov
-                notes.sort(key=lambda n: n.get("at") or "")
+                # By time: notes come from every machine that has
+                # touched the report, in whatever offset each wrote.
+                notes.sort(key=lambda n: extras.moment_key(
+                    n.get("at")))
                 rec["notes"] = notes
-                if newest and (newest.get("state_at") or "") > (
-                        rec.get("state_at") or ""):
+                if newest and extras.marked_after(rec.get("state_at"),
+                                                  newest.get("state_at")):
                     rec["state"] = newest["state"]
                     rec["state_at"] = newest.get("state_at")
                     rec["state_by"] = newest.get("state_by")
@@ -133,7 +150,8 @@ class Feedback:
                     {rec.get("shard") or ""}
                     | {ov.get("shard") or "" for ov in rows})
             out.append(rec)
-        out.sort(key=lambda r: r.get("at") or "", reverse=True)
+        out.sort(key=lambda r: extras.moment_key(r.get("at")),
+                 reverse=True)
         return out
 
     def get(self, rec_id):
@@ -211,7 +229,8 @@ class Feedback:
         return out
 
     def _overlay_file(self, rec_id):
-        return os.path.join(self.dir, "%s~%s.json" % (rec_id, self.machine))
+        return os.path.join(self.dir, "%s%s%s.json"
+                            % (rec_id, OVERLAY_SIGIL, self.machine))
 
     def update(self, rec_id, patch, user=None):
         """Set a state or add a note, in THIS machine's file only.
@@ -321,7 +340,7 @@ class Feedback:
         changed = False
         theirs = row.get("state_at") or ""
         if (row.get("state") and row["state"] != mine.get("state")
-                and theirs > (mine.get("state_at") or "")):
+                and extras.marked_after(mine.get("state_at"), theirs)):
             self.update(rid, {"state": row["state"]},
                         user=row.get("state_by") or "")
             changed = True

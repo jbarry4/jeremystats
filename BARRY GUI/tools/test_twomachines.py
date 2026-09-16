@@ -2,7 +2,7 @@
 test_twomachines.py -- Two computers, one repo, no conflicts.
 
 test_shards.py proves the merge algebra. This proves the thing people actually
-care about: that BARRY's stores, as wired up, let two machines work on the same
+care about: that Jarvis's stores, as wired up, let two machines work on the same
 recordings and end up agreeing -- and that git would have nothing to resolve.
 
 It works on a throwaway copy of GUI_logs, so it never touches real records.
@@ -23,6 +23,8 @@ sys.path.insert(0, APP)
 
 from backend import shards  # noqa: E402
 
+import conflict_check  # noqa: E402
+
 FAILED = []
 
 
@@ -36,8 +38,8 @@ def check(name, got, want):
 
 
 def stores(logs, machine):
-    """A fresh set of BARRY's stores, pretending to be `machine`."""
-    os.environ["BARRY_MACHINE"] = machine
+    """A fresh set of Jarvis's stores, pretending to be `machine`."""
+    os.environ["Jarvis_MACHINE"] = machine
     shards._MACHINE = None
     for mod in [m for m in list(sys.modules)
                 if m.startswith("backend.") or m == "backend"]:
@@ -147,16 +149,21 @@ def main():
                        if d not in (".cache", "__pycache__")
                        and not d.startswith(".")]
             for name in files:
-                stem = name.rsplit(".", 1)[0]
                 # Dotfiles are configuration, not records: .cloud.json holds
                 # this machine's Supabase key, is gitignored, and so cannot
                 # conflict -- it has no business carrying a machine tag.
                 if name.startswith("."):
                     continue
-                if shards.SIGIL not in stem and "runs" not in folder \
-                        and not name.endswith(".md"):
-                    clash.append(os.path.relpath(
-                        os.path.join(folder, name), logs))
+                # Asked of `conflict_check.classify`, not re-implemented.
+                # This loop used to have its own copy of the rule and the two
+                # drifted: the copy did not know that a feedback overlay
+                # (`<id>~<machine>.json`) is per-machine, so it called four
+                # of them conflicts.
+                rel = os.path.relpath(os.path.join(folder, name),
+                                      logs).replace("\\", "/")
+                kind, _why = conflict_check.classify(rel, name)
+                if kind == "SHARED":
+                    clash.append(rel)
         check("no file without a machine tag", clash, [])
 
         res = subprocess.run(
@@ -165,7 +172,7 @@ def main():
         check("conflict_check agrees", res.returncode, 0)
 
     finally:
-        os.environ.pop("BARRY_MACHINE", None)
+        os.environ.pop("Jarvis_MACHINE", None)
         shards._MACHINE = None
         shutil.rmtree(tmp, ignore_errors=True)
 

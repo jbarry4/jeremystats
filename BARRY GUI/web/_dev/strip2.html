@@ -125,9 +125,28 @@ async function until(fn, ms) {
   say('=== a menu opens, and what it holds works ===', 'hd');
   const btn = (name) => $$('.pane-ctl .ctl-menu').find(
     (b) => b.textContent.startsWith(name));
-  btn('Filter').click();
-  await sleep(400);
+  /* Anything already open, dismissed first.
+
+     This harness crashed when it followed `strip.html`: a popover left open
+     meant the click below closed it rather than opening the Filter one, so
+     `.ctl-pop` was null and the next line measured nothing. A menu that
+     toggles is right; a test that assumes it starts closed is not. */
+  const dismiss = async () => {
+    for (let i = 0; i < 3 && $('.ctl-pop'); i += 1) {
+      D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+        { key: 'Escape', bubbles: true }));
+      await sleep(200);
+    }
+  };
+  await dismiss();
+  const filterBtn = btn('Filter');
+  check('there is a Filter menu on the strip', !!filterBtn,
+        $$('.pane-ctl .ctl-menu').map((b) => b.textContent.trim()).join(' | '));
+  if (!filterBtn) return;
+  filterBtn.click();
+  await until(() => $('.ctl-pop'), 5000);
   check('the Filter popover opens', !!$('.ctl-pop'));
+  if (!$('.ctl-pop')) return;
   const labels = () => $$('.ctl-pop .ctl > label').map((l) => l.textContent);
   check('it holds all three corners',
         ['High-pass', 'Low-pass', 'Notch'].every((k) => labels().includes(k)),

@@ -1,5 +1,5 @@
 """
-shards.py -- Why BARRY's logs can never produce a git conflict.
+shards.py -- Why Jarvis's logs can never produce a git conflict.
 
 The rule
 --------
@@ -166,13 +166,13 @@ def machine_id():
     exact failure this module exists to prevent -- so the network MAC is mixed
     in and shows up as a four-character tag.
 
-    BARRY_MACHINE overrides it, which is how the tests pretend to be a second
+    Jarvis_MACHINE overrides it, which is how the tests pretend to be a second
     computer.
     """
     global _MACHINE
     if _MACHINE:
         return _MACHINE
-    forced = os.environ.get("BARRY_MACHINE")
+    forced = os.environ.get("Jarvis_MACHINE")
     if forced:
         _MACHINE = _slug(forced)[:32] or "machine"
         return _MACHINE
@@ -399,6 +399,17 @@ class Book:
         return os.path.join(self.dir,
                             "%s%s%s%s" % (base, SIGIL, machine_id(), self.ext))
 
+    def read_mine(self, base):
+        """This machine's own shard, unmerged.
+
+        For records that are ABOUT this machine -- who is at it, what it is
+        called. `read` merges every machine's answer with last-write-wins,
+        which is right for a recording's bad channels and wrong for an
+        identity: it hands whoever typed most recently everybody else's
+        name.
+        """
+        return _read_json(self.mine(base)) or {}
+
     def shard_files(self, base):
         out = []
         for name in sorted(_listdir(self.dir)):
@@ -411,7 +422,7 @@ class Book:
         """A cheap value that changes whenever any shard here does.
 
         One directory listing and a stat per file. Enough to cache a derived
-        answer against, and correct across two BARRYs sharing one GUI_logs --
+        answer against, and correct across two Jarviss sharing one GUI_logs --
         which a timer or an invalidate-on-my-own-writes flag would not be.
         """
         out = []
@@ -763,7 +774,7 @@ def _write_json(path, data):
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     # A private scratch name per process and per attempt. A shared
-    # "<name>.tmp" is contended: two BARRYs against the same GUI_logs -- one
+    # "<name>.tmp" is contended: two Jarviss against the same GUI_logs -- one
     # per person, or a stale one still running -- fight over it and one gets
     # "Permission denied" on a file it is perfectly entitled to write. Seen
     # in the wild on cloud_state.json.tmp.
@@ -780,7 +791,7 @@ def _write_json(path, data):
         raise
 
     # Windows refuses the rename if anything has the target open even for a
-    # moment -- an indexer, a backup agent, OneDrive, another BARRY. That is
+    # moment -- an indexer, a backup agent, OneDrive, another Jarvis. That is
     # transient, so it is retried rather than lost.
     last = None
     for attempt in range(6):

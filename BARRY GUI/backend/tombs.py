@@ -23,7 +23,11 @@ import time
 
 from . import shards
 
-KINDS = ("session", "result", "bank", "curation", "layers", "deck")
+# "person" is here for a reason worth stating: removing somebody from the
+# roster has to survive the next sync. Another machine still holding the name
+# pushes its copy, the pull writes it back, and a merge or a removal undoes
+# itself within seconds -- measured, twice.
+KINDS = ("session", "result", "bank", "curation", "layers", "deck", "person")
 
 
 def _now():

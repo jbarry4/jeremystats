@@ -259,12 +259,25 @@ const hd = (t) => p('\n== ' + t + ' ==');
     const known = new Set(((roster.people || [])
       .concat(roster.not_people || []))
       .map((r) => String(r.name || '').toLowerCase()));
+    /* A name that has since been RETIRED is expected here and is not a
+       failure. The activity log keeps whatever name each machine believed
+       at the time -- deliberately, it is a record of what happened -- so a
+       merged-away colleague, or a probe another harness created and
+       removed, will still appear in it. What would be wrong is a name the
+       roster has never heard of at all. */
+    let retired = new Set();
+    try {
+      const t = await get('/api/people/retired');
+      retired = new Set((t.names || []).map((n) => String(n).toLowerCase()));
+    } catch (e) { /* an older server has no such route */ }
     const strangers = (dg.by_person || [])
-      .filter((x) => !known.has(String(x.who).toLowerCase()));
-    ck('every digest name is one the roster still recognises',
+      .filter((x) => !known.has(String(x.who).toLowerCase())
+                     && !retired.has(String(x.who).toLowerCase()));
+    ck('every digest name is one the roster knows or has retired',
        strangers.length === 0,
        strangers.map((x) => x.who).join(',')
-         + '  (roster: ' + Array.from(known).join(', ') + ')');
+         + '  (roster: ' + Array.from(known).join(', ')
+         + ' | retired: ' + Array.from(retired).join(', ') + ')');
   }
 
   hd('2b. Reading the digest does not clear it');

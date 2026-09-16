@@ -360,6 +360,21 @@ BARRY.views.xplore = (function () {
   }
 
   function layoutProbe(sess, panel) {
+    const want = panel || panelNow(sess);
+    /* One camera is one pane. The six-up exists because an H10-D is six
+       probe columns, which is a fact about channels -- and video and
+       tracking have none. Six video panes is one that plays and five that
+       sit empty. */
+    if (!isChannelPanel(want)) {
+      BARRY.views.xplore.setPanes([{ panel: want }], { col: 0.5, row: 0.5 });
+      toast('One pane: there is a single camera, so an H10 layout has '
+            + 'nothing to spread it across. Switch back to traces or CSD '
+            + 'for the six columns.', null, 6000);
+      BARRY.activity.log('probe.layout',
+                         { probe: sess.probe, panel: want, columns: 1,
+                           why: 'not a channel panel' }, sess);
+      return true;
+    }
     const cols = probeColumns(sess);
     if (!cols || cols.length !== 6) {
       toast('That probe has no column map to lay out.', 'err');
@@ -372,7 +387,7 @@ BARRY.views.xplore = (function () {
       return false;
     }
     BARRY.views.xplore.setPanes(cols.map((c) => ({
-      panel: panel || panelNow(sess),
+      panel: want,
       channels: c.indices,
       colTag: c.id,
       colShank: c.shank,
@@ -383,7 +398,7 @@ BARRY.views.xplore = (function () {
             + 'recording.', null, 6000);
     }
     BARRY.activity.log('probe.layout', {
-      probe: sess.probe, panel: panel || panelNow(sess),
+      probe: sess.probe, panel: want,
       columns: cols.map((c) => c.indices.length),
     }, sess);
     return true;
@@ -462,6 +477,217 @@ BARRY.views.xplore = (function () {
   function refreshBand(index, sess) {
     if (fLocked(sess)) refreshSession(sess);
     else refreshPane(index);
+  }
+
+  /* ==================================================================
+     Channel lines -- a horizontal mark across a chosen channel
+     ==================================================================
+     Published by whoever cares (Incisor, today) rather than owned here:
+     this module knows where a channel is drawn and nothing about why it
+     matters. Each entry is {key, label, colour, number, onmove}, and
+     `number` is a CSC number rather than a lane, because a lane is a fact
+     about the current pane -- which may be showing every fourth channel --
+     and a channel is a fact about the probe.
+     ================================================================== */
+  let chanLines = [];
+  let dragLine = null;
+
+  function setChannelLines(sess, lines) {
+    chanLines = (lines || []).slice();
+    repaintTraces();
+  }
+
+  function channelLines() { return chanLines.slice(); }
+
+  /* Not only the traces, whatever the name says.
+
+     `drawChannelLines` is called from the raster overlay as well -- a
+     laminar landmark is easiest to read against the CSD bands, which is
+     where somebody checking one actually looks -- so repainting only the
+     traces panes left a dragged line at its old position on a CSD until
+     something else happened to redraw it. Both kinds are repainted from
+     data already in hand; nothing is re-requested. */
+  function repaintTraces() {
+    XF.panes.forEach((p, i) => {
+      if (!p) return;
+      try {
+        if (p.panel === 'traces') drawPane(i);
+        else if (p._panelData) drawRasterGrid(p, p._panelData);
+      } catch (e) { /* one pane that cannot draw must not stop the others */ }
+    });
+  }
+
+  /* Which lane a CSC number is on, or -1 if this pane is not showing it.
+
+     Takes the rows rather than a window, so the traces pane and the rasters
+     can both ask -- `win.series` and a raster's `rows` are the same thing
+     under different names, and both carry `number`. A lookup rather than
+     arithmetic: the pane may be showing every fourth channel. */
+  function laneOfNumber(rows, number) {
+    if (!rows || !rows.length) return -1;
+    for (let i = 0; i < rows.length; i += 1) {
+      if (Number(rows[i].number) === Number(number)) return i;
+    }
+    return -1;
+  }
+
+  /* Drawn after the traces so it sits on top, and labelled at the left
+     where the channel names are, so the mark and the name read as one
+     thing.
+
+     Solid and heavy, with a dark halo under it. The first version was a
+     2 px dash at 80% alpha over traces of the same weight and was reported
+     as hard to read -- and dashes were wrong anyway: they read as
+     provisional when this is the most definite thing on the pane, and they
+     break the horizontal continuity that makes a line findable at a glance
+     across a wide plot. */
+  function drawChannelLines(ctx, rows, padL, plotW, padTop, plotH) {
+    if (!chanLines.length || !rows || !rows.length) return;
+    const lane = plotH / rows.length;
+    ctx.save();
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(rows, line.number);
+      if (i < 0) {
+        drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH);
+        continue;
+      }
+      const y = Math.round(padTop + lane * (i + 0.5)) + 0.5;
+      const on = dragLine === line;
+      const col = line.colour || '#e5484d';
+
+      // A dark halo first, so the line holds against a bright trace
+      // without having to be a colour that fights the palette.
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = on ? 7 : 5.5;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col;
+      ctx.lineWidth = on ? 4 : 3;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+
+      // A grip at each end: the line is a thing you can take hold of, and
+      // at this width the right-hand end alone is easy to miss.
+      ctx.fillRect(padL, y - 7, 5, 14);
+      ctx.fillRect(padL + plotW - 5, y - 7, 5, 14);
+
+      // The label in a filled pill, so it is legible over anything.
+      const label = line.label + '  ' + (rows[i].label || '');
+      ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const w = ctx.measureText(label).width + 14;
+      const ly = y - 17;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(padL + 8, ly, w, 17, 8);
+      else ctx.rect(padL + 8, ly, w, 17);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, padL + 15, ly + 12.5);
+    }
+    ctx.restore();
+  }
+
+  /* A channel that was chosen but is not on screen.
+
+     The pane may be showing every fourth channel, or the even ones only, and
+     the chosen one is then simply absent -- no line, no label, nothing. That
+     reads as "the choice did not take". So it is marked at the edge nearest
+     where it would sit, named, and said to be hidden. */
+  function drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH) {
+    const nums = rows.map((x) => Number(x.number));
+    const want = Number(line.number);
+    const above = nums.every((n) => n > want);
+    const below = nums.every((n) => n < want);
+    // Between two shown channels, or past one end: either way it is placed
+    // where the probe says it belongs.
+    let frac = 0.5;
+    if (above) frac = 0;
+    else if (below) frac = 1;
+    else {
+      let k = 0;
+      while (k < nums.length - 1 && nums[k + 1] < want) k += 1;
+      frac = (k + 1) / rows.length;
+    }
+    const y = Math.round(padTop + Math.max(10, Math.min(plotH - 10,
+                                                        frac * plotH))) + 0.5;
+    const col = line.colour || '#e5484d';
+    const label = line.label + '  ' + (line.numberLabel || ('CSC' + want))
+                + '  \u2014 hidden';
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    const w = ctx.measureText(label).width + 26;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(padL + 8, y - 9, w, 18, 9);
+    else ctx.rect(padL + 8, y - 9, w, 18);
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // A short dashed stub, because this one IS provisional: it says where
+    // the channel would be, not where it is.
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padL + 8 + w + 4, y);
+    ctx.lineTo(padL + plotW, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, padL + 18, y + 4);
+    // An eye-off dot, so the word is not the only thing carrying it.
+    ctx.beginPath();
+    ctx.arc(padL + 14, y, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* Picked up within a fraction of a lane of the line; let go over whatever
+     lane the pointer is on, and the CSC NUMBER of that lane is what gets
+     reported -- never an index, which means something different in a pane
+     showing a subset. */
+  function channelLineAt(pane, x, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !chanLines.length) return null;
+    const padL = PAD_TRACES_L;
+    if (x < padL) return null;
+    for (const line of chanLines) {
+      if (line.number == null) continue;
+      const i = laneOfNumber(win.series, line.number);
+      if (i < 0) continue;
+      const ly = geom.top + geom.lane * (i + 0.5);
+      if (Math.abs(y - ly) <= Math.max(5, geom.lane * 0.35)) return line;
+    }
+    return null;
+  }
+
+  function channelLineDrop(pane, y) {
+    const win = pane && pane._win;
+    const geom = pane && pane._geom;
+    if (!win || !geom || !dragLine) { dragLine = null; return; }
+    // The same clamp the readout uses, for the same reason.
+    const i = clamp(Math.floor((y - geom.top) / geom.lane), 0,
+                    win.series.length - 1);
+    const number = Number(win.series[i].number);
+    const line = dragLine;
+    dragLine = null;
+    if (Number(line.number) !== number) {
+      line.number = number;
+      if (typeof line.onmove === 'function') line.onmove(number);
+    }
+    repaintTraces();
   }
 
   /* ==================================================================
@@ -1231,7 +1457,20 @@ BARRY.views.xplore = (function () {
              by column, so the panel type belongs to the view. Changing it
              on one pane used to leave the other five behind: six clicks to
              go from CSD to voltage raster, and six chances to miss one. */
-          const spread = (sess && sess.probe && sess.probe !== 'h3')
+          const inProbeLayout = !!(sess && sess.probe && sess.probe !== 'h3'
+                                   && pane.colTag);
+          /* Video and tracking have no channels, so a six-up has nothing to
+             spread them across: it produced six video panes, one playing
+             and five empty. Collapse to one instead of copying the panel
+             into all six. */
+          if (inProbeLayout && !isChannelPanel(want)) {
+            BARRY.activity.log('panel.change', { from: prev, to: want,
+                                                 pane: index,
+                                                 collapsed: true }, sess);
+            layoutProbe(sess, want);
+            return;
+          }
+          const spread = inProbeLayout
             ? XF.panes.filter(
                 (p, i) => p && i !== index && p.colTag
                           && p.sessionId === pane.sessionId)
@@ -1590,6 +1829,17 @@ BARRY.views.xplore = (function () {
                           : (data && data.clim_auto);
     const pinned = isTraces ? (sess.ylim != null)
                             : !!(pane.clim || sess.clim);
+    /* Is zero the middle of this quantity or the floor of it?
+
+       Voltage, CSD and theta are signed and a diverging map means something,
+       so their scale is one magnitude either side of zero. Decibels above a
+       reference and a modulation index are one-sided: there is no negative
+       half to preserve and forcing symmetry on [-5, 25] dB gives [-25, 25],
+       which is half a map showing nothing. The panel says which it is; the
+       default is symmetric because that is what every panel that predates
+       the flag is. */
+    const twoSided = isTraces || !data
+      || data.clim_symmetric !== false;
     /* Whether this strip speaks for the whole grid. Worth saying on the
        control: "pinned" on a strip that reached one of six panes was true
        about that pane and false about the picture. */
@@ -1602,7 +1852,13 @@ BARRY.views.xplore = (function () {
       magnitude = sess.ylim != null ? sess.ylim : (auto || 100);
     } else {
       const cur = pane.clim || sess.clim || auto || [-1, 1];
-      magnitude = Math.max(Math.abs(cur[0]), Math.abs(cur[1])) || 1;
+      /* On a one-sided scale the slider drives the SPAN -- how far below the
+         top the map reaches -- because that is the only number on a dB axis
+         a person wants to move. On a signed one it drives the half-range, as
+         before. */
+      magnitude = twoSided
+        ? (Math.max(Math.abs(cur[0]), Math.abs(cur[1])) || 1)
+        : (Math.abs(cur[1] - cur[0]) || 1);
     }
 
     const units = isTraces ? 'uV' : ((data && data.units) || '');
@@ -1637,10 +1893,18 @@ BARRY.views.xplore = (function () {
       // new image -- but only after the drag settles, not per pixel.
       // Measured from the scale at the start of the drag, so dragging back
       // and forth lands where the pointer says rather than compounding.
-      const peak = Math.max(Math.abs(baseClim[0]), Math.abs(baseClim[1])) || 1;
-      const k = m / peak;
-      setClim(index, pane, sess,
-              [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)]);
+      if (twoSided) {
+        const peak = Math.max(Math.abs(baseClim[0]), Math.abs(baseClim[1])) || 1;
+        const k = m / peak;
+        setClim(index, pane, sess,
+                [round(baseClim[0] * k, 6), round(baseClim[1] * k, 6)]);
+      } else {
+        /* Anchored at the top. Scaling both ends about zero would drag the
+           peak of a dB panel around with the dynamic range, and the top of
+           the map is the one thing on that axis worth holding still. */
+        const top = baseClim[1];
+        setClim(index, pane, sess, [round(top - m, 6), round(top, 6)]);
+      }
       clearTimeout(pane._climTimer);
       pane._climTimer = setTimeout(() => refreshPane(index), commit ? 0 : 220);
       if (commit) {
@@ -1679,12 +1943,18 @@ BARRY.views.xplore = (function () {
 
     return el('div', { class: 'ctl scale-ctl' }, [
       el('label', {
-        text: isTraces ? '\u00b1 ' + units : 'Color',
+        /* "Range" on a one-sided scale, because that is what the number
+           beside it is: decibels from the top of the map to the bottom, not
+           a limit either side of zero. */
+        text: isTraces ? '\u00b1 ' + units : (twoSided ? 'Color' : 'Range'),
         title: auto
           ? (isTraces
              ? 'Auto is ' + sig(auto) + ' ' + units
                + ' \u2014 the 99.5th percentile of this window'
-             : 'Auto is [' + sig(auto[0]) + ', ' + sig(auto[1]) + ']')
+             : 'Auto is [' + sig(auto[0]) + ', ' + sig(auto[1]) + ']'
+               + (twoSided ? ''
+                  : ' \u2014 one-sided, so the number here is how far the '
+                    + 'map reaches below the top'))
           : 'Derived from each window',
       }),
       el('div', { class: 'ctl-group' }, [
@@ -1712,8 +1982,24 @@ BARRY.views.xplore = (function () {
                 setClim(index, pane, sess, null);
                 if (sess) sess.clim = null;
               } else {
+                /* Pin what is on screen, read at the moment of the click.
+
+                   Not `baseClim`: that was captured when this strip was
+                   built, which is before the first panel came back, so on a
+                   fresh pane it is the [-1, 1] placeholder. `fetchImagePanel`
+                   assigns `_panelData` without rebuilding the strip -- by
+                   design, because a rebuild on every fetch replaces the
+                   slider under a dragging pointer -- so the closed-over value
+                   never catches up. Reading it here is right whenever the
+                   click lands.
+
+                   And pinned as it is, not rebuilt from one magnitude: a dB
+                   panel's [-3, 27] is not symmetric and forcing it to
+                   [-27, 27] throws away most of the map. */
+                const live = (pane._panelData && pane._panelData.clim)
+                          || baseClim;
                 setClim(index, pane, sess,
-                        [-Math.abs(magnitude), Math.abs(magnitude)]);
+                        [round(live[0], 6), round(live[1], 6)]);
               }
               BARRY.activity.log('clim.change',
                                  { clim: pane.clim, panel: pane.panel }, sess);
@@ -1745,6 +2031,156 @@ BARRY.views.xplore = (function () {
     ['delta', 1, 4], ['theta', 4, 12], ['beta', 12, 30],
     ['gamma', 30, 100], ['ripple', 100, 250], ['all', null, null],
   ];
+
+  /* ======================================================================
+     The band axis, for the band-resolved power panel
+
+     Not the same thing as f min / f max above, and kept apart from them on
+     purpose. Those crop a transform that was computed over a fixed band;
+     these decide which filters get designed, so moving them changes the
+     numbers rather than the view. Two controls that look alike and mean
+     different things is how somebody reports a band they never analysed.
+     ====================================================================== */
+  const BAND_DEFAULT = { lo: 4, hi: 12, step: 0.5, bw: 0, scale: 'log' };
+
+  const BAND_PRESETS = [
+    ['Theta', 4, 12, 0.5],
+    ['Delta-theta', 1, 12, 0.5],
+    ['Slow', 1, 30, 1],
+    ['Gamma', 30, 100, 5],
+  ];
+
+  function bandSet(pane) {
+    const b = Object.assign({}, BAND_DEFAULT, (pane && pane.band) || {});
+    // A bandwidth of 0 means "as wide as the step", which is the contiguous
+    // arrangement newFCSE.m uses and the only one where the bands tile.
+    b.bw = b.bw || b.step;
+    return b;
+  }
+
+  function setBandAxis(index, pane, patch) {
+    pane.band = Object.assign(bandSet(pane), patch);
+    refreshPane(index);
+  }
+
+  /* What the filter is really going to do, worked out in the browser.
+
+     `eegfilt` designs its order from the low cutoff -- 3 * fix(fs / f1) taps
+     -- and the width that comes out is about 0.30 * f1 however narrow you
+     asked. So the 0.5 Hz bands across theta are really 1.1 Hz wide at the
+     bottom and 3.4 Hz at the top, and they overlap.
+
+     That is not a defect to hide. It is the single most misleading thing
+     about a band axis, and the panel that would otherwise imply seventeen
+     independent measurements is the one that has to say it. The server
+     measures it properly from the frequency response and sends the numbers
+     back; this is the same arithmetic, done before the request, so the
+     control can warn while you are still typing. */
+  function roughBW(lo) { return 0.30 * lo; }
+
+  function bandControl(index, pane, sess) {
+    const b = bandSet(pane);
+    const res = pane._panelData || {};
+    const n = Math.max(Math.round((b.hi - b.lo) / b.step) + 1, 1);
+
+    const num = (key, value, title, min, max, stepAttr) => el('input', {
+      type: 'number', class: 'mini-num', value: value, min: min, max: max,
+      step: stepAttr, title: title,
+      onchange: (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isFinite(v)) { e.target.value = value; return; }
+        setBandAxis(index, pane, { [key]: v });
+      },
+    });
+
+    // Measured if the panel has answered, predicted if it has not. Saying
+    // which is the difference between a readout and a guess.
+    const lowW = res.realised_bw_range ? res.realised_bw_range[0]
+                                       : roughBW(b.lo);
+    const hiW = res.realised_bw_range ? res.realised_bw_range[1]
+                                      : roughBW(b.hi);
+    const measured = !!res.realised_bw_range;
+    const overlap = lowW > b.step * 1.25;
+
+    return el('div', { class: 'band-ctl' }, [
+      el('div', { class: 'band-row' }, [
+        el('span', { class: 'hint', text: 'Hz' }),
+        num('lo', b.lo, 'Bottom of the lowest band', 0.5, 400, 0.5),
+        el('span', { class: 'hint', text: 'to' }),
+        num('hi', b.hi, 'Bottom of the highest band', 1, 500, 0.5),
+        el('span', { class: 'hint', text: 'step' }),
+        num('step', b.step, 'Spacing between band edges', 0.1, 50, 0.1),
+        el('span', { class: 'band-count', text: n + ' bands' }),
+      ]),
+      el('div', { class: 'band-row' },
+         BAND_PRESETS.map(([name, lo, hi, step]) => el('button', {
+           class: 'mini' + (b.lo === lo && b.hi === hi && b.step === step
+                            ? ' on' : ''),
+           text: name,
+           title: lo + '-' + hi + ' Hz in ' + step + ' Hz steps',
+           onclick: () => setBandAxis(index, pane, { lo, hi, step, bw: 0 }),
+         })).concat([
+           el('div', { style: 'flex:1' }),
+           el('button', {
+             class: 'mini' + (b.scale === 'linear' ? '' : ' on'),
+             text: b.scale === 'linear' ? 'uV²' : 'dB',
+             title: b.scale === 'linear'
+               ? 'Linear power, the units ThetaPower.m reports. Click for dB.'
+               : 'Log power. Theta spans decades within one window, so this '
+                 + 'is usually the readable one. Click for linear uV².',
+             onclick: () => setBandAxis(index, pane, {
+               scale: b.scale === 'linear' ? 'log' : 'linear' }),
+           }),
+         ])),
+      /* The line this panel exists to be able to print -- and a way in to
+         why it is true.
+
+         The line is short, and short is what makes it repeatable. But "the
+         bands overlap" is a fact about filter length that takes a chapter to
+         earn, and somebody meeting it for the first time has nowhere to go
+         from here. The (i) opens that chapter, with the eleven around it for
+         anyone who wants the whole story rather than this one line's worth.
+
+         Inside the paragraph, after the sentence: a button after the
+         paragraph would sit on its own line, and this belongs to the
+         sentence. */
+      el('p', {
+        class: 'hint band-truth' + (overlap ? ' warn' : ''),
+        title: 'eegfilt designs 3*fix(fs/f1) taps from the LOW cutoff, so the '
+             + 'realised width is about 0.30 x that however narrow a band you '
+             + 'ask for. The rows of this panel overlap, and reading them as '
+             + 'independent measurements is the mistake this line exists to '
+             + 'stop.',
+      }, [
+        el('span', {
+          text: (measured ? 'Really ' : 'Will be about ')
+              + lowW.toFixed(2) + '–' + hiW.toFixed(2) + ' Hz wide, '
+              + 'not ' + b.step + '. '
+              + (overlap ? 'The bands overlap — this is a smooth read of '
+                         + 'where the rhythm sits, not ' + n + ' separate '
+                         + 'measurements.'
+                         : 'Wide enough apart to read separately.'),
+        }),
+        el('button', {
+          class: 'why',
+          text: 'i',
+          'aria-label': 'Why the bands are wider than the step you asked for',
+          title: 'Why 0.5 Hz is not 0.5 Hz — and what theta power and '
+               + 'the comodulogram are doing, from the beginning',
+          onclick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            BARRY.cfcGuide.open('width');
+          },
+        }),
+      ]),
+      res.peak_band ? el('p', { class: 'hint',
+        text: 'Strongest in this window: ' + res.peak_band.toFixed(2) + ' Hz'
+            + (res.peak_power ? '  ·  ' + res.peak_power.toPrecision(3)
+                                + ' uV²' : ''),
+      }) : null,
+    ].filter(Boolean));
+  }
 
   function freqViewControl(index, pane, sess) {
     const res = pane._panelData || {};
@@ -2340,6 +2776,10 @@ BARRY.views.xplore = (function () {
       const band = trimNum(fb.fmin) + '–' + trimNum(fb.fmax);
       return n > 1 ? n + ' ch  ' + band : band;
     }
+    if (pane.panel === 'bandpower') {
+      const b = bandSet(pane);
+      return trimNum(b.lo) + '–' + trimNum(b.hi) + '  /' + trimNum(b.step);
+    }
     if (pane.panel === 'csd') return trimNum(sess.spacing) + ' µm';
     return pane.cmap || 'jet';
   }
@@ -2486,6 +2926,10 @@ BARRY.views.xplore = (function () {
       rows.push(popRow(null, [freqViewControl(index, pane, sess)]));
     }
 
+    if (pane.panel === 'bandpower') {
+      rows.push(popRow('Bands', [bandControl(index, pane, sess)]));
+    }
+
     if (isImagePanel(pane.panel)) {
       rows.push(popRow('Colormap', [
         el('select', {
@@ -2566,7 +3010,26 @@ BARRY.views.xplore = (function () {
           },
         }),
         el('span', { class: 'cc-n', text: String(c.number) }),
-        isBad ? el('span', { class: 'cc-bad', text: 'bad' }) : null,
+        /* Mark it bad from here.
+
+           The side rail this popover replaced had a toggle on every row,
+           and only the selection came across -- so on a voltage, CSD or
+           theta pane, where there are no lanes on the plot to click, there
+           was no way to mark a channel bad at all. A raster is exactly
+           where a dead channel is obvious. */
+        el('button', {
+          class: 'badbtn' + (isBad ? ' on' : ''),
+          text: isBad ? 'bad' : 'ok',
+          title: isBad ? c.label + ' is marked bad \u2014 click to clear'
+                       : 'Mark ' + c.label + ' bad',
+          'aria-label': (isBad ? 'Clear the bad mark on ' : 'Mark bad: ')
+                        + c.label,
+          onclick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleBad(sess, c.number);
+          },
+        }),
       ].filter(Boolean)));
     }
     return box;
@@ -4618,69 +5081,23 @@ BARRY.views.xplore = (function () {
     refreshAll();
   }
 
-  const isImagePanel = (p) => ['voltage', 'csd', 'theta', 'spectrogram', 'scalogram'].includes(p);
+  const isImagePanel = (p) => ['voltage', 'csd', 'theta', 'bandpower',
+                             'spectrogram', 'scalogram'].includes(p);
   const firstSel = (sess) => (sess.sel.size ? Math.min(...sess.sel) : 0);
 
-  /* ---------- channel list with bad marking ---------- */
-  function paneChannels(index, sess) {
-    const host = el('div', { class: 'pane-chans' });
-    // Fixed-height header: its height is a contract with the canvas (see
-    // CH_HEADER_H), so the rows below it line up with the trace lanes.
-    const top = el('div', { class: 'ch-top' });
-    host.appendChild(top);
-    top.appendChild(el('div', { class: 'ch-head' }, [
-      el('strong', { text: 'Channels' }),
-      el('span', { text: sess.sel.size + '/' + sess.info.channels.length }),
-      el('div', { class: 'spacer' }),
-      collapseArrow('channels', 'left'),
-    ]));
+  /* The side channel rail used to live here: a row per channel down the
+     right of every raster pane, with a bad-marking button on each.
 
-    const quick = el('div', { class: 'ch-quick' });
-    for (const [k, label] of [['all', 'All'], ['none', 'None'], ['even', 'Even'],
-                              ['odd', 'Odd'], ['invert', 'Flip'], ['good', 'Good']]) {
-      quick.appendChild(el('button', {
-        class: 'mini', text: label,
-        title: k === 'good' ? 'Select only channels not marked bad' : '',
-        onclick: () => { quickSelect(sess, k); render(); refreshSession(sess); },
-      }));
-    }
-    top.appendChild(quick);
+     It went when the channel selection was consolidated into one control,
+     because it moved and changed shape depending on the panel -- "The
+     Channel selection moves when it is not a voltage raster, just keep it
+     in the same spot with the same formatting". `channelPop` and `chanList`
+     above are what replaced it: the `Ch` menu in the pane's own strip, in
+     the same place whatever the pane is showing.
 
-    const list = el('div', { class: 'ch-list' });
-    for (const c of sess.info.channels) {
-      const isBad = sess.bad.has(c.number) || c.bad;
-      list.appendChild(el('label', {
-        class: 'ch-row' + (sess.sel.has(c.index) ? '' : ' off') + (isBad ? ' marked-bad' : ''),
-        'data-num': String(c.number),
-        title: c.label + (isBad ? '  (marked bad)' : ''),
-      }, [
-        el('input', {
-          type: 'checkbox', checked: sess.sel.has(c.index) ? 'checked' : null,
-          onchange: (e) => {
-            if (e.target.checked) sess.sel.add(c.index); else sess.sel.delete(c.index);
-            render(); refreshSession(sess);
-            queueSaveState(sess);
-            publishLink(sess.t0, sess.span, sess);
-          },
-        }),
-        el('span', { text: c.label }),
-        el('button', {
-          class: 'badbtn', text: isBad ? 'BAD' : 'ok',
-          title: isBad ? 'Marked bad — click to clear' : 'Mark this channel bad',
-          onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleBad(sess, c.number); },
-        }),
-      ]));
-    }
-    if (sess.identity && sess.identity.mouse == null) {
-      top.appendChild(el('div', {
-        class: 'ch-note',
-        title: 'Rename the folder to include m<N> and s<N> to make these stick.',
-        text: 'No mouse/session id — marks stay local',
-      }));
-    }
-    host.appendChild(list);
-    return host;
-  }
+     The function stayed behind, unreachable, for long enough that a harness
+     went on looking for its markup and reporting the absence as a fault. */
+
 
   function quickSelect(sess, kind) {
     const all = sess.info.channels;
@@ -4930,6 +5347,52 @@ BARRY.views.xplore = (function () {
     return since < 900 ? PANEL_SETTLE : 80;
   }
 
+  /* What the wait is for.
+
+     `loader(label, sub)` builds its text once, when the pane is built, so
+     the overlay said "reading channels" whatever was being asked for. This
+     rewrites the two lines per request -- cheap, and the only chance to be
+     specific about a read that can take ten times as long. */
+  const PANEL_WORDS = {
+    traces: 'Voltage traces', voltage: 'Voltage raster', csd: 'CSD raster',
+    theta: 'Theta raster', bandpower: 'Band power',
+    spectrogram: 'Spectrogram', scalogram: 'Scalogram',
+  };
+
+  function sayLoading(pane, sess) {
+    const host = pane && pane._loading;
+    if (!host) return;
+    const strong = host.querySelector('.loader-text strong');
+    const sub = host.querySelector('.loader-text span');
+    const fs = (sess && sess.info && sess.info.fs) || 0;
+    const rate = fs >= 1000 ? Math.round(fs / 1000) + ' kHz'
+                            : (fs ? Math.round(fs) + ' Hz' : '');
+    const nch = (sess && sess.sel && sess.sel.size) || 0;
+    const chans = nch ? nch + ' channel' + (nch === 1 ? '' : 's') : '';
+    const bits = [];
+    if (pane.fullRate) {
+      if (rate) bits.push('every sample at ' + rate);
+      if (sess && (sess.hp || sess.lp || sess.notch)) {
+        bits.push('exact filters, no shortcut');
+      }
+      if (pane.panel === 'bandpower' && rate) {
+        bits.push('filters designed at ' + rate);
+      }
+      if (chans) bits.push(chans);
+    } else {
+      if (chans) bits.push(chans);
+      if (pane.panel === 'bandpower') bits.push('one filter per band');
+      else if (pane.panel === 'scalogram') bits.push('wavelet transform');
+      else if (pane.panel === 'spectrogram') bits.push('short-time Fourier');
+    }
+    if (strong) {
+      strong.textContent = pane.fullRate
+        ? 'Full rate — the slow read'
+        : (PANEL_WORDS[pane.panel] || 'Reading');
+    }
+    if (sub) sub.textContent = bits.join('  \u00b7  ');
+  }
+
   function refreshPane(index) {
     clearTimeout(debouncers[index]);
     debouncers[index] = setTimeout(() => doRefreshPane(index),
@@ -4962,6 +5425,7 @@ BARRY.views.xplore = (function () {
     // that ever rendered.
     const id = (pane._req = (pane._req || 0) + 1);
     if (pane._loading) pane._loading.classList.remove('hidden');
+    sayLoading(pane, sess);
     const px = Math.max(200, Math.floor((pane._canvas ? pane._canvas.clientWidth : 900) - 70));
     try {
       const win = await apiPost('/api/csc/window', {
@@ -4972,6 +5436,7 @@ BARRY.views.xplore = (function () {
         mode: 'voltage', spacing_um: sess.spacing,
         bad_channels: Array.from(sess.bad),
         ylim: sess.ylim,
+        full_rate: !!pane.fullRate,
       });
       if (id !== pane._req) return;
       sess.win = win;
@@ -4985,6 +5450,11 @@ BARRY.views.xplore = (function () {
                 sess.invert ? 'inverted' : null,
                 sess.evenOnly ? 'even only' : null,
                ].filter(Boolean).join('  \u00b7  '),
+        // The trace is a min/max envelope unless somebody said otherwise,
+        // and that decides whether waveform shape can be read off it.
+        sampling: win.sampling,
+        downsampled: win.downsampled,
+        full_rate: win.full_rate,
       });
       // Drawing is separated from fetching so a render fault is reported as
       // one, instead of being mistaken for a failed request.
@@ -5051,7 +5521,26 @@ BARRY.views.xplore = (function () {
       bad_channels: Array.from(sess.bad),
       max_cols: 1800,
       clim: pane.clim || sess.clim || null,
+      // Off by default. Every panel says whether it took it.
+      full_rate: !!pane.fullRate,
     };
+    if (pane.panel === 'bandpower') {
+      /* One channel, and the band axis rather than a frequency range.
+
+         Deliberately not reusing fmin/fmax. Those crop a transform that was
+         computed over a fixed band; these decide which filters get designed,
+         so changing them changes the numbers. Two controls that look alike
+         and mean different things is how somebody ends up reporting a band
+         they never analysed. */
+      spec.channel = pane.channel != null ? pane.channel : firstSel(sess);
+      const b = bandSet(pane);
+      spec.band_lo = b.lo;
+      spec.band_hi = b.hi;
+      spec.band_step = b.step;
+      spec.band_bw = b.bw;
+      spec.band_scale = b.scale;
+      spec.cmap = pane.cmap || 'jet';
+    }
     if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
       // Multi-channel: an explicit list wins, else the pane's single
       // channel, else whatever is selected in the session.
@@ -5082,12 +5571,24 @@ BARRY.views.xplore = (function () {
       ? new AbortController() : null;
     pane._abort = ctl;
     if (pane._loading) pane._loading.classList.remove('hidden');
+    sayLoading(pane, sess);
     try {
       const spec = panelSpec(index, pane, sess);
       const res = await apiPost('/api/panel', spec,
                                 ctl ? { signal: ctl.signal } : null);
       if (id !== pane._req) return;
+      const hadAuto = JSON.stringify((pane._panelData || {}).clim_auto || null);
       pane._panelData = res;
+      /* The control strip was built before this panel had a scale, so its
+         "Auto is [x, y]" is blank on a fresh pane and stale after the scale
+         moves. Rebuild it when that text would change -- and only then:
+         rebuilding on every fetch would replace the slider under a dragging
+         pointer, which is why nothing else here does it. `_climTimer` is set
+         while a drag is settling, so this stays out of its way. */
+      const nowAuto = JSON.stringify(res.clim_auto || null);
+      if (nowAuto !== hadAuto && !pane._climTimer) {
+        refreshControls(index);
+      }
       if (pane._img) {
         pane._img.src = res.image;
         placePanelImage(pane, sess, res);
@@ -5213,6 +5714,7 @@ BARRY.views.xplore = (function () {
 
     /* Channel rules and labels. Without them a stacked raster is an anonymous
        block of color -- you cannot tell which band is which electrode. */
+    let gutter = 0;
     if (rows.length > 1) {
       const lane = h / rows.length;
       const compact = lane < 13;
@@ -5239,8 +5741,27 @@ BARRY.views.xplore = (function () {
         ctx.fillRect(2, ty - 9, tw + 6, 11);
         ctx.fillStyle = r.bad ? '#ffcf8a' : 'rgba(255,255,255,0.82)';
         ctx.fillText(text, 5, ty);
+        // The widest label drawn, so the caption can start clear of them.
+        // Measured here because the box above needs the width anyway.
+        gutter = Math.max(gutter, 2 + tw + 6);
       }
-    } else if (res.log_freq || (res.freqs && res.freqs.length === 2)) {
+      pane._labelGutter = gutter;
+      placeCaption(pane);
+    }
+
+    /* The channel lines, on the rasters as well as the traces.
+       This is where a laminar landmark is easiest to read -- the layers are
+       visible as bands -- so losing the marks on the way here was exactly
+       backwards. The overlay already has the row geometry; it spans the
+       full panel, with the labels drawn inside rather than in a gutter. */
+    if (rows.length) {
+      drawChannelLines(ctx, rows, 0, w, 0, h);
+    }
+    /* The frequency axis belongs to a panel that has no channel rows --
+       it was the `else` of the block above before the channel lines were
+       drawn between them, and an empty `if` is a worse way to say it. */
+    if (rows.length <= 1
+        && (res.log_freq || (res.freqs && res.freqs.length === 2))) {
       /* The frequency axis of a single time-frequency panel.
 
          Chosen by measurement rather than by an every-nth rule: a candidate
@@ -5312,7 +5833,78 @@ BARRY.views.xplore = (function () {
       }
     }
 
+    if (pane.panel === 'bandpower') drawBandProfile(ctx, res, w, h, P);
+
     drawOverlayMarks(ctx, pane, res, w, h, t0, span, P);
+  }
+
+  /* The marginal: mean power in each band over the window on screen.
+
+     Drawn here as vector rather than baked into the panel image, so it stays
+     crisp at any pane height and sits on exactly the same vertical axis as
+     the heatmap beside it -- which is the only reason it is worth having.
+     The heatmap says when the rhythm moved; this says where it sits, and the
+     two have to share a y axis or the reader has to do the alignment.
+
+     Linear, always, even when the image is in dB: the question this answers
+     is "which band is loudest", and a log axis flattens exactly the
+     difference being looked for. */
+  function drawBandProfile(ctx, res, w, h, P) {
+    const prof = res.profile;
+    if (!prof || prof.length < 2 || !res.centers) return;
+
+    const width = Math.min(Math.max(w * 0.16, 34), 92);
+    const x0 = w - width;
+    let top = 0;
+    for (let i = 0; i < prof.length; i++) if (prof[i] > top) top = prof[i];
+    if (!(top > 0)) return;
+
+    ctx.save();
+    // A backing wash, or the curve is unreadable over the warm end of jet.
+    ctx.fillStyle = P.bg;
+    ctx.globalAlpha = 0.82;
+    ctx.fillRect(x0, 0, width, h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = P.grid || 'rgba(128,128,128,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0 + 0.5, 0);
+    ctx.lineTo(x0 + 0.5, h);
+    ctx.stroke();
+
+    // Row centres, top row first -- the image is drawn low-frequency-down.
+    const n = prof.length;
+    const yOf = (i) => h * (1 - (i + 0.5) / n);
+    const xOf = (v) => x0 + 4 + (width - 10) * (v / top);
+
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = xOf(prof[i]);
+      const y = yOf(i);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = P.accent || '#2a78d6';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // The peak, marked and named. It is the number people come here for.
+    let peak = 0;
+    for (let i = 1; i < n; i++) if (prof[i] > prof[peak]) peak = i;
+    const py = yOf(peak);
+    ctx.beginPath();
+    ctx.arc(xOf(prof[peak]), py, 2.6, 0, 2 * Math.PI);
+    ctx.fillStyle = P.accent || '#2a78d6';
+    ctx.fill();
+    ctx.font = '10px ' + MONO;
+    ctx.fillStyle = P.text || '#111';
+    ctx.textBaseline = 'middle';
+    const label = res.centers[peak].toFixed(2) + ' Hz';
+    const lw = ctx.measureText(label).width;
+    // Inside the strip if it fits, otherwise to the left of it -- a label
+    // running off the pane is worse than one over the data.
+    ctx.fillText(label, Math.min(xOf(prof[peak]) + 6, w - lw - 3),
+                 Math.max(7, Math.min(py, h - 7)));
+    ctx.restore();
   }
 
   /* Candidate frequencies for a y axis, finest first in each decade.
@@ -5474,8 +6066,165 @@ BARRY.views.xplore = (function () {
             + sig(res.freqs[1]) + ' Hz of ' + sig(res.freqs_computed[0])
             + '\u2013' + sig(res.freqs_computed[1]) + ' computed';
     }
-    n.textContent = text;
-    n.classList.toggle('hidden', !text);
+    n.innerHTML = '';
+    n.appendChild(el('span', { text: text }));
+
+    if (res.downsampled) n.appendChild(dsBadge(pane, res));
+    else if (res.full_rate || pane.fullRate) {
+      /* A button, not a label. It was a `<span>`, so once full rate was on
+         there was no way back to the cheap read -- the one thing this chip
+         has to be able to say is "and here is how to undo me". */
+      n.appendChild(dsBadge(pane, res, true));
+    }
+    n.classList.toggle('hidden', !text && !res.downsampled
+                                 && !res.full_rate);
+    placeCaption(pane);
+  }
+
+  /* Clear of the channel gutter.
+
+     The overlay's lanes sit at left:0 too and are as wide as the longest
+     channel name, so this is measured rather than guessed -- a pane showing
+     CSC28-CSC29 needs a wider indent than one showing CSC2. Called from
+     `showPanelInput` and again from `alignChannelRows`, because the lanes
+     are built out of the canvas geometry AFTER the caption is written: on
+     the first call there is usually nothing to measure yet, and on the
+     second there is. */
+  function placeCaption(pane) {
+    const n = pane && pane._inputLine;
+    if (!n) return;
+    /* Two kinds of gutter. A trace pane builds its channel rows as DOM, so
+       the widest lane can be measured. A raster paints its row labels onto
+       the grid canvas and records the widest one it drew. Either way the
+       caption starts after the labels rather than on them. */
+    const lane = pane._overlay && pane._overlay.querySelector('.ch-lane');
+    const indent = lane
+      ? Math.ceil(lane.getBoundingClientRect().width) + 10
+      : (pane._labelGutter ? Math.ceil(pane._labelGutter) + 8 : 0);
+    n.style.left = indent + 'px';
+    n.style.maxWidth = indent ? 'calc(70% - ' + indent + 'px)' : '62%';
+    const box = pane._canvas && pane._canvas.parentNode
+                && pane._canvas.parentNode.querySelector('.ds-detail');
+    if (box) box.style.left = indent + 'px';
+  }
+
+  /* What was downsampled, and the way to turn it off.
+
+     Shown as a badge rather than a line of prose because the point is that
+     it is noticeable: somebody reading a panel cannot tell 3 kHz from
+     30 kHz by looking, and the difference decides what the picture is
+     allowed to mean. */
+  function dsBadge(pane, res, full) {
+    const steps = res.sampling || [];
+    const folded = !full && steps.some((x) => x.antialiased === false);
+    const badge = el('button', {
+      class: 'ds-chip' + (folded ? ' alias' : '') + (full ? ' full' : ''),
+      text: full ? 'FULL RATE' : 'DOWNSAMPLED',
+      title: full
+        ? 'Every sample, no envelope, exact filters. Click to go back to '
+          + 'the cheap read.'
+        : folded
+        ? 'One of these steps is NOT anti-aliased — energy from outside '
+          + 'the band is folded into this picture. Click for what happened.'
+        : 'This panel did not run on every sample. Click for what happened '
+          + 'and how to turn it off.',
+      onclick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        /* The caption's PARENT: not the strip itself, which is one line
+           wide and overflow-hidden, and not an element found by class --
+           `closest('.pane-canvas-host, .pane-plot')` matched something that
+           is not a containing block on an image panel, and the detail
+           opened over the pane's control strip.
+
+           The caption is positioned correctly on every panel type, so
+           sharing its parent shares a frame that is known to work. */
+        const strip = pane._inputLine || badge.parentNode;
+        const plot = strip.parentNode || badge.parentNode;
+        const open = plot.querySelector('.ds-detail');
+        if (open) { open.remove(); return; }
+        plot.appendChild(dsDetail(pane, res));
+        placeCaption(pane);
+      },
+    });
+    return badge;
+  }
+
+  /* A sample rate as somebody would say it: 30 kHz, 3 kHz, 1017 Hz. */
+  function rateWords(hz) {
+    const v = Number(hz) || 0;
+    if (v >= 1000 && Math.abs(v % 1000) < 1) return (v / 1000) + ' kHz';
+    if (v >= 10000) return round(v / 1000, 1) + ' kHz';
+    return round(v, v < 100 ? 1 : 0) + ' Hz';
+  }
+
+  function dsDetail(pane, res) {
+    const steps = res.sampling || [];
+    const box = el('div', { class: 'ds-detail floating' });
+    for (const st of steps) {
+      const bits = [];
+      if (st.from && st.to) {
+        /* `sig` renders 30000 as 3.00e+4. A sample rate is said in
+           kHz or Hz, not in scientific notation. */
+        bits.push(rateWords(st.from) + ' \u2192 '
+                  + rateWords(st.to));
+      }
+      if (st.factor > 1) bits.push('\u00f7' + st.factor);
+      if (st.column_ms) bits.push(round(st.column_ms, 2) + ' ms per column');
+      box.appendChild(el('div', { class: 'ds-step' }, [
+        el('span', { class: 'ds-what', text: st.what }),
+        el('span', { class: 'ds-nums', text: bits.join('  \u00b7  ') }),
+        el('span', { class: 'ds-why', text: st.why || '' }),
+        st.antialiased === false
+          ? el('span', { class: 'ds-warn',
+                         text: 'not anti-aliased — this can put energy '
+                             + 'here that is not in the recording' })
+          : null,
+        /* Said per step, because one panel can have both kinds and the
+           difference decides whether the switch below will do anything. */
+        st.reversible === false
+          ? el('span', { class: 'ds-fixed',
+                         text: 'this one cannot be turned off — a picture '
+                             + 'is as wide as the pane it is drawn in' })
+          : null,
+      ].filter(Boolean)));
+    }
+    const index = XF.panes.indexOf(pane);
+    /* Is there anything for the switch to do? A raster whose only step is
+       its own width has nothing, and offering anyway is how "it opens the
+       dialogue box but never goes through" happens. */
+    const canUndo = pane.fullRate
+      || (res.reversible !== undefined
+          ? !!res.reversible
+          : steps.some((x) => x.reversible !== false));
+    box.appendChild(el('div', { class: 'ds-act' }, [
+      el('button', { class: 'btn ghost sm', text: 'Close',
+                     onclick: () => box.remove() }),
+      !canUndo ? el('span', { class: 'hint',
+        text: 'Nothing here can be turned off: what is listed above is the '
+            + 'size of the picture, not a choice about the analysis.' }) : null,
+      !canUndo ? null : el('button', {
+        class: 'btn sm' + (pane.fullRate ? ' on' : ''),
+        text: pane.fullRate ? 'Full rate is on — turn it off'
+                            : 'Draw at full rate',
+        title: pane.fullRate
+          ? 'Back to the decimated read, which is anti-aliased and much '
+            + 'cheaper.'
+          : 'Every sample, no envelope, exact filters. Refused with a '
+            + 'number if the window is too long for it — the decimation '
+            + 'is what makes some of these analyses possible at all, not '
+            + 'just faster.',
+        onclick: () => {
+          pane.fullRate = !pane.fullRate;
+          box.remove();
+          if (index >= 0) refreshPane(index);
+        },
+      }),
+      canUndo ? el('span', { class: 'hint',
+        text: 'Nothing here is saved; this is how the panel is read.' })
+              : null,
+    ].filter(Boolean)));
+    return box;
   }
 
   /* The filter band in words, matching how the server describes it. */
@@ -5573,6 +6322,12 @@ BARRY.views.xplore = (function () {
       recentring = true;
       try { BARRY.curate.recentre(); } finally { recentring = false; }
     }
+
+    /* Braid's bar reads out the window, and the comodulogram form fills
+       itself in from it. Told rather than polled -- this is the one place
+       the window changes, and a form that quietly went stale would be a
+       form that runs the wrong window. */
+    if (BARRY.cfc && BARRY.cfc.active && BARRY.cfc.refresh) BARRY.cfc.refresh();
   }
 
   function pan(index, frac) {
@@ -5870,7 +6625,17 @@ BARRY.views.xplore = (function () {
           // Which channels are shown is part of the view, so a linked pane in
           // another window should be looking at the same ones.
           channels: Array.from(sess.sel).sort((a, b) => a - b),
-          bad: Array.from(sess.bad).sort((a, b) => a - b),
+          /* The bad list does NOT belong here.
+
+             It used to be sent with the view, and this channel is only
+             published while the windows are linked -- so clearing a mark
+             updated the facts channel and left this one holding the old
+             list for good. Any window that applied the stale view update
+             marked the channel bad again and saved it back, which is how a
+             mark somebody had cleared came back on its own.
+
+             Bad channels travel on the facts channel, which is published
+             whatever the link mode. */
         },
       });
       // Record our own version so the poller does not echo it back at us.
@@ -5906,7 +6671,9 @@ BARRY.views.xplore = (function () {
       const n = sess.info.channels.length;
       sess.sel = new Set(v.channels.filter((i) => i >= 0 && i < n));
     }
-    if (Array.isArray(v.bad)) sess.bad = new Set(v.bad.map(Number));
+    /* No bad list from a view update -- see `publishLink`. A view update
+       can be minutes old and says nothing about whether a channel is
+       broken; the facts channel is where that lives. */
 
     // A remote change is a session-level move, so per-pane overrides go.
     XF.panes.forEach((p) => {
@@ -6146,6 +6913,15 @@ BARRY.views.xplore = (function () {
         path: file.path, session_path: sess.path,
       });
       if (!res.n) return;
+      /* Asked again, after the wait.
+         The guard at the top of this function ran before the round trip, so
+         anything that put events on the recording while it was in flight was
+         replaced when it came back: a figure rebuild's marks, an import, a
+         detector's output. Measured on a rebuild -- two marks became the
+         file's twelve, half a second after the rebuild said it had put them
+         back. An auto-import is a convenience for an empty recording and has
+         no business overruling something somebody did. */
+      if ((sess.events || []).length) return;
       sess.events = res.events;
       sess.eventsMeta = { path: file.path, n: res.n, source: 'nev',
                           relative_to: res.relative_to, labels: res.labels };
@@ -6274,6 +7050,9 @@ BARRY.views.xplore = (function () {
     // Remember the lane geometry so the channel checkboxes can be lined up
     // with the traces they control.
     pane._geom = { top: padTop, padBottom: PAD.b, lane, n,
+                   // The horizontal extent too, so a channel line can be
+                   // hit-tested without recomputing what was just drawn.
+                   padL, plotW, plotH,
                    labels: win.series.map((x) => x.number) };
     pane._padTop = padTop;
     try {
@@ -6318,6 +7097,7 @@ BARRY.views.xplore = (function () {
        the same marks from the same data. The curate module still gets a
        turn afterwards for the label text, which only makes sense in the
        window doing the deciding. */
+    drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
     if (BARRY.curate && BARRY.curate.draw) {
@@ -6451,12 +7231,22 @@ BARRY.views.xplore = (function () {
 
     const lane = pane._geom.lane;
     const compact = lane < 15;            // no room for a checkbox in the lane
+    /* Below this there is no room for a 9 px label on every row, so the
+       names thin out and the rest of the rows keep their controls. One name
+       every `every` rows, which is the stride a crowded axis gets. */
+    const micro = lane < 10.5;
+    const every = micro ? Math.ceil(10.5 / Math.max(lane, 1)) : 1;
 
     host.innerHTML = '';
+    let row_i = -1;
     for (const c of rows) {
+      row_i += 1;
       const isBad = sess.bad.has(c.number) || c.bad;
-      host.appendChild(el('label', {
-        class: 'ch-lane' + (isBad ? ' marked-bad' : '') + (compact ? ' compact' : ''),
+      const named = !micro || (row_i % every === 0);
+      const laneEl = el('label', {
+        class: 'ch-lane' + (isBad ? ' marked-bad' : '')
+               + (compact ? ' compact' : '') + (micro ? ' micro' : '')
+               + (named ? '' : ' unnamed'),
         title: c.label + (isBad ? '  (marked bad)' : ''),
       }, [
         el('input', {
@@ -6489,8 +7279,19 @@ BARRY.views.xplore = (function () {
             toggleBad(sess, c.number);
           },
         }),
-      ]));
+      ]);
+      /* Sized from the measured pitch rather than from a constant: a 12 px
+         lane in a 7.8 px slot is what put sixty-four labels on top of one
+         another. */
+      if (lane < 18) {
+        laneEl.style.height = Math.max(5, Math.floor(lane)) + 'px';
+        laneEl.style.fontSize =
+          Math.max(7, Math.min(10.5, Math.floor(lane) - 1)) + 'px';
+      }
+      host.appendChild(laneEl);
     }
+    // Now that there is a gutter, the caption can be moved off it.
+    placeCaption(pane);
   }
 
   /* Threshold-detector marks.
@@ -6561,6 +7362,19 @@ BARRY.views.xplore = (function () {
   function drawMini(index, pane, sess) {
     const c = pane._mini;
     if (!c) return;
+    /* And a session that is still there.
+
+       This is called from three timers -- a resize debounce, a settle after
+       a drag, and the tail of a refresh that has just awaited a fetch -- and
+       any of them can fire after the pane's session has been closed or
+       swapped. One hands over `sessionOf(p)`, which is null by then, and the
+       whole thing threw. Reproduced every run by ticking even-only, which
+       reopens the session while the panes are still redrawing.
+
+       Here rather than at each call site: with no session there is nothing
+       to draw wherever the call came from, and the next timer somebody adds
+       gets this for free. */
+    if (!sess || !sess.info) return;
     sizePaneCanvas(c);
     const ctx = c.getContext('2d');
     const P = palette();
@@ -6710,11 +7524,39 @@ BARRY.views.xplore = (function () {
       XF.focused = index; XF.active = pane.sessionId;
       if (e.altKey) { addEventAt(sess, canvas, e); return; }
       if (XF.measure || XF.placing) return;   // another handler owns this drag
+      /* A channel line gets first refusal. Inside this handler rather than
+         in one of its own: the canvas already has a mousedown that pans, so
+         a second listener would be two of them fighting over one press. */
+      const rect0 = canvas.getBoundingClientRect();
+      const hit = channelLineAt(pane, e.clientX - rect0.left,
+                                e.clientY - rect0.top);
+      if (hit) {
+        dragLine = hit;
+        canvas.style.cursor = 'ns-resize';
+        repaintTraces();
+        return;
+      }
       const w0 = winOf(pane, sess);
       drag = { x: e.clientX, t0: w0.t0, span: w0.span };
       canvas.style.cursor = 'grabbing';
     });
     const move = (e) => {
+      if (dragLine) {
+        // Followed live, snapped to a lane, so it is obvious which channel
+        // it will land on before the mouse is let go.
+        const rect = canvas.getBoundingClientRect();
+        const win = pane._win, geom = pane._geom;
+        if (win && geom) {
+          const i = clamp(Math.floor(((e.clientY - rect.top) - geom.top)
+                                     / geom.lane), 0, win.series.length - 1);
+          const number = Number(win.series[i].number);
+          if (Number(dragLine.number) !== number) {
+            dragLine.number = number;
+            repaintTraces();
+          }
+        }
+        return;
+      }
       if (drag) {
         const rect = canvas.getBoundingClientRect();
         const plotW = Math.max(1, rect.width - PAD_TRACES_L - PAD.r);
@@ -6722,9 +7564,25 @@ BARRY.views.xplore = (function () {
                   drag.span);
         return;
       }
+      // The cursor says a line can be taken hold of before it is.
+      const r2 = canvas.getBoundingClientRect();
+      if (channelLineAt(pane, e.clientX - r2.left, e.clientY - r2.top)) {
+        canvas.style.cursor = 'ns-resize';
+      } else if (canvas.style.cursor === 'ns-resize') {
+        canvas.style.cursor = 'crosshair';
+      }
       hoverTraces(pane, sess, canvas, readout, e);
     };
-    const up = () => { if (drag) { drag = null; canvas.style.cursor = 'crosshair'; } };
+    const up = (e) => {
+      if (dragLine) {
+        const rect = canvas.getBoundingClientRect();
+        channelLineDrop(pane, (e && e.clientY != null)
+                        ? e.clientY - rect.top : 0);
+        canvas.style.cursor = 'crosshair';
+        return;
+      }
+      if (drag) { drag = null; canvas.style.cursor = 'crosshair'; }
+    };
     onPane(pane, window, 'mousemove', move);
     onPane(pane, window, 'mouseup', up);
     canvas.addEventListener('mouseleave', () => readout.classList.remove('on'));
@@ -6840,7 +7698,7 @@ BARRY.views.xplore = (function () {
       box.appendChild(el('div', { class: 'video-msg' }, [
         el('strong', { text: 'This video needs ffmpeg' }),
         el('p', { text: vids[0].name + ' is MPEG-1, which browsers cannot play. '
-                      + 'BARRY transcodes a few seconds at a time, but ffmpeg '
+                      + 'Jarvis transcodes a few seconds at a time, but ffmpeg '
                       + 'was not found on this machine.' }),
         el('p', { text: 'Run the setup script, or install ffmpeg and restart '
                       + 'BARRY. Everything else works without it.' }),
@@ -7654,10 +8512,19 @@ BARRY.views.xplore = (function () {
     refreshAll();
   }
 
-  return {
+  /* NOT named `api`. `api()` is the global fetch helper from core.js and
+     this module calls it everywhere; a `const api` in here shadows it for
+     the whole IIFE and every one of those calls becomes "api is not a
+     function" -- which is what happened. */
+  const handle = {
     init,
+    setChannelLines, channelLines,
     open: openSession,
     popOutPanes,
+    /* Whatever recording is on screen. Braid's `enter()` with no argument
+       means "this one", which is what somebody already looking at a window
+       and wanting a closer look is asking for. */
+    current: () => active(),
     addBankedEvents,
     /* Placing a bookmark and opening the Marks list, from outside. The
        command palette has reason to offer both, and web/_dev/newfeat.html
@@ -7682,6 +8549,25 @@ BARRY.views.xplore = (function () {
       const sess = sessionOf(XF.panes[i]);
       const bm = (sess && sess.bookmarks || []).find((x) => x.name === name);
       return bm ? dropBookmark(i, sess, bm) : null;
+    },
+    /* One pane, and the word on its own Panel button.
+
+       For web/_dev/cfc.html, and they exist because of a bug that seventy-two
+       passing checks walked straight past. A block of panelSpec's code had
+       been pasted into panelWord() by an edit whose anchor was not unique,
+       where the variable it assigns to does not exist -- so naming a
+       bandpower pane threw a ReferenceError on every render. Nothing in the
+       harness had rendered a pane header in the main window, because the
+       mode puts its panels in a pop-out with the headers folded away.
+
+       `_panelWord` calls the real function rather than reimplementing it,
+       which is the only version of this check worth having. */
+    _pane: (index) => XF.panes[index == null ? XF.focused : index] || null,
+    _panelWord: (index) => {
+      const i = index == null ? XF.focused : index;
+      const pane = XF.panes[i];
+      const sess = pane && sessionOf(pane);
+      return (pane && sess) ? panelWord(pane, sess) : null;
     },
     /* Redraw one pane on demand.
 
@@ -7745,6 +8631,29 @@ BARRY.views.xplore = (function () {
     // Curation mode needs to arrange the panes for its own job, and to move
     // the window to each candidate. Exposed rather than reimplemented, so
     // there is one function that knows how a pane is built.
+    /* What a pane is actually showing, as the request it would send.
+
+       Exported for the figure builder: a figure of a spectrogram has to
+       carry the channel list, the mode, the analysed band and the display
+       crop, and re-deriving those a second way is how a figure comes to
+       differ from the screen it was made from. `panelSpec` is already the
+       one place that answers this -- the pane and the prewarmer both go
+       through it so the server's cache key matches. */
+    panelSpec: (index) => {
+      const pane = XF.panes[index];
+      if (!pane) return null;
+      const sess = XF.sessions[pane.sessionId] || active();
+      return panelSpec(index, pane, sess);
+    },
+    /* The effective frequency band for a pane: the recording's when the
+       band is locked, which it is by default, and the pane's when it is
+       not. Read it rather than reaching for `pane.fmin`, which is empty
+       whenever the band is shared. */
+    bandOf: (index) => {
+      const pane = XF.panes[index];
+      const sess = pane && (XF.sessions[pane.sessionId] || active());
+      return fBand(pane, sess);
+    },
     setPanes: (specs, split) => {
       // Six, not four: an H10-D has six probe columns and each one needs a
       // pane of its own, because a CSD across columns is arithmetic over
@@ -7762,4 +8671,14 @@ BARRY.views.xplore = (function () {
     },
     onShow: () => { if (XF.order.length) { render(); refreshAll(); } },
   };
+
+  /* Published as a real property so another WINDOW can drive this one.
+
+     `BARRY` is declared `const` in core.js, which makes it a lexical binding
+     and not a property of `window` -- `popup.BARRY` is undefined however
+     completely the popup has loaded. `barryCfc` and `barrySpectrum` exist
+     for the same reason. Incisor uses this to put its channel lines on a
+     traces window it opened. */
+  window.barryXplore = handle;
+  return handle;
 })();

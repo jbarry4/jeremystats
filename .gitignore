@@ -33,3 +33,9 @@ BARRY GUI/GUI_logs/errors/
 # happened whether or not there is a network, which is exactly when it
 # matters. They are cache, not transport.
 BARRY GUI/GUI_logs/activity/
+
+# How long each stage of a comodulogram took on THIS machine, so the progress
+# bar's estimate is right on the rig as well as on a laptop. Per machine by
+# nature and worthless anywhere else -- committing it would mean two computers
+# overwriting each other's timings to no purpose.
+BARRY GUI/GUI_logs/.cfc_rates.json

@@ -1,0 +1,632 @@
+{
+  "_at": {
+    "archived": "2026-09-12T18:58:38.604941+00:00",
+    "archived_at": "2026-09-12T18:58:38.604941+00:00",
+    "archived_by": "2026-09-12T18:58:38.604941+00:00",
+    "assignee": "2026-09-12T18:52:16.591356+00:00",
+    "closed_at": "2026-09-12T18:58:38.604941+00:00",
+    "created": "2026-09-12T18:52:09.983085+00:00",
+    "gid": "2026-09-12T18:52:09.983085+00:00",
+    "imports": "2026-09-12T18:52:09.983085+00:00",
+    "kind": "2026-09-12T18:52:09.983085+00:00",
+    "labels": "2026-09-12T18:52:09.983085+00:00",
+    "name": "2026-09-12T18:52:09.983085+00:00",
+    "open": "2026-09-12T18:58:38.604941+00:00",
+    "opened_at": "2026-09-12T18:52:58.442709+00:00",
+    "opened_by": "2026-09-12T18:52:16.591356+00:00",
+    "schema": "2026-09-12T18:52:09.983085+00:00",
+    "session_label": "2026-09-12T18:52:09.983085+00:00",
+    "source": "2026-09-12T18:52:09.983085+00:00",
+    "updated": "2026-09-12T18:58:38.604941+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e015b1b74ae": [
+        "set",
+        "2026-09-12T18:57:14.602764+00:00"
+      ],
+      "e098b0ce7f2": [
+        "set",
+        "2026-09-12T18:56:03.024035+00:00"
+      ],
+      "e0a7eae3ea8": [
+        "set",
+        "2026-09-12T18:55:31.533335+00:00"
+      ],
+      "e1f682ea208": [
+        "set",
+        "2026-09-12T18:56:48.842927+00:00"
+      ],
+      "e3c479c6d74": [
+        "set",
+        "2026-09-12T18:55:24.324860+00:00"
+      ],
+      "e48c3ab32a8": [
+        "set",
+        "2026-09-12T18:57:09.859156+00:00"
+      ],
+      "e4a7b0d8823": [
+        "set",
+        "2026-09-12T18:57:26.308085+00:00"
+      ],
+      "e5013b3c3b4": [
+        "set",
+        "2026-09-12T18:56:04.881218+00:00"
+      ],
+      "e5b0a18f3d2": [
+        "set",
+        "2026-09-12T18:56:19.325612+00:00"
+      ],
+      "e5df6adc706": [
+        "set",
+        "2026-09-12T18:56:00.656936+00:00"
+      ],
+      "e7ba1f4fe19": [
+        "set",
+        "2026-09-12T18:56:53.782962+00:00"
+      ],
+      "e7ef914a0ed": [
+        "set",
+        "2026-09-12T18:56:34.911006+00:00"
+      ],
+      "e87c487fa53": [
+        "set",
+        "2026-09-12T18:57:18.430865+00:00"
+      ],
+      "ea442f4ebe9": [
+        "set",
+        "2026-09-12T18:57:01.681110+00:00"
+      ],
+      "eb0ce92af7d": [
+        "set",
+        "2026-09-12T18:56:43.868462+00:00"
+      ],
+      "ec9fc59d218": [
+        "set",
+        "2026-09-12T18:56:39.743414+00:00"
+      ],
+      "ecc9dad5887": [
+        "set",
+        "2026-09-12T18:57:12.316871+00:00"
+      ],
+      "edc59eee8da": [
+        "set",
+        "2026-09-12T18:55:39.684359+00:00"
+      ],
+      "ee06bfb617d": [
+        "set",
+        "2026-09-12T18:57:07.048275+00:00"
+      ],
+      "ef0299b4371": [
+        "set",
+        "2026-09-12T18:56:14.038409+00:00"
+      ],
+      "ef68126c9e7": [
+        "set",
+        "2026-09-12T18:55:55.167623+00:00"
+      ],
+      "ef6edc6cce1": [
+        "set",
+        "2026-09-12T18:56:58.665924+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-12T18:58:38.604941+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "archived": true,
+  "archived_at": "2026-09-12T14:58:38-0400",
+  "archived_by": "Rain Younger",
+  "assignee": "Rain Younger",
+  "closed_at": "2026-09-12T14:58:38-0400",
+  "created": {
+    "at": "2026-09-12T14:52:09-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "events": [
+    {
+      "at": "2026-09-12T14:55:24-0400",
+      "by": "Rain Younger",
+      "id": "e3c479c6d74",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:55:24-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 35.968
+    },
+    {
+      "at": "2026-09-12T14:55:31-0400",
+      "by": "Rain Younger",
+      "id": "e0a7eae3ea8",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:55:31-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 264.612
+    },
+    {
+      "at": "2026-09-12T14:55:39-0400",
+      "by": "Rain Younger",
+      "id": "edc59eee8da",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:55:39-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 302.185
+    },
+    {
+      "at": "2026-09-12T14:55:55-0400",
+      "by": "Rain Younger",
+      "id": "ef68126c9e7",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:55:55-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 331.905
+    },
+    {
+      "at": "2026-09-12T14:56:00-0400",
+      "by": "Rain Younger",
+      "id": "e5df6adc706",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:00-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 373.337
+    },
+    {
+      "at": "2026-09-12T14:56:03-0400",
+      "by": "Rain Younger",
+      "id": "e098b0ce7f2",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:03-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 376.837
+    },
+    {
+      "at": "2026-09-12T14:56:04-0400",
+      "by": "Rain Younger",
+      "id": "e5013b3c3b4",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:04-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 377.966
+    },
+    {
+      "at": "2026-09-12T14:56:14-0400",
+      "by": "Rain Younger",
+      "id": "ef0299b4371",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:14-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 399.602
+    },
+    {
+      "at": "2026-09-12T14:56:19-0400",
+      "by": "Rain Younger",
+      "id": "e5b0a18f3d2",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:19-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 410.204
+    },
+    {
+      "at": "2026-09-12T14:56:34-0400",
+      "by": "Rain Younger",
+      "id": "e7ef914a0ed",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:34-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 461.366
+    },
+    {
+      "at": "2026-09-12T14:56:39-0400",
+      "by": "Rain Younger",
+      "id": "ec9fc59d218",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:39-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 501.694
+    },
+    {
+      "at": "2026-09-12T14:56:43-0400",
+      "by": "Rain Younger",
+      "id": "eb0ce92af7d",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:43-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 541.002
+    },
+    {
+      "at": "2026-09-12T14:56:48-0400",
+      "by": "Rain Younger",
+      "id": "e1f682ea208",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:48-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 605.032
+    },
+    {
+      "at": "2026-09-12T14:56:53-0400",
+      "by": "Rain Younger",
+      "id": "e7ba1f4fe19",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:53-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 742.484
+    },
+    {
+      "at": "2026-09-12T14:56:58-0400",
+      "by": "Rain Younger",
+      "id": "ef6edc6cce1",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:56:58-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 871.682
+    },
+    {
+      "at": "2026-09-12T14:57:01-0400",
+      "by": "Rain Younger",
+      "id": "ea442f4ebe9",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:57:01-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 1367.416
+    },
+    {
+      "at": "2026-09-12T14:57:07-0400",
+      "by": "Rain Younger",
+      "id": "ee06bfb617d",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:57:07-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1437.588
+    },
+    {
+      "at": "2026-09-12T14:57:09-0400",
+      "by": "Rain Younger",
+      "id": "e48c3ab32a8",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:57:09-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 1553.63
+    },
+    {
+      "at": "2026-09-12T14:57:12-0400",
+      "by": "Rain Younger",
+      "id": "ecc9dad5887",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-12T14:57:12-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 1628.977
+    },
+    {
+      "at": "2026-09-12T14:57:14-0400",
+      "by": "Rain Younger",
+      "id": "e015b1b74ae",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-12T14:57:14-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 1741.413
+    },
+    {
+      "at": "2026-09-12T14:57:18-0400",
+      "by": "Rain Younger",
+      "id": "e87c487fa53",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T14:57:18-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1767.717
+    },
+    {
+      "at": "2026-09-12T14:57:26-0400",
+      "by": "Rain Younger",
+      "id": "e4a7b0d8823",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-12T14:52:09-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-12T14:57:26-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1768.293
+    }
+  ],
+  "gid": "s37c7c8edfe10",
+  "imports": [
+    {
+      "at": "2026-09-12T14:52:09-0400",
+      "n": 22,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "c0e55458531c",
+        "by": "Shahriar Tafti",
+        "entry_name": "DS candidates (ETS)",
+        "kind": "bank version",
+        "pipeline": "ETS dentate-spike export",
+        "version": 1
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "flagged": true,
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "DS candidates (ETS)",
+  "open": false,
+  "opened_at": "2026-09-12T14:52:58-0400",
+  "opened_by": "Rain Younger",
+  "schema": 1,
+  "session_label": "PTEN m21 s2 2024-07-29",
+  "source": {
+    "bank_entry": "c0e55458531c",
+    "by": "Shahriar Tafti",
+    "entry_name": "DS candidates (ETS)",
+    "kind": "bank version",
+    "pipeline": "ETS dentate-spike export",
+    "version": 1
+  },
+  "updated": {
+    "at": "2026-09-12T14:58:38-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

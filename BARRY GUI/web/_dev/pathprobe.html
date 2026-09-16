@@ -54,7 +54,20 @@ const ABSOLUTE = /^([A-Za-z]:\\|\\\\)/;
   W.eval("setView('sessions')");
   await sleep(300);
   W.eval("BARRY.views.sessions.setMode('housekeeping')");
-  const row = await until(() => D.querySelector('#hkBody .hk-row'));
+  /* A real recording, not the built-in example.
+
+     `demo:ds-tutorial` is a path only in the sense that the demo loader
+     answers to it -- it is not absolute, has no machine that has seen it,
+     and is not a registry record at all. The example is first in the list,
+     so this was checking a path shape against a thing that is not a path. */
+  await until(() => D.querySelectorAll('#hkBody .hk-row').length);
+  const rows = [...D.querySelectorAll('#hkBody .hk-row')].filter((r) => {
+    const id = (r.querySelector('.hk-gid') || {}).textContent || '';
+    return id && !/^demo-/.test(id.trim());
+  });
+  check('there is a real recording to look at', rows.length > 0,
+        rows.length + ' of ' + D.querySelectorAll('#hkBody .hk-row').length);
+  const row = rows[0] || D.querySelector('#hkBody .hk-row');
   check('a recording can be opened', !!row);
   row.click();
   const first = await until(() => D.querySelector('#hkDetail .hk-path code'));

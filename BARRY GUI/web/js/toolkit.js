@@ -95,9 +95,42 @@ BARRY.views.toolkit = (function () {
     return p.toString();
   }
 
+  /* The registry, kept rather than re-read.
+
+     It takes eight seconds on this lab's data and both the Curation and
+     StrataScope tools want it, so switching between them paid for it again
+     every time -- and a slow read in flight is what lets a stale answer land
+     on top of the tool you just opened. Held for a minute: a recording
+     appearing mid-session is not what this pane is for, and `forget()` is
+     there for when something really has changed. */
+  let regCache = { at: 0, data: null, inflight: null };
+  const REG_FRESH_MS = 60000;
+
+  async function registry(force) {
+    const now = Date.now();
+    if (!force && regCache.data && now - regCache.at < REG_FRESH_MS) {
+      return regCache.data;
+    }
+    if (regCache.inflight) return regCache.inflight;
+    regCache.inflight = (async () => {
+      try {
+        const got = await api('/api/registry');
+        regCache = { at: Date.now(), data: got, inflight: null };
+        return got;
+      } catch (e) {
+        regCache.inflight = null;
+        throw e;
+      }
+    })();
+    return regCache.inflight;
+  }
+
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
+    if (q.tool === 'incisor') { await loadIncisor(); return; }
+    if (q.tool === 'cfc') { await loadCFC(); return; }
+    if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
 
        It used to fall through to the query below, which fetched the whole
@@ -155,6 +188,21 @@ BARRY.views.toolkit = (function () {
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
+        toolButton('incisor', 'Incisor',
+                   'Dentate spike detection, on the recording\u2019s own '
+                   + 'clock. A port of Toothy\u2019s detector \u2014 '
+                   + 'checked against its code on identical input \u2014 so '
+                   + 'a set from here never needs the concatenation '
+                   + 'correction.'),
+        toolButton('cfc', 'Braid',
+                   'Band-resolved theta power and phase-amplitude coupling, '
+                   + 'against the live recording. Looks only — nothing '
+                   + 'in it is saved.'),
+        toolButton('panorama', 'Panorama',
+                   'The whole recording at once: the spectrogram end to '
+                   + 'end, which frequency was dominant and how often, '
+                   + 'and the power spectrum over the range you ask '
+                   + 'for. Saves into Results.'),
         toolButton('kilosort', 'Kilosort',
                    'Check this machine can sort, run a sort against a '
                    + 'recording, then open it in Phy.'),
@@ -172,13 +220,53 @@ BARRY.views.toolkit = (function () {
             bad-channel query's, and means nothing to the others -- the
             snapshot importer was showing it and asking which recordings to
             scope a folder read to. */
-         (q.tool === 'curate' || q.tool === 'strata'
-          || q.tool === 'kilosort' || q.tool === 'snapshots')
+         (q.tool === 'curate' || q.tool === 'strata' || q.tool === 'cfc'
+          || q.tool === 'kilosort' || q.tool === 'snapshots'
+          // Incisor picks its own recording and scans every channel, so the
+          // bad-channel scope card above would be describing something else.
+          || q.tool === 'incisor'
+          // Panorama picks its own recording and its own channel, so
+          // the bad-channel scope card above would be describing
+          // something else.
+          || q.tool === 'panorama')
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
     ]));
     renderResult();
+  }
+
+  /* One per tool, drawing the thing the tool is about rather than a generic
+     gear -- what makes a row findable at a glance is a shape that is about
+     it. Stroke on `currentColor` at 16px, so they take the button's state
+     and need no second set for the dark theme. */
+  const TOOL_ICONS = {
+    // Channel rows, one of them struck out.
+    bad: 'M2 4h12M2 8h5M2 12h12M9.5 6.5l4 3M13.5 6.5l-4 3',
+    // A dentate spike, and a tick for the decision made about it.
+    curate: 'M1 11.5h2.5l2-6.5 2 6.5H10M11.5 10.5l1.5 1.5L15.5 8',
+    // Layers, with the probe going down through them.
+    strata: 'M2 4.5h12M2 8h12M2 11.5h12M11 2.5v11',
+    // A tooth. Dentate means toothed, and an incisor is the sharp one.
+    incisor: 'M4.2 3c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+             + '1-1.4 1-1.7 0L8.6 8.6c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+             + '1.7 0L3.5 7.1C3.1 5.6 3.1 3.9 4.2 3z',
+    // Two waves braided through one another.
+    cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
+    // A wide frame with a horizon in it.
+    panorama: 'M1.5 3.5h13v9h-13zM2.5 10.5l3-3 2.5 2.5 3-3.5 2.5 3',
+    // Units sorted into ordered bars.
+    kilosort: 'M2.5 13.5V9M6.5 13.5V5.5M10.5 13.5V7.5M14.5 13.5V3',
+    // A stack of frames.
+    snapshots: 'M5 2.5h9v9M2.5 5.5h9v9h-9zM5 11l2-2 1.5 1.5L11 8',
+  };
+
+  function toolIcon(id) {
+    const d = TOOL_ICONS[id];
+    if (!d) return null;
+    return el('svg', { class: 'tk-ico', viewBox: '0 0 16 16',
+                       'aria-hidden': 'true',
+                       html: '<path d="' + d + '" />' });
   }
 
   function toolButton(id, name, blurb) {
@@ -193,7 +281,10 @@ BARRY.views.toolkit = (function () {
         refresh();
       },
     }, [
-      el('strong', { text: name }),
+      el('div', { class: 'tk-tool-head' }, [
+        toolIcon(id),
+        el('strong', { text: name }),
+      ].filter(Boolean)),
       el('span', { text: blurb }),
     ]);
   }
@@ -363,7 +454,7 @@ BARRY.views.toolkit = (function () {
       try {
         const got = await api('/api/curation');
         if (l) l.step('reading the recording registry');
-        got.registry = await api('/api/registry');
+        got.registry = await registry();
         cur = got;
         curStale = false;
       } catch (e) {
@@ -371,7 +462,11 @@ BARRY.views.toolkit = (function () {
       } finally {
         curLoading = null;
       }
-      renderCuration();
+      /* Only if this is still the tool on screen. A four-second answer
+         that lands after you have clicked StrataScope must not paint
+         Curation over it -- the same guard the bad-channel loader has
+         carried all along. */
+      if (q.tool === 'curate') renderCuration();
       return cur;
     })();
     return curLoading;
@@ -453,15 +548,29 @@ BARRY.views.toolkit = (function () {
     });
 
     const num = (v) => (isFinite(v) ? Number(v) : -1);
-    const cmp = {
+    /* A stamp as a number, for the sorts. "-0400" without its colon is
+     written by some of the stores and `Date.parse` will not take it. */
+  const momentOf = (t) => {
+    const raw = String(t || '').trim();
+    if (!raw) return 0;
+    const ms = Date.parse(raw.replace(' ', 'T')
+                             .replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+    return isFinite(ms) ? ms : 0;
+  };
+  const cmp = {
       left: (a, b) => ((b.progress || {}).left || 0)
                     - ((a.progress || {}).left || 0),
       flag: (a, b) => (by(b).flag || 0) - (by(a).flag || 0),
       name: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
       size: (a, b) => ((b.progress || {}).total || 0)
                     - ((a.progress || {}).total || 0),
-      recent: (a, b) => String(b.opened_at || (b.updated || {}).at || '')
-        .localeCompare(String(a.opened_at || (a.updated || {}).at || '')),
+      /* Newest first, by time. These stamps are not all in one offset --
+         a set opened here carries this machine's, one that came down from
+         the shared table is UTC -- so comparing them as text sorted a set
+         opened at 20:41 local below one from 00:37 UTC that is four
+         minutes older. */
+      recent: (a, b) => momentOf(b.opened_at || (b.updated || {}).at)
+                      - momentOf(a.opened_at || (a.updated || {}).at),
       mouse: (a, b) => {
         const sa = a.session || {}, sb = b.session || {};
         return (num(sa.mouse) - num(sb.mouse))
@@ -475,6 +584,12 @@ BARRY.views.toolkit = (function () {
   function renderCuration() {
     const host = $('#tkResult');
     if (!host) return;
+    /* Belt as well as braces. This is called from the presence poll, from
+       every set action and from the loader, and any of those can happen
+       after the tool has changed -- one place that refuses is worth more
+       than a guard at each call site, because the next call site will not
+       have one. */
+    if (q.tool !== 'curate') return;
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!cur) {
@@ -583,9 +698,13 @@ BARRY.views.toolkit = (function () {
       if (!res || !res.ok) return;
       const before = JSON.stringify(presence.sessions || []);
       presence = res;
-      // Only redraw when it actually changed: this runs every ten seconds
-      // and the shelf is a few hundred nodes.
-      if (andRender && JSON.stringify(res.sessions || []) !== before) {
+      /* Only redraw when it actually changed, and only when the tool it is
+         about is the one on screen. This runs every ten seconds for as long
+         as the ToolKit is open, so without the second condition it repaints
+         Curation over StrataScope, or over Kilosort, on its own -- a jump to
+         another module with nothing you did to explain it. */
+      if (andRender && q.tool === 'curate'
+          && JSON.stringify(res.sessions || []) !== before) {
         renderCuration();
       }
     } catch (e) { /* presence is a courtesy, never an interruption */ }
@@ -1456,7 +1575,7 @@ BARRY.views.toolkit = (function () {
         (x) => x.archived && x.name !== st.assignee).length;
       if (!rows.length) {
         list.appendChild(el('div', { class: 'hint',
-          text: 'Nobody is on the roster yet. BARRY builds it from the '
+          text: 'Nobody is on the roster yet. Jarvis builds it from the '
               + 'names already stamped on decisions and bank entries, so '
               + 'it fills in as work happens \u2014 or type one below.' }));
       }
@@ -1497,17 +1616,30 @@ BARRY.views.toolkit = (function () {
     };
     paint();
 
+    /* Optimistic, and the modal closes first on purpose here -- picking a
+       name from a list is a decision, and the list has served its purpose the
+       moment you make it.
+
+       What was wrong was what happened next: nothing, for a round trip, with
+       the card still showing the previous owner. Whoever you picked goes on
+       the card immediately now, and only an actual failure takes it off. */
     const save = async (who) => {
+      const was = st.assignee;
+      st.assignee = who || null;
       closeModal();
+      renderCuration();
+      toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
+            + 'has this one now.', 'ok', 4000);
       try {
         const res = await apiPost(
           '/api/curation/' + encodeURIComponent(st.gid) + '/'
           + encodeURIComponent(st.kind) + '/assign', { who: who });
-        if (res.set) Object.assign(st, res.set);
+        if (res.set) { Object.assign(st, res.set); renderCuration(); }
+      } catch (e) {
+        st.assignee = was;
         renderCuration();
-        toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
-              + 'has this one now.', 'ok', 4000);
-      } catch (e) { toast(e.message, 'err', 8000); }
+        toast('That did not save: ' + e.message, 'err', 8000);
+      }
     };
 
     showModal(el('div', {}, [
@@ -1553,21 +1685,36 @@ BARRY.views.toolkit = (function () {
     ]));
   }
 
+  /* The comment here used to say "change the list now rather than after a
+     round trip" and sat directly underneath the await, so it did neither: the
+     card stayed put for the whole request and was then followed by a reload
+     of every curation set and the entire recording registry -- the second of
+     which is over a second on a network share -- to carry one boolean.
+
+     Now it means it. The card moves on the click, the write follows, and a
+     failure puts it back and says so rather than leaving the list claiming
+     something that did not happen. Same shape as openSet just below. */
   async function archiveSet(st, on) {
+    const was = st.archived;
+    st.archived = on;
+    // The whole panel, not just the list: the filter chips carry counts, and
+    // archiving changes what those counts are counting.
+    renderCuration();
+    toast(on ? 'Archived. It is still there \u2014 the Archived filter '
+               + 'brings it back.'
+             : 'Back in the list.', 'ok', 5000);
     try {
-      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
-                    + encodeURIComponent(st.kind) + '/archive',
-                    { archived: on });
-      // Change the list now rather than after a round trip.
-      st.archived = on;
-      // The whole panel, not just the list: the filter chips carry counts,
-      // and archiving changes what those counts are counting.
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(st.gid) + '/'
+        + encodeURIComponent(st.kind) + '/archive', { archived: on });
+      // Reconcile with what the server actually stored, in case it knows
+      // something this copy did not -- but no reload: one field changed.
+      if (res && res.set) { Object.assign(st, res.set); renderCuration(); }
+    } catch (e) {
+      st.archived = was;
       renderCuration();
-      toast(on ? 'Archived. It is still there \u2014 the Archived filter '
-                 + 'brings it back.'
-               : 'Back in the list.', 'ok', 5000);
-      loadCuration();
-    } catch (e) { toast(e.message, 'err', 8000); }
+      toast('That did not save: ' + e.message, 'err', 8000);
+    }
   }
 
 
@@ -1618,16 +1765,404 @@ BARRY.views.toolkit = (function () {
     try {
       strata = await api('/api/layers');
       if (l) l.step('reading the recording registry');
-      strata.registry = await api('/api/registry');
+      strata.registry = await registry();
     } catch (e) {
       strata = { error: e.message, sheets: [], regions: [] };
     }
+    // See `loadCuration`: an eight-second registry read that lands after the
+    // tool has changed must not paint over what is there now.
+    if (q.tool !== 'strata') return;
     renderStrata();
+  }
+
+  /* How the shelf is being looked at. Held here, not read off the DOM, so a
+     re-render cannot lose a half-typed search. */
+  const strataQ = { text: '', show: 'all', shelf: false };
+
+  const STRATA_SHOWS = [
+    ['all', 'All'],
+    ['left', 'Unfinished'],
+    ['done', 'Finished'],
+    ['mine', 'Mine'],
+    ['archived', 'Archived'],
+  ];
+
+  const strataSheets = () => (strata && strata.sheets) || [];
+  const strataOpen = () => strataSheets()
+    .filter((sh) => sh.open && !sh.archived);
+
+  /* The sheets on the shelf that match what is being asked for. Everything
+     not on the bench, the finished ones included -- being done is a reason
+     not to be in the way, not a reason to be hidden. */
+  function strataShelf() {
+    const me = (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+      || '';
+    const q = strataQ.text.trim().toLowerCase();
+    const words = q ? q.split(/\s+/) : [];
+    return strataSheets().filter((sh) => {
+      if (sh.open && !sh.archived) return false;
+      const pr = sh.progress || {};
+      if (strataQ.show === 'left' && !(pr.left > 0)) return false;
+      if (strataQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) {
+        return false;
+      }
+      if (strataQ.show === 'mine'
+          && (sh.assignee || '').toLowerCase() !== me.toLowerCase()) {
+        return false;
+      }
+      /* Archived sheets are out of the way unless asked for. Archiving still
+         means "I am done thinking about this at all", which is a stronger
+         statement than putting it down. */
+      if (strataQ.show === 'archived') {
+        if (!sh.archived) return false;
+      } else if (sh.archived) {
+        return false;
+      }
+      if (!words.length) return true;
+      const hay = [sh.name, sh.session_label, sh.gid, sh.assignee]
+        .filter(Boolean).join(' ').toLowerCase();
+      return words.every((w) => hay.indexOf(w) >= 0);
+    });
+  }
+
+  async function strataAct(gid, what, body) {
+    try {
+      const got = await apiPost('/api/layers/' + encodeURIComponent(gid)
+                                + '/' + what, body || {});
+      if (got && got.sheet) {
+        const at = strataSheets().findIndex((x) => x.gid === gid);
+        if (at >= 0) Object.assign(strata.sheets[at], got.sheet);
+      }
+      renderStrata();
+      return got;
+    } catch (e) {
+      toast(e.message, 'err', 6000);
+      return null;
+    }
+  }
+
+  const pickUpSheet = (sh, andOpen) => strataAct(sh.gid, 'open', { on: true })
+    .then((got) => { if (got && andOpen) BARRY.strata.enter(sh.gid); });
+  const putDownSheet = (sh) => strataAct(sh.gid, 'open', { on: false });
+
+  async function archiveSheet(sh) {
+    if (!sh.archived) {
+      const ok = await BARRY.confirm(
+        'File away the layer sheet for ' + (sh.session_label || sh.gid) + '?',
+        'It comes off the bench and off the shelf, so it stops being offered. '
+        + 'Nothing is lost: the labels, the version history and the snapshots '
+        + 'all stay, and it can be taken back out at any time.',
+        'File it away');
+      if (!ok) return;
+    }
+    strataAct(sh.gid, 'archive', { on: !sh.archived });
+  }
+
+  async function unarchiveAndPickUp(sh) {
+    const ok = await BARRY.confirm(
+      'Take ' + (sh.session_label || sh.gid) + ' back out?',
+      'It is archived. Picking it up puts it back on the bench and takes it '
+      + 'out of the archive.',
+      'Take it out and pick it up');
+    if (!ok) return;
+    strataAct(sh.gid, 'open', { on: true, unarchive: true });
+  }
+
+  /* The name, edited where it is shown.
+
+     There is no text-prompt helper in this codebase and one field does not
+     justify inventing a dialog for it, so the title becomes an input and
+     goes back to being a title. Empty means "call it after the
+     recording". */
+  function nameCell(sh) {
+    const shown = sh.name || sh.session_label || sh.gid;
+    const strong = el('strong', {
+      class: 'sheet-name', text: shown, tabindex: '0',
+      title: 'Click to name this work set. A sheet is about a recording, but '
+           + 'the work is not always "the recording" — it can be the '
+           + 'second pass after the probe map was fixed.',
+      onclick: (e) => edit(e.currentTarget),
+      onkeydown: (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          edit(e.currentTarget);
+        }
+      },
+    });
+
+    function edit(node) {
+      const box = el('input', {
+        class: 'inp sm sheet-name-edit', value: sh.name || '',
+        placeholder: sh.session_label || sh.gid,
+      });
+      let done = false;
+      const finish = (save) => {
+        if (done) return;
+        done = true;
+        const want = box.value.trim();
+        if (save && want !== (sh.name || '')) {
+          strataAct(sh.gid, 'rename', { name: want });
+        } else {
+          renderStrata();
+        }
+      };
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      });
+      box.addEventListener('blur', () => finish(true));
+      node.replaceWith(box);
+      box.focus();
+      box.select();
+    }
+
+    return strong;
+  }
+  /* There is no delete here.
+
+     There was, and it took a confirmation dialog three paragraphs long to
+     explain everything it would not destroy -- which is the tell. The
+     labelling IS the data; a work set is a statement about who is working
+     on what. So the verbs are Close (off the bench) and File away (off the
+     shelf as well), and neither touches a label, a version or a snapshot.
+
+     `/api/layers/<gid>/delete` still exists, because an import that landed
+     a sheet on the wrong recording has to be undoable. It is not something
+     a card offers you in passing. */
+
+  async function closeAllSheets() {
+    const n = strataOpen().length;
+    const ok = await BARRY.confirm(
+      'Clear the bench?',
+      'Closes all ' + n + ' open work set' + (n === 1 ? '' : 's') + '. '
+      + 'Nothing is archived, deleted or unlabelled — every label was '
+      + 'written as it was made. Each one goes back on the shelf.',
+      'Close them all');
+    if (!ok) return;
+    try {
+      await apiPost('/api/layers/close-all', {});
+      strata = null;
+      loadStrata();
+    } catch (e) { toast(e.message, 'err', 6000); }
+  }
+
+  /* One sheet, as a card. The same shape as a curation set, because it is
+     the same kind of thing: a pile of decisions about one recording that
+     somebody is or is not working on. */
+  function sheetCard(sh, onBench) {
+    const pr = sh.progress || {};
+    const done = pr.left === 0 && pr.total > 0;
+    const reach = sh.session && sh.session.reachable;
+    const when = curWhen(onBench ? sh.opened_at : (sh.updated || {}).at);
+
+    const acts = [
+      el('button', {
+        class: 'btn sm',
+        text: pr.left ? 'Continue…' : 'Review…',
+        disabled: reach ? null : 'disabled',
+        title: reach ? 'Open it in StrataScope'
+          : 'The folder for this recording is not reachable from this '
+            + 'computer',
+        onclick: () => BARRY.strata.enter(sh.gid),
+      }),
+    ];
+    if (onBench) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        title: 'Closes the work set: it comes off the bench and goes back '
+             + 'on the shelf. It changes no labels, no versions and no '
+             + 'snapshots \u2014 every label was written the moment you '
+             + 'made it.',
+        onclick: () => putDownSheet(sh),
+      }));
+    } else if (sh.archived) {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Take it out…',
+        title: 'Un-archive it and put it on the bench',
+        onclick: () => unarchiveAndPickUp(sh),
+      }));
+    } else {
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick it up',
+        title: 'Puts it on the bench. Opening the recording is separate — '
+             + 'this is just saying you are working on it.',
+        onclick: () => pickUpSheet(sh, false),
+      }));
+      acts.push(el('button', {
+        class: 'btn ghost sm', text: 'Pick up and open',
+        disabled: reach ? null : 'disabled',
+        onclick: () => pickUpSheet(sh, true),
+      }));
+    }
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: 'Export CSV',
+      onclick: () => window.open('/api/layers/'
+        + encodeURIComponent(sh.gid) + '/export', '_blank'),
+    }));
+    acts.push(el('button', {
+      class: 'btn ghost sm', text: sh.archived ? 'Unarchive' : 'File away',
+      title: sh.archived
+        ? 'Put it back on the shelf'
+        : 'Off the shelf as well as off the bench. Nothing is lost.',
+      onclick: () => archiveSheet(sh),
+    }));
+
+    return el('div', {
+      class: 'cur-set' + (done ? ' done' : '') + (onBench ? ' on-bench' : ''),
+      'data-gid': sh.gid,
+    }, [
+      el('div', { class: 'cur-set-top' }, [
+        nameCell(sh),
+        el('span', { class: 'hk-chip', text: 'layers' }),
+        sh.name && sh.session_label
+          ? el('span', { class: 'hint', text: sh.session_label }) : null,
+        sh.archived
+          ? el('span', { class: 'hk-chip', text: 'archived' }) : null,
+        el('div', { style: 'flex:1' }),
+        sh.assignee
+          ? el('span', { class: 'csr-who', text: sh.assignee }) : null,
+        el('span', { class: 'cur-set-n',
+          text: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels' }),
+      ].filter(Boolean)),
+      when ? el('div', { class: 'hint',
+        text: (onBench ? 'picked up ' : 'last touched ') + when
+          + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '') }) : null,
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+      el('div', { class: 'cur-set-tally' },
+         (sh.regions || []).filter(
+           (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
+             class: 'cur-tally', style: '--cat:' + r.color,
+             text: r.name + '  ' + pr.by_region[r.id],
+           }))),
+      el('div', { class: 'cur-set-acts' }, acts),
+    ].filter(Boolean));
+  }
+
+  /* ==================================================================
+     Braid
+
+     The one tool here that decides nothing. It opens a recording in
+     XploreFinder with the band-resolved power panel up, and puts a
+     comodulogram of whatever window you are looking at one keystroke away.
+
+     No bench and no sets, so this pane is a chooser and nothing else --
+     there is no state to come back to, because looking does not leave any.
+     ================================================================== */
+  let cfcReg = null;
+
+  /* Incisor needs the registry and nothing else -- it does its own
+     estimating once a recording is chosen. The rows come from the same
+     sixty-second cache every other tool uses, because reading the registry
+     takes eight seconds on this lab's data. */
+  async function loadIncisor() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'incisor') return;
+    BARRY.incisor.paint();
+  }
+
+  /* Panorama needs the registry for its recording picker and nothing
+     else -- it estimates its own cost once a recording is chosen. Same
+     sixty-second cache as every other tool. */
+  async function loadPanorama() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'panorama') return;
+    BARRY.panorama.paint();
+  }
+
+  async function loadCFC() {
+    renderCFC();
+    cfcReg = await registry();
+    renderCFC();
+  }
+
+  let cfcGid = null;
+
+  function renderCFC() {
+    const host = $('#tkResult');
+    if (!host) return;
+    if (q.tool !== 'cfc') return;      // see renderCuration
+    host.style.opacity = '1';
+    host.innerHTML = '';
+    if (!cfcReg) {
+      host.appendChild(el('div', { class: 'tk-loading' }, [
+        stepLoader('Braid', ['reading the recording registry'])]));
+      return;
+    }
+
+    const rows = ((cfcReg || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
+    if (!cfcGid) cfcGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    const pick = BARRY.pickSession({
+      rows, value: cfcGid,
+      placeholder: 'Which recording? Type a mouse, session or date…',
+      onpick: (r) => { cfcGid = r.gid; },
+    });
+
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      el('div', {}, [
+        el('h2', { text: 'Braid' }),
+        el('p', { class: 'sub',
+          text: 'Theta, resolved into the bands it is actually made of, and '
+              + 'phase-amplitude coupling for a window you choose.' }),
+      ]),
+    ]));
+
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                 text: 'Open a recording' }));
+    card.appendChild(pick);
+    card.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn', text: 'Open in Braid',
+        onclick: () => { if (cfcGid) BARRY.cfc.enter(cfcGid); },
+      }),
+      el('span', { class: 'hint',
+        text: 'Opens in XploreFinder with a second window for the panels.' }),
+    ]));
+    host.appendChild(card);
+
+    /* What it does, said once, here. The two panels it opens are not
+       obvious from their names and the second one is the whole reason the
+       mode exists. */
+    const what = el('div', { class: 'card' });
+    what.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                 text: 'What it gives you' }));
+    what.appendChild(el('dl', { class: 'tk-what' }, [
+      el('dt', { text: 'Theta power, band by band' }),
+      el('dd', { text: 'Not one 4–12 Hz filter. Seventeen narrow bands '
+                     + 'in 0.5 Hz steps, each one the mean squared envelope '
+                     + 'of its own analytic signal — the same '
+                     + 'definition ThetaPower.m uses in the CFC pipeline. A '
+                     + 'rhythm that moves from 7 Hz to 9 Hz during a session '
+                     + 'is visible as a thing that moved, which a single '
+                     + 'wide filter cannot show you.' }),
+      el('dt', { text: 'A comodulogram, when you ask for one' }),
+      el('dd', { text: 'Phase-amplitude coupling across a grid of band '
+                     + 'pairs, for the window on screen. Seconds without a '
+                     + 'null, half a minute with one, so it opens its own '
+                     + 'window and tells you the cost before it starts.' }),
+      el('dt', { text: 'Nothing written down' }),
+      el('dd', { text: 'No set is claimed, no decision is recorded, nothing '
+                     + 'goes on anybody’s bench. Leave whenever you '
+                     + 'like; there is nothing to put down.' }),
+    ]));
+    host.appendChild(what);
   }
 
   function renderStrata() {
     const host = $('#tkResult');
     if (!host) return;
+    if (q.tool !== 'strata') return;   // see renderCuration
     host.style.opacity = '1';
     host.innerHTML = '';
     if (!strata) {
@@ -1638,7 +2173,7 @@ BARRY.views.toolkit = (function () {
     }
 
     const rows = ((strata.registry || {}).tree || [])
-      .flatMap((p) => p.mice.flatMap((m) => m.sessions));
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
     // Same search field as the curation importer, for the same reason.
     let strataGid = (rows.find((r) => r.reachable) || rows[0] || {}).gid;
     const pick = BARRY.pickSession({
@@ -1648,80 +2183,96 @@ BARRY.views.toolkit = (function () {
     });
     pick.id = 'strataPick';
 
+    const open = strataOpen();
+
     host.appendChild(el('div', { class: 'tk-head' }, [
       el('div', {}, [
         el('h2', { text: 'StrataScope' }),
         el('p', { class: 'sub',
-          text: 'Which anatomical layer each channel is sitting in \u2014 '
-              + 'labelled against the live voltage, CSD and theta rasters, so '
-              + 'there is nothing to crop and the rows cannot drift off the '
-              + 'channels.' }),
+          text: open.length
+            ? 'What you have open. It stays here until you put it down.'
+            : 'Which anatomical layer each channel is sitting in. Pick a '
+              + 'recording up below, or start a new sheet on the right — '
+              + 'it stays on the bench until you put it down.' }),
       ]),
       el('div', { class: 'spacer' }),
+      open.length > 1 ? el('button', {
+        class: 'btn ghost sm', text: 'Clear the bench',
+        title: 'Closes every open work set. Nothing is archived, deleted or '
+             + 'unlabelled.',
+        onclick: closeAllSheets,
+      }) : null,
       pick,
       el('button', {
-        class: 'btn', text: 'Open\u2026',
+        class: 'btn', text: 'Open…',
         disabled: rows.length ? null : 'disabled',
+        title: 'Opens the recording in StrataScope, making a sheet if there '
+             + 'is not one yet',
         onclick: () => {
           if (!strataGid) { toast('Pick a recording first.', 'err'); return; }
           BARRY.strata.enter(strataGid);
         },
       }),
-    ]));
+    ].filter(Boolean)));
 
-    const sheets = strata.sheets || [];
-    if (!sheets.length) {
-      host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'No layer sheets yet. Pick a recording above and open it '
-            + '\u2014 a sheet is made the first time.' }));
+    /* ---- the bench ---- */
+    const bench = el('div', { class: 'cur-sets cur-bench', id: 'strataBench' });
+    if (open.length) {
+      for (const sh of open) bench.appendChild(sheetCard(sh, true));
     } else {
-      const list = el('div', { class: 'cur-sets' });
-      for (const sh of sheets) {
-        const pr = sh.progress || {};
-        const reach = sh.session && sh.session.reachable;
-        list.appendChild(el('div', {
-          class: 'cur-set' + (pr.left === 0 && pr.total ? ' done' : ''),
-        }, [
-          el('div', { class: 'cur-set-top' }, [
-            el('strong', { text: sh.session_label || sh.gid }),
-            el('span', { class: 'hk-chip', text: 'layers' }),
-            el('div', { style: 'flex:1' }),
-            el('span', { class: 'cur-set-n',
-              text: pr.labelled + ' / ' + pr.total + ' channels' }),
-          ]),
-          el('div', { class: 'cur-prog small' }, [
-            el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-          ]),
-          el('div', { class: 'cur-set-tally' },
-             (sh.regions || []).filter(
-               (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
-                 class: 'cur-tally', style: '--cat:' + r.color,
-                 text: r.name + '  ' + pr.by_region[r.id],
-               }))),
-          el('div', { class: 'cur-set-acts' }, [
-            el('button', {
-              class: 'btn sm',
-              text: pr.left ? 'Continue\u2026' : 'Review\u2026',
-              disabled: reach ? null : 'disabled',
-              onclick: () => BARRY.strata.enter(sh.gid),
-            }),
-            el('button', {
-              class: 'btn ghost sm', text: 'Export CSV',
-              onclick: () => window.open('/api/layers/'
-                + encodeURIComponent(sh.gid) + '/export', '_blank'),
-            }),
-            el('button', {
-              class: 'btn ghost sm danger', text: 'Delete',
-              onclick: async () => {
-                await apiPost('/api/layers/' + encodeURIComponent(sh.gid)
-                              + '/delete', {});
-                loadStrata();
-              },
-            }),
-          ]),
-        ]));
-      }
-      host.appendChild(list);
+      bench.appendChild(el('div', { class: 'cur-bench-empty' }, [
+        el('p', { text: 'Nothing open.' }),
+        el('p', { class: 'hint',
+          text: strataSheets().length
+            ? 'Pick one up below and it stays on the bench until you put it '
+              + 'down. Putting a sheet down neither saves nor loses '
+              + 'anything — every label was written the moment you made it.'
+            : 'No layer sheets yet. Pick a recording above and open it — a '
+              + 'sheet is made the first time.' }),
+      ]));
+    }
+    host.appendChild(bench);
+
+    /* ---- the shelf, folded away until wanted ---- */
+    const nShelf = strataSheets().filter((sh) => !sh.open && !sh.archived)
+      .length;
+    const nArch = strataSheets().filter((sh) => sh.archived).length;
+    if (strataSheets().length) {
+      host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+        el('button', {
+          class: 'cur-shelf-toggle' + (strataQ.shelf ? ' on' : ''),
+          text: (strataQ.shelf ? '▾  ' : '▸  ')
+              + (open.length ? 'Pick up another sheet' : 'Pick up a sheet')
+              + '  ·  ' + nShelf + ' put down'
+              + (nArch ? '  ·  ' + nArch + ' archived' : ''),
+          onclick: () => { strataQ.shelf = !strataQ.shelf; renderStrata(); },
+        }),
+      ]));
+    }
+
+    if (strataQ.shelf) {
+      const shelf = el('div', { class: 'cur-shelf', id: 'strataShelf' });
+      shelf.appendChild(el('div', { class: 'cur-filter' }, [
+        el('input', {
+          class: 'inp sm', id: 'strataSearch', type: 'search',
+          placeholder: 'Search the sheets…', value: strataQ.text,
+          oninput: (e) => {
+            strataQ.text = e.target.value;
+            const box = $('#strataShelfList');
+            if (box) fillStrataShelf(box);
+          },
+        }),
+        el('select', {
+          title: 'Which of them',
+          onchange: (e) => { strataQ.show = e.target.value; renderStrata(); },
+        }, STRATA_SHOWS.map(([v, t]) => el('option', {
+          value: v, text: t,
+          selected: strataQ.show === v ? 'selected' : null }))),
+      ]));
+      const list = el('div', { class: 'cur-sets', id: 'strataShelfList' });
+      fillStrataShelf(list);
+      shelf.appendChild(list);
+      host.appendChild(shelf);
     }
 
     host.appendChild(el('div', { class: 'section-label', text: 'The layers' }));
@@ -1732,10 +2283,25 @@ BARRY.views.toolkit = (function () {
       }))));
   }
 
+  /* The shelf list on its own, so typing in the search box repaints the rows
+     and not the box the cursor is in. */
+  function fillStrataShelf(box) {
+    box.innerHTML = '';
+    const rows = strataShelf();
+    if (!rows.length) {
+      box.appendChild(el('div', { class: 'hint tk-empty',
+        text: strataQ.text
+          ? 'Nothing matches “' + strataQ.text + '”.'
+          : 'Nothing here under that filter.' }));
+      return;
+    }
+    for (const sh of rows) box.appendChild(sheetCard(sh, false));
+  }
+
   /* ==================================================================
      Importing a folder of sorted snapshots
      ==================================================================
-     Thousands of dentate spikes were sorted before BARRY existed, by
+     Thousands of dentate spikes were sorted before Jarvis existed, by
      dragging one PNG per candidate into a folder named after the decision.
      That work is real and nobody is redoing it, so this reads it back.
 
@@ -1884,7 +2450,59 @@ BARRY.views.toolkit = (function () {
     ]));
   }
 
+  /* The panel, and then the feed.
+
+     Each tool's branch below returns early, so there is nowhere after them
+     to hang anything. Wrapping is what makes the feed automatic: a toolkit
+     added later renders in a branch of the same function, and gets its
+     activity list without anybody remembering to ask for one. */
   function renderResult() {
+    renderToolPanel();
+    mountFeed();
+  }
+
+  /* One feed, for the tool on screen. Torn down and remounted rather than
+     left running: a poller for a tool nobody is looking at is a request
+     every nine seconds for as long as the window is open. */
+  let feedWatch = null;
+
+  function mountFeed() {
+    if (!BARRY.toolfeed) return;
+    BARRY.toolfeed.stop();
+    const host = $('#tkResult');
+    if (!host || !q.tool) return;
+    watchPanel(host);
+    tryFeed(host, q.tool);
+  }
+
+  /* Mount when there is a panel to mount under.
+
+     Skipped while a spinner is up -- a feed above a loading panel jumps
+     when the panel lands -- and skipped when one is already there, which is
+     what stops the watcher below reacting to its own mount. */
+  function tryFeed(host, tool) {
+    if (!host || !tool || !BARRY.toolfeed) return;
+    if (host.querySelector('.tk-loading')) return;
+    if (host.querySelector('.tf')) return;
+    BARRY.toolfeed.mount(host, tool);
+  }
+
+  /* Half the tools fetch before they draw, so the panel arrives after the
+     mount would have run and repaints over it. Watching the host covers
+     sync tools, async tools and anything added later without each of them
+     having to remember. */
+  function watchPanel(host) {
+    if (feedWatch) { feedWatch.disconnect(); feedWatch = null; }
+    if (typeof MutationObserver !== 'function') return;
+    feedWatch = new MutationObserver(() => {
+      if (!q.tool) return;
+      const now = $('#tkResult');
+      if (now) tryFeed(now, q.tool);
+    });
+    feedWatch.observe(host, { childList: true });
+  }
+
+  function renderToolPanel() {
     /* Undim first, whatever branch this takes. Every early return below used
        to skip the line that reset it. */
     const box = document.getElementById('tkResult');
@@ -1905,6 +2523,9 @@ BARRY.views.toolkit = (function () {
       return;
     }
     if (q.tool === 'strata') { renderStrata(); return; }
+    if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
+    if (q.tool === 'cfc') { renderCFC(); return; }
+    if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
     if (!host) return;
@@ -2058,7 +2679,13 @@ BARRY.views.toolkit = (function () {
   }
 
   return {
-    init, onShow, refresh,
+    init,
+    /* The cached registry rows, flattened, for a tool that wants its own
+       session picker. Through here rather than each tool fetching, so one
+       sixty-second cache serves them all. */
+    registryRows: () => (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    tool: () => q.tool, onShow, refresh,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

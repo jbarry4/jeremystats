@@ -364,6 +364,150 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('and nothing is left stacked behind it', !shellUp(),
         'a modal is still up');
 
+  head('7. A panel spans by having its edge dragged');
+  /* Spanning was shift-click, which is a gesture you have to be told about
+     -- and the help text told you, which is the tell. */
+  const cellAt = (r, c) => doc().querySelector(
+    '.grid-cell[data-r="' + r + '"][data-c="' + c + '"]');
+  const gripIn = (r, c, side) => {
+    const cell = cellAt(r, c);
+    return cell && cell.querySelector('.gc-grip.' + side);
+  };
+  const mid = (node) => {
+    const b = node.getBoundingClientRect();
+    return [b.left + b.width / 2, b.top + b.height / 2];
+  };
+
+  // A known starting point: one panel at r0c0, a 2x2 grid.
+  run('(function(){var L=BARRY.figure.layout();'
+      + 'L.rows=2;L.cols=2;'
+      + 'L.panels=[{panel:"traces",session_id:L.panels[0].session_id,'
+      + 'title:"probe A",row:0,col:0,rowspan:1,colspan:1,cmap:"jet"}];'
+      + 'BARRY.figure.redraw();})()');
+  await sleep(700);
+  if (!cellAt(0, 0)) {
+    run('BARRY.figure.open(BARRY.views.xplore.state, '
+        + 'BARRY.views.xplore.state.sessions['
+        + 'BARRY.views.xplore.state.order[0]])');
+    await untilN(() => doc().querySelector('.grid-map'), 150);
+    await sleep(800);
+  }
+  say('note', '  grid ' + L().rows + '×' + L().cols
+      + ', ' + L().panels.length + ' panel(s)');
+
+  const p0 = () => L().panels[0];
+  check('a panel has a grip on its right edge', !!gripIn(p0().row, p0().col, 'e'));
+  check('and one on its bottom edge', !!gripIn(p0().row, p0().col, 's'));
+  check('and a corner one', !!gripIn(p0().row, p0().col, 'se'));
+  /* Not in the middle of a span: a 1x1 panel's cell IS its extent, so this
+     is checked after the span below. */
+
+  const dragEdge = async (grip, target) => {
+    const W2 = win();
+    const PE = W2.PointerEvent;
+    const at = mid(grip);
+    const to = mid(target);
+    grip.dispatchEvent(new PE('pointerdown', {
+      bubbles: true, cancelable: true, clientX: at[0], clientY: at[1],
+      pointerId: 1, isPrimary: true }));
+    await sleep(120);
+    W2.dispatchEvent(new PE('pointermove', {
+      bubbles: true, clientX: to[0], clientY: to[1],
+      pointerId: 1, isPrimary: true }));
+    await sleep(160);
+    W2.dispatchEvent(new PE('pointerup', {
+      bubbles: true, clientX: to[0], clientY: to[1],
+      pointerId: 1, isPrimary: true }));
+    await sleep(700);
+  };
+
+  const spanBefore = { rs: p0().rowspan, cs: p0().colspan };
+  await dragEdge(gripIn(p0().row, p0().col, 'e'), cellAt(0, 1));
+  say('note', '  after dragging the right edge one cell across: '
+      + p0().rowspan + '×' + p0().colspan);
+  check('dragging the right edge widens the panel', p0().colspan === 2,
+        'colspan ' + p0().colspan);
+  /* The one that matters: an edge handle owns one axis. Dragging the right
+     edge across a cell that is also a row down must not add a row of
+     span. */
+  check('and does not change its height', p0().rowspan === spanBefore.rs,
+        'rowspan ' + p0().rowspan);
+  check('the cells it took are the ones dragged over',
+        p0().col === 0 && p0().colspan === 2,
+        'c' + p0().col + ' +' + p0().colspan);
+
+  // Now that it spans two columns, the left cell is inside the panel but not
+  // at its extent, so it should carry no grip.
+  check('no grip inside a span, only on its outside edge',
+        !gripIn(0, 0, 'e') && !!gripIn(0, 1, 'e'),
+        'left ' + !!gripIn(0, 0, 'e') + ', right ' + !!gripIn(0, 1, 'e'));
+
+  await dragEdge(gripIn(0, 1, 's'), cellAt(1, 1));
+  say('note', '  after dragging the bottom edge one cell down: '
+      + p0().rowspan + '×' + p0().colspan);
+  check('dragging the bottom edge makes it taller', p0().rowspan === 2,
+        'rowspan ' + p0().rowspan);
+  check('and it keeps the width it had', p0().colspan === 2,
+        'colspan ' + p0().colspan);
+
+  head('8. A panel comes out by being dragged out');
+  run('(function(){var L=BARRY.figure.layout();'
+      + 'var s=L.panels[0].session_id;'
+      + 'L.rows=1;L.cols=2;'
+      + 'L.panels=[{panel:"traces",session_id:s,title:"keep me",row:0,col:0,'
+      + 'rowspan:1,colspan:1,cmap:"jet"},'
+      + '{panel:"csd",session_id:s,title:"drag me out",row:0,col:1,'
+      + 'rowspan:1,colspan:1,cmap:"jet"}];'
+      + 'BARRY.figure.redraw();})()');
+  await sleep(800);
+  const bin = doc().querySelector('.grid-bin');
+  check('there is somewhere to drag a panel to', !!bin);
+  say('note', '  panels before: '
+      + L().panels.map((x) => x.title).join(', '));
+  if (bin && L().panels.length === 2) {
+    /* Dragged from the cell, not from a hand-made "move:1" -- the payload is
+       an implementation detail, and a test that knows it would pass while
+       the dragging itself was broken. */
+    drag(cellAt(0, 1), bin);
+    await sleep(900);
+    say('note', '  panels after: '
+        + L().panels.map((x) => x.title).join(', '));
+    check('dropping on the bin removes one panel', L().panels.length === 1,
+          L().panels.length + ' left');
+    check('and it removes the one that was dragged',
+          (L().panels[0] || {}).title === 'keep me',
+          (L().panels[0] || {}).title);
+  }
+
+  head('9. A cell says which channels it draws');
+  /* An index distinguishes nothing when every panel is a column of one
+     probe, which is exactly the case this was reported for. */
+  run('(function(){var L=BARRY.figure.layout();'
+      + 'var s=L.panels[0].session_id;'
+      + 'L.rows=1;L.cols=2;'
+      + 'L.panels=[{panel:"csd",session_id:s,title:"col A",row:0,col:0,'
+      + 'rowspan:1,colspan:1,cmap:"jet",channels:[0,3,6,9]},'
+      + '{panel:"csd",session_id:s,title:"col B",row:0,col:1,'
+      + 'rowspan:1,colspan:1,cmap:"jet",channels:[1,4,7,10]}];'
+      + 'BARRY.figure.redraw();})()');
+  await sleep(900);
+  const noteIn = (r, c) => {
+    const cell = cellAt(r, c);
+    const tag = cell && cell.querySelector('.gc-ch');
+    return tag ? tag.textContent.trim() : '';
+  };
+  say('note', '  cell r0c0: "' + noteIn(0, 0) + '"');
+  say('note', '  cell r0c1: "' + noteIn(0, 1) + '"');
+  check('a cell carries the channels its panel draws', !!noteIn(0, 0),
+        noteIn(0, 0));
+  check('and the two columns are told apart by them',
+        noteIn(0, 0) !== noteIn(0, 1),
+        noteIn(0, 0) + ' vs ' + noteIn(0, 1));
+  /* Channel NUMBERS, not indices. Indices 0,3,6,9 are CSC 1,4,7,10 -- and
+     printing the indices would be printing a different probe. */
+  check('as channel numbers, and as a run rather than a list',
+        /CSC\s*1-10\/3/.test(noteIn(0, 0)), noteIn(0, 0));
+
   head('6. The rebuild dialog gets out of the way');
   /* The dock is a class on the shell, so it can be checked without a run
      record to rebuild -- and it must come off again, or the next dialog

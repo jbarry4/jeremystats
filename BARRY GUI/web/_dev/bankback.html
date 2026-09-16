@@ -100,12 +100,36 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('  events on the trace before: ' + before, 'note');
 
   // Open the loader the way a person would.
-  $$('.pane-ctl .ctl-menu').find(
-    (b) => b.textContent.startsWith('More')).click();
-  await sleep(450);
-  $$('.ctl-pop button').find((b) => /^Import/.test(b.textContent)).click();
+  /* Any popover left open by whatever ran before, dismissed first.
+     This harness crashed when it followed `bank.html`: the click below
+     closed a popover that was already open instead of opening this one, so
+     the Import button was not there and `.click()` on undefined took the
+     whole run down with a message about neither. */
+  if ($('.ctl-pop')) {
+    D().body.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'Escape', bubbles: true }));
+    await sleep(250);
+  }
+  const moreBtn = $$('.pane-ctl .ctl-menu').find(
+    (b) => b.textContent.startsWith('More'));
+  check('the pane offers a More menu', !!moreBtn,
+        $$('.pane-ctl .ctl-menu').map((b) => b.textContent.trim()).join(' | '));
+  if (!moreBtn) return;
+  moreBtn.click();
+  /* Waited for, not slept at. */
+  await until(() => $('.ctl-pop'), 5000);
+  const importBtn = $$('.ctl-pop button').find(
+    (b) => /^Import/.test(b.textContent));
+  check('it offers to import events', !!importBtn,
+        $$('.ctl-pop button').map((b) => b.textContent.trim()).join(' | '));
+  if (!importBtn) return;
+  importBtn.click();
   await sleep(500);
-  $$('.choice').find((b) => /Event Bank/.test(b.textContent)).click();
+  const fromBank = $$('.choice').find((b) => /Event Bank/.test(b.textContent));
+  check('the Event Bank is one of the sources', !!fromBank,
+        $$('.choice').map((b) => b.textContent.trim().slice(0, 24)).join(' | '));
+  if (!fromBank) return;
+  fromBank.click();
   const listed = await until(() => $('.bm-list.tall .bm-row'), 9000);
   check('the entry is offered back for this recording', listed);
 

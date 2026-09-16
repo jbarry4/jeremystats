@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BARRY GUI</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23154734'/%3E%3Cpath d='M4 18h3l3-9 4 15 4-12 3 7 2-3h5' fill='none' stroke='%23FFB81C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Jarvis</title>
+<!-- The boot icon, before core.js repaints it in the live theme. A
+     file rather than an inline copy: two copies of one mark drift the
+     first time either is edited. -->
+<link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -80,7 +83,7 @@
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <div class="boot-name">BARRY</div>
+    <div class="boot-name">Jarvis</div>
     <div class="boot-track"><div class="boot-fill"></div></div>
     <div class="boot-what" id="bootWhat">starting up…</div>
     <div class="boot-slow" id="bootSlow"></div>
@@ -92,9 +95,28 @@
   <!-- ================= LEFT RAIL ================= -->
   <nav id="rail">
     <div class="brand">
-      <div class="brand-mark">B</div>
+      <!-- The mark, not a letter. Inline so it can take the theme's
+           own colours; the same path the favicon and the desktop
+           icon are drawn from. -->
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <!-- Light at the top, dark at the bottom. One rect and no filter,
+               and it is the difference between a badge and a swatch. -->
+          <linearGradient id="bmSheen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".20"/>
+            <stop offset=".55" stop-color="#fff" stop-opacity=".04"/>
+            <stop offset="1" stop-color="#000" stop-opacity=".12"/>
+          </linearGradient>
+        </defs>
+        <rect class="bm-ground" width="32" height="32" rx="8"/>
+        <rect width="32" height="32" rx="8" fill="url(#bmSheen)"/>
+        <!-- A dentate spike: rest, a small pre-deflection, one sharp spike,
+             its after-wave, rest. A letter was tried twice and dropped — a
+             flat baseline with a peak on it reads as a capital A. -->
+        <path class="bm-trace" d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4 L18 15.3 L20.2 19.4 H27.5"/>
+      </svg>
       <div class="brand-text">
-        <strong>BARRY</strong>
+        <strong>Jarvis</strong>
         <span class="brand-line">
           <span id="repoName">repo</span>
           <!-- The version, and what changed in it. Beside the repo name
@@ -190,10 +212,21 @@
     </div><!-- /.rail-scroll -->
 
     <div class="rail-foot">
-      <button class="chip-btn" id="syncBtn" title="GUI_logs sync status">
-        <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
-        <span id="syncLabel">Sync</span>
-      </button>
+      <!-- Two things on one row, because they are two different acts.
+           The left half syncs now; the right half opens the panel that
+           explains what syncing means. It used to be only the second, so
+           "push this to the other machine" was three clicks deep. -->
+      <div class="rail-sync">
+        <button class="chip-btn sync-go" id="syncNowBtn"
+                title="Sync with the shared database now">
+          <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
+          <span id="syncNowLabel">Sync now</span>
+        </button>
+        <button class="chip-btn sync-info" id="syncBtn"
+                title="What is synced, and how">
+          <span id="syncLabel">Sync</span>
+        </button>
+      </div>
       <button class="chip-btn" id="tourBtn" title="Show me around">
         <svg viewBox="0 0 20 20"><path d="M10 3 2 7l8 4 8-4z"/><path d="M5 9v4c0 1.7 2.2 3 5 3s5-1.3 5-3V9"/></svg>
         <span>Guide</span>
@@ -202,7 +235,7 @@
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
       </button>
-      <!-- Off by default, and the only thing in BARRY that reaches the
+      <!-- Off by default, and the only thing in Jarvis that reaches the
            internet. It says so before it is turned on. -->
       <button class="chip-btn" id="radioBtn" title="A radio to work to">
         <svg viewBox="0 0 20 20"><path d="M4 8h12v8H4z"/><circle cx="8" cy="12" r="2"/><path d="M13 11h2M13 13h2M6 8 15 4"/></svg>
@@ -371,7 +404,7 @@
         <div class="head-actions">
           <div class="seg" id="sessModeSeg" title="Two views of the same thing">
             <button class="active" data-mode="scan">Scan a drive</button>
-            <button data-mode="housekeeping">Everything BARRY knows</button>
+            <button data-mode="housekeeping">Everything Jarvis knows</button>
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
@@ -389,9 +422,12 @@
             <button class="btn" id="rootGo">Scan</button>
             <button class="btn ghost" id="rootBrowse">Browse…</button>
           </div>
+          <!-- The scan's two settings live behind this button, and the
+               button says so when they are not at their defaults. They used
+               to sit here as a checkbox and a number box beside the recent
+               roots: three unrelated things on one line. -->
           <div class="rb-opts">
-            <label class="toggle sm"><input type="checkbox" id="rootHeaders" checked><span>Read headers (exact IDs)</span></label>
-            <label class="mini-field">Depth <input type="number" id="rootDepth" value="6" min="1" max="12"></label>
+            <div id="rootOptsBar"></div>
             <span class="recent-label">Recent:</span>
             <span id="rootRecent" class="recent-list"></span>
           </div>
@@ -535,6 +571,36 @@
       <div class="pad" id="tkBody"></div>
     </section>
 
+    <!-- ---------- COMODULOGRAM ----------
+         Its own view because it lives in its own window: Braid opens
+         /?role=comod#comod, and comparing two maps means keeping them both
+         up, which a dialog cannot do. -->
+    <section class="view" id="view-comod">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Comodulogram</h1>
+          <p class="sub">Phase-amplitude coupling for one window of one
+            channel.</p>
+        </div>
+      </header>
+      <div class="pad" id="comodBody"></div>
+    </section>
+
+    <!-- ---------- POWER SPECTRUM ----------
+         Its own window for the same reason the comodulogram has one: Braid
+         opens /?role=spectrum#spectrum, and the thing people do with a
+         spectrum is hold it up against another one. -->
+    <section class="view" id="view-spectrum">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Power spectrum</h1>
+          <p class="sub">How much power at which frequency, over a whole
+            recording or a window of it.</p>
+        </div>
+      </header>
+      <div class="pad" id="spectrumBody"></div>
+    </section>
+
     <!-- ---------- MISC ---------- -->
     <section class="view" id="view-misc">
       <header class="view-head">
@@ -609,9 +675,16 @@
 <script src="js/hk_views.js"></script>
 <script src="js/housekeeping.js"></script>
 <script src="js/kilosort.js"></script>
+<script src="js/toolfeed.js"></script>
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/strata.js"></script>
+<script src="js/incisor.js"></script>
+<script src="js/panorama.js"></script>
+<script src="js/cfcscope.js"></script>
+<script src="js/comod.js"></script>
+<script src="js/spectrum.js"></script>
+<script src="js/cfcguide.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/tourmodules.js"></script>
 <script src="js/radio.js"></script>

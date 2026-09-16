@@ -29,6 +29,8 @@ import html
 import os
 import re
 import subprocess
+import tempfile
+import time
 import sys
 import urllib.parse
 
@@ -46,10 +48,32 @@ except Exception:                                        # noqa: BLE001
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 BASE = "http://127.0.0.1:8791"
 ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
+# A browser profile of the suite's own. See the note on
+# --user-data-dir below: without it a run competes with whatever
+# browser is already open and silently produces nothing.
+# This run's own, and nobody else's.
+#
+# A fixed directory keeps the suite out of the way of the browser the person
+# at the computer has open -- that is why it exists -- but an Edge left over
+# from an earlier run still holds it, and a second instance then hands its
+# URL to the first and exits without writing anything. Every harness reports
+# zero checks, which is indistinguishable from a clean sweep.
+#
+# Named for the process, so two suites can run at once, and removed at the
+# end. The alternative was killing every Edge on the machine, which takes
+# the user's browser with it.
+PROFILE = os.path.join(tempfile.gettempdir(),
+                       "jarvis-harness-profile-%d" % os.getpid())
 
 # The demo recording, as xplore.open() takes it: checked in, always
 # reachable, and nothing driving it can touch real curation data.
 SESSION = "demo:long-session"
+
+# `scanreg.html` takes `?root=` and covers the scan-to-registry path: what a
+# scan writes down, what it can see without opening a file, and which records
+# it brightens. Passed nothing, it scanned a folder named "null" and failed
+# eight checks every run.
+NEEDS_ROOT = {"scanreg.html"}
 
 # Harnesses measured to be WORSE with it. Both treat the parameter as
 # optional and take a different path when it is present.
@@ -73,6 +97,90 @@ OK = re.compile(r"(?m)^\s*(?:ok|OK|PASS|\u2713)\b")
 BAD = re.compile(r"(?m)^\s*(?:FAIL|BAD|ERROR|\u2717|\u2718)\b")
 
 
+_FAKE = [None]
+
+
+def fake_drive():
+    """A throwaway drive with recordings on it, for the scan harness.
+
+    The scanner calls a folder a recording when it holds a `csc*.ncs` file,
+    and reads the sampling rate out of the first 16 KB of one. So each
+    session folder here gets two CSC files with a Neuralynx-shaped ASCII
+    header and enough bytes after it to give a plausible duration -- the
+    scan divides file size by the record size, so the length is real
+    arithmetic rather than a number written down.
+
+    Under the system temp directory, rebuilt once per run, and named
+    `fakedrive` because that is the pattern `scanreg.html` cleans up by.
+    """
+    if _FAKE[0]:
+        return _FAKE[0]
+    import tempfile
+    # A folder per run.
+    #
+    # `scanreg.html` forgets its recordings when it finishes, and forgetting
+    # is permanent by design -- the tombstone is what stops a scratch copy
+    # creeping back on the next scan. So a fixture reused between runs is a
+    # fixture that can never be registered again, and the harness's own
+    # checks ("recordings nobody opened are registered too", "the scan
+    # brightened what it found") could not pass twice.
+    #
+    # A stamped folder is genuinely new every time, which is what those
+    # checks are about.
+    root = os.path.join(tempfile.gettempdir(), "barry_fakedrive",
+                        "fakedrive_" + time.strftime("%Y%m%d_%H%M%S"))
+    # 1044 bytes per Neuralynx record; 512 records is about 8.7 s at 30 kHz
+    # with 512 samples per record.
+    header_bytes = 16 * 1024
+    records = 200
+    # An identity per run, not just a folder per run.
+    #
+    # A recording is identified by its folder names and start time, so three
+    # folders called m1s1/m1s2/m2s1 dated 2026-01-02 are the SAME three
+    # recordings however new the tree above them is -- and `scanreg.html`
+    # forgets them when it finishes, which is permanent. Every run after the
+    # first resolved "exact" to a tombstoned record and registered nothing.
+    #
+    # The mouse number and the dates move with the clock, so each run meets
+    # recordings Jarvis has never seen.
+    mouse = 900 + (int(time.strftime("%j")) * 7 + int(time.strftime("%H%M"))
+                   % 90) % 90
+    day = time.strftime("2026-%m-%d")
+    sessions = [
+        ("FAKEPROJ", "fake_m%d" % mouse,
+         "m%ds1_%s" % (mouse, day), day + time.strftime("_%H-%M-%S")),
+        ("FAKEPROJ", "fake_m%d" % mouse,
+         "m%ds2_%s" % (mouse, day), day + time.strftime("_%H-%M-") + "45"),
+        ("FAKEPROJ", "fake_m%d" % (mouse + 1),
+         "m%ds1_%s" % (mouse + 1, day), day + time.strftime("_%H-%M-") + "58"),
+    ]
+    for proj, mouse, sess, stamp in sessions:
+        folder = os.path.join(root, proj, mouse, sess, stamp)
+        os.makedirs(folder, exist_ok=True)
+        for ch in (1, 2):
+            path = os.path.join(folder, "CSC%d.ncs" % ch)
+            if os.path.exists(path):
+                continue
+            head = (
+                "######## Neuralynx Data File Header\n"
+                "-FileType CSC\n"
+                "-FileVersion 3.4\n"
+                "-RecordSize 1044\n"
+                "-TimeCreated %s\n"
+                "-SamplingFrequency 30000\n"
+                "-ADBitVolts 0.000000036621093749999997\n"
+                "-ADChannel %d\n"
+                "-AcqEntName CSC%d\n"
+                % (stamp.replace("_", " ").replace("-", "/", 2), ch - 1, ch)
+            ).encode("latin-1")
+            with open(path, "wb") as fh:
+                fh.write(head)
+                fh.write(b"\x00" * (header_bytes - len(head)))
+                fh.write(b"\x00" * (1044 * records))
+    _FAKE[0] = root
+    return root
+
+
 def strip(doc):
     """Everything the page rendered, as text."""
     doc = re.sub(r"(?s)<script.*?</script>", " ", doc)
@@ -82,6 +190,15 @@ def strip(doc):
     # ^-anchored counts see one of them.
     doc = TAG.sub("\n", doc)
     return html.unescape(doc)
+
+
+def drop_profile():
+    """Remove this run's browser profile. Failure here costs nothing."""
+    import shutil
+    try:
+        shutil.rmtree(PROFILE, ignore_errors=True)
+    except Exception:                                    # noqa: BLE001
+        pass
 
 
 def main():
@@ -96,19 +213,57 @@ def main():
         url = "%s/_dev/%s" % (BASE, name)
         if name not in NO_SESSION:
             url += "?session=" + urllib.parse.quote(SESSION, safe="")
+        if name in NEEDS_ROOT:
+            root = fake_drive()
+            url += ("&" if "?" in url else "?") + "root=" \
+                + urllib.parse.quote(root, safe="")
         try:
-            raw = subprocess.run(
-                [EDGE, "--headless=new", "--disable-gpu",
-                 # A real window. Headless defaults to something small, and
-                 # the geometry harnesses measure against it: at the default
-                 # size stratacheck reported six failures (rows 1px tall, 22
-                 # buttons off screen) and typing reported 47 clipped names.
-                 # Both pass at 1600x1000. A layout harness run in a 423px
-                 # window is measuring the window, not the layout.
-                 "--window-size=1600,1000",
-                 "--virtual-time-budget=150000", "--dump-dom", url],
-                capture_output=True, timeout=280, cwd=ROOT).stdout.decode(
-                    "utf-8", "replace")
+            # To a FILE, never a pipe.
+            #
+            # Measured: `--dump-dom` writes nothing when stdout is a pipe on
+            # this machine and writes the whole document when it is a file.
+            # Same binary, same arguments, same page -- 0 bytes against
+            # 6871. Every harness therefore reported "0 checks", which is
+            # indistinguishable from what a shot-taker reports, so a suite
+            # of real checks read as a suite of probes and passed.
+            dump = os.path.join(tempfile.gettempdir(),
+                                "jarvis-harness-dump.html")
+            try:
+                os.remove(dump)
+            except OSError:
+                pass
+            with open(dump, "wb") as sink:
+                subprocess.run(
+                    [EDGE, "--headless=new", "--disable-gpu",
+                     # Its own profile, and this is not a detail.
+                     #
+                     # Without it Edge uses the default profile, and when
+                     # the person at the computer has their browser open it
+                     # does not start a second instance -- it hands the URL
+                     # over, says "Opening in existing browser session" and
+                     # exits. Nothing is dumped, every harness reports 0
+                     # checks, and the suite reads as a hundred shot-takers
+                     # instead of a hundred failures. Measured: the same
+                     # page that reported nothing returned 6871 bytes and
+                     # five passing checks with this set.
+                     #
+                     # It also keeps the suite out of the way of a real
+                     # browser, so clearing a stuck run does not mean
+                     # closing somebody's tabs.
+                     "--user-data-dir=" + PROFILE,
+                     "--no-first-run", "--no-default-browser-check",
+                     # A real window. Headless defaults to something small, and
+                     # the geometry harnesses measure against it: at the default
+                     # size stratacheck reported six failures (rows 1px tall, 22
+                     # buttons off screen) and typing reported 47 clipped names.
+                     # Both pass at 1600x1000. A layout harness run in a 423px
+                     # window is measuring the window, not the layout.
+                     "--window-size=1600,1000",
+                     "--virtual-time-budget=150000", "--dump-dom", url],
+                    stdout=sink, stderr=subprocess.DEVNULL,
+                    timeout=280, cwd=ROOT)
+            with open(dump, "rb") as fh:
+                raw = fh.read().decode("utf-8", "replace")
         except subprocess.TimeoutExpired:
             rows.append((name, 0, 0, "TIMED OUT", []))
             print("%-22s TIMED OUT" % name, flush=True)
@@ -124,9 +279,13 @@ def main():
         # passing.
         ok = len(OK.findall(text))
         bad = len(BAD.findall(text))
-        # Marker inside a span, so a line-anchored match sees the tag.
-        span_ok = len(re.findall(r'class="good"', raw))
-        span_bad = len(re.findall(r'class="bad"', raw))
+        # Marker inside a tag, so a line-anchored match sees the tag rather
+        # than the text. Three spellings, because the harnesses were written
+        # over months: `good`, `ok` and `pass` all mean one check passed.
+        # Counting only `good` is why figgrid.html -- sixty-three checks,
+        # every one passing -- was reported as a single check.
+        span_ok = len(re.findall(r'class="(?:good|ok|pass)"', raw))
+        span_bad = len(re.findall(r'class="(?:bad|no|fail)"', raw))
         ok, bad = max(ok, span_ok), max(bad, span_bad)
         # And the ones that report only in the title.
         m = re.search(r"(\d+)\s*pass\D+(\d+)\s*fail", title or "")
@@ -140,7 +299,19 @@ def main():
         titled_pass = bool(re.search(r":\s*passed\s*$", (title or "").strip()))
         if titled_pass and not ok:
             ok = 1
-        fails = [l.strip() for l in text.split("\n") if BAD.match(l)][:8]
+        fails = [l.strip() for l in text.split("\n") if BAD.match(l)]
+        if not fails:
+            # The other style marks a failure with a class and lets CSS write
+            # the word, so the stripped text of a failing check reads exactly
+            # like a passing one. The count already came from these tags; the
+            # names may as well.
+            fails = [html.unescape(re.sub(r"<[^>]+>", " ", m))
+                     .strip().replace("\n", " ")
+                     for m in re.findall(
+                         r'class="(?:bad|no|fail)"[^>]*>(.*?)</',
+                         raw, re.S)]
+            fails = [re.sub(r"\s+", " ", f) for f in fails if f.strip()]
+        fails = fails[:8]
         threw = "THREW" in text or "CRASH" in (title or "")
         note = ""
         if threw:
@@ -174,5 +345,12 @@ def main():
     return 1 if broken else 0
 
 
+def _run():
+    try:
+        return main()
+    finally:
+        drop_profile()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run())

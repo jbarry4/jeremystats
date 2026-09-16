@@ -224,17 +224,68 @@ def match(identity, candidates):
     loose = identity.get("loose_key")
     if loose:
         hits = [c for c in candidates if c.get("loose_key") == loose]
+        start = identity.get("start")
+        if start:
+            # A loose match has to agree about WHEN.
+            #
+            # Mouse plus session is not an identity: this lab's numbering
+            # restarts per project, so PTEN m1 s1 and KCNT1 m1 s1 have one
+            # loose key and are two recordings. Without this, a scan of a
+            # drive holding the second one matched the first, and
+            # `upsert_session` appended the new path to it -- two recordings
+            # silently becoming one. Three real records from 2023 and 2024
+            # were taken over by a fixture named m1s1/m1s2/m2s1 that way.
+            hits = [c for c in hits if _near(c.get("start"), start)]
         if len(hits) == 1:
             return hits[0], "strong"
         if len(hits) > 1:
-            # Same mouse+session recorded more than once: prefer the nearest
-            # start time rather than guessing.
-            start = identity.get("start")
+            # Same mouse+session recorded more than once within the window:
+            # prefer the nearest start time rather than guessing.
             if start:
-                hits.sort(key=lambda c: abs(_epoch(c.get("start")) - _epoch(start)))
+                hits.sort(key=lambda c: abs(_epoch(c.get("start"))
+                                            - _epoch(start)))
                 return hits[0], "weak"
             return hits[0], "weak"
     return None, None
+
+
+# How far apart two start times can be and still be one recording.
+#
+# Two mounts of the same recording carry the same start to the second. The
+# slack is for one side having read it from a Neuralynx header and the other
+# from a folder name, which differ by seconds or minutes -- never by days.
+LOOSE_WINDOW_S = 6 * 3600
+
+
+def _near(a, b):
+    """Are these two start times the same recording's?
+
+    A missing start on either side cannot be compared, and this tier exists
+    for exactly that case -- a folder whose name says mouse and session but
+    not when -- so it counts as near. Refusing it would lose the match that
+    makes bad channels follow a recording between machines.
+    """
+    if not a or not b:
+        return True
+    ea, eb = _seconds(a), _seconds(b)
+    if ea is None or eb is None:
+        return True
+    return abs(ea - eb) <= LOOSE_WINDOW_S
+
+
+def _seconds(iso):
+    """An ISO-ish stamp as seconds, or None when it cannot be read."""
+    digits = re.sub(r"\D", "", str(iso or ""))
+    if len(digits) < 8:
+        return None
+    digits = (digits + "000000")[:14]
+    try:
+        from datetime import datetime
+        return datetime(int(digits[0:4]), int(digits[4:6]), int(digits[6:8]),
+                        int(digits[8:10]), int(digits[10:12]),
+                        int(digits[12:14])).timestamp()
+    except (ValueError, OverflowError, OSError):
+        return None
 
 
 def _epoch(iso):

@@ -2,7 +2,7 @@
 results.py -- The Results catalog and the Storyboard store.
 
 RESULTS
-    Everything BARRY saves is cataloged here automatically: figures exported
+    Everything Jarvis saves is cataloged here automatically: figures exported
     from the builder, single-window trace exports, and any image or table a
     pipeline stage drops into a session folder. A result is a row of metadata --
     what it is, which session it came from, who made it, which run produced it --
@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 
-from . import shards
+from . import extras, shards
 from datetime import datetime, timezone
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
@@ -37,6 +38,58 @@ RESULT_EXTS = IMAGE_EXTS | DOC_EXTS | TABLE_EXTS
 STAGE_OUTPUT_DIRS = ("pipeline output", "output", "figures", "figs")
 
 MAX_SCAN_FILES = 6000
+
+# The by-product lane under Results/. Written by save_output(lane="scratch"),
+# ignored by git, and skipped here so the catalogue is results only. Kept in
+# step with SCRATCH_DIR in app.py.
+SCRATCH_DIR = "_scratch"
+
+
+# Pulling the animal out of a name.
+#
+# Most results carry a run record that already says which project, mouse and
+# session they came from. The ones that do not are files a colleague committed,
+# or a tool wrote before it learned to file a run -- and those are exactly the
+# ones somebody is hunting for. Every naming convention the lab uses puts the
+# same three facts in the name, so read them back out rather than showing the
+# file as belonging to nothing:
+#
+#   PTEN m1 s2 2023-10-02              a session folder
+#   KCNT1_m306_s1_2026-02-24_CSC1...   a Panorama stem
+#   m41 s1 2024-11-26                  no project named
+MSD = re.compile(
+    r"(?:^|[/_ ])(?:(?P<project>[A-Za-z][A-Za-z0-9]{1,15})[_ ])?"
+    r"m(?P<mouse>\d{1,5})[_ ]s(?P<session>\d{1,4})"
+    r"(?:[_ ](?P<date>\d{4}-\d{2}-\d{2}))?", re.I)
+
+DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+
+
+def _date_of(text):
+    m = DATE.search(str(text or ""))
+    return m.group(1) if m else None
+
+
+def _facets_of(text):
+    """{project, mouse, session_no, recorded_on} read off a name, or blanks."""
+    out = {"project": None, "mouse": None, "session_no": None,
+           "recorded_on": _date_of(text)}
+    m = MSD.search(str(text or ""))
+    if not m:
+        return out
+    proj = m.group("project")
+    # "harness_m99_s1" and the like: a word that is plainly not a project.
+    if proj and proj.lower() in ("harness", "demo", "test", "rebuild", "arrow"):
+        proj = None
+    out["project"] = proj.upper() if proj else None
+    try:
+        out["mouse"] = int(m.group("mouse"))
+        out["session_no"] = int(m.group("session"))
+    except (TypeError, ValueError):
+        pass
+    if m.group("date"):
+        out["recorded_on"] = m.group("date")
+    return out
 
 
 def _now():
@@ -75,7 +128,7 @@ class Results:
     # Catalog
     # ------------------------------------------------------------------
     def catalog(self, refresh=False, extra_roots=None):
-        """Every result BARRY has saved, newest first.
+        """Every result Jarvis has saved, newest first.
 
         Deliberately one source: the Results folder in the repo. It used to
         also sweep data roots for whatever a MATLAB stage had left in a
@@ -92,7 +145,7 @@ class Results:
 
         items = {}
 
-        # 1. Anything exported through BARRY, which carries real provenance.
+        # 1. Anything exported through Jarvis, which carries real provenance.
         for rec in self.store.all_runs():
             out = rec.get("output") or {}
             path = out.get("path")
@@ -101,6 +154,15 @@ class Results:
             full = os.path.abspath(path)
             if not self._inside(full):
                 continue        # an older record from before the move
+            # The by-product lane, which the folder scan below also skips.
+            # Skipping it there and not here put every harness figure back in
+            # the catalogue by the other door: those files were written by a
+            # real run, so they have a run record, and this loop is the run
+            # records. It reads fine and is wrong in exactly the way that is
+            # hardest to notice -- the folder looks clean and the view does
+            # not.
+            if self._in_scratch(full):
+                continue
             if not os.path.isfile(full):
                 # The run says it made this and the file is not there any
                 # more -- moved by hand, deleted, or on another machine. The
@@ -131,7 +193,14 @@ class Results:
                 # but there is nothing to attach it to either.
                 guess = os.path.join(self.outputs_dir,
                                      (meta.get("rel") or key).replace("/", os.sep))
-                if os.path.isfile(guess) and self._inside(guess):
+                # The third door into the catalogue, and the one that kept
+                # eighty-one harness files in it after both the others were
+                # shut. Sweeping them into the by-product lane carried their
+                # tags and stars along -- correctly, that is what move() is
+                # for -- so their curation records now point at _scratch, and
+                # this loop faithfully rebuilt a catalogue entry from each.
+                if (os.path.isfile(guess) and self._inside(guess)
+                        and not self._in_scratch(guess)):
                     items[os.path.abspath(guess)] = dict(
                         self._from_file(os.path.abspath(guess), "sidecar"),
                         **clean)
@@ -139,6 +208,15 @@ class Results:
         out = sorted(items.values(), key=lambda r: r.get("mtime") or 0, reverse=True)
         self._cache = {"at": time.time(), "items": out}
         return out
+
+    def _in_scratch(self, path):
+        """Is this in the by-product lane? Cased and separator-normalised,
+        because on Windows the same file arrives spelled both ways."""
+        try:
+            rel = os.path.relpath(os.path.abspath(path), self.outputs_dir)
+        except (TypeError, ValueError):
+            return False
+        return rel.replace("\\", "/").lower().split("/")[0] == SCRATCH_DIR
 
     def _inside(self, path):
         """Is this path inside the Results folder? Nothing else is cataloged."""
@@ -195,7 +273,38 @@ class Results:
             "panels": rec.get("panels") or [],
             "github": out.get("github"),
             "rel": out.get("rel"),
+            # What the run already knew and the catalogue was dropping.
+            #
+            # A result could say which session it came from, as a label --
+            # "PTEN m1 s2 2023-10-02" -- and nothing else. So the only way to
+            # group results by animal was to parse that string back apart,
+            # and the only way to find everything from one recording was to
+            # hope its label had been spelled the same way every time. The
+            # gid is the identity the rest of the app uses; project, mouse and
+            # session are what people actually look by.
+            "gid": sess.get("gid"),
+            # `script` was in the search haystack from the beginning and was
+            # never once set, so searching for the tool that made something
+            # matched nothing.
+            "script": rec.get("script"),
+            "app_version": prov.get("app_version"),
+            "commit": prov.get("commit"),
         })
+        # The run's session block first, and the file's own name after.
+        #
+        # Not the other way round, and not the session block alone -- which is
+        # what this was. A run whose session block never got filled in ended up
+        # with fewer facets than a file with no run record at all, because that
+        # path reads the name. So a Panorama figure sat unassigned while the
+        # three CSVs written beside it, in the same second by the same run,
+        # were filed under the recording.
+        named = _facets_of(base.get("rel") or base.get("name"))
+        for key, val in (("project", sess.get("group")),
+                         ("mouse", sess.get("mouse")),
+                         ("session_no", sess.get("session")),
+                         ("recorded_on", (sess.get("date")
+                                          or _date_of(sess.get("label"))))):
+            base[key] = val if val not in (None, "") else named.get(key)
         return base
 
     def _from_file(self, path, source):
@@ -236,6 +345,11 @@ class Results:
             "kind": "file",
             "tags": [],
             "notes": "",
+            # Read off the name, since there is no run record to ask.
+            # The folder is tried first: a file inside "PTEN m1 s2
+            # 2023-10-02" belongs to that recording whatever it is
+            # called, and a Panorama stem names the animal itself.
+            **_facets_of(shown if MSD.search(shown) else name),
         }
 
     def _scan_dir(self, folder, items, source, depth=4):
@@ -245,7 +359,14 @@ class Results:
         for root, dirs, files in os.walk(folder):
             if root[len(folder):].count(os.sep) >= depth:
                 dirs[:] = []
+            # Dot folders are caches. `_scratch` is the harness-and-debug
+            # lane: real files from real runs that nobody will ever cite, and
+            # the reason this folder stopped being readable. Both are skipped
+            # at the top level only -- a session legitimately named `_scratch`
+            # three folders down is not this.
             dirs[:] = [d for d in dirs if not d.startswith(".")]
+            if root == folder:
+                dirs[:] = [d for d in dirs if d != SCRATCH_DIR]
             for name in files:
                 if os.path.splitext(name)[1].lower() not in RESULT_EXTS:
                     continue
@@ -325,8 +446,13 @@ class Results:
                 for k, v in (json.load(fh) or {}).items():
                     key = k if not os.path.isabs(k) else self.rel_key(k)
                     prev = out.get(key)
-                    if prev and (prev.get("updated") or {}).get("at", "") \
-                            > (v.get("updated") or {}).get("at", ""):
+                    # Newer wins, compared as a time. The legacy file was
+                    # shared, so two machines' stamps sit in it in two
+                    # different offsets and the text comparison this
+                    # replaces could keep the older copy.
+                    if prev and not extras.marked_after(
+                            (prev.get("updated") or {}).get("at"),
+                            (v.get("updated") or {}).get("at")):
                         continue
                     out[key] = v
         except (OSError, json.JSONDecodeError):
@@ -360,7 +486,7 @@ class Results:
     # one. That is the whole point: what the Results view shows and what you
     # see when you open the folder are the same thing, so a figure you filed
     # under "Figure 3" is at Results/Figure 3/ and can be dragged into a
-    # slide deck, emailed, or found by someone who has never opened BARRY.
+    # slide deck, emailed, or found by someone who has never opened Jarvis.
     #
     # It costs more than a label, because moving a file breaks whatever was
     # holding its old path -- the run that produced it, a storyboard slide
@@ -402,7 +528,11 @@ class Results:
             for d in dirs:
                 rel = os.path.relpath(os.path.join(root, d),
                                       self.outputs_dir).replace("\\", "/")
-                if rel.startswith("."):
+                # Dot folders are caches, and the by-product lane is not a
+                # folder anybody files into. Skipping it in the catalogue and
+                # not here would put it straight back on screen as three
+                # empty chips -- which is the debris again, just tidier.
+                if rel.startswith(".") or rel.split("/")[0] == SCRATCH_DIR:
                     continue
                 counts.setdefault(self.clean_folder(rel), 0)
         out = []
@@ -503,13 +633,25 @@ class Results:
                 for it in (sl.get("items") or []):
                     if it.get("type") != "result":
                         continue
-                    if it.get("id") == old_id or it.get("result") == old_id:
-                        it["id"] = new_id
+                    # `result_id` is the field slides actually use; `id` is
+                    # the item's own. Both of the old names are kept because
+                    # a deck written by an older BARRY may still carry them,
+                    # and a slide that silently stops resolving is precisely
+                    # what this whole method exists to prevent.
+                    if old_id in (it.get("result_id"), it.get("id"),
+                                  it.get("result")):
+                        if "result_id" in it:
+                            it["result_id"] = new_id
+                        else:
+                            it["id"] = new_id
                         it["rel"] = new_rel
                         touched = True
                     elif it.get("rel") == old_rel:
                         it["rel"] = new_rel
-                        it["id"] = new_id
+                        if "result_id" in it:
+                            it["result_id"] = new_id
+                        else:
+                            it["id"] = new_id
                         touched = True
             if touched:
                 self.decks.write(self.deck_base(deck["id"]), deck)
@@ -667,7 +809,8 @@ class Results:
                 # list before you have even opened one.
                 "thumb": self._first_image(d),
             })
-        out.sort(key=lambda x: x.get("updated") or "", reverse=True)
+        out.sort(key=lambda x: extras.moment_key(x.get("updated")),
+                 reverse=True)
         return out
 
     def get_deck(self, deck_id):

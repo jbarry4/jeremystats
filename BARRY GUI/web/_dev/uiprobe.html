@@ -7,7 +7,7 @@ iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left
 <div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
 /* A scratch page for one interaction at a time. Currently: why a saved
-   contentWindow stops having BARRY on it. */
+   contentWindow stops having Jarvis on it. */
 const out = document.getElementById('out');
 const p = (m) => { out.textContent += m + '\n'; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,7 +38,7 @@ async function untilN(fn, tries = 200, gap = 100) {
     const inFrame = (expr) => {
       try { return String(w.eval(expr)); } catch (e) { return 'THREW'; }
     };
-    p('   BARRY              ' + (w ? inFrame('typeof BARRY') : 'no frame'));
+    p('   Jarvis              ' + (w ? inFrame('typeof Jarvis') : 'no frame'));
     p('   BARRY.refreshSync  '
       + (w ? inFrame('typeof BARRY.refreshSync') : 'no frame'));
     p('   .setView           ' + (w && typeof w.setView));

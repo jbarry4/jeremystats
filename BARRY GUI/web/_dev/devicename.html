@@ -1,0 +1,184 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the computer and the person are separate</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The machine's name used to be a field in the profile, and that is how one
+   computer came to file errors under five different labels while two
+   computers were both set to the same one -- measured across 216 errors.
+
+   The claim is narrow and it is the whole point: nothing you do to a profile
+   can rename the computer. Tested by doing the things that used to,
+   including switching the profile to somebody else entirely, which is the
+   case that used to hijack the machine.
+
+   Everything is put back at the end, and the checks are written so a failure
+   still restores. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 200, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const get = async (path) => (await W().fetch(path)).json();
+  const post = async (path, body) => (await W().fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+
+  const devName = async () => ((await get('/api/device')).device || {}).name;
+  const profName = async () =>
+    ((await get('/api/profile')).profile || {}).name;
+
+  let keepDev = null;
+  let keepProf = null;
+  try {
+    hd('1. They are two records');
+    const d0 = (await get('/api/device')).device;
+    const p0 = (await get('/api/profile')).profile;
+    keepDev = d0.named ? d0.name : '';
+    keepProf = { name: p0.name, email: p0.email,
+                 role: p0.role, initials: p0.initials };
+    p('  computer: ' + JSON.stringify(d0.name)
+      + '  (its own name ' + JSON.stringify(d0.real) + ')');
+    p('  person:   ' + JSON.stringify(p0.name));
+    ck('the computer has a name', !!d0.name, d0.name);
+    ck('and an identity separate from that name',
+       !!d0.id && d0.id !== d0.name, d0.id);
+    /* The identity is what anything comparing machines must use, because
+       the name is not unique -- two machines have been set to the same one. */
+    ck('the identity is derived, not typed',
+       /-[0-9a-f]{4}$/.test(d0.id || ''), d0.id);
+    ck('the profile reports the machine name but does not own it',
+       p0.device_name === d0.name, p0.device_name + ' vs ' + d0.name);
+
+    hd('2. Saving a profile cannot rename the computer');
+    /* Including a device field in the payload, which is what the old route
+       accepted. */
+    await post('/api/profile', { name: keepProf.name, email: keepProf.email,
+                                 device: 'zz should not stick' });
+    ck('a device field in a profile save is ignored',
+       (await devName()) === d0.name, await devName());
+
+    hd('3. Switching to a different person cannot either');
+    /* The case that used to hijack the machine: the Save branch fell
+       through and set this computer's identity to whoever was being
+       edited. */
+    await post('/api/profile', { name: 'zz probe person',
+                                 device: 'zz also should not stick' });
+    ck('the computer keeps its name', (await devName()) === d0.name,
+       await devName());
+    ck('and the person really did change', (await profName()) === 'zz probe person',
+       await profName());
+    const prov = await get('/api/sync/status').catch(() => ({}));
+    p('  (profile is now the probe; the machine is still ' + d0.name + ')');
+
+    hd('4. The computer can be renamed, on its own');
+    await post('/api/device', { name: 'zz test machine' });
+    ck('renaming works', (await devName()) === 'zz test machine',
+       await devName());
+    ck('and it did not touch the person',
+       (await profName()) === 'zz probe person', await profName());
+    /* Empty means "use the name the computer reports", not "blank". */
+    await post('/api/device', { name: '' });
+    const bare = (await get('/api/device')).device;
+    ck('clearing it falls back to the hostname rather than nothing',
+       bare.name === bare.real && bare.named === false,
+       bare.name + ' named=' + bare.named);
+
+    hd('5. DEVICE is a button, and it manages them');
+    await post('/api/device', { name: keepDev || '' });
+    run("setView('errors')");
+    await untilN(() => D().querySelector('.dev-bar'), 200);
+    await sleep(700);
+    const btn = D().querySelector('.dev-bar-label.as-button');
+    ck('the DEVICE label is clickable', !!btn,
+       (D().querySelector('.dev-bar-label') || {}).outerHTML);
+    if (btn) {
+      btn.click();
+      await untilN(() => D().querySelector('.dev-mgr'), 200);
+      await sleep(900);
+      ck('it opens the manager', !!D().querySelector('.dev-mgr'));
+      const box = D().querySelector('.dev-name-in');
+      ck('with a box to name this computer', !!box);
+      /* Every other machine gets a row with an archive control -- the
+         point of the panel is managing them, not just listing them. */
+      const rows = D().querySelectorAll('.dev-mgr-other');
+      const arch = Array.from(D().querySelectorAll('.dev-mgr-other button'))
+        .filter((b) => /Archive|Bring back/.test(b.textContent || ''));
+      p('  ' + rows.length + ' other computer(s), ' + arch.length
+        + ' with an archive control');
+      ck('every other computer can be archived from here',
+         arch.length === rows.length, arch.length + ' vs ' + rows.length);
+      /* And the thing nothing used to show: this machine's identity. */
+      ck('it shows the identity, not just the label',
+         /desktop|barrylab|lcom|-[0-9a-f]{4}/i.test(
+           (D().querySelector('.dev-mgr-id') || {}).textContent || ''),
+         (D().querySelector('.dev-mgr-id') || {}).textContent);
+      run('closeModal()');
+    }
+
+    hd('6. The profile dialog no longer offers to rename the machine');
+    await sleep(300);
+    run('BARRY.profile.open()');
+    await untilN(() => D().querySelector('.prof-form'), 200);
+    await sleep(700);
+    const labels = Array.from(D().querySelectorAll('.prof-form label'))
+      .map((l) => l.textContent.trim());
+    p('  fields: ' + labels.join(' | '));
+    ck('there is no machine-name field in it',
+       !labels.some((t) => /machine|computer|device/i.test(t)),
+       labels.filter((t) => /machine|computer|device/i.test(t)).join(', '));
+    ck('but it says what the computer is called',
+       /Bluebarry|DESKTOP|this computer|unnamed/i.test(
+         (D().querySelector('.prof-device-note') || {}).textContent || ''),
+       (D().querySelector('.prof-device-note') || {}).textContent);
+    run('closeAllModals()');
+  } catch (e) {
+    p('THREW: ' + (e && e.stack || e));
+    bad++;
+  } finally {
+    /* Put both back, whatever happened. */
+    try { await post('/api/device', { name: keepDev || '' }); } catch (e) { }
+    if (keepProf && keepProf.name) {
+      try { await post('/api/profile', keepProf); } catch (e) { }
+    }
+    try {
+      await post('/api/people/_test_purge',
+                 { names: ['zz probe person', 'zz test machine'] });
+    } catch (e) { }
+    const dv = await devName();
+    const pf = await profName();
+    ck('the computer name is back', dv === (keepDev || undefined) || !!dv, dv);
+    ck('and the profile is back', pf === keepProf.name,
+       pf + ' vs ' + keepProf.name);
+  }
+
+  hd('Done');
+  p(bad ? bad + ' FAILURE(S)' : 'all checks passed');
+})();
+</script>

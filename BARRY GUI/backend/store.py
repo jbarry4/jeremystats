@@ -1,5 +1,5 @@
 """
-store.py -- The GUI_logs store: everything BARRY remembers, on disk, in git.
+store.py -- The GUI_logs store: everything Jarvis remembers, on disk, in git.
 
 Layout -- and every path in it is chosen so that **no two machines ever write
 the same file**, which is what makes a git conflict impossible rather than
@@ -215,6 +215,11 @@ class Store:
     # ------------------------------------------------------------------
     # Provenance -- who/what/where, stamped on every record
     # ------------------------------------------------------------------
+    # Set by app.py once the Device record is built. `None` means "not
+    # wired up", and provenance falls back to the hostname -- which is what
+    # a machine with no name has always done.
+    device = None
+
     def provenance(self):
         """Who did this, and where.
 
@@ -234,9 +239,18 @@ class Store:
                 eff = self.profile.effective()
                 who = eff.get("user")
                 email = eff.get("email")
-                device = eff.get("device")
             except Exception:                        # noqa: BLE001
                 who = None
+        # What this COMPUTER is called, from the computer's own record --
+        # not from whoever is using it. The two used to be one record, so
+        # every path that saved a profile could rename the machine, and
+        # several did: one computer ended up filing under five names while
+        # two different computers were both set to the same one.
+        if self.device is not None:
+            try:
+                device = (self.device.get(self.profile) or {}).get("name")
+            except Exception:                        # noqa: BLE001
+                device = None
         out = {
             "user": who or _git_user() or _os_user(),
             "machine": device or platform.node(),
@@ -249,6 +263,20 @@ class Store:
         # a different question from "what does the lab call it".
         if device and device != platform.node():
             out["host"] = platform.node()
+        # Which code did it.
+        #
+        # "Who made this figure and when" was answerable and "what was it made
+        # with" was not, which is the half that matters six months later when
+        # two figures of the same recording disagree and the question is
+        # whether the detector changed in between. The version is the one in
+        # the changelog -- the thing people actually say to each other -- and
+        # the commit is what pins it, because BARRY ships continuously and a
+        # version covers however many commits happened that day.
+        ver, commit = _code_version()
+        if ver:
+            out["app_version"] = ver
+        if commit:
+            out["commit"] = commit
         return out
 
     # ------------------------------------------------------------------
@@ -436,12 +464,29 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
+            # A record with no permanent id cannot be reached by anything:
+            # every by-gid route answers 404, nothing can be attached to it,
+            # and it files itself under the shared `unknown` shard below.
+            #
+            # `Registry.ensure` and `_durable_patch` both mint one, so
+            # opening a recording or scanning for it is covered -- but three
+            # routes write through here directly (a note, a bad channel
+            # list, a saved view state), and one of them created exactly
+            # this: a record holding a note, no id, and no way to remove it.
+            # The id belongs at the choke point.
+            if not rec.get("gid"):
+                rec["gid"] = identity.get("gid") or new_gid()
             # The permanent id is the last resort, not the string
-            # "unknown": every recording BARRY cannot derive a key for would
+            # "unknown": every recording Jarvis cannot derive a key for would
             # otherwise share one filename and overwrite the one before it.
             # Three real recordings went through that file before anyone
             # noticed, and the only reason two survived is that they had
             # already been pushed to the shared copy.
+            #
+            # With an id minted above, "unknown" is now unreachable -- it is
+            # left in as the belt to the braces, and because a fallback that
+            # cannot be hit costs nothing while a missing one costs a file
+            # that overwrites itself.
             base = self.session_base(
                 rec.get("key") or identity.get("loose_key")
                 or rec.get("gid") or identity.get("gid") or "unknown")
@@ -638,6 +683,17 @@ class Store:
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+def new_gid():
+    """A short, permanent name for a recording.
+
+    The same shape `sessreg.new_gid` makes, and deliberately not derived from
+    anything: a derived id is an id that changes when the thing it was
+    derived from is corrected. Defined here rather than imported because
+    `sessreg` imports this module, and the other direction would be a cycle.
+    """
+    return "s" + uuid.uuid4().hex[:12]
+
+
 def _now():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
@@ -647,6 +703,49 @@ def _os_user():
         return getpass.getuser()
     except Exception:
         return "unknown"
+
+
+_CODE_VERSION_CACHE = {}
+
+
+def _code_version():
+    """(changelog version, short commit) for the code that is running.
+
+    Cached for the life of the process, deliberately. Both are fixed the
+    moment Python started -- editing the changelog does not change the code
+    already imported -- and provenance() is called on every record written,
+    so shelling out to git each time would put a subprocess in the path of
+    every curation decision.
+
+    Either half may be None: a fresh clone with no commits, or a copy handed
+    over as a zip with no .git at all. A record that can only name one of
+    them still says more than one that names neither.
+    """
+    if "v" in _CODE_VERSION_CACHE:
+        return _CODE_VERSION_CACHE["v"]
+    ver = commit = None
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        app = os.path.dirname(here)
+        with open(os.path.join(app, "CHANGELOG.md"), "r",
+                  encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("## "):
+                    ver = line[3:].strip().split()[0].strip("-— ")
+                    break
+    except Exception:                                # noqa: BLE001
+        ver = None
+    try:
+        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                             cwd=os.path.dirname(os.path.dirname(
+                                 os.path.abspath(__file__))),
+                             capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
+            commit = (res.stdout or "").strip() or None
+    except Exception:                                # noqa: BLE001
+        commit = None
+    _CODE_VERSION_CACHE["v"] = (ver, commit)
+    return ver, commit
 
 
 _GIT_USER_CACHE = {}
@@ -771,7 +870,7 @@ _DEFAULT_IMPORTS = {
 
 _README = """# GUI_logs
 
-Everything BARRY GUI remembers, kept as plain JSON so it travels through git.
+Everything Jarvis remembers, kept as plain JSON so it travels through git.
 
 ## The rule
 
@@ -838,13 +937,13 @@ first bad pull.
 
 ## Sync
 
-BARRY never commits or pushes on its own. It only writes files here.
+Jarvis never commits or pushes on its own. It only writes files here.
 
     git add "BARRY GUI/GUI_logs"
     git commit -m "session logs"
     git push
 
-To pick up everyone else's, `git pull` -- new files appear and BARRY reads
+To pick up everyone else's, `git pull` -- new files appear and Jarvis reads
 them on the next refresh.
 
 ## Session identity

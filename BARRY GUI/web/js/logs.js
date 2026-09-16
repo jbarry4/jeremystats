@@ -244,7 +244,7 @@ BARRY.views.history = (function () {
       }))),
       el('div', { style: 'flex:1' }),
       el('span', { class: 'hint',
-        text: 'Every action BARRY records, with what it was done to.' }),
+        text: 'Every action Jarvis records, with what it was done to.' }),
     ]);
   }
 
@@ -730,7 +730,39 @@ BARRY.views.history = (function () {
     });
   }
 
-  return { init, onShow: load, reload: load };
+  /* Open one run, by id.
+   *
+   * The Run button on a result used to call setView('history') and reload(),
+   * which lands you at the top of a list of every run the lab has ever done
+   * with no indication of which one you asked for -- having just clicked
+   * something that displayed that run's id. This selects it, shows it, and
+   * scrolls it into view, loading the history first if it is not there yet.
+   */
+  async function show(runId) {
+    if (!runId) return false;
+    if (!runs.length) await load();
+    const r = runs.find((x) => x.id === runId);
+    if (!r) {
+      toast('That run is not in this machine’s history.', 'err', 6000);
+      return false;
+    }
+    /* Clear whatever was narrowing the list, or the run you asked for is
+       selected in a list it has been filtered out of -- which looks exactly
+       like the button having done nothing, again. */
+    mode = 'runs';
+    query = '';
+    statusFilter = '';
+    selected = r.id;
+    renderList();
+    renderDetail(r);
+    const row = $('#histList .hist-row.active');
+    if (row && row.scrollIntoView) {
+      row.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+    return true;
+  }
+
+  return { init, onShow: load, reload: load, show };
 })();
 
 
@@ -775,8 +807,11 @@ BARRY.views.errors = (function () {
     }
     try {
       const res = await api('/api/errors/grouped?limit=600'
-                            + (day ? '&day=' + day : ''));
+                            + (day ? '&day=' + day : '')
+                            + (errShowArchived ? '&machines=all' : ''));
       groups = res.groups || [];
+      hiddenArchived = res.hidden_archived || 0;
+      archivedIds = res.archived_machines || [];
     } catch (e) { groups = []; }
     try {
       const res = await api('/api/debug/trace?limit=400'
@@ -1109,6 +1144,17 @@ BARRY.views.errors = (function () {
     host.appendChild(list);
   }
 
+  /* Retired computers are left out by default. Named `errShowArchived`
+     rather than the obvious thing: the devices panel in this same file
+     already has a `showRetired` for its own list, and two of them in
+     one scope is a redeclaration.
+
+     Retired computers are left out by default. Theirs are still real
+     faults and still on the record -- they are just not this week's. */
+  let errShowArchived = false;
+  let hiddenArchived = 0;
+  let archivedIds = [];
+
   function render() {
     const host = $('#errBody');
     host.innerHTML = '';
@@ -1120,11 +1166,50 @@ BARRY.views.errors = (function () {
       : (day ? 'Nothing on ' + day + '.'
              : 'Nothing has failed \u2014 the log is clean.');
 
+    /* Said out loud. A list that hides rows without saying so cannot be
+       reasoned from: "no errors from the rig" and "the rig is archived"
+       read the same and mean opposite things. */
+    if (hiddenArchived || errShowArchived) {
+      host.appendChild(el('p', { class: 'hint err-archived' }, [
+        el('span', {
+          text: errShowArchived
+            ? 'Including computers that have been archived.'
+            : hiddenArchived + ' error(s) from archived computer(s) are not '
+              + 'shown'
+              + (archivedIds.length ? ' (' + archivedIds.join(', ') + ')' : '')
+              + '.',
+        }),
+        el('button', {
+          class: 'mini', text: errShowArchived ? 'Hide archived' : 'Show them',
+          onclick: () => { errShowArchived = !errShowArchived; load(); },
+        }),
+        el('span', { class: 'hint',
+          text: 'Archive a computer in DEVICE, beside its name.' }),
+      ]));
+    }
+
+
     host.appendChild(el('div', { class: 'res-toolbar' }, [
       el('button', {
         class: 'pill' + (mode === 'errors' ? ' active' : ''),
         text: 'Errors' + (errors.length ? ' (' + errors.length + ')' : ''),
         onclick: () => { mode = 'errors'; render(); },
+      }),
+      /* Everything still open, with the log either side of each
+         occurrence, as one file. A traceback says what broke; the twelve
+         actions before it say why -- and clearing a dozen faults at once
+         needs them in one place rather than a dozen panels. */
+      el('button', {
+        class: 'mini', text: 'Export open errors',
+        title: 'A text file of every unresolved error with the activity '
+             + 'around each occurrence, for working through them in one '
+             + 'go — or for handing to somebody else.',
+        onclick: () => {
+          window.open('/api/errors/export'
+                      + (errShowArchived ? '?machines=all' : ''), '_blank');
+          BARRY.activity.log('errors.export',
+                             { open: groups.filter((g) => !g.resolved).length });
+        },
       }),
       el('button', {
         class: 'pill' + (mode === 'debug' ? ' active' : ''),
@@ -1140,8 +1225,18 @@ BARRY.views.errors = (function () {
              + '\u2014 with screenshots',
         onclick: () => { mode = 'feedback'; render(); loadFeedback(); },
       }),
+      /* The redundancy copy, where somebody can actually look at it. A
+         backup nobody can inspect is a backup nobody trusts. */
+      el('button', {
+        class: 'pill' + (mode === 'backup' ? ' active' : ''),
+        text: 'JSON backup',
+        title: 'The JSON shards on disk \u2014 the redundancy copy behind '
+             + 'the shared database',
+        onclick: () => { mode = 'backup'; render(); loadBackup(); },
+      }),
     ]));
 
+    if (mode === 'backup') { renderBackup(host); return; }
     if (mode === 'debug') { renderDebug(host); return; }
     if (mode === 'feedback') { renderFeedback(host); return; }
 
@@ -1190,7 +1285,7 @@ BARRY.views.errors = (function () {
     if (!errors.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
         el('svg', { viewBox: '0 0 24 24', html: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>' }),
-        el('p', { text: 'No errors logged. Anything that fails anywhere in BARRY lands here with its full traceback.' }),
+        el('p', { text: 'No errors logged. Anything that fails anywhere in Jarvis lands here with its full traceback.' }),
       ]));
       return;
     }
@@ -1272,8 +1367,14 @@ BARRY.views.errors = (function () {
     /* A computer that has errors on record and has stopped syncing is not
        in the device table, so its id comes off the groups. Its label comes
        off the group too -- the table is the only other place one lives. */
+    /* Except the retired ones. A group can still mention an archived
+       machine -- the server's archived list is cached, and "Show archived"
+       deliberately returns them -- and `seen.add` would put the chip back
+       for a computer somebody has just taken off the list. When archived
+       rows are being shown on purpose, they belong in the picker. */
+    const retired = new Set(errShowArchived ? [] : (archivedIds || []));
     for (const g of groups) {
-      if (!g.machine) continue;
+      if (!g.machine || retired.has(g.machine)) continue;
       seen.add(g.machine);
       if (!labels[g.machine]) {
         labels[g.machine] = g.machine_label || g.machine;
@@ -1293,7 +1394,18 @@ BARRY.views.errors = (function () {
        panel disagree about what the machines are called. */
     const shown = (id) => labels[id] || id;
     return el('div', { class: 'res-toolbar dev-bar' }, [
-      el('span', { class: 'dev-bar-label', text: 'Device' }),
+      /* A button, not a label. "Which computers are there and what are
+         they called" is the question this word raises, so it is the thing
+         that answers it. */
+      el('button', {
+        class: 'dev-bar-label as-button',
+        title: 'Name this computer, archive the ones that have gone, and '
+             + 'see which names in the log belong to which machine',
+        onclick: () => deviceManager(),
+      }, [
+        el('span', { text: 'Device' }),
+        el('span', { class: 'dev-bar-caret', text: '\u2699' }),
+      ]),
       el('span', { class: 'ctl-seg' }, [
         el('button', {
           class: 'mini' + (devPick ? '' : ' on'),
@@ -1440,14 +1552,37 @@ BARRY.views.errors = (function () {
       return box;
     }
 
+    /* When, as a moment rather than as text.
+
+       These stamps are not all in one offset: an activity row that came
+       down from the shared table is UTC, and one written here is local. As
+       text "2026-09-10T00:37+00:00" sorts after "2026-09-09T20:40-04:00"
+       though it is three minutes earlier, so the marker could land at the
+       top of a list it belongs in the middle of -- and showing which side
+       of the failure each action is on is the only thing this list is
+       for. */
+    const moment = (t) => {
+      const raw = String(t || '').trim();
+      if (!raw) return null;
+      const fixed = raw.replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/,
+                                                  '$1:$2');
+      const ms = Date.parse(fixed);
+      return isFinite(ms) ? ms : null;
+    };
     const errAt = String(e.at || '');
+    const errMs = moment(errAt);
+    const notBefore = (at) => {
+      const a = moment(at);
+      if (a === null || errMs === null) return String(at || '') >= errAt;
+      return a >= errMs;
+    };
     const rows = el('div', { class: 'ecx-rows' });
     let markPlaced = false;
     for (const a of acts) {
       /* The error itself, in its place in the sequence. Without it the list
          is a set of actions with no indication which side of the failure
          each one is on -- which is the only thing the list is for. */
-      if (!markPlaced && String(a.at || '') >= errAt) {
+      if (!markPlaced && notBefore(a.at)) {
         rows.appendChild(errMarker(e));
         markPlaced = true;
       }
@@ -1553,7 +1688,7 @@ BARRY.views.errors = (function () {
     if (!devices.configured) {
       box.appendChild(el('div', { class: 'hint',
         text: 'No cloud configured, so there is nothing to compare against '
-            + '— this machine is the only one BARRY can see.' }));
+            + '— this machine is the only one Jarvis can see.' }));
       return box;
     }
 
@@ -1578,8 +1713,21 @@ BARRY.views.errors = (function () {
            letter and are different computers; one has two names and is one
            computer. The bracket is what tells them apart. */
         el('strong', { class: 'dev-host', text: d.label || d.hostname || d.id,
-          title: 'Known to BARRY as ' + d.id }),
+          title: 'Known to Jarvis as ' + d.id }),
         d.is_me ? el('span', { class: 'flagchip sm', text: 'this one' }) : null,
+        /* Renamed here, but the shared table has not heard about it. The
+           name on screen is this computer's own record, which changes the
+           moment it is saved; the table only changes on a successful push.
+           Said out loud because the difference is otherwise invisible, and
+           the state it points at -- a rename that cannot be pushed -- is
+           the sync being down, which is worth knowing. */
+        d.pushed_name
+          ? el('span', { class: 'flagchip sm bad',
+              title: 'Saved here. Until this machine pushes, the other '
+                   + 'computers still call it ' + d.pushed_name + '. If that '
+                   + 'does not clear in a minute, the sync is not getting '
+                   + 'through -- press Sync now and read what it says.',
+              text: 'not shared yet' }) : null,
         /* The names it used to answer to, so old log rows are accounted
            for rather than looking like a fourth machine. */
         (d.also_known_as || []).length
@@ -1655,6 +1803,200 @@ BARRY.views.errors = (function () {
 
   let showRetired = false;
 
+  /* Managing the computers.
+
+     Reached from the word DEVICE. Everything here is about machines and
+     nothing about people -- the two used to share a record, and that is
+     precisely how one computer came to file errors under five different
+     names while two computers were both set to the same one. */
+  async function deviceManager() {
+    let mine = null;
+    try {
+      mine = (await api('/api/device')).device;
+    } catch (e) {
+      mine = null;
+    }
+    await loadDevices(true);
+    drawDeviceManager(mine);
+  }
+
+  function drawDeviceManager(mine) {
+    const all = (devices && devices.devices) || [];
+    const body = el('div', { class: 'mb dev-mgr' });
+
+    /* This computer first, with the box that names it. */
+    if (mine) {
+      const box = el('input', {
+        type: 'text', class: 'dev-name-in', value: mine.named ? mine.name : '',
+        placeholder: mine.real || 'this computer',
+      });
+      const say = el('div', { class: 'hint' });
+      const paintSay = () => {
+        say.textContent = mine.named
+          ? 'Named here. Its own name is ' + mine.real + '.'
+          : 'Not named yet, so Jarvis uses the name the computer reports: '
+            + mine.real + '.';
+      };
+      paintSay();
+      body.appendChild(el('div', { class: 'dev-mgr-me' }, [
+        el('div', { class: 'section-label', text: 'This computer' }),
+        el('div', { class: 'dev-mgr-row' }, [
+          box,
+          el('button', {
+            class: 'btn sm', text: 'Save name',
+            onclick: async () => {
+              try {
+                const res = await apiPost('/api/device', { name: box.value });
+                mine = res.device;
+                paintSay();
+                await loadDevices(true);
+                toast('This computer is now called ' + mine.name + '. '
+                      + 'Nothing about who it credits work to has changed.',
+                      'ok', 6000);
+                drawDeviceManager(mine);
+              } catch (e) { toast(e.message, 'err', 8000); }
+            },
+          }),
+        ]),
+        say,
+        el('p', { class: 'hint',
+          text: 'This is what gets stamped on every error, action and run '
+              + 'from this computer. It belongs to the computer, not to '
+              + 'you \u2014 switching who Jarvis credits work to leaves it '
+              + 'alone.' }),
+        mine.adopted_from_profile
+          ? el('p', { class: 'hint',
+              text: 'Carried over from the profile, where it used to live: '
+                  + mine.adopted_from_profile }) : null,
+        el('p', { class: 'hint dev-mgr-id',
+          text: 'Identity: ' + mine.id + '  \u2014 derived from the '
+              + 'hostname and the network address, and what Jarvis actually '
+              + 'compares. The name above is only for reading.' }),
+      ].filter(Boolean)));
+    }
+
+    /* Everybody else. */
+    const others = all.filter((d) => !d.is_me);
+    body.appendChild(el('div', { class: 'section-label',
+      text: others.length ? 'Other computers' : 'No other computers yet' }));
+    for (const d of others) {
+      body.appendChild(el('div', {
+        class: 'dev-mgr-other' + (d.archived ? ' archived' : ''),
+      }, [
+        el('span', { class: 'dev-dot' + (d.online ? ' on' : '') }),
+        el('strong', { text: d.label || d.hostname || d.id }),
+        (d.also_known_as || []).length
+          ? el('span', { class: 'dev-aka',
+              text: 'also ' + d.also_known_as.join(', ') }) : null,
+        el('span', { class: 'dev-user', text: d.user || '' }),
+        el('div', { style: 'flex:1' }),
+        el('span', { class: 'dev-col', text: d.age_s == null
+          ? 'never synced' : ago(d.age_s) }),
+        el('button', {
+          class: 'btn ghost sm',
+          text: d.archived ? 'Bring back' : 'Archive',
+          title: d.archived
+            ? 'Put it back on the lists'
+            : 'Take it off the device lists. Everything it recorded stays '
+              + 'on record and stays counted.',
+          onclick: () => archiveDevice(d, !d.archived)
+            .then(() => deviceManager()),
+        }),
+      ].filter(Boolean)));
+    }
+
+    /* The two things the data says that nothing used to show. */
+    /* The keys the error feed actually offers that are names rather than
+       computers -- which is what has to be archivable here, or the picker
+       and this panel disagree about what exists. Not `unclaimed_names`:
+       that means "a name no machine answers to", and a machine IS called
+       Bluebarry, so these vanish from it. */
+    const nameOnly = (devices && devices.name_only_machines) || [];
+    const unclaimed = nameOnly.map((x) => x.name);
+    const errCount = {};
+    for (const x of nameOnly) errCount[x.name] = x.n_errors;
+    const ambiguous = (devices && devices.ambiguous_labels) || [];
+    if (unclaimed.length) {
+      /* A row each, with the same button as a real computer.
+
+         These were a sentence at the bottom of the panel while the error
+         feed offered every one of them as a filter -- so four computers
+         were pickable and unarchivable, and the only thing that said they
+         existed could not be acted on. They are rows written before errors
+         carried a machine id, so all that is known about them is the name
+         they were filed under; archiving files that name as a retired
+         machine of its own. */
+      body.appendChild(el('div', { class: 'section-label',
+        text: 'Names in the log with no computer' }));
+      for (const name of unclaimed) {
+        body.appendChild(el('div', { class: 'dev-mgr-other name-only' }, [
+          el('span', { class: 'dev-dot' }),
+          el('strong', { text: name }),
+          el('span', { class: 'hint',
+            text: (errCount[name] || 0) + ' error(s), no id on record' }),
+          el('div', { class: 'spacer' }),
+          el('button', {
+            class: 'btn ghost sm', text: 'Archive',
+            title: 'Takes this name off the error feed\u2019s picker. Its '
+                 + 'rows stay in the log and stay readable.',
+            onclick: async (e) => {
+              const b = e.target;
+              b.disabled = true;
+              try {
+                await apiPost('/api/devices/archive',
+                              { id: name, archived: true, name_only: true });
+                devices = null;
+                closeModal();
+                /* Both, and in this order. The chips are built from the
+                   device table AND from the machines the loaded groups
+                   mention, so reloading only the first left every archived
+                   machine on the bar -- put back by the stale groups. */
+                await loadDevices(true);
+                await load();
+                deviceManager();
+                toast(name + ' archived. Its rows stay in the log.', 'ok');
+              } catch (err) {
+                b.disabled = false;
+                toast(err.message, 'err');
+              }
+            },
+          }),
+        ]));
+      }
+      body.appendChild(el('div', { class: 'hint dev-unclaimed' }, [
+        el('span', { text: 'Older names for these computers, or machines '
+          + 'that never registered. Nothing is guessed: a machine is only '
+          + 'claimed by its identity, so a name that matches one by eye is '
+          + 'still listed separately.' }),
+      ]));
+    }
+    if (ambiguous.length) {
+      body.appendChild(el('div', { class: 'ecx-warn' }, [
+        el('strong', { text: 'More than one computer answers to: ' }),
+        el('span', { text: ambiguous.join(', ')
+          + '. Their rows cannot be told apart by name, which is why the '
+          + 'real hostname is shown in brackets. Rename one of them above '
+          + 'to clear it.' }),
+      ]));
+    }
+
+    showModal(el('div', { class: 'dev-mgr-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Computers' }),
+        el('span', { class: 'sub',
+          text: 'what they are called, and which have gone' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'Done', onclick: closeModal }),
+      ]),
+    ]), { replace: true });
+  }
+
   async function archiveDevice(d, yes) {
     if (yes) {
       const ok = await BARRY.confirm(
@@ -1671,13 +2013,178 @@ BARRY.views.errors = (function () {
       if (res && res.run) {
         toast('The shared database needs supabase/' + res.run
               + ' run first.', 'err', 9000);
-        return;
+        return false;
       }
       await loadDevices(true);
+      // And the error list, which is the other half of what the picker is
+      // built from. Reloading only the devices left the chip on the bar.
+      await load();
       toast(yes ? d.label + ' archived.' : d.label + ' is back.', 'ok');
+      return true;
     } catch (e) {
       toast('Could not archive ' + d.label + ': ' + e.message, 'err', 8000);
+      return false;
     }
+  }
+
+  /* ======================================================================
+     The JSON backup
+
+     Supabase is the primary route. These files are the redundancy: what
+     survives an unreachable database, what holds the version snapshots that
+     are too big to send, and what a fresh clone of the repository arrives
+     with. Read-only -- this is the copy of record and the interface has no
+     business editing it.
+     ====================================================================== */
+  let backup = null;
+  let backupOpen = {};
+  let shardShown = null;
+
+  async function loadBackup(force) {
+    if (backup && !force) { render(); return; }
+    try {
+      backup = await api('/api/backup/json');
+    } catch (e) {
+      backup = { failed: e.message };
+    }
+    render();
+  }
+
+  function kb(n) {
+    if (n == null) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  function renderBackup(host) {
+    if (!backup) { loadBackup(); }
+    host.appendChild(el('div', { class: 'res-toolbar' }, [
+      el('span', { class: 'hint',
+        text: backup && backup.role ? backup.role : 'Reading the shards\u2026' }),
+      el('div', { style: 'flex:1' }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Refresh',
+        onclick: () => loadBackup(true),
+      }),
+    ]));
+
+    if (!backup) {
+      host.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return;
+    }
+    if (backup.failed) {
+      host.appendChild(el('div', { class: 'hint',
+        text: 'Could not read the shards: ' + backup.failed }));
+      return;
+    }
+
+    host.appendChild(el('div', { class: 'fb-stats' }, [
+      el('span', { class: 'stat-chip',
+                   text: backup.files + ' file(s)' }),
+      el('span', { class: 'stat-chip', text: kb(backup.bytes) }),
+      el('span', { class: 'stat-chip',
+                   text: (backup.folders || []).length + ' folder(s)' }),
+      el('span', { class: 'stat-chip', title: backup.root,
+                   text: 'on disk' }),
+    ]));
+
+    for (const g of (backup.folders || [])) {
+      const open = !!backupOpen[g.folder];
+      host.appendChild(el('button', {
+        class: 'bk-folder' + (open ? ' on' : ''),
+        onclick: () => { backupOpen[g.folder] = !open; render(); },
+      }, [
+        el('span', { class: 'bk-caret', text: open ? '\u25be' : '\u25b8' }),
+        el('strong', { text: g.folder }),
+        g.what ? el('span', { class: 'bk-what', text: g.what }) : null,
+        el('div', { style: 'flex:1' }),
+        /* How many machines have written into it. A folder with one is a
+           folder only this computer contributes to. */
+        g.machines.length
+          ? el('span', { class: 'bk-col',
+                         text: g.machines.length + ' machine(s)' }) : null,
+        el('span', { class: 'bk-col', text: g.n + ' file(s)' }),
+        el('span', { class: 'bk-col', text: kb(g.bytes) }),
+      ].filter(Boolean)));
+
+      if (!open) continue;
+      const list = el('div', { class: 'bk-files' });
+      /* Bounded: `sessions` alone is 785 files, and a wall of them is not
+         a view of anything. The rest are a click away in the folder. */
+      const shown = g.files.slice(0, 60);
+      for (const f of shown) {
+        list.appendChild(el('button', {
+          class: 'bk-file' + (shardShown
+                              && shardShown.folder === g.folder
+                              && shardShown.name === f.name ? ' on' : ''),
+          onclick: () => openShard(g.folder, f.name),
+        }, [
+          el('span', { class: 'bk-name', text: f.base }),
+          el('span', { class: 'bk-machine' + (f.mine ? ' mine' : ''),
+                       text: f.machine || '\u2014' }),
+          el('div', { style: 'flex:1' }),
+          el('span', { class: 'bk-col', text: kb(f.bytes) }),
+          el('span', { class: 'bk-col', title: BARRY.whenRaw(f.at),
+                       text: BARRY.when(f.at, 'stamp') }),
+        ]));
+      }
+      if (g.files.length > shown.length) {
+        list.appendChild(el('div', { class: 'hint',
+          text: 'and ' + (g.files.length - shown.length) + ' more, newest '
+              + 'first \u2014 open the folder on disk to see them all.' }));
+      }
+      host.appendChild(list);
+    }
+
+    if (shardShown) host.appendChild(shardPanel());
+  }
+
+  async function openShard(folder, name) {
+    shardShown = { folder: name ? folder : null, name: name, text: null };
+    render();
+    try {
+      const got = await api('/api/backup/json/'
+                            + encodeURIComponent(folder) + '/'
+                            + encodeURIComponent(name));
+      shardShown = Object.assign({ folder: folder, name: name }, got);
+    } catch (e) {
+      shardShown = { folder: folder, name: name, failed: e.message };
+    }
+    render();
+  }
+
+  function shardPanel() {
+    const sh = shardShown;
+    const box = el('div', { class: 'bk-view' });
+    box.appendChild(el('div', { class: 'sec-head' }, [
+      el('div', { class: 'section-label',
+                  text: sh.folder + ' / ' + sh.name }),
+      el('div', { style: 'flex:1' }),
+      sh.bytes != null
+        ? el('span', { class: 'hint', text: kb(sh.bytes) }) : null,
+      el('button', {
+        class: 'btn ghost sm', text: 'Close',
+        onclick: () => { shardShown = null; render(); },
+      }),
+    ].filter(Boolean)));
+    if (sh.failed) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Could not read it: ' + sh.failed }));
+      return box;
+    }
+    if (sh.text == null) {
+      box.appendChild(el('div', { class: 'hint', text: 'Reading\u2026' }));
+      return box;
+    }
+    if (sh.clipped) {
+      box.appendChild(el('div', { class: 'ecx-warn',
+        text: 'Shown from the start and cut off \u2014 this file is larger '
+            + 'than the viewer will load. Nothing is missing from the file '
+            + 'itself; open it on disk to see the rest.' }));
+    }
+    box.appendChild(el('pre', { class: 'bk-json', text: sh.text }));
+    return box;
   }
 
   function ago(sec) {

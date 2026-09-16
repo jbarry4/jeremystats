@@ -407,6 +407,128 @@ BARRY.figrebuild = (function () {
              + ' put back on the trace.';
       }
 
+      case 'verify': {
+        /* Read back what the earlier steps restored, and put back whatever
+           has moved since.
+
+           Every step above reports what it was asked to do. Two writes were
+           landing afterwards -- a .nev auto-import that had been in flight
+           since the open, and the session being closed and reopened -- so a
+           rebuild could report success and hand over the recording's
+           current state instead of the figure's. Fixed at the source as
+           well, and checked here, because the next late write will not be
+           either of those two. */
+        need();
+        /* A moment first.
+
+           The writes this step exists to catch land after the open, not
+           during it: a .nev auto-import that was in flight before the
+           steps began, and the session being closed and reopened. Checked
+           immediately, this step saw the state it had just set and passed,
+           and the overwrite arrived half a second later -- which is how a
+           rebuild reported success and handed over the recording's current
+           channels and marks anyway. */
+        await new Promise((r) => setTimeout(r, 2200));
+
+        /* The session on screen, not the one this module opened.
+
+           `sess` is bound once, at the open step. If the recording has been
+           re-opened since, every step after that wrote to an object nobody
+           is looking at, and this step confirmed a state that was not on
+           screen -- which is worse than not checking. So the repair goes
+           where the user is, and says when the two had diverged. */
+        const XS = BARRY.views.xplore.state;
+        const live = XS.sessions[XS.active] || sess;
+        const swapped = live !== sess;
+        if (swapped) sess = live;
+
+        const want = plan.recipe || {};
+        const moved = [];
+
+        const wantSel = Array.isArray(s.channels) && s.channels.length
+          ? s.channels.filter((i) => i >= 0 && i < sess.info.channels.length)
+          : null;
+        if (wantSel) {
+          const now = Array.from(sess.sel).sort((a, b) => a - b).join(',');
+          if (now !== wantSel.slice().sort((a, b) => a - b).join(',')) {
+            sess.sel = new Set(wantSel);
+            moved.push('the channel selection');
+          }
+        }
+
+        const wantBad = (s.bad_channels || []).map(Number);
+        if (wantBad.length) {
+          const now = Array.from(sess.bad).map(Number).sort((a, b) => a - b);
+          if (now.join(',') !== wantBad.slice().sort((a, b) => a - b)
+              .join(',')) {
+            sess.bad = new Set(wantBad);
+            moved.push('the bad channels');
+          }
+        }
+
+        const wantEv = want.events || [];
+        if ((sess.events || []).length !== wantEv.length) {
+          sess.events = wantEv;
+          sess.eventsMeta = { source: 'figure rebuild',
+                              name: (plan.run || {}).label || 'figure',
+                              n: wantEv.length };
+          moved.push('the event marks');
+        }
+
+        /* The window, the filters and the gain, checked the same way as
+           everything above rather than only when the session was swapped.
+
+           This used to be `if (swapped)`, on the reasoning that a session
+           re-opened since the steps ran has the file's own window rather
+           than the figure's. True, and not the only way to lose it: anything
+           that moves the window *on the session already on screen* -- a jump
+           to an event mark, a late view-state restore -- leaves `swapped`
+           false, so none of this ran and the step reported that the window
+           matched the recipe while it did not.
+
+           Which is the exact failure this step was written to catch, in the
+           one shape it was not looking for. It is intermittent because it
+           needs a late write to land inside the pause above, so it shows up
+           when something else has been using the session first and not when
+           the rebuild is run on its own. */
+        const wantSpan = (isFinite(want.t1) && isFinite(want.t0))
+          ? Math.max(0.001, want.t1 - want.t0) : null;
+        if (isFinite(want.t0)
+            && (Math.abs((sess.t0 || 0) - want.t0) > 0.01
+                || (wantSpan !== null
+                    && Math.abs((sess.span || 0) - wantSpan) > 0.01))) {
+          sess.t0 = want.t0;
+          if (wantSpan !== null) sess.span = wantSpan;
+          moved.push('the window');
+        }
+        const wantHp = want.highpass || 0;
+        const wantLp = want.lowpass || 0;
+        const wantNotch = want.notch || 0;
+        if ((sess.hp || 0) !== wantHp || (sess.lp || 0) !== wantLp
+            || (sess.notch || 0) !== wantNotch) {
+          sess.hp = wantHp;
+          sess.lp = wantLp;
+          sess.notch = wantNotch;
+          moved.push('the filters');
+        }
+        if (want.gain && (sess.gain || 1) !== want.gain) {
+          sess.gain = want.gain;
+          moved.push('the gain');
+        }
+
+        if (moved.length) BARRY.views.xplore.refreshAll();
+        if (!moved.length) {
+          return 'The window, filters, channels, marks and panels all match '
+               + 'the recipe.';
+        }
+        return 'Put back ' + moved.join(', ')
+          + (swapped
+              ? '. The recording had been re-opened since the steps above '
+                + 'ran, so they had been applied to a session that is no '
+                + 'longer on screen.'
+              : '. Something had changed them since the steps above ran.');
+      }
+
       case 'panels': {
         need();
         const XF = BARRY.views.xplore.state;

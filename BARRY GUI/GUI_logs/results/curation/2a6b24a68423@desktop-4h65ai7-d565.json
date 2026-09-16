@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-15T23:28:55.965032+00:00",
+    "rel": "2026-09-15T23:28:55.965032+00:00",
+    "starred": "2026-09-15T23:28:55.965032+00:00",
+    "title": "2026-09-15T23:28:55.965032+00:00",
+    "updated": "2026-09-15T23:28:55.965032+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-15T23:28:55.965032+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "_scratch/harness/arrow harness_21.png",
+  "rel": "_scratch/harness/arrow harness_21.png",
+  "starred": false,
+  "tags": [],
+  "title": "arrow harness_21",
+  "updated": {
+    "at": "2026-09-15T19:28:55-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

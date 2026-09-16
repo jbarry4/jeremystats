@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import re
+import struct
 import numpy as np
 
 HEADER_BYTES = 16 * 1024
@@ -132,7 +133,7 @@ def read_ncs(path: str, invert: bool = True, to_microvolts: bool = True):
         return np.empty(0, dtype=np.float32), {
             "fs": fs or DEFAULT_FS, "adbitvolts": adbv, "n_records": 0,
             "t_start_us": 0.0, "duration_s": 0.0, "header": hdr,
-            "channel": None, "gaps": 0,
+            "channel": None, "irregular_intervals": 0,
         }
 
     if fs is None or not np.isfinite(fs) or fs <= 0:
@@ -156,13 +157,17 @@ def read_ncs(path: str, invert: bool = True, to_microvolts: bool = True):
         data = -data                     # lab convention (invertPolarity=true)
 
     ts = recs["timestamp"].astype(np.float64)
-    # A "gap" is any inter-record interval that departs from the nominal block
-    # duration by more than half a block -- same idea as RemoveCSCGaps.m.
-    gaps = 0
+    # Inter-record intervals off by more than half a block -- the idea in
+    # RemoveCSCGaps.m. This is NOT the rule that decides whether the file is
+    # one segment or eight; that is `segment_ncs` below, which follows neo.
+    # The two disagree (9 against 7 on M8s9feb8) because this one also counts
+    # ordinary clock jitter, so it must not be called "gaps" in the same
+    # application that reports neo's answer under that word.
+    irregular = 0
     if len(ts) > 1:
         nominal = SAMPLES_PER_RECORD / fs * 1e6
         dt = np.diff(ts)
-        gaps = int(np.sum(np.abs(dt - nominal) > nominal * 0.5))
+        irregular = int(np.sum(np.abs(dt - nominal) > nominal * 0.5))
 
     return data, {
         "fs": float(fs),
@@ -172,38 +177,577 @@ def read_ncs(path: str, invert: bool = True, to_microvolts: bool = True):
         "duration_s": float(len(data) / fs) if fs else 0.0,
         "header": hdr,
         "channel": int(recs["channel"][0]),
-        "gaps": gaps,
+        "irregular_intervals": irregular,
     }
 
 
-def read_ncs_range(path: str, t0: float, t1: float, invert: bool = True):
-    """Read only samples in [t0, t1) seconds relative to file start.
+
+# ==========================================================================
+# Segmentation -- "is this recording continuous?"
+# ==========================================================================
+# Cheetah closes a record early (nvalid < 512) when acquisition hiccups, and
+# the next record's timestamp jumps forward by more than one block. neo calls
+# the boundary a section break and spikeinterface exposes the file as a
+# multi-segment recording; Toothy then concatenates the segments, which closes
+# the gaps and labels every sample after one with a time EARLIER than its
+# true time, by the cumulative duration of all preceding gaps. The error is a
+# step function, constant inside each segment, and nothing downstream records
+# that it happened.
+#
+# Everything below reproduces neo's `NcsSectionsFactory._buildNcsSections`,
+# because the only segmentation worth reporting is the one Toothy saw.
+
+# spikeinterface passes strict_gap_mode=False, which widens the tolerance to a
+# quarter of a record. neo's own default is 0.2 of a SAMPLE -- 6.67 us at
+# 30 kHz -- which on this hardware counts ordinary clock jitter as a break and
+# finds 2717 sections in a file with 8. Pinned in the output so that a future
+# spikeinterface default is a visible change and not a mystery.
+GAP_FRAC_LOOSE = 0.25          # of a record   (spikeinterface, strict=False)
+GAP_FRAC_STRICT = 0.2          # of a sample   (neo, strict=True)
+GAP_RULE_LOOSE = "spikeinterface-nonstrict"
+GAP_RULE_STRICT = "neo-strict"
+
+# Above this a gap is a stopped recording, not a dropped packet.
+#
+# At 30 kHz a transient -- a lost packet, a disk stall -- cannot last a
+# second; a deliberate pause is never shorter. So nothing real sits near the
+# line, and the two sides of it want opposite words: one is data that was
+# lost, the other is time when nothing was being recorded. One recording here
+# reports 4445 seconds "never written", which is somebody pausing the rig for
+# an hour and a quarter.
+PAUSE_SECONDS = 1.0
+
+# Below this a residual is integer arithmetic, not a hiccup. Timestamps are
+# whole microseconds and the predicted interval is truncated, so a perfectly
+# continuous record pair differs by a microsecond or two.
+ROUNDING_FLOOR_US = 4
+
+# How far the sample-index-to-time map may drift before it re-anchors, as a
+# fraction of one acquisition sample. A quarter sample is 8.3 us at 30 kHz,
+# which is a four-thousandth of one sample at the 1 kHz rate a detector
+# actually works at -- far below anything measurable -- while keeping the map
+# to a few hundred rows on a recording whose clock drifts all day.
+#
+# The bound is the specification: no record start is ever further than this
+# from its own timestamp. See `segment_ncs`'s `breaks` and
+# `continuity.sample_to_true`.
+MAP_ERROR_SAMPLES = 0.25
+
+_FIELDS = struct.Struct("<QIII")   # timestamp, channel, freq, nvalid
+
+# Whether a file is one continuous block, and where its clock starts,
+# remembered per (path, size, mtime).
+#
+# The windowed reader asks this on every fetch and the answer costs two
+# record reads. Over a network mount, with one fetch per channel per frame,
+# that is 128 round trips a frame on a 64-channel session to be told
+# something that only changes when the file does. Bounded: a scan can touch
+# thousands of files and this is a convenience, not a store.
+_BLOCK_MEMO = {}
+_BLOCK_MEMO_MAX = 512
+
+
+def acq_type(hdr: dict) -> str:
+    """Close enough to NlxHeader.type_of_recording() for the tolerance."""
+    system = (hdr.get("AcquisitionSystem") or "").strip()
+    if system:
+        return system.split()[-1].upper().replace("_", "")
+    if "Cheetah" in (hdr.get("ApplicationName") or ""):
+        return "DIGITALLYNXSX"
+    return "RAWDATAFILE"
+
+
+def gap_tolerance_us(fs: float, acq: str = "DIGITALLYNXSX",
+                     strict: bool = False) -> int:
+    """The tolerance neo compares each residual against, in microseconds."""
+    if not fs or fs <= 0:
+        return 0
+    if acq == "PRE4":
+        return 0
+    if strict:
+        return int(round(GAP_FRAC_STRICT * 1e6 / fs))
+    return int(round(GAP_FRAC_LOOSE * SAMPLES_PER_RECORD * 1e6 / fs))
+
+
+def _fields_at(fh, index):
+    """(timestamp, channel, freq, nvalid) of one record, without its samples."""
+    fh.seek(HEADER_BYTES + index * RECORD_DTYPE.itemsize)
+    raw = fh.read(_FIELDS.size)
+    if len(raw) < _FIELDS.size:
+        return None
+    return _FIELDS.unpack(raw)
+
+
+def record_times(path: str):
+    """First and last record of a file, read with two seeks.
+
+    The cheapest honest answer to "when does this start and how long is it".
+    `read_ncs`'s duration is the concatenated one (valid samples over fs) and
+    `n_records * 512 / fs` is a third number again; this is the recording's
+    own clock, which is what the raw files, the .nev marks and the video are
+    on.
+    """
+    size = os.path.getsize(path)
+    n_rec = max(0, (size - HEADER_BYTES) // RECORD_DTYPE.itemsize)
+    if n_rec == 0:
+        return None
+    with open(path, "rb") as fh:
+        hdr = parse_header(fh.read(HEADER_BYTES))
+        first = _fields_at(fh, 0)
+        last = _fields_at(fh, n_rec - 1)
+    if not first or not last:
+        return None
+    fs = _header_float(hdr, "SamplingFrequency")
+    if not fs or fs <= 0:
+        fs = float(first[2]) if first[2] > 0 else DEFAULT_FS
+    nv_last = min(int(last[3]), SAMPLES_PER_RECORD)
+    end_us = int(last[0]) + int(1e6 / fs * nv_last)
+    return {
+        "fs": float(fs),
+        "n_records": int(n_rec),
+        "t0_us": int(first[0]),
+        "end_us": int(end_us),
+        "true_duration_s": (end_us - int(first[0])) / 1e6,
+        "header": hdr,
+        "trailing_bytes": int((size - HEADER_BYTES) % RECORD_DTYPE.itemsize),
+    }
+
+
+def _block_key(path):
+    """(path, size, mtime) for the memo, or None if it cannot be stat-ed."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (os.path.normcase(os.path.abspath(path)), int(st.st_size),
+            int(st.st_mtime_ns))
+
+
+def _memo_put(key, value):
+    if not key:
+        return
+    if len(_BLOCK_MEMO) >= _BLOCK_MEMO_MAX:
+        _BLOCK_MEMO.clear()
+    _BLOCK_MEMO[key] = value
+
+
+def _single_block(fs, first, last, n_rec):
+    """neo's fast path: is the last timestamp exactly what full records predict?
+
+    Two records answer it, so a continuous file never pays for a pass over
+    130 MB of samples to be told it is continuous.
+    """
+    if n_rec < 2:
+        return True
+    predicted = int(round(first[0] + (1e6 / fs) * SAMPLES_PER_RECORD
+                          * (n_rec - 1)))
+    return (first[1] == last[1] and first[2] == last[2]
+            and int(last[0]) == predicted)
+
+
+def segment_ncs(path: str, strict: bool = False):
+    """Segment one .ncs the way neo and spikeinterface do.
+
+    Returns the segment map, the gaps between segments, and the three
+    durations this recording can be said to have. Reads timestamps and valid
+    counts only -- never the samples.
+    """
+    size = os.path.getsize(path)
+    n_rec = max(0, (size - HEADER_BYTES) // RECORD_DTYPE.itemsize)
+    if n_rec == 0:
+        raise ValueError("no records in %s" % os.path.basename(path))
+
+    with open(path, "rb") as fh:
+        hdr = parse_header(fh.read(HEADER_BYTES))
+        first = _fields_at(fh, 0)
+        last = _fields_at(fh, n_rec - 1)
+    if first is None or last is None:
+        raise ValueError("truncated: %s" % os.path.basename(path))
+
+    fs = _header_float(hdr, "SamplingFrequency")
+    if not fs or fs <= 0:
+        fs = float(first[2]) if first[2] > 0 else DEFAULT_FS
+    acq = acq_type(hdr)
+    tol = gap_tolerance_us(fs, acq, strict)
+
+    fast = _single_block(fs, first, last, n_rec)
+    if fast:
+        # Every record full, so the counts follow without reading them.
+        ts = None
+        nv_sum = n_rec * SAMPLES_PER_RECORD
+        limits = [0, n_rec]
+        starts = [int(first[0])]
+        ends = [int(last[0]) + int(1e6 / fs * SAMPLES_PER_RECORD)]
+        counts = [nv_sum]
+        n_short = 0
+        n_short_inside = 0
+        sub_us = 0
+        map_fs = float(fs)
+        map_resid_sd = 0.0
+        resid_worst = 0.0
+        # One run, starting at sample zero. `_single_block` is only true when
+        # the last timestamp is exactly what full records predict, which
+        # rules out both gaps and short records -- so linear is exact here
+        # and one breakpoint describes the whole file.
+        marks = [[0, int(first[0]), 1e6 / float(fs)]]
+    else:
+        mm = np.memmap(path, dtype=RECORD_DTYPE, mode="r",
+                       offset=HEADER_BYTES, shape=(int(n_rec),))
+        ts = np.asarray(mm["timestamp"], dtype=np.int64)
+        nv = np.minimum(np.asarray(mm["nvalid"], dtype=np.int64),
+                        SAMPLES_PER_RECORD)
+        del mm
+
+        # neo's rule, and only neo's rule: the residual between the observed
+        # interval and the one the PREVIOUS record's valid count predicts.
+        delta = ts[1:] - ts[:-1]
+        predicted = ((nv[:-1] / fs) * 1e6).astype(np.int64)
+        breaks = np.flatnonzero(np.abs(delta - predicted) > tol) + 1
+        limits = [0] + breaks.tolist() + [int(n_rec)]
+        starts, ends, counts = [], [], []
+        for a, b in zip(limits[:-1], limits[1:]):
+            starts.append(int(ts[a]))
+            ends.append(int(ts[b - 1]) + int(1e6 / fs * nv[b - 1]))
+            counts.append(int(nv[a:b].sum()))
+        nv_sum = int(nv.sum())
+        n_short = int(np.count_nonzero(nv != SAMPLES_PER_RECORD))
+
+        # Time that passed inside a segment with nothing recorded for it.
+        #
+        # Only at records Cheetah closed early. A full record's residual is
+        # the truncation in `int(1e6 / fs * nvalid)` -- exactly 1 us, measured
+        # -- and summing that across 124,485 records reports 290 ms of "loss"
+        # on a recording that lost nothing. A short record is where
+        # acquisition actually hiccupped, so the gap between it and the next
+        # record, beyond what its own samples account for, is real.
+        #
+        # Breaks are excluded: those are the segment gaps and are counted
+        # there. What is left is the loss that no segment boundary records,
+        # which is the whole reason for saying it.
+        resid = delta - predicted
+        short_at = (nv[:-1] != SAMPLES_PER_RECORD)
+        # Above the arithmetic. Timestamps are whole microseconds and
+        # `int(1e6 / fs * nvalid)` truncates, so a record that lost nothing
+        # still shows a residual of one or two microseconds -- measured: the
+        # median on a full record is exactly 1 us. The smallest real one in
+        # the PTEN archive is 67 us, so a floor here separates them by a
+        # factor of twenty without needing to be tuned.
+        cum = np.concatenate(([0], np.cumsum(nv)))
+        inside = (short_at & (np.abs(resid) <= tol)
+                  & (resid > ROUNDING_FLOOR_US))
+        sub_us = int(resid[inside].sum())
+        n_short_inside = int(np.count_nonzero(inside))
+
+        # The map, built to a bound rather than to a rule about residuals.
+        #
+        # `breaks` above is the SEGMENT starts, which is the wrong set for
+        # timing: it omits the short records measured two lines up, where
+        # time was lost without a segment boundary to record it. Measured on
+        # M8s9feb8, a segment-linear map is out by up to 11.02 ms, and a
+        # dentate spike is 10-20 ms wide.
+        #
+        # Emitting an anchor at every deviating record is also wrong -- not
+        # inaccurate, but unbounded: the 29998.6 Hz clock makes 2757 of them
+        # on that same file, none of which lost anything. So instead, carry
+        # the time this map WOULD predict and re-anchor whenever it has
+        # drifted past `MAP_ERROR_SAMPLES` of a sample. The map comes out as
+        # small as that bound allows, the bound is guaranteed by
+        # construction, and a record that really did lose time blows it
+        # immediately and gets an anchor without being a special case.
+        cum = np.concatenate(([0], np.cumsum(nv)))
+
+        # The map: one anchor per segment, plus one wherever samples were
+        # genuinely lost inside one. Each carries its own rate.
+        #
+        # See the module note above `MAP_ERROR_SAMPLES`. The record timestamp
+        # jitters by about half a millisecond -- measured on M8s9feb8, deltas
+        # of 16367 to 17579 us for identical full records -- so anchoring at
+        # every record that deviates reproduces that jitter rather than
+        # removing it. What a map can usefully remove is the rate error, and
+        # that is worth 11 ms over a half-hour segment.
+        # The rate, fitted once over the longest stretch of records that has
+        # no break in it. One crystal, one rate: a short run in the middle of
+        # a burst of gaps came out at 29976 Hz when each run fitted its own,
+        # and was 8.3 ms out over what followed.
+        # End to end within each segment, summed -- NOT a least-squares fit.
+        #
+        # Least squares assumes the residuals are white and these are not:
+        # the timestamp wanders in a structured way (-219 us at the start of
+        # the longest segment, +280 a quarter through, +2054 at its worst),
+        # so the slope comes out biased. Measured on M8s9feb8: a fit over the
+        # longest run gave 30000.1168 Hz, +3.89 ppm from nominal, while the
+        # recording's own end-to-end figure -- total samples over total
+        # elapsed, which is what `clock_drift_s` is computed from -- says
+        # 30000.0134 Hz, +0.45 ppm. Four parts per million is 8 ms across
+        # this recording, and the end-to-end number is the one anchored to
+        # both ends of the file rather than to the shape of the noise.
+        span_us, span_n = 0, 0
+        for a, b in zip(limits[:-1], limits[1:]):
+            if b - a < 2:
+                continue
+            span_us += int(ts[b - 1]) - int(ts[a])
+            span_n += int(cum[b - 1]) - int(cum[a])
+        per_sample = 1e6 / float(fs)
+        if span_n > SAMPLES_PER_RECORD * 64 and span_us > 0:
+            got = span_us / float(span_n)
+            # Half a percent is already absurd for a crystal; past it, the
+            # timestamps are not describing a clock.
+            if 0.995 < (1e6 / got) / float(fs) < 1.005:
+                per_sample = got
+
+        marks = []
+        resid_worst, resid_sq, resid_n = 0.0, 0.0, 0
+        for a, b in zip(limits[:-1], limits[1:]):
+            # Where this segment lost samples without breaking: the same
+            # `inside` test as above, restricted to this segment.
+            # Every short record, not only the ones whose residual passes a
+            # sign test. A record that holds fewer than 512 samples is a
+            # place where the sample axis and the clock part company, and
+            # the residual at it is measured against the SAME jittery
+            # timestamps the map is trying to track -- so using it to decide
+            # whether to anchor was letting a 200-record stretch in the
+            # middle of the gap burst drift 7.4 ms. They are rare enough to
+            # take unconditionally: eight on this file.
+            cuts = [a]
+            for r in range(a, b - 1):
+                if nv[r] != SAMPLES_PER_RECORD:
+                    cuts.append(r + 1)
+            cuts.append(b)
+
+            for c0, c1 in zip(cuts[:-1], cuts[1:]):
+                if c1 <= c0:
+                    continue
+                x = cum[c0:c1].astype(np.float64)
+                y = ts[c0:c1].astype(np.float64)   # for the residual below
+                # Seated on this run's FIRST record, not on a fit to all of
+                # them. Least squares was pulling the anchor 3.04 ms off the
+                # record it is supposed to start at -- the residuals wander,
+                # so minimising them moves the intercept -- which shifted
+                # every event in the segment by that much and disagreed with
+                # `true_t0_s`, which the rest of the codebase uses. The
+                # record's own timestamp is what the file says; it is not
+                # this map's business to improve on it.
+                base_i, base_us = int(cum[c0]), int(ts[c0])
+                marks.append([base_i, base_us, per_sample])
+
+                pred = base_us + (x - base_i) * per_sample
+                d = np.abs(y - pred)
+                if d.size:
+                    resid_worst = max(resid_worst, float(d.max()))
+                    resid_sq += float((d * d).sum())
+                    resid_n += int(d.size)
+
+        map_fs = 1e6 / per_sample
+        map_resid_sd = (resid_sq / resid_n) ** 0.5 if resid_n else 0.0
+
+    t0_us = int(first[0])
+    segments, gaps, cum_lost_us, cum_samples = [], [], 0, 0
+    for i, (a, b) in enumerate(zip(limits[:-1], limits[1:])):
+        true_t0 = (starts[i] - t0_us) / 1e6
+        concat_t0 = cum_samples / fs
+        segments.append({
+            "index": i,
+            "start_rec": int(a), "end_rec": int(b - 1),
+            "start_us": starts[i], "end_us": ends[i],
+            "n_samples": counts[i],
+            "true_t0_s": true_t0,
+            "concat_t0_s": concat_t0,
+            "duration_s": counts[i] / fs,
+            # Positive: Toothy calls this stretch EARLIER than it really is.
+            "error_ms": (true_t0 - concat_t0) * 1e3,
+        })
+        if i:
+            gap_us = starts[i] - ends[i - 1]
+            cum_lost_us += gap_us
+            gaps.append({
+                "paused": gap_us / 1e6 > PAUSE_SECONDS,
+                "after_record": int(limits[i] - 1),
+                "at_true_time_s": (ends[i - 1] - t0_us) / 1e6,
+                "gap_s": gap_us / 1e6,
+                "gap_ms": gap_us / 1e3,
+                "gap_samples_equiv": gap_us * fs / 1e6,
+                "cumulative_shift_s": cum_lost_us / 1e6,
+            })
+        cum_samples += counts[i]
+
+    # A stopped recording and a dropped packet look identical in the
+    # timestamps and mean opposite things. Counted apart so they can be said
+    # apart; the segment map and the correction are the same either way.
+    paused = sum(g["gap_s"] for g in gaps if g["gap_s"] > PAUSE_SECONDS)
+    n_paused = sum(1 for g in gaps if g["gap_s"] > PAUSE_SECONDS)
+
+    true_dur = (ends[-1] - t0_us) / 1e6
+    concat_dur = nv_sum / fs
+    lost = cum_lost_us / 1e6
+    # Time lost is the sum of the real gaps and nothing else. Inferring it
+    # from (true - concat) also picks up the difference between the nominal
+    # sample rate and the hardware's actual one -- the lab's clocks run at
+    # 29998.6 Hz, not 30000 -- which reports twenty milliseconds of "loss" on
+    # a file that lost nothing at all, and can go negative.
+    drift = (true_dur - concat_dur) - lost
+
+    return {
+        "path": path,
+        "name": hdr.get("AcqEntName") or os.path.basename(path),
+        "fs": float(fs),
+        "acq_type": acq,
+        "channel": int(first[1]),
+        "strict": bool(strict),
+        "gap_rule": GAP_RULE_STRICT if strict else GAP_RULE_LOOSE,
+        "gap_tolerance_us": int(tol),
+        "fast_path": bool(fast),
+        "n_records": int(n_rec),
+        "trailing_bytes": int((size - HEADER_BYTES) % RECORD_DTYPE.itemsize),
+        "t0_us": t0_us,
+        "end_us": int(ends[-1]),
+        "n_segments": len(segments),
+        "segments": segments,
+        "gaps": gaps,
+        "total_samples": int(nv_sum),
+        # The three answers to "how long is it", all of them defensible and
+        # all of them different once the file has a gap in it.
+        "true_duration_s": true_dur,          # the recording's own clock
+        "concat_duration_s": concat_dur,      # what Toothy assigns
+        "record_duration_s": n_rec * SAMPLES_PER_RECORD / fs,   # by record
+        "seconds_lost": lost,
+        "samples_lost": lost * fs,
+        # Of that, the part where the rig was stopped rather than failing.
+        "seconds_paused": paused,
+        "n_pauses": n_paused,
+        "seconds_dropped": lost - paused,
+        "n_dropouts": len(gaps) - n_paused,
+        "pause_threshold_s": PAUSE_SECONDS,
+        "clock_drift_s": drift,
+        "implied_fs": (nv_sum - 1) / true_dur if true_dur else float(fs),
+        "n_short_records": int(n_short),
+        # Short records that did NOT make a break, and the time unaccounted
+        # for at them. This is the loss no segment boundary records.
+        "n_short_inside": int(n_short_inside),
+        "sub_threshold_lost_s": sub_us / 1e6,
+        # [[concatenated sample index, start in us, us per sample], ...]
+        # One per segment, plus one wherever samples were lost inside one.
+        # Each carries the rate fitted to its own run, because the rate is
+        # what a map can usefully correct: the record timestamps jitter by
+        # about half a millisecond, which no map can remove, while the rate
+        # error is worth 11 ms over a half-hour segment.
+        # See `continuity.sample_to_true`.
+        "breaks": marks,
+        # How well the map describes the timestamps it was fitted to. Said
+        # rather than assumed: a time from this is good to a fraction of a
+        # millisecond, not to a microsecond, and a caller that needs to know
+        # should not have to measure it again.
+        "map_residual_sd_us": map_resid_sd,
+        "map_residual_max_us": resid_worst,
+        # The rate the breakpoints were laid out against, and the one
+        # `continuity.sample_to_true` must read back with. Travels in the
+        # report rather than being re-derived: a map and a reader that
+        # disagree about the sample rate are wrong in a way that looks like
+        # nothing at all.
+        "map_fs": float(map_fs),
+        # Buffer slots a short record left unused. NOT a measure of loss:
+        # when the next record's timestamp follows the short count, the
+        # record was simply short and no time passed unrecorded. Kept because
+        # it is what the reference script prints, under a name that says what
+        # it counts.
+        "unused_record_slots": int(n_rec * SAMPLES_PER_RECORD - nv_sum),
+        "max_time_error_ms": (segments[-1]["error_ms"] if len(segments) > 1
+                              else 0.0),
+    }
+
+def _seek_record(fh, n_rec, target_us, lo=0):
+    """Index of the last record whose timestamp is <= `target_us`.
+
+    Binary search, not arithmetic. `r0 = floor(t / block)` assumes every
+    record is full and that no timestamp ever jumps; on a recording with gaps
+    it drifts by the whole accumulated gap total, which on M8s9feb8 is 200 ms
+    against the concatenated basis by the end of the file. Timestamps only
+    increase, so seventeen twenty-byte reads answer this exactly on a file of
+    any size, and on a continuous file they land on the same record the
+    arithmetic would have picked.
+    """
+    hi = n_rec - 1
+    best = lo
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        rec = _fields_at(fh, mid)
+        if rec is None:
+            hi = mid - 1
+            continue
+        if rec[0] <= target_us:
+            best = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
+def read_ncs_range(path: str, t0: float, t1: float, invert: bool = True,
+                   report: dict = None):
+    """Read only samples in [t0, t1) seconds from the first record's time.
 
     Seeks directly to the needed records, so scrubbing a long session stays
-    responsive regardless of file size.
+    responsive regardless of file size. The seek is by timestamp, so the
+    window lands where the recording's own clock says it should even when
+    Cheetah left gaps -- see `segment_ncs` for what those are.
+
+    The returned samples are still contiguous: a window spanning a gap is
+    short by the gap rather than padded, because the samples were never
+    recorded and inventing them is worse than being short. `report`, if given,
+    is filled in with the gaps the window crossed so the caller can say so.
     """
     size = os.path.getsize(path)
     n_rec = max(0, (size - HEADER_BYTES) // RECORD_DTYPE.itemsize)
     if n_rec == 0:
         return np.empty(0, dtype=np.float32), 0.0, DEFAULT_FS
 
+    memo_key = _block_key(path)
+    memo = _BLOCK_MEMO.get(memo_key) if memo_key else None
+
     with open(path, "rb") as fh:
         hdr = parse_header(fh.read(HEADER_BYTES))
         adbv = _header_float(hdr, "ADBitVolts") or FALLBACK_ADBITVOLTS
         fs = _header_float(hdr, "SamplingFrequency")
-        if fs is None or fs <= 0:
-            fh.seek(HEADER_BYTES)
-            probe = np.fromfile(fh, dtype=RECORD_DTYPE, count=1)
-            fs = float(probe["freq"][0]) if probe.size and probe["freq"][0] > 0 else DEFAULT_FS
+
+        first = None
+        if memo is None or fs is None or fs <= 0:
+            # Only when the answer is not already known, or the header did
+            # not say what the rate is.
+            first = _fields_at(fh, 0)
+            if fs is None or fs <= 0:
+                fs = float(first[2]) if first and first[2] > 0 else DEFAULT_FS
+
+        if memo is None:
+            last = _fields_at(fh, n_rec - 1) if n_rec > 1 else first
+            flat = bool(n_rec > 1 and _single_block(fs, first, last, n_rec))
+            memo = (flat, int(first[0]) if first else 0)
+            _memo_put(memo_key, memo)
+        flat, t_start = memo
 
         block = SAMPLES_PER_RECORD / fs
-        r0 = max(0, int(np.floor(t0 / block)))
-        r1 = min(n_rec, int(np.ceil(t1 / block)) + 1)
+        if flat:
+            # Every record full and no timestamp jump, so record i really
+            # does start at i * block and the arithmetic is exact. This is
+            # the path a continuous file took before the seek existed, and
+            # it still touches no record header to take it.
+            r0 = max(0, int(np.floor(t0 / block)))
+            r1 = min(n_rec, int(np.ceil(t1 / block)) + 1)
+            actual_t0 = r0 * block
+        else:
+            r0 = _seek_record(fh, n_rec, t_start + int(t0 * 1e6))
+            r1 = min(n_rec,
+                     _seek_record(fh, n_rec, t_start + int(t1 * 1e6), lo=r0)
+                     + 2)
+            rec0 = _fields_at(fh, r0)
+            actual_t0 = ((int(rec0[0]) - t_start) / 1e6) if rec0 else 0.0
+
         if r1 <= r0:
             return np.empty(0, dtype=np.float32), 0.0, fs
 
         fh.seek(HEADER_BYTES + r0 * RECORD_DTYPE.itemsize)
         recs = np.fromfile(fh, dtype=RECORD_DTYPE, count=(r1 - r0))
+
+        if report is not None:
+            _window_gaps(report, recs, fs, t_start, actual_t0)
 
     if recs.size == 0:
         return np.empty(0, dtype=np.float32), 0.0, fs
@@ -221,7 +765,34 @@ def read_ncs_range(path: str, t0: float, t1: float, invert: bool = True):
     # second full pass and a second full-size allocation per channel, which on
     # a long window is tens of megabytes of pure copying.
     data *= np.float32((-adbv if invert else adbv) * 1e6)
-    return data, r0 * block, float(fs)
+    return data, float(actual_t0), float(fs)
+
+
+def _window_gaps(report, recs, fs, t_start, actual_t0):
+    """Which discontinuities fall inside the window that was just read.
+
+    The samples come back contiguous, so a window that crosses a gap is short
+    by it -- the trace after the gap sits earlier on screen than it belongs.
+    That is a small error inside one window rather than the accumulated one
+    the old arithmetic carried, but it is not nothing, and the honest thing is
+    to hand it back rather than let the caller assume a uniform axis.
+    """
+    report["gaps"] = []
+    report["gap_s"] = 0.0
+    report["t0_s"] = float(actual_t0)
+    if recs.size < 2:
+        return
+    ts = recs["timestamp"].astype(np.int64)
+    nv = np.minimum(recs["nvalid"].astype(np.int64), SAMPLES_PER_RECORD)
+    tol = gap_tolerance_us(fs)
+    resid = (ts[1:] - ts[:-1]) - ((nv[:-1] / fs) * 1e6).astype(np.int64)
+    for i in np.flatnonzero(np.abs(resid) > tol):
+        report["gaps"].append({
+            "at_s": float((ts[i] - t_start) / 1e6
+                          + nv[i] / fs),
+            "gap_ms": float(resid[i] / 1e3),
+        })
+        report["gap_s"] += float(resid[i] / 1e6)
 
 
 def list_csc_files(folder: str, even_only: bool = False):

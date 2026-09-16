@@ -1,7 +1,17 @@
 flask>=2.0
-numpy>=1.20
+# 2.0 for np.trapezoid, which Panorama's band integrals use. np.trapz is the
+# older spelling and is gone in NumPy 2.
+numpy>=2.0
 scipy>=1.7
 matplotlib>=3.4
 h5py>=3.0
 pandas>=1.3
 openpyxl>=3.0
+# Spectral parameterization -- the aperiodic/periodic split, Donoghue et al.
+# 2020. Used only by backend/panorama.py, so its numbers match the analysis
+# the lab already ran from the command line. The GUI also carries
+# backend/specparam.py, a dependency-free reimplementation of the same
+# algorithm that Braid and the Spectrum view use; the two have slightly
+# different defaults, so every Panorama result records which fitter produced
+# it and with what settings.
+fooof>=1.1.1

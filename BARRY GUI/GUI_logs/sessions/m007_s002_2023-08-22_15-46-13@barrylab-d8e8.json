@@ -9,6 +9,8 @@
     "fs": "2026-09-04T15:57:01.604948+00:00",
     "gid": "2026-09-02T23:51:19.827398+00:00",
     "group": "2026-09-04T15:57:01.604948+00:00",
+    "hemisphere": "2026-09-09T00:00:25.464642+00:00",
+    "hemisphere_source": "2026-09-09T00:00:25.464642+00:00",
     "key": "2026-09-04T15:57:01.604948+00:00",
     "label": "2026-09-04T15:57:01.604948+00:00",
     "loose_key": "2026-09-04T15:57:01.604948+00:00",
@@ -21,8 +23,8 @@
     "session": "2026-09-04T15:57:01.604948+00:00",
     "spike_labels": "2026-09-04T15:57:01.604948+00:00",
     "start": "2026-09-04T15:57:01.604948+00:00",
-    "updated": "2026-09-08T18:39:14.119993+00:00",
-    "view_state": "2026-09-04T15:57:01.604948+00:00"
+    "updated": "2026-09-09T15:13:51.536676+00:00",
+    "view_state": "2026-09-09T15:13:51.536676+00:00"
   },
   "_keys": {
     "paths": {
@@ -52,14 +54,26 @@
         "set",
         "2026-09-04T15:57:01.604948+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.608347+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.604948+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T18:00:51.893721+00:00"
+      ],
+      "Strawbarry": [
+        "set",
+        "2026-09-09T15:08:45.502774+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:39:14.119993+00:00",
+    "at": "2026-09-09T15:13:51.536676+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -80,6 +94,8 @@
   "fs": 30000.0,
   "gid": "s500a5aec223e",
   "group": "PTEN",
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m007_s002_2023-08-22_15-46-13",
   "label": "PTEN m7 s2 2023-08-22",
   "loose_key": "m007_s002",
@@ -104,12 +120,33 @@
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
     },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
       "by": "theexaminedexistence@gmail.com",
       "path": "D:\\PTEN\\PTEN\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
       "root": "D:/PTEN/PTEN",
       "scan": "scan_a9e7e27d1a"
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T14:00:51-04:00",
+      "by": "Rain",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M7_s2\\2023-08-22_15-46-13",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
+    },
+    "Strawbarry": {
+      "at": "2026-09-09T11:08:45-04:00",
+      "by": "Rain Younger",
+      "path": "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s2aug22\\2023-08-22_15-46-13",
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
@@ -118,55 +155,64 @@
   },
   "start": "2023-08-22T15:46:13",
   "updated": {
-    "at": "2026-09-08T14:39:14-04:00",
+    "at": "2026-09-09T11:13:51-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
-      0,
       1,
-      2,
-      4,
+      3,
       5,
-      6,
       7,
-      8,
       9,
-      10,
       11,
-      12,
       13,
-      14,
-      16,
+      15,
       17,
-      18,
       19,
-      20,
       21,
-      22,
       23,
-      24,
       25,
-      26,
       27,
-      28,
       29,
-      30,
-      31
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
     ],
     "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
     "gain": 2.25,
-    "hp": 0,
-    "lp": 300,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
+    "probe": null,
     "spacing": 50,
-    "span": 14.884000000000015,
-    "t0": 0,
+    "span": 1,
+    "stft_mode": null,
+    "t0": 1384.675,
     "ylim": null
   }
 }

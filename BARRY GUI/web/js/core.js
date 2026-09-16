@@ -33,7 +33,7 @@ function reportClientError(where, message, detail) {
       box.textContent = 'Interface error in ' + where + ': ' + text;
     }
     // Mirrored into the title so it is visible even in a headless capture.
-    document.title = 'BARRY GUI — error: ' + text.slice(0, 120);
+    document.title = 'Jarvis — error: ' + text.slice(0, 120);
   } catch (e) { /* ignore */ }
 
   try { toast('Interface error: ' + text, 'err', 12000); } catch (e) { /* early */ }
@@ -154,7 +154,7 @@ BARRY.hues = function hues(n) {
 /* ==========================================================================
    Picking one recording out of hundreds.
 
-   A <select> was fine when BARRY knew about six recordings. Scanning a drive
+   A <select> was fine when Jarvis knew about six recordings. Scanning a drive
    registers every one it walks past, so the list is now in the hundreds and a
    dropdown is the wrong control entirely -- you cannot type at it, you cannot
    see the project or whether the drive is mounted, and finding m59 s11 means
@@ -383,7 +383,80 @@ BARRY.debug = (function () {
 })();
 
 /* ---------- API ---------- */
+/* The one place that knows a request is outstanding.
+ *
+ * Every view used to answer "is anything happening?" for itself, or more
+ * often not at all -- a mutation would fire, the list would sit there showing
+ * the state before it, and a second later it would snap. api() is the single
+ * chokepoint every one of those goes through, so a counter here covers the
+ * lot, including the call sites nobody has got round to fixing properly.
+ *
+ * Two rules keep it from becoming wallpaper:
+ *
+ *   The pollers never raise it. The job dock ticks every 500ms, sync progress
+ *   every 300ms, presence every 20s. Counting those means the bar is simply
+ *   always on, which tells you nothing.
+ *
+ *   It waits 150ms before showing. Borrowed from BARRY.boot, which says it
+ *   better: complaining immediately teaches people to expect a wait that
+ *   usually is not there. Most requests here finish well inside that and the
+ *   bar never appears at all.
+ */
+const QUIET_PATHS = [
+  '/api/job/', '/api/sync/progress', '/api/sync/status', '/api/presence',
+  '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
+  '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
+  '/api/discover/', '/api/toolfeed', '/api/errors/client',
+];
+
+const BUSY = (function () {
+  let live = 0;
+  let show = null;
+  let bar = null;
+
+  function node() {
+    if (!bar) {
+      bar = el('div', { class: 'net-bar', 'aria-hidden': 'true' });
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function paint() {
+    if (live > 0) node().classList.add('on');
+    else if (bar) bar.classList.remove('on');
+  }
+  return {
+    start(path) {
+      if (QUIET_PATHS.some((p) => path.startsWith(p))) return false;
+      live += 1;
+      if (live === 1 && !show) show = setTimeout(() => { show = null; paint(); }, 150);
+      return true;
+    },
+    stop(counted) {
+      if (!counted) return;
+      live = Math.max(0, live - 1);
+      if (live === 0) {
+        if (show) { clearTimeout(show); show = null; }
+        paint();
+      }
+    },
+  };
+}());
+
+/* A wrapper rather than a `finally` threaded through the body: the real api()
+   below has five ways out, four of them throws, and counting down on each one
+   is exactly the kind of bookkeeping that gets a new exit path added past it
+   later and leaves the bar stuck on. */
 async function api(path, opts) {
+  const counted = BUSY.start(path.split('?')[0]);
+  try {
+    return await apiCall(path, opts);
+  } finally {
+    BUSY.stop(counted);
+  }
+}
+
+async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
   const record = (status, error) => BARRY.debug.request({
@@ -404,7 +477,7 @@ async function api(path, opts) {
 
   /* 404 or 405 on an /api/ route means the route is not there -- which
      almost always means the server is running older code than the page that
-     just asked for it. That happens whenever BARRY is left running while the
+     just asked for it. That happens whenever Jarvis is left running while the
      repo is updated, and the only symptom is a feature quietly doing
      nothing.
 
@@ -413,16 +486,23 @@ async function api(path, opts) {
      never heard of answers 404 to a GET and 405 to a POST depending on what
      else is registered. Treating only 404 as stale is why a failed bug
      report said "non-JSON response (405)" and nothing else. */
-  const missing = (res.status === 404 || res.status === 405)
-                  && path.startsWith('/api/');
-  if (missing) staleServer(path);
+  /* A route that is not registered, as against one that ran and said no.
+     Both answer 404, and the difference is whether anything answered: a
+     route that ran returns a JSON body with an error in it, and Flask's own
+     404 page does not. Deciding before reading the body told somebody to
+     restart Jarvis because a bank entry could not be found. */
+  const maybeMissing = (res.status === 404 || res.status === 405)
+                       && path.startsWith('/api/');
 
   let data;
+  let missing = false;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    missing = maybeMissing;
     if (missing) {
-      throw new Error('This BARRY is running older code than the files on '
+      staleServer(path);
+      throw new Error('This Jarvis is running older code than the files on '
                       + 'disk, so it has no ' + path.split('?')[0]
                       + '. Restart it and try again.');
     }
@@ -458,14 +538,14 @@ function staleServer(path) {
   if (staleSeen.has(route)) return;
   staleSeen.add(route);
   toast('This page asked the server for ' + route
-        + ' and it does not have it \u2014 BARRY is running older code than '
+        + ' and it does not have it \u2014 Jarvis is running older code than '
         + 'the files on disk. Restart it (close the window and run '
-        + '"Start BARRY GUI" again) to pick up the new version.',
+        + '"Start Jarvis" again) to pick up the new version.',
         'err', 20000);
   showStaleBanner();
 }
 
-/* BARRY is running code older than what is on disk.
+/* Jarvis is running code older than what is on disk.
 
    Distinct from the 404 case below: nothing is missing, so nothing fails
    loudly. The old code simply does the old thing, which is worse -- you
@@ -478,7 +558,7 @@ function showCodeStaleBanner(files, startedAt) {
   codeStaleShown = true;
   const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
-    el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
+    el('strong', { text: 'Restart Jarvis \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
                      + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
@@ -504,7 +584,7 @@ function showCodeStaleBanner(files, startedAt) {
 
    A toast goes away; a stale server does not. Everything added since it
    started will fail, some of it silently, so this stays on screen until
-   BARRY is restarted -- which is the only thing that fixes it. */
+   Jarvis is restarted -- which is the only thing that fixes it. */
 function showStaleBanner() {
   if (document.getElementById('staleBanner')) {
     const n = document.getElementById('staleCount');
@@ -512,12 +592,12 @@ function showStaleBanner() {
     return;
   }
   const bar = el('div', { class: 'stale-banner', id: 'staleBanner' }, [
-    el('strong', { text: 'BARRY is running older code than the files on disk' }),
+    el('strong', { text: 'Jarvis is running older code than the files on disk' }),
     el('span', {}, [
       document.createTextNode('  '),
       el('span', { id: 'staleCount', text: String(staleSeen.size) }),
       document.createTextNode(' feature(s) this page expects are missing from '
-                              + 'the running server. Restart BARRY to pick '
+                              + 'the running server. Restart Jarvis to pick '
                               + 'them up \u2014 until then some things will '
                               + 'fail, and saving may not work.'),
     ]),
@@ -640,14 +720,51 @@ function keepFocus(render) {
   return out;
 }
 
+/* Returns a handle, so a message can be corrected rather than repeated.
+ *
+ * Nearly every call here is fire-and-forget and stays that way. But "Saving…"
+ * followed by "Saved" was impossible to say: with no handle, the second one
+ * is a second toast, and the first sits there for its full three seconds
+ * underneath it claiming the work is still going. So the app either said
+ * nothing during the wait or lied afterwards, and mostly chose nothing.
+ *
+ * `ms: 0` means "stay until I say otherwise", which is what a pending message
+ * wants -- the work decides when it is over, not a timer.
+ */
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);
-  setTimeout(() => {
+
+  let timer = null;
+  let gone = false;
+
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    if (timer) clearTimeout(timer);
     node.style.opacity = '0';
     node.style.transition = 'opacity .2s';
     setTimeout(() => node.remove(), 220);
-  }, ms || (kind === 'err' ? 6000 : 3200));
+  };
+
+  const arm = (hold, k) => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (hold === 0) return;                 // held open on purpose
+    timer = setTimeout(close, hold || (k === 'err' ? 6000 : 3200));
+  };
+  arm(ms, kind);
+
+  return {
+    update(text, nextKind, nextMs) {
+      if (gone) return this;
+      node.textContent = text;
+      node.className = 'toast' + (nextKind ? ' ' + nextKind : '');
+      arm(nextMs === undefined ? null : nextMs, nextKind);
+      return this;
+    },
+    close,
+  };
 }
 
 /* ---------- path prompt modal ---------- */
@@ -894,7 +1011,7 @@ BARRY.refreshSync = async function refreshSync() {
 /* The one thing a clone cannot carry.
 
    The repo says which project to sync to; the key deliberately is not in it,
-   so each machine has to be told once. BARRY asks on startup in the terminal
+   so each machine has to be told once. Jarvis asks on startup in the terminal
    and here, because whichever one somebody is looking at should be enough. */
 function askForKey(c) {
   const input = el('input', {
@@ -935,7 +1052,7 @@ function askForKey(c) {
     ]),
     msg,
     el('p', { class: 'hint',
-      text: 'Kept in GUI_logs/.cloud.json, which git ignores. BARRY works '
+      text: 'Kept in GUI_logs/.cloud.json, which git ignores. Jarvis works '
           + 'perfectly well without it \u2014 the sync is an addition, not a '
           + 'requirement.' }),
   ]);
@@ -952,7 +1069,7 @@ function cloudNote() {
       box.appendChild(el('div', { class: 'cloud-err',
         text: 'cloud.json in the repo contains a key. That file is tracked '
             + 'by git, so treat the key as public: rotate it in the Supabase '
-            + 'dashboard and paste the new one below. BARRY is ignoring the '
+            + 'dashboard and paste the new one below. Jarvis is ignoring the '
             + 'one in the file.' }));
     }
     if (c.needs_key) { box.appendChild(askForKey(c)); return; }
@@ -1052,12 +1169,12 @@ function cloudNote() {
       box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
     }
     box.appendChild(el('p', { class: 'hint',
-      text: 'BARRY writes here first and syncs in the background, so none of '
+      text: 'Jarvis writes here first and syncs in the background, so none of '
           + 'this is in the way if the network is down.' }));
   }).catch(() => {
     box.innerHTML = '';
     box.appendChild(el('p', { class: 'hint',
-      text: 'This BARRY does not have the Supabase sync — restart it to '
+      text: 'This Jarvis does not have the Supabase sync — restart it to '
           + 'pick up the new version.' }));
   });
   return box;
@@ -1094,6 +1211,79 @@ function conflictNote(c) {
 }
 
 
+/* Sync, from anywhere, with the phase on the button.
+
+   The same request the dialog's "Sync now" makes -- there is one sync and
+   one lock -- but reachable in one click and reporting into the rail rather
+   than into a modal that has to be open to be read.
+
+   `/api/sync/progress` is polled while the request is in flight because a
+   full round trip is three or four seconds and the pull alone is fifteen
+   round trips. A button that says nothing for that long is indistinguishable
+   from a button that did nothing. */
+let _syncing = false;
+
+async function globalSync(btn) {
+  if (_syncing) return;
+  _syncing = true;
+  const label = document.getElementById('syncNowLabel');
+  const was = label ? label.textContent : 'Sync now';
+  if (btn) btn.classList.add('busy');
+
+  let stop = false;
+  const watch = async () => {
+    while (!stop) {
+      try {
+        const got = await api('/api/sync/progress');
+        const st = (got && got.step) || {};
+        /* `stop` is re-checked AFTER the await. Setting it only stops the
+           next iteration; a request already in flight would otherwise
+           write its phase over the label the `finally` had just put
+           back -- which left the chip reading "pushing error_marks 93%"
+           for ever. */
+        if (stop) break;
+        if (st.running && label) {
+          const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+          label.textContent = (st.phase || 'syncing')
+            + (st.table ? ' ' + st.table : '')
+            + (pct != null ? '  ' + pct + '%' : '');
+        }
+      } catch (e) { /* the sync is what matters, not the commentary */ }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  };
+  watch();
+
+  try {
+    const res = await apiPost('/api/cloud/sync', {});
+    const last = (res && res.last) || {};
+    if (last.error) {
+      toast('Sync: ' + last.error, 'err', 8000);
+    } else {
+      /* What actually moved, not "done". "Sent 0, brought back 0" is a
+         useful answer -- it means everybody is already level. */
+      toast('Sent ' + (last.pushed || 0) + ', brought back '
+            + (last.pulled || 0)
+            + (last.downloaded ? ', downloaded ' + last.downloaded + ' file(s)'
+               : '') + '.', 'ok', 6000);
+    }
+    /* Whatever came down should be on screen without a second thought. */
+    try { await BARRY.refreshSync(); } catch (e) { /* status only */ }
+    const v = BARRY.views[BARRY.state.view];
+    if (v && v.reload) { try { v.reload(); } catch (e) { /* leave it */ } }
+    else if (v && v.onShow) { try { v.onShow(); } catch (e) { /* leave it */ } }
+  } catch (e) {
+    toast('Could not sync: ' + e.message, 'err', 9000);
+  } finally {
+    stop = true;
+    _syncing = false;
+    if (btn) btn.classList.remove('busy');
+    if (label) label.textContent = was;
+  }
+}
+
+BARRY.syncNow = globalSync;
+
 function showSync() {
   const d = BARRY.sync || {};
   const git = d.git || {};
@@ -1120,7 +1310,7 @@ function showSync() {
       ]),
       el('div', { class: 'section-label', text: 'How syncing works' }),
       el('p', { style: 'font-size:12.5px;line-height:1.7;color:var(--text-2)' , text:
-        'BARRY writes every run, bad-channel mark, preset and error into GUI_logs as '
+        'Jarvis writes every run, bad-channel mark, preset and error into GUI_logs as '
         + 'plain JSON — one file per run and per session, so git merges them without '
         + 'conflict. It never commits or pushes on its own.' }),
       el('div', { class: 'source-box' }, [
@@ -1179,7 +1369,7 @@ BARRY.notes = (function () {
        and "we are both on 65ece68" are different claims, and the second is
        the one that settles an argument about why something behaves
        differently for one of you. */
-    chip.title = 'BARRY ' + v
+    chip.title = 'Jarvis ' + v
       + (run ? '  ·  ' + run.commit + (run.dirty ? ' + local changes' : '')
              + (run.branch ? '  ·  ' + run.branch : '')
              : '')
@@ -1233,7 +1423,7 @@ BARRY.notes = (function () {
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'What changed' }),
-        el('span', { class: 'sub', text: 'BARRY ' + (data.version || '') }),
+        el('span', { class: 'sub', text: 'Jarvis ' + (data.version || '') }),
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
@@ -1270,7 +1460,7 @@ BARRY.setErrorCount = function setErrorCount(n) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit'];
+               'toolkit', 'comod', 'spectrum'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -1413,6 +1603,15 @@ const MODES = {
     what: 'Labelling layers · drag on the rail to set a boundary '
         + '· the aids are in the second window',
   },
+  cfc: {
+    name: 'Braid',
+    /* The banner is the promise. The other two modes take a set off
+       somebody, move a bench, write decisions; this one reads. Saying so
+       where it cannot be missed is cheaper than anyone having to wonder,
+       and it is the only reason this mode has a `what` worth the room. */
+    what: 'Looking only · nothing here is saved · C for a '
+        + 'comodulogram of the window',
+  },
   curate: {
     name: 'DS curation',
     /* No `what`. It said "Y keeps, N rejects", and neither key does
@@ -1453,7 +1652,19 @@ function setMode(kind, leave) {
       modeNow = kind;
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
-      BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      /* How long since the last click or keypress.
+
+         A mode change is meant to be something a person does, so one that
+         happens seconds after the last input is worth being able to see
+         afterwards. Not an error -- entering StrataScope waits on a
+         session opening and that legitimately takes seconds -- but the
+         difference between "the user did this" and "something did this"
+         is exactly what was missing when StrataScope was reported to snap
+         into curation on its own. */
+      BARRY.activity.log('mode.change', {
+        from: from, to: to, via: stack,
+        since_gesture_ms: _lastGesture ? (Date.now() - _lastGesture) : null,
+      });
       noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
@@ -1487,7 +1698,7 @@ function wireMode() {
 /* ==========================================================================
    Profile -- who the work is credited to
    ==========================================================================
-   Everything BARRY writes down carries a name: curation decisions, banked
+   Everything Jarvis writes down carries a name: curation decisions, banked
    event sets, layer sheets, exported figures, runs. That name used to come
    from `git config user.name`, falling back to the Windows account -- so on
    a shared rig every decision was credited to a computer, and two people on
@@ -1498,6 +1709,21 @@ function wireMode() {
    ========================================================================== */
 BARRY.profile = (function () {
   let prof = null;
+  /* What this lab actually is. Free text is how one lab ends up with
+     "undergrad", "Undergraduate" and "Undergraduate Student" as three
+     different roles, and a roster that groups by role then reports three
+     people where there is one kind of person.
+
+     A value already on record that is not in this list is kept and offered
+     -- see `roleField`. The list is a suggestion about the future, not a
+     verdict on what somebody already typed. */
+  const ROLES = [
+    'PI',
+    'Graduate Student',
+    'Undergraduate Student',
+    'Medical Student',
+    'Medical Resident',
+  ];
 
   async function load() {
     try {
@@ -1541,7 +1767,7 @@ BARRY.profile = (function () {
     }
   }
 
-  /* Everyone BARRY has come into contact with. Cached for the dialog's
+  /* Everyone Jarvis has come into contact with. Cached for the dialog's
      lifetime; a fresh copy each time it is opened. */
   let roster = null;
 
@@ -1556,6 +1782,16 @@ BARRY.profile = (function () {
 
   async function open() {
     const cur = prof || {};
+    /* Asked now, not remembered.
+
+       This line used to be built from whatever `/api/profile` last
+       reported, so renaming the computer under Errors -> Device left the
+       dialog claiming the old name until the page was refreshed. It is one
+       request and it is the only thing here that another view can change. */
+    try {
+      const got = await api('/api/device');
+      if (got && got.device) cur.device_name = got.device.name;
+    } catch (e) { /* the note falls back to the hostname */ }
     const f = {};
     /* `mine` marks a field that is about this COMPUTER rather than about a
        person, so it can be taken off screen when the form is about somebody
@@ -1577,6 +1813,10 @@ BARRY.profile = (function () {
       if (mine) mineOnly.push(box);
       return box;
     };
+    /* Nothing is machine-only in this form any more -- the one field that
+       was has moved out entirely. The mechanism stays: the next field that
+       is about the computer rather than the person must not be editable
+       while somebody else's details are in the form. */
 
     /* Who is already here. A row fills the form; the pencil opens that
        person for editing without making them the person at this keyboard,
@@ -1597,8 +1837,20 @@ BARRY.profile = (function () {
     let creating = false;
 
     const fill = (d, asMe) => {
-      for (const k of ['name', 'email', 'role', 'initials']) {
+      for (const k of ['name', 'email', 'initials']) {
         if (f[k]) f[k].value = (d && d[k]) || '';
+      }
+      /* The role is a select, and assigning a value it has no option for
+         silently leaves it blank -- which would then be saved as "no role"
+         over somebody's actual one. So the option is made first. */
+      if (f.role) {
+        const want = ((d && d.role) || '').trim();
+        if (want && !Array.from(f.role.options)
+              .some((o) => o.value.toLowerCase() === want.toLowerCase())) {
+          f.role.appendChild(el('option', {
+            value: want, text: want + '  (as recorded)' }));
+        }
+        f.role.value = want;
       }
       editing = asMe ? null : (d && d.name) || null;
       creating = false;
@@ -1620,6 +1872,37 @@ BARRY.profile = (function () {
       if (f.name) f.name.focus();
     };
 
+    /* The role, as a list, without overwriting anything.
+
+       `cur.role` may be something nobody would pick today -- "Undergraduate"
+       is on this roster and is not in ROLES. A plain select would have
+       silently changed it to the first option the moment the form was
+       opened, so the current value is added as its own option and said to
+       be an old one. */
+    const roleField = () => {
+      const now = (cur.role || '').trim();
+      const known = ROLES.some((r) => r.toLowerCase() === now.toLowerCase());
+      const opts = ROLES.slice();
+      if (now && !known) opts.unshift(now);
+      f.role = el('select', { class: 'prof-role' },
+        [el('option', { value: '', text: '\u2014 not set \u2014' })]
+          .concat(opts.map((r) => el('option', {
+            value: r,
+            text: r + (now && !known && r === now ? '  (as recorded)' : ''),
+            selected: r.toLowerCase() === now.toLowerCase()
+              ? 'selected' : null,
+          }))));
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Role' }),
+        f.role,
+        now && !known
+          ? el('span', { class: 'hint',
+              text: '"' + now + '" is what is on record for them. Leaving it '
+                  + 'alone keeps it; picking another changes it.' })
+          : null,
+      ].filter(Boolean));
+    };
+
     const modeLine = el('p', { class: 'prof-mode' });
 
     const paintMode = () => {
@@ -1634,7 +1917,7 @@ BARRY.profile = (function () {
           ? 'Adding somebody new to the roster. Save puts them on it; it '
             + 'does not change who this computer credits work to.'
           : 'This is who this computer credits work to. Save applies it to '
-            + 'everything BARRY records here from now on.');
+            + 'everything Jarvis records here from now on.');
     };
 
     /* Remove, and then say what actually happened.
@@ -1674,7 +1957,7 @@ BARRY.profile = (function () {
           + '.\n\nThe roster is compiled from the work itself, not from a '
           + 'list anybody keeps, so this name is here because the data says '
           + 'so. Taking it off could not un-say it, and a button that looked '
-          + 'like it had would be lying about what BARRY holds.',
+          + 'like it had would be lying about what Jarvis holds.',
           null);
         return;
       }
@@ -1792,7 +2075,7 @@ BARRY.profile = (function () {
              with work behind it therefore cannot be removed: it is stamped
              on those records whether the roster lists it or not, and a
              button that appeared to delete it would be lying about what
-             BARRY holds. Only the hand-added ones can go, which is exactly
+             Jarvis holds. Only the hand-added ones can go, which is exactly
              what a leftover test entry is.
 
              The count is in the tooltip rather than the button being
@@ -1852,7 +2135,7 @@ BARRY.profile = (function () {
     const body = el('div', { class: 'prof-form' }, [
       modeLine,
       el('p', { class: 'confirm-msg',
-        text: 'Everything BARRY records is credited to this: curation '
+        text: 'Everything Jarvis records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
             + 'every run. Set it once.' }),
       el('div', { class: 'section-label', text: 'People already here' }),
@@ -1864,13 +2147,26 @@ BARRY.profile = (function () {
             'What appears under a figure and against every decision.'),
       field('email', 'Email', 'you@uvm.edu',
             'So a decision can be asked about later.'),
-      field('device', 'What the lab calls this machine',
-            (cur.machine || 'this computer'),
-            'The real hostname (' + (cur.machine || '?') + ') is kept as '
-            + 'well, so "which computer" is still answerable. This name is '
-            + 'stamped on every error and action from this computer, so two '
-            + 'machines sharing one cannot be told apart.', true),
-      field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
+      /* The machine's name is not a field here any more. It belongs to
+         the computer, and while it sat in this form every path that saved
+         a profile could rename the machine -- which is how one computer
+         came to file errors under five names. It lives under Device, in
+         Errors. */
+      el('p', { class: 'hint prof-device-note' }, [
+        el('span', { text: 'This computer is called ' }),
+        el('strong', { text: (cur.device_name || cur.machine || 'unnamed') }),
+        el('span', { text: '. That belongs to the computer rather than to '
+                         + 'you, so it is set under ' }),
+        el('button', {
+          class: 'linkish', text: 'Errors \u2192 Device',
+          onclick: () => {
+            closeModal();
+            setView('errors');
+          },
+        }),
+        el('span', { text: ' and switching profiles leaves it alone.' }),
+      ]),
+      roleField(),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
     ]);
@@ -1915,7 +2211,7 @@ BARRY.profile = (function () {
               save.disabled = null;
               const go = await BARRY.confirm(
                 clash.name + ' is already on the roster',
-                'BARRY can update their details instead of adding a second '
+                'Jarvis can update their details instead of adding a second '
                 + clash.name + '. Two entries with the same name cannot be '
                 + 'told apart on any record.',
                 'Update ' + clash.name);
@@ -1950,7 +2246,7 @@ BARRY.profile = (function () {
                 + 'banked sets and their layer sheets. Renaming the roster '
                 + 'entry cannot rename those, so they would be left '
                 + 'crediting somebody the roster no longer lists.'
-                + '\n\nBARRY can add ' + typed + ' as a separate person '
+                + '\n\nJarvis can add ' + typed + ' as a separate person '
                 + 'instead, leaving ' + editing + ' exactly as they are. If '
                 + 'they really are the same person, archive one and add the '
                 + 'other as an alias — that folds the old name without '
@@ -2095,7 +2391,12 @@ function noticeBounce(from, to, via) {
      "snaps to StrataScope and snaps back", and the same fault entering
      curation would be the same bug. */
   const reversed = prev.to === from && prev.from === to;
-  if (!reversed || gap > 3000) return;
+  /* Ten seconds, not three. "Snaps to event curation and snaps back, and
+     back again" describes something happening over seconds; a bounce with a
+     four-second leg was outside the window and went unrecorded, which is
+     the likeliest reason this watcher has caught nothing but my own
+     harness. */
+  if (!reversed || gap > 10000) return;
   /* A person doing it deliberately is not a fault. Anything within a
      second of a click or a key is theirs. */
   if (now - _lastGesture < 1000) return;
@@ -2113,6 +2414,12 @@ function noticeBounce(from, to, via) {
         second: { from: from, to: to, via: via },
         ms_since_input: now - _lastGesture,
         view: BARRY.state && BARRY.state.view,
+        /* What else was happening. Without this the report says a mode
+           changed twice and nothing about the load, the sync or the pane
+           rebuild that might have done it -- and by the time anybody looks,
+           the page has been reloaded. */
+        just_before: (BARRY.activity && BARRY.activity.recent
+          ? BARRY.activity.recent().slice(-8) : null),
       },
     }).catch(() => { /* it is a report about a glitch, not a transaction */ });
   } catch (e) { /* never let the watcher break the thing it watches */ }
@@ -2242,6 +2549,15 @@ const THEMES = [
   { id: 'horizon', name: 'Horizon',     swatch: ['#5bcefa', '#f5a9b8', '#ffffff'] },
   { id: 'horizon-night', name: 'Horizon Night',
     swatch: ['#0b1220', '#5bcefa', '#f5a9b8'] },
+  /* Jirai kei: black, baby pink, white lace. Three variants because that
+     is how the palette is actually worn -- the dark one, the white one,
+     and the yami-kawaii one. */
+  { id: 'jirai', name: 'Jirai Kei',
+    swatch: ['#0c0710', '#ff9ec7', '#fbeaf3'] },
+  { id: 'jirai-shiro', name: 'Jirai Shiro',
+    swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
+  { id: 'jirai-yami', name: 'Jirai Yami',
+    swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
@@ -2270,6 +2586,8 @@ function applyTheme(theme, remember) {
   paintFavicon();
   // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  // Same for the explainer's figures, if it happens to be open.
+  if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own
@@ -2299,10 +2617,31 @@ function paintFavicon() {
   const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
   const bg = tok('--accent', '#154734');
   const ink = tok('--on-accent', '#FFB81C');
+  /* A dentate spike, which is what this application is for.
+
+     A letter was tried twice and rendered twice, and rendering it is what
+     settled it: a flat baseline with a symmetric peak on it reads as a
+     capital A, because the baseline becomes the crossbar. Running the
+     peak's falling edge down into a stem fixed the A and shrank the spike
+     to a bump on an otherwise plain J -- a letter that has to be explained,
+     which is worse than no letter. The wordmark beside it says the name.
+
+     Drawn to read at 16 px, which is a browser tab: one confident stroke
+     and no glow. A glow under it was tried; it looks well at 120 px and
+     turns to mud at 16. `tools/make_icons.py` rasterises this exact path
+     for the desktop icon, so the tab and the shortcut cannot drift apart. */
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<rect width="32" height="32" rx="7" fill="' + bg + '"/>'
-    + '<path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none" stroke="' + ink
-    + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
+    + '<stop offset=".55" stop-color="#fff" stop-opacity=".04"/>'
+    + '<stop offset="1" stop-color="#000" stop-opacity=".12"/>'
+    + '</linearGradient></defs>'
+    + '<rect width="32" height="32" rx="8" fill="' + bg + '"/>'
+    + '<rect width="32" height="32" rx="8" fill="url(#s)"/>'
+    + '<path d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4'
+    + ' L18 15.3 L20.2 19.4 H27.5"'
+    + ' fill="none" stroke="' + ink + '" stroke-width="2.9"'
+    + ' stroke-linecap="round" stroke-linejoin="round"/>'
     + '</svg>';
   let link = document.querySelector('link[rel="icon"]');
   if (!link) {
@@ -2492,7 +2831,24 @@ BARRY.skeleton = (function () {
     return () => { if (b.parentNode === host) host.removeChild(b); };
   }
 
-  return { block, into };
+  /* For a list that is already on screen, when the person who is looking at
+     it just caused it to be re-read.
+
+     `into` is no use here: it empties the host, and blanking a list somebody
+     is reading to tell them it is being re-read is worse than saying nothing.
+     That is exactly why the three views that use it gate it on the list being
+     empty -- and why deleting a bank entry, which re-reads seven megabytes of
+     shards, showed nothing at all and then snapped to the new list.
+
+     So: leave the rows where they are, dim them, and stop them taking clicks
+     until the answer lands. Same teardown contract as `into`. */
+  function stale(host) {
+    if (!host) return () => {};
+    host.classList.add('is-stale');
+    return () => host.classList.remove('is-stale');
+  }
+
+  return { block, into, stale };
 })();
 
 BARRY.init = async function init() {
@@ -2519,6 +2875,8 @@ BARRY.init = async function init() {
   $('#themeToggle').addEventListener('click', showThemePicker);
 
   $('#syncBtn').addEventListener('click', showSync);
+  const goBtn = $('#syncNowBtn');
+  if (goBtn) goBtn.addEventListener('click', () => globalSync(goBtn));
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));
@@ -2627,6 +2985,12 @@ BARRY.init = async function init() {
   });
 
   BARRY.boot.say('opening the workspace');
+  /* A window opened for one thing should not offer to navigate away from
+     it. Same idea as `aid-window` for the panel pop-outs: the app is the
+     whole app, it just has no rail here. */
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+    document.body.classList.add('solo-window');
+  }
   setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
@@ -2640,7 +3004,16 @@ BARRY.init = async function init() {
   requestAnimationFrame(() => BARRY.boot.clear());
 
   if (cscPath && BARRY.views.xplore) {
-    BARRY.views.xplore.open(cscPath).then((sess) => {
+    /* `?even=1` forces the even-channel read, `?even=0` forces the whole
+       list, and no `even` at all leaves the recording to answer for itself
+       -- which is the default, because neither answer is right for both
+       rigs. Incisor's traces window asks for even, because a CSD wants one
+       line of contacts and that is what the 32-channel probe on 64 inputs
+       is. */
+    const evenArg = params.get('even');
+    const openOpts = evenArg == null ? undefined
+      : { evenOnly: evenArg !== '0' && evenArg !== 'false' };
+    BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));

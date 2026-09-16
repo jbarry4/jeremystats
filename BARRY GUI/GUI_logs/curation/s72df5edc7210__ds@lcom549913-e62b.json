@@ -1,0 +1,198 @@
+{
+  "_at": {
+    "archived": "2026-09-10T18:17:21.487623+00:00",
+    "archived_at": "2026-09-10T18:17:21.487623+00:00",
+    "archived_by": "2026-09-10T18:17:21.487623+00:00",
+    "assignee": "2026-09-09T02:02:26.216505+00:00",
+    "closed_at": "2026-09-10T18:17:21.487623+00:00",
+    "created": "2026-09-09T21:20:01.443029+00:00",
+    "gid": "2026-09-03T21:07:03.081193+00:00",
+    "imports": "2026-09-14T13:43:17.596256+00:00",
+    "kind": "2026-09-03T21:07:03.081193+00:00",
+    "labels": "2026-09-08T19:03:11.347561+00:00",
+    "name": "2026-09-08T19:03:11.347561+00:00",
+    "open": "2026-09-11T15:24:12.768619+00:00",
+    "opened_at": "2026-09-11T15:24:17.794531+00:00",
+    "opened_by": "2026-09-11T15:24:12.768619+00:00",
+    "schema": "2026-09-03T21:07:03.081193+00:00",
+    "session_label": "2026-09-03T21:07:03.081193+00:00",
+    "source": "2026-09-14T13:43:17.596256+00:00",
+    "updated": "2026-09-14T15:24:55.622419+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e04ca22b5ab": [
+        "set",
+        "2026-09-14T15:24:55.622419+00:00"
+      ],
+      "e5a21c87853": [
+        "set",
+        "2026-09-14T15:24:55.622419+00:00"
+      ],
+      "e85b6aa17eb": [
+        "set",
+        "2026-09-14T15:24:55.622419+00:00"
+      ],
+      "eb6a9368fb8": [
+        "set",
+        "2026-09-14T15:24:55.622419+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T15:24:55.622419+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "archived": true,
+  "archived_at": "2026-09-10T14:17:21-0400",
+  "archived_by": "Rain Younger",
+  "assignee": "Shahriar Tafti",
+  "closed_at": "2026-09-10T14:17:21-0400",
+  "created": {
+    "at": "2026-09-09T17:20:01-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "events": [
+    {
+      "at": "2026-09-14T15:24:21+00:00",
+      "by": "Isabella Piatek",
+      "id": "e5a21c87853",
+      "label": "review",
+      "reviews": [
+        {
+          "at": "2026-09-14T09:43:17-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 531.35
+    },
+    {
+      "at": "2026-09-14T15:24:21+00:00",
+      "by": "Isabella Piatek",
+      "id": "e04ca22b5ab",
+      "label": "review",
+      "reviews": [
+        {
+          "at": "2026-09-14T09:43:17-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 547.079
+    },
+    {
+      "at": "2026-09-14T15:24:21+00:00",
+      "by": "Isabella Piatek",
+      "id": "e85b6aa17eb",
+      "label": "review",
+      "reviews": [
+        {
+          "at": "2026-09-14T09:43:17-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 625.815
+    },
+    {
+      "at": "2026-09-14T15:24:21+00:00",
+      "by": "Isabella Piatek",
+      "id": "eb6a9368fb8",
+      "label": "review",
+      "reviews": [
+        {
+          "at": "2026-09-14T09:43:17-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1548.814
+    }
+  ],
+  "gid": "s72df5edc7210",
+  "imports": [
+    {
+      "at": "2026-09-14T09:43:17-0400",
+      "n": 4,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "340307eba315",
+        "by": "Rain Younger",
+        "entry_name": "DS candidates (ETS)",
+        "kind": "bank version",
+        "pipeline": "ETS dentate-spike export",
+        "version": 2
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "flagged": true,
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "DS candidates (ETS)",
+  "open": true,
+  "opened_at": "2026-09-11T11:24:17-0400",
+  "opened_by": "Isabella Piatek",
+  "schema": 1,
+  "session_label": "PTEN m11 s10 2023-07-25",
+  "source": {
+    "bank_entry": "340307eba315",
+    "by": "Rain Younger",
+    "entry_name": "DS candidates (ETS)",
+    "kind": "bank version",
+    "pipeline": "ETS dentate-spike export",
+    "version": 2
+  },
+  "updated": {
+    "at": "2026-09-14T11:24:55-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

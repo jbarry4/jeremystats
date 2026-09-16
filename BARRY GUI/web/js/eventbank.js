@@ -33,10 +33,20 @@ BARRY.views.eventbank = (function () {
   let sheetSel = null;        // the gid shown in the detail pane
   let sheetOne = null;        // that sheet, with its snapshots
 
-  async function load() {
-    // Nothing on screen yet means an empty panel for the length of the read.
+  /* `mine` means the person looking at this list is the reason it is being
+     re-read -- they deleted an entry, edited one, restored a version.
+
+     That case needs saying out loud and used to say nothing. The bank is
+     seven megabytes of shards across a hundred and fifty files, every write
+     drops the cache, and so a delete was: click, a second of a list still
+     showing the row you just removed, then a snap. Bones were suppressed
+     because the list was not empty, which is right for a background refresh
+     and exactly wrong for this. */
+  async function load(mine) {
+    const host = $('#bankBody');
     const bones = entries.length
-      ? null : BARRY.skeleton.into($('#bankBody'), 'row', 7);
+      ? (mine ? BARRY.skeleton.stale(host) : null)
+      : BARRY.skeleton.into(host, 'row', 7);
     /* Both lists, in parallel. The switch between them has to be instant --
        it is a switch, not a navigation -- and the sheets are a single small
        read. */
@@ -775,6 +785,18 @@ BARRY.views.eventbank = (function () {
     box.parentNode.replaceChild(detail(), box);
   }
 
+  /* Whether a recording counts as patched is computed from the banked
+     sets, so anything done to one here makes the session list's cached
+     answer wrong. Through `BARRY.views.sessions` because that is a real
+     property; the module's own `BARRY` binding is not reachable from
+     another module's closure. */
+  function healthChanged() {
+    try {
+      const v = BARRY.views && BARRY.views.sessions;
+      if (v && v.refreshHealth) v.refreshHealth();
+    } catch (err) { /* the session list is not loaded; nothing to update */ }
+  }
+
   async function versionOp(e, v, action, body) {
     try {
       const res = await apiPost(
@@ -797,20 +819,61 @@ BARRY.views.eventbank = (function () {
   async function deleteVersion(e, v) {
     const isCurrent = v.v === Math.max.apply(
       null, (e.versions || []).map((x) => x.v || 0));
+    /* A correction is not an ordinary version. It moved every time in the
+       set, so deleting it moves them back -- and the wording below used to
+       promise the opposite, which is the worst thing a confirmation can do.
+       The times going back is also what makes the recording show an
+       unresolved segment issue again, and that is worth saying before the
+       button rather than leaving it to be found in a filter. */
+    const undoes = !!v.retimed && isCurrent;
+    const body = undoes
+      ? el('div', {}, [
+          el('p', { text: 'This version is the timing correction. Deleting '
+              + 'it puts all ' + (e.n || 0) + ' event time(s) back onto the '
+              + 'clock they were on before it ran.' }),
+          el('ul', { class: 'fix-steps' }, [
+            el('li', { text: 'Every time moves back by the amount this '
+                + 'correction moved it. The labels and the decisions are '
+                + 'untouched.' }),
+            el('li', { text: 'The set stops claiming to be on the '
+                + 'recording\u2019s own clock, so this recording goes back '
+                + 'to showing an unresolved segment issue and reappears in '
+                + 'the unpatched filter.' }),
+            el('li', { text: 'If no earlier version on this machine carries '
+                + 'a snapshot, nothing is deleted at all \u2014 a set whose '
+                + 'correction is gone but whose times are still shifted is '
+                + 'worse than either state.' }),
+          ]),
+          el('p', { class: 'hint quiet',
+            text: 'Archive it instead if you only want it out of the way; '
+                + 'that changes nothing about the events.' }),
+        ])
+      : 'It goes from the history for good. The entry keeps its '
+        + (e.n || 0) + ' events exactly as they are'
+        + (isCurrent
+            ? ' \u2014 and since this is the version that describes them, '
+              + 'nothing left in the history will explain what the entry '
+              + 'currently holds.'
+            : '.')
+        + ' Archive it instead if you only want it out of the way.';
+
     const go = await BARRY.confirm(
-      'Delete version ' + v.v + '?',
-      'It goes from the history for good. The entry keeps its '
-      + (e.n || 0) + ' events exactly as they are'
-      + (isCurrent
-          ? ' \u2014 and since this is the version that describes them, '
-            + 'nothing left in the history will explain what the entry '
-            + 'currently holds.'
-          : '.')
-      + ' Archive it instead if you only want it out of the way.',
-      'Delete v' + v.v, true);
+      undoes ? 'Undo the correction at v' + v.v + '?'
+             : 'Delete version ' + v.v + '?',
+      body, undoes ? 'Undo and delete v' + v.v : 'Delete v' + v.v, true);
     if (!go) return;
     const res = await versionOp(e, v, 'delete');
-    if (res) toast('Version ' + v.v + ' deleted.', 'ok');
+    if (!res) return;
+    const undo = res.undo;
+    if (undo) {
+      healthChanged();
+      toast('v' + v.v + ' deleted and the correction undone. '
+            + undo.n + ' time(s) restored from v' + undo.restored_from
+            + '; this recording is an unresolved segment issue again.',
+            'ok', 11000);
+    } else {
+      toast('Version ' + v.v + ' deleted.', 'ok');
+    }
   }
 
   function editVersion(e, v) {
@@ -881,7 +944,7 @@ BARRY.views.eventbank = (function () {
         ? 'Put version ' + v.v + ' back: ' + res.changed
           + ' decision(s) changed, ' + res.unchanged + ' already matched.'
         : 'The set already matches version ' + v.v + '.', 'ok', 8000);
-      load();
+      load(true);
     } catch (err) { toast(err.message, 'err', 9000); }
   }
 
@@ -1072,6 +1135,13 @@ BARRY.views.eventbank = (function () {
       el('button', { class: 'btn ghost sm', text: 'Export CSV',
         onclick: () => BARRY.download('/api/bank/export', { ids: [e.id] },
                                       'event-bank-' + e.id + '.csv') }),
+      /* Always offered, not only when the strip below has found doubles:
+         the events have not loaded yet when this is built, and an action
+         that appears a moment later is one nobody learns is there. */
+      el('button', { class: 'btn ghost sm', text: 'Duplicate times…',
+        title: 'Find events that sit on the same time and collapse them '
+             + 'into a new version',
+        onclick: () => dedupeDialog(e) }),
       el('button', { class: 'btn ghost sm danger', text: 'Delete entry',
         onclick: () => removeEntry(e) }),
     ]));
@@ -1095,10 +1165,46 @@ BARRY.views.eventbank = (function () {
     if (!host || selected !== id) return;
     const evs = (full.entry || {}).events || [];
     host.innerHTML = '';
+    /* Counted over the whole set, not the 300 rows on show: a set whose
+       doubles all sit past row 300 has exactly the same problem. */
+    const scan = dupScan(evs);
+    const shared = new Set();
+    const seen = new Set();
+    evs.forEach((ev) => {
+      const t = Number(ev.start);
+      if (!isFinite(t)) return;
+      const k = t.toFixed(DUP_DP);
+      if (seen.has(k)) shared.add(k);
+      seen.add(k);
+    });
+    const strip = dupStrip(whole || row || {}, scan);
+    if (strip) host.appendChild(strip);
+    /* And at the top, where somebody who never scrolls to the events will
+       still meet it. The events are not loaded when the header is built, so
+       this goes in when they arrive rather than being drawn with it. */
+    const tags = $('.bank-detail .detail-tags');
+    if (tags && scan.groups && !$('.detail-tags .tag.blocked')) {
+      tags.appendChild(el('button', {
+        class: 'tag blocked',
+        title: 'Jump to them',
+        text: scan.groups + ' duplicate time'
+            + (scan.groups === 1 ? '' : 's'),
+        onclick: () => strip.scrollIntoView({ block: 'center',
+                                              behavior: 'smooth' }),
+      }));
+    }
+    const isDup = (ev) => {
+      const t = Number(ev.start);
+      return isFinite(t) && shared.has(t.toFixed(DUP_DP));
+    };
     const table = el('table', { class: 'preview-table' }, [
       el('thead', {}, [el('tr', {}, ['#', 'start', 'end', 'channel', 'amplitude']
         .map((h) => el('th', { text: h })))]),
-      el('tbody', {}, evs.slice(0, 300).map((ev, i) => el('tr', {}, [
+      el('tbody', {}, evs.slice(0, 300).map((ev, i) => el('tr', {
+        class: isDup(ev) ? 'dup' : null,
+        title: isDup(ev) ? 'Another event in this set claims this time'
+                         : null,
+      }, [
         el('td', { text: String(i + 1) }),
         el('td', { text: fmtTime(ev.start) }),
         el('td', { text: ev.end != null ? fmtTime(ev.end) : '' }),
@@ -1344,7 +1450,7 @@ BARRY.views.eventbank = (function () {
                 note: f.note.value.trim(),
               });
               closeModal();
-              await load();
+              await load(true);
               BARRY.refreshSync();
             } catch (err) { toast(err.message, 'err'); }
           },
@@ -1353,20 +1459,329 @@ BARRY.views.eventbank = (function () {
     ]));
   }
 
+  /* The dialog now holds itself open until the delete has actually happened,
+     which is the difference between this and what it used to be.
+
+     Before: the box closed on the click, and then four things happened in a
+     row -- the delete, a re-read of the whole bank, a sync status check, and
+     a health recount -- with the row still on screen throughout and the toast
+     arriving last of all. The one sentence confirming it had worked was the
+     last thing to appear, well after the person had already decided nothing
+     had.
+
+     Now the box stays up while the delete goes through, and the two reads
+     that only refresh things elsewhere no longer hold the confirmation
+     hostage: they run after, on their own time. */
   async function removeEntry(e) {
-    const ok = await BARRY.confirm(
+    await BARRY.confirm(
       'Delete "' + e.name + '"?',
       'Removes ' + e.n + ' banked event(s) and the record of where they came '
       + 'from. The recording itself is untouched.',
-      'Delete it', true);
-    if (!ok) return;
-    try {
-      await apiPost('/api/bank/' + e.id + '/delete');
-      selected = null;
-      await load();
-      BARRY.refreshSync();
-      toast('Removed from the bank', 'ok');
-    } catch (err) { toast(err.message, 'err'); }
+      'Delete it', true,
+      async () => {
+        await apiPost('/api/bank/' + e.id + '/delete');
+        selected = null;
+        toast('Removed from the bank', 'ok');
+        // Not awaited: neither changes this list, and the person is waiting
+        // on the row going away, not on a sync chip.
+        load(true);
+        BARRY.refreshSync();
+        // Removing a banked set changes whether its recording counts as
+        // patched -- that is computed from the sets, and there is one fewer.
+        healthChanged();
+      });
+  }
+
+  /* ======================================================================
+     Duplicate times
+
+     Two rows at one time are two records of one event, never two events:
+     nothing this lab records fires twice inside a tenth of a millisecond.
+     They arrive when a set is imported twice, or restarted on one machine
+     while another still holds decisions on it -- and because the two copies
+     were then decided separately, a good many of them disagree about what
+     the event was. Collapsing them therefore throws a real call away, so
+     this shows every contested time and makes the choice explicit rather
+     than sorting its way out of one.
+     ====================================================================== */
+
+  /* 0.1 ms, the same key the server matches on. Kept in step by hand: if
+     one of the two ever moves and the other does not, the panel offers a
+     collapse the server then says there is nothing to collapse for. */
+  const DUP_DP = 4;
+
+  function dupScan(evs) {
+    const at = new Map();
+    (evs || []).forEach((ev) => {
+      const t = Number(ev.start);
+      if (!isFinite(t)) return;
+      const k = t.toFixed(DUP_DP);
+      if (!at.has(k)) at.set(k, []);
+      at.get(k).push(ev);
+    });
+    let groups = 0, extra = 0, conflicts = 0;
+    at.forEach((rows) => {
+      if (rows.length < 2) return;
+      groups += 1;
+      extra += rows.length - 1;
+      const calls = new Set(rows.map((r) => r.label_id || r.label)
+                                .filter(Boolean));
+      if (calls.size > 1) conflicts += 1;
+    });
+    return { times: at.size, groups: groups, extra: extra,
+             conflicts: conflicts };
+  }
+
+  /* The strip above the events table. Shown only when there is something to
+     say, because a line reading "no duplicates" on every one of ninety
+     entries teaches people to stop reading the strip. */
+  function dupStrip(e, scan) {
+    if (!scan.groups) return null;
+    return el('div', { class: 'dup-strip' }, [
+      el('div', { class: 'dup-say' }, [
+        el('strong', { text: scan.groups + ' time'
+                           + (scan.groups === 1 ? '' : 's')
+                           + ' in this set hold more than one event' }),
+        el('span', { text: scan.extra + ' extra row'
+                         + (scan.extra === 1 ? '' : 's')
+                         + ' · ' + (e.n || 0) + ' events on '
+                         + scan.times + ' distinct times'
+                         + (scan.conflicts
+                             ? ' · ' + scan.conflicts
+                               + ' of them disagree about the call'
+                             : ' · the copies all agree') }),
+      ]),
+      el('div', { class: 'spacer' }),
+      el('button', { class: 'btn sm', text: 'Collapse them…',
+                     onclick: () => dedupeDialog(e) }),
+    ]);
+  }
+
+  async function dedupeDialog(e) {
+    /* What the collapse would do, asked of the server rather than worked
+       out here: the panel and the write must not be able to disagree about
+       which copy survives. */
+    let policy = null;
+    let note = '';
+    let busy = false;
+
+    const preview = async () => {
+      try {
+        return await apiPost(
+          '/api/bank/' + encodeURIComponent(e.id) + '/dedupe',
+          { dry_run: true, conflicts: policy });
+      } catch (err) { toast(err.message, 'err', 9000); return null; }
+    };
+
+    let rep = await preview();
+    if (!rep) return;
+    if (!rep.groups) {
+      toast('No two events in this set share a time to '
+            + rep.dp + ' decimal places.', 'ok', 6000);
+      return;
+    }
+
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+    const mixOf = (counts) => Object.keys(counts || {})
+      .sort((a, b) => counts[b] - counts[a])
+      .map((k) => el('span', { class: 'ver-chip',
+                               text: nameOf(k) + ' ' + counts[k] }));
+
+    const draw = (replace) => {
+      const needsPick = rep.conflicts > 0 && !policy;
+      /* Which copy each contested time would end up keeping, matched back
+         from the rows the server returned. */
+      const keptAt = {};
+      (rep.rows || []).forEach((r) => { keptAt[r.t] = r; });
+
+      const body = el('div', { class: 'mb' }, [
+        el('p', { class: 'dup-lede',
+          text: rep.was + ' events sit on ' + rep.times + ' distinct times. '
+              + rep.groups + ' of those times hold more than one record'
+              + (rep.undecided_dropped
+                  ? ', and ' + rep.undecided_dropped
+                    + (rep.undecided_dropped === 1
+                        ? ' of the extra rows carries'
+                        : ' of the extra rows carry')
+                    + ' no decision at all'
+                  : '')
+              + '. Collapsing them leaves ' + rep.now + ' events.' }),
+        el('p', { class: 'hint quiet',
+          text: 'Two rows count as one time when they match to '
+              + rep.dp + ' decimal places — 0.1 ms, inside a single '
+              + 'sample, so they are one event written twice.'
+              + (rep.near_pairs
+                  ? '  ' + rep.near_pairs + ' further pair'
+                    + (rep.near_pairs === 1 ? ' is' : 's are')
+                    + ' within ' + rep.near_ms + ' ms of each other without '
+                    + 'matching; those are left alone, because nothing here '
+                    + 'can tell a jittered double from a real burst.'
+                  : '') }),
+      ]);
+
+      if (rep.conflicts) {
+        body.appendChild(el('div', { class: 'section-label',
+          text: rep.conflicts + ' of them disagree about the call' }));
+        body.appendChild(el('p', { class: 'hint',
+          text: 'Two people decided two records of one candidate and both '
+              + 'calls are real, so there is no rule that settles this. '
+              + 'Pick which copy to keep and the other goes.' }));
+        const pick = el('div', { class: 'dup-pick' });
+        [['first', 'Keep the first copy',
+          'The one that appears earlier in the set.'],
+         ['last', 'Keep the last copy',
+          'The one that appears later — usually the newer import.']]
+          .forEach(([id, label, sub]) => {
+            const input = el('input', { type: 'radio', name: 'dupPolicy',
+                                        value: id });
+            input.checked = policy === id;
+            input.onchange = async () => {
+              policy = id;
+              rep = (await preview()) || rep;
+              draw(true);
+            };
+            pick.appendChild(el('label', { class: 'dup-opt'
+                                                + (policy === id ? ' on' : '') },
+              [input, el('span', {}, [
+                el('strong', { text: label }),
+                el('span', { class: 'hint', text: sub }),
+              ])]));
+          });
+        body.appendChild(pick);
+
+        const table = el('table', { class: 'preview-table' }, [
+          el('thead', {}, [el('tr', {}, ['time', 'first', 'last', 'kept']
+            .map((h) => el('th', { text: h })))]),
+          el('tbody', {}, (rep.conflict_rows || []).map((row) => {
+            const kept = keptAt[row.t];
+            const calls = row.copies.map((c) => c.label || 'undecided');
+            return el('tr', {}, [
+              el('td', { text: fmtTime(row.t) }),
+              el('td', { text: calls[0] }),
+              el('td', { text: calls[calls.length - 1] }),
+              el('td', { class: 'dup-kept',
+                         text: needsPick ? '—'
+                                         : (kept && kept.kept_label) || '' }),
+            ]);
+          })),
+        ]);
+        body.appendChild(el('div', { class: 'preview-wrap' }, [table]));
+        if (rep.rows_capped) {
+          body.appendChild(el('div', { class: 'hint',
+            text: 'Showing the first ' + (rep.conflict_rows || []).length
+                + ' contested times.' }));
+        }
+      }
+
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'What the set would hold' }));
+      body.appendChild(el('div', { class: 'dup-mixes' }, [
+        el('div', {}, [el('span', { class: 'ver-since', text: 'now:' })]
+          .concat(mixOf(rep.by_label_was))),
+        el('div', {}, [el('span', { class: 'ver-since',
+                                    text: 'after:' })]
+          .concat(needsPick
+            ? [el('span', { class: 'ver-since none',
+                            text: 'pick a copy to see this' })]
+            : mixOf(rep.by_label_now))),
+      ]));
+
+      const says = [
+        'It lands as v' + rep.next_version + '. Nothing is deleted: v'
+          + rep.current_version + ' keeps all ' + rep.was + ' events and its '
+          + 'snapshot, so deleting v' + rep.next_version + ' afterwards puts '
+          + 'them back.',
+        'No decision is changed. Rows go; the calls on the rows that stay '
+          + 'are the ones that were already there.',
+      ];
+      if (rep.drops_fields && rep.drops_fields.length) {
+        says.push('The copies being removed carry '
+                  + rep.drops_fields.join(', ') + ' and the rows kept in '
+                  + 'their place do not, so that goes with them.');
+      }
+      if (rep.source_set_dupes) {
+        /* Named rather than acted on. Collapsing the set is a different
+           operation on somebody else's open workbench, and doing it as a
+           side effect of tidying a bank entry is not this dialog's to do.
+           But finding out afterwards that the doubles came back is how
+           somebody comes to run this twice. */
+        says.push('The curation set this was banked from ('
+                  + (rep.source_set_name || 'the set')
+                  + ') still holds ' + rep.source_set_dupes
+                  + ' duplicate time(s) of its own, so re-banking from it '
+                  + 'would put these straight back. That set has a collapse '
+                  + 'of its own at POST /api/curation/dedupe; there is no '
+                  + 'button for it yet.');
+      }
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'What this does' }));
+      body.appendChild(el('ul', { class: 'fix-steps' },
+        says.map((s) => el('li', { text: s }))));
+
+      const noteBox = el('textarea', {
+        class: 'ver-note-input', rows: '2', value: note,
+        placeholder: 'Why this set had doubles, if you know (optional)',
+      });
+      noteBox.oninput = () => { note = noteBox.value; };
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Note for v' + rep.next_version }));
+      body.appendChild(noteBox);
+
+      const go = el('button', {
+        class: 'btn danger',
+        text: 'Collapse ' + rep.groups + ' time'
+            + (rep.groups === 1 ? '' : 's') + ' → v' + rep.next_version,
+        onclick: async () => {
+          if (busy) return;
+          busy = true;
+          go.disabled = true;
+          try {
+            const res = await apiPost(
+              '/api/bank/' + encodeURIComponent(e.id) + '/dedupe',
+              { dry_run: false, conflicts: policy, note: note });
+            if (res.error) { toast(res.error, 'err', 9000); return; }
+            closeModal();
+            toast('v' + res.version + ': ' + res.removed
+                  + ' duplicate row(s) removed, ' + res.now + ' events left'
+                  + (res.conflicts
+                      ? ' — ' + res.conflicts + ' contested time(s) '
+                        + 'settled on the ' + policy + ' copy.'
+                      : '.'), 'ok', 10000);
+            await load(true);
+          } catch (err) {
+            toast(err.message, 'err', 9000);
+          } finally { busy = false; go.disabled = false; }
+        },
+      });
+      if (needsPick) go.disabled = true;
+
+      showModal(el('div', {}, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: 'Duplicate times' }),
+          el('span', { class: 'sub',
+            text: e.name + '  ·  ' + (e.session_label || '')
+                + '  ·  v' + rep.current_version }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'close-x', onclick: closeModal,
+            html: '<svg viewBox="0 0 20 20">'
+                + '<path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+        ]),
+        body,
+        el('div', { class: 'mf' }, [
+          needsPick
+            ? el('span', { class: 'hint',
+                text: 'Pick which copy to keep before this can run.' })
+            : null,
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn ghost', text: 'Cancel',
+                         onclick: closeModal }),
+          go,
+        ].filter(Boolean)),
+      ]), { replace: !!replace });
+    };
+
+    draw(false);
   }
 
   function init() {

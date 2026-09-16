@@ -1,7 +1,7 @@
 """
 sessreg.py -- The session registry: one record per recording, everywhere.
 
-BARRY already kept a file per session under GUI_logs/sessions/, keyed by
+Jarvis already kept a file per session under GUI_logs/sessions/, keyed by
 mouse + session + header start time. That key is good at recognising the same
 recording across machines, and it is exactly the wrong thing to hang years of
 work off, because it is *derived*. Re-read a header slightly differently, fix
@@ -11,7 +11,7 @@ events with it.
 
 So: a global id, minted once on first contact and never recomputed.
 
-    gid   s7f3a91c04b2e     assigned when BARRY first meets a recording
+    gid   s7f3a91c04b2e     assigned when Jarvis first meets a recording
     key   m007_s002_2023-08-22_15-46-13   derived, and allowed to change
     paths every absolute path it has ever been opened from, on any machine
 
@@ -33,7 +33,7 @@ import os
 import re
 import uuid
 
-from . import ids
+from . import ids, shards
 
 SCHEMA = 2
 
@@ -154,8 +154,38 @@ class Registry:
     # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
+    # Every record, rebuilt only when the session files change.
+    _all_sig = None
+    _all_recs = None
+
     def all(self):
-        return self.store.all_sessions()
+        """Every session record, merged from its shards.
+
+        Cached against the shard directory's signature. Reading and merging
+        515 records is 1.35 s, and one `/api/registry` did it three times --
+        once directly, once inside `projects()` and once inside `tree()` --
+        which is most of the eight and a half seconds that request took.
+
+        The signature is the safety: it changes the moment any shard is
+        written, by this machine or by a pull, so this cannot serve a record
+        that has been superseded. `by_gid` below has kept an index the same
+        way for the same reason.
+        """
+        try:
+            sig = self.store.sessions.signature()
+        except Exception:                                  # noqa: BLE001
+            sig = None
+        if sig is None:
+            # No signature to trust, so no cache. Correctness first: this is
+            # the path a store without shard stamps takes.
+            return self.store.all_sessions()
+        if sig != self._all_sig or self._all_recs is None:
+            self._all_recs = self.store.all_sessions()
+            self._all_sig = sig
+        # Copies, because callers edit what they are handed -- `ensure` and
+        # the appliers all do -- and editing this list would be editing the
+        # cache. Shallow is enough: the mutations are top-level fields.
+        return [dict(r) for r in self._all_recs]
 
     # gid -> record, rebuilt only when the session files change.
     _gid_sig = None
@@ -245,11 +275,44 @@ class Registry:
     def _seen_patch(self, rec, where, scan_id=None, root=None):
         """This machine's sighting, merged with whatever other machines wrote."""
         prov = self.store.provenance() if self.store else {}
-        who = prov.get("machine") or "unknown"
         seen = dict((rec or {}).get("seen") or {})
+        # Keyed on the machine id, not the label.
+        #
+        # `provenance().machine` is the name somebody typed into the device
+        # field. It changes, and it is not unique: this one computer has
+        # sightings filed under "Bluebarry", "DESKTOP-4H65AI7" and
+        # "Strawbarrry", so asking "has this machine seen it" matched
+        # nothing. The id is the hostname slug plus a hash of the MAC.
+        #
+        # The label rides along, because a human reading the table wants
+        # "Bluebarry" and not "desktop-4h65ai7-d565".
+        who = shards.machine_id()
         seen[who] = {"at": prov.get("at"), "by": prov.get("user"),
-                     "path": where, "root": root, "scan": scan_id}
+                     "path": where, "root": root, "scan": scan_id,
+                     "machine": prov.get("machine")}
         return seen
+
+    def seen_by(self, rec, names):
+        """Has any of `names` seen this recording?
+
+        `names` is every spelling one computer answers to -- its id, its
+        current label, its real hostname, and the older labels it used. All
+        of them, because the sightings already on record are keyed on
+        whatever the label was at the time and those years are not being
+        rewritten: guessing which old label belonged to which computer is
+        how two people's machines were merged once already.
+        """
+        want = {str(n).strip().lower() for n in (names or []) if n}
+        if not want:
+            return False
+        for key, got in ((rec or {}).get("seen") or {}).items():
+            if str(key).strip().lower() in want:
+                return True
+            # A newer sighting is keyed on the id and carries the label.
+            label = (got or {}).get("machine") if isinstance(got, dict) else None
+            if label and str(label).strip().lower() in want:
+                return True
+        return False
 
     def _durable_patch(self, rec, ident, facts, first_seen_by="scan"):
         """Only what is worth a tracked write, or None for "nothing changed".
@@ -290,12 +353,12 @@ class Registry:
     def ingest(self, found, scan_id=None, root=None):
         """Register everything a scan walked past, whether or not anyone opens it.
 
-        A recording BARRY has *seen* and one somebody has *worked on* are
+        A recording Jarvis has *seen* and one somebody has *worked on* are
         different facts, and only the second used to get written down -- so
         the registry knew about six recordings when the drive held two
         hundred, and there was no way to sort or explore the rest.
 
-        A scan is the moment BARRY has the whole picture of a drive, so it is
+        A scan is the moment Jarvis has the whole picture of a drive, so it is
         the right moment to write it all down. Nothing here opens a file or
         reads a sample; it records that the recording exists, where, and when
         it was last laid eyes on.
@@ -387,7 +450,7 @@ class Registry:
         """Teach the registry that a recording also lives here.
 
         The edge case this exists for: a recording whose folder was renamed,
-        so the derived key no longer matches and BARRY would otherwise mint a
+        so the derived key no longer matches and Jarvis would otherwise mint a
         second record for it.
         """
         rec = self.by_gid(gid)

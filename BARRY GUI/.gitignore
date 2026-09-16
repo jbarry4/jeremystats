@@ -28,3 +28,17 @@ GUI_logs/.cloud.json
 # machines with different halves of the bank taking turns adding and deleting
 # each other's CSVs on every push.
 Data Bank/
+
+# The by-product lane. Harness screenshots, debug reports, the figure a test
+# rendered to prove that rendering works -- real output of real runs, and
+# nobody will ever cite one.
+#
+# They used to land in Results/ beside the figures. Of 197 files there, about
+# 120 were this: forty-five "rebuild harness" PNGs, forty-nine debug reports,
+# thirty "arrow harness" exports of which twenty-three were byte-identical to
+# each other. A folder that is five percent results is not a folder anybody
+# reads, and every one of them was committed.
+#
+# Still written and still findable -- `save_output(lane="scratch")` puts them
+# here, the catalogue skips the folder, and git no longer carries them.
+Results/_scratch/

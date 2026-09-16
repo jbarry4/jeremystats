@@ -19,6 +19,13 @@ BARRY.activity = (function () {
   let queue = [];
   let timer = null;
   let enabled = true;
+  /* Anybody who wants to know the moment something is logged.
+
+     The queue flushes every four seconds and that flush only reaches
+     Supabase on the next sync, so a view waiting for either is showing the
+     past. A listener sees the action as it happens, with no request
+     involved at all. */
+  const listeners = [];
 
   const FLUSH_MS = 4000;
   const COALESCE_MS = 2500;
@@ -56,6 +63,12 @@ BARRY.activity = (function () {
 
     queue.push(entry);
     if (queue.length > 200) queue.splice(0, queue.length - 200);
+    /* Before anything is sent. A listener that throws must not stop the
+       action being recorded: the log is the point, the listener is a
+       convenience. */
+    for (const fn of listeners) {
+      try { fn(entry); } catch (e) { /* not the logger's problem */ }
+    }
     // A second, separate ring that survives the flush. The queue is emptied
     // when it is sent, but a debug report needs the actions leading up to a
     // problem, which by then have already gone.
@@ -109,6 +122,18 @@ BARRY.activity = (function () {
     }
   }
 
+  /* Called with every entry as it is logged. Returns a function that
+     stops it, so a view can subscribe when it opens and let go when it
+     closes. */
+  function onLog(fn) {
+    if (typeof fn !== 'function') return () => {};
+    listeners.push(fn);
+    return () => {
+      const i = listeners.indexOf(fn);
+      if (i >= 0) listeners.splice(i, 1);
+    };
+  }
+
   function init() {
     window.addEventListener('beforeunload', () => flush(true));
     document.addEventListener('visibilitychange', () => {
@@ -117,7 +142,7 @@ BARRY.activity = (function () {
   }
 
   return {
-    init, log, flush,
+    init, log, flush, onLog,
     setEnabled: (v) => { enabled = !!v; },
     pending: () => queue.length,
     /* What was done recently, for a debug report. Survives the flush. */

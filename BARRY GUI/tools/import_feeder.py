@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Import what the lab's spreadsheets know into BARRY.
+"""Import what the lab's spreadsheets know into Jarvis.
 
 Three facts live in two Excel files and nowhere else, which means they are
 true only for whoever has the file open:
@@ -16,9 +16,9 @@ version of any importer is wrong in a way you only see in the diff.
     python tools/import_feeder.py --apply         # do it
     python tools/import_feeder.py --apply --only bad,side,layers
 
-The join between the sheets and BARRY is (mouse, session), which is the only
-thing both sides carry -- BARRY keys on a gid derived from the folder, and
-the sheets have never heard of it. Where BARRY holds more than one recording
+The join between the sheets and Jarvis is (mouse, session), which is the only
+thing both sides carry -- Jarvis keys on a gid derived from the folder, and
+the sheets have never heard of it. Where Jarvis holds more than one recording
 for a (mouse, session), the row is reported and skipped rather than guessed
 at: writing a layer sheet onto the wrong recording is worse than not writing
 it at all.
@@ -195,9 +195,9 @@ def barry_index(store):
 def do_bad(store, index, sheet, apply_it, mode="report"):
     """Bad channels, with a deliberate choice about removals.
 
-    BARRY already holds bad channels for these recordings, from the Toothy
+    Jarvis already holds bad channels for these recordings, from the Toothy
     workbook. Against that, this spreadsheet adds nothing at all: every
-    difference is a channel BARRY calls bad and the sheet does not. So
+    difference is a channel Jarvis calls bad and the sheet does not. So
     "confirm bad channels from here" cannot be done by writing the column
     over the top -- the entire effect would be to un-flag thirteen channels
     across eleven recordings.
@@ -219,7 +219,7 @@ def do_bad(store, index, sheet, apply_it, mode="report"):
         want = sheet[key]
         recs = index.get(key) or []
         if len(recs) != 1:
-            say("  m%-3d s%-3d  SKIPPED: BARRY has %d recordings for this"
+            say("  m%-3d s%-3d  SKIPPED: Jarvis has %d recordings for this"
                 % (key[0], key[1], len(recs)))
             skipped += 1
             continue
@@ -373,7 +373,7 @@ def main():
                     choices=("report", "union", "replace"),
                     help="report: say what differs and write nothing "
                          "(default). union: add the sheet's without ever "
-                         "removing one BARRY already holds. replace: the "
+                         "removing one Jarvis already holds. replace: the "
                          "sheet wins, including un-flagging channels.")
     args = ap.parse_args()
     jobs = {j.strip() for j in args.only.split(",") if j.strip()}
@@ -395,7 +395,7 @@ def main():
         say("  the eight tabs agree everywhere they overlap")
 
     index = barry_index(A.STORE)
-    say("  BARRY (mouse, session) keys: %d" % len(index))
+    say("  Jarvis (mouse, session) keys: %d" % len(index))
     if not args.apply:
         say("\n*** DRY RUN -- nothing will be written. Add --apply to do it.")
 

@@ -218,12 +218,12 @@ async function until(fn, ms) {
 
   say('');
   say('=== the export ===', 'hd');
-  const csvRes = await fetch('/api/toolkit/bad-channels/export?scope=all&form=long');
+  const csvRes = await fetch('/api/toolkit/bad-channels/export?scope=all&form=long&lane=scratch');
   check('the CSV comes back', csvRes.ok, 'HTTP ' + csvRes.status);
   const csv = await csvRes.text();
   const lines = csv.trim().split('\n');
   check('it opens with a line saying what it is',
-        lines[0].startsWith('# BARRY GUI bad-channel export'), lines[0]);
+        lines[0].startsWith('# Jarvis bad-channel export'), lines[0]);
   check('then a header row',
         lines[1].startsWith('project,mouse,session,date'), lines[1]);
   check('then one row per bad channel',
@@ -249,7 +249,8 @@ async function until(fn, ms) {
   say('');
   say('=== an empty export is refused, not silently empty ===', 'hd');
   const empty = await fetch(
-    '/api/toolkit/bad-channels/export?scope=range&from=1990-01-01&to=1990-01-02');
+    '/api/toolkit/bad-channels/export?scope=range&from=1990-01-01&to=1990-01-02'
+    + '&lane=scratch');
   check('a scope with nothing in it gives a 400', empty.status === 400,
         'HTTP ' + empty.status);
   const msg = await empty.json();

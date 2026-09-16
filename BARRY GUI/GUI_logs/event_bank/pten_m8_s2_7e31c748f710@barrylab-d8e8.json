@@ -1,0 +1,291 @@
+{
+  "_at": {
+    "added": "2026-09-09T15:16:40.672921+00:00",
+    "by_label": "2026-09-09T15:16:40.672921+00:00",
+    "curation_label": "2026-09-09T15:16:40.672921+00:00",
+    "duration_s": "2026-09-09T15:16:40.672921+00:00",
+    "events": "2026-09-09T15:16:40.672921+00:00",
+    "gid": "2026-09-09T15:16:40.672921+00:00",
+    "id": "2026-09-09T15:16:40.672921+00:00",
+    "label_names": "2026-09-09T15:16:40.672921+00:00",
+    "mouse": "2026-09-09T15:16:40.672921+00:00",
+    "n": "2026-09-09T15:16:40.672921+00:00",
+    "name": "2026-09-09T15:16:40.672921+00:00",
+    "note": "2026-09-09T15:16:40.672921+00:00",
+    "project": "2026-09-09T15:16:40.672921+00:00",
+    "recording_start": "2026-09-09T15:16:40.672921+00:00",
+    "schema": "2026-09-09T15:16:40.672921+00:00",
+    "session": "2026-09-09T15:16:40.672921+00:00",
+    "session_key": "2026-09-09T15:16:40.672921+00:00",
+    "session_label": "2026-09-09T15:16:40.672921+00:00",
+    "session_loose_key": "2026-09-09T15:16:40.672921+00:00",
+    "session_path": "2026-09-09T15:16:40.672921+00:00",
+    "source": "2026-09-09T15:16:40.672921+00:00",
+    "specified": "2026-09-09T15:16:40.672921+00:00",
+    "type": "2026-09-09T15:16:40.672921+00:00",
+    "type_name": "2026-09-09T15:16:40.672921+00:00",
+    "units": "2026-09-09T15:16:40.672921+00:00",
+    "version": "2026-09-09T15:16:40.672921+00:00"
+  },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-09-08T22:02:32-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:44-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ],
+      "{\"at\": \"2026-09-09T11:16:40-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 5, \"was_n\": 5, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ]
+    },
+    "versions": {
+      "8bc727363b10": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ],
+      "v0-938188a4": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ],
+      "v1-36041383": [
+        "set",
+        "2026-09-09T15:16:40.672921+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-09T15:16:40.672921+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "garbage": 2,
+    "spike": 3
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 295.294
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 393.768
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1372.155
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1456.064
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1527.027
+    }
+  ],
+  "gid": "sba57286bdee3",
+  "history": [
+    {
+      "at": "2026-09-08T22:02:32-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:44-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
+    },
+    {
+      "at": "2026-09-09T11:16:40-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 5,
+      "was_n": 5,
+      "why": "re-banked from the curation set"
+    }
+  ],
+  "id": "7e31c748f710",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
+  "mouse": 8,
+  "n": 5,
+  "name": "M8s2feb6",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-02-06T17:52:07",
+  "schema": 1,
+  "session": 2,
+  "session_key": "m008_s002_2024-02-06_17-52-07",
+  "session_label": "PTEN m8 s2 2024-02-06",
+  "session_loose_key": "m008_s002",
+  "session_path": null,
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m8s2_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 2,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 5
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-938188a4",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 5,
+      "note": "Imported from ETS dentate-spike export. 5 candidates, none decided yet.",
+      "snap": [
+        [
+          295.294,
+          null
+        ],
+        [
+          393.768,
+          null
+        ],
+        [
+          1372.155,
+          null
+        ],
+        [
+          1456.064,
+          null
+        ],
+        [
+          1527.027,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "garbage": 5
+      },
+      "changed": 5,
+      "gained": 0,
+      "id": "v1-36041383",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 garbage": 5
+      },
+      "n": 5,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 5 of 5 decided.",
+      "rebuilt_from": {
+        "folder": "M8s2feb6",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          295.294,
+          "garbage"
+        ],
+        [
+          393.768,
+          "garbage"
+        ],
+        [
+          1372.155,
+          "garbage"
+        ],
+        [
+          1456.064,
+          "garbage"
+        ],
+        [
+          1527.027,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "at": "2026-09-09T11:16:40-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 2,
+        "spike": 3
+      },
+      "changed": 5,
+      "gained": 0,
+      "id": "8bc727363b10",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Dentate Spike": 3,
+        "undecided \u2192 Garbage": 2
+      },
+      "n": 5,
+      "note": "Gui final curation\n-RY",
+      "snap": [
+        [
+          295.294,
+          "spike"
+        ],
+        [
+          393.768,
+          "garbage"
+        ],
+        [
+          1372.155,
+          "spike"
+        ],
+        [
+          1456.064,
+          "garbage"
+        ],
+        [
+          1527.027,
+          "spike"
+        ]
+      ],
+      "v": 2
+    }
+  ]
+}

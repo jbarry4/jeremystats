@@ -1,0 +1,118 @@
+{
+  "_at": {
+    "added": "2026-09-10T00:12:08.478318+00:00",
+    "by_label": "2026-09-10T00:12:08.478318+00:00",
+    "curation_label": "2026-09-10T00:12:08.478318+00:00",
+    "duration_s": "2026-09-10T00:12:08.478318+00:00",
+    "events": "2026-09-10T00:12:08.478318+00:00",
+    "gid": "2026-09-10T00:12:08.478318+00:00",
+    "id": "2026-09-10T00:12:08.478318+00:00",
+    "label_names": "2026-09-10T00:12:08.478318+00:00",
+    "mouse": "2026-09-10T00:12:08.478318+00:00",
+    "n": "2026-09-10T00:12:08.478318+00:00",
+    "name": "2026-09-10T00:12:08.478318+00:00",
+    "note": "2026-09-10T00:12:08.478318+00:00",
+    "project": "2026-09-10T00:12:08.478318+00:00",
+    "recording_start": "2026-09-10T00:12:08.478318+00:00",
+    "schema": "2026-09-10T00:12:08.478318+00:00",
+    "session": "2026-09-10T00:12:08.478318+00:00",
+    "session_key": "2026-09-10T00:12:08.478318+00:00",
+    "session_label": "2026-09-10T00:12:08.478318+00:00",
+    "session_loose_key": "2026-09-10T00:12:08.478318+00:00",
+    "session_path": "2026-09-10T00:12:08.478318+00:00",
+    "source": "2026-09-10T00:12:08.478318+00:00",
+    "specified": "2026-09-10T00:12:08.478318+00:00",
+    "type": "2026-09-10T00:12:08.478318+00:00",
+    "type_name": "2026-09-10T00:12:08.478318+00:00",
+    "units": "2026-09-10T00:12:08.478318+00:00",
+    "version": "2026-09-10T00:12:08.478318+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "5d9bbfe06bc5": [
+        "set",
+        "2026-09-10T00:12:08.478318+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T00:12:08.478318+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-09T20:12:08-04:00",
+    "by": "harness@test",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "unspecified": 2
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 1.5
+    },
+    {
+      "channel": 4,
+      "start": 2.5
+    }
+  ],
+  "gid": null,
+  "id": "04e3f1f17d00",
+  "label_names": {},
+  "mouse": 99,
+  "n": 2,
+  "name": "seeded entry",
+  "note": "",
+  "project": "HARNESS",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": null,
+  "session_label": "harness seed",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "harness: seed",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ied",
+  "type_name": "ied",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-09T20:12:08-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "5d9bbfe06bc5",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from harness: seed. 2 candidates, none decided yet.",
+      "snap": [
+        [
+          1.5,
+          null
+        ],
+        [
+          2.5,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

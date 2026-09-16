@@ -338,7 +338,25 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
            recipe.get("rows") or 1, recipe.get("cols") or 1),
         status, note, panels=panels))
 
-    # ---- 8. hand over ------------------------------------------------------
+    # ---- 8. check it stuck -------------------------------------------------
+    # A rebuild is a provenance feature, and its steps report what they were
+    # asked to do rather than what the session ended up holding. Measured:
+    # every step reported success and the figure came back with the
+    # recording's current channels, bad channels and marks, because two
+    # writes landed afterwards -- a .nev auto-import in flight since the
+    # open, and the session being closed and reopened a second later.
+    #
+    # So the last thing the plan does is look. "The figure you exported,
+    # drawn again" is either true or this feature is decoration, and the
+    # only way to know is to read it back.
+    steps.append(_step("verify", "Check it matches the recipe",
+                       "the window, filters, channels, marks and panels",
+                       "ok",
+                       channels=recipe.get("channels"),
+                       bad_channels=recipe.get("bad_channels"),
+                       event_count=len(recipe.get("events") or [])))
+
+    # ---- 9. hand over ------------------------------------------------------
     steps.append(_step("builder", "Open the figure builder",
                        "with everything above already filled in", "ok"))
 

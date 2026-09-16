@@ -1,0 +1,41 @@
+{
+  "format": "csv",
+  "id": "874697f46c55",
+  "kind": "toolkit",
+  "label": "Bad channels -- session m003_s007_2023-09-22_16-15-23",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+    "path": "C:\\Users\\info\\Desktop\\JeremyStats\\BARRY GUI\\Results\\ToolKit\\bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv",
+    "rel": "ToolKit/bad-channels_m003_s007_2023-09-22_16-15-23_20260902_202953.csv"
+  },
+  "parameters": {
+    "date_from": null,
+    "date_to": null,
+    "form": "long",
+    "group": null,
+    "include_clean": false,
+    "key": "m003_s007_2023-09-22_16-15-23",
+    "mouse": null,
+    "scope": "session"
+  },
+  "provenance": {
+    "at": "2026-09-02T20:29:53-04:00",
+    "machine": "Home",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "rows": 2,
+  "schema": 1,
+  "script": "ToolKit bad-channel export",
+  "status": "done",
+  "summary": {
+    "bad_total": 2,
+    "clean": 0,
+    "distinct_channels": 2,
+    "first_day": "2023-09-22",
+    "last_day": "2023-09-22",
+    "repeat_offenders": [],
+    "sessions": 1,
+    "with_bad": 1
+  }
+}

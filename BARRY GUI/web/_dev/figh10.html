@@ -1,0 +1,239 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>H10 in a figure: running</title>
+<style>
+  html,body{margin:0;font:12px/1.55 ui-monospace,Consolas,monospace;
+    background:#0c0f14;color:#dfe6ee}
+  #out{padding:12px 14px;width:44vw;box-sizing:border-box;white-space:pre-wrap}
+  .hd{color:#ffb81c;margin-top:12px}
+  .ok{color:#7fe3b0}.bad{color:#ff8a7a}.note{color:#7593a2}
+  iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;
+    border-left:1px solid #243;background:#fff}
+</style></head><body>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* An H10 arriving in the figure builder as ONE panel.
+ *
+ * Reported: the builder "has the right idea of leading 6 panes in ... but its
+ * 6x H3 views", and what was wanted is "just a single 1x1 for the entire 6
+ * pane view of an H10".
+ *
+ * Driven through the probe selector rather than by hand-building a layout,
+ * because the fault was in the translation between the panes and the panels:
+ * `buildInitialLayout` copied each pane and dropped `channels`, the per-pane
+ * override that IS the column. A test that builds the layout itself would
+ * have passed against the bug.
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const p = (m, c) => { const d = document.createElement('div');
+  if (c) d.className = c; d.textContent = m; out.appendChild(d); };
+const hd = (m) => p(m, 'hd');
+const ck = (what, got, saw) => {
+  if (!got) bad += 1;
+  p((got ? '  PASS ' : '  FAIL ') + what
+    + (got || saw === undefined ? '' : '   [' + saw + ']'), got ? 'ok' : 'bad');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const untilN = async (fn, n) => {
+  for (let i = 0; i < n; i += 1) { if (fn()) return true; await sleep(100); }
+  return false;
+};
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const run = (src) => W().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  await untilN(() => typeof W().setView === 'function', 300);
+  await sleep(1200);
+
+  hd('0. A 64-channel recording, laid out as an H10');
+  run("setView('xplore')");
+  /* The 64-channel demo: the H10 map is CSC 1..64, and the 32-channel demo
+     would exercise half a probe, which is a different question. */
+  const ok = await run('BARRY.views.xplore.open("demo:long-session")');
+  ck('the recording opened', !!ok);
+  await sleep(1800);
+  const nCh = val('BARRY.views.xplore.state.sessions['
+    + 'BARRY.views.xplore.state.order[0]].info.channels.length');
+  p('  channels: ' + nCh);
+  ck('with all 64 channels', nCh === 64, nCh);
+
+  const sel = D().querySelector('#xfProbe');
+  ck('there is a probe selector', !!sel);
+  if (!sel) throw new Error('no probe selector');
+  sel.value = 'h10d';
+  sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+  await untilN(() => val('BARRY.views.xplore.state.panes.filter(Boolean)'
+    + '.filter(function(x){return x.colTag}).length') === 6, 200);
+  await sleep(900);
+
+  const panes = () => val('BARRY.views.xplore.state.panes'
+    + '.filter(Boolean).map(function(x){return {tag:x.colTag,'
+    + 'n:(x.channels||[]).length,panel:x.panel}})');
+  const got = panes();
+  p('  panes: ' + got.map((x) => x.tag + '(' + x.n + ')').join(' '));
+  ck('six panes, one per column', got.length === 6, got.length);
+  ck('each with its own channels',
+     got.every((x) => x.n > 0), JSON.stringify(got.map((x) => x.n)));
+  ck('and all showing the same kind',
+     new Set(got.map((x) => x.panel)).size === 1,
+     got.map((x) => x.panel).join(','));
+
+  hd('1. The builder takes it as one panel');
+  run('BARRY.figure.open(BARRY.views.xplore.state, '
+      + 'BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.order[0]])');
+  await untilN(() => D().querySelector('.grid-map'), 200);
+  await sleep(1200);
+  const L = () => val('BARRY.figure.layout()');
+  let lay = L();
+  p('  panels: ' + lay.panels.length + ',  grid '
+    + lay.rows + '×' + lay.cols);
+  /* The whole ask. Six cells was six pictures that cannot be read against
+     each other: separate colour scales, separate depth axes, and a grid to
+     rebuild by hand. */
+  ck('one panel, not six', lay.panels.length === 1, lay.panels.length);
+  ck('and the grid is 1x1', lay.rows === 1 && lay.cols === 1,
+     lay.rows + 'x' + lay.cols);
+  const p0 = lay.panels[0];
+  ck('it says it is a probe view', !!p0.probe_view);
+  ck('and which probe', p0.probe === 'h10d', p0.probe);
+  ck('the panel keeps the kind that was on screen',
+     p0.panel === got[0].panel, p0.panel + ' vs ' + got[0].panel);
+  ck('and it is 1x1 like any other panel',
+     p0.rowspan === 1 && p0.colspan === 1,
+     p0.rowspan + 'x' + p0.colspan);
+
+  hd('2. It renders, and as one panel of six columns');
+  /* Rendered through the real preview route: the collapse is only worth
+     anything if the renderer then draws all six columns. */
+  const shot = await run('fetch("/api/figure/preview",{method:"POST",'
+    + 'headers:{"Content-Type":"application/json"},'
+    + 'body:JSON.stringify({layout:BARRY.figure.layout(),sessions:{'
+    + '"' + val('BARRY.views.xplore.state.order[0]') + '":'
+    + '{path:"demo:long-session"}},dpi:70})}).then(function(r){'
+    + 'return r.json()})');
+  ck('the preview renders', !!(shot && shot.ok), shot && shot.error);
+  if (shot && shot.ok) {
+    p('  problems: ' + JSON.stringify(shot.problems || []));
+    ck('with nothing to report', (shot.problems || []).length === 0,
+       JSON.stringify(shot.problems || []));
+    const px = (shot.image || '').length;
+    p('  image: ' + px + ' base64 chars');
+    ck('and it is a real picture', px > 20000, px);
+  }
+
+  hd('3. Going back to a single array is still one panel');
+  sel.value = 'h3';
+  sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+  await sleep(1200);
+  run('BARRY.figure.open(BARRY.views.xplore.state, '
+      + 'BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.order[0]])');
+  await sleep(1400);
+  lay = L();
+  p('  panels: ' + lay.panels.length);
+  ck('one panel for one array', lay.panels.length === 1, lay.panels.length);
+  /* And it must NOT claim to be a probe view: the six columns are gone, so
+     a renderer told to subdivide would draw one column six times. */
+  ck('and it does not claim to be a probe view',
+     !lay.panels[0].probe_view, String(lay.panels[0].probe_view));
+  hd('4. The columns can be dropped and reordered');
+  /* The other half of the request: "remove certain windows and arrange
+     certain windows in certain order". With six cells you could delete one;
+     with one cell drawing all six there has to be another way. */
+  sel.value = 'h10d';
+  sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+  await sleep(1200);
+  run('BARRY.figure.open(BARRY.views.xplore.state, '
+      + 'BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.order[0]])');
+  await untilN(() => D().querySelector('.probe-cols'), 200);
+  await sleep(1000);
+  const chips = () => Array.from(D().querySelectorAll('.pc-chip'));
+  const chipIds = () => chips().map(
+    (c) => (c.querySelector('.pc-id') || {}).textContent);
+  p('  chips: ' + chipIds().join(' '));
+  ck('there is a chip per column', chips().length === 6, chips().length);
+  /* In the order they are drawn, which is the probe's physical order --
+     back shank left to right, then front. A control that lists them in a
+     different order than the picture is a puzzle. */
+  ck('in the order they are drawn',
+     chipIds().join(',') === 'W3,W1,W4,W6,W2,W5', chipIds().join(','));
+  ck('each says which channels it holds',
+     chips().every((c) => /CSC/.test(
+       (c.querySelector('.pc-csc') || {}).textContent || '')),
+     (chips()[0].querySelector('.pc-csc') || {}).textContent);
+  ck('and none is dropped to start with',
+     chips().every((c) => !c.classList.contains('off')));
+
+  const panelNow = () => (L().panels || [])[0] || {};
+  ck('and the panel says nothing about columns yet',
+     panelNow().probe_columns === undefined,
+     JSON.stringify(panelNow().probe_columns));
+
+  // Drop the front shank: click W6, W2, W5.
+  for (const id of ['W6', 'W2', 'W5']) {
+    const chip = chips().find(
+      (c) => (c.querySelector('.pc-id') || {}).textContent === id);
+    if (chip) chip.click();
+    await sleep(700);
+  }
+  p('  after dropping the front shank: '
+    + JSON.stringify(panelNow().probe_columns));
+  ck('dropping columns is recorded on the panel',
+     (panelNow().probe_columns || []).join(',') === 'W3,W1,W4',
+     JSON.stringify(panelNow().probe_columns));
+  ck('the dropped ones are still shown, faintly',
+     D().querySelectorAll('.pc-chip.off').length === 3,
+     D().querySelectorAll('.pc-chip.off').length);
+
+  // And it still renders, with three columns rather than six.
+  const shot2 = await run('fetch("/api/figure/preview",{method:"POST",'
+    + 'headers:{"Content-Type":"application/json"},'
+    + 'body:JSON.stringify({layout:BARRY.figure.layout(),sessions:{'
+    + '"' + val('BARRY.views.xplore.state.order[0]') + '":'
+    + '{path:"demo:long-session"}},dpi:70})}).then(function(r){'
+    + 'return r.json()})');
+  ck('three columns still render', !!(shot2 && shot2.ok),
+     shot2 && shot2.error);
+
+  // Bringing one back, and the way back to "all of them".
+  const off1 = D().querySelector('.pc-chip.off');
+  if (off1) off1.click();
+  await sleep(700);
+  p('  after bringing one back: '
+    + JSON.stringify(panelNow().probe_columns));
+  ck('a dropped column can be brought back',
+     (panelNow().probe_columns || []).length === 4,
+     JSON.stringify(panelNow().probe_columns));
+  /* Bringing them back one at a time appends them, so the order ends up
+     being the order they were clicked -- which is a real arrangement, not
+     "all of them". The way back to the probe's own order is its own
+     control. */
+  const reset = Array.from(D().querySelectorAll('button'))
+    .find((b) => /back to probe order/i.test(b.textContent || ''));
+  ck('there is a way back to the probe order', !!reset);
+  if (reset) { reset.click(); await sleep(900); }
+  /* Back to the probe's own order, not a list that happens to hold all six:
+     the renderer's fallback IS that order, and a panel put back should be
+     indistinguishable from one never changed. */
+  p('  after bringing all back: '
+    + JSON.stringify(panelNow().probe_columns));
+  ck('and putting them all back means "all of them" again',
+     panelNow().probe_columns === undefined,
+     JSON.stringify(panelNow().probe_columns));
+
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'H10 in a figure';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack), 'bad');
+  document.title = 'threw';
+} })();
+</script>
+</body></html>

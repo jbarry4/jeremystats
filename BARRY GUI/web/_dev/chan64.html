@@ -73,16 +73,33 @@ async function until(fn, ms = 60000) {
 
   W.eval("setView('xplore')");
   await sleep(250);
-  const sess = await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  /* Even-only off, explicitly.
+
+     A 64-channel recording opened even-only draws 32 -- the list keeps all
+     64 but the window request drops the odd ones, so the pane shows half of
+     them and the control reads "Ch32/64". This harness is about all
+     sixty-four being on screen at once, which is only a question when they
+     all are. */
+  const sess = await W.eval('BARRY.views.xplore.open('
+    + JSON.stringify(path) + ', {evenOnly:false})');
   await until(() => D.querySelector('.pane-canvas-host canvas'));
+  /* Let the open settle before rearranging the panes.
+
+     Selecting every channel a moment after `setPanes` raced the open: the
+     pane redrew from a selection that was still being restored, and the
+     draw that landed carried half the channels. With the open settled
+     first, all sixty-four are listed, selected, requested and drawn --
+     measured at every one of those points. */
+  await sleep(2500);
   W.eval("BARRY.views.xplore.setPanes([{panel:'traces'}], {col:0.5,row:0.5})");
+  await sleep(1200);
   // Every channel on screen at once, which is the state being complained
   // about.
   W.eval('(function(){var s=BARRY.views.xplore.state;'
        + 'var o=s.sessions[s.active];o.info.channels.forEach(function(c){'
        + 'o.sel.add(c.index);});})()');
   W.eval('BARRY.views.xplore.render(); BARRY.views.xplore.refreshAll();');
-  await sleep(2500);
+  await sleep(6000);
   await until(() => D.querySelectorAll('.ch-overlay .ch-lane').length >= 60);
   await sleep(600);
 
@@ -145,17 +162,37 @@ async function until(fn, ms = 60000) {
   if (b2) { b2.click(); await until(() => wasBad() === before, 15000); }
   check('and it can be cleared again', wasBad() === before);
 
-  head('The rail, at the same channel count');
-  /* The side rail belongs to the raster panels; a traces pane carries its
-     channels as lanes on the plot instead. So this has to switch panel to
-     see it at all -- an earlier version of this harness reported it as
-     "not rendered at this pane width", which was simply wrong. */
+  head('The channel list, at the same channel count');
+  /* Not a side rail any more.
+
+     There used to be a column of channel rows down the right of every
+     raster pane. It went when the selection was consolidated into one
+     control -- it moved and changed shape depending on the panel, which is
+     what "keep it in the same spot with the same formatting" was about --
+     and the list now lives in the pane's own `Ch` menu, in the same place
+     whatever the pane is showing. This harness went on looking for the old
+     markup, and the absence of a thing that was removed on purpose is not
+     a fault. */
   W.eval("BARRY.views.xplore.setPanes([{panel:'voltage'}], {col:0.5,row:0.5})");
   await sleep(1600);
-  await until(() => D.querySelectorAll('.pane-chans .ch-row').length >= 60, 30000);
-  const rows = Array.from(D.querySelectorAll('.pane-chans .ch-row'));
+  const chBtn = Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
+    /* The menu renders its value straight after its name --
+       "Ch32/64" -- so there is no word boundary after "Ch" to
+       anchor on, and /^Ch\b/ never matched. */
+    .find((b) => /^Ch[0-9\s]/.test(b.textContent.trim()));
+  check('a voltage pane offers the channel menu', !!chBtn,
+        Array.from(D.querySelectorAll('.pane-ctl .ctl-menu'))
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (chBtn) chBtn.click();
+  await sleep(500);
+  /* `.ctl-chan`, not `.ch-row`: the popover has its own row class, and
+     `ch-row` belonged to the side rail this replaced (and to the lane
+     overlay on the plot). */
+  await until(() => D.querySelectorAll('.ctl-pop .ctl-chan').length >= 60,
+              30000);
+  const rows = Array.from(D.querySelectorAll('.ctl-pop .ctl-chan'));
   if (!rows.length) {
-    say('bad', 'the rail did not render on a voltage pane');
+    say('bad', 'the channel menu listed nothing on a voltage pane');
   } else {
     say('note', '  ' + rows.length + ' rows in the rail');
     const noBtn = rows.filter((r) => !r.querySelector('.badbtn')).length;

@@ -1,0 +1,212 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>strata bench: running</title>
+<style>
+  html,body{margin:0;font:12px/1.55 ui-monospace,Consolas,monospace;
+    background:#0c0f14;color:#dfe6ee}
+  #out{padding:12px 14px;width:44vw;box-sizing:border-box;white-space:pre-wrap}
+  .hd{color:#ffb81c;margin-top:12px}
+  .ok{color:#7fe3b0}.bad{color:#ff8a7a}.note{color:#7593a2}
+  iframe{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;
+    border-left:1px solid #243;background:#fff}
+</style></head><body>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* StrataScope's workbench.
+ *
+ * The layer list was every sheet that exists, in one order, with a Delete on
+ * each that fired on the first click and erased every label on that recording
+ * without asking. What was asked for was event curation's interface: a bench
+ * of what you are working on, a shelf of everything else, pick up, put down,
+ * and a delete that takes the work set away without touching the recording.
+ *
+ * The checks that matter here are the ones about what is NOT lost. Putting a
+ * sheet down must not change a single label; deleting the work set must leave
+ * the recording, its bad channels and its events exactly as they were. Both
+ * are measured against the sheet and the session before and after.
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const p = (m, c) => { const d = document.createElement('div');
+  if (c) d.className = c; d.textContent = m; out.appendChild(d); };
+const hd = (m) => p(m, 'hd');
+const ck = (what, got, saw) => {
+  if (!got) bad += 1;
+  p((got ? '  PASS ' : '  FAIL ') + what
+    + (got || saw === undefined ? '' : '   [' + saw + ']'), got ? 'ok' : 'bad');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const untilN = async (fn, n) => {
+  for (let i = 0; i < n; i += 1) { if (fn()) return true; await sleep(100); }
+  return false;
+};
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const $$ = (q) => Array.from(D().querySelectorAll(q));
+  const run = (src) => W().eval(src);
+  await untilN(() => typeof W().setView === 'function', 300);
+  await sleep(1200);
+
+  const post = async (url, body) => (await W().fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  })).json();
+  const get = async (url) => (await W().fetch(url)).json();
+
+  hd('0. A sheet to work with');
+  /* The 64-channel demo, so nothing real is touched. The whole point of the
+     delete check is that it destroys labels, so it must destroy demo ones. */
+  const reg = await get('/api/registry');
+  const gid = 'demo-long-session';
+  const known = JSON.stringify(reg.tree).indexOf(gid) >= 0;
+  p('  gid: ' + gid + '  known to the registry: ' + known);
+  const started = await post('/api/layers/' + gid + '/start',
+    { channels: Array.from({ length: 64 }, (_, i) => i + 1) });
+  ck('a sheet can be made', !!(started && started.sheet),
+     started && started.error);
+  await post('/api/layers/' + gid + '/set',
+    { labels: { 3: 'ca1_sp', 4: 'ca1_sp', 5: 'ca1_sr' } });
+  let sheet = (await get('/api/layers/' + gid)).sheet;
+  const labelled0 = (sheet.progress || {}).labelled;
+  p('  labelled: ' + labelled0 + ' of ' + (sheet.progress || {}).total);
+  ck('with labels on it', labelled0 >= 3, labelled0);
+
+  hd('1. Pick it up, and it is on the bench');
+  let got = await post('/api/layers/' + gid + '/open', { on: true });
+  ck('it can be picked up', !!(got && got.sheet && got.sheet.open),
+     JSON.stringify(got && got.sheet && got.sheet.open));
+  ck('and picking it up claims it',
+     !!(got.sheet.assignee), got.sheet.assignee);
+  p('  assignee: ' + got.sheet.assignee
+    + ',  opened_by: ' + got.sheet.opened_by);
+
+  hd('2. The list is a bench and a shelf');
+  run("setView('toolkit')");
+  await sleep(900);
+  /* The tools are buttons with their names in them; there is no export to
+     select one, and driving the real button is the truer test anyway. */
+  const toolBtn = $$('.tk-tool').find(
+    (b) => /stratascope/i.test(b.textContent || ''));
+  ck('the ToolKit offers StrataScope', !!toolBtn);
+  if (toolBtn) toolBtn.click();
+  await untilN(() => D().querySelector('#strataBench'), 250);
+  await sleep(1400);
+  ck('there is a bench', !!D().querySelector('#strataBench'));
+  const onBench = () => $$('#strataBench .cur-set').length;
+  p('  cards on the bench: ' + onBench());
+  ck('the sheet just picked up is on it', onBench() >= 1, onBench());
+  ck('and it is marked as being on the bench',
+     !!D().querySelector('#strataBench .cur-set.on-bench'));
+  const shelfToggle = D().querySelector('.cur-shelf-toggle');
+  ck('there is a shelf to pick from', !!shelfToggle,
+     shelfToggle && shelfToggle.textContent.trim().slice(0, 50));
+  if (shelfToggle) {
+    p('  ' + shelfToggle.textContent.trim());
+    shelfToggle.click();
+    await sleep(1200);
+    ck('opening the shelf lists the ones put down',
+       !!D().querySelector('#strataShelfList'));
+    const nShelf = $$('#strataShelfList .cur-set').length;
+    p('  cards on the shelf: ' + nShelf);
+    /* The bench and the shelf must not both hold the same sheet: that was
+       the failure mode in curation, where a set that was both archived and
+       open belonged to neither list. */
+    const benchGids = $$('#strataBench .cur-set').map((n) => n.dataset.gid);
+    const shelfGids = $$('#strataShelfList .cur-set').map((n) => n.dataset.gid);
+    const both = benchGids.filter((g) => shelfGids.indexOf(g) >= 0);
+    ck('nothing is on the bench and the shelf at once', both.length === 0,
+       both.join(', '));
+  }
+
+  hd('3. Putting it down loses nothing');
+  const before = JSON.stringify((await get('/api/layers/' + gid))
+    .sheet.labels);
+  got = await post('/api/layers/' + gid + '/open', { on: false });
+  ck('it can be put down', !!(got && got.sheet && !got.sheet.open));
+  const after = JSON.stringify((await get('/api/layers/' + gid)).sheet.labels);
+  /* The whole promise of the bench: closing is not saving and not
+     finishing. Every label was written the moment it was made. */
+  ck('and not one label changed', before === after,
+     before.length + ' vs ' + after.length + ' chars');
+
+  hd('4. Archiving is not deleting');
+  got = await post('/api/layers/' + gid + '/archive', { on: true });
+  ck('it can be filed away', !!(got && got.sheet && got.sheet.archived));
+  sheet = (await get('/api/layers/' + gid)).sheet;
+  ck('the labels are still there',
+     (sheet.progress || {}).labelled === labelled0,
+     (sheet.progress || {}).labelled + ' vs ' + labelled0);
+  ck('and it is off the bench too', !sheet.open, String(sheet.open));
+  /* Picking up an archived sheet would un-archive it, which is the thing
+     archiving is supposed to survive -- so it is refused unless the caller
+     says it means to. */
+  const tried = await post('/api/layers/' + gid + '/open', { on: true });
+  ck('picking up an archived sheet is refused',
+     tried && tried.ok === false && /archiv/i.test(tried.error || ''),
+     JSON.stringify(tried).slice(0, 90));
+  got = await post('/api/layers/' + gid + '/open',
+    { on: true, unarchive: true });
+  ck('unless it is asked for on purpose',
+     !!(got && got.sheet && got.sheet.open && !got.sheet.archived));
+
+  hd('5. A name for the work set');
+  got = await post('/api/layers/' + gid + '/rename',
+    { name: 'second pass, probe map fixed' });
+  ck('a sheet can be named',
+     (got.sheet || {}).name === 'second pass, probe map fixed',
+     (got.sheet || {}).name);
+  got = await post('/api/layers/' + gid + '/rename', { name: '' });
+  ck('and the name can be taken off again', !(got.sheet || {}).name,
+     String((got.sheet || {}).name));
+
+  hd('6. Closing a work set is the only removal on offer');
+  /* Asked for in these words: "change from Delete to close ... it should
+     just close the working set", and "Not effect any of the layer data."
+
+     So the check is the ABSENCE of the verb. A card that offers Delete
+     beside Close is one mis-aim away from throwing away a day of
+     labelling, and the dialog written to guard it ran to three paragraphs
+     of explaining what would not be destroyed -- which is the tell that
+     the button should not have been there. */
+  const cards = () => $$('#strataBench .cur-set')
+    .concat($$('#strataShelfList .cur-set'));
+  const verbs = () => cards().flatMap((c) =>
+    Array.from(c.querySelectorAll('button')).map(
+      (b) => (b.textContent || '').trim()));
+  p('  verbs on the cards: ' + Array.from(new Set(verbs())).join(' | '));
+  ck('there are cards to look at', cards().length > 0, cards().length);
+  ck('no card offers to delete anything',
+     !verbs().some((t) => /delete/i.test(t)),
+     verbs().filter((t) => /delete/i.test(t)).join(', '));
+  ck('closing a work set is offered',
+     verbs().some((t) => /^close$/i.test(t)),
+     Array.from(new Set(verbs())).join(', '));
+
+  /* And closing really is a no-op on the data. Compared across the whole
+     sheet rather than by count: a label changed from one region to another
+     leaves the count identical. */
+  const deep = async () => JSON.stringify(
+    (await get('/api/layers/' + gid)).sheet.labels || {});
+  const was = await deep();
+  const nVerWas = (await get('/api/layers/' + gid)).sheet.n_versions;
+  await post('/api/layers/' + gid + '/open', { on: false });
+  ck('closing changes no label', (await deep()) === was, was.slice(0, 44));
+  const nowSheet = (await get('/api/layers/' + gid)).sheet;
+  ck('and the version history is untouched',
+     nowSheet.n_versions === nVerWas,
+     nowSheet.n_versions + ' vs ' + nVerWas);
+  ck('the recording is still in the registry',
+     !!((await get('/api/registry/' + gid)) || {}).session);
+
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'strata bench';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack), 'bad');
+  document.title = 'threw';
+} })();
+</script>
+</body></html>

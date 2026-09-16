@@ -1,5 +1,5 @@
 """
-cloudsync.py -- Turning BARRY's records into rows, and back.
+cloudsync.py -- Turning Jarvis's records into rows, and back.
 
 Push and pull are not symmetric, on purpose.
 
@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import os
 
-from . import cloud, shards
+from datetime import datetime
+
+from . import cloud, eventbank, shards
 
 BUCKET = "results"
 
@@ -32,7 +34,12 @@ BUCKET = "results"
 # references them.
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
-    "bank_entries", "curation_sets", "curation_events", "curation_reviews",
+    "bank_entries",
+    # After the entries, always: a snapshot is filed against a version, and
+    # the version's metadata travels in the entry. The other way round, every
+    # snapshot would arrive for a version this machine has never heard of.
+    "bank_snapshots",
+    "curation_sets", "curation_events", "curation_reviews",
     "layer_sheets",
     "layer_labels", "storyboards", "results", "presets", "prefs",
     # Both directions. A report filed on the rig has to reach the desktop,
@@ -43,6 +50,15 @@ ORDER = [
     # So somebody added on one computer is pickable on another without
     # waiting for a git pull.
     "people",
+    # Both directions, and late in the order because nothing references it.
+    # A rig that checked forty recordings and a desktop that checked twelve
+    # should both be able to ask which of the fifty-two have gaps.
+    "health_checks",
+    # What a tool has already worked out, keyed on the recording and on
+    # the settings that change the answer. Late because nothing
+    # references it, and both directions: the whole point is that a
+    # colleague's scan answers your question without being re-run.
+    "tool_results",
 ]
 PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 
@@ -53,6 +69,49 @@ PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
 # single push, so it is re-sent forever. A fixed stamp is sent once and then
 # never again, until somebody actually changes it.
 UNSTAMPED = "1970-01-01T00:00:00+00:00"
+
+
+def _slim_versions(versions):
+    """Version metadata, with the snapshots left behind.
+
+    `snap` is the copy that makes a version restorable and it is the bulk of
+    the record. It stays in the JSON shard; this is what travels.
+    """
+    out = []
+    for v in (versions or []):
+        if not isinstance(v, dict):
+            continue
+        row = {k: v.get(k) for k in
+               ("v", "at", "by", "n", "note", "by_label", "machine",
+                "imported")
+               if v.get(k) is not None}
+        if row.get("v") is not None:
+            # Said on the row rather than inferred later: a reader needs to
+            # know this copy cannot be restored from.
+            row["snap_here"] = bool(v.get("snap"))
+            out.append(row)
+    return out
+
+
+def _bank_touched(rec):
+    """When this entry last changed.
+
+    The newest of: when it was added, the newest version, and the newest
+    history line. Using only `added.at` meant an edited entry looked
+    unchanged for ever and the incremental push skipped it.
+    """
+    stamps = []
+    added = _prov(rec, "added")
+    if added.get("at"):
+        stamps.append(cloud.ts(added["at"]))
+    for v in (rec.get("versions") or []):
+        if isinstance(v, dict) and v.get("at"):
+            stamps.append(cloud.ts(v["at"]))
+    for h in (rec.get("history") or []):
+        if isinstance(h, dict) and h.get("at"):
+            stamps.append(cloud.ts(h["at"]))
+    stamps = [x for x in stamps if x]
+    return max(stamps) if stamps else None
 
 
 def _prov(rec, key="updated"):
@@ -75,12 +134,102 @@ def _num(v):
         return None
 
 
+def _now_iso():
+    return cloud.now()
+
+
+def _newer_in(stamp, since):
+    """Is an incoming `stamp` newer than what is already here?
+
+    The pull-side twin of `_after`, with the opposite bias about a stamp it
+    cannot read. `_after` says yes, because on the push a needless upsert is
+    cheap and a dropped row is somebody's lost edit. Here a yes means
+    overwriting what is on this machine, so an unreadable or missing stamp
+    is not enough: no evidence, no overwrite.
+    """
+    if not stamp or not since:
+        return bool(stamp) and not since
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return False
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return False
+
+
+def _decision_wins(theirs_at, ours_at, our_label, ours_cleared=None):
+    """Should an incoming decision replace the one already here?
+
+    This had no rule at all: any differing label was taken, so a pull could
+    undo today's curation with a row from last January -- measured, on a
+    real set, before this existed. A curation decision is the most expensive
+    thing in this application to redo, because it is a judgement somebody
+    made once while looking at a waveform.
+
+    A decision beats no decision. Past that, the newer one wins. An incoming
+    row with no stamp cannot overturn a decision that has one: on the push
+    side an unreadable stamp means "send it and let the database sort it
+    out", which is cheap, and on the pull side it would mean "overwrite
+    somebody's judgement on no evidence", which is not.
+    """
+    undecided = (our_label or "unspecified") == "unspecified"
+    # Only an event nobody has ever ruled on yields automatically. An undo
+    # that carries a time is a decision about the candidate and is defended
+    # like one -- otherwise a colleague's older label would arrive, find the
+    # label empty, and undo the undo.
+    if undecided and not ours_cleared:
+        return True
+    ours_at = ours_at or (ours_cleared if undecided else None)
+    if not theirs_at:
+        return False
+    if not ours_at:
+        return True
+    return _newer_in(theirs_at, ours_at)
+
+
+def _after(stamp, since):
+    """Is `stamp` newer than `since`? Compared as times, not as text.
+
+    This was `str(stamp) > since`, which is only true if both are in the same
+    offset -- and they were not. A row stamped in Vermont local time sorted
+    before a UTC "since" from the same afternoon, so the incremental push
+    dropped it.
+
+    An unparseable stamp counts as newer. Sending a row that did not need
+    sending costs one upsert the database discards; dropping one that did
+    loses somebody's edit, silently, until a full push happens to run.
+    """
+    if not stamp:
+        return True
+    a, b = cloud.ts(stamp), cloud.ts(since)
+    if not a or not b:
+        return True
+    try:
+        return datetime.fromisoformat(a) > datetime.fromisoformat(b)
+    except ValueError:
+        return True
+
+
+
+def _absent(exc):
+    """Is this "no such table" rather than a real failure?
+
+    PostgREST answers a request for a table it has never heard of with 404
+    and PGRST205. Anything else -- a timeout, a refusal, a network drop -- is
+    a genuine failure and must still stop the pull, because pretending a
+    table is empty when the answer was "I could not reach it" would delete
+    things.
+    """
+    text = str(exc)
+    return "PGRST205" in text or ("404" in text and "Could not find" in text)
+
 class Sync:
-    """Everything BARRY knows, in both directions."""
+    """Everything Jarvis knows, in both directions."""
 
     def __init__(self, logs_dir, store, bank=None, curate=None, layers=None,
                  mice=None, results=None, repo_root=None, feedback=None,
-                 people=None):
+                 people=None, health=None, vaults=None):
         self.logs = os.path.abspath(logs_dir)
         self.store = store
         self.bank = bank
@@ -90,6 +239,12 @@ class Sync:
         self.results = results
         self.feedback = feedback
         self.people = people
+        self.health = health
+        # {tool name: toolresults.ToolResults}. What each tool has already
+        # worked out, so a colleague's scan answers your question rather than
+        # being run again. Optional: a Sync built without them simply sends
+        # no vault rows, which is what every caller that predates them does.
+        self.vaults = vaults or {}
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -99,6 +254,22 @@ class Sync:
     # ==================================================================
     # Local records -> rows
     # ==================================================================
+    def rows_health_checks(self):
+        """Every continuity check this machine knows about.
+
+        Flat, one row per check, keyed on the check's own id. A check is a
+        thing that happened on a date -- it is never edited -- so the same id
+        always carries the same bytes and there is nothing to merge.
+        """
+        if not self.health:
+            return {"health_checks": []}
+        from . import healthlog
+        try:
+            return {"health_checks": healthlog.rows_for_cloud(self.health)}
+        except Exception:                                # noqa: BLE001
+            # A malformed local record must not take the whole push with it.
+            return {"health_checks": []}
+
     def rows_machines(self):
         prov = self.store.provenance()
         return [{
@@ -243,10 +414,91 @@ class Sync:
                 "added_machine": added.get("machine"),
                 "history": rec.get("history") or [],
                 "events": rec.get("events") or [],
-                "updated_at": cloud.ts(added.get("at")) or cloud.now(),
+                # The version history, without the snapshots.
+                #
+                # Measured on this store: 110 versions are 44 KB of metadata
+                # and 0.5 MB of snapshots. The metadata is what makes a
+                # version visible on another machine -- who, when, how many,
+                # the label mix -- and the snapshot is what lets it be
+                # restored. So the metadata comes here and the snapshots stay
+                # in the JSON shard, which is the redundancy copy.
+                "versions": _slim_versions(rec.get("versions")),
+                "version": _int(rec.get("version")),
+                # The newest thing that happened to it, not the moment it was
+                # created. This was `added.at`, so an entry that was edited
+                # afterwards never looked new to the incremental push and
+                # stopped travelling the moment it existed -- which is most
+                # of why a new version needed a git pull.
+                "updated_at": _bank_touched(rec) or cloud.now(),
                 "updated_by": added.get("by") or self.machine,
             })
         return {"bank_entries": out}
+
+    def rows_bank_snapshots(self):
+        """One row per version that has a snapshot here.
+
+        `updated_at` is the version's creation time, not now(): it never
+        changes, so the incremental push sends each of these once and then
+        stops. A snapshot is immutable, so a re-push would be the same bytes
+        anyway -- this just saves sending them.
+        """
+        if not self.bank:
+            return {"bank_snapshots": []}
+        # Demo entries stay local, as they do for `rows_bank`.
+        real = {rec.get("id") for rec in self.bank.all()
+                if not self._is_demo(rec)}
+
+        # What is already up there, as a set of keys.
+        #
+        # NOT a timestamp comparison. These rows carry the version's own
+        # creation time so that a pushed snapshot is never re-sent -- which
+        # also means every snapshot older than the day this feature shipped
+        # is older than `last_push` and would be skipped for ever. The table
+        # is append-only and small, so asking which keys exist is one light
+        # query and is right on the first push and the thousandth.
+        have = set()
+        known = None
+        try:
+            for r in self.cloud.select_all(
+                    "bank_snapshots", query="select=entry_id,v"):
+                have.add((str(r.get("entry_id")), int(r.get("v"))))
+            # And which entries the database actually has.
+            #
+            # `bank_snapshots.entry_id` references `bank_entries(id)`, so a
+            # snapshot for an entry that has not landed yet is rejected --
+            # and a rejected row fails the whole batch, which aborts the
+            # push before curation, layers, results and everything else
+            # later in the order. One new entry could stop a day's work
+            # leaving the machine. The entry goes up from a table earlier
+            # in the same push, so its snapshots follow a minute later.
+            known = {str(r.get("id")) for r in self.cloud.select_all(
+                "bank_entries", query="select=id") if r.get("id")}
+        except Exception:                            # noqa: BLE001
+            # No answer means send nothing rather than everything: an
+            # unanswered question is not a reason to risk the push that
+            # carries every other table.
+            return {"bank_snapshots": []}
+
+        out = []
+        for eid, v, snap, machine, at in self.bank.snapshots():
+            if eid not in real:
+                continue
+            if (str(eid), int(v)) in have:
+                continue
+            # Its entry has to be there first, or the batch is refused and
+            # takes the rest of the push with it.
+            if known is not None and str(eid) not in known:
+                continue
+            out.append({
+                "entry_id": eid,
+                "v": int(v),
+                "n": len(snap),
+                "sha256": eventbank.snap_sha(snap),
+                "snap": snap,
+                "machine": machine,
+                "updated_at": cloud.ts(at) or UNSTAMPED,
+            })
+        return {"bank_snapshots": out}
 
     def rows_curation(self):
         sets, events, reviews = [], [], []
@@ -292,10 +544,29 @@ class Sync:
                     "end_s": _num(ev.get("end")),
                     "channel": _int(ev.get("channel")),
                     "amplitude": _num(ev.get("amplitude")),
+                    # The word, because `curation_events.label` is NOT
+                    # NULL -- the shared table has no way to write "nobody
+                    # has decided", so the word is that encoding and this
+                    # line is not the careless `or` it looks like. I tried
+                    # sending null here and Postgres refused it:
+                    # 23502, null value in column "label".
+                    #
+                    # The bug this looked like was real but was on the way
+                    # back IN: the applier wrote the word as a local label
+                    # and `progress` counted it as a decision, so seven
+                    # untouched candidates read as done and `left` was 0.
+                    # Both of those are fixed where they belong.
                     "label": ev.get("label") or "unspecified",
                     "decided_by": ev.get("by"),
-                    "decided_at": at,
-                    "updated_at": at or cloud.ts(cr.get("at")) or cloud.now(),
+                    # Or when it was un-decided. `decided_at` on the wire
+                    # means "when this row's state was set", which is true
+                    # of a decision and of taking one back -- and without a
+                    # time on the undo it could not be ordered, so it
+                    # stopped at the machine that made it while a
+                    # colleague's copy kept the decision and pushed it back.
+                    "decided_at": at or cloud.ts(ev.get("cleared_at")),
+                    "updated_at": (at or cloud.ts(ev.get("cleared_at"))
+                                   or cloud.ts(cr.get("at")) or cloud.now()),
                 })
                 for r in (ev.get("reviews") or []):
                     who = (r.get("by") or "").strip()
@@ -332,6 +603,18 @@ class Sync:
                 # colleague pulling this sheet gets the labels but no way to
                 # tell an import from a correction.
                 "versions": rec.get("versions") or [],
+                # The workbench half. A bench that exists on one computer
+                # answers "what am I working on"; the shared one answers
+                # "what is anybody working on", which is the question that
+                # stops two people labelling the same recording twice.
+                "name": rec.get("name"),
+                "assignee": rec.get("assignee"),
+                "is_open": bool(rec.get("open")),
+                "opened_at": cloud.ts(rec.get("opened_at")),
+                "opened_by": rec.get("opened_by"),
+                "archived": bool(rec.get("archived")),
+                "archived_at": cloud.ts(rec.get("archived_at")),
+                "archived_by": rec.get("archived_by"),
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -371,6 +654,16 @@ class Sync:
                 # in the GUI moves the file, so this is the folder you would
                 # see if you opened Results/ in Explorer.
                 "folder": r.get("folder"),
+                # What it is of. The run record has always known; the
+                # catalogue used to drop it, so "what do we have on m306"
+                # could only ever be a text search over labels.
+                "project": r.get("project"),
+                "mouse": _int(r.get("mouse")),
+                "session_no": _int(r.get("session_no")),
+                "recorded_on": r.get("recorded_on"),
+                "tool": r.get("script") or r.get("kind"),
+                "app_version": r.get("app_version"),
+                "commit_sha": r.get("commit"),
                 "tags": list(r.get("tags") or []),
                 "notes": r.get("notes"),
                 "starred": bool(r.get("starred")),
@@ -382,6 +675,62 @@ class Sync:
                 "updated_by": up.get("user") or self.machine,
             })
         return {"results": out}
+
+    def rows_tool_results(self):
+        """The vault: one row per (tool, recording, question).
+
+        The numbers only. The picture each of these is drawn into is
+        megabytes and regenerable from them in milliseconds, so it stays in
+        GUI_logs/.cache and never leaves the machine that made it.
+        """
+        out = []
+        for tool, vault in (self.vaults or {}).items():
+            for r in vault.all():
+                gid = r.get("gid")
+                ph = r.get("params_hash")
+                if not gid or not ph:
+                    continue
+                comp = r.get("computed") or {}
+                up = _prov(r, "updated") or comp
+                out.append({
+                    "id": "%s:%s:%s" % (tool, gid, ph),
+                    "tool": tool,
+                    "gid": gid,
+                    "params_hash": ph,
+                    # What was asked. A tool that keeps its settings under
+                    # `spec` says so; one that keeps them at the top level --
+                    # Panorama does -- is read using the field list the vault
+                    # already hashes on, rather than this file having to know
+                    # each tool's parameters by name.
+                    "spec": (r.get("spec")
+                             or {k: r.get(k) for k in (vault.keys or ())
+                                 if r.get(k) is not None}),
+                    # Everything that is not bookkeeping is the answer. Listed
+                    # by exclusion rather than by name because each tool's
+                    # numbers are its own -- naming them here would mean this
+                    # file had to change every time a tool learned to measure
+                    # something new.
+                    "numbers": {k: v for k, v in r.items()
+                                if not k.startswith("_")
+                                and k not in ("gid", "params_hash", "spec",
+                                              "computed", "updated", "tool",
+                                              "fit_engine", "session_label",
+                                              "region", "channel_label")},
+                    "engine": r.get("fit_engine"),
+                    "session_label": r.get("session_label"),
+                    "region": r.get("region"),
+                    "channel_label": r.get("channel_label"),
+                    "seconds": _num(comp.get("seconds")),
+                    "computed_at": cloud.ts(comp.get("at")),
+                    "computed_by": up.get("user"),
+                    "machine": comp.get("machine") or up.get("machine"),
+                    "app_version": up.get("app_version"),
+                    "commit_sha": up.get("commit"),
+                    "updated_at": (cloud.ts(up.get("at"))
+                                   or cloud.ts(comp.get("at")) or UNSTAMPED),
+                    "updated_by": up.get("user") or self.machine,
+                })
+        return {"tool_results": out}
 
     def rows_storyboards(self):
         out = []
@@ -421,6 +770,16 @@ class Sync:
                 "duration_s": _num(r.get("duration_s")),
                 "machine": prov.get("machine"),
                 "git_user": prov.get("user"),
+                "app_version": prov.get("app_version"),
+                "commit_sha": prov.get("commit"),
+                # The complete layout a rebuild reads back. It has always been
+                # on the run record here and has never travelled, so a
+                # colleague could see that a figure was made and not rebuild
+                # it. `panels` is part of the recipe, not a summary of it --
+                # a summary is exactly what cannot be rebuilt from.
+                "recipe": {k: v for k, v in r.items()
+                           if k in ("panels", "recipe", "layout", "format",
+                                    "problems")} or None,
                 "updated_at": cloud.ts(prov.get("at")) or cloud.now(),
             })
         return {"runs": out}
@@ -550,6 +909,15 @@ class Sync:
             out.append({
                 "name": row.get("name"),
                 "email": row.get("email"),
+                # The details somebody actually typed. These were missing,
+                # and they are the only part of a roster entry that is not
+                # compiled from the data -- so they were the only part that
+                # never travelled. An edited role stayed on the machine it
+                # was edited on, which is exactly what was reported.
+                "role": row.get("role") or None,
+                "initials": row.get("initials") or None,
+                "orcid": row.get("orcid") or None,
+                "note": row.get("note") or None,
                 "is_person": bool(row.get("is_person")),
                 "seen": row.get("counts") or {},
                 # The other spellings that are this same person. Local-only
@@ -589,6 +957,11 @@ class Sync:
         rows.update(self.rows_sessions())
         rows.update(self.rows_mice())
         rows.update(self.rows_bank())
+        # The snapshots that make a banked version restorable. In ORDER and
+        # in ON_CONFLICT since the day the table shipped -- and never built,
+        # so nothing was ever sent. A table nobody collects rows for is a
+        # table that stays empty however correct the rest of it is.
+        rows.update(self.rows_bank_snapshots())
         rows.update(self.rows_curation())
         rows.update(self.rows_layers())
         rows.update(self.rows_storyboards())
@@ -597,16 +970,31 @@ class Sync:
         rows.update(self.rows_prefs())
         rows.update(self.rows_feedback())
         rows.update(self.rows_people())
+        rows.update(self.rows_health_checks())
+        # Called, not merely declared. bank_snapshots was in ORDER and in
+        # ON_CONFLICT from the day it shipped and never built here, so it
+        # sent nothing at all against a hundred and fifty-eight local
+        # snapshots. One missing line, invisible from either end.
+        rows.update(self.rows_tool_results())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())
             rows.update(self.rows_errors())
         return rows
 
+    # Tables whose builder decides for itself what to send, so the
+    # incremental `updated_at` filter must not have a second go at it.
+    # `bank_snapshots` carries each version's own creation time and works
+    # out what is missing by asking the database -- filtering that answer by
+    # those stamps would drop every snapshot older than the last push, which
+    # is all of them.
+    NO_INCREMENTAL = {"bank_snapshots"}
+
     ON_CONFLICT = {
         "session_paths": "gid,path",
         "session_sightings": "gid,machine",
         "mice": "project,mouse",
+        "bank_snapshots": "entry_id,v",
         "curation_events": "set_id,event_id",
         "curation_reviews": "set_id,event_id,reviewer",
         "layer_labels": "gid,channel",
@@ -633,10 +1021,8 @@ class Sync:
         sent, report = 0, {}
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
-            if since:
-                batch = [r for r in batch
-                         if not r.get("updated_at")
-                         or str(r["updated_at"]) > since]
+            if since and table not in self.NO_INCREMENTAL:
+                batch = [r for r in batch if _after(r.get("updated_at"), since)]
             report[table] = len(batch)
             if on_progress:
                 on_progress(table, len(batch))
@@ -700,7 +1086,7 @@ class Sync:
         Soft, because a hard delete is indistinguishable from a row somebody
         else has not fetched yet -- and because a session with curated events
         hanging off it should not evaporate on a stray click. `retired` is
-        already how BARRY hides a session it has been told to forget.
+        already how Jarvis hides a session it has been told to forget.
         """
         if not self.tombs:
             return {"marked": 0}
@@ -824,6 +1210,8 @@ class Sync:
         q = ("updated_at=gt.%s" % since) if since else ""
         applied, newest = {}, since
 
+        missing = []
+
         def fetch(table):
             # Said before the request, not after it: the point of announcing
             # a table is that it is the one currently taking the time. The
@@ -831,7 +1219,22 @@ class Sync:
             # it used to report the single word "pulling" for all of them.
             if on_table:
                 on_table(table)
-            rows = self.cloud.select_all(table, q)
+            try:
+                rows = self.cloud.select_all(table, q)
+            except Exception as exc:                     # noqa: BLE001
+                # A table this database has never been given. Reported and
+                # skipped, because the alternative is what actually
+                # happened: `health_checks` went into the order before
+                # migration 15 had been run anywhere, every pull 404'd on
+                # it, and everything after it in the sequence -- plus the
+                # `last_pull` stamp that makes a cycle count for anything --
+                # never ran. One table's absence must not take the other
+                # fourteen with it, and a migration you can run late is
+                # worth a great deal more than one that has to be run first.
+                if _absent(exc):
+                    missing.append(table)
+                    return []
+                raise
             for r in rows:
                 got = r.get("updated_at")
                 if got and (not newest_holder[0] or got > newest_holder[0]):
@@ -845,6 +1248,9 @@ class Sync:
         applied["session_paths"] = self._apply_paths(fetch("session_paths"))
         applied["mice"] = self._apply_mice(fetch("mice"))
         applied["bank_entries"] = self._apply_bank(fetch("bank_entries"))
+        # After the entries: see the note beside `bank_snapshots` in ORDER.
+        applied["bank_snapshots"] = self._apply_bank_snapshots(
+            fetch("bank_snapshots"))
         applied["curation"] = self._apply_curation(
             fetch("curation_sets"), fetch("curation_events"))
         applied["layers"] = self._apply_layers(
@@ -854,14 +1260,26 @@ class Sync:
         applied["feedback"] = self._apply_feedback(
             fetch("feedback"), fetch("feedback_notes"))
         applied["people"] = self._apply_people(fetch("people"))
+        applied["health_checks"] = self._apply_health_checks(
+            fetch("health_checks"))
         applied["errors"] = self._apply_errors(fetch("errors"))
         applied["error_marks"] = self._apply_error_marks(fetch("error_marks"))
         if on_progress:
             on_progress(applied)
 
         self.cloud.save_state({"last_pull": newest_holder[0] or cloud.now()})
-        return {"applied": applied, "since": since,
-                "through": newest_holder[0]}
+        if missing:
+            applied["_missing_tables"] = missing
+        out = {"applied": applied, "since": since,
+               "through": newest_holder[0]}
+        # A version that disagrees with itself across machines is a fault,
+        # not a merge. It rides out with the result so it is on screen
+        # rather than in a log nobody opens.
+        clashes = getattr(self, "snapshot_conflicts", None)
+        if clashes:
+            out["snapshot_conflicts"] = clashes
+            self.snapshot_conflicts = []
+        return out
 
     # -- appliers -------------------------------------------------------
     def _apply_feedback(self, rows, notes):
@@ -893,6 +1311,70 @@ class Sync:
                 self.store.record_error(
                     "cloud.pull.feedback", str(exc), None, {"id": rid})
         return n_applied
+
+    def _apply_health_checks(self, rows):
+        """File checks made on other machines.
+
+        Only ever adds. A check is never edited, so a row already here is
+        the same row -- there is no side to prefer and nothing to overwrite.
+        Grouped by session first so one recording's history is one write
+        rather than one write per check.
+        """
+        if not self.health or not rows:
+            return 0
+        by_gid = {}
+        for r in rows:
+            gid = r.get("gid")
+            if not gid or not r.get("id"):
+                continue
+            by_gid.setdefault(gid, []).append(r)
+
+        added = 0
+        for gid, incoming in by_gid.items():
+            rec = self.health.book.read(gid) or {}
+            rec["gid"] = gid
+            checks = list(rec.get("checks") or [])
+            have = {c.get("id") for c in checks}
+            grew = False
+            for r in incoming:
+                if r["id"] in have:
+                    continue
+                checks.append({
+                    "id": r["id"],
+                    "at": r.get("at"),
+                    "by": r.get("by_user"),
+                    "machine": r.get("machine"),
+                    "level": r.get("level"),
+                    "n_segments": r.get("n_segments"),
+                    "n_gaps": r.get("n_gaps"),
+                    "seconds_lost": r.get("seconds_lost"),
+                    "max_time_error_ms": r.get("max_time_error_ms"),
+                    "true_duration_s": r.get("true_duration_s"),
+                    "concat_duration_s": r.get("concat_duration_s"),
+                    "gap_map_sha": r.get("gap_map_sha"),
+                    "gap_rule": r.get("gap_rule"),
+                    "n_ncs": r.get("n_ncs"),
+                    "n_probed": r.get("n_probed"),
+                    "all_channels": bool(r.get("all_channels")),
+                    "mismatches": r.get("mismatches"),
+                })
+                have.add(r["id"])
+                added += 1
+                grew = True
+            if not grew:
+                continue
+            # The path is whatever this machine knows, or whatever the
+            # sender knew. A folder is mounted differently on every machine,
+            # so a path from elsewhere is a hint rather than a fact -- kept
+            # only when there is nothing better.
+            if not rec.get("path"):
+                rec["path"] = incoming[0].get("path")
+            if not rec.get("label"):
+                rec["label"] = incoming[0].get("label")
+            checks.sort(key=lambda c: str(c.get("at") or ""))
+            rec["checks"] = checks[-200:]
+            self.health.book.write(gid, rec)
+        return added
 
     def _apply_people(self, rows):
         """The roster. Somebody added on one computer becomes pickable here.
@@ -940,6 +1422,17 @@ class Sync:
             for other in (row.get("aliases") or []):
                 aliased[str(other).strip().lower()] = row.get("name")
 
+        # Names this machine has retired. Checked as well as the aliases
+        # because the aliases are not enough: the same push that resurrects
+        # a merged-away name also unions its old alias back the other way,
+        # so the alias that was supposed to suppress it disappears. A
+        # tombstone cannot be argued with by an incoming row.
+        retired = set()
+        try:
+            retired = self.people.retired()
+        except Exception:                            # noqa: BLE001
+            retired = set()
+
         self.merge_reverts = 0
         for r in (rows or []):
             name = (r.get("name") or "").strip()
@@ -948,12 +1441,19 @@ class Sync:
             # The old spelling of somebody who has been merged. Writing it
             # would re-create the entry the merge removed, which is exactly
             # what used to happen on every cycle.
+            if name.lower() in retired:
+                # Removed here on purpose. The other machine will stop
+                # sending it once it pulls; until then this is what keeps it
+                # from coming back every twenty seconds.
+                self.merge_reverts += 1
+                continue
             keep = aliased.get(name.lower())
             if keep and keep.strip().lower() != name.lower():
                 self.merge_reverts += 1
                 continue
             want = {"email": r.get("email"), "role": r.get("role"),
-                    "initials": r.get("initials"), "orcid": r.get("orcid")}
+                    "initials": r.get("initials"), "orcid": r.get("orcid"),
+                    "note": r.get("note")}
             # Aliases are unioned, not overwritten. Two people merging
             # different spellings on different machines are both right, and
             # last-write-wins would have one of them silently undo the
@@ -1005,7 +1505,7 @@ class Sync:
             if put_away is not None:
                 more["archived"] = bool(put_away)
             try:
-                self.people.add(name, r.get("email"), None,
+                self.people.add(name, r.get("email"), r.get("note"),
                                 role=r.get("role"),
                                 initials=r.get("initials"),
                                 orcid=r.get("orcid"), **more)
@@ -1014,7 +1514,7 @@ class Sync:
                 # A People without the `aliases` field. The rest of the row
                 # is still worth applying.
                 try:
-                    self.people.add(name, r.get("email"), None,
+                    self.people.add(name, r.get("email"), r.get("note"),
                                     role=r.get("role"),
                                     initials=r.get("initials"),
                                     orcid=r.get("orcid"))
@@ -1070,9 +1570,12 @@ class Sync:
             if not sig:
                 continue
             mine = have.get(sig) or {}
-            theirs_at = r.get("updated_at") or ""
-            mine_at = cloud.ts(mine.get("at")) or ""
-            if mine and mine_at >= theirs_at:
+            # Compared as times. `mine.get("at")` is local ("14:05-04:00")
+            # and `updated_at` is the cloud's UTC ("18:05+00:00"), so as text
+            # a mark made locally this afternoon sorted BEFORE a remote one
+            # from this morning -- and re-triaging an error here was undone
+            # by the next pull. Same fault as the push filter had.
+            if mine and not _newer_in(r.get("updated_at"), mine.get("at")):
                 continue
             if r.get("resolved"):
                 if not mine:
@@ -1206,13 +1709,62 @@ class Sync:
             n += 1
         return n
 
+    def _apply_bank_snapshots(self, rows):
+        """Fill in the snapshots this machine is missing.
+
+        Only ever fills in. `absorb_snapshot` refuses to overwrite, so a
+        version that is already restorable here is left exactly as it is --
+        which is what makes this safe to run against a machine that has been
+        curating offline.
+
+        A disagreement between two copies of one version is filed rather than
+        resolved. There is no correct side to pick: v7 is what v7 was, and
+        two different answers means something upstream is wrong.
+        """
+        if not self.bank:
+            return 0
+        added = 0
+        clashes = []
+        for r in rows:
+            try:
+                got = self.bank.absorb_snapshot(
+                    r.get("entry_id"), r.get("v"), r.get("snap"),
+                    r.get("sha256"))
+            except Exception as exc:                       # noqa: BLE001
+                clashes.append("%s v%s: %s"
+                               % (r.get("entry_id"), r.get("v"), exc))
+                continue
+            if got == "added":
+                added += 1
+            elif isinstance(got, str) and got.startswith("conflict"):
+                clashes.append(got)
+        if clashes:
+            # Carried out of the sync rather than logged and forgotten: the
+            # caller puts it in the result, and the result is on screen.
+            self.snapshot_conflicts = clashes
+        return added
+
     def _apply_bank(self, rows):
         if not self.bank:
             return 0
         have = {e.get("id") for e in self.bank.all()}
         n = 0
         for r in rows:
-            if r.get("deleted_at") or r.get("id") in have:
+            if r.get("deleted_at"):
+                continue
+            # An entry this machine already has is not nothing to do. It
+            # used to be skipped outright, so a version created elsewhere
+            # arrived in the row and was thrown away -- which is why a new
+            # v# only showed up after a git pull.
+            if r.get("id") in have:
+                try:
+                    got = self.bank.absorb_versions(
+                        r.get("id"), r.get("versions") or [],
+                        r.get("version"))
+                    if got:
+                        n += got
+                except Exception:        # noqa: BLE001
+                    pass
                 continue
             try:
                 self.bank.add({
@@ -1235,6 +1787,15 @@ class Sync:
                     "curated": bool(r.get("specified")),
                     "curation_label": r.get("curation_label"),
                 })
+                # And the history it arrived with, or a brand new entry
+                # would show as v0 on this machine while the machine that
+                # made it shows v3.
+                if r.get("versions"):
+                    try:
+                        self.bank.absorb_versions(
+                            r.get("id"), r.get("versions"), r.get("version"))
+                    except Exception:    # noqa: BLE001
+                        pass
                 n += 1
             except Exception:            # noqa: BLE001
                 continue
@@ -1260,12 +1821,34 @@ class Sync:
                 cur = mine.get(e.get("event_id"))
                 if not cur:
                     continue
-                if (e.get("label") or "unspecified") != cur.get("label"):
-                    cur["label"] = e.get("label") or "unspecified"
+                # Normalised both ways: the string "unspecified" and an
+                # empty label mean the same thing -- nobody has decided --
+                # and the difference between them is not news.
+                theirs = e.get("label") or None
+                if theirs == "unspecified":
+                    theirs = None
+                ours = cur.get("label") or None
+                if ours == "unspecified":
+                    ours = None
+                if theirs == ours:
+                    continue
+                if not _decision_wins(e.get("decided_at"), cur.get("at"),
+                                      ours or "unspecified",
+                                      cur.get("cleared_at")):
+                    continue
+                cur["label"] = theirs
+                if theirs is None:
+                    cur.pop("by", None)
+                    cur.pop("at", None)
+                    # When it became undecided, from the row that said so --
+                    # without it the next pull of that same old decision
+                    # would find an unstamped blank and take the shortcut.
+                    cur["cleared_at"] = e.get("decided_at") or _now_iso()
+                else:
                     cur["by"] = e.get("decided_by")
                     cur["at"] = e.get("decided_at")
-                    touched = True
-                    n += 1
+                touched = True
+                n += 1
             if touched:
                 self.curate._write(rec)
         return n
@@ -1295,6 +1878,35 @@ class Sync:
             if changed:
                 self.layers.set_many(gid, changed)
                 n += len(changed)
+
+            # Whose it is, whether it is on a bench and whether it has been
+            # filed away -- written only when they actually differ. Writing
+            # them back unconditionally restamps the sheet, and a restamped
+            # sheet is pushed up as though it were an edit: the loop the
+            # roster was stuck in, passing identical rows between machines
+            # forever.
+            if s.get("name") and s.get("name") != mine.get("name"):
+                self.layers.rename(gid, s["name"])
+                mine = self.layers.get(gid) or {}
+            if s.get("assignee") and s.get("assignee") != mine.get("assignee"):
+                self.layers.assign(gid, s["assignee"])
+                mine = self.layers.get(gid) or {}
+            if bool(s.get("archived")) != bool(mine.get("archived")):
+                self.layers.archive(gid, bool(s.get("archived")))
+                mine = self.layers.get(gid) or {}
+            # `is_open` is a claim about right now, so the later claim wins
+            # rather than the remote one always winning: putting a sheet down
+            # here should not be undone by a colleague's older pull.
+            if bool(s.get("is_open")) != bool(mine.get("open")):
+                ours = mine.get("opened_at") or mine.get("closed_at")
+                if not mine.get("archived") and (
+                        not ours or _newer_in(s.get("opened_at"), ours)):
+                    try:
+                        self.layers.open_set(gid, bool(s.get("is_open")),
+                                             who=s.get("opened_by"))
+                    except Exception:                          # noqa: BLE001
+                        pass
+                    mine = self.layers.get(gid) or {}
 
             # The history, when this machine has less of it than the cloud.
             # Never the other way: a sheet that has been versioned here and

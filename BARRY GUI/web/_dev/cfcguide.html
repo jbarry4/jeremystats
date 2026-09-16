@@ -1,0 +1,202 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the explainer behind the bandwidth line</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:940px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">The (i) beside "Really 1.14–3.42 Hz wide, not 0.5" opens a
+twelve-chapter explainer. Every chapter computes its own figures, so the
+failure to look for is not a missing element — it is a chapter that
+throws, or a canvas that is sized before it has a width and draws nothing.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 25000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const errs = [];
+
+/* Has this canvas actually been drawn on? A canvas that was sized from a
+   zero-width rect, or painted before it was in the document, is present,
+   correctly sized, and entirely one colour. That is the bug this looks
+   for. */
+function painted(cv) {
+  try {
+    const g = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    if (!w || !h) return { ok: false, why: 'zero-sized' };
+    const d = g.getImageData(0, 0, w, h).data;
+    const first = [d[0], d[1], d[2], d[3]].join(',');
+    let different = 0;
+    for (let i = 0; i < d.length; i += 4 * 97) {
+      if ([d[i], d[i + 1], d[i + 2], d[i + 3]].join(',') !== first) {
+        different += 1;
+        if (different > 24) return { ok: true, why: w + 'x' + h };
+      }
+    }
+    return { ok: false, why: 'one colour at ' + w + 'x' + h };
+  } catch (e) {
+    return { ok: false, why: 'unreadable: ' + e.message };
+  }
+}
+
+(async () => { try {
+  await until(() => W().BARRY && W().BARRY.state);
+  W().addEventListener('error', (e) => errs.push('error: ' + e.message));
+  W().addEventListener('unhandledrejection',
+                       (e) => errs.push('rejected: ' + e.reason));
+
+  head('The way in');
+  ck('the guide module loaded', W().eval('typeof BARRY.cfcGuide'), 'object');
+  const ids = W().eval('JSON.stringify(BARRY.cfcGuide.chapters())');
+  say('note', '  chapters: ' + ids);
+  const CH = JSON.parse(ids);
+  ck('there are twelve chapters', CH.length === 12, CH.length);
+
+  /* The panel that prints the line. The demo recording is long enough for
+     the 4 Hz filters, which is why it is the one used here. */
+  W().eval("setView('xplore')");
+  await sleep(300);
+  await W().eval("BARRY.views.xplore.open('demo:long-session')");
+  await until(() => W().eval(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  W().eval("BARRY.views.xplore.setPanes([{panel:'bandpower'}],"
+           + "{col:1,row:1})");
+  await sleep(2500);
+
+  /* The line lives in the pane's own Panel menu, which is where somebody
+     setting the band axis is already standing -- so the popover has to be
+     opened, the way a person opens it. */
+  const panelBtn = await until(() =>
+    Array.from(D().querySelectorAll('.pane-ctl .ctl-menu'))
+      .find((b) => /^Panel/.test(b.textContent.trim())), 40000);
+  ck('the pane offers its Panel menu', !!panelBtn,
+     Array.from(D().querySelectorAll('.pane-ctl .ctl-menu'))
+       .map((b) => b.textContent.trim()).join(' | '));
+  if (panelBtn) panelBtn.click();
+  const truth = await until(() => D().querySelector('.band-truth'), 40000);
+  ck('the band-power panel prints its bandwidth line', !!truth,
+     'no .band-truth');
+  if (truth) say('note', '  "' + truth.textContent.trim().slice(0, 96) + '"');
+
+  const why = truth && truth.querySelector('.why');
+  ck('there is an (i) in that sentence', !!why, 'no .why inside .band-truth');
+  if (why) {
+    const q = why.getBoundingClientRect();
+    ck('it is big enough to hit', q.width >= 12 && q.height >= 12,
+       Math.round(q.width) + 'x' + Math.round(q.height));
+    ck('it is on the screen', q.width > 0 && q.top >= 0
+       && q.bottom <= W().innerHeight + 1,
+       'top ' + Math.round(q.top) + ' of ' + W().innerHeight);
+  }
+
+  head('It opens on the chapter the line is about');
+  if (why) why.click();
+  const modal = await until(() => D().querySelector('.modal.cfcg'), 15000);
+  ck('the explainer opens', !!modal, 'no .modal.cfcg');
+  const h3 = modal && modal.querySelector('.cfcg-h');
+  ck('on the bandwidth chapter', !!h3 && /not 0\.5 Hz/.test(h3.textContent),
+     h3 ? h3.textContent : 'no heading');
+
+  /* The measured table is the reason this chapter exists. */
+  const tbl = modal && modal.querySelector('.cfcg-tbl');
+  ck('the measured widths are shown', !!tbl && /1\.14/.test(tbl.textContent),
+     tbl ? 'no 1.14' : 'no table');
+
+  head('Every chapter builds, and every figure draws');
+  const nav = D().querySelectorAll('#cfcgNav .mini');
+  ck('the chapter list is all twelve', nav.length === 12, nav.length);
+  let blank = [], threw = [];
+  for (let i = 0; i < nav.length; i++) {
+    const before = errs.length;
+    nav[i].click();
+    await sleep(700);
+    const title = (D().querySelector('.cfcg-h') || {}).textContent || '?';
+    const cvs = Array.from(D().querySelectorAll('.cfcg-body .cfcg-cv'));
+    const bads = cvs.map((cv) => painted(cv)).filter((r) => !r.ok);
+    if (errs.length > before) threw.push(title);
+    if (bads.length) {
+      blank.push(title + ' (' + bads.map((b) => b.why).join('; ') + ')');
+    }
+    say('note', '  ' + (i + 1) + '. ' + title.replace(/^\d+\.\s*/, '')
+        + ' — ' + cvs.length + ' figure(s)'
+        + (bads.length ? ', ' + bads.length + ' BLANK' : ''));
+  }
+  ck('no chapter threw', threw.length === 0, threw.join(' | '));
+  ck('no figure is blank', blank.length === 0, blank.join(' | '));
+
+  head('The sliders do something');
+  /* Back to the chapter with the count in it, and move the filter length:
+     the independent-number readout must change, because that is the whole
+     argument of the chapter. */
+  const widthAt = CH.indexOf('width');
+  nav[widthAt].click();
+  await sleep(700);
+  const readOf = () => (D().querySelector('.cfcg-cost') || {}).textContent
+                       || '';
+  const before = readOf();
+  const cyc = Array.from(D().querySelectorAll('.cfcg-body input[type=range]'))
+    .pop();
+  ck('the filter-length slider is there', !!cyc, 'none found');
+  if (cyc) {
+    cyc.value = '24';
+    /* `new W().Event` parses as `(new W()).Event` -- W is an arrow
+       function and not a constructor. The window has to be taken
+       first. */
+    const win = W();
+    cyc.dispatchEvent(new win.Event('input', { bubbles: true }));
+    await sleep(900);
+    const after = readOf();
+    ck('moving it changes the numbers', after !== before,
+       'unchanged: ' + before.slice(0, 60));
+    say('note', '  3 cycles: ' + before.replace(/\s+/g, ' ').slice(0, 88));
+    say('note', '  24 cycles: ' + after.replace(/\s+/g, ' ').slice(0, 88));
+  }
+
+  head('And it closes');
+  const close = Array.from(D().querySelectorAll('.modal.cfcg .mh button'))
+    .find((b) => /Close/.test(b.textContent));
+  if (close) close.click();
+  await sleep(400);
+  ck('closing puts it away', !D().querySelector('.modal.cfcg'),
+     'still open');
+  ck('the panel is still there underneath', !!D().querySelector('.band-truth'),
+     'the panel went with it');
+
+  if (errs.length) {
+    head('Thrown');
+    errs.slice(0, 6).forEach((m) => say('bad', '  ' + m));
+  }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'cfcguide: ' + bad + ' FAILED' : 'cfcguide: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'cfcguide: harness CRASH';
+} })();
+</script>

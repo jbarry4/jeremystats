@@ -1,0 +1,1302 @@
+{
+  "_at": {
+    "archived": "2026-09-12T21:17:59.082760+00:00",
+    "archived_at": "2026-09-12T21:17:59.082760+00:00",
+    "archived_by": "2026-09-12T21:17:59.082760+00:00",
+    "assignee": "2026-09-09T02:02:25.973981+00:00",
+    "closed_at": "2026-09-12T21:17:59.082760+00:00",
+    "created": "2026-09-03T21:07:03.493838+00:00",
+    "gid": "2026-09-03T21:07:03.493838+00:00",
+    "imports": "2026-09-03T21:07:03.493838+00:00",
+    "kind": "2026-09-03T21:07:03.493838+00:00",
+    "labels": "2026-09-03T21:07:03.493838+00:00",
+    "name": "2026-09-03T21:07:03.493838+00:00",
+    "open": "2026-09-12T21:17:59.082760+00:00",
+    "opened_at": "2026-09-12T21:14:05.457223+00:00",
+    "opened_by": "2026-09-12T19:05:45.637013+00:00",
+    "schema": "2026-09-03T21:07:03.493838+00:00",
+    "session_label": "2026-09-03T21:07:03.493838+00:00",
+    "source": "2026-09-03T21:07:03.493838+00:00",
+    "updated": "2026-09-12T21:18:03.228665+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e047230cd5e": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e0670333629": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e0b3a2581b9": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e1f8046fc12": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e285f363969": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e32cbddd019": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e34047941cd": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e3ddf52fbe8": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e406ff3c54c": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e499fe1dfab": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e54b98964a7": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e6899eeef03": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e69699bd0ba": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e6d7a422bca": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e7016976aee": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e71cf744da2": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e722967cddb": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e727b498431": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e78bca21d40": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e8109e391bd": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e889a03583e": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e8a7b24ff30": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e8d06c9cda3": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "e957474ac16": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ea3a2804995": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "eaa924f36a1": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "eb9fdd4e142": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ebbe3291deb": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ebd12bbdda4": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ec3a31504cf": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ec5d4481681": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ec916ec1f63": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ed00413d980": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ed010bbd14c": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "edb479a4b40": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ee393e646e6": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ee7a989058e": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ee7cd9919e1": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "eeacad8e333": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "ef18cd7ee17": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "efe67078012": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ],
+      "efebe94638b": [
+        "set",
+        "2026-09-15T15:13:26-0400"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-12T21:18:03.228665+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "archived": true,
+  "archived_at": "2026-09-12T17:17:59-0400",
+  "archived_by": "Rain Younger",
+  "assignee": "Shahriar Tafti",
+  "closed_at": "2026-09-12T17:17:59-0400",
+  "created": {
+    "at": "2026-09-03T17:07:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "events": [
+    {
+      "at": "2026-09-12T17:14:40-0400",
+      "by": "Rain Younger",
+      "id": "e727b498431",
+      "label": "garbage",
+      "retimed": {
+        "from": 119.488,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:14:40-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 119.488
+    },
+    {
+      "at": "2026-09-12T17:14:41-0400",
+      "by": "Rain Younger",
+      "id": "eeacad8e333",
+      "label": "garbage",
+      "retimed": {
+        "from": 139.367,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:14:41-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 139.367
+    },
+    {
+      "at": "2026-09-12T17:14:43-0400",
+      "by": "Rain Younger",
+      "id": "efe67078012",
+      "label": "garbage",
+      "retimed": {
+        "from": 233.687,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:14:43-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 233.687
+    },
+    {
+      "at": "2026-09-12T17:14:45-0400",
+      "by": "Rain Younger",
+      "id": "e1f8046fc12",
+      "label": "garbage",
+      "retimed": {
+        "from": 249.476,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:14:45-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 249.476
+    },
+    {
+      "at": "2026-09-12T17:14:48-0400",
+      "by": "Rain Younger",
+      "id": "e78bca21d40",
+      "label": "garbage",
+      "retimed": {
+        "from": 365.81,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:14:48-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 365.81
+    },
+    {
+      "at": "2026-09-12T17:15:06-0400",
+      "by": "Rain Younger",
+      "id": "e54b98964a7",
+      "label": "garbage",
+      "retimed": {
+        "from": 511.291,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:15:06-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 511.291
+    },
+    {
+      "at": "2026-09-12T17:15:08-0400",
+      "by": "Rain Younger",
+      "id": "e7016976aee",
+      "label": "garbage",
+      "retimed": {
+        "from": 552.158,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 0.0
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:15:08-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 552.158
+    },
+    {
+      "at": "2026-09-12T17:15:09-0400",
+      "by": "Rain Younger",
+      "id": "e285f363969",
+      "label": "garbage",
+      "retimed": {
+        "from": 556.647,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:09-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 556.663124
+    },
+    {
+      "at": "2026-09-12T17:15:11-0400",
+      "by": "Rain Younger",
+      "id": "e34047941cd",
+      "label": "garbage",
+      "retimed": {
+        "from": 568.405,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:15:11-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 568.421124
+    },
+    {
+      "at": "2026-09-12T17:15:14-0400",
+      "by": "Rain Younger",
+      "id": "ed010bbd14c",
+      "label": "garbage",
+      "retimed": {
+        "from": 583.272,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:14-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 583.288124
+    },
+    {
+      "at": "2026-09-12T17:15:15-0400",
+      "by": "Rain Younger",
+      "id": "ebd12bbdda4",
+      "label": "garbage",
+      "retimed": {
+        "from": 600.94,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:15-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 600.956124
+    },
+    {
+      "at": "2026-09-12T17:15:17-0400",
+      "by": "Rain Younger",
+      "id": "e8d06c9cda3",
+      "label": "garbage",
+      "retimed": {
+        "from": 606.461,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:17-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 606.477124
+    },
+    {
+      "at": "2026-09-12T17:15:19-0400",
+      "by": "Rain Younger",
+      "id": "ea3a2804995",
+      "label": "garbage",
+      "retimed": {
+        "from": 639.215,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:19-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 639.231124
+    },
+    {
+      "at": "2026-09-12T17:15:43-0400",
+      "by": "Rain Younger",
+      "id": "e3ddf52fbe8",
+      "label": "garbage",
+      "retimed": {
+        "from": 782.147,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:15:43-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 782.163124
+    },
+    {
+      "at": "2026-09-12T17:15:45-0400",
+      "by": "Rain Younger",
+      "id": "ec5d4481681",
+      "label": "garbage",
+      "retimed": {
+        "from": 982.487,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:15:45-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 982.503124
+    },
+    {
+      "at": "2026-09-12T17:15:50-0400",
+      "by": "Rain Younger",
+      "id": "eaa924f36a1",
+      "label": "garbage",
+      "retimed": {
+        "from": 1078.208,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:50-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1078.224124
+    },
+    {
+      "at": "2026-09-12T17:15:52-0400",
+      "by": "Rain Younger",
+      "id": "e69699bd0ba",
+      "label": "garbage",
+      "retimed": {
+        "from": 1129.955,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:52-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1129.971124
+    },
+    {
+      "at": "2026-09-12T17:15:53-0400",
+      "by": "Rain Younger",
+      "id": "eb9fdd4e142",
+      "label": "garbage",
+      "retimed": {
+        "from": 1132.012,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:53-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1132.028124
+    },
+    {
+      "at": "2026-09-12T17:15:57-0400",
+      "by": "Rain Younger",
+      "id": "e8a7b24ff30",
+      "label": "garbage",
+      "retimed": {
+        "from": 1207.049,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:15:57-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1207.065124
+    },
+    {
+      "at": "2026-09-12T17:16:00-0400",
+      "by": "Rain Younger",
+      "id": "edb479a4b40",
+      "label": "garbage",
+      "retimed": {
+        "from": 1251.755,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:16:00-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1251.771124
+    },
+    {
+      "at": "2026-09-12T17:16:02-0400",
+      "by": "Rain Younger",
+      "id": "e499fe1dfab",
+      "label": "garbage",
+      "retimed": {
+        "from": 1294.843,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:02-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1294.859124
+    },
+    {
+      "at": "2026-09-12T17:16:04-0400",
+      "by": "Rain Younger",
+      "id": "e8109e391bd",
+      "label": "garbage",
+      "retimed": {
+        "from": 1295.032,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:04-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1295.048124
+    },
+    {
+      "at": "2026-09-12T17:16:06-0400",
+      "by": "Rain Younger",
+      "id": "e0b3a2581b9",
+      "label": "garbage",
+      "retimed": {
+        "from": 1315.983,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:06-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1315.999124
+    },
+    {
+      "at": "2026-09-12T17:16:08-0400",
+      "by": "Rain Younger",
+      "id": "e71cf744da2",
+      "label": "garbage",
+      "retimed": {
+        "from": 1428.485,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:08-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1428.501124
+    },
+    {
+      "at": "2026-09-12T17:16:14-0400",
+      "by": "Rain Younger",
+      "id": "ee393e646e6",
+      "label": "garbage",
+      "retimed": {
+        "from": 1428.599,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:14-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1428.615124
+    },
+    {
+      "at": "2026-09-12T17:16:16-0400",
+      "by": "Rain Younger",
+      "id": "ee7a989058e",
+      "label": "garbage",
+      "retimed": {
+        "from": 1459.572,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:16-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1459.588124
+    },
+    {
+      "at": "2026-09-12T17:16:19-0400",
+      "by": "Rain Younger",
+      "id": "e6899eeef03",
+      "label": "garbage",
+      "retimed": {
+        "from": 1475.084,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:19-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1475.100124
+    },
+    {
+      "at": "2026-09-12T17:16:23-0400",
+      "by": "Rain Younger",
+      "id": "ebbe3291deb",
+      "label": "garbage",
+      "retimed": {
+        "from": 1475.2,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:16:23-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1475.216124
+    },
+    {
+      "at": "2026-09-12T17:16:28-0400",
+      "by": "Rain Younger",
+      "id": "e047230cd5e",
+      "label": "garbage",
+      "retimed": {
+        "from": 1562.709,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:28-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1562.725124
+    },
+    {
+      "at": "2026-09-12T17:16:29-0400",
+      "by": "Rain Younger",
+      "id": "e6d7a422bca",
+      "label": "garbage",
+      "retimed": {
+        "from": 1580.37,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:29-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1580.386124
+    },
+    {
+      "at": "2026-09-12T17:16:31-0400",
+      "by": "Rain Younger",
+      "id": "ee7cd9919e1",
+      "label": "garbage",
+      "retimed": {
+        "from": 1586.605,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:31-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1586.621124
+    },
+    {
+      "at": "2026-09-12T17:16:33-0400",
+      "by": "Rain Younger",
+      "id": "e957474ac16",
+      "label": "garbage",
+      "retimed": {
+        "from": 1663.907,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:33-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1663.923124
+    },
+    {
+      "at": "2026-09-12T17:16:35-0400",
+      "by": "Rain Younger",
+      "id": "efebe94638b",
+      "label": "garbage",
+      "retimed": {
+        "from": 1677.331,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:35-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1677.347124
+    },
+    {
+      "at": "2026-09-12T17:16:38-0400",
+      "by": "Rain Younger",
+      "id": "ed00413d980",
+      "label": "garbage",
+      "retimed": {
+        "from": 1685.247,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:38-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1685.263124
+    },
+    {
+      "at": "2026-09-12T17:16:47-0400",
+      "by": "Rain Younger",
+      "id": "ec3a31504cf",
+      "label": "garbage",
+      "retimed": {
+        "from": 1703.625,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:47-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1703.641124
+    },
+    {
+      "at": "2026-09-12T17:16:49-0400",
+      "by": "Rain Younger",
+      "id": "e0670333629",
+      "label": "garbage",
+      "retimed": {
+        "from": 1736.091,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:49-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1736.107124
+    },
+    {
+      "at": "2026-09-12T17:16:51-0400",
+      "by": "Rain Younger",
+      "id": "ef18cd7ee17",
+      "label": "garbage",
+      "retimed": {
+        "from": 1736.384,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:51-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1736.400124
+    },
+    {
+      "at": "2026-09-12T17:16:58-0400",
+      "by": "Rain Younger",
+      "id": "e722967cddb",
+      "label": "garbage",
+      "retimed": {
+        "from": 1741.696,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:16:58-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1741.712124
+    },
+    {
+      "at": "2026-09-12T17:17:00-0400",
+      "by": "Rain Younger",
+      "id": "e889a03583e",
+      "label": "garbage",
+      "retimed": {
+        "from": 1762.735,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:17:00-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1762.751124
+    },
+    {
+      "at": "2026-09-12T17:17:07-0400",
+      "by": "Rain Younger",
+      "id": "e406ff3c54c",
+      "label": "garbage",
+      "retimed": {
+        "from": 1793.756,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:17:07-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1793.772124
+    },
+    {
+      "at": "2026-09-12T17:18:03-0400",
+      "by": "Rain Younger",
+      "id": "ec916ec1f63",
+      "label": "spike",
+      "retimed": {
+        "from": 1806.848,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-12T17:18:03-0400",
+          "by": "Rain Younger",
+          "label": "spike"
+        }
+      ],
+      "start": 1806.864124
+    },
+    {
+      "at": "2026-09-12T17:18:01-0400",
+      "by": "Rain Younger",
+      "id": "e32cbddd019",
+      "label": "garbage",
+      "retimed": {
+        "from": 1860.759,
+        "gap_map_sha": "9fb71adf1a724e32",
+        "shift_ms": 16.124
+      },
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        },
+        {
+          "at": "2026-09-12T17:18:01-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1860.775124
+    }
+  ],
+  "gid": "s1812bfda2a22",
+  "imports": [
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "n": 42,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "39103e75cc29",
+        "by": "snapshot import",
+        "folder": "m46s1jan15",
+        "kind": "snapshot folders"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "m46s1jan15",
+  "open": false,
+  "opened_at": "2026-09-12T17:14:05-0400",
+  "opened_by": "Rain Younger",
+  "schema": 1,
+  "session_label": "PTEN m46 s1 2025-01-15",
+  "source": {
+    "bank_entry": "39103e75cc29",
+    "by": "snapshot import",
+    "folder": "m46s1jan15",
+    "kind": "snapshot folders"
+  },
+  "time_basis": {
+    "at": "2026-09-15T15:13:26-0400",
+    "by": "Rain Younger",
+    "converted_from": "toothy_concat",
+    "gap_map_sha": "9fb71adf1a724e32",
+    "kind": "neuralynx_true",
+    "tool": "jarvis.retime/1"
+  },
+  "updated": {
+    "at": "2026-09-15T15:13:26-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

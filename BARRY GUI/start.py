@@ -1,8 +1,8 @@
 """
-BARRY GUI -- launcher.
+Jarvis -- launcher.
 
-Windows: double-click "Start BARRY GUI.bat"
-macOS:   double-click "Start BARRY GUI.command"
+Windows: double-click "Wake up Jarvis.bat"
+macOS:   double-click "Wake up Jarvis.command"
 Either:  python start.py
 
 Starts the local server and opens your browser. Nothing is installed and
@@ -22,12 +22,95 @@ import webbrowser
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-BANNER = r"""
-  ___   _   ___ _____   __  ___ _   _ ___
- | _ ) /_\ | _ \ _ \ \ / / / __| | | |_ _|
- | _ \/ _ \|   /   /\ V / | (_ | |_| || |
- |___/_/ \_\_|_\_|_\ |_|   \___|\___/|___|
-"""
+# The wordmark, in blocks. Looks like something worth opening; costs nothing
+# but a few lines of text.
+BLOCK = """\
+     \u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+     \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d
+     \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+\u2588\u2588   \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u255a\u2588\u2588\u2557 \u2588\u2588\u2554\u255d\u2588\u2588\u2551\u255a\u2550\u2550\u2550\u2550\u2588\u2588\u2551
+\u255a\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2551  \u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551
+ \u255a\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d"""
+
+# The same word for a console that cannot encode a block. cmd.exe on an older
+# machine is codepage 437, where every character above is unprintable -- and
+# an exception from the banner would stop the launcher before it started.
+PLAIN = r"""
+     _   _    ______     _____ ____
+    | | / \  |  _ \ \   / /_ _/ ___|
+ _  | |/ _ \ | |_) \ \ / / | |\___ \
+| |_| / ___ \|  _ < \ V /  | | ___) |
+ \___/_/   \_\_| \_\ \_/  |___|____/"""
+
+
+def _fits(text):
+    """Can this console actually encode that?
+
+    Asked rather than assumed. `sys.stdout.encoding` is utf-8 on a modern
+    Windows console and cp437 on an old one, and the difference is an
+    exception on the first line of main().
+    """
+    enc = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        text.encode(enc)
+        return True
+    except (UnicodeEncodeError, LookupError, AttributeError):
+        return False
+
+
+def _colour():
+    """Turn on ANSI if this console will take it, and say whether it did.
+
+    Windows 10 understands the escape codes but only once virtual-terminal
+    processing is enabled; a console that never got it prints them as
+    literal garbage, which is worse than plain text.
+    """
+    if not (sys.stdout and getattr(sys.stdout, "isatty", lambda: False)()):
+        return False
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except Exception:                              # noqa: BLE001
+        return False
+
+
+def _greeting():
+    """What time it is, said the way a person would."""
+    hour = time.localtime().tm_hour
+    if hour < 5:
+        return "Still up?"
+    if hour < 12:
+        return "Good morning."
+    if hour < 18:
+        return "Good afternoon."
+    return "Good evening."
+
+
+def banner():
+    """The thing the window opens with."""
+    art = BLOCK if _fits(BLOCK) else PLAIN
+    tint = _colour()
+    cyan, dim, bold, off = (("\033[38;5;45m", "\033[38;5;245m",
+                             "\033[1m", "\033[0m")
+                            if tint else ("", "", "", ""))
+    lines = [""]
+    lines.append("  " + dim + "Hello. " + off + bold + _greeting() + off)
+    lines.append("")
+    for row in art.strip("\n").splitlines():
+        lines.append("  " + cyan + row + off)
+    lines.append("")
+    lines.append("  " + dim
+                 + "a workbench for the recordings on this machine" + off)
+    return "\n".join(lines)
 
 REQUIRED = [("flask", "flask"), ("numpy", "numpy"),
             ("scipy", "scipy"), ("matplotlib", "matplotlib")]
@@ -85,7 +168,7 @@ def ask_for_key(logs_dir):
     window they are already looking at, rather than in a README they will
     read afterwards.
 
-    Skipping is a first-class answer. BARRY writes locally first and works
+    Skipping is a first-class answer. Jarvis writes locally first and works
     completely without the network; the sync is an addition, never a
     prerequisite, and starting up must never depend on someone having a
     password to hand.
@@ -99,7 +182,7 @@ def ask_for_key(logs_dir):
         print("  !! cloud.json in the repo contains a key. That file is")
         print("     tracked by git, so the key should be treated as public:")
         print("     rotate it in the Supabase dashboard, then paste the new")
-        print("     one below. BARRY is ignoring the one in the file.")
+        print("     one below. Jarvis is ignoring the one in the file.")
 
     if not cfg.get("needs_key"):
         if cfg.get("enabled"):
@@ -116,7 +199,7 @@ def ask_for_key(logs_dir):
     print("  It is stored in GUI_logs/.cloud.json, which git ignores, and")
     print("  never goes into the repo.")
     print()
-    print("  Press Enter to skip -- BARRY works fine without it, and you")
+    print("  Press Enter to skip -- Jarvis works fine without it, and you")
     print("  can add it later from the Sync panel.")
     print()
 
@@ -145,7 +228,7 @@ def ask_for_key(logs_dir):
         if not ping["reachable"]:
             print("  Could not reach the project: %s"
                   % (ping.get("error") or "")[:160])
-            print("  Saved anyway; BARRY will keep trying in the background.")
+            print("  Saved anyway; Jarvis will keep trying in the background.")
             return
         if not ping["schema"]:
             print("  Connected, but the tables are not there yet. Run the SQL")
@@ -161,7 +244,7 @@ def ask_for_key(logs_dir):
 
 
 def main():
-    print(BANNER)
+    print(banner())
     if not check_deps():
         pause()
         return 1
