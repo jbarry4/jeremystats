@@ -283,10 +283,6 @@ class Results:
             # gid is the identity the rest of the app uses; project, mouse and
             # session are what people actually look by.
             "gid": sess.get("gid"),
-            "project": sess.get("group"),
-            "mouse": sess.get("mouse"),
-            "session_no": sess.get("session"),
-            "recorded_on": sess.get("date") or _date_of(sess.get("label")),
             # `script` was in the search haystack from the beginning and was
             # never once set, so searching for the tool that made something
             # matched nothing.
@@ -294,6 +290,21 @@ class Results:
             "app_version": prov.get("app_version"),
             "commit": prov.get("commit"),
         })
+        # The run's session block first, and the file's own name after.
+        #
+        # Not the other way round, and not the session block alone -- which is
+        # what this was. A run whose session block never got filled in ended up
+        # with fewer facets than a file with no run record at all, because that
+        # path reads the name. So a Panorama figure sat unassigned while the
+        # three CSVs written beside it, in the same second by the same run,
+        # were filed under the recording.
+        named = _facets_of(base.get("rel") or base.get("name"))
+        for key, val in (("project", sess.get("group")),
+                         ("mouse", sess.get("mouse")),
+                         ("session_no", sess.get("session")),
+                         ("recorded_on", (sess.get("date")
+                                          or _date_of(sess.get("label"))))):
+            base[key] = val if val not in (None, "") else named.get(key)
         return base
 
     def _from_file(self, path, source):
@@ -622,13 +633,25 @@ class Results:
                 for it in (sl.get("items") or []):
                     if it.get("type") != "result":
                         continue
-                    if it.get("id") == old_id or it.get("result") == old_id:
-                        it["id"] = new_id
+                    # `result_id` is the field slides actually use; `id` is
+                    # the item's own. Both of the old names are kept because
+                    # a deck written by an older BARRY may still carry them,
+                    # and a slide that silently stops resolving is precisely
+                    # what this whole method exists to prevent.
+                    if old_id in (it.get("result_id"), it.get("id"),
+                                  it.get("result")):
+                        if "result_id" in it:
+                            it["result_id"] = new_id
+                        else:
+                            it["id"] = new_id
                         it["rel"] = new_rel
                         touched = True
                     elif it.get("rel") == old_rel:
                         it["rel"] = new_rel
-                        it["id"] = new_id
+                        if "result_id" in it:
+                            it["result_id"] = new_id
+                        else:
+                            it["id"] = new_id
                         touched = True
             if touched:
                 self.decks.write(self.deck_base(deck["id"]), deck)
