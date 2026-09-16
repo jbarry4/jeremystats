@@ -10,6 +10,8 @@
     "fs": "2026-09-04T15:57:01.704963+00:00",
     "gid": "2026-09-02T23:51:19.852724+00:00",
     "group": "2026-09-04T15:57:01.704963+00:00",
+    "hemisphere": "2026-09-09T00:00:40.059490+00:00",
+    "hemisphere_source": "2026-09-09T00:00:40.059490+00:00",
     "key": "2026-09-04T15:57:01.704963+00:00",
     "label": "2026-09-04T15:57:01.704963+00:00",
     "loose_key": "2026-09-04T15:57:01.704963+00:00",
@@ -21,7 +23,8 @@
     "schema": "2026-09-04T15:57:01.704963+00:00",
     "session": "2026-09-04T15:57:01.704963+00:00",
     "start": "2026-09-04T15:57:01.704963+00:00",
-    "updated": "2026-09-08T18:40:43.920122+00:00"
+    "updated": "2026-09-15T22:20:44.065949+00:00",
+    "view_state": "2026-09-15T22:20:44.065949+00:00"
   },
   "_keys": {
     "paths": {
@@ -50,11 +53,23 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.704963+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T18:00:52.108853+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-15T22:18:04.010623+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-14T14:10:04.227516+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:40:43.920122+00:00",
+    "at": "2026-09-15T22:20:44.065949+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -75,6 +90,8 @@
   "fs": 30000.0,
   "gid": "sa3a686a58537",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m023_s001_2024-08-06_12-36-23",
   "label": "PTEN m23 s1 2024-08-06",
   "loose_key": "m023_s001",
@@ -104,16 +121,92 @@
       "path": "D:\\PTEN\\CTL\\m23_ptenblind\\m23s1aug6\\2024-08-06_12-36-23",
       "root": "D:/PTEN",
       "scan": "scan_765fa11e51"
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T14:00:52-04:00",
+      "by": "Rain",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M23_s1\\2024-08-06_12-36-23",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_e4c0479cd6"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-15T18:18:02-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\m23_ptenblind\\m23s1aug6\\2024-08-06_12-36-23",
+      "root": null,
+      "scan": null
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-14T10:10:04-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M23_s1\\2024-08-06_12-36-23",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 1,
   "start": "2024-08-06T12:36:23",
   "updated": {
-    "at": "2026-09-08T14:40:43-04:00",
+    "at": "2026-09-15T18:20:44-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      6,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 0,
+    "probe": null,
+    "spacing": 50,
+    "span": 6,
+    "stft_mode": null,
+    "t0": 1419.4564531791907,
+    "ylim": null
   }
 }

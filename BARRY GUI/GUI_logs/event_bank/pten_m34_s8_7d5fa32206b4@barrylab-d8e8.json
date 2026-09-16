@@ -1,56 +1,84 @@
 {
   "_at": {
     "added": "2026-09-09T02:03:41.975046+00:00",
-    "by_label": "2026-09-14T18:54:15.174235+00:00",
-    "curation_label": "2026-09-12T21:13:36.560749+00:00",
-    "duration_s": "2026-09-12T21:13:36.560749+00:00",
-    "events": "2026-09-14T18:54:15.174235+00:00",
-    "gid": "2026-09-12T21:13:36.560749+00:00",
-    "id": "2026-09-12T21:13:36.560749+00:00",
-    "label_names": "2026-09-12T21:13:36.560749+00:00",
-    "mouse": "2026-09-12T21:13:36.560749+00:00",
-    "n": "2026-09-12T21:13:36.560749+00:00",
-    "name": "2026-09-12T21:13:36.560749+00:00",
-    "note": "2026-09-12T21:13:36.560749+00:00",
-    "project": "2026-09-12T21:13:36.560749+00:00",
-    "recording_start": "2026-09-12T21:13:36.560749+00:00",
-    "schema": "2026-09-12T21:13:36.560749+00:00",
-    "session": "2026-09-12T21:13:36.560749+00:00",
-    "session_key": "2026-09-12T21:13:36.560749+00:00",
-    "session_label": "2026-09-12T21:13:36.560749+00:00",
-    "session_loose_key": "2026-09-12T21:13:36.560749+00:00",
-    "session_path": "2026-09-12T21:13:36.560749+00:00",
-    "source": "2026-09-12T21:13:36.560749+00:00",
-    "specified": "2026-09-12T21:13:36.560749+00:00",
+    "by_label": "2026-09-16T17:41:24.559463+00:00",
+    "curation_label": "2026-09-16T17:38:08.558327+00:00",
+    "duration_s": "2026-09-16T17:38:08.558327+00:00",
+    "events": "2026-09-16T17:41:24.559463+00:00",
+    "gid": "2026-09-16T17:38:08.558327+00:00",
+    "id": "2026-09-16T17:38:08.558327+00:00",
+    "label_names": "2026-09-16T17:38:08.558327+00:00",
+    "mouse": "2026-09-16T17:38:08.558327+00:00",
+    "n": "2026-09-16T17:41:24.559463+00:00",
+    "name": "2026-09-16T17:38:08.558327+00:00",
+    "note": "2026-09-16T17:38:08.558327+00:00",
+    "project": "2026-09-16T17:38:08.558327+00:00",
+    "recording_start": "2026-09-16T17:38:08.558327+00:00",
+    "schema": "2026-09-16T17:38:08.558327+00:00",
+    "session": "2026-09-16T17:38:08.558327+00:00",
+    "session_key": "2026-09-16T17:38:08.558327+00:00",
+    "session_label": "2026-09-16T17:38:08.558327+00:00",
+    "session_loose_key": "2026-09-16T17:38:08.558327+00:00",
+    "session_path": "2026-09-16T17:38:08.558327+00:00",
+    "source": "2026-09-16T17:38:08.558327+00:00",
+    "specified": "2026-09-16T17:38:08.558327+00:00",
     "time_basis": "2026-09-14T18:54:15.174235+00:00",
-    "type": "2026-09-12T21:13:36.560749+00:00",
-    "type_name": "2026-09-12T21:13:36.560749+00:00",
-    "units": "2026-09-12T21:13:36.560749+00:00",
-    "version": "2026-09-15T14:49:07.259841+00:00"
+    "type": "2026-09-16T17:38:08.558327+00:00",
+    "type_name": "2026-09-16T17:38:08.558327+00:00",
+    "units": "2026-09-16T17:38:08.558327+00:00",
+    "version": "2026-09-16T17:41:24.559463+00:00"
   },
   "_keys": {
     "history": {
       "{\"at\": \"2026-09-08T22:02:29-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
         "set",
-        "2026-09-12T21:13:36.560749+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-08T22:03:41-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
         "set",
-        "2026-09-12T21:13:36.560749+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-12T17:13:36-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 185, \"was_n\": 162, \"why\": \"re-banked from the curation set\"}": [
         "set",
-        "2026-09-12T21:13:36.560749+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-14T15:06:22-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"versions\"], \"why\": \"deleted version 3\"}": [
         "set",
-        "2026-09-14T19:06:22.417353+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "{\"at\": \"2026-09-15T10:39:58-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"events\"], \"now_n\": 162, \"was_n\": 185, \"why\": \"collapsed 23 duplicate time(s)\"}": [
+        "set",
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "{\"at\": \"2026-09-16T13:38:08-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 254, \"was_n\": 162, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "{\"at\": \"2026-09-16T13:39:47-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"versions\"], \"why\": \"deleted version 5\"}": [
+        "set",
+        "2026-09-16T17:39:47.442383+00:00"
+      ],
+      "{\"at\": \"2026-09-16T13:41:24-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 167, \"was_n\": 254, \"why\": \"collapsed 87 duplicate time(s)\"}": [
+        "set",
+        "2026-09-16T17:41:24.559463+00:00"
       ]
     },
     "versions": {
       "2936a1ccffae": [
         "set",
-        "2026-09-14T19:05:31.510465+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "3bf888583082": [
+        "gone",
+        "2026-09-16T17:39:47.442383+00:00"
+      ],
+      "dd-5e313f35bf": [
+        "set",
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "dd-86178f8a52": [
+        "set",
+        "2026-09-16T17:41:24.559463+00:00"
       ],
       "rt-f55c9d98e5": [
         "gone",
@@ -58,19 +86,23 @@
       ],
       "v0-7289d718": [
         "set",
-        "2026-09-12T21:13:36.560749+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "v1-1326b7e0": [
         "set",
-        "2026-09-12T21:13:36.560749+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
+      ],
+      "{\"at\": \"2026-09-14T14:54:15-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 63, \"Flag\": 30, \"Garbage\": 92}, \"machine\": \"BarryLab\", \"n\": 185, \"note\": \"Re-timed from toothy_concat to neuralynx_true. 185 event(s) moved by 0.0 to 121.3 ms; every label kept, nothing re-detected.\", \"snap\": [[15.839, \"spike\"], [15.839, \"spike\"], [19.32, \"spike\"], [19.32, \"spike\"], [21.437, \"spike\"], [21.437, \"garbage\"], [31.64, \"spike\"], [31.64, \"flag\"], [41.813, \"spike\"], [41.813, \"spike\"], [71.561, \"spike\"], [71.561, \"garbage\"], [71.664, \"spike\"], [71.664, \"flag\"], [71.971, \"garbage\"], [71.971, \"spike\"], [73.552, \"spike\"], [73.552, \"spike\"], [74.905, \"spike\"], [74.905, \"garbage\"], [84.242, \"spike\"], [84.242, \"flag\"], [91.026, \"spike\"], [91.026, \"spike\"], [93.998, \"spike\"], [93.998, \"spike\"], [94.856, \"spike\"], [101.775, \"spike\"], [101.923, \"garbage\"], [102.63, \"spike\"], [105.717, \"spike\"], [107.845, \"spike\"], [111.521, \"spike\"], [114.614, \"spike\"], [132.792, \"garbage\"], [134.546, \"spike\"], [134.726, \"spike\"], [134.726, \"spike\"], [167.0, \"spike\"], [167.0, \"spike\"], [173.217, \"spike\"], [173.217, \"garbage\"], [180.299, \"spike\"], [180.299, \"flag\"], [182.007, \"garbage\"], [182.007, \"spike\"], [182.387, \"spike\"], [193.08, \"spike\"], [193.08, \"garbage\"], [198.53, \"spike\"], [198.53, \"flag\"], [216.219, \"spike\"], [216.219, \"spike\"], [222.942, \"spike\"], [223.635, \"spike\"], [223.635, \"garbage\"], [224.623, \"spike\"], [224.623, \"flag\"], [226.618, \"spike\"], [231.403, \"spike\"], [232.461, \"spike\"], [233.995, \"spike\"], [245.665, \"spike\"], [249.82, \"spike\"], [250.262, \"spike\"], [277.245, \"spike\"], [284.566, \"garbage\"], [286.527, \"spike\"], [290.784, \"spike\"], [298.434, \"spike\"], [313.368, \"spike\"], [327.019, \"spike\"], [415.795, \"spike\"], [466.513, \"spike\"], [518.666, \"spike\"], [631.959, \"spike\"], [655.994, \"spike\"], [661.585, \"spike\"], [671.110313, \"garbage\"], [697.228313, \"garbage\"], [707.626296, \"garbage\"], [710.728296, \"garbage\"], [724.135296, \"garbage\"], [724.762296, \"garbage\"], [724.949296, \"garbage\"], [738.830296, \"spike\"], [741.706296, \"garbage\"], [750.846296, \"garbage\"], [753.405296, \"garbage\"], [754.420296, \"garbage\"], [757.061296, \"garbage\"], [772.014296, \"garbage\"], [779.932296, \"garbage\"], [784.181296, \"garbage\"], [795.336296, \"flag\"], [796.825296, \"garbage\"], [820.875296, \"flag\"], [832.217296, \"garbage\"], [832.898296, \"garbage\"], [851.912296, \"garbage\"], [854.571296, \"garbage\"], [902.461296, \"garbage\"], [1030.185296, \"garbage\"], [1069.151275, \"flag\"], [1098.645275, \"garbage\"], [1103.439275, \"garbage\"], [1138.332275, \"garbage\"], [1173.459275, \"flag\"], [1215.664275, \"garbage\"], [1222.392275, \"garbage\"], [1232.588275, \"garbage\"], [1245.834275, \"garbage\"], [1266.936275, \"garbage\"], [1300.641275, \"garbage\"], [1314.736275, \"garbage\"], [1329.242275, \"flag\"], [1338.939275, \"garbage\"], [1342.360275, \"flag\"], [1344.603275, \"garbage\"], [1349.705275, \"flag\"], [1350.280275, \"garbage\"], [1352.938275, \"garbage\"], [1371.424275, \"garbage\"], [1401.381275, \"garbage\"], [1409.194275, \"garbage\"], [1410.134275, \"garbage\"], [1416.406275, \"garbage\"], [1436.392275, \"garbage\"], [1437.450275, \"garbage\"], [1439.100275, \"flag\"], [1520.431275, \"flag\"], [1550.312275, \"flag\"], [1562.116275, \"garbage\"], [1566.959275, \"garbage\"], [1580.028275, \"garbage\"], [1580.370275, \"garbage\"], [1584.123275, \"garbage\"], [1593.566275, \"garbage\"], [1607.154275, \"garbage\"], [1611.557275, \"garbage\"], [1613.913275, \"garbage\"], [1623.394275, \"garbage\"], [1630.175275, \"garbage\"], [1633.056275, \"garbage\"], [1640.676275, \"garbage\"], [1645.443275, \"garbage\"], [1645.885275, \"garbage\"], [1649.228275, \"garbage\"], [1650.977275, \"garbage\"], [1662.407275, \"garbage\"], [1668.519275, \"flag\"], [1672.960275, \"garbage\"], [1675.294275, \"garbage\"], [1678.492275, \"flag\"], [1678.829275, \"flag\"], [1679.943275, \"flag\"], [1682.204275, \"flag\"], [1694.912275, \"flag\"], [1695.325275, \"flag\"], [1698.158275, \"flag\"], [1699.747275, \"flag\"], [1700.024275, \"garbage\"], [1705.762275, \"garbage\"], [1706.183275, \"flag\"], [1710.610275, \"garbage\"], [1716.590275, \"garbage\"], [1718.759275, \"garbage\"], [1727.050275, \"garbage\"], [1728.308275, \"garbage\"], [1736.307275, \"garbage\"], [1737.298275, \"garbage\"], [1737.620275, \"flag\"], [1738.606275, \"garbage\"], [1740.386275, \"garbage\"], [1757.779275, \"garbage\"], [1775.193275, \"flag\"], [1781.159275, \"garbage\"], [1785.163275, \"garbage\"], [1785.985275, \"garbage\"], [1788.188275, \"garbage\"], [1791.157275, \"garbage\"], [1791.747275, \"spike\"], [1807.637275, \"flag\"], [1807.854275, \"flag\"], [1808.990275, \"garbage\"]], \"v\": 3}": [
+        "set",
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-14T14:54:15-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 63, \"Flag\": 30, \"Garbage\": 92}, \"machine\": \"BarryLab\", \"n\": 185, \"note\": \"Re-timed from toothy_concat to neuralynx_true. 185 event(s) moved by 0.0 to 121.3 ms; every label kept, nothing re-detected.\", \"snap_elsewhere\": true, \"v\": 3}": [
         "set",
-        "2026-09-15T14:49:07.259841+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-15T10:39:58-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 52, \"Flag\": 24, \"Garbage\": 86}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 162, \"note\": \"Collapsed 23 time(s) that each held more than one record. 23 event(s) removed, 162 left; 14 of them disagreed about the call and the first copy was kept.\", \"snap\": [[15.839, \"spike\"], [19.32, \"spike\"], [21.437, \"spike\"], [31.64, \"spike\"], [41.813, \"spike\"], [71.561, \"spike\"], [71.664, \"spike\"], [71.971, \"garbage\"], [73.552, \"spike\"], [74.905, \"spike\"], [84.242, \"spike\"], [91.026, \"spike\"], [93.998, \"spike\"], [94.856, \"spike\"], [101.775, \"spike\"], [101.923, \"garbage\"], [102.63, \"spike\"], [105.717, \"spike\"], [107.845, \"spike\"], [111.521, \"spike\"], [114.614, \"spike\"], [132.792, \"garbage\"], [134.546, \"spike\"], [134.726, \"spike\"], [167.0, \"spike\"], [173.217, \"spike\"], [180.299, \"spike\"], [182.007, \"garbage\"], [182.387, \"spike\"], [193.08, \"spike\"], [198.53, \"spike\"], [216.219, \"spike\"], [222.942, \"spike\"], [223.635, \"spike\"], [224.623, \"spike\"], [226.618, \"spike\"], [231.403, \"spike\"], [232.461, \"spike\"], [233.995, \"spike\"], [245.665, \"spike\"], [249.82, \"spike\"], [250.262, \"spike\"], [277.245, \"spike\"], [284.566, \"garbage\"], [286.527, \"spike\"], [290.784, \"spike\"], [298.434, \"spike\"], [313.368, \"spike\"], [327.019, \"spike\"], [415.795, \"spike\"], [466.513, \"spike\"], [518.666, \"spike\"], [631.959, \"spike\"], [655.994, \"spike\"], [661.585, \"spike\"], [671.110313, \"garbage\"], [697.228313, \"garbage\"], [707.626296, \"garbage\"], [710.728296, \"garbage\"], [724.135296, \"garbage\"], [724.762296, \"garbage\"], [724.949296, \"garbage\"], [738.830296, \"spike\"], [741.706296, \"garbage\"], [750.846296, \"garbage\"], [753.405296, \"garbage\"], [754.420296, \"garbage\"], [757.061296, \"garbage\"], [772.014296, \"garbage\"], [779.932296, \"garbage\"], [784.181296, \"garbage\"], [795.336296, \"flag\"], [796.825296, \"garbage\"], [820.875296, \"flag\"], [832.217296, \"garbage\"], [832.898296, \"garbage\"], [851.912296, \"garbage\"], [854.571296, \"garbage\"], [902.461296, \"garbage\"], [1030.185296, \"garbage\"], [1069.151275, \"flag\"], [1098.645275, \"garbage\"], [1103.439275, \"garbage\"], [1138.332275, \"garbage\"], [1173.459275, \"flag\"], [1215.664275, \"garbage\"], [1222.392275, \"garbage\"], [1232.588275, \"garbage\"], [1245.834275, \"garbage\"], [1266.936275, \"garbage\"], [1300.641275, \"garbage\"], [1314.736275, \"garbage\"], [1329.242275, \"flag\"], [1338.939275, \"garbage\"], [1342.360275, \"flag\"], [1344.603275, \"garbage\"], [1349.705275, \"flag\"], [1350.280275, \"garbage\"], [1352.938275, \"garbage\"], [1371.424275, \"garbage\"], [1401.381275, \"garbage\"], [1409.194275, \"garbage\"], [1410.134275, \"garbage\"], [1416.406275, \"garbage\"], [1436.392275, \"garbage\"], [1437.450275, \"garbage\"], [1439.100275, \"flag\"], [1520.431275, \"flag\"], [1550.312275, \"flag\"], [1562.116275, \"garbage\"], [1566.959275, \"garbage\"], [1580.028275, \"garbage\"], [1580.370275, \"garbage\"], [1584.123275, \"garbage\"], [1593.566275, \"garbage\"], [1607.154275, \"garbage\"], [1611.557275, \"garbage\"], [1613.913275, \"garbage\"], [1623.394275, \"garbage\"], [1630.175275, \"garbage\"], [1633.056275, \"garbage\"], [1640.676275, \"garbage\"], [1645.443275, \"garbage\"], [1645.885275, \"garbage\"], [1649.228275, \"garbage\"], [1650.977275, \"garbage\"], [1662.407275, \"garbage\"], [1668.519275, \"flag\"], [1672.960275, \"garbage\"], [1675.294275, \"garbage\"], [1678.492275, \"flag\"], [1678.829275, \"flag\"], [1679.943275, \"flag\"], [1682.204275, \"flag\"], [1694.912275, \"flag\"], [1695.325275, \"flag\"], [1698.158275, \"flag\"], [1699.747275, \"flag\"], [1700.024275, \"garbage\"], [1705.762275, \"garbage\"], [1706.183275, \"flag\"], [1710.610275, \"garbage\"], [1716.590275, \"garbage\"], [1718.759275, \"garbage\"], [1727.050275, \"garbage\"], [1728.308275, \"garbage\"], [1736.307275, \"garbage\"], [1737.298275, \"garbage\"], [1737.620275, \"flag\"], [1738.606275, \"garbage\"], [1740.386275, \"garbage\"], [1757.779275, \"garbage\"], [1775.193275, \"flag\"], [1781.159275, \"garbage\"], [1785.163275, \"garbage\"], [1785.985275, \"garbage\"], [1788.188275, \"garbage\"], [1791.157275, \"garbage\"], [1791.747275, \"spike\"], [1807.637275, \"flag\"], [1807.854275, \"flag\"], [1808.990275, \"garbage\"]], \"v\": 4}": [
         "set",
-        "2026-09-15T14:49:07.819930+00:00"
+        "2026-09-16T17:38:08.558327+00:00"
       ],
       "{\"at\": \"2026-09-15T10:39:58-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 52, \"Flag\": 24, \"Garbage\": 86}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 162, \"note\": \"Collapsed 23 time(s) that each held more than one record. 23 event(s) removed, 162 left; 14 of them disagreed about the call and the first copy was kept.\", \"snap_elsewhere\": true, \"v\": 4}": [
         "gone",
@@ -79,7 +111,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-15T14:49:07.819930+00:00",
+    "at": "2026-09-16T17:41:24.559463+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -89,9 +121,10 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
-    "Dentate Spike": 63,
-    "Flag": 30,
-    "Garbage": 92
+    "Dentate Spike": 59,
+    "Flag": 25,
+    "Flag for Deep Review": 1,
+    "Garbage": 82
   },
   "curation_label": "*",
   "duration_s": null,
@@ -104,16 +137,6 @@
     {
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 15.839
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 19.32
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
       "start": 19.32
     },
     {
@@ -122,24 +145,9 @@
       "start": 21.437
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 21.437
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 31.64
-    },
-    {
-      "label": "Flag",
-      "label_id": "flag",
-      "start": 31.64
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 41.813
     },
     {
       "label": "Dentate Spike",
@@ -152,24 +160,9 @@
       "start": 71.561
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 71.561
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 71.664
-    },
-    {
-      "label": "Flag",
-      "label_id": "flag",
-      "start": 71.664
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 71.971
     },
     {
       "label": "Dentate Spike",
@@ -184,16 +177,6 @@
     {
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 73.552
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 74.905
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
       "start": 74.905
     },
     {
@@ -202,24 +185,9 @@
       "start": 84.242
     },
     {
-      "label": "Flag",
-      "label_id": "flag",
-      "start": 84.242
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 91.026
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 91.026
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 93.998
     },
     {
       "label": "Dentate Spike",
@@ -237,8 +205,8 @@
       "start": 101.775
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 101.923
     },
     {
@@ -267,8 +235,8 @@
       "start": 114.614
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 132.792
     },
     {
@@ -284,16 +252,6 @@
     {
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 134.726
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 167.0
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
       "start": 167.0
     },
     {
@@ -302,24 +260,9 @@
       "start": 173.217
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 173.217
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 180.299
-    },
-    {
-      "label": "Flag",
-      "label_id": "flag",
-      "start": 180.299
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 182.007
     },
     {
       "label": "Dentate Spike",
@@ -337,24 +280,9 @@
       "start": 193.08
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 193.08
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 198.53
-    },
-    {
-      "label": "Flag",
-      "label_id": "flag",
-      "start": 198.53
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 216.219
     },
     {
       "label": "Dentate Spike",
@@ -372,18 +300,8 @@
       "start": 223.635
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 223.635
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 224.623
-    },
-    {
-      "label": "Flag",
-      "label_id": "flag",
       "start": 224.623
     },
     {
@@ -487,9 +405,19 @@
       "start": 661.585
     },
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 671.002
+    },
+    {
       "label": "Garbage",
       "label_id": "garbage",
       "start": 671.110313
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 697.12
     },
     {
       "label": "Garbage",
@@ -499,7 +427,17 @@
     {
       "label": "Garbage",
       "label_id": "garbage",
+      "start": 707.509
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 707.626296
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 710.611
     },
     {
       "label": "Garbage",
@@ -524,6 +462,11 @@
     {
       "label": "Dentate Spike",
       "label_id": "spike",
+      "start": 738.713
+    },
+    {
+      "label": "Flag for Deep Review",
+      "label_id": "review",
       "start": 738.830296
     },
     {
@@ -712,8 +655,8 @@
       "start": 1371.424275
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 1401.381275
     },
     {
@@ -1055,6 +998,44 @@
         "versions"
       ],
       "why": "deleted version 3"
+    },
+    {
+      "at": "2026-09-15T10:39:58-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "events"
+      ],
+      "now_n": 162,
+      "was_n": 185,
+      "why": "collapsed 23 duplicate time(s)"
+    },
+    {
+      "at": "2026-09-16T13:38:08-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 254,
+      "was_n": 162,
+      "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-16T13:39:47-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "versions"
+      ],
+      "why": "deleted version 5"
+    },
+    {
+      "at": "2026-09-16T13:41:24-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 167,
+      "was_n": 254,
+      "why": "collapsed 87 duplicate time(s)"
     }
   ],
   "id": "7d5fa32206b4",
@@ -1065,7 +1046,7 @@
     "spike": "Dentate Spike"
   },
   "mouse": 34,
-  "n": 185,
+  "n": 167,
   "name": "m34s8jun10",
   "note": "",
   "project": "PTEN",
@@ -1098,7 +1079,7 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 4,
+  "version": 5,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -3893,6 +3874,2570 @@
         ]
       ],
       "v": 4
+    },
+    {
+      "at": "2026-09-14T14:54:15-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 63,
+        "Flag": 30,
+        "Garbage": 92
+      },
+      "machine": "BarryLab",
+      "n": 185,
+      "note": "Re-timed from toothy_concat to neuralynx_true. 185 event(s) moved by 0.0 to 121.3 ms; every label kept, nothing re-detected.",
+      "snap": [
+        [
+          15.839,
+          "spike"
+        ],
+        [
+          15.839,
+          "spike"
+        ],
+        [
+          19.32,
+          "spike"
+        ],
+        [
+          19.32,
+          "spike"
+        ],
+        [
+          21.437,
+          "spike"
+        ],
+        [
+          21.437,
+          "garbage"
+        ],
+        [
+          31.64,
+          "spike"
+        ],
+        [
+          31.64,
+          "flag"
+        ],
+        [
+          41.813,
+          "spike"
+        ],
+        [
+          41.813,
+          "spike"
+        ],
+        [
+          71.561,
+          "spike"
+        ],
+        [
+          71.561,
+          "garbage"
+        ],
+        [
+          71.664,
+          "spike"
+        ],
+        [
+          71.664,
+          "flag"
+        ],
+        [
+          71.971,
+          "garbage"
+        ],
+        [
+          71.971,
+          "spike"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          74.905,
+          "spike"
+        ],
+        [
+          74.905,
+          "garbage"
+        ],
+        [
+          84.242,
+          "spike"
+        ],
+        [
+          84.242,
+          "flag"
+        ],
+        [
+          91.026,
+          "spike"
+        ],
+        [
+          91.026,
+          "spike"
+        ],
+        [
+          93.998,
+          "spike"
+        ],
+        [
+          93.998,
+          "spike"
+        ],
+        [
+          94.856,
+          "spike"
+        ],
+        [
+          101.775,
+          "spike"
+        ],
+        [
+          101.923,
+          "garbage"
+        ],
+        [
+          102.63,
+          "spike"
+        ],
+        [
+          105.717,
+          "spike"
+        ],
+        [
+          107.845,
+          "spike"
+        ],
+        [
+          111.521,
+          "spike"
+        ],
+        [
+          114.614,
+          "spike"
+        ],
+        [
+          132.792,
+          "garbage"
+        ],
+        [
+          134.546,
+          "spike"
+        ],
+        [
+          134.726,
+          "spike"
+        ],
+        [
+          134.726,
+          "spike"
+        ],
+        [
+          167.0,
+          "spike"
+        ],
+        [
+          167.0,
+          "spike"
+        ],
+        [
+          173.217,
+          "spike"
+        ],
+        [
+          173.217,
+          "garbage"
+        ],
+        [
+          180.299,
+          "spike"
+        ],
+        [
+          180.299,
+          "flag"
+        ],
+        [
+          182.007,
+          "garbage"
+        ],
+        [
+          182.007,
+          "spike"
+        ],
+        [
+          182.387,
+          "spike"
+        ],
+        [
+          193.08,
+          "spike"
+        ],
+        [
+          193.08,
+          "garbage"
+        ],
+        [
+          198.53,
+          "spike"
+        ],
+        [
+          198.53,
+          "flag"
+        ],
+        [
+          216.219,
+          "spike"
+        ],
+        [
+          216.219,
+          "spike"
+        ],
+        [
+          222.942,
+          "spike"
+        ],
+        [
+          223.635,
+          "spike"
+        ],
+        [
+          223.635,
+          "garbage"
+        ],
+        [
+          224.623,
+          "spike"
+        ],
+        [
+          224.623,
+          "flag"
+        ],
+        [
+          226.618,
+          "spike"
+        ],
+        [
+          231.403,
+          "spike"
+        ],
+        [
+          232.461,
+          "spike"
+        ],
+        [
+          233.995,
+          "spike"
+        ],
+        [
+          245.665,
+          "spike"
+        ],
+        [
+          249.82,
+          "spike"
+        ],
+        [
+          250.262,
+          "spike"
+        ],
+        [
+          277.245,
+          "spike"
+        ],
+        [
+          284.566,
+          "garbage"
+        ],
+        [
+          286.527,
+          "spike"
+        ],
+        [
+          290.784,
+          "spike"
+        ],
+        [
+          298.434,
+          "spike"
+        ],
+        [
+          313.368,
+          "spike"
+        ],
+        [
+          327.019,
+          "spike"
+        ],
+        [
+          415.795,
+          "spike"
+        ],
+        [
+          466.513,
+          "spike"
+        ],
+        [
+          518.666,
+          "spike"
+        ],
+        [
+          631.959,
+          "spike"
+        ],
+        [
+          655.994,
+          "spike"
+        ],
+        [
+          661.585,
+          "spike"
+        ],
+        [
+          671.110313,
+          "garbage"
+        ],
+        [
+          697.228313,
+          "garbage"
+        ],
+        [
+          707.626296,
+          "garbage"
+        ],
+        [
+          710.728296,
+          "garbage"
+        ],
+        [
+          724.135296,
+          "garbage"
+        ],
+        [
+          724.762296,
+          "garbage"
+        ],
+        [
+          724.949296,
+          "garbage"
+        ],
+        [
+          738.830296,
+          "spike"
+        ],
+        [
+          741.706296,
+          "garbage"
+        ],
+        [
+          750.846296,
+          "garbage"
+        ],
+        [
+          753.405296,
+          "garbage"
+        ],
+        [
+          754.420296,
+          "garbage"
+        ],
+        [
+          757.061296,
+          "garbage"
+        ],
+        [
+          772.014296,
+          "garbage"
+        ],
+        [
+          779.932296,
+          "garbage"
+        ],
+        [
+          784.181296,
+          "garbage"
+        ],
+        [
+          795.336296,
+          "flag"
+        ],
+        [
+          796.825296,
+          "garbage"
+        ],
+        [
+          820.875296,
+          "flag"
+        ],
+        [
+          832.217296,
+          "garbage"
+        ],
+        [
+          832.898296,
+          "garbage"
+        ],
+        [
+          851.912296,
+          "garbage"
+        ],
+        [
+          854.571296,
+          "garbage"
+        ],
+        [
+          902.461296,
+          "garbage"
+        ],
+        [
+          1030.185296,
+          "garbage"
+        ],
+        [
+          1069.151275,
+          "flag"
+        ],
+        [
+          1098.645275,
+          "garbage"
+        ],
+        [
+          1103.439275,
+          "garbage"
+        ],
+        [
+          1138.332275,
+          "garbage"
+        ],
+        [
+          1173.459275,
+          "flag"
+        ],
+        [
+          1215.664275,
+          "garbage"
+        ],
+        [
+          1222.392275,
+          "garbage"
+        ],
+        [
+          1232.588275,
+          "garbage"
+        ],
+        [
+          1245.834275,
+          "garbage"
+        ],
+        [
+          1266.936275,
+          "garbage"
+        ],
+        [
+          1300.641275,
+          "garbage"
+        ],
+        [
+          1314.736275,
+          "garbage"
+        ],
+        [
+          1329.242275,
+          "flag"
+        ],
+        [
+          1338.939275,
+          "garbage"
+        ],
+        [
+          1342.360275,
+          "flag"
+        ],
+        [
+          1344.603275,
+          "garbage"
+        ],
+        [
+          1349.705275,
+          "flag"
+        ],
+        [
+          1350.280275,
+          "garbage"
+        ],
+        [
+          1352.938275,
+          "garbage"
+        ],
+        [
+          1371.424275,
+          "garbage"
+        ],
+        [
+          1401.381275,
+          "garbage"
+        ],
+        [
+          1409.194275,
+          "garbage"
+        ],
+        [
+          1410.134275,
+          "garbage"
+        ],
+        [
+          1416.406275,
+          "garbage"
+        ],
+        [
+          1436.392275,
+          "garbage"
+        ],
+        [
+          1437.450275,
+          "garbage"
+        ],
+        [
+          1439.100275,
+          "flag"
+        ],
+        [
+          1520.431275,
+          "flag"
+        ],
+        [
+          1550.312275,
+          "flag"
+        ],
+        [
+          1562.116275,
+          "garbage"
+        ],
+        [
+          1566.959275,
+          "garbage"
+        ],
+        [
+          1580.028275,
+          "garbage"
+        ],
+        [
+          1580.370275,
+          "garbage"
+        ],
+        [
+          1584.123275,
+          "garbage"
+        ],
+        [
+          1593.566275,
+          "garbage"
+        ],
+        [
+          1607.154275,
+          "garbage"
+        ],
+        [
+          1611.557275,
+          "garbage"
+        ],
+        [
+          1613.913275,
+          "garbage"
+        ],
+        [
+          1623.394275,
+          "garbage"
+        ],
+        [
+          1630.175275,
+          "garbage"
+        ],
+        [
+          1633.056275,
+          "garbage"
+        ],
+        [
+          1640.676275,
+          "garbage"
+        ],
+        [
+          1645.443275,
+          "garbage"
+        ],
+        [
+          1645.885275,
+          "garbage"
+        ],
+        [
+          1649.228275,
+          "garbage"
+        ],
+        [
+          1650.977275,
+          "garbage"
+        ],
+        [
+          1662.407275,
+          "garbage"
+        ],
+        [
+          1668.519275,
+          "flag"
+        ],
+        [
+          1672.960275,
+          "garbage"
+        ],
+        [
+          1675.294275,
+          "garbage"
+        ],
+        [
+          1678.492275,
+          "flag"
+        ],
+        [
+          1678.829275,
+          "flag"
+        ],
+        [
+          1679.943275,
+          "flag"
+        ],
+        [
+          1682.204275,
+          "flag"
+        ],
+        [
+          1694.912275,
+          "flag"
+        ],
+        [
+          1695.325275,
+          "flag"
+        ],
+        [
+          1698.158275,
+          "flag"
+        ],
+        [
+          1699.747275,
+          "flag"
+        ],
+        [
+          1700.024275,
+          "garbage"
+        ],
+        [
+          1705.762275,
+          "garbage"
+        ],
+        [
+          1706.183275,
+          "flag"
+        ],
+        [
+          1710.610275,
+          "garbage"
+        ],
+        [
+          1716.590275,
+          "garbage"
+        ],
+        [
+          1718.759275,
+          "garbage"
+        ],
+        [
+          1727.050275,
+          "garbage"
+        ],
+        [
+          1728.308275,
+          "garbage"
+        ],
+        [
+          1736.307275,
+          "garbage"
+        ],
+        [
+          1737.298275,
+          "garbage"
+        ],
+        [
+          1737.620275,
+          "flag"
+        ],
+        [
+          1738.606275,
+          "garbage"
+        ],
+        [
+          1740.386275,
+          "garbage"
+        ],
+        [
+          1757.779275,
+          "garbage"
+        ],
+        [
+          1775.193275,
+          "flag"
+        ],
+        [
+          1781.159275,
+          "garbage"
+        ],
+        [
+          1785.163275,
+          "garbage"
+        ],
+        [
+          1785.985275,
+          "garbage"
+        ],
+        [
+          1788.188275,
+          "garbage"
+        ],
+        [
+          1791.157275,
+          "garbage"
+        ],
+        [
+          1791.747275,
+          "spike"
+        ],
+        [
+          1807.637275,
+          "flag"
+        ],
+        [
+          1807.854275,
+          "flag"
+        ],
+        [
+          1808.990275,
+          "garbage"
+        ]
+      ],
+      "v": 3
+    },
+    {
+      "at": "2026-09-15T10:39:58-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Dentate Spike": 52,
+        "Flag": 24,
+        "Garbage": 86
+      },
+      "changed": 0,
+      "deduped": {
+        "conflicts": 14,
+        "dp": 4,
+        "groups": 23,
+        "policy": "first",
+        "removed": 23,
+        "settled": [
+          [
+            21.437,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            31.64,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            71.561,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            71.664,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            71.971,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            74.905,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            84.242,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            173.217,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            180.299,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            182.007,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            193.08,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            198.53,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            223.635,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            224.623,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ]
+        ],
+        "undecided_dropped": 0
+      },
+      "gained": 0,
+      "id": "dd-5e313f35bf",
+      "lost": 23,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 162,
+      "note": "Collapsed 23 time(s) that each held more than one record. 23 event(s) removed, 162 left; 14 of them disagreed about the call and the first copy was kept.",
+      "snap": [
+        [
+          15.839,
+          "spike"
+        ],
+        [
+          19.32,
+          "spike"
+        ],
+        [
+          21.437,
+          "spike"
+        ],
+        [
+          31.64,
+          "spike"
+        ],
+        [
+          41.813,
+          "spike"
+        ],
+        [
+          71.561,
+          "spike"
+        ],
+        [
+          71.664,
+          "spike"
+        ],
+        [
+          71.971,
+          "garbage"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          74.905,
+          "spike"
+        ],
+        [
+          84.242,
+          "spike"
+        ],
+        [
+          91.026,
+          "spike"
+        ],
+        [
+          93.998,
+          "spike"
+        ],
+        [
+          94.856,
+          "spike"
+        ],
+        [
+          101.775,
+          "spike"
+        ],
+        [
+          101.923,
+          "garbage"
+        ],
+        [
+          102.63,
+          "spike"
+        ],
+        [
+          105.717,
+          "spike"
+        ],
+        [
+          107.845,
+          "spike"
+        ],
+        [
+          111.521,
+          "spike"
+        ],
+        [
+          114.614,
+          "spike"
+        ],
+        [
+          132.792,
+          "garbage"
+        ],
+        [
+          134.546,
+          "spike"
+        ],
+        [
+          134.726,
+          "spike"
+        ],
+        [
+          167.0,
+          "spike"
+        ],
+        [
+          173.217,
+          "spike"
+        ],
+        [
+          180.299,
+          "spike"
+        ],
+        [
+          182.007,
+          "garbage"
+        ],
+        [
+          182.387,
+          "spike"
+        ],
+        [
+          193.08,
+          "spike"
+        ],
+        [
+          198.53,
+          "spike"
+        ],
+        [
+          216.219,
+          "spike"
+        ],
+        [
+          222.942,
+          "spike"
+        ],
+        [
+          223.635,
+          "spike"
+        ],
+        [
+          224.623,
+          "spike"
+        ],
+        [
+          226.618,
+          "spike"
+        ],
+        [
+          231.403,
+          "spike"
+        ],
+        [
+          232.461,
+          "spike"
+        ],
+        [
+          233.995,
+          "spike"
+        ],
+        [
+          245.665,
+          "spike"
+        ],
+        [
+          249.82,
+          "spike"
+        ],
+        [
+          250.262,
+          "spike"
+        ],
+        [
+          277.245,
+          "spike"
+        ],
+        [
+          284.566,
+          "garbage"
+        ],
+        [
+          286.527,
+          "spike"
+        ],
+        [
+          290.784,
+          "spike"
+        ],
+        [
+          298.434,
+          "spike"
+        ],
+        [
+          313.368,
+          "spike"
+        ],
+        [
+          327.019,
+          "spike"
+        ],
+        [
+          415.795,
+          "spike"
+        ],
+        [
+          466.513,
+          "spike"
+        ],
+        [
+          518.666,
+          "spike"
+        ],
+        [
+          631.959,
+          "spike"
+        ],
+        [
+          655.994,
+          "spike"
+        ],
+        [
+          661.585,
+          "spike"
+        ],
+        [
+          671.110313,
+          "garbage"
+        ],
+        [
+          697.228313,
+          "garbage"
+        ],
+        [
+          707.626296,
+          "garbage"
+        ],
+        [
+          710.728296,
+          "garbage"
+        ],
+        [
+          724.135296,
+          "garbage"
+        ],
+        [
+          724.762296,
+          "garbage"
+        ],
+        [
+          724.949296,
+          "garbage"
+        ],
+        [
+          738.830296,
+          "spike"
+        ],
+        [
+          741.706296,
+          "garbage"
+        ],
+        [
+          750.846296,
+          "garbage"
+        ],
+        [
+          753.405296,
+          "garbage"
+        ],
+        [
+          754.420296,
+          "garbage"
+        ],
+        [
+          757.061296,
+          "garbage"
+        ],
+        [
+          772.014296,
+          "garbage"
+        ],
+        [
+          779.932296,
+          "garbage"
+        ],
+        [
+          784.181296,
+          "garbage"
+        ],
+        [
+          795.336296,
+          "flag"
+        ],
+        [
+          796.825296,
+          "garbage"
+        ],
+        [
+          820.875296,
+          "flag"
+        ],
+        [
+          832.217296,
+          "garbage"
+        ],
+        [
+          832.898296,
+          "garbage"
+        ],
+        [
+          851.912296,
+          "garbage"
+        ],
+        [
+          854.571296,
+          "garbage"
+        ],
+        [
+          902.461296,
+          "garbage"
+        ],
+        [
+          1030.185296,
+          "garbage"
+        ],
+        [
+          1069.151275,
+          "flag"
+        ],
+        [
+          1098.645275,
+          "garbage"
+        ],
+        [
+          1103.439275,
+          "garbage"
+        ],
+        [
+          1138.332275,
+          "garbage"
+        ],
+        [
+          1173.459275,
+          "flag"
+        ],
+        [
+          1215.664275,
+          "garbage"
+        ],
+        [
+          1222.392275,
+          "garbage"
+        ],
+        [
+          1232.588275,
+          "garbage"
+        ],
+        [
+          1245.834275,
+          "garbage"
+        ],
+        [
+          1266.936275,
+          "garbage"
+        ],
+        [
+          1300.641275,
+          "garbage"
+        ],
+        [
+          1314.736275,
+          "garbage"
+        ],
+        [
+          1329.242275,
+          "flag"
+        ],
+        [
+          1338.939275,
+          "garbage"
+        ],
+        [
+          1342.360275,
+          "flag"
+        ],
+        [
+          1344.603275,
+          "garbage"
+        ],
+        [
+          1349.705275,
+          "flag"
+        ],
+        [
+          1350.280275,
+          "garbage"
+        ],
+        [
+          1352.938275,
+          "garbage"
+        ],
+        [
+          1371.424275,
+          "garbage"
+        ],
+        [
+          1401.381275,
+          "garbage"
+        ],
+        [
+          1409.194275,
+          "garbage"
+        ],
+        [
+          1410.134275,
+          "garbage"
+        ],
+        [
+          1416.406275,
+          "garbage"
+        ],
+        [
+          1436.392275,
+          "garbage"
+        ],
+        [
+          1437.450275,
+          "garbage"
+        ],
+        [
+          1439.100275,
+          "flag"
+        ],
+        [
+          1520.431275,
+          "flag"
+        ],
+        [
+          1550.312275,
+          "flag"
+        ],
+        [
+          1562.116275,
+          "garbage"
+        ],
+        [
+          1566.959275,
+          "garbage"
+        ],
+        [
+          1580.028275,
+          "garbage"
+        ],
+        [
+          1580.370275,
+          "garbage"
+        ],
+        [
+          1584.123275,
+          "garbage"
+        ],
+        [
+          1593.566275,
+          "garbage"
+        ],
+        [
+          1607.154275,
+          "garbage"
+        ],
+        [
+          1611.557275,
+          "garbage"
+        ],
+        [
+          1613.913275,
+          "garbage"
+        ],
+        [
+          1623.394275,
+          "garbage"
+        ],
+        [
+          1630.175275,
+          "garbage"
+        ],
+        [
+          1633.056275,
+          "garbage"
+        ],
+        [
+          1640.676275,
+          "garbage"
+        ],
+        [
+          1645.443275,
+          "garbage"
+        ],
+        [
+          1645.885275,
+          "garbage"
+        ],
+        [
+          1649.228275,
+          "garbage"
+        ],
+        [
+          1650.977275,
+          "garbage"
+        ],
+        [
+          1662.407275,
+          "garbage"
+        ],
+        [
+          1668.519275,
+          "flag"
+        ],
+        [
+          1672.960275,
+          "garbage"
+        ],
+        [
+          1675.294275,
+          "garbage"
+        ],
+        [
+          1678.492275,
+          "flag"
+        ],
+        [
+          1678.829275,
+          "flag"
+        ],
+        [
+          1679.943275,
+          "flag"
+        ],
+        [
+          1682.204275,
+          "flag"
+        ],
+        [
+          1694.912275,
+          "flag"
+        ],
+        [
+          1695.325275,
+          "flag"
+        ],
+        [
+          1698.158275,
+          "flag"
+        ],
+        [
+          1699.747275,
+          "flag"
+        ],
+        [
+          1700.024275,
+          "garbage"
+        ],
+        [
+          1705.762275,
+          "garbage"
+        ],
+        [
+          1706.183275,
+          "flag"
+        ],
+        [
+          1710.610275,
+          "garbage"
+        ],
+        [
+          1716.590275,
+          "garbage"
+        ],
+        [
+          1718.759275,
+          "garbage"
+        ],
+        [
+          1727.050275,
+          "garbage"
+        ],
+        [
+          1728.308275,
+          "garbage"
+        ],
+        [
+          1736.307275,
+          "garbage"
+        ],
+        [
+          1737.298275,
+          "garbage"
+        ],
+        [
+          1737.620275,
+          "flag"
+        ],
+        [
+          1738.606275,
+          "garbage"
+        ],
+        [
+          1740.386275,
+          "garbage"
+        ],
+        [
+          1757.779275,
+          "garbage"
+        ],
+        [
+          1775.193275,
+          "flag"
+        ],
+        [
+          1781.159275,
+          "garbage"
+        ],
+        [
+          1785.163275,
+          "garbage"
+        ],
+        [
+          1785.985275,
+          "garbage"
+        ],
+        [
+          1788.188275,
+          "garbage"
+        ],
+        [
+          1791.157275,
+          "garbage"
+        ],
+        [
+          1791.747275,
+          "spike"
+        ],
+        [
+          1807.637275,
+          "flag"
+        ],
+        [
+          1807.854275,
+          "flag"
+        ],
+        [
+          1808.990275,
+          "garbage"
+        ]
+      ],
+      "v": 4
+    },
+    {
+      "at": "2026-09-16T13:41:24-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 59,
+        "Flag": 25,
+        "Flag for Deep Review": 1,
+        "Garbage": 82
+      },
+      "changed": 0,
+      "deduped": {
+        "conflicts": 40,
+        "dp": 4,
+        "groups": 87,
+        "policy": "first",
+        "removed": 87,
+        "settled": [
+          [
+            71.971,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            223.635,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            224.623,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            232.461,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            233.995,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            250.262,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            277.245,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            284.566,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            290.784,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            298.434,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            415.795,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            466.513,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            655.994,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            661.585,
+            [
+              "flag",
+              "spike"
+            ],
+            "Dentate Spike"
+          ],
+          [
+            724.1353,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            724.9493,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            741.7063,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            753.4053,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            754.4203,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            772.0143,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            779.9323,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            796.8253,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            820.8753,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Flag"
+          ],
+          [
+            832.2173,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            832.8983,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            851.9123,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            902.4613,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            1030.1853,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1069.1513,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Flag"
+          ],
+          [
+            1098.6453,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            1103.4393,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1138.3323,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1173.4593,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Flag"
+          ],
+          [
+            1215.6643,
+            [
+              "flag",
+              "garbage"
+            ],
+            "Garbage"
+          ],
+          [
+            1222.3923,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1232.5883,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1245.8343,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1266.9363,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1300.6413,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ],
+          [
+            1314.7363,
+            [
+              "garbage",
+              "spike"
+            ],
+            "Garbage"
+          ]
+        ],
+        "undecided_dropped": 0
+      },
+      "gained": 0,
+      "id": "dd-86178f8a52",
+      "lost": 87,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 167,
+      "note": "Collapsed 87 time(s) that each held more than one record. 87 event(s) removed, 167 left; 40 of them disagreed about the call and the first copy was kept.",
+      "snap": [
+        [
+          15.839,
+          "spike"
+        ],
+        [
+          19.32,
+          "spike"
+        ],
+        [
+          21.437,
+          "spike"
+        ],
+        [
+          31.64,
+          "spike"
+        ],
+        [
+          41.813,
+          "spike"
+        ],
+        [
+          71.561,
+          "spike"
+        ],
+        [
+          71.664,
+          "spike"
+        ],
+        [
+          71.971,
+          "spike"
+        ],
+        [
+          73.552,
+          "spike"
+        ],
+        [
+          74.905,
+          "spike"
+        ],
+        [
+          84.242,
+          "spike"
+        ],
+        [
+          91.026,
+          "spike"
+        ],
+        [
+          93.998,
+          "spike"
+        ],
+        [
+          94.856,
+          "spike"
+        ],
+        [
+          101.775,
+          "spike"
+        ],
+        [
+          101.923,
+          "spike"
+        ],
+        [
+          102.63,
+          "spike"
+        ],
+        [
+          105.717,
+          "spike"
+        ],
+        [
+          107.845,
+          "spike"
+        ],
+        [
+          111.521,
+          "spike"
+        ],
+        [
+          114.614,
+          "spike"
+        ],
+        [
+          132.792,
+          "spike"
+        ],
+        [
+          134.546,
+          "spike"
+        ],
+        [
+          134.726,
+          "spike"
+        ],
+        [
+          167.0,
+          "spike"
+        ],
+        [
+          173.217,
+          "spike"
+        ],
+        [
+          180.299,
+          "spike"
+        ],
+        [
+          182.007,
+          "spike"
+        ],
+        [
+          182.387,
+          "spike"
+        ],
+        [
+          193.08,
+          "spike"
+        ],
+        [
+          198.53,
+          "spike"
+        ],
+        [
+          216.219,
+          "spike"
+        ],
+        [
+          222.942,
+          "spike"
+        ],
+        [
+          223.635,
+          "spike"
+        ],
+        [
+          224.623,
+          "spike"
+        ],
+        [
+          226.618,
+          "spike"
+        ],
+        [
+          231.403,
+          "spike"
+        ],
+        [
+          232.461,
+          "spike"
+        ],
+        [
+          233.995,
+          "spike"
+        ],
+        [
+          245.665,
+          "spike"
+        ],
+        [
+          249.82,
+          "spike"
+        ],
+        [
+          250.262,
+          "spike"
+        ],
+        [
+          277.245,
+          "spike"
+        ],
+        [
+          284.566,
+          "garbage"
+        ],
+        [
+          286.527,
+          "spike"
+        ],
+        [
+          290.784,
+          "spike"
+        ],
+        [
+          298.434,
+          "spike"
+        ],
+        [
+          313.368,
+          "spike"
+        ],
+        [
+          327.019,
+          "spike"
+        ],
+        [
+          415.795,
+          "spike"
+        ],
+        [
+          466.513,
+          "spike"
+        ],
+        [
+          518.666,
+          "spike"
+        ],
+        [
+          631.959,
+          "spike"
+        ],
+        [
+          655.994,
+          "spike"
+        ],
+        [
+          661.585,
+          "spike"
+        ],
+        [
+          671.002,
+          "spike"
+        ],
+        [
+          671.110313,
+          "garbage"
+        ],
+        [
+          697.12,
+          "spike"
+        ],
+        [
+          697.228313,
+          "garbage"
+        ],
+        [
+          707.509,
+          "garbage"
+        ],
+        [
+          707.626296,
+          "garbage"
+        ],
+        [
+          710.611,
+          "flag"
+        ],
+        [
+          710.728296,
+          "garbage"
+        ],
+        [
+          724.135296,
+          "garbage"
+        ],
+        [
+          724.762296,
+          "garbage"
+        ],
+        [
+          724.949296,
+          "garbage"
+        ],
+        [
+          738.713,
+          "spike"
+        ],
+        [
+          738.830296,
+          "review"
+        ],
+        [
+          741.706296,
+          "garbage"
+        ],
+        [
+          750.846296,
+          "garbage"
+        ],
+        [
+          753.405296,
+          "garbage"
+        ],
+        [
+          754.420296,
+          "garbage"
+        ],
+        [
+          757.061296,
+          "garbage"
+        ],
+        [
+          772.014296,
+          "garbage"
+        ],
+        [
+          779.932296,
+          "garbage"
+        ],
+        [
+          784.181296,
+          "garbage"
+        ],
+        [
+          795.336296,
+          "flag"
+        ],
+        [
+          796.825296,
+          "garbage"
+        ],
+        [
+          820.875296,
+          "flag"
+        ],
+        [
+          832.217296,
+          "garbage"
+        ],
+        [
+          832.898296,
+          "garbage"
+        ],
+        [
+          851.912296,
+          "garbage"
+        ],
+        [
+          854.571296,
+          "garbage"
+        ],
+        [
+          902.461296,
+          "garbage"
+        ],
+        [
+          1030.185296,
+          "garbage"
+        ],
+        [
+          1069.151275,
+          "flag"
+        ],
+        [
+          1098.645275,
+          "garbage"
+        ],
+        [
+          1103.439275,
+          "garbage"
+        ],
+        [
+          1138.332275,
+          "garbage"
+        ],
+        [
+          1173.459275,
+          "flag"
+        ],
+        [
+          1215.664275,
+          "garbage"
+        ],
+        [
+          1222.392275,
+          "garbage"
+        ],
+        [
+          1232.588275,
+          "garbage"
+        ],
+        [
+          1245.834275,
+          "garbage"
+        ],
+        [
+          1266.936275,
+          "garbage"
+        ],
+        [
+          1300.641275,
+          "garbage"
+        ],
+        [
+          1314.736275,
+          "garbage"
+        ],
+        [
+          1329.242275,
+          "flag"
+        ],
+        [
+          1338.939275,
+          "garbage"
+        ],
+        [
+          1342.360275,
+          "flag"
+        ],
+        [
+          1344.603275,
+          "garbage"
+        ],
+        [
+          1349.705275,
+          "flag"
+        ],
+        [
+          1350.280275,
+          "garbage"
+        ],
+        [
+          1352.938275,
+          "garbage"
+        ],
+        [
+          1371.424275,
+          "garbage"
+        ],
+        [
+          1401.381275,
+          "spike"
+        ],
+        [
+          1409.194275,
+          "garbage"
+        ],
+        [
+          1410.134275,
+          "garbage"
+        ],
+        [
+          1416.406275,
+          "garbage"
+        ],
+        [
+          1436.392275,
+          "garbage"
+        ],
+        [
+          1437.450275,
+          "garbage"
+        ],
+        [
+          1439.100275,
+          "flag"
+        ],
+        [
+          1520.431275,
+          "flag"
+        ],
+        [
+          1550.312275,
+          "flag"
+        ],
+        [
+          1562.116275,
+          "garbage"
+        ],
+        [
+          1566.959275,
+          "garbage"
+        ],
+        [
+          1580.028275,
+          "garbage"
+        ],
+        [
+          1580.370275,
+          "garbage"
+        ],
+        [
+          1584.123275,
+          "garbage"
+        ],
+        [
+          1593.566275,
+          "garbage"
+        ],
+        [
+          1607.154275,
+          "garbage"
+        ],
+        [
+          1611.557275,
+          "garbage"
+        ],
+        [
+          1613.913275,
+          "garbage"
+        ],
+        [
+          1623.394275,
+          "garbage"
+        ],
+        [
+          1630.175275,
+          "garbage"
+        ],
+        [
+          1633.056275,
+          "garbage"
+        ],
+        [
+          1640.676275,
+          "garbage"
+        ],
+        [
+          1645.443275,
+          "garbage"
+        ],
+        [
+          1645.885275,
+          "garbage"
+        ],
+        [
+          1649.228275,
+          "garbage"
+        ],
+        [
+          1650.977275,
+          "garbage"
+        ],
+        [
+          1662.407275,
+          "garbage"
+        ],
+        [
+          1668.519275,
+          "flag"
+        ],
+        [
+          1672.960275,
+          "garbage"
+        ],
+        [
+          1675.294275,
+          "garbage"
+        ],
+        [
+          1678.492275,
+          "flag"
+        ],
+        [
+          1678.829275,
+          "flag"
+        ],
+        [
+          1679.943275,
+          "flag"
+        ],
+        [
+          1682.204275,
+          "flag"
+        ],
+        [
+          1694.912275,
+          "flag"
+        ],
+        [
+          1695.325275,
+          "flag"
+        ],
+        [
+          1698.158275,
+          "flag"
+        ],
+        [
+          1699.747275,
+          "flag"
+        ],
+        [
+          1700.024275,
+          "garbage"
+        ],
+        [
+          1705.762275,
+          "garbage"
+        ],
+        [
+          1706.183275,
+          "flag"
+        ],
+        [
+          1710.610275,
+          "garbage"
+        ],
+        [
+          1716.590275,
+          "garbage"
+        ],
+        [
+          1718.759275,
+          "garbage"
+        ],
+        [
+          1727.050275,
+          "garbage"
+        ],
+        [
+          1728.308275,
+          "garbage"
+        ],
+        [
+          1736.307275,
+          "garbage"
+        ],
+        [
+          1737.298275,
+          "garbage"
+        ],
+        [
+          1737.620275,
+          "flag"
+        ],
+        [
+          1738.606275,
+          "garbage"
+        ],
+        [
+          1740.386275,
+          "garbage"
+        ],
+        [
+          1757.779275,
+          "garbage"
+        ],
+        [
+          1775.193275,
+          "flag"
+        ],
+        [
+          1781.159275,
+          "garbage"
+        ],
+        [
+          1785.163275,
+          "garbage"
+        ],
+        [
+          1785.985275,
+          "garbage"
+        ],
+        [
+          1788.188275,
+          "garbage"
+        ],
+        [
+          1791.157275,
+          "garbage"
+        ],
+        [
+          1791.747275,
+          "spike"
+        ],
+        [
+          1807.637275,
+          "flag"
+        ],
+        [
+          1807.854275,
+          "flag"
+        ],
+        [
+          1808.990275,
+          "garbage"
+        ]
+      ],
+      "v": 5
     }
   ]
 }
