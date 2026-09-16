@@ -1,0 +1,27 @@
+{
+  "_at": {
+    "key": "2026-09-15T23:35:37.700976+00:00",
+    "rel": "2026-09-15T23:35:37.700976+00:00",
+    "starred": "2026-09-15T23:37:21.133141+00:00",
+    "title": "2026-09-15T23:49:11.656280+00:00",
+    "updated": "2026-09-15T23:49:11.656280+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-15T23:49:11.656280+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "_scratch/rebuild harness_20260915_193221.png",
+  "rel": "_scratch/rebuild harness_20260915_193221.png",
+  "starred": false,
+  "tags": [],
+  "title": "rebuild harness_20260915_193221",
+  "updated": {
+    "at": "2026-09-15T19:49:11-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

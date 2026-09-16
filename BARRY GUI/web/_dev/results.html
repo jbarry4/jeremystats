@@ -300,7 +300,36 @@ async function until(fn, ms = 12000) {
     await sleep(200);
   }
 
-  head('11. Anything thrown?');
+  head('11. Can anything but a figure be rebuilt?');
+  /* The old gate was `kind !== 'figure'`, which hid the button rather than
+     showing an empty one -- so a Panorama, a ToolKit export and a deck each
+     offered nothing at all. */
+  const kinds = {};
+  for (const r of rows) if (r.run_id) kinds[r.kind] = r;
+  say('note', '  kinds with a run record: ' + Object.keys(kinds).join(', '));
+  const reg = await (await fetch('/api/recipe/' + encodeURIComponent(
+    (Object.values(kinds)[0] || {}).run_id || 'nope'))).json();
+  check('the registry answers for something', !!reg.ok || !!reg.error,
+        JSON.stringify(reg).slice(0, 80));
+
+  let planned = 0;
+  for (const [kind, r] of Object.entries(kinds)) {
+    const j = await (await fetch('/api/recipe/'
+      + encodeURIComponent(r.run_id))).json();
+    if (!j.ok) { say('note', '  ' + kind + ': no plan (' + j.error + ')'); continue; }
+    planned += 1;
+    say('note', '  ' + kind + ': ' + j.steps.length + ' step(s), verdict '
+        + j.verdict + (j.offer.can_verify ? ', can verify' : ''));
+    check(kind + ' gets a plan with steps', (j.steps || []).length > 0,
+          'no steps');
+    check(kind + "'s every step says what it found",
+          (j.steps || []).every((s) => s.status && s.title),
+          'a step had no status or title');
+  }
+  check('more than figures can be rebuilt now', planned > 1,
+        planned + ' kind(s) had a plan');
+
+  head('12. Anything thrown?');
   check('no uncaught errors in the app', errors.length === 0,
         errors.slice(0, 2).join(' | '));
 

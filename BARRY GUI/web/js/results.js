@@ -894,13 +894,112 @@ BARRY.views.results = (function () {
      carries enough to make it again. Anything else in Results -- a plot from
      a script, a file dropped in by hand -- has no recipe, so it gets no
      button rather than a button that cannot work. */
+  /* What the registry can do about this result, if anything.
+   *
+   * This was `r.kind !== 'figure'`, which hid the button on everything else
+   * rather than showing an empty one -- and rebuild.py was good enough that
+   * hiding it was the loss. The backend registry now says which kinds have a
+   * plan, and this asks it instead of asking whether the word "figure"
+   * appears. Kinds it has never heard of still get nothing, which is right:
+   * a manifest CSV has no meaningful "make this again".
+   */
+  const REBUILDABLE = {
+    figure: { label: 'Rebuild', why: 'Check what this figure needs, then '
+                                     + 'walk through remaking it' },
+    panorama: { label: 'Re-open', why: 'Open Panorama on the numbers this '
+                                       + 'was drawn from' },
+    toolkit: { label: 'Ask again', why: 'Run the same query and say whether '
+                                        + 'the answer has moved' },
+    deck: { label: 'Re-export', why: 'Check the deck and its slides are '
+                                     + 'still here' },
+  };
+
   function rebuildBtn(r) {
-    if (!r.run_id || r.kind !== 'figure' || !BARRY.figrebuild) return null;
+    const can = r.run_id && REBUILDABLE[r.kind];
+    if (!can) return null;
+    /* A figure keeps its own dialog -- figrebuild.js audits, walks the steps
+       and hands over the builder, and none of that is worth replacing with
+       something generic. The rest open the plan. */
+    if (r.kind === 'figure') {
+      if (!BARRY.figrebuild) return null;
+      return el('button', {
+        class: 'mini', text: can.label, title: can.why,
+        onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
+      });
+    }
     return el('button', {
-      class: 'mini', text: 'Rebuild',
-      title: 'Check what this figure needs, then walk through remaking it',
-      onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
+      class: 'mini', text: can.label, title: can.why,
+      onclick: (e) => { e.stopPropagation(); showPlan(r); },
     });
+  }
+
+  /* The plan for a non-figure result: what it would take, what stands in the
+     way, and -- where the tool kept its answers -- whether it still comes out
+     the same. Read before anything is done, so a missing drive is a sentence
+     here rather than a failure partway through. */
+  async function showPlan(r) {
+    const body = el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: r.title || r.name }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      /* Built here rather than borrowed: eventimport.js has a
+         loadingBody() that does exactly this and it is private to that
+         module's closure, so calling it would throw. */
+      el('div', { class: 'mb' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px;'
+                         + 'padding:22px' }, [
+          el('span', { class: 'spin' }),
+          el('span', { text: 'Reading what it would take…' }),
+        ]),
+      ]),
+    ]);
+    showModal(body);
+    let plan;
+    try {
+      plan = await api('/api/recipe/' + encodeURIComponent(r.run_id));
+    } catch (e) {
+      body.querySelector('.mb').replaceChildren(
+        el('p', { class: 'confirm-err', text: e.message }));
+      return;
+    }
+    const steps = el('div', { class: 'rb-steps' }, (plan.steps || []).map((s) =>
+      el('div', { class: 'rb-step', 'data-state': s.status }, [
+        el('span', { class: 'rb-dot ' + s.status }),
+        el('div', { class: 'rb-title' }, [
+          el('span', { text: s.title }),
+          el('span', { class: 'rb-did', text: s.what || '' }),
+        ]),
+      ])));
+    const mb = body.querySelector('.mb');
+    mb.replaceChildren(steps);
+    if ((plan.offer || {}).can_verify) {
+      const out = el('p', { class: 'hint' });
+      mb.appendChild(el('div', { class: 'coll-row' }, [
+        el('button', {
+          class: 'btn', text: 'Does it still come out the same?',
+          onclick: async (e) => {
+            const b = e.target;
+            b.disabled = 'disabled';
+            b.textContent = 'Asking again…';
+            try {
+              const got = await apiPost('/api/recipe/'
+                + encodeURIComponent(r.run_id) + '/verify', {});
+              out.textContent = got.note || '';
+              out.className = 'hint' + (got.same ? '' : ' warn');
+            } catch (err) {
+              out.textContent = err.message;
+              out.className = 'confirm-err';
+            }
+            b.disabled = null;
+            b.textContent = 'Ask again';
+          },
+        }),
+      ]));
+      mb.appendChild(out);
+    }
   }
 
   function table(list) {
