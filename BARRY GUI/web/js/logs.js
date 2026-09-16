@@ -730,7 +730,39 @@ BARRY.views.history = (function () {
     });
   }
 
-  return { init, onShow: load, reload: load };
+  /* Open one run, by id.
+   *
+   * The Run button on a result used to call setView('history') and reload(),
+   * which lands you at the top of a list of every run the lab has ever done
+   * with no indication of which one you asked for -- having just clicked
+   * something that displayed that run's id. This selects it, shows it, and
+   * scrolls it into view, loading the history first if it is not there yet.
+   */
+  async function show(runId) {
+    if (!runId) return false;
+    if (!runs.length) await load();
+    const r = runs.find((x) => x.id === runId);
+    if (!r) {
+      toast('That run is not in this machine’s history.', 'err', 6000);
+      return false;
+    }
+    /* Clear whatever was narrowing the list, or the run you asked for is
+       selected in a list it has been filtered out of -- which looks exactly
+       like the button having done nothing, again. */
+    mode = 'runs';
+    query = '';
+    statusFilter = '';
+    selected = r.id;
+    renderList();
+    renderDetail(r);
+    const row = $('#histList .hist-row.active');
+    if (row && row.scrollIntoView) {
+      row.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+    return true;
+  }
+
+  return { init, onShow: load, reload: load, show };
 })();
 
 

@@ -880,7 +880,11 @@ BARRY.views.results = (function () {
         r.run_id ? el('button', {
           class: 'mini', text: 'Run',
           title: 'Show the run that produced this: ' + r.run_id,
-          onclick: () => { setView('history'); BARRY.views.history.reload(); },
+          onclick: () => {
+            setView('history');
+            if (BARRY.views.history.show) BARRY.views.history.show(r.run_id);
+            else BARRY.views.history.reload();
+          },
         }) : null,
       ]),
     ]);
@@ -1011,27 +1015,111 @@ BARRY.views.results = (function () {
     ]));
   }
 
+  /* ======================================================================
+     The placard
+
+     This was a definition list ending in JSON.stringify(parameters), which is
+     the shape of an answer without being one. "Which recording is this of"
+     was a label you could read and not follow; "what else came out of that
+     run" was unanswerable; and the settings -- the part somebody is actually
+     here for six months later -- arrived as one unbroken line of braces.
+
+     So: every fact that points at something is a way of getting there, and
+     the settings are a table.
+     ====================================================================== */
   function provenance(r) {
+    const box = el('div', { class: 'prov' });
     const kv = el('dl', { class: 'kv' });
-    const add = (k, v) => {
+    const add = (k, v, go) => {
       if (v === null || v === undefined || v === '') return;
       kv.appendChild(el('dt', { text: k }));
-      kv.appendChild(el('dd', { text: typeof v === 'object' ? JSON.stringify(v) : String(v) }));
+      kv.appendChild(el('dd', {}, [
+        go ? el('a', { href: '#', text: String(v),
+                       onclick: (e) => { e.preventDefault(); go(); } })
+           : el('span', { text: String(v) }),
+      ]));
     };
-    add('File', r.path);
-    add('Kind', r.kind);
+
+    /* The recording first, because that is the question -- and clicking it
+       opens the recording rather than naming it and leaving you to go and
+       find it. */
+    if (r.session_label) {
+      add('Recording', r.session_label, r.session_path
+        ? () => { closeModal(); setView('xplore');
+                  BARRY.views.xplore.open(r.session_path); }
+        : null);
+    }
+    if (r.project || r.mouse != null) {
+      const who = [r.project, r.mouse != null ? 'm' + r.mouse : null,
+                   r.session_no != null ? 's' + r.session_no : null,
+                   r.recorded_on].filter(Boolean).join('  ');
+      add('Animal', who, () => {
+        closeModal();
+        const q = [r.project ? 'project:' + r.project : '',
+                   r.mouse != null ? 'mouse:' + r.mouse : ''].filter(Boolean);
+        query = q.join(' ');
+        view = 'grid';
+        render();
+      });
+    }
     add('Made by', r.author);
-    add('Machine', r.machine);
-    add('Created', r.created);
-    add('Session', r.session_label);
-    add('Run id', r.run_id);
-    if (r.parameters && Object.keys(r.parameters).length) {
-      add('Parameters', r.parameters);
+    add('On', r.machine);
+    add('When', r.created ? BARRY.whenRaw(r.created) : null);
+    // Which code, which is the half that used to be unanswerable.
+    if (r.app_version || r.commit) {
+      add('Version', [r.app_version, r.commit && '(' + r.commit + ')']
+        .filter(Boolean).join(' '));
+    }
+    add('Tool', r.script);
+    if (r.run_id) {
+      add('Run', r.run_id, () => {
+        closeModal();
+        setView('history');
+        if (BARRY.views.history.show) BARRY.views.history.show(r.run_id);
+        else BARRY.views.history.reload();
+      });
+    }
+    add('File', r.rel || r.path);
+    box.appendChild(kv);
+
+    /* Everything else from the same run. The four CSVs beside a Panorama
+       figure are one piece of work, and the catalogue lists them as five
+       unrelated rows. */
+    if (r.run_id) {
+      const kin = items.filter((x) => x.run_id === r.run_id && x.id !== r.id);
+      if (kin.length) {
+        box.appendChild(el('div', { class: 'section-label',
+                                    text: 'Saved with it' }));
+        box.appendChild(el('div', { class: 'prov-kin' }, kin.map((x) =>
+          el('button', {
+            class: 'pill', text: x.name, title: 'Open ' + x.name,
+            onclick: () => { closeModal(); preview(x); },
+          }))));
+      }
+    }
+
+    /* The settings, as a table. This is what a rebuild reads back, and what
+       tells two figures of the same recording apart. */
+    const p = r.parameters || {};
+    const keys = Object.keys(p).sort();
+    if (keys.length) {
+      box.appendChild(el('div', { class: 'section-label', text: 'Settings' }));
+      box.appendChild(el('table', { class: 'prov-params' }, [
+        el('tbody', {}, keys.map((k) => el('tr', {}, [
+          el('td', { text: k }),
+          el('td', { text: Array.isArray(p[k]) ? p[k].join(', ')
+                           : (p[k] && typeof p[k] === 'object')
+                             ? JSON.stringify(p[k]) : String(p[k]) }),
+        ]))),
+      ]));
     }
     if ((r.panels || []).length) {
-      add('Panels', r.panels.map((p) => p.panel).join(', '));
+      box.appendChild(el('div', { class: 'section-label', text: 'Panels' }));
+      box.appendChild(el('div', { class: 'prov-kin' },
+        r.panels.map((pl) => el('span', { class: 'pill',
+                                          text: pl.title || pl.panel }))));
     }
-    return kv;
+    return box;
   }
 
   function preview(r) {
@@ -1132,5 +1220,12 @@ BARRY.views.results = (function () {
     /* How many the current search and filters leave, as against how many
        there are. `all()` is the catalogue; this is what is on screen. */
     shownCount: () => visible().length,
+    /* Open one result's placard by id, without having to find its card and
+       click it first. */
+    describe: (id) => {
+      const r = items.find((x) => x.id === id);
+      if (r) editTags(r);
+      return !!r;
+    },
   };
 })();

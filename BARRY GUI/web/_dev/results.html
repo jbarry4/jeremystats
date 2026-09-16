@@ -253,7 +253,54 @@ async function until(fn, ms = 12000) {
           String(full).includes('/api/results/file'), String(full));
   }
 
-  head('9. Anything thrown?');
+  head('9. Does a result say what made it, followably?');
+  const fromRun = rows.find((r) => r.run_id
+                                   && Object.keys(r.parameters || {}).length);
+  if (!fromRun) {
+    say('note', '  nothing here carries a run record with settings');
+  } else {
+    ev("BARRY.views.results.describe(" + JSON.stringify(fromRun.id) + ")");
+    await until(() => D.querySelector('#bigModal .prov'));
+    await sleep(200);
+    const prov = D.querySelector('#bigModal .prov');
+    check('the placard opens', !!prov);
+    const params = D.querySelectorAll('#bigModal .prov-params tr').length;
+    say('note', '  ' + params + ' setting(s) listed');
+    check('settings are a table, not one line of JSON', params > 0,
+          'no rows in .prov-params');
+    const txt = prov ? prov.textContent : '';
+    check('it does not print raw JSON braces at the reader',
+          !/\{"|":\s*\{/.test(txt), txt.slice(0, 80));
+    check('it names which code made it',
+          /Version|Tool|Run/.test(txt), 'no version, tool or run named');
+    const links = D.querySelectorAll('#bigModal .prov .kv dd a').length;
+    check('and the things it points at are followable', links > 0,
+          'every fact is inert text');
+    ev('closeModal()');
+    await sleep(200);
+  }
+
+  head('10. Does the Run button open the run?');
+  /* It used to call setView("history") and reload(), landing you at the top
+     of every run the lab has ever done -- having just clicked something that
+     displayed the id of the one you wanted. */
+  check('history can be asked for one run',
+        ev('typeof BARRY.views.history.show') === 'function',
+        'history exposes no show()');
+  const runRow = rows.find((r) => r.run_id);
+  if (runRow) {
+    const ok = await ev("BARRY.views.history.show("
+                        + JSON.stringify(runRow.run_id) + ")");
+    await sleep(500);
+    check('and it selects the one asked for', ok === true, String(ok));
+    const active = D.querySelector('#histList .hist-row.active');
+    check('with that row actually marked in the list', !!active,
+          'nothing is selected');
+    ev("setView('results')");
+    await sleep(200);
+  }
+
+  head('11. Anything thrown?');
   check('no uncaught errors in the app', errors.length === 0,
         errors.slice(0, 2).join(' | '));
 

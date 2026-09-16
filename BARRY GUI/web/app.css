@@ -7899,3 +7899,43 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 @media (prefers-reduced-motion: reduce) {
   .room-head .btn { transition: none; }
 }
+
+/* ==========================================================================
+   Results: the placard
+   ==========================================================================
+   What a result is of, who made it, with which code, and with what settings.
+   The settings used to arrive as one unbroken line of JSON, which is the
+   shape of an answer without being one -- and they are the part somebody is
+   here for six months later. */
+.prov .kv dd a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-line);
+}
+.prov .kv dd a:hover { border-bottom-color: var(--accent); }
+
+.prov-kin { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+
+.prov-params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 2px 0 4px;
+}
+.prov-params td {
+  padding: 3px 8px 3px 0;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+.prov-params td:first-child {
+  color: var(--text-3);
+  white-space: nowrap;
+  width: 1%;
+  padding-right: 14px;
+}
+.prov-params td:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  word-break: break-word;
+}
+.prov-params tr:last-child td { border-bottom: 0; }
