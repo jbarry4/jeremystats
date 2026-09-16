@@ -7845,3 +7845,57 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   pointer-events: none;
   transition: opacity .12s ease;
 }
+
+/* ==========================================================================
+   Results: rooms
+   ==========================================================================
+   A heading per group, so a catalogue of four hundred reads as somewhere you
+   can walk through rather than a pile ordered by when it happened. */
+.res-rooms { display: flex; flex-direction: column; gap: 4px; }
+
+.room-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 2px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  /* Sticky, because the point of a heading is knowing which room you are in
+     while you are looking at the things in it. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+}
+.room-head h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--text);
+}
+.room-head .room-n { font-size: 11.5px; color: var(--text-3); }
+.room-head .btn { opacity: 0; transition: opacity .12s ease; }
+.room-head:hover .btn, .room-head .btn:focus-visible { opacity: 1; }
+
+/* The room for things the grouping does not apply to -- a lab-wide export
+   belongs to no animal. Set back, so it reads as the end of the list rather
+   than as another peer. */
+.room-head.aside h3 { color: var(--text-3); font-weight: 500; }
+
+.res-table .room-row td {
+  padding: 14px 8px 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 12.5px;
+}
+.res-table .room-row .room-n {
+  margin-left: 8px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+.res-table .room-row.aside td { color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .room-head .btn { transition: none; }
+}

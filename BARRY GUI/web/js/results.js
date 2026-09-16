@@ -24,6 +24,10 @@ BARRY.views.results = (function () {
   let selected = new Set();
   let view = 'grid';          // 'grid' | 'list' | 'compare'
   let sortBy = 'created';     // 'created' | 'title' | 'session' | 'bytes'
+  /* Which headings the list is broken into. Remembered, because it is a
+     way of working rather than a one-off: somebody who thinks by animal
+     thinks by animal every time they open this. */
+  let groupBy = '';           // '' | 'animal' | 'tool' | 'day' | 'run'
   let collections = [];       // saved searches, synced through preferences
 
   /* Folders, which are not the same thing as tags and not the same thing as
@@ -68,6 +72,7 @@ BARRY.views.results = (function () {
       if (bones) bones();
     }
     collections = BARRY.prefs.get('result_collections', []) || [];
+    groupBy = BARRY.prefs.get('result_group', groupBy) || '';
     render();
   }
 
@@ -603,6 +608,19 @@ BARRY.views.results = (function () {
         value: v, text: t, selected: sortBy === v ? 'selected' : null,
       }))));
 
+    bar.appendChild(el('select', {
+      title: 'Break the list into rooms',
+      onchange: (e) => {
+        groupBy = e.target.value;
+        BARRY.prefs.set('result_group', groupBy);
+        BARRY.activity.log('result.group', { by: groupBy || 'none' });
+        render();
+      },
+    }, GROUPINGS.map((g) => el('option', {
+      value: g.id, text: g.name,
+      selected: groupBy === g.id ? 'selected' : null,
+    }))));
+
     bar.appendChild(el('div', { class: 'seg' }, [
       el('button', { class: view === 'grid' ? 'active' : '', text: 'Grid',
                      onclick: () => { view = 'grid'; render(); } }),
@@ -615,10 +633,116 @@ BARRY.views.results = (function () {
     return bar;
   }
 
+  /* ======================================================================
+     Rooms
+
+     Four hundred results in one flat grid, newest first, is a pile. It is
+     browsable for the twenty minutes after you made something and useless
+     after that, because the only question it answers is "what did I just
+     do" -- and the question people actually have is "what do we have on
+     m306", or "what has Panorama produced", or "what came out of Tuesday".
+
+     So the list gets headings. Which headings is a choice, because those
+     three questions want different ones, and none of them is the default
+     more often than the others.
+
+     Grouping is not filtering. Everything still shown, just in rooms.
+     ====================================================================== */
+  const GROUPINGS = [
+    { id: '', name: 'Ungrouped', of: () => null },
+    {
+      id: 'animal', name: 'By animal',
+      of: (r) => (r.project || r.mouse)
+        ? [r.project || 'Unfiled',
+           r.mouse != null ? 'm' + r.mouse : 'unknown mouse',
+           r.session_no != null
+             ? 's' + r.session_no + (r.recorded_on ? '  ' + r.recorded_on : '')
+             : (r.session_label || '')].filter(Boolean).join('  ›  ')
+        : null,
+    },
+    {
+      id: 'tool', name: 'By tool',
+      of: (r) => r.script || TOOL_NAMES[r.kind] || TOOL_NAMES[r.type] || 'Other',
+    },
+    {
+      id: 'day', name: 'By day',
+      of: (r) => (r.created || '').slice(0, 10) || null,
+    },
+    {
+      id: 'run', name: 'By run',
+      of: (r) => r.run_id ? (r.title || r.run_id) : null,
+    },
+  ];
+
+  const TOOL_NAMES = {
+    figure: 'Figure builder', panorama: 'Panorama', toolkit: 'ToolKit',
+    deck: 'Storyboard', install: 'Install', file: 'Filed by hand',
+  };
+
+  const groupingOf = (id) => GROUPINGS.find((g) => g.id === id) || GROUPINGS[0];
+
+  /* Everything that falls outside the grouping goes in one room at the end
+     rather than each getting a heading of its own. A lab-wide bad-channel
+     export genuinely belongs to no animal, and forty headings reading
+     "unknown mouse" is not an answer -- it is the pile again, with chrome. */
+  function inRooms(list) {
+    const g = groupingOf(groupBy);
+    if (!g.id) return [{ name: null, rows: list }];
+    const rooms = new Map();
+    const rest = [];
+    for (const r of list) {
+      const k = g.of(r);
+      if (!k) { rest.push(r); continue; }
+      if (!rooms.has(k)) rooms.set(k, []);
+      rooms.get(k).push(r);
+    }
+    const out = Array.from(rooms, ([name, rows]) => ({ name, rows }));
+    out.sort((a, b) => String(a.name).localeCompare(String(b.name),
+                                                    undefined, { numeric: true }));
+    if (rest.length) {
+      out.push({ name: g.id === 'animal' ? 'Not about one animal' : 'Everything else',
+                 rows: rest, aside: true });
+    }
+    return out;
+  }
+
   function grid(list) {
-    const g = el('div', { class: 'res-grid' });
-    for (const r of list) g.appendChild(card(r));
-    return g;
+    const rooms = inRooms(list);
+    if (rooms.length === 1 && !rooms[0].name) {
+      const g = el('div', { class: 'res-grid' });
+      for (const r of list) g.appendChild(card(r));
+      return g;
+    }
+    const wrap = el('div', { class: 'res-rooms' });
+    for (const room of rooms) {
+      wrap.appendChild(roomHead(room));
+      const g = el('div', { class: 'res-grid' });
+      for (const r of room.rows) g.appendChild(card(r));
+      wrap.appendChild(g);
+    }
+    return wrap;
+  }
+
+  /* The heading doubles as a way to take the whole room: selecting eleven
+     figures to compare or to tag is the thing you came to a room to do. */
+  function roomHead(room) {
+    const ids = room.rows.map((r) => r.id);
+    const all = ids.length && ids.every((i) => selected.has(i));
+    return el('div', { class: 'room-head' + (room.aside ? ' aside' : '') }, [
+      el('h3', { text: room.name }),
+      el('span', { class: 'room-n',
+                   text: room.rows.length + (room.rows.length === 1
+                                             ? ' result' : ' results') }),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: all ? 'Clear' : 'Select all',
+        onclick: () => {
+          for (const i of ids) { if (all) selected.delete(i); else selected.add(i); }
+          render();
+        },
+      }),
+    ]);
   }
 
   function card(r) {
@@ -695,7 +819,7 @@ BARRY.views.results = (function () {
   }
 
   function table(list) {
-    const rows = list.map((r) => el('tr', {}, [
+    const rowOf = (r) => el('tr', {}, [
       el('td', {}, [el('button', {
         class: 'res-pick' + (selected.has(r.id) ? ' on' : ''),
         style: 'position:static',
@@ -723,13 +847,29 @@ BARRY.views.results = (function () {
                  text: BARRY.when(r.created, 'minute') }),
       el('td', { text: fmtBytes(r.bytes) }),
       el('td', { text: (r.tags || []).join(', ') }),
-    ]));
+    ]);
+
+    /* The rooms are rows in the same table rather than a table each, so the
+       columns stay lined up down the whole page. A heading that only lines up
+       with the rows directly under it is four tables pretending to be one. */
+    const body = [];
+    for (const room of inRooms(list)) {
+      if (room.name) {
+        body.push(el('tr', { class: 'room-row' + (room.aside ? ' aside' : '') }, [
+          el('td', { colspan: '9' }, [
+            el('strong', { text: room.name }),
+            el('span', { class: 'room-n', text: room.rows.length }),
+          ]),
+        ]));
+      }
+      for (const r of room.rows) body.push(rowOf(r));
+    }
     return el('div', { class: 'res-table-wrap' }, [
       el('table', { class: 'res-table' }, [
         el('thead', {}, [el('tr', {}, ['', '', 'Title', 'Type', 'Session', 'By',
                                        'Created', 'Size', 'Tags']
           .map((h) => el('th', { text: h })))]),
-        el('tbody', {}, rows),
+        el('tbody', {}, body),
       ]),
     ]);
   }
@@ -895,5 +1035,18 @@ BARRY.views.results = (function () {
     /* Jump here with a search already applied -- used by History's
        "show in Results". */
     search: (q) => { query = q || ''; view = 'grid'; render(); },
+    /* Driving the view from outside it. The harness needs these, and so does
+       anything that wants to hand somebody a room rather than a search --
+       "show me what we have on m306" is a grouping and a filter, not a
+       string to match. */
+    groupBy: (by) => {
+      if (by === undefined) return groupBy;
+      groupBy = groupingOf(by).id;
+      BARRY.prefs.set('result_group', groupBy);
+      render();
+      return groupBy;
+    },
+    setView: (v) => { view = v || 'grid'; render(); return view; },
+    selectedCount: () => selected.size,
   };
 })();

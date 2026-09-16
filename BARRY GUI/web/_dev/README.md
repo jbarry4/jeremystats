@@ -17,6 +17,7 @@ live server with no build step and no test framework:
 | `strip.html` | the old pane control strip measurements, kept for comparison |
 | `strip2.html` | the compacted strip: that it fits, that each menu opens outside the scroller, and that a setting relabels its own button |
 | `theme.html` | every theme's tokens, that the categorical ramp is internally distinct, that Horizon leads with pink, and that the favicon repaints |
+| `results.html` | the catalogue: that the by-product lane stays out of it through all three doors, that results know which animal they are about, and that grouping puts every result in a room rather than quietly dropping the ones it has no heading for |
 | `rebuild.html` | Figure rebuild end to end: exports a figure, audits the recipe, walks the steps, then checks the session really was restored |
 | `toolkit.html` | ToolKit: all five scopes, both shapes, the refusals, and the CSV's header and filing |
 | `arrows.html` | that a line or arrow points where it was dragged in all eight directions, the endpoint grips, and rotation — on screen and through the export |
