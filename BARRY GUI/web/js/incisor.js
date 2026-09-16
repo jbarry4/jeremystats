@@ -950,8 +950,14 @@ BARRY.incisor = (function () {
     const who = await BARRY.profile.who();
     if (!who) return;
     /* Fetched now rather than carried since the scan: out of the same cache
-       the scan filled, so this costs a small request and no reading. */
+       the scan filled, so this costs a small request and no reading.
+
+       The busy state used to start three lines below this, after the profile
+       lookup and this request had both completed -- so pressing Bank showed
+       nothing at all and then a confirmation dialog appeared out of nowhere,
+       which is the whole complaint in one button. */
     let evs;
+    banking = true; paint();
     try {
       const got = await apiPost('/api/incisor/events',
                                 body({ channel: row.index }));
@@ -960,6 +966,10 @@ BARRY.incisor = (function () {
       toast('Those candidates are no longer cached — run the scan again. ('
             + e.message + ')', 'err', 9000);
       return;
+    } finally {
+      // Down again for the dialog: the question is the person's to answer in
+      // their own time, and a button that says "Banking…" behind it is a lie.
+      banking = false; paint();
     }
     if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
     const ok = await BARRY.confirm(

@@ -1492,8 +1492,8 @@ BARRY.panorama = (function () {
       el('strong', { text: b.picked.size + ' recording'
         + (b.picked.size === 1 ? '' : 's') + ' chosen' }),
       el('button', {
-        class: 'btn', disabled: !b.picked.size,
-        text: 'Make the set',
+        class: 'btn', disabled: (!b.picked.size || b.busy) ? 'disabled' : null,
+        text: b.busy ? 'Making the set…' : 'Make the set',
         onclick: createSet,
       }),
     ]));
@@ -1588,6 +1588,12 @@ BARRY.panorama = (function () {
   async function createSet() {
     const b = building;
     if (!b || !b.picked.size) return;
+    /* Creating a set writes a record naming every recording in it, and the
+       button sat there looking unpressed while that happened. `b.busy` is
+       read by the Create button in paint(), so the press registers. */
+    if (b.busy) return;
+    b.busy = true;
+    paint();
     let got;
     try {
       got = await apiPost('/api/panorama/sets', {
@@ -1599,6 +1605,8 @@ BARRY.panorama = (function () {
         t0: b.t0, t1: b.t1,
       });
     } catch (e) {
+      b.busy = false;
+      paint();
       toast(e.message, 'err', 10000);
       return;
     }
