@@ -46,7 +46,7 @@ import os
 import time
 import uuid
 
-from . import shards
+from . import shards, toolresults
 
 SCHEMA = 1
 
@@ -106,21 +106,29 @@ def new_set_id():
     return "pn" + uuid.uuid4().hex[:10]
 
 
+# Which settings make a Panorama answer a different answer.
+#
+# Only the fields that change the numbers. The colormap and the picture's
+# scale are deliberately left out: re-colouring a spectrogram does not make
+# the histogram behind it a different measurement, and including them would
+# split the store into copies that differ by nothing.
+PARAM_KEYS = (
+    "f_lo", "f_hi", "sub_s", "win_s", "step_s", "line_hz", "bins",
+    "hist_scale", "t0", "t1",
+    "peak_width_limits", "max_n_peaks", "min_peak_height", "aperiodic_mode",
+)
+
+
 def params_hash(params):
     """A short name for one question.
 
-    Only the fields that change the numbers. The colormap and the picture's
-    scale are deliberately left out: re-colouring a spectrogram does not make
-    the histogram behind it a different measurement, and including them would
-    split the store into copies that differ by nothing.
+    The implementation is shared now -- toolresults.py -- so that Incisor and
+    Spectrum can keep their answers the same way rather than each inventing a
+    store. Panorama passes the field list it always used, so every record
+    already on disk keeps its name; checked against the real records and over
+    four hundred generated parameter sets.
     """
-    keep = {k: params.get(k) for k in (
-        "f_lo", "f_hi", "sub_s", "win_s", "step_s", "line_hz", "bins",
-        "hist_scale", "t0", "t1",
-        "peak_width_limits", "max_n_peaks", "min_peak_height",
-        "aperiodic_mode") if params.get(k) is not None}
-    blob = json.dumps(keep, sort_keys=True, default=str)
-    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:12]
+    return toolresults.params_hash(params, PARAM_KEYS)
 
 
 class Sets:
@@ -134,8 +142,14 @@ class Sets:
         os.makedirs(self.cache, exist_ok=True)
 
         self.book = shards.Book(self.root, SET_SPEC, store)
-        self.results = shards.Book(os.path.join(self.root, "results"),
-                                   RESULT_SPEC, store)
+        # The results half of this store is general -- it is what any tool
+        # that reads a recording and produces numbers needs -- so it lives in
+        # toolresults.py and Panorama is its first caller. `self.results` is
+        # kept pointing at the same Book because callers use it to erase.
+        self.vault = toolresults.ToolResults(logs_dir, "panorama", store,
+                                             keys=PARAM_KEYS,
+                                             spec=RESULT_SPEC)
+        self.results = self.vault.book
         self.groupings = shards.Book(os.path.join(self.root, "groupings"),
                                      GROUPING_SPEC, store)
 
@@ -317,25 +331,24 @@ class Sets:
     # ==================================================================
     # Results -- one per recording per question
     # ==================================================================
+    # These now sit on top of toolresults.ToolResults, which is this same
+    # store made general. The names stay because they read better at the call
+    # sites -- `png_path` says what it is, `cached_path(..., '.png')` does not.
     def result_base(self, gid, ph):
-        return shards.safe_base(gid, ph)
+        return self.vault.base(gid, ph)
 
     def result_get(self, gid, ph):
-        return self.results.read(self.result_base(gid, ph))
+        return self.vault.get(gid, ph)
 
     def result_put(self, rec):
-        rec["updated"] = self._who()
-        return self.results.write(
-            self.result_base(rec["gid"], rec["params_hash"]), rec)
+        return self.vault.put(rec)
 
     def png_path(self, gid, ph):
         """Where a member's spectrogram lives. Cache, not record."""
-        return os.path.join(self.cache, "%s__%s.png"
-                            % (shards.safe_base(gid), ph))
+        return self.vault.cached_path(gid, ph, ".png")
 
     def has_png(self, gid, ph):
-        p = self.png_path(gid, ph)
-        return os.path.exists(p) and os.path.getsize(p) > 0
+        return self.vault.has_cached(gid, ph, ".png")
 
     # ==================================================================
     # What still has to run

@@ -15,6 +15,77 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.16.1 - Results is a folder of results again, and buttons answer
+
+### Fixed
+
+- **Results had 197 files in it and about a dozen were results.** The rest was
+  what running the tests leaves behind: forty-five "rebuild harness" PNGs,
+  forty-nine debug reports, thirty "arrow harness" exports of which
+  twenty-three were byte-identical to each other. All of it committed, to a
+  repository whose history is already 1.5 GB.
+
+  Saving now takes a *lane*. **Exhibit** is a result -- somebody made it on
+  purpose, it is evidence, and it is committed so a colleague sees it beside
+  the log entry that produced it. **Scratch** is a by-product: still written,
+  still findable under `Results/_scratch`, skipped by the catalogue and
+  ignored by git. The backlog was swept the same way. **Eighty-one files where
+  there were two hundred and five.**
+
+  The lane is declared by whoever saves, never guessed from the filename. The
+  harness pages drive the real interface from inside an iframe, so their
+  requests carry the app's own Referer and are indistinguishable from a
+  person's; saying so outright is the only honest signal there is. Debug
+  reports are always scratch.
+
+- **Clicking a button now registers.** Delete a banked entry, assign a set,
+  flag a recording: the dialog shut, the list carried on showing what you had
+  just changed, and a beat later it snapped. It was never the sync -- that
+  runs on a background thread and blocks nothing. It was that the answer the
+  server had already sent was thrown away in favour of re-reading the whole
+  store, that the re-read was expensive, and that nothing was on screen while
+  it happened.
+
+  A confirmation dialog holds itself open until the work is actually done,
+  rather than closing on the press and leaving the screen empty -- that alone
+  covers twenty-three destructive actions. A list you caused to reload dims
+  instead of silently lying. Anything slow raises a hairline at the top of the
+  window, after a moment's grace so the usual fast case never flickers. And
+  the writes people make most -- the session quality chips, archiving a
+  curation set, banking a delete -- now move on the click and put themselves
+  back if the save fails.
+
+- **The event bank was doing its work three times a request.** `/api/bank`
+  returns the tree and the summaries, the tree builds the summaries again, and
+  building them took every record apart and reassembled it. Cached: a warm
+  read went from **206 ms to 0.18 ms**. Looking an entry up was a scan of the
+  whole bank, called once per id inside loops that walk a selection; indexed,
+  forty lookups went from **20.8 ms to 0.03 ms**.
+
+- **Labelling a selection in StrataScope was one request per channel** --
+  thirty-two channels, thirty-two round trips in series, each rewriting the
+  whole sheet. The route had accepted the whole map all along. Painting also
+  rebuilt all sixty-four rows every time one was coloured, which during a drag
+  meant destroying the row under the cursor.
+
+- **Incisor's "Bank them" and Panorama's "Make the set"** both did their first
+  second of work before showing any sign of having been pressed.
+
+### Changed
+
+- **What a tool has already worked out is kept, and it is kept in one place.**
+  `panoramaset.py` worked out the shape of this first: a record per
+  *(recording, question)*, where the question is a short hash of the settings
+  that change the numbers. Ask the same thing twice and the second time is
+  free; a bulk run that dies halfway resumes; two people running halves of one
+  set are not each doing the other's. The numbers are durable and committed;
+  the picture is cache and regenerable.
+
+  That is not a Panorama idea, so it now lives in `toolresults.py` where any
+  tool can use it. Panorama passes the field list it always used, so every
+  record already on disk keeps its name -- checked against the real records
+  and four hundred generated parameter sets.
+
 ## 2026.09.15.6 - Incisor says what it read
 
 ### Added
