@@ -15,6 +15,85 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.16.2 - Rooms, and a result that says what it is of
+
+### Added
+
+- **The catalogue has rooms.** Four hundred results in one grid ordered by
+  when they happened answers exactly one question -- "what did I just do" --
+  and it is the only question that stops mattering. Group by animal, by tool,
+  by day or by run. Headings are sticky and double as "select everything in
+  here", because taking the eleven figures from one session is the thing you
+  came to a room to do.
+
+  Anything the grouping does not apply to goes in one room at the end rather
+  than each getting a heading of its own. A lab-wide bad-channel export
+  genuinely belongs to no animal, and forty headings reading "unknown mouse"
+  is the pile again with chrome on it.
+
+- **Search one field instead of any text anywhere.** `mouse:306` used to match
+  a figure of m3060, a figure whose notes said "306 windows", and a file saved
+  at 13:06.
+
+      panorama m306            both, as text, as before
+      tool:panorama mouse:306  the tool and the animal, exactly
+      project:PTEN on:2023-08  every PTEN recording made that month
+
+  Mouse and session are anchored, because `mouse:306` matching m3060 is a
+  wrong answer that looks like a right one. Everything else stays a substring
+  on purpose. An unrecognised prefix is searched as plain text, since a
+  Windows path is full of colons and typing one should look for it.
+
+- **A result knows which animal it is about.** Project, mouse, session and the
+  recording's own id come off the run record, which knew all along; the
+  catalogue was dropping them. A file with no run record -- a colleague's
+  commit, or a tool that predates run records -- has them read off its name,
+  because every naming convention the lab uses puts the animal in the name and
+  those are exactly the files somebody is hunting for.
+
+- **What a tool has already worked out is kept.** Incisor's scan lived in a
+  dictionary in memory holding eight entries, which is why "those candidates
+  are no longer cached, run the scan again" is a sentence this app has had to
+  say -- a scan is minutes of reading, and being told to redo it because
+  somebody restarted Jarvis is not a cache miss, it is lost work.
+
+  It now keeps its answers the way Panorama keeps its: the numbers durably,
+  keyed on the recording and on the settings that change them, and the bulky
+  per-channel event lists as cache that regenerates. A colleague's scan
+  answers your question without being re-run.
+
+### Fixed
+
+- **A figure rebuild could report success and leave the window wrong.** The
+  verify step checks what the earlier steps restored and puts back whatever
+  has moved since -- channels, bad channels, event marks. The window, the
+  filters and the gain were only put back when the whole session object had
+  been replaced, so anything that moved the window on the session *already on
+  screen* left that check believing the three of them matched the recipe. It
+  then said so, out loud, in the sentence that exists to be trusted.
+
+  Which is the exact failure the step was written to catch, in the one shape
+  it was not looking for. Intermittent, because it needs a late write to land
+  inside the pause the step already takes -- so it appeared when something
+  else had been using the recording first and never when a rebuild was run on
+  its own.
+
+- **A page of thirty figures was forty-five megabytes.** The grid used each
+  figure as its own thumbnail, and the browser decoded every one at full
+  resolution to draw it at 150 pixels. Measured here: 20.1 MB of originals
+  against 0.25 MB of thumbnails, for the same grid.
+
+- **The Run button on a result opens that run.** It used to go to History and
+  reload it, landing you at the top of a list of every run the lab has ever
+  done -- having just clicked something that displayed the id of the one you
+  wanted.
+
+- **A result's provenance is followable.** It was a list ending in a single
+  unbroken line of JSON. The recording now opens, the animal is a search for
+  the animal, the run opens the run, and the settings are a table -- which is
+  what a rebuild reads back, and what tells two figures of the same recording
+  apart.
+
 ## 2026.09.16.1 - Results is a folder of results again, and buttons answer
 
 ### Fixed

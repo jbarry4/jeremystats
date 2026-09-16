@@ -42,7 +42,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                people as peoplemod,
                pipeline, prewarm,
                probes as probebook, rebuild,
-               registry, results, runner, sessreg, shards, spikesort, store, thumbs,
+               registry, results, runner, sessreg, shards, spikesort, store, thumbs, toolresults,
                storyboard, sysinfo, toolfeed, toolkit, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1633,6 +1633,70 @@ def api_panorama_save():
 # ==========================================================================
 PNSETS = pnsetmod.Sets(LOGS_DIR, STORE)
 
+# Incisor's answers, kept.
+#
+# Its cache was a dictionary in memory holding eight entries. Scan a ninth
+# recording and the first is gone; restart the app and they all are -- which
+# is why "those candidates are no longer cached, run the scan again" is a
+# sentence this app has to say. A scan is minutes of reading; being told to
+# do it again because somebody restarted Jarvis is not a cache miss, it is
+# lost work.
+#
+# Split the same way panoramaset splits Panorama's, and for the same reason.
+# The durable half is small -- which channel is the hilus and how that was
+# decided, the parameters, the counts -- and is committed and synced, so a
+# colleague's scan answers your question without being re-run. The per-
+# channel event lists are megabytes and regenerable from the recording, so
+# they go to .cache, which git ignores.
+INCISOR_VAULT = toolresults.ToolResults(LOGS_DIR, "incisor", STORE)
+
+
+def _incisor_remember(sess, spec, key, out):
+    """File a finished scan: the numbers durably, the events as cache."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return False
+    try:
+        with open(INCISOR_VAULT.cached_path(gid, key, ".json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("incisor.cache", exc, None, {"gid": gid})
+    try:
+        rec = dict(_incisor_public(out))
+        rec.update({
+            "gid": gid,
+            "params_hash": key,
+            "session_label": (sess.get("identity") or {}).get("label"),
+            "path_used": sess.get("path"),
+            "spec": {k: v for k, v in (spec or {}).items() if k != "channels"},
+            "n_channels": len((spec or {}).get("channels") or []),
+            "computed": STORE.provenance(),
+        })
+        INCISOR_VAULT.put(rec)
+        return True
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("incisor.remember", exc, None, {"gid": gid})
+        return False
+
+
+def _incisor_recall(sess, key):
+    """The full scan back, from disk, when memory has forgotten it."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return None
+    path = INCISOR_VAULT.cached_path(gid, key, ".json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            out = json.load(fh)
+    except Exception:                                    # noqa: BLE001
+        return None
+    # Back into memory, so the next channel change does not read disk again.
+    incisormod.cache_put(key, out)
+    return out
+
 
 def _pn_opener(member):
     """Open one recording for the bulk worker.
@@ -2504,10 +2568,11 @@ def api_incisor_events():
         spec = _incisor_spec(body, sess)
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/events", exc, 400, {"path": body.get("path")})
-    hit = incisormod.cache_get(incisormod.cache_key(spec, rep))
+    ekey = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
     if hit is None:
         return jsonify({"ok": False,
-                        "error": "That scan is not in the cache any more. "
+                        "error": "That scan is not on this machine. "
                                  "Run it again."}), 409
     try:
         index = int(body.get("channel"))
@@ -2540,6 +2605,9 @@ def api_incisor_scan():
 
     key = incisormod.cache_key(spec, rep)
     hit = incisormod.cache_get(key)
+    if hit is None and not body.get("force"):
+        # Asked and answered before, on this machine or a colleague's.
+        hit = _incisor_recall(sess, key)
     if hit is not None and not body.get("force"):
         return jsonify({"ok": True, "cached": True,
                         "result": _incisor_public(hit)})
@@ -2550,6 +2618,7 @@ def api_incisor_scan():
     def work(job):
         out = incisormod.run(sess, spec, rep, job)
         incisormod.cache_put(key, out)
+        _incisor_remember(sess, spec, key, out)
         # The job's result is what the client fetches, so the private rows
         # come off here rather than being serialised and thrown away.
         return _incisor_public(out)
@@ -7713,6 +7782,14 @@ COLUMN_MIGRATIONS = {
     # missing column does, so asking for this one is how a machine finds out
     # that health_checks has never been created.
     "gap_map_sha": "15_health_checks.sql",
+    # `results` learning what it is of, and `runs` learning which code made
+    # it. Two columns rather than one because they are on different tables,
+    # and a machine can have run half a migration.
+    "recorded_on": "16_results_museum.sql",
+    "recipe": "16_results_museum.sql",
+    # And the third trick of the same kind: tool_results is a whole table,
+    # and a column probe is how a machine finds out it was never created.
+    "params_hash": "16_results_museum.sql",
 }
 
 
@@ -7743,6 +7820,9 @@ COLUMN_TABLES = {
     "opened_by": "layer_sheets",
     "sha256": "bank_snapshots",
     "gap_map_sha": "health_checks",
+    "recorded_on": "results",
+    "recipe": "runs",
+    "params_hash": "tool_results",
 }
 
 
@@ -9530,7 +9610,11 @@ def api_kilosort_terminal():
 CLOUD = cloudsync.Sync(
     LOGS_DIR, STORE, bank=BANK, curate=CURATE, layers=LAYERS, mice=MICE,
     results=None, repo_root=REPO_ROOT, feedback=FEEDBACK, people=PEOPLE,
-    health=HEALTHLOG)
+    health=HEALTHLOG,
+    # What each tool has already worked out. Panorama's is the set runner's
+    # own; Incisor's is the one that stops "run the scan again" being the
+    # answer to a restart.
+    vaults={"panorama": PNSETS.vault, "incisor": INCISOR_VAULT})
 
 # Who is curating what, right now. Cloud-only by design -- see
 # backend/presence.py: a presence row that survives a restart is a lie.
