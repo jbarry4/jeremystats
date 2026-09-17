@@ -129,14 +129,76 @@ const med = (a) => {
      'no overview / no canvas');
 
   /* ---------- 2. switching to band power ---------- */
+  /* Start from the profile this section is about switching AWAY from.
+
+     Through the panel's own button rather than by setting stripMode on the
+     session: `SESS` is the ACTIVE session, which is not necessarily the one
+     the pane holding this Strip button is showing, and writing to the wrong
+     session left the panel opening on whatever the last run happened to
+     leave behind. Two runs of identical code disagreed about which segment
+     was lit -- the harness being wrong, not the interface. Pressing the
+     button cannot address the wrong session. */
   let p = await openPop();
+  say('note', '  ' + D().querySelectorAll('.ctl-menu[data-menu="Strip"]').length
+      + ' pane(s) with a Strip control');
+  if (popBtn('Average magnitude')) {
+    popBtn('Average magnitude').click();
+    await sleep(250);
+  }
   ck('the Strip popover opens', !!p, 'no .ctl-pop');
   ck('it offers both profiles',
      !!popBtn('Average magnitude') && !!popBtn('Band power'),
      (p ? p.textContent.slice(0, 120) : ''));
 
+  /* The panel has to answer the press, not just act on it.
+
+     A segmented control paints its highlight from the value it was BUILT
+     with, and this panel deliberately stays open -- picking Band power is
+     the step before choosing the band -- so nothing rebuilt it. The strip
+     redrew and the menu button relabelled, so everything was working
+     except the part being looked at while you press it: the highlight
+     stayed on Average magnitude and the band controls never appeared,
+     which reads as a dead button. */
+  /* classList, not a regex on className: the regex this started as lost
+     its word boundaries to a shell heredoc and matched nothing, which
+     reported every segment unlit while the DOM said "mini on". There is
+     nothing to escape in a class name. */
+  const lit = (t) => { const b = popBtn(t);
+                       return !!b && b.classList.contains('on'); };
+  /* How many buttons carry this label, and what each one's class is. One
+     match is the assumption every check here rests on; more than one means
+     popBtn is answering from a popover that is not the open one. */
+  const all = (t) => Array.from((pop() || D()).querySelectorAll('button'))
+    .filter((b) => b.textContent.trim() === t);
+  const cls = (t) => { const m = all(t);
+                       return m.length + 'x[' + m.map((b) => b.className)
+                         .join('|') + ']'; };
+  ck('there is exactly one segment per label in the open panel',
+     all('Average magnitude').length === 1 && all('Band power').length === 1,
+     'amp ' + cls('Average magnitude') + '  band ' + cls('Band power'));
+  say('note', '  segments before the press: amp ' + cls('Average magnitude')
+      + '   band ' + cls('Band power'));
+  ck('before the press, Average magnitude is the lit one',
+     lit('Average magnitude') && !lit('Band power'),
+     'ampLit=' + lit('Average magnitude') + ' bandLit=' + lit('Band power'));
+
   popBtn('Band power').click();
-  await sleep(200);
+  await sleep(300);
+
+  ck('pressing Band power lights Band power', lit('Band power'),
+     'the pressed segment did not take the highlight: band=' + cls('Band power')
+     + ' amp=' + cls('Average magnitude'));
+  ck('and unlights Average magnitude', !lit('Average magnitude'),
+     'both segments are lit at once');
+  /* The controls that choice exists to reach. If picking the mode does not
+     bring them up, the band cannot be set at all from here. */
+  const nBoxes = (pop() || D()).querySelectorAll('input[type=number]').length;
+  ck('and brings up the band boxes it was chosen to reach', nBoxes >= 2,
+     nBoxes + ' number inputs in the panel');
+  // STRIP_BANDS names them in lower case: 'theta', 'delta', 'beta'...
+  ck('and the band presets', !!popBtn('theta') && !!popBtn('delta'),
+     'no preset buttons in the panel');
+
   const theta = await awaitBand(4, 12);
   ck('a 4-12 Hz band profile came back', !!(theta && theta.ok),
      JSON.stringify(theta && theta.error));

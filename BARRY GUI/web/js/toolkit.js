@@ -284,9 +284,35 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'tk-tool-head' }, [
         toolIcon(id),
         el('strong', { text: name }),
+        vaccMark(id),
       ].filter(Boolean)),
       el('span', { text: blurb }),
     ]);
+  }
+
+  /* A VACC mark on the tools that can run there.
+
+     Only while the mode is on and the server says there is a cluster: the
+     mark is how somebody finds out the tool has somewhere else to run, and
+     a mark on a machine you have no account on would be an advertisement
+     rather than an affordance.
+
+     Listed rather than assumed, because a tool that cannot be offloaded and
+     is marked as though it can is worse than one with no mark at all. */
+  const VACC_TOOLS = ['incisor'];
+
+  function vaccMark(id) {
+    if (VACC_TOOLS.indexOf(id) < 0) return null;
+    if (!(BARRY.state.vacc && BARRY.vacc
+          && (BARRY.vacc.last || {}).configured)) return null;
+    const up = !!(BARRY.vacc.last || {}).available;
+    return el('span', {
+      class: 'tk-vacc' + (up ? ' up' : ''),
+      text: 'VACC',
+      title: up ? 'This one can run on the cluster'
+                : ((BARRY.vacc.last || {}).why
+                   || 'The cluster is not reachable right now'),
+    });
   }
 
   /* ---------- picking the scope ---------- */
@@ -2824,6 +2850,10 @@ BARRY.views.toolkit = (function () {
     registryRows: () => (((regCache.data) || {}).tree || [])
       .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
     tool: () => q.tool, onShow, refresh,
+    /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
+       to the tool row, and turning it on has to show up in the panel it is
+       talking about rather than at the next navigation. */
+    render,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

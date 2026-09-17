@@ -138,17 +138,23 @@ BARRY.incisor = (function () {
     paint();
   }
 
-  async function scan() {
+  async function scan(force, where) {
     if (!q.path || job) return;
     let started;
     try {
-      started = await apiPost('/api/incisor/scan', body());
+      started = await apiPost('/api/incisor/scan',
+                              body(where ? { where: where } : null));
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
     }
+    // A result already in hand, from either machine. The cluster's answers
+    // go into the same cache under the same key, so this branch does not
+    // care which one computed it -- which is the whole point.
     if (started.cached) { adopt(started.result); paint(); return; }
     job = started.job;
+    // The rail pulses while the cluster is actually working, and only then.
+    if (where && BARRY.vaccBusy) BARRY.vaccBusy.start();
     paint();
     clearInterval(poll);
     poll = setInterval(async () => {
@@ -159,6 +165,7 @@ BARRY.incisor = (function () {
       paintStages();
       if (job.status === 'running') return;
       clearInterval(poll);
+      if (where && BARRY.vaccBusy) BARRY.vaccBusy.stop();
       const done = job; job = null;
       if (done.status === 'done') {
         try {
@@ -322,6 +329,8 @@ BARRY.incisor = (function () {
     }
     host.innerHTML = '';
     host.appendChild(head());
+    const rc = reviewCard();
+    if (rc) host.appendChild(rc);
     host.appendChild(pickCard());
     if (est && est.plan) host.appendChild(planCard());
     if (job) host.appendChild(stageCard());
@@ -343,6 +352,183 @@ BARRY.incisor = (function () {
        the HTML default 300x150 with nothing on them, because under a
        virtual-time budget the rAF had not run yet. */
     if (res) { wirePlots(); drawPlots(); requestAnimationFrame(drawPlots); }
+  }
+
+  /* ==================================================================
+     The batch, and the queue it leaves behind
+     ==================================================================
+     Sending thirty recordings to the cluster is easy. The part that needed
+     thinking about is what comes back, because a batch that banks its own
+     answers is a batch nobody looks at -- and banking has a person's name
+     on it.
+
+     So a finished scan is a row here, and reviewing one does not need a
+     second way to render a scan: selecting it points the panel at that
+     recording and re-runs, which comes straight back out of the vault as a
+     cache hit. The three plots, the hilus pick and the bank button are then
+     the ordinary ones, on the ordinary path, which is why they behave the
+     same whether the numbers were computed here or on a compute node.
+     ================================================================== */
+  let reviews = null;        // null until asked for
+  let batchJob = null;
+  let batchPoll = null;
+  let reviewsOpen = false;
+
+  async function loadReviews() {
+    try {
+      const got = await api('/api/incisor/reviews');
+      reviews = got.reviews || [];
+    } catch (e) {
+      reviews = [];
+    }
+    paint();
+  }
+
+  async function startBatch() {
+    if (batchJob) return;
+    let started;
+    try {
+      started = await apiPost('/api/incisor/batch', body());
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    batchJob = started.job;
+    if (BARRY.vaccBusy) BARRY.vaccBusy.start();
+    paint();
+    clearInterval(batchPoll);
+    batchPoll = setInterval(async () => {
+      if (!batchJob) { clearInterval(batchPoll); return; }
+      let got;
+      try { got = await api('/api/cfc/job/' + batchJob.id); } catch (e) { return; }
+      batchJob = got.job;
+      paint();
+      if (batchJob.status === 'running') return;
+      clearInterval(batchPoll);
+      if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
+      const done = batchJob; batchJob = null;
+      if (done.status === 'failed') toast(done.error || 'The batch failed.',
+                                          'err', 10000);
+      loadReviews();
+    }, 900);
+  }
+
+  async function openReview(r) {
+    if (!r.local) {
+      toast('That recording was scanned on the cluster, and this computer '
+            + 'has no path to it — so its plots cannot be drawn here.',
+            'err', 9000);
+      return;
+    }
+    q.path = r.local;
+    q.gid = r.gid;
+    /* The registry row travels with the review, and it is not decoration:
+       `bank` reads project, mouse and session off it, and an entry without
+       them files itself under "Unfiled" and can never be found by the
+       animal it came from. Opening a review is the only way into banking
+       that does not go through the session picker, so this is the only
+       place that row can come from. */
+    q.row = r.row || null;
+    res = null;
+    await refreshEstimate();
+    // Comes back cached, out of the vault, on either machine's answer.
+    await scan();
+  }
+
+  function reviewCard() {
+    if (!vaccOn() && !reviewsOpen && !batchJob) return null;
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                text: 'Many at once, on the cluster' }));
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: 'Runs this same detector over every recording the cluster can '
+          + 'reach, one after another, and leaves the answers here to be '
+          + 'looked at. Nothing is banked automatically: a set goes to the '
+          + 'bank when you send it, under your name.' }));
+
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn', text: batchJob ? 'Running…' : 'Scan all on VACC',
+        disabled: batchJob ? 'disabled' : null, onclick: startBatch,
+      }),
+      el('button', {
+        class: 'btn ghost',
+        text: reviews ? ('Review (' + reviews.length + ')') : 'Review',
+        onclick: () => { reviewsOpen = !reviewsOpen;
+                         if (reviewsOpen && !reviews) loadReviews();
+                         else paint(); },
+      }),
+      batchJob ? el('button', { class: 'btn ghost', text: 'Stop',
+        onclick: () => apiPost('/api/cfc/job/' + batchJob.id + '/cancel', {}) })
+        : null,
+    ].filter(Boolean)));
+
+    if (batchJob) box.appendChild(batchRows());
+    if (reviewsOpen && reviews) box.appendChild(reviewRows());
+    return box;
+  }
+
+  function batchRows() {
+    const ms = (batchJob && batchJob.members) || [];
+    const wrap = el('div', { class: 'inc-batch' });
+    const n = ms.length;
+    const done = ms.filter((m) => m.status === 'done').length;
+    wrap.appendChild(el('div', { class: 'hint quiet',
+      text: done + ' of ' + n + ' done' }));
+    for (const m of ms) {
+      if (m.status === 'waiting') continue;
+      wrap.appendChild(el('div', { class: 'inc-batch-row ' + (m.status || '') }, [
+        el('span', { class: 'ib-name', text: m.label || m.id }),
+        el('span', { class: 'ib-state',
+          text: m.error ? m.error
+              : m.cached ? 'already answered'
+              : (m.step || m.status || '') }),
+      ]));
+    }
+    return wrap;
+  }
+
+  function reviewRows() {
+    const wrap = el('div', { class: 'inc-reviews' });
+    if (!reviews.length) {
+      wrap.appendChild(el('p', { class: 'hint quiet',
+        text: 'Nothing scanned yet.' }));
+      return wrap;
+    }
+    for (const r of reviews) {
+      const hil = (r.picked || {}).hilus || {};
+      const on = q.gid === r.gid;
+      wrap.appendChild(el('button', {
+        class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
+        onclick: () => openReview(r),
+      }, [
+        el('span', { class: 'ir-name', text: r.label || r.gid }),
+        el('span', { class: 'ir-pick',
+          text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
+        // How clear-cut the argmax was. A margin near zero means the plots
+        // are the answer and the number is a coin toss.
+        /* A small margin is the interesting case, not a defect: it means
+           the two top channels scored almost the same and the argmax could
+           have gone either way. Measured on this lab's first batch, the
+           margins were 1%, 2% and 3% -- so the plots ARE the answer here
+           and the number is a formality. Flagged rather than buried. */
+        el('span', {
+          class: 'ir-margin' + (hil.margin != null && hil.margin < 0.1
+                                ? ' close' : ''),
+          title: hil.margin != null && hil.margin < 0.1
+            ? 'The winning channel barely beat the runner-up — worth looking '
+              + 'at the plots rather than taking the pick'
+            : 'How far the winning channel stood above the runner-up',
+          text: hil.margin != null
+            ? ('margin ' + Math.round(hil.margin * 100) + '%') : '' }),
+        el('span', { class: 'ir-where',
+          title: r.slurm_id ? ('slurm job ' + r.slurm_id) : '',
+          text: r.ran_on === 'vacc' ? 'VACC' : '' }),
+        el('span', { class: 'ir-banked',
+          text: r.banked ? ('banked · ' + (r.banked.n || 0)) : 'not banked' }),
+      ]));
+    }
+    return wrap;
   }
 
   function head() {
@@ -422,14 +608,70 @@ BARRY.incisor = (function () {
         class: 'btn', text: job ? 'Scanning…' : 'Scan',
         disabled: job ? 'disabled' : null, onclick: scan,
       }),
+      vaccButton(),
       el('span', { class: 'hint quiet',
         text: est.cached ? 'Already scanned — this will be instant.'
           : 'Detects on every channel. That is not wasteful: the hilus '
             + 'estimate is computed from the per-channel counts, so there '
             + 'is no cheaper way to make it.' }),
     ]));
+    const vs = vaccSentence();
+    if (vs) box.appendChild(vs);
     box.appendChild(params());
     return box;
+  }
+
+  /* ---------------- running it somewhere else ----------------
+
+     The second button is never a replacement for the first. Two machines,
+     two caches, two answers that have to be compared rather than assumed --
+     and a recording the cluster cannot reach still has a perfectly good
+     local Scan beside it.
+
+     Shown only while VACC Mode is on AND the server says there is a cluster
+     configured. The mode gates the LOOK; `configured` gates the capability.
+     That split matters: turning the glow off because your eyes hurt must
+     not take away the Cancel button for a job still running on a shared
+     machine, so nothing here is ever the only way to reach something. */
+  function vaccOn() {
+    return !!(BARRY.state.vacc && BARRY.vacc
+              && (BARRY.vacc.last || {}).configured);
+  }
+
+  function vaccButton() {
+    if (!vaccOn()) return null;
+    const v = (est && est.vacc) || {};
+    const busy = !!job;
+    return el('button', {
+      class: 'btn ghost',
+      text: busy ? 'Scanning…' : 'Scan on VACC',
+      // Disabled with the reason ON it rather than hidden. A control that
+      // vanishes teaches nothing; `canOpen` in sessions.js carries the same
+      // note about reading an absent answer as a "no".
+      disabled: (busy || !v.can) ? 'disabled' : null,
+      title: v.can ? ('Runs the same detector on ' + (v.remote || 'the cluster'))
+                   : (v.reason || 'The cluster cannot reach this recording.'),
+      onclick: () => scan(false, 'vacc'),
+    });
+  }
+
+  function vaccSentence() {
+    if (!vaccOn()) return null;
+    const v = (est && est.vacc) || {};
+    if (!v.can) {
+      return el('div', { class: 'hint quiet vacc-why', text: v.reason || '' });
+    }
+    const here = Math.max(1, Math.round(((est.plan || {}).seconds) || 0));
+    const there = Math.max(1, Math.round(v.seconds || 0));
+    const q = v.queued ? (', ' + v.queued + ' ahead of you in the queue') : '';
+    // Says plainly when the cluster figure is still the local seed rather
+    // than something the cluster has actually done. An estimate borrowed
+    // from a different computer is not a measurement of this one.
+    const how = v.measured ? '' : ' (estimated from this machine until the '
+                                + 'cluster has run one)';
+    return el('div', { class: 'hint quiet vacc-why',
+      text: 'About ' + here + ' s here · about ' + there + ' s on VACC'
+            + q + how + '.' });
   }
 
   /* ---------------- what is being scanned ----------------
@@ -682,7 +924,17 @@ BARRY.incisor = (function () {
   /* Reading is nearly all of it: the detection happens interleaved with it
      to keep one channel in memory at a time, so the second stage is a count
      of channels finished rather than a phase with a duration. */
-  const WEIGHT = { 'ds read': 40, 'ds detect': 1 };
+  /* How much of the bar each stage is worth. Reading dominates a local
+     scan, which is why it is forty to one.
+
+     The VACC stages are here because an unlisted stage gets weight 1 by
+     default, and a queue that can sit for an hour beside a read worth forty
+     gives a bar that holds at two percent and then leaps. `vacc queue` is
+     weighted like the read it is standing in for; the transfers are small. */
+  const WEIGHT = {
+    'ds read': 40, 'ds detect': 1,
+    'vacc stage': 4, 'vacc queue': 30, 'vacc fetch': 2,
+  };
 
   function paintStages() {
     const host = document.getElementById('incStages');

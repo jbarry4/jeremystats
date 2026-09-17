@@ -6,6 +6,7 @@
     "converted": "2026-09-04T15:57:01.804684+00:00",
     "created": "2026-09-02T23:51:19.876365+00:00",
     "duration_s": "2026-09-04T15:57:01.804684+00:00",
+    "event_classes": "2026-09-16T17:44:17.047971+00:00",
     "extraction_note": "2026-09-09T06:07:26.529866+00:00",
     "first_seen_by": "2026-09-04T15:57:01.804684+00:00",
     "fissure_channel": "2026-09-09T06:07:26.529866+00:00",
@@ -30,8 +31,8 @@
     "schema": "2026-09-04T15:57:01.804684+00:00",
     "session": "2026-09-04T15:57:01.804684+00:00",
     "start": "2026-09-04T15:57:01.804684+00:00",
-    "updated": "2026-09-16T20:17:16.817205+00:00",
-    "view_state": "2026-09-16T19:56:31.763713+00:00"
+    "updated": "2026-09-17T14:11:11.631046+00:00",
+    "view_state": "2026-09-17T14:11:11.631046+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -89,11 +90,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-15T18:21:12.571853+00:00"
+        "2026-09-16T17:44:08.192377+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-16T20:17:12.385450+00:00"
+        "2026-09-17T14:11:03.062406+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -102,7 +103,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-16T20:17:16.817205+00:00",
+    "at": "2026-09-17T14:11:11.631046+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -153,6 +154,23 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1811.6608,
+  "event_classes": {
+    "Starting Recording": {
+      "color": "#FF6B6B",
+      "name": "Starting Recording",
+      "visible": true
+    },
+    "Stopping Recording": {
+      "color": "#FFB81C",
+      "name": "Stopping Recording",
+      "visible": true
+    },
+    "m34s8jun10": {
+      "color": "#4DD4C4",
+      "name": "m34s8jun10",
+      "visible": true
+    }
+  },
   "extraction_note": null,
   "first_seen_by": "scan",
   "fissure_channel": null,
@@ -213,7 +231,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-15T14:21:11-04:00",
+      "at": "2026-09-16T13:44:08-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -221,7 +239,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-16T16:17:12-04:00",
+      "at": "2026-09-17T10:11:03-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -240,9 +258,9 @@
   "session": 8,
   "start": "2024-06-10T17:00:07",
   "updated": {
-    "app_version": "2026.09.16.4",
-    "at": "2026-09-16T16:17:16-04:00",
-    "commit": "eb25504",
+    "app_version": "2026.09.16.5",
+    "at": "2026-09-17T10:11:11-04:00",
+    "commit": "12dc474",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -268,7 +286,7 @@
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 1221.892275,
+    "t0": 1400.881275,
     "ylim": null
   }
 }

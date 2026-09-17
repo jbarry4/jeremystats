@@ -39,6 +39,7 @@ learned the number.
 from __future__ import annotations
 
 import json
+import re
 import time
 
 from . import cfc, vacc
@@ -82,6 +83,159 @@ def steps(n_stage=0, n_fetch=1):
     out.append(("vacc queue", 1))
     out.append(("vacc fetch", int(n_fetch)))
     return out
+
+
+class VaccArray:
+    """Many recordings at once, as one slurm job array.
+
+    The first version of this submitted one job, waited for it, submitted
+    the next, and waited for that -- twenty-eight recordings in series, each
+    one queueing on its own, using a several-thousand-core cluster as a
+    slow single machine. Forty minutes of wall clock to do about ninety
+    seconds of work at a time.
+
+    An array is what slurm has for exactly this, and it is what this lab's
+    own `.sbat` files already use: `#SBATCH --array=1-9` beside a `dirs=()`
+    indexed by `$SLURM_ARRAY_TASK_ID`. One submit, N tasks, all queued at
+    once, and -- because `poll_states` was always built to take a LIST --
+    one connection to ask about all of them.
+
+    `%N` on the array range caps how many run at a time. It is worth having
+    rather than letting twenty-eight tasks all read the same filesystem at
+    once: the VACC's own documentation warns that netfiles degrades when
+    many programs touch many files simultaneously, and scratch is shared
+    with everybody else's jobs too.
+    """
+
+    def __init__(self, cfg, tool, jobs, ssh=None, concurrency=None):
+        # `jobs` is [{gid, label, spec_local, spec_remote, report}].
+        self.cfg = cfg
+        self.tool = tool
+        self.jobs = list(jobs)
+        self.rid = vacc.new_rid()
+        self.array_id = None
+        self.concurrency = concurrency
+        self._ssh = vacc._runner(cfg, ssh)
+        self.ws = vacc._remote_path(cfg.get("workspace") or ".", "runs",
+                                    self.rid)
+
+    def submit(self, seconds=600, megasamples=1.0):
+        """Write every spec, then one sbatch. Returns the array job id."""
+        vacc.check_rid(self.rid)
+        req = vacc.slurm_request(seconds, megasamples,
+                                 self.cfg.get("partition"))
+        n = len(self.jobs)
+        cap = ("%%%d" % int(self.concurrency)) if self.concurrency else ""
+
+        parts = ["set -e", "mkdir -p %s" % vacc.q(self.ws)]
+        for i, j in enumerate(self.jobs):
+            payload = json.dumps({
+                "rid": "%s_%d" % (self.rid, i), "tool": self.tool,
+                "spec": j["spec_remote"], "plan": {},
+                "stages": [n2 for n2, _ in (j.get("tool_steps") or [])],
+                "report": j.get("report"),
+            })
+            parts.append("cat > %s/spec_%d.json <<'JARVIS_SPEC_EOF'\n%s\n"
+                         "JARVIS_SPEC_EOF" % (vacc.q(self.ws), i, payload))
+
+        submit_sh = (
+            "#!/bin/bash\n"
+            "#SBATCH --job-name=%(rid)s\n"
+            "#SBATCH --array=0-%(last)d%(cap)s\n"
+            "#SBATCH --partition=%(part)s\n"
+            "#SBATCH --time=%(time)s\n"
+            "#SBATCH --mem=%(mem)s\n"
+            "#SBATCH --cpus-per-task=%(cpus)d\n"
+            "#SBATCH --nodes=1\n"
+            "#SBATCH --ntasks=1\n"
+            "#SBATCH --output=%(ws)s/%%A_%%a.out\n"
+            "#SBATCH --mail-type=NONE\n"
+            "%(pre)s\n"
+            "cd %(code)s\n"
+            "exec python vacc_run.py %(ws)s/spec_${SLURM_ARRAY_TASK_ID}.json\n"
+        ) % {
+            "rid": self.rid, "last": max(0, n - 1), "cap": cap,
+            "part": req["partition"], "time": req["time"], "mem": req["mem"],
+            "cpus": req["cpus"], "ws": self.ws,
+            "pre": vacc.activate(self.cfg),
+            "code": vacc._remote_path(self.cfg.get("workspace") or ".", "code"),
+        }
+        parts.append("cat > %s/submit.sh <<'JARVIS_SH_EOF'\n%s"
+                     "JARVIS_SH_EOF" % (vacc.q(self.ws), submit_sh))
+        parts.append("cd %s && sbatch --parsable submit.sh" % vacc.q(self.ws))
+
+        out = self._ssh("bash -s", stdin="\n".join(parts) + "\n", timeout=120)
+        for line in reversed((out or "").strip().splitlines()):
+            got = line.strip().split(";")[0].strip()
+            if got.isdigit():
+                self.array_id = got
+                break
+        if not self.array_id:
+            raise vacc.SSHError("The cluster did not return an array job id.",
+                                "no-jobid", out)
+        return self.array_id
+
+    def poll(self):
+        """Every task's state, and which results have landed. ONE call.
+
+        States and the result listing together: asking slurm what is running
+        and the filesystem what has finished are two questions about the
+        same thing, and two connections to answer them would be two
+        connections per poll for as long as the array runs.
+        """
+        script = (
+            "sacct -n -X -j %(a)s -o 'JobID,State' -P 2>/dev/null\n"
+            "echo '--'\n"
+            "ls -1 %(ws)s/result_*.json 2>/dev/null | sed 's#.*/##'\n"
+        ) % {"a": vacc.q(str(self.array_id)), "ws": vacc.q(self.ws)}
+        raw = self._ssh("bash -s", stdin=script, timeout=60)
+        states, done, half = {}, [], 0
+        for line in (raw or "").splitlines():
+            line = line.strip()
+            if line == "--":
+                half = 1
+                continue
+            if not line:
+                continue
+            if half == 0:
+                bits = line.split("|")
+                jid = bits[0].split(".")[0]
+                # `12345_7` -> task 7. The parent row has no underscore and
+                # is not a task.
+                if "_" in jid:
+                    try:
+                        states[int(jid.rsplit("_", 1)[1])] = \
+                            vacc.read_state(bits[1] if len(bits) > 1 else "")
+                    except ValueError:
+                        pass
+            else:
+                m = re.match(r"^result_(\d+)\.json$", line)
+                if m:
+                    done.append(int(m.group(1)))
+        return states, set(done)
+
+    def fetch(self, index):
+        """One task's answer, localised for the recording it belongs to."""
+        raw = self._ssh("cat %s/result_%d.json"
+                        % (vacc.q(self.ws), int(index)), timeout=180)
+        try:
+            out = json.loads(raw)
+        except ValueError:
+            raise vacc.SSHError("A task finished but its answer could not be "
+                                "read.", "garbled", (raw or "")[:400])
+        j = self.jobs[index]
+        shim = VaccRun(self.cfg, self.tool, j["spec_local"],
+                       j["spec_remote"].get("path"), ssh=self._ssh)
+        shim.array_id = self.array_id
+        shim.slurm_id = "%s_%d" % (self.array_id, index)
+        return shim.relocalize(out)
+
+    def cancel(self):
+        if self.array_id:
+            try:
+                vacc.cancel(self.cfg, self.array_id, self.rid, ssh=self._ssh)
+            except Exception:                            # noqa: BLE001
+                pass
 
 
 class VaccRun:
@@ -302,12 +456,36 @@ class VaccRun:
         return self.relocalize(out)
 
     def relocalize(self, out):
-        """Put this machine's path back wherever the remote one is.
+        """Put this machine's terms back on an answer that came over a wire.
 
-        The result is about a recording, not about where the cluster keeps a
-        copy of it. A remote path left in here reaches the cache key, the
-        result record and the screen.
+        Two things, and the second is the one that bites.
+
+        The path, because the result is about a recording and not about
+        where the cluster keeps a copy of it -- a remote path left in here
+        reaches the cache key, the result record and the screen.
+
+        And the KEYS OF `_rows`, because JSON has no integer keys. Every
+        channel index leaves here as an int and comes back as a string, and
+        `incisor.events_for` looks up `int(index)` -- so the panel asked for
+        channel 44, the dict had "44", and the answer was an empty list.
+        Not an error: a cache hit, a valid response, and no events. The scan
+        had worked perfectly and picked the right hilus.
+
+        The same mismatch made the parity check report a maximum difference
+        of zero while comparing nothing at all. Once is a bug; twice is the
+        boundary being in the wrong place, so it is fixed here -- at the one
+        point where a result stops being JSON and starts being a result.
         """
+        rows = out.get("_rows")
+        if isinstance(rows, dict):
+            fixed = {}
+            for k, v in rows.items():
+                try:
+                    fixed[int(k)] = v
+                except (TypeError, ValueError):
+                    fixed[k] = v
+            out["_rows"] = fixed
+
         local = self.spec_local.get("path")
         remote = self.spec_remote.get("path")
         if not local or not remote or local == remote:

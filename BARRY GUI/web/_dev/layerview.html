@@ -118,9 +118,16 @@ async function untilN(fn, tries = 900, gap = 100) {
      + '   return real.apply(this, arguments); }; })()');
 
   /* Every fillRect and every dashed stroke, with the alpha it was drawn at
-     and whether it landed on a traces canvas or a raster. The stamp the
-     traces pane sets is the discriminator, which makes this a test of that
-     stamp too. */
+     and whether it landed on the traces canvas or a raster.
+
+     The discriminator is the canvas ELEMENT, looked up fresh before each
+     redraw and compared by identity. It used to be the traces pane's own
+     __layerBandsDrawn stamp, which reads well until the moment that stamp
+     moves: the stamp has to be set after the early band pass rather than
+     before it, and on the day that changed every band fill started
+     reporting as "not the traces canvas" while the picture on screen was
+     the same as it ever was. A test that fails when correct code is
+     rearranged is measuring the wrong thing. */
   ev('(function(){ const P = CanvasRenderingContext2D.prototype;'
      + ' window.__log = [];'
      + ' if (!P.__hlog) { P.__hlog = true;'
@@ -128,11 +135,11 @@ async function untilN(fn, tries = 900, gap = 100) {
      + '   P.fillRect = function(x, y, w, h){'
      + '     if (window.__log) window.__log.push(["fill",'
      + '       Math.round(this.globalAlpha * 1000) / 1000, Math.round(w),'
-     + '       this.canvas && this.canvas.__layerBandsDrawn ? "T" : "I"]);'
+     + '       this.canvas && this.canvas === window.__tracesCv ? "T" : "I"]);'
      + '     return fr.apply(this, arguments); };'
      + '   P.setLineDash = function(a){'
      + '     if (window.__log && a && a.length) window.__log.push(["dash", 0, 0,'
-     + '       this.canvas && this.canvas.__layerBandsDrawn ? "T" : "I"]);'
+     + '       this.canvas && this.canvas === window.__tracesCv ? "T" : "I"]);'
      + '     return sd.apply(this, arguments); }; } })()');
 
   W.eval("setView('xplore')");
@@ -245,6 +252,102 @@ async function untilN(fn, tries = 900, gap = 100) {
   say('note', '  wash it came on at: ' + washId + '  (strata.js default)');
 
   /* ---------------------------------------------------------------
+     A lane is only a channel on some panels
+     --------------------------------------------------------------- */
+  head('and only where a lane is a channel');
+  /* The bands are on, so the wrapper is installed and every raster in
+     this window goes through it. A panel whose vertical axis is frequency
+     -- a single-channel spectrogram or scalogram, or the band-power map --
+     has no channel rows to report and says so by sending none. Painting
+     the layer colours evenly down one of those puts the hilus band across
+     40-60 Hz as though it meant something, which is worse than drawing
+     nothing because it looks deliberate. */
+  const paint = (panelArg) => JSON.parse(ev(
+    '(function(){'
+    + '  var cv = document.createElement("canvas");'
+    + '  cv.width = 400; cv.height = 300;'
+    + '  var ctx = cv.getContext("2d");'
+    + '  var fills = [];'
+    + '  var rf = ctx.fillRect.bind(ctx);'
+    + '  ctx.fillRect = function (x,y,w,h) {'
+    + '    fills.push([Math.round(w), Math.round(ctx.globalAlpha * 100) / 100]);'
+    + '    rf(x,y,w,h); };'
+    + '  var s = BARRY.views.xplore.current();'
+    + '  var err = null;'
+    + '  try { BARRY.strata.draw(ctx, s, { t0: s.t0, t1: s.t0 + s.span },'
+    + '        0, 400, 0, 300, { accent: "#4bc7f0" }, ' + panelArg + '); }'
+    + '  catch (e) { err = String(e && e.message || e); }'
+    + '  return JSON.stringify({ fills: fills, err: err });'
+    + '})()'));
+
+  /* The precondition. Without a panel that DOES paint, every check below
+     passes by painting nothing at all, which is the failure they exist to
+     catch. Rows named the way a CSD names them. */
+  const rowsArg = ev('JSON.stringify({ rows: (BARRY.views.xplore.current()'
+    + '.info.channels || []).map(function (c) { return { number: c.number }; })'
+    + ' })');
+  /* A band spans the plot; the chip is a small opaque box in the corner.
+     Counting fills alone cannot tell them apart, and after the chip was
+     added "no fills" stopped meaning "no bands". */
+  const bands = (r) => (r.fills || []).filter((f) => f[0] >= 400).length;
+  const small = (r) => (r.fills || []).filter((f) => f[0] < 400).length;
+
+  /* A channel this sheet really labels, named the way a lane-less panel
+     names its own: those panels send `channel`, not `rows`. */
+  const chTag = JSON.parse(ev('JSON.stringify((function(){'
+    + ' var s = BARRY.views.xplore.current();'
+    + ' var L = (s.layerView || {}).labels || {};'
+    + ' var n = Object.keys(L)[0];'
+    + ' return n ? { label: "CSC" + n, number: Number(n) } : null; })())')
+    || 'null');
+  say('note', '  chip channel: ' + JSON.stringify(chTag));
+
+  const withRows = paint(rowsArg);
+  say('note', '  raster naming its rows: ' + bands(withRows) + ' bands, '
+      + small(withRows) + ' other fills'
+      + (withRows.err ? '  err=' + withRows.err : ''));
+  ck('a raster that names its channel rows gets the bands',
+     bands(withRows) > 0, JSON.stringify(withRows.fills));
+
+  const bp = paint(JSON.stringify({ panel: 'bandpower', centers: [4, 8, 12],
+                                    channel: chTag }));
+  say('note', '  band-power map (no rows key): ' + bands(bp) + ' bands, '
+      + small(bp) + ' other fills');
+  ck('the band-power map gets no bands — its y axis is Hz, not channels',
+     bands(bp) === 0, bands(bp) + ' bands painted onto a frequency axis');
+
+  const sp = paint(JSON.stringify({ panel: 'spectrogram', rows: null,
+                                    freqs: [2, 200], channel: chTag }));
+  say('note', '  single-channel spectrogram (rows null): ' + bands(sp)
+      + ' bands, ' + small(sp) + ' other fills');
+  ck('nor does a single-channel spectrogram', bands(sp) === 0,
+     bands(sp) + ' bands');
+
+  /* ...but it does not answer with nothing either. A lane-less panel still
+     knows which channel it is showing, and which layer that channel is in
+     is as live a question there as a band is on the traces. Two fills: the
+     chip's backing and its colour swatch. */
+  ck('a lane-less panel still says which layer its channel is in',
+     small(bp) >= 2 && small(sp) >= 2,
+     'band-power ' + small(bp) + ', spectrogram ' + small(sp)
+     + ' small fills (want the chip backing and its swatch)');
+
+  /* And nothing to say is said by saying nothing: an unlabelled channel
+     gets no chip rather than a chip naming no region. */
+  const bare = paint(JSON.stringify({ panel: 'bandpower', centers: [4],
+                                      channel: { label: 'CSC999',
+                                                 number: 999 } }));
+  ck('a channel with no label in the sheet gets no chip',
+     small(bare) === 0 && bands(bare) === 0,
+     JSON.stringify(bare.fills));
+
+  /* One painter, one vocabulary. The read-only look used to keep its own
+     copy of both, and the copy is what missed the rule above. */
+  ck('the strengths on offer are strata.js\u2019s own list',
+     ev('!!(BARRY.strata && BARRY.strata.washes && BARRY.strata.washes.length)'),
+     'BARRY.strata.washes is what the menu reads');
+
+  /* ---------------------------------------------------------------
      What actually got painted, and in what order
      --------------------------------------------------------------- */
   head('the bands, and where they sit');
@@ -257,7 +360,7 @@ async function untilN(fn, tries = 900, gap = 100) {
                + ' return s.events.length; })()');
   say('note', '  ' + nEv + ' event(s) on the session, one of them planted here');
 
-  ev('window.__log = []');
+  ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
   ev('BARRY.views.xplore._redrawPane(0)');
   await sleep(200);
   let log = ev('JSON.stringify(window.__log)');
@@ -293,7 +396,7 @@ async function untilN(fn, tries = 900, gap = 100) {
      grp ? grp.querySelectorAll('.ctl-seg .mini').length + ' choices' : 'no group');
   if (solid) solid.click();
   await sleep(250);
-  ev('window.__log = []');
+  ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
   ev('BARRY.views.xplore._redrawPane(0)');
   await sleep(150);
   log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
@@ -313,7 +416,7 @@ async function untilN(fn, tries = 900, gap = 100) {
   head('over the other views');
   ev('BARRY.views.xplore.setPanes([{panel:"traces"},{panel:"csd"}],'
      + '{col:0.5,row:0.5})');
-  ev('window.__log = []');
+  ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
   const drew = await untilN(() => {
     const l = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
     return l.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], 0.10));
@@ -381,7 +484,7 @@ async function untilN(fn, tries = 900, gap = 100) {
   const off = D.querySelector('#layerBandsOn');
   if (off) off.click();
   await sleep(250);
-  ev('window.__log = []');
+  ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
   ev('BARRY.views.xplore._redrawPane(0)');
   await sleep(150);
   log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');

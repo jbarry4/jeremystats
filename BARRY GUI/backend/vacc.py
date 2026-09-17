@@ -1051,6 +1051,18 @@ def resolve_gid(gid, paths, cfg, drives=None, staged=None):
 
     if staged and gid in staged:
         got = staged[gid] or {}
+        if got.get("conflict"):
+            # More than one folder on the cluster answers to this recording,
+            # and nothing here can tell which is meant. Reported rather than
+            # resolved: picking one silently is how the wrong data gets
+            # analysed under the right name.
+            return {"gid": gid, "state": UNKNOWN, "remote": None, "via": None,
+                    "why": ("the cluster has %d folders that all claim to be "
+                            "this recording, so which one is meant is not "
+                            "established: %s"
+                            % (len(got["conflict"]),
+                               "; ".join(got["conflict"][:3]))),
+                    "conflict": got["conflict"]}
         return {"gid": gid, "state": STAGED, "remote": got.get("path"),
                 "why": "a copy is in cluster scratch", "via": None,
                 "staged_at": got.get("staged_at")}

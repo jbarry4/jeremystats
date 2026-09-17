@@ -674,6 +674,64 @@
 .flagchip.vacc.native { color: var(--ok); border-color: var(--ok); }
 .flagchip.vacc.staged { color: var(--warn); border-color: var(--warn); }
 
+/* The mark on a ToolKit tool that has somewhere else to run. Small, and it
+   sits beside the name rather than under it: it is a property of the tool,
+   not a sentence about it. Dim when the cluster is configured but not
+   answering, so it says "there is a VACC and it is not there right now"
+   rather than disappearing and saying nothing. */
+.tk-vacc {
+  margin-left: auto; align-self: center;
+  font-size: 9px; font-weight: 700; letter-spacing: .07em;
+  padding: 2px 5px; border-radius: 4px;
+  border: 1px solid var(--line); color: var(--text-3);
+  font-family: var(--mono); line-height: 1;
+}
+.tk-vacc.up { border-color: var(--fire-edge, var(--accent-line));
+              color: var(--accent); background: var(--accent-soft); }
+
+/* Why a scan can or cannot go to the cluster, under the buttons it explains. */
+.vacc-why { margin: 6px 0 0; }
+
+/* ---- a batch, and the queue it leaves behind ---- */
+.inc-batch { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+.inc-batch-row {
+  display: flex; gap: 12px; justify-content: space-between; align-items: baseline;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  font-size: 11.5px; background: var(--bg-2); min-width: 0;
+}
+.inc-batch-row.running { background: var(--accent-soft); }
+.inc-batch-row.failed .ib-state { color: var(--err); }
+.ib-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
+           white-space: nowrap; }
+.ib-state { color: var(--text-3); font-family: var(--mono); font-size: 10.5px;
+            white-space: nowrap; }
+
+.inc-reviews { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+.inc-review {
+  display: grid;
+  grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto auto auto;
+  gap: 12px; align-items: baseline; text-align: left;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft); background: var(--bg-2);
+  color: var(--text); cursor: pointer; font: inherit; font-size: 12px;
+}
+.inc-review:hover { background: var(--bg-3); }
+.inc-review.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.ir-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
+           white-space: nowrap; }
+.ir-pick { color: var(--text-2); font-family: var(--mono); font-size: 11px; }
+.ir-margin { color: var(--text-3); font-size: 10.5px; white-space: nowrap; }
+/* A near-tie is the row worth opening, so it is the row that is coloured. */
+.ir-margin.close { color: var(--warn); }
+.ir-where { font-size: 9px; font-weight: 700; letter-spacing: .06em;
+            color: var(--accent); font-family: var(--mono); white-space: nowrap; }
+/* Banked is stated, not hidden. Coming back to thirty of these, "which ones
+   have I already done" is the first question, and a row that vanishes when
+   it is banked answers it by making the list shorter -- which looks exactly
+   like a batch that did not finish. */
+.ir-banked { color: var(--text-3); font-size: 10.5px; white-space: nowrap; }
+.inc-review.banked .ir-banked { color: var(--ok); }
+
 /* The chip that turns it on. Lit when the mode is, so the control and what
    it controls agree at a glance -- and readable when it is not, which is why
    this is a border and a text colour rather than the button filling in. */

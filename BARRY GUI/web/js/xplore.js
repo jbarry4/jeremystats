@@ -1893,6 +1893,10 @@ BARRY.views.xplore = (function () {
     }
     if (sess.overviewBandReq === key) sess.overviewBandReq = false;
     refreshSession(sess);
+    /* The panel says what the line cost and what its units are, and says
+       "reading the recording" until this lands. Without this it goes on
+       saying it with the answer already drawn behind it. */
+    repaintMenu();
   }
 
   /* The series the strip should draw, or null while it is still coming. */
@@ -1933,6 +1937,7 @@ BARRY.views.xplore = (function () {
     relabelMenu(index, 'Strip', stripWord(sess));
     loadOverviewBand(sess);
     refreshSession(sess);
+    repaintMenu();
   }
 
   function stripPop(index, sess) {
@@ -1974,6 +1979,7 @@ BARRY.views.xplore = (function () {
           relabelMenu(index, 'Strip', stripWord(sess));
           if (v === 'band') loadOverviewBand(sess);
           refreshSession(sess);
+          repaintMenu();
         }),
       ]),
     ];
@@ -1994,6 +2000,7 @@ BARRY.views.xplore = (function () {
           sess.stripMeasure = v;
           relabelMenu(index, 'Strip', stripWord(sess));
           refreshSession(sess);       // already downloaded; no refetch
+          repaintMenu();
         }),
       ]));
       /* Say what it cost and what it is, because a line with no units is a
@@ -2258,6 +2265,33 @@ BARRY.views.xplore = (function () {
     ['delta', 1, 4], ['theta', 4, 12], ['beta', 12, 30],
     ['gamma', 30, 100], ['ripple', 100, 250], ['all', null, null],
   ];
+
+  /* ======================================================================
+     How hard the theta CSD is smoothed across channels.
+
+     A CSD is a second difference, so it amplifies whatever is uncorrelated
+     between neighbouring contacts: a little noise on one electrode leaves a
+     stripe down the whole picture. Smoothing across channels is how every
+     CSD tool in this lineage deals with that, and how much is a judgement
+     about this probe in this recording rather than a constant -- too little
+     and the speckle hides the sink, too much and the sink has been averaged
+     back into the field the derivative was there to remove.
+
+     The number is a Gaussian sigma in CHANNELS, and 0 turns it off. The
+     default matches icsd's own (f_order=(3, 1)), which is what Toothy
+     computes its CSDs with. The server clamps to the same maximum; this
+     copy is here so the control cannot offer something that will come back
+     silently changed.
+     ====================================================================== */
+  const THETA_SMOOTH_DEFAULT = 1;
+  const THETA_SMOOTH_MAX = 4;
+
+  function thetaSmooth(pane) {
+    const v = (pane && pane.thetaSmooth != null)
+      ? Number(pane.thetaSmooth) : THETA_SMOOTH_DEFAULT;
+    if (!isFinite(v)) return THETA_SMOOTH_DEFAULT;
+    return clamp(v, 0, THETA_SMOOTH_MAX);
+  }
 
   /* ======================================================================
      The band axis, for the band-resolved power panel
@@ -2733,7 +2767,7 @@ BARRY.views.xplore = (function () {
           if (!node.contains(ev.target) && !btn.contains(ev.target)) closeMenu();
         };
         const esc = (ev) => { if (ev.key === 'Escape') closeMenu(); };
-        openMenu = { node, button: btn, away, esc };
+        openMenu = { node, button: btn, away, esc, build };
         setTimeout(() => {
           document.addEventListener('mousedown', away, true);
           document.addEventListener('keydown', esc, true);
@@ -2763,6 +2797,41 @@ BARRY.views.xplore = (function () {
     if (node) node.textContent = value || '';
   }
 
+  /* Rebuild the open panel from its own builder, in place.
+
+     For panels that change shape as you use them. The Marks switch can
+     closeMenu() instead, because choosing is the last thing you do to it;
+     the Strip panel grows a band, a row of presets and a measure switch
+     the moment you pick Band power, so shutting it would hide the very
+     controls that choice exists to reach.
+
+     Not refreshControls(): that rebuilds the strip and detaches the button
+     this popover belongs to, which is the trap relabelMenu() above exists
+     to avoid. Only the panel's contents are replaced; the button, the
+     outside-click watcher and the Escape key all stay as they were. */
+  function repaintMenu() {
+    if (!openMenu || typeof openMenu.build !== 'function') return;
+    const node = openMenu.node, btn = openMenu.button;
+    /* Not while somebody is typing into it. The band boxes commit on
+       change, so rebuilding under a half-typed number would throw the
+       number away -- and the read that finished is exactly what would
+       land in the middle of typing the next band. */
+    const act = document.activeElement;
+    if (act && act.tagName === 'INPUT' && node.contains(act)) return;
+    let fresh;
+    try { fresh = openMenu.build(); } catch (e) { return; }
+    node.textContent = '';
+    node.appendChild(fresh);
+    /* It just changed height. Keep it against its button, by the same
+       rule the open used. */
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const h = node.offsetHeight;
+    node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+      ? (r.top - h - 6) + 'px'
+      : (r.bottom + 6) + 'px';
+  }
+
   function popRow(title, children) {
     const kids = children.filter(Boolean);
     if (!kids.length) return null;
@@ -2788,6 +2857,25 @@ BARRY.views.xplore = (function () {
     else if (sess.hp) bits.push('≥' + trimNum(sess.hp) + ' Hz');
     if (sess.notch) bits.push('+' + trimNum(sess.notch));
     return bits.length ? bits.join(' ') : 'off';
+  }
+
+  /* Which panels fix their own band and ignore the strip entirely.
+
+     The theta CSD is a measurement of one rhythm, not a view of the
+     recording, so it band-passes 4–12 Hz itself and reads nothing from
+     here. Saying "300–500 Hz" over a panel that ran 4–12 would be naming a
+     filter that did not run — and the two would have composed to an empty
+     band if it had, so the panel would have come back blank and correct. */
+  const LOCKED_BAND = { theta: [4, 12] };
+
+  function lockedBand(pane) {
+    return (pane && LOCKED_BAND[pane.panel]) || null;
+  }
+
+  function filterWordFor(pane, sess) {
+    const lb = lockedBand(pane);
+    if (lb) return trimNum(lb[0]) + '–' + trimNum(lb[1]) + ' Hz locked';
+    return filterWord(sess);
   }
 
   function ctlNum(label, value, step, onchange, title, width) {
@@ -2883,9 +2971,12 @@ BARRY.views.xplore = (function () {
 
     host.appendChild(el('div', { class: 'ctl-sep' }));
 
-    host.appendChild(menu(index, 'Filter', filterWord(sess),
-      'High-pass, low-pass and notch, plus saved presets',
-      () => filterPop(index, sess)));
+    host.appendChild(menu(index, 'Filter', filterWordFor(pane, sess),
+      lockedBand(pane)
+        ? 'This panel fixes its own band and ignores these corners — they '
+          + 'still apply to every other pane on this recording'
+        : 'High-pass, low-pass and notch, plus saved presets',
+      () => filterPop(index, sess, pane)));
 
     if (panelHasOptions(pane)) {
       host.appendChild(menu(index, 'Panel', panelWord(pane, sess),
@@ -2939,17 +3030,27 @@ BARRY.views.xplore = (function () {
 
   /* ---------- what the menu buttons open ---------- */
 
-  function filterPop(index, sess) {
+  function filterPop(index, sess, pane) {
+    const lb = lockedBand(pane);
     const bump = (via) => {
       BARRY.activity.log('filter.change', {
         highpass: sess.hp, lowpass: sess.lp, notch: sess.notch, via,
       }, sess);
       queueSaveState(sess);
       refreshSession(sess);
-      relabelMenu(index, 'Filter', filterWord(sess));
+      relabelMenu(index, 'Filter', filterWordFor(pane, sess));
       publishLink(sess.t0, sess.span, sess);
     };
     return popBody([
+      /* Above the corners, not under them. A note underneath is one nobody
+         reads until after they have typed a number and watched the picture
+         not change. */
+      !lb ? null : el('div', { class: 'ctl-pop-note warn',
+        text: 'This pane is the ' + labelForPanel(pane.panel) + ', and it '
+            + 'band-passes ' + trimNum(lb[0]) + '–' + trimNum(lb[1])
+            + ' Hz itself — a panel named for a rhythm should be showing '
+            + 'that rhythm, whatever else is set. These corners still apply '
+            + 'to every other pane on this recording.' }),
       popRow('Corners, Hz  (0 = off)', [
         ctlNum('High-pass', sess.hp, 0.5, (v) => {
           sess.hp = Math.max(0, isFinite(v) ? v : 0); bump('manual');
@@ -3016,13 +3117,23 @@ BARRY.views.xplore = (function () {
       return trimNum(b.lo) + '–' + trimNum(b.hi) + '  /' + trimNum(b.step);
     }
     if (pane.panel === 'csd') return trimNum(sess.spacing) + ' µm';
+    if (pane.panel === 'theta') {
+      const s = thetaSmooth(pane);
+      return trimNum(sess.spacing) + ' µm  ·  '
+           + (s > 0 ? 'σ' + trimNum(s) : 'no smoothing');
+    }
     return pane.cmap || 'jet';
   }
 
   function panelPop(index, pane, sess) {
     const rows = [];
 
-    if (pane.panel === 'csd') {
+    /* Both CSD panels take the probe geometry, because both are the same
+       second spatial derivative -- the theta one just takes it of the
+       4-12 Hz band. The spacing lives on the SESSION, not the pane: it
+       describes the probe, so a CSD and a theta CSD of the same recording
+       cannot be drawn at two different spacings and both be right. */
+    if (pane.panel === 'csd' || pane.panel === 'theta') {
       rows.push(popRow('Geometry', [
         ctlNum('Spacing µm', sess.spacing, 5, (v) => {
           sess.spacing = Math.max(1, isFinite(v) ? v : 50);
@@ -3030,6 +3141,48 @@ BARRY.views.xplore = (function () {
           relabelMenu(index, 'Panel', panelWord(pane, sess));
         }, 'Electrode spacing for the CSD second derivative', '72px'),
       ]));
+    }
+
+    if (pane.panel === 'theta') {
+      const setSmooth = (v) => {
+        pane.thetaSmooth = clamp(isFinite(v) ? v : THETA_SMOOTH_DEFAULT,
+                                 0, THETA_SMOOTH_MAX);
+        BARRY.activity.log('panel.smooth',
+          { panel: 'theta', sigma: pane.thetaSmooth }, sess);
+        refreshPane(index);
+        relabelMenu(index, 'Panel', panelWord(pane, sess));
+        refreshControls(index);
+      };
+      rows.push(popRow('Smoothing across channels', [
+        ctlNum('σ channels', round(thetaSmooth(pane), 2), 0.25, setSmooth,
+               'Width of the Gaussian averaged down the channel axis, in '
+               + 'channels. 0 draws the raw second derivative.', '72px'),
+        /* Three places worth landing on, because the useful range is
+           narrow and typing 0.25 at a time to find it is not how anybody
+           decides this. Named, not numbered, so the button says what it is
+           for rather than what it sets. */
+        el('div', { class: 'ctl-seg' },
+          [['None', 0, 'The raw second derivative, speckle and all'],
+           ['Standard', THETA_SMOOTH_DEFAULT,
+            'One channel — icsd’s own default, and what Toothy '
+            + 'computes its CSDs with'],
+           ['Heavy', 2.5,
+            'For a noisy probe, at the price of blurring a thin sink into '
+            + 'its neighbours']]
+          .map(([name, v, why]) => el('button', {
+            class: 'mini' + (Math.abs(thetaSmooth(pane) - v) < 1e-6
+                             ? ' on' : ''),
+            text: name, title: why,
+            onclick: () => setSmooth(v),
+          }))),
+      ]));
+      rows.push(el('div', { class: 'hint',
+        text: 'A CSD amplifies whatever is uncorrelated between neighbouring '
+            + 'contacts, so one noisy electrode stripes the whole picture. '
+            + 'This averages that out down the channel axis — and averages '
+            + 'real detail out with it, so a sink narrower than σ is spread '
+            + 'into its neighbours. It changes the picture, not the '
+            + 'recording; nothing here is saved.' }));
     }
 
     if (pane.panel === 'spectrogram' || pane.panel === 'scalogram') {
@@ -3314,28 +3467,30 @@ BARRY.views.xplore = (function () {
      is the whole reason this is separate from the mode rather than a
      read-only flag inside it. */
 
-  /* The strengths are strata.js's (strata.js ~line 49), copied rather than
-     imported, because `wash` and `washAlpha` are private to that module.
-     The two lists have to agree: the same recording looking different
-     depending on which way you came into it is exactly what a wash setting
-     exists to stop. */
-  const LAYER_WASHES = [
-    { id: 'off', name: 'Off', alpha: 0, why: 'No bands at all' },
-    { id: 'faint', name: 'Faint', alpha: 0.10,
-      why: 'Just enough to see the boundary' },
-    { id: 'clear', name: 'Clear', alpha: 0.22,
-      why: 'Readable without hiding the trace' },
-    { id: 'solid', name: 'Solid', alpha: 0.42,
-      why: 'For checking the layout at a glance' },
-  ];
+  /* The strengths are strata.js's, read from it rather than copied. The two
+     lists used to be kept in step by hand, which is a rule nothing enforces
+     -- and the same recording looking different depending on which way you
+     came into it is exactly what a wash setting exists to stop.
+
+     Through a function rather than captured once, because nothing orders
+     these two files: this one can be evaluated before strata.js has run.
+     The fallback carries 'off' alone -- with strata.js absent there is no
+     overlay to set a strength for. */
+  const LAYER_WASH_NONE = [{ id: 'off', name: 'Off', alpha: 0,
+                             why: 'No bands at all' }];
+
+  function layerWashes() {
+    const w = BARRY.strata && BARRY.strata.washes;
+    return (w && w.length) ? w : LAYER_WASH_NONE;
+  }
 
   function layerWash(sess) {
     const got = sess && sess.layerWash;
-    return LAYER_WASHES.some((w) => w.id === got) ? got : 'off';
+    return layerWashes().some((w) => w.id === got) ? got : 'off';
   }
 
   function layerWashAlpha(sess) {
-    const w = LAYER_WASHES.find((x) => x.id === layerWash(sess));
+    const w = layerWashes().find((x) => x.id === layerWash(sess));
     return w ? w.alpha : 0;
   }
 
@@ -3358,7 +3513,7 @@ BARRY.views.xplore = (function () {
       got = s && (typeof s.washId === 'function' ? s.washId()
                   : ((s.state || {}).wash || null));
     } catch (e) { got = null; }
-    return LAYER_WASHES.some((w) => w.id === got && w.id !== 'off')
+    return layerWashes().some((w) => w.id === got && w.id !== 'off')
       ? got : 'faint';
   }
 
@@ -3402,55 +3557,54 @@ BARRY.views.xplore = (function () {
     return p;
   }
 
-  /* The bands.
+  /* Which layer a lane-less panel is showing.
 
-     Not strata.js's draw(): that one paints out of the labelling module's
-     own `sheet`, and returns at its first line while the mode is closed
-     (strata.js:781) -- so with the mode shut it draws nothing whatever
-     sess.strata says. Same geometry and the same boundary line, no module
-     state behind it.
+     Works from whichever sheet this window has: the read-only look's
+     `layerView`, or `strata` while the labelling mode is open -- so the
+     chip appears on the same panels either way rather than depending on
+     which door you came in by.
 
-     `nums` is the CSC numbers of the rows this canvas actually drew, in the
-     order it drew them; the caller knows that and this does not. A traces
-     pane draws only the ticked channels and a CSD drops the first and last,
-     so laying the sheet's own channel order over either puts every band a
-     channel or two off -- worse than no overlay, because it looks right. */
-  function drawLayerBands(ctx, sess, nums, x0, plotW, y0, plotH) {
-    const view = sess && sess.layerView;
-    if (!view || !nums || !nums.length) return;
-    const alpha = layerWashAlpha(sess);
-    if (alpha <= 0) return;
-    const byId = new Map((view.regions || []).map((r) => [r.id, r]));
-    const lane = plotH / nums.length;
+     Drawn with its own backing, because these panels put frequency labels
+     down both edges and a chip without one would sit in the middle of
+     them. */
+  function layerSheetOf(sess) {
+    return (sess && (sess.layerView || sess.strata)) || null;
+  }
+
+  function layerInfoOn(sess) {
+    if (sess && sess.layerView) return layerWashAlpha(sess) > 0;
+    // The labelling mode's own setting, when that is what is driving.
+    try {
+      const s = BARRY.strata;
+      return !!(s && s.active && (!s.washId || s.washId() !== 'off'));
+    } catch (e) { return false; }
+  }
+
+  function drawLayerTag(ctx, sess, res, x0, plotW, y0, plotH) {
+    const view = layerSheetOf(sess);
+    if (!view || !view.labels || !layerInfoOn(sess)) return;
+    const ch = res && res.channel;
+    if (!ch || typeof ch.number !== 'number') return;
+    const id = view.labels[String(ch.number)];
+    if (!id) return;
+    const reg = (view.regions || []).find((r) => r.id === id);
+    if (!reg) return;
+    const text = (ch.label || ('CSC' + ch.number)) + '  \u00b7  '
+               + reg.name;
     ctx.save();
-    ctx.globalAlpha = alpha;
-    for (let i = 0; i < nums.length; i++) {
-      const reg = byId.get(view.labels[String(nums[i])]);
-      if (!reg) continue;
-      ctx.fillStyle = reg.color;
-      ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
-    }
-    /* A firm line where the region changes. At 10% the wash says roughly
-       where a layer is and cannot say where it ends, and the boundary is
-       the thing a sheet actually records. Four or five strokes on a
-       64-channel probe, so it is not worth a setting of its own. */
-    ctx.globalAlpha = 0.85;
-    ctx.lineWidth = 1;
-    let prev = null;
-    for (let i = 0; i < nums.length; i++) {
-      const id = view.labels[String(nums[i])] || null;
-      if (prev !== null && id !== prev) {
-        const reg = byId.get(id) || byId.get(prev);
-        if (reg) {
-          ctx.strokeStyle = reg.color;
-          ctx.beginPath();
-          ctx.moveTo(x0, Math.round(y0 + i * lane) + 0.5);
-          ctx.lineTo(x0 + plotW, Math.round(y0 + i * lane) + 0.5);
-          ctx.stroke();
-        }
-      }
-      prev = id;
-    }
+    ctx.font = '10px ' + MONO;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const padX = 5, sw = 8, gap = 5, boxH = 16;
+    const tw = ctx.measureText(text).width;
+    const boxW = Math.min(padX * 2 + sw + gap + tw, Math.max(20, plotW - 8));
+    const x = x0 + 5, y = y0 + 5;
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(x, y, boxW, boxH);
+    ctx.fillStyle = reg.color;
+    ctx.fillRect(x + padX, y + (boxH - sw) / 2, sw, sw);
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.fillText(text, x + padX + sw + gap, y + boxH / 2 + 0.5);
     ctx.restore();
   }
 
@@ -3459,10 +3613,15 @@ BARRY.views.xplore = (function () {
      The overlay slot on a raster is BARRY.strata.draw, called at the top of
      drawOverlayMarks -- already gated on sess.strata, and already run
      before the event, bookmark and curation marks, which is the ordering a
-     backdrop needs. That entry point paints from strata.js's module state,
-     so with the mode closed it returns immediately; wrapping it puts the
-     read-only bands in the same slot in the same order, with no second call
-     site in the panel-drawing code.
+     backdrop needs. Wrapping it puts the read-only bands in the same slot
+     in the same order, with no second call site in the panel-drawing code.
+
+     The wrapper no longer paints anything itself. It decides WHETHER to
+     paint -- this window is not labelling, the look is switched on, this
+     canvas has not had its turn -- and then calls the same painter the
+     labelling mode uses, at the strength this view is set to. Everything
+     about which lane is which channel, and whether the lanes are channels
+     at all, is that painter's to decide, and there is now one answer to it.
 
      Installed the first time somebody turns the bands on rather than at
      load, so a window that never uses this leaves the labelling mode's
@@ -3474,11 +3633,22 @@ BARRY.views.xplore = (function () {
     layerHooked = true;
     const real = BARRY.strata.draw;
     BARRY.strata.draw = function (ctx, s, win, x0, plotW, y0, plotH,
-                                  P, panelRes) {
+                                  P, panelRes, opts) {
+      /* A panel that reports no channel rows has no lanes to band. It can
+         still say which layer its one channel is in, and that is worth as
+         much on a spectrogram as a band is on the traces. Ahead of the
+         labelling-mode branch below rather than after it, because it
+         applies to both: the chip is the same answer either way, and the
+         painter that branch delegates to draws nothing here anyway. */
+      if (ctx && panelRes && !(Array.isArray(panelRes.rows)
+                               && panelRes.rows.length)) {
+        drawLayerTag(ctx, s, panelRes, x0, plotW, y0, plotH);
+        return;
+      }
       // While the mode is open it owns the overlay, untouched.
       if (BARRY.strata.active) {
         return real.call(BARRY.strata, ctx, s, win, x0, plotW, y0, plotH,
-                         P, panelRes);
+                         P, panelRes, opts);
       }
       if (!s || !s.layerView || !ctx) return;
       /* A traces pane paints its own bands early, under the marks, and then
@@ -3486,11 +3656,10 @@ BARRY.views.xplore = (function () {
          them. Without the stamp the wash would land back on top of the very
          marks it is meant to sit behind. */
       if (ctx.canvas && ctx.canvas.__layerBandsDrawn) return;
-      let nums = ((s.info && s.info.channels) || []).map((c) => c.number);
-      if (panelRes && Array.isArray(panelRes.rows) && panelRes.rows.length) {
-        nums = panelRes.rows.map((r) => r.number);
-      }
-      drawLayerBands(ctx, s, nums, x0, plotW, y0, plotH);
+      const a = layerWashAlpha(s);
+      if (a <= 0) return;
+      return real.call(BARRY.strata, ctx, s, win, x0, plotW, y0, plotH,
+                       P, panelRes, { alpha: a });
     };
   }
 
@@ -3569,7 +3738,7 @@ BARRY.views.xplore = (function () {
         ]));
         if (on) {
           row.appendChild(choose(layerWash(sess),
-            LAYER_WASHES.filter((w) => w.id !== 'off'),
+            layerWashes().filter((w) => w.id !== 'off'),
             (v) => { setLayerWash(index, sess, v); closeMenu(); }));
         }
         const n = Object.keys(got.sheet.labels).length;
@@ -5930,7 +6099,7 @@ BARRY.views.xplore = (function () {
      specific about a read that can take ten times as long. */
   const PANEL_WORDS = {
     traces: 'Voltage traces', voltage: 'Voltage raster', csd: 'CSD raster',
-    theta: 'Theta raster', bandpower: 'Band power',
+    theta: 'Theta CSD', bandpower: 'Band power',
     spectrogram: 'Spectrogram', scalogram: 'Scalogram',
   };
 
@@ -5959,6 +6128,9 @@ BARRY.views.xplore = (function () {
       if (pane.panel === 'bandpower') bits.push('one filter per band');
       else if (pane.panel === 'scalogram') bits.push('wavelet transform');
       else if (pane.panel === 'spectrogram') bits.push('short-time Fourier');
+      else if (pane.panel === 'theta') {
+        bits.push('4–12 Hz, then the second spatial derivative');
+      }
     }
     if (strong) {
       strong.textContent = pane.fullRate
@@ -6099,6 +6271,22 @@ BARRY.views.xplore = (function () {
       // Off by default. Every panel says whether it took it.
       full_rate: !!pane.fullRate,
     };
+    /* Always sent, never left to the server's default. The prewarm cache
+       is keyed on the whole spec, so a field that is present on one request
+       and absent on the other is a render nobody collects. */
+    if (pane.panel === 'theta') spec.smooth = thetaSmooth(pane);
+
+    /* A panel that fixes its own band asks with the corners at zero.
+       The server drops them for this panel either way, so sending them
+       would change nothing about the picture — but it WOULD change the
+       cache key, so every touch of the filter strip would throw away a
+       perfectly good theta render and spend two seconds computing the
+       identical one. Zeroing them here is what makes the lock free. */
+    if (lockedBand(pane)) {
+      spec.highpass = 0;
+      spec.lowpass = 0;
+      spec.notch = 0;
+    }
     if (pane.panel === 'bandpower') {
       /* One channel, and the band axis rather than a frequency range.
 
@@ -6608,6 +6796,10 @@ BARRY.views.xplore = (function () {
     if (!pane._readout) return;
     const bits = [res.units];
     if (res.clim) bits.push('[' + sig(res.clim[0]) + ', ' + sig(res.clim[1]) + ']');
+    /* Smoothing changes what the picture shows, so it belongs beside the
+       units and the scale rather than only inside the menu that set it —
+       the menu is shut by the time somebody reads the panel. */
+    if (res.smooth > 0) bits.push('σ' + round(res.smooth, 2) + ' ch');
     if (res.channel) {
       bits.unshift(res.channel.label);
     } else if ((res.channels_used || []).length) {
@@ -7648,7 +7840,16 @@ BARRY.views.xplore = (function () {
        Lanes come from win.series, not from the sheet's channel list: this
        pane draws one lane per TICKED channel, so a 64-channel sheet laid
        over it would be off by however many are unticked. */
-    canvas.__layerBandsDrawn = true;
+    /* Cleared before the early paint, set after it.
+
+       The stamp says "this canvas has had its layer pass", and it is read
+       by the wrapper at the END of this function so the wash does not land
+       back on top of the marks. It lives on the canvas, which outlives the
+       pass -- so leaving last frame's stamp standing means the early paint
+       below, which now goes through that same wrapper, is turned off from
+       the second repaint onwards. First frame banded, every one after it
+       bare. */
+    if (canvas) canvas.__layerBandsDrawn = false;
     if (sess.layerView && !(BARRY.strata && BARRY.strata.active)) {
       // Re-asserted because leaving StrataScope deletes this flag
       // (strata.js:163), and the image panels are gated on it.
@@ -7657,9 +7858,21 @@ BARRY.views.xplore = (function () {
                         labels: sess.layerView.labels,
                         regions: sess.layerView.regions };
       }
-      drawLayerBands(ctx, sess, win.series.map((x) => x.number),
-                     padL, plotW, padTop, plotH);
+      /* The rows this canvas is about to draw, named for the painter:
+         one lane per TICKED channel, so the sheet's own channel list
+         would be off by however many are unticked. */
+      if (BARRY.strata && BARRY.strata.draw) {
+        BARRY.strata.draw(
+          ctx, sess, win, padL, plotW, padTop, plotH, P,
+          { rows: win.series.map((x) => ({ number: x.number })) });
+      }
     }
+    /* After the call above, not before it: the stamp is what tells the
+       wrapper at the END of this pass that this canvas has had its turn,
+       and now that the early paint goes through the wrapper too, setting
+       it first would turn the early one off instead. Set whether or not
+       a band was actually drawn. */
+    canvas.__layerBandsDrawn = true;
 
     const ticks = niceTicks(win.t0, win.t1, Math.max(2, Math.floor(plotW / 100)));
     ctx.strokeStyle = P.grid; ctx.lineWidth = 1;
