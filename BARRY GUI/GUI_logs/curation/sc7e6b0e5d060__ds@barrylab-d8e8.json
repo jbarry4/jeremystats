@@ -1,0 +1,254 @@
+{
+  "_at": {
+    "archived": "2026-09-17T19:45:41.025330+00:00",
+    "archived_at": "2026-09-17T19:45:41.025330+00:00",
+    "archived_by": "2026-09-17T19:45:41.025330+00:00",
+    "assignee": "2026-09-17T19:44:03.840506+00:00",
+    "closed_at": "2026-09-17T19:45:41.025330+00:00",
+    "created": "2026-09-17T19:44:03.571042+00:00",
+    "gid": "2026-09-17T19:44:03.571042+00:00",
+    "imports": "2026-09-17T19:44:03.571042+00:00",
+    "kind": "2026-09-17T19:44:03.571042+00:00",
+    "labels": "2026-09-17T19:44:03.571042+00:00",
+    "name": "2026-09-17T19:44:03.571042+00:00",
+    "open": "2026-09-17T19:45:41.025330+00:00",
+    "opened_at": "2026-09-17T19:44:03.840506+00:00",
+    "opened_by": "2026-09-17T19:44:03.840506+00:00",
+    "schema": "2026-09-17T19:44:03.571042+00:00",
+    "session_label": "2026-09-17T19:44:03.571042+00:00",
+    "source": "2026-09-17T19:44:03.571042+00:00",
+    "updated": "2026-09-17T19:45:41.025330+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e0dfc5f0ea9": [
+        "set",
+        "2026-09-17T19:45:12.854865+00:00"
+      ],
+      "e38523db674": [
+        "set",
+        "2026-09-17T19:45:05.135629+00:00"
+      ],
+      "e527f121397": [
+        "set",
+        "2026-09-17T19:45:15.556980+00:00"
+      ],
+      "e88d46a7a9c": [
+        "set",
+        "2026-09-17T19:45:00.816875+00:00"
+      ],
+      "eabb69a56c2": [
+        "set",
+        "2026-09-17T19:45:07.649367+00:00"
+      ],
+      "ec9d8d03063": [
+        "set",
+        "2026-09-17T19:45:10.114330+00:00"
+      ],
+      "ee4ce025ca9": [
+        "set",
+        "2026-09-17T19:44:58.392086+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-17T19:45:41.025330+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "archived": true,
+  "archived_at": "2026-09-17T15:45:41-0400",
+  "archived_by": "Rain Younger",
+  "assignee": "Rain Younger",
+  "closed_at": "2026-09-17T15:45:41-0400",
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-17T15:44:03-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "events": [
+    {
+      "at": "2026-09-17T15:44:58-0400",
+      "by": "Rain Younger",
+      "id": "ee4ce025ca9",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:44:58-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 104.025349
+    },
+    {
+      "at": "2026-09-17T15:45:00-0400",
+      "by": "Rain Younger",
+      "id": "e88d46a7a9c",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:00-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 754.828277
+    },
+    {
+      "at": "2026-09-17T15:45:05-0400",
+      "by": "Rain Younger",
+      "id": "e38523db674",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:05-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 979.66187
+    },
+    {
+      "at": "2026-09-17T15:45:07-0400",
+      "by": "Rain Younger",
+      "id": "eabb69a56c2",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:07-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1028.820563
+    },
+    {
+      "at": "2026-09-17T15:45:10-0400",
+      "by": "Rain Younger",
+      "id": "ec9d8d03063",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:10-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1063.639345
+    },
+    {
+      "at": "2026-09-17T15:45:12-0400",
+      "by": "Rain Younger",
+      "id": "e0dfc5f0ea9",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:12-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1251.48917
+    },
+    {
+      "at": "2026-09-17T15:45:15-0400",
+      "by": "Rain Younger",
+      "id": "e527f121397",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-17T15:45:15-0400",
+          "by": "Rain Younger",
+          "label": "garbage"
+        }
+      ],
+      "start": 1390.252301
+    }
+  ],
+  "gid": "sc7e6b0e5d060",
+  "imports": [
+    {
+      "at": "2026-09-17T15:44:03-0400",
+      "n": 7,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "afc263b65477",
+        "by": "Rain Younger",
+        "entry_name": "Incisor CSC42",
+        "kind": "bank version",
+        "pipeline": "Incisor (dentate spike)",
+        "version": 0
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "flagged": true,
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "Incisor CSC42",
+  "open": false,
+  "opened_at": "2026-09-17T15:44:03-0400",
+  "opened_by": "Rain Younger",
+  "schema": 1,
+  "session_label": "PTEN m47 s1 2024-12-04",
+  "source": {
+    "bank_entry": "afc263b65477",
+    "by": "Rain Younger",
+    "entry_name": "Incisor CSC42",
+    "kind": "bank version",
+    "pipeline": "Incisor (dentate spike)",
+    "version": 0
+  },
+  "updated": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-17T15:45:41-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
