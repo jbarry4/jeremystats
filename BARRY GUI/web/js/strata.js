@@ -777,7 +777,7 @@ BARRY.strata = (function () {
   /* ==================================================================
      The overlay on the rasters
      ================================================================== */
-  function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes) {
+  function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes, opts) {
     if (!s) return;
 
     /* Module state while the labelling mode is open; the payload on the
@@ -851,7 +851,13 @@ BARRY.strata = (function () {
     }
     const lane = plotH / chans.length;
 
-    const alpha = washAlpha();
+    /* The reader's setting, unless the caller has one of its own.
+       XploreFinder's read-only look has its own strength control, kept
+       per session rather than per module: two panes of the same recording
+       can want different things, and neither of them is the labelling
+       mode's setting. */
+    const alpha = (opts && typeof opts.alpha === 'number')
+      ? opts.alpha : washAlpha();
     ctx.save();
     if (alpha > 0) {
       ctx.globalAlpha = alpha;
@@ -869,8 +875,14 @@ BARRY.strata = (function () {
        can answer and the rail cannot: the rail says "rows 30 to 41", the
        raster says whether those rows are the ones where the signal
        changes. Drawn whatever the wash is set to -- turning the layers down
-       is not a reason to stop showing what you are pointing at. */
-    if (picked.size) {
+       is not a reason to stop showing what you are pointing at.
+
+       Only while the mode is open. exit() does not empty `picked` -- it
+       has never had to, because nothing else could reach this function
+       -- so a selection left behind on the way out would otherwise come
+       back as an accent wash in a view whose whole promise is that it
+       changes nothing. */
+    if (sheet && picked.size) {
       ctx.globalAlpha = 1;
       ctx.strokeStyle = P.accent || '#4bc7f0';
       ctx.lineWidth = 1;
@@ -911,6 +923,14 @@ BARRY.strata = (function () {
 
   return {
     enter, exit, draw, alignRail,
+    /* The four strengths, and which one is chosen. Read-only viewers offer
+       the same vocabulary and come on at whatever this is set to; having
+       them keep a copy meant the same recording could look different
+       depending on which way you came into it, which is precisely what a
+       wash setting exists to stop. */
+    washes: WASHES.map((w) => ({ id: w.id, name: w.name, alpha: w.alpha,
+                                 why: w.why })),
+    washId: () => wash,
     // Same reason as curate.js: a reopen replaces the session object.
     rebind: (next) => {
       if (!next || !sheet) return;

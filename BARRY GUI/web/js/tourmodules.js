@@ -912,7 +912,7 @@
         body: 'Curating opens the recording at the first undecided one. The '
             + 'traces get the whole window \u2014 they are what you are '
             + 'judging \u2014 and a second window opens with the CSD, the '
-            + 'theta band, the voltage raster and a scalogram of every '
+            + 'theta CSD, the voltage raster and a scalogram of every '
             + 'eighth channel. Put it on your other monitor: it follows the '
             + 'first window, so moving in either moves both. One key per '
             + 'category, and it moves on by itself. Six hundred candidates '
@@ -1030,7 +1030,7 @@
             + 'them \u2014 one row per channel, sitting on that '
             + 'channel\u2019s lane. A second window opens carrying the '
             + 'other four views the old tool made you export by hand: the '
-            + 'CSD, the theta band, the voltage raster and a scalogram of '
+            + 'CSD, the theta CSD, the voltage raster and a scalogram of '
             + 'every eighth channel.',
         note: 'These used to share a 2x2 with the traces, which left the '
             + 'squiggles \u2014 the thing a boundary is actually read off '

@@ -133,12 +133,24 @@ def main(argv):
               "traceback": traceback.format_exc(limit=12)})
         return 1
 
-    tmp = os.path.join(out_dir, "result.json.part")
+    # Named after the spec that produced it: `spec_7.json` -> `result_7.json`.
+    #
+    # Every task of an array shares one run directory, so a fixed
+    # `result.json` would have twenty-eight tasks writing the same file and
+    # twenty-seven answers lost -- silently, since each write succeeds and
+    # the last one wins. A single run still writes plain `result.json`.
+    base = os.path.basename(spec_path)
+    name = "result.json"
+    if base.startswith("spec_") and base.endswith(".json"):
+        name = "result_" + base[len("spec_"):]
+    final = os.path.join(out_dir, name)
+
+    tmp = final + ".part"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(result, fh)
-    os.replace(tmp, os.path.join(out_dir, "result.json"))
-    emit({"k": "done", "rid": rid,
-          "bytes": os.path.getsize(os.path.join(out_dir, "result.json"))})
+    os.replace(tmp, final)
+    emit({"k": "done", "rid": rid, "file": name,
+          "bytes": os.path.getsize(final)})
     return 0
 
 

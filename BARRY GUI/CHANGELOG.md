@@ -15,6 +15,48 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.1 - Layers on any panel, and only where they mean something
+
+### Added
+
+- **Which layer a panel is showing, on the panels that have no channel
+  lanes.** The layer look reaches every pane through the More menu, but a
+  single-channel spectrogram, scalogram or band-power map is one channel seen
+  against frequency: there are no channel rows to band, so those panels
+  answered the question with nothing at all, which reads as "layers do not
+  work here". They now carry a chip naming the region that channel is in, in
+  that region's own colour. It works from whichever sheet the window has - the
+  read-only look's, or StrataScope's while the labelling mode is open - so the
+  same panel says the same thing whichever door you came in by. A channel the
+  sheet has no label for gets no chip, rather than a chip naming nothing.
+
+### Fixed
+
+- **The read-only layer look painted channel bands down a frequency axis.**
+  It kept its own copy of the overlay, and the copy had its own fallback: when
+  a panel reported no channel rows it laid the sheet's channels evenly down the
+  plot anyway. On a band-power map and on a single-channel spectrogram that is
+  64 layer bands across an axis measured in hertz - measured, not inferred. The
+  labelling mode's own overlay had been taught this rule; the copy never was,
+  which is how a copy nobody can see is a copy ends up.
+
+### Changed
+
+- **One layer painter instead of two.** The copy existed because three things
+  were private to the labelling module: the wash vocabulary, the current
+  strength, and any way to paint at a strength of your own. All three are now
+  shared, so the read-only look calls the same painter the labelling mode does.
+  Everything about which lane is which channel, and whether the lanes are
+  channels at all, has one answer instead of two that could drift - and the
+  four strengths are read from one list rather than copied into a second that
+  had to be kept in step by hand.
+
+- **The layer selection stays with the mode doing the selecting.** Leaving
+  StrataScope does not empty the set of picked-out channels - it never had to,
+  because nothing else could reach the overlay. Now that something can, a
+  selection left behind on the way out would have come back as an accent wash
+  in a view whose whole promise is that it changes nothing.
+
 ## 2026.09.16.5 - Band power on the strip, a version to work from, and layers you can just look at
 
 ### Added
