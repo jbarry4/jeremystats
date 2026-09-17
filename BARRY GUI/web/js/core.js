@@ -2714,16 +2714,27 @@ function applyVacc(on, remember) {
      and the second button in Incisor's action row. Those are drawn when
      their view last painted, so without this the switch appeared to do
      nothing until you navigated away and came back -- the rail chip lit up
-     and the panel it was talking about did not. */
-  try {
-    const tk = BARRY.views.toolkit;
-    if (tk && typeof tk.render === 'function' && BARRY.state.view === 'toolkit') {
-      tk.render();
-    }
-    if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
-      BARRY.incisor.paint();
-    }
-  } catch (e) { /* a repaint must never take the switch down with it */ }
+     and the panel it was talking about did not.
+
+     Guarded on the catalog, because `applyVacc` runs during boot -- before
+     any view has been initialised, and before prefs have loaded. Asking a
+     view to redraw at that point renders it out of an empty module and
+     leaves it half-built: three harnesses that had nothing to do with VACC
+     started reporting a spectrum panel with no preset buttons and no number
+     inputs in it. Nothing to repaint yet is the normal state on the way up,
+     and the first real paint happens moments later anyway. */
+  if (BARRY.state.catalog) {
+    try {
+      const tk = BARRY.views.toolkit;
+      if (tk && typeof tk.render === 'function'
+          && BARRY.state.view === 'toolkit') {
+        tk.render();
+      }
+      if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
+        BARRY.incisor.paint();
+      }
+    } catch (e) { /* a repaint must never take the switch down with it */ }
+  }
 }
 
 /* Other windows of the same app, told without being polled.

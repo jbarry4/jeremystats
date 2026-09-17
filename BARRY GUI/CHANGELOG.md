@@ -15,6 +15,32 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.2 - The Strip panel answers the button you press
+
+### Fixed
+
+- **Band power looked like a dead button.** Pressing it on the overview
+  strip's panel left the highlight sitting on Average magnitude, and the band
+  boxes, the presets and the measure switch never appeared - so the one
+  control the choice exists to reach was unreachable, and the panel read as
+  broken. It was not: the strip redrew, the reading happened, and the menu
+  button relabelled itself to "4-12 Hz power" the whole time. The only thing
+  that did not change was the panel being looked at while pressing it.
+
+  A segmented control paints its highlight from the value it was built with.
+  The Marks switch gets away with that because it closes itself on the way
+  out, so it is rebuilt on the next open; this panel deliberately stays open,
+  because picking Band power is the step *before* choosing the band, and so
+  nothing ever rebuilt it. Open panels can now rebuild in place from their own
+  builder - not by rebuilding the control strip, which would detach the very
+  button the panel belongs to. The same fault was in the band presets and the
+  measure switch, and the "reading the recording" note that never cleared when
+  the read landed; all four are the same fix.
+
+  Typing is left alone: the band boxes commit on change, so a rebuild arriving
+  mid-number would throw the number away, and a read finishing is exactly what
+  would land there.
+
 ## 2026.09.17.1 - Layers on any panel, and only where they mean something
 
 ### Added
@@ -322,6 +348,57 @@ This file is the only place the version is written. The app reads it.
   machine's 3.14.4, numpy 2.5.3 against 2.4.6, scipy 1.18.1 against 1.18.0,
   and fooof 1.1.1 against 1.1.1 -- exact where it matters most, since fooof
   is the fitter. `env_check` records all of it.
+
+- **Incisor, over every recording the cluster can reach, as one job array.**
+  `Scan all on VACC` in the ToolKit panel: one `sbatch --array`, every
+  recording a task, `%N` capping how many run at once. Twenty-eight
+  recordings, sixteen of them new, **nine and a half minutes at four at a
+  time and nothing failed**. The other twelve were already answered and were
+  skipped in milliseconds -- the vault is keyed on the recording and the
+  settings, so a batch that dies halfway resumes and a colleague running the
+  other half is not doing yours.
+
+  The first version of this was serial: submit, wait, submit the next. It
+  took forty minutes to do about ninety seconds of work at a time, on a
+  machine with thousands of cores, and `poll_states` had taken a LIST of job
+  ids since the day it was written. The lab's own `.sbat` files have used
+  `#SBATCH --array` with a `dirs=()` for years.
+
+- **A queue of finished scans, and nothing banked without being looked at.**
+  Each row carries the pick, how far it beat the runner-up, and whether it
+  has been banked. Opening one points the panel at that recording and
+  re-runs it, which comes straight back out of the vault -- so the three
+  plots, the hilus pick and the Bank button are the ordinary ones on the
+  ordinary path, and behave the same whether the numbers were computed here
+  or on a compute node.
+
+  **Twenty-seven of thirty-one picks came back within ten percent of the
+  runner-up.** The hilus estimate is an argmax over normalised count times
+  normalised amplitude, and on this data it is very nearly a coin toss
+  almost every time -- which is the whole argument for the plots being on
+  screen beside it, and for a person pressing the button.
+
+### Three wrong recordings, caught before anything was banked
+
+All three would have analysed one recording's data under another's name,
+and none of them would have looked wrong on screen.
+
+- `m22 s3` exists in PTEN recorded 2024-07-15 and in KCNT1 recorded
+  2023-06-02. The loose key -- mouse and session -- is
+  character-for-character identical, and the first version took whichever
+  came last out of the listing. It offered to run the PTEN scan against the
+  KCNT1 data. Exact keys now beat loose ones outright.
+- `m13 s3` and `m2 s2` had no exact match at all, so the loose one won by
+  default: PTEN 2023-08-01 matched to KCNT1 2022-08-15, a year apart. A
+  loose match must now agree on the day, which is the only thing left that
+  distinguishes them.
+- And one genuine duplicate -- the same recording sitting in two folders on
+  the cluster -- is refused rather than guessed at, because nothing here can
+  tell which was meant.
+
+Twenty-eight matches remain and every one of them has a label date that
+agrees with its folder date. `mouse+session is not an identity` was already
+written down in this lab; numbering restarts per project.
 
 ### The parity check lied three times before it worked
 

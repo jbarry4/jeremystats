@@ -1893,6 +1893,10 @@ BARRY.views.xplore = (function () {
     }
     if (sess.overviewBandReq === key) sess.overviewBandReq = false;
     refreshSession(sess);
+    /* The panel says what the line cost and what its units are, and says
+       "reading the recording" until this lands. Without this it goes on
+       saying it with the answer already drawn behind it. */
+    repaintMenu();
   }
 
   /* The series the strip should draw, or null while it is still coming. */
@@ -1933,6 +1937,7 @@ BARRY.views.xplore = (function () {
     relabelMenu(index, 'Strip', stripWord(sess));
     loadOverviewBand(sess);
     refreshSession(sess);
+    repaintMenu();
   }
 
   function stripPop(index, sess) {
@@ -1974,6 +1979,7 @@ BARRY.views.xplore = (function () {
           relabelMenu(index, 'Strip', stripWord(sess));
           if (v === 'band') loadOverviewBand(sess);
           refreshSession(sess);
+          repaintMenu();
         }),
       ]),
     ];
@@ -1994,6 +2000,7 @@ BARRY.views.xplore = (function () {
           sess.stripMeasure = v;
           relabelMenu(index, 'Strip', stripWord(sess));
           refreshSession(sess);       // already downloaded; no refetch
+          repaintMenu();
         }),
       ]));
       /* Say what it cost and what it is, because a line with no units is a
@@ -2760,7 +2767,7 @@ BARRY.views.xplore = (function () {
           if (!node.contains(ev.target) && !btn.contains(ev.target)) closeMenu();
         };
         const esc = (ev) => { if (ev.key === 'Escape') closeMenu(); };
-        openMenu = { node, button: btn, away, esc };
+        openMenu = { node, button: btn, away, esc, build };
         setTimeout(() => {
           document.addEventListener('mousedown', away, true);
           document.addEventListener('keydown', esc, true);
@@ -2788,6 +2795,41 @@ BARRY.views.xplore = (function () {
     const node = box.querySelector(
       '.ctl-menu[data-menu="' + name + '"] .ctl-menu-value');
     if (node) node.textContent = value || '';
+  }
+
+  /* Rebuild the open panel from its own builder, in place.
+
+     For panels that change shape as you use them. The Marks switch can
+     closeMenu() instead, because choosing is the last thing you do to it;
+     the Strip panel grows a band, a row of presets and a measure switch
+     the moment you pick Band power, so shutting it would hide the very
+     controls that choice exists to reach.
+
+     Not refreshControls(): that rebuilds the strip and detaches the button
+     this popover belongs to, which is the trap relabelMenu() above exists
+     to avoid. Only the panel's contents are replaced; the button, the
+     outside-click watcher and the Escape key all stay as they were. */
+  function repaintMenu() {
+    if (!openMenu || typeof openMenu.build !== 'function') return;
+    const node = openMenu.node, btn = openMenu.button;
+    /* Not while somebody is typing into it. The band boxes commit on
+       change, so rebuilding under a half-typed number would throw the
+       number away -- and the read that finished is exactly what would
+       land in the middle of typing the next band. */
+    const act = document.activeElement;
+    if (act && act.tagName === 'INPUT' && node.contains(act)) return;
+    let fresh;
+    try { fresh = openMenu.build(); } catch (e) { return; }
+    node.textContent = '';
+    node.appendChild(fresh);
+    /* It just changed height. Keep it against its button, by the same
+       rule the open used. */
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const h = node.offsetHeight;
+    node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+      ? (r.top - h - 6) + 'px'
+      : (r.bottom + 6) + 'px';
   }
 
   function popRow(title, children) {
