@@ -29,6 +29,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                incisor as incisormod,
                braces as bracesmod,
                bracesset as brsetmod,
+               versions as versionsmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
                retime as retimemod,
@@ -3182,18 +3183,12 @@ def _braces_channel(rec, sess, body, row=None):
         pick = ((rec.get("source") or {}).get("parameters") or {})
         if pick.get("channel") is not None:
             want, how = pick["channel"], "the channel the detector recorded"
-    if want is None and (row or {}).get("hilus_channel") is not None:
-        # The recording's own anatomy. Measured on this archive: 41 of the
-        # 45 curated sets carry no channel anywhere -- they were banked
-        # before Incisor existed -- so without this every one of them
-        # refused, and the tool worked on nothing anybody actually has.
-        want, how = row["hilus_channel"], "this recording's hilus channel"
     if want is None:
-        raise _NeedsChannel(
-            "This set does not say which channel it was detected on, and "
-            "this recording has no hilus channel on record either. Aligning "
-            "against the wrong channel moves every stamp somewhere "
-            "plausible and wrong, so pick one before running it.")
+        # Nothing on record. Rather than refuse, or pick by anatomy and hope,
+        # the run sweeps every channel and takes the one these events are
+        # biggest on -- see `braces.score_channel`. Signalled by returning
+        # None, which only `/api/braces/run` can act on.
+        return None, "swept"
     by_number = {int(c["number"]): c for c in (sess.get("channels") or [])}
     try:
         want = int(want)
@@ -3212,13 +3207,10 @@ def _braces_spec(body, sess):
     the threshold cannot drift from the detector's."""
     spec = _incisor_spec(dict(body, channels=None), sess)
     for key, default in (("window_ms", bracesmod.WINDOW_MS),
-                         ("floor_frac", bracesmod.FLOOR_FRAC),
                          ("edge_frac", bracesmod.EDGE_FRAC),
                          ("same_ms", bracesmod.SAME_MS)):
         v = body.get(key)
         spec[key] = float(default if v is None else v)
-    if body.get("floor_uv"):
-        spec["floor_uv"] = float(body["floor_uv"])
     return spec
 
 
@@ -3236,32 +3228,44 @@ def api_braces_plan():
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
         spec = _braces_spec(body, sess)
-        needs_channel = None
-        try:
-            ch, how = _braces_channel(rec, sess, body, row)
-        except _NeedsChannel as exc:
-            # Not a failure: the panel has a box for this. It comes back as
-            # a plan that names everything else it worked out, so somebody
-            # can see which recording and which band before choosing.
-            ch, how, needs_channel = None, None, str(exc)
+        ch, how = _braces_channel(rec, sess, body, row)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/plan", exc, 400,
                     {"entry_id": body.get("entry_id")})
 
+    # Named through the lineage labeller, because the stored NUMBER is not
+    # unique: two machines curating the same entry both mint the next one
+    # and the union keeps both, so this bank holds histories reading
+    # 0,1,2,3,4,3,4. Listed by number alone, two of those rows are the same
+    # sentence twice and picking one is a coin toss -- `label_rows` walks
+    # `from_v` and gives the second line its own name (v3.1), which is what
+    # the version chooser in curation already shows.
+    named = versionsmod.label_rows(rec.get("versions") or [])
     versions = []
-    for ver in sorted((rec.get("versions") or []),
-                      key=lambda x: x.get("v") or 0):
-        v = ver.get("v") or 0
+    for ver, name in named:
         why = None
         if not ver.get("snap"):
             why = ("no snapshot on this machine, so the stamps it held "
                    "cannot be read back")
         versions.append({
-            "v": v, "id": ver.get("id"), "at": ver.get("at"),
+            "v": ver.get("v") or 0,
+            # What a person reads, and what the dropdown must show: unique
+            # where the number is not.
+            "name": name,
+            "id": ver.get("id"),
+            # What a caller must send back. The id where there is one --
+            # it is the only thing that names one version and only one --
+            # and the number where there is not. Versions minted before ids
+            # existed have none, and this archive still holds plenty: on
+            # M8s9feb8 three of eight. Sending a literal "null" back for
+            # those was the next bug along.
+            "ref": BANK.version_key(ver),
+            "at": ver.get("at"),
             "by": ver.get("by"), "n": ver.get("n"), "note": ver.get("note"),
             "aligned": bool(ver.get("aligned")),
             "usable": why is None, "why_not": why,
         })
+    versions.sort(key=lambda r: versionsmod.key(r["name"]))
     return jsonify({
         "ok": True,
         "entry": {"id": rec["id"], "name": rec.get("name"),
@@ -3275,13 +3279,22 @@ def api_braces_plan():
         "channel": (None if ch is None else
                     {"number": int(ch["number"]), "index": int(ch["index"]),
                      "label": ch.get("label"), "how": how}),
-        "needs_channel": needs_channel,
-        "channels": [int(c["number"]) for c in (sess.get("channels") or [])],
+        # What will happen when there is no channel on record: every channel
+        # is read and the one these events are biggest on wins.
+        "sweeps": ch is None,
+        # Every channel, with whether it is marked bad. ALL of them, not
+        # only the good ones: a sweep that silently leaves eight channels
+        # out is a ranking somebody will read as complete. They arrive
+        # unticked instead, which says the same thing and can be undone.
+        "channels": [{"number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": bool(c.get("bad"))}
+                     for c in (sess.get("channels") or [])],
         "versions": versions,
         "current_version": max([v["v"] for v in versions] or [0]),
         "spec": {k: spec.get(k) for k in
                  ("band", "lfp_fs", "height_sd", "abs_uv", "dist_ms",
-                  "estimator", "window_ms", "floor_frac", "edge_frac",
+                  "estimator", "window_ms", "edge_frac",
                   "same_ms", "invert")},
     })
 
@@ -3308,12 +3321,14 @@ def api_braces_run():
         return fail("braces/run", exc, 400,
                     {"entry_id": body.get("entry_id")})
 
+    # Whichever version supplies the stamps, addressed by its id -- the
+    # NUMBER is not unique, and this bank holds entries with two versions
+    # numbered 3 and two numbered 4.
     src_v = body.get("from_version")
     try:
         if src_v is None:
             events = rec.get("events") or []
         else:
-            src_v = int(src_v)
             events, _dropped = BANK.events_at(rec, src_v)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/run", exc, 400, {"from_version": src_v})
@@ -3349,8 +3364,91 @@ def api_braces_run():
         if lid in align_ids:
             align_ids.add(name)
 
+    # Which channels the sweep looks at.
+    #
+    # Whatever the caller ticked, and where it said nothing, every channel
+    # this recording has not marked bad. A bad channel is not hidden from
+    # the list -- it arrives unticked, so leaving it out is visible and
+    # putting it back is one click -- but it is not read unless somebody
+    # asks for it.
+    want_ch = body.get("channels")
+    all_ch = sess.get("channels") or []
+    if want_ch:
+        want = {int(x) for x in want_ch}
+        sweep_chans = [c for c in all_ch if int(c["number"]) in want]
+    else:
+        sweep_chans = [c for c in all_ch if not c.get("bad")]
+    if ch is None and not sweep_chans:
+        return jsonify({"ok": False,
+                        "error": "No channels are ticked, so there is "
+                                 "nothing to sweep."}), 400
+
+    # A sweep this recording has already had.
+    #
+    # Reading sixty-four channels is 208 seconds on M8s9feb8, and the answer
+    # -- which channel are this recording's dentate spikes biggest on -- does
+    # not change between two runs over the same band. Every proposal already
+    # records the sweep that produced it, so the cheapest store is the one
+    # that is already there: a previous proposal on this recording, asked the
+    # same question. No new book, no cache to go stale against a recording,
+    # and it is visible to anybody who opens that proposal.
+    band_key = tuple(spec.get("band") or incisormod.DS_BAND)
+    prior_sweep = None
+    for old in BRACES.all():
+        if old.get("gid") != rec.get("gid"):
+            continue
+        sw = (old.get("summary") or {}).get("sweep") or {}
+        if not sw.get("picked"):
+            continue
+        pr = old.get("params") or {}
+        if tuple(pr.get("band") or ()) != band_key:
+            continue
+        prior_sweep = dict(sw, reused_from=old.get("set_id"),
+                           reused_at=(old.get("created") or {}).get("at"))
+        break
+
     def work(job):
-        peaks = bracesmod.channel_peaks(sess, ch, report, spec, job)
+        chan, sweep = ch, None
+        if chan is None and prior_sweep:
+            want = (prior_sweep.get("picked") or {}).get("number")
+            match = next((c for c in sweep_chans
+                          if int(c["number"]) == want), None)
+            if match is not None:
+                chan, sweep = match, prior_sweep
+        if chan is None:
+            # No channel on record. Read them all and take the one these
+            # events are actually biggest on -- the stamps are the only
+            # evidence there is about where this set should be measured,
+            # and they are already in hand.
+            rows_s = []
+            for n, cand in enumerate(sweep_chans):
+                job.check()
+                # The stage named in `steps` below, advanced by one.
+                # `tick` is what a job understands; there is no per-call
+                # label, and the stage name is the label.
+                job.tick("ds sweep", n)
+                got = bracesmod.score_channel(
+                    sess, cand, report, spec,
+                    [float(e["start"]) for e in events if e.get("start")
+                     is not None], job)
+                if got:
+                    rows_s.append(got)
+            best, ranked = bracesmod.pick_channel(rows_s)
+            if not best:
+                raise RuntimeError(
+                    "None of this recording's channels could be read, so "
+                    "there is nothing to measure these stamps against.")
+            chan = next(c for c in sweep_chans
+                        if int(c["number"]) == best["number"])
+            # All of them. The ranking IS the answer somebody wants to
+            # look at -- a gradient down the shank is a probe working and a
+            # flat table is a set measured against the wrong thing -- and
+            # sixty-four rows of four numbers is nothing to carry.
+            sweep = {"picked": best, "ranked": ranked,
+                     "n_channels": len(rows_s),
+                     "skipped": [int(c["number"]) for c in all_ch
+                                 if c not in sweep_chans]}
+        peaks = bracesmod.channel_peaks(sess, chan, report, spec, job)
         job.check()
         out = bracesmod.propose(events, peaks,
                                window_ms=spec["window_ms"],
@@ -3358,26 +3456,41 @@ def api_braces_run():
                                same_ms=spec["same_ms"],
                                align_ids=align_ids)
         params = bracesmod.params_of(spec, peaks)
+        # How the channel was arrived at, kept beside the channel itself so
+        # a number chosen by sweep and a number chosen by hand are never
+        # confused -- the discipline `panoramaset.CHANNEL_FROM` applies.
+        params["channel_from"] = "swept" if sweep else (how or "given")
         rows = out.pop("rows")
+        if sweep:
+            # Into the set, not only into the job's result: the job is gone
+            # by tomorrow and somebody opening this proposal then still has
+            # to be able to ask why it chose CSC41.
+            out["sweep"] = sweep
         made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
                              out, name=rec.get("name"), by=who)
         # The summary travels with the job's result so the panel can draw
         # the counts and the histogram without a second request.
         return {"set_id": made["set_id"], "summary": out, "params": params,
                 "n_rows": len(rows),
-                "channel": int(ch["number"]), "channel_how": how,
+                "channel": int(chan["number"]),
+                "channel_how": ("swept: these events are biggest on it"
+                                if sweep else how),
+                "sweep": sweep,
                 "from_version": src_v}
 
-    steps = [("ds read", int(span)), ("ds detect", 1)]
+    steps = ([("ds sweep", len(sweep_chans))]
+             if (ch is None and not prior_sweep) else [])         + [("ds read", int(span)), ("ds detect", 1)]
     job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
-        "detail": {"entry": rec["id"], "channel": int(ch["number"]),
+        "detail": {"entry": rec["id"],
+                   "channel": None if ch is None else int(ch["number"]),
                    "n": len(events), "from_version": src_v,
                    "window_ms": spec["window_ms"]},
     }])
     return jsonify({"ok": True, "job": job.snapshot(),
-                    "channel": int(ch["number"]), "channel_how": how,
+                    "channel": None if ch is None else int(ch["number"]),
+                    "channel_how": how, "sweeping": ch is None,
                     "n": len(events)})
 
 

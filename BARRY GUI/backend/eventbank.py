@@ -893,6 +893,75 @@ class EventBank:
         # the thing it converted FROM.
         return tb.get("converted_from") or tb.get("kind")
 
+    @staticmethod
+    def version_key(ver):
+        """A handle that names one version and only one.
+
+        The `id` where there is one. Versions minted before ids existed have
+        none -- three of the eight on M8s9feb8 -- and the obvious fallback,
+        the stored number, is the one thing that is NOT unique. Falling back
+        to it produced exactly the confusion it was meant to avoid: a chooser
+        showing "v6" sent back "4", and the bank answered about a version
+        numbered 4 that the person had never heard of.
+
+        So an id-less version is keyed on what it contains. Deterministic,
+        so the key a plan hands out is the key a run sends back; derived
+        rather than minted, so nothing has to be written to the archive to
+        make old versions addressable; and content-based rather than
+        positional, so a shard arriving between the two does not shift it.
+        """
+        if ver.get("id"):
+            return str(ver["id"])
+        seed = json.dumps([ver.get("v"), ver.get("at"), ver.get("by"),
+                           ver.get("note"), ver.get("n")],
+                          sort_keys=True, separators=(",", ":"))
+        return "vk-" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+
+    @staticmethod
+    def version_at(rec, want):
+        """One version, by its id, by its content key, or by its number.
+
+        THE NUMBER IS NOT UNIQUE. Two machines curating the same entry both
+        mint the next number and the union keeps both, which is the right
+        outcome and is what the per-version `id` exists for -- this bank
+        holds an entry numbered 0,1,2,3,4,3,4. So a caller that asks for "3"
+        is asking an ambiguous question, and answering it by taking whichever
+        came first in the file would quietly read one person's pass while
+        naming the other's.
+
+        Asked by id, it is exact. Asked by a number only one version has, it
+        is exact. Asked by a number two versions share, it refuses and says
+        which ids to choose between, because there is no defensible way to
+        pick and a wrong answer here reads events that somebody else decided.
+        """
+        vers = list(rec.get("versions") or [])
+        if want is None:
+            raise BankError("No version was asked for.")
+        # Exact first: the id, then the content key an id-less version is
+        # addressed by. Only if neither matches is the ambiguous number
+        # tried at all.
+        for ver in vers:
+            if ver.get("id") is not None and ver.get("id") == want:
+                return ver
+        for ver in vers:
+            if EventBank.version_key(ver) == want:
+                return ver
+        try:
+            n = int(want)
+        except (TypeError, ValueError):
+            raise BankError("This set has no version %r." % (want,))
+        same = [v for v in vers if (v.get("v") or 0) == n]
+        if not same:
+            raise BankError("This set has no version %s." % n)
+        if len(same) > 1:
+            raise BankError(
+                "This set has %d versions numbered %s -- they were minted "
+                "independently on different machines and both were kept. "
+                "Ask for one of them by its key: %s."
+                % (len(same), n,
+                   ", ".join(EventBank.version_key(v) for v in same)))
+        return same[0]
+
     def events_at(self, rec, v):
         """Rebuild one version's events from its snapshot.
 
@@ -900,13 +969,7 @@ class EventBank:
         current events carry that a snapshot cannot hold. Never guesses at
         one: an event with a channel comes back without it, said out loud.
         """
-        hit = None
-        for ver in (rec.get("versions") or []):
-            if (ver.get("v") or 0) == v:
-                hit = ver
-                break
-        if hit is None:
-            raise BankError("This set has no version %s." % v)
+        hit = self.version_at(rec, v)
         snap = hit.get("snap")
         if not snap:
             raise BankError(
@@ -1257,17 +1320,20 @@ class EventBank:
         if not rec:
             raise BankError("No bank entry %s." % entry_id)
 
-        src_v, dropped = None, []
+        # By id where the caller has one, because the NUMBER is not unique
+        # -- see `version_at`. `src_v` stays the number for the record, since
+        # `from_v` is what `versions.label_rows` walks to work out lineage
+        # and that is numbered; `src_id` is what actually chose the version.
+        src_v, src_id, dropped = None, None, []
         if from_version is not None:
-            try:
-                src_v = int(from_version)
-            except (TypeError, ValueError):
-                raise BankError("%r is not a version number." % from_version)
+            src = self.version_at(rec, from_version)
+            src_v = src.get("v") or 0
+            src_id = src.get("id")
 
-        if src_v is None:
+        if from_version is None:
             events = rec.get("events") or []
         else:
-            events, dropped = self.events_at(rec, src_v)
+            events, dropped = self.events_at(rec, from_version)
 
         flags = flags or {}
         out, shifts = [], []
@@ -1371,7 +1437,7 @@ class EventBank:
             return report
 
         twin = "br-" + hashlib.sha256(
-            ("%s|%s|%s" % (entry_id, src_v,
+            ("%s|%s|%s" % (entry_id, src_id or src_v,
                            json.dumps(params or {}, sort_keys=True,
                                       separators=(",", ":")))
              ).encode("utf-8")).hexdigest()[:10]
@@ -1425,6 +1491,7 @@ class EventBank:
             "aligned": {
                 "tool": "jarvis.braces/1",
                 "source_version": src_v,
+                "source_version_id": src_id,
                 "n_moved": len(shifts),
                 "n_unmoved": len(events) - len(shifts),
                 "shift_min_ms": report["shift_min_ms"],
@@ -1461,6 +1528,7 @@ class EventBank:
             "by": who,
             "version": fresh["v"],
             "source_version": src_v,
+            "source_version_id": src_id,
         }
         rec["aligned"].update(params or {})
 

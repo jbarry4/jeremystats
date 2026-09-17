@@ -239,6 +239,56 @@ try:
           (last["gained"], last["lost"]), (6, 6),
           "guessing they are the same events would be inventing a fact")
 
+    print("\nTWO VERSIONS WITH THE SAME NUMBER")
+    print("-" * 68)
+    # Real data. Two machines curating one entry both mint the next number
+    # and the union keeps both, so this bank holds a history numbered
+    # 0,1,2,3,4,3,4. Asking for "3" is then an ambiguous question, and
+    # answering it by taking whichever came first in the file would read one
+    # person's pass while naming the other's.
+    twin_rec = BANK.get(eid)
+    vs = sorted(twin_rec["versions"], key=lambda v: v.get("v") or 0)
+    clash = dict(vs[-1])
+    clash["id"] = "clash-" + clash["id"][:8]
+    clash["by"] = "somebody else"
+    clash["note"] = "the same number, minted on another machine"
+    twin_rec["versions"] = list(twin_rec["versions"]) + [clash]
+    BANK.book.write(BANK._base_of(twin_rec), twin_rec)
+    BANK._drop_cache()
+
+    n = clash["v"]
+    got = BANK.get(eid)
+    check("the bank really does hold two versions numbered %s" % n,
+          len([v for v in got["versions"] if (v.get("v") or 0) == n]), 2)
+    keys = [BANK.version_key(v) for v in got["versions"]
+            if (v.get("v") or 0) == n]
+    try:
+        BANK.events_at(got, n)
+        ok, why = False, "it answered instead of refusing"
+    except eventbank.BankError as exc:
+        # It must not only refuse -- it must hand back the handles to choose
+        # between, or the refusal is a dead end.
+        ok = all(k in str(exc) for k in keys)
+        why = str(exc)
+    check("asking by that number is refused rather than guessed", ok, True,
+          "picking one silently reads a pass somebody else made\n       "
+          + why)
+    check("...and every version that number could mean is named",
+          len(keys), 2)
+    evs, _d = BANK.events_at(got, clash["id"])
+    check("asking by id is exact", len(evs), clash["n"])
+    # Raised rather than returned as a report: an ambiguous version is bad
+    # input, like an entry id that does not exist, and the report's `error`
+    # field is for the refusals that come AFTER the work was worked out.
+    # The route turns either into a 400 carrying the same sentence.
+    try:
+        BANK.align(eid, {0: 1.5}, params, dry_run=True, from_version=n)
+        aimed = False
+    except eventbank.BankError:
+        aimed = True
+    check("and an alignment cannot be aimed at an ambiguous number",
+          aimed, True)
+
     print("\nAN ALIGNMENT ARRIVING THROUGH A RE-BANK")
     print("-" * 68)
     # The path that `from_t` actually exists for, and the one every check

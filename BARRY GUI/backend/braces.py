@@ -32,12 +32,14 @@ A stamp that arrived from Toothy, from a snapshot folder, or from somebody's
 hand may sit on a trough. `|x|` finds the event under either convention, and
 is the one measure that does not care which tool produced the stamp.
 
-**A lower floor.** Detection asks *is anything here*; alignment asks *where
-is the thing we already know is here*. Making the peak clear 4.5 SD a second
-time would strand real events whose peak on THIS channel is a little smaller
--- and this channel is often not the one detection ran on. The floor is a
-fraction of the set's own detection threshold, so it travels with the
-parameters the set was made with rather than being a new magic number.
+**No threshold at all.** Detection asks *is anything here*; alignment asks
+*where is the thing we already know is here*. `distance` already makes a peak
+the largest thing within a hundred milliseconds of itself, so every peak
+found here is a candidate a stamp could sensibly move to. A height on top of
+that can only remove the right answer -- for a real event whose peak on this
+channel happens to be small, which is the case alignment exists to handle.
+The detector's own threshold is still computed, so a row can say "smaller
+than the detector would have called an event", but nothing is gated on it.
 
 THE RULE, WHICH IS THE INTERESTING PART
 ---------------------------------------
@@ -104,10 +106,6 @@ except Exception:                                        # noqa: BLE001
 # also, deliberately, the same size as the detector's own peak spacing --
 # which is why a stamp can have two peaks in reach and never three.
 WINDOW_MS = 100.0
-
-# The alignment floor, as a fraction of the set's own detection threshold.
-# See the note at the top: the event is already known to be an event.
-FLOOR_FRAC = 0.5
 
 # A move this far out of the window is as likely to be the next spike as
 # this one. Flagged rather than refused -- a window is a guess about jitter,
@@ -402,9 +400,19 @@ def channel_peaks(session, ch, report, spec, job=None, on_read=None):
             "so no floor can be set from it."
             % (ch.get("number"), n_bad, pooled.size))
 
-    frac = float(spec.get("floor_frac", FLOOR_FRAC))
-    floor = (float(spec["floor_uv"]) if spec.get("floor_uv")
-             else thr["thr_uv"] * frac)
+    # NO FLOOR.
+    #
+    # There was one, as a fraction of the detection threshold, and it was a
+    # knob that could only be wrong. `distance` already says a peak is the
+    # largest thing within a hundred milliseconds of itself, so the peaks
+    # this finds ARE the candidates a stamp could sensibly move to -- adding
+    # a height on top of that only removes the right answer for a real event
+    # whose peak on this channel happens to be small, which is exactly the
+    # case alignment exists to handle.
+    #
+    # The detector's threshold is still computed, because "this peak is
+    # smaller than the detector would have called an event" is worth saying
+    # on a row. It is a remark, not a gate.
     dist = max(1, int(round(lfp_fs * float(spec.get("dist_ms",
                                                     incisor.DS_DIST_MS))
                             / 1000.0)))
@@ -414,7 +422,7 @@ def channel_peaks(session, ch, report, spec, job=None, on_read=None):
         if job:
             job.check()
         mag = np.abs(f)
-        idx, props = _sig.find_peaks(mag, height=floor, distance=dist)
+        idx, props = _sig.find_peaks(mag, distance=dist)
         heights = props.get("peak_heights",
                             mag[idx] if idx.size else np.array([]))
         for n in range(idx.size):
@@ -440,10 +448,6 @@ def channel_peaks(session, ch, report, spec, job=None, on_read=None):
     return {
         "times": times,
         "amps": amps,
-        "floor_uv": round(float(floor), 3),
-        "floor_source": ("given" if spec.get("floor_uv")
-                         else "%g of %s (%.0f uV)"
-                              % (frac, thr["thr_source"], thr["thr_uv"])),
         "thr_uv": round(float(thr["thr_uv"]), 3),
         "sd_uv": round(float(thr["sd_uv"]), 3),
         "thr_source": thr["thr_source"],
@@ -454,6 +458,99 @@ def channel_peaks(session, ch, report, spec, job=None, on_read=None):
         "n_peaks": len(times),
         "channel": int(ch["number"]),
     }
+
+
+# --------------------------------------------------------------------------
+# Choosing the channel
+# --------------------------------------------------------------------------
+def score_channel(session, ch, report, spec, stamps, job=None, on_read=None):
+    """How big these stamps' events are on this channel.
+
+    The measure is the one you would use by eye: filter 5-100 Hz, take the
+    magnitude, and at each stamp look at the largest value within the window
+    it is allowed to move in. Average that over every stamp.
+
+    AT THE STAMPS, not over the whole trace. A channel's overall magnitude is
+    a fact about how noisy it is; what decides where a dentate spike should
+    be measured is how big the DENTATE SPIKES are on it, and the set already
+    says when those happened. Averaging over the recording would hand the
+    answer to whichever wire hums loudest.
+
+    The median goes back as well as the mean. One artifact inside one window
+    can carry a mean on a set of eighty, and two numbers that disagree are
+    worth seeing -- `pick_channel` uses the median for exactly that reason.
+    """
+    fs = float(report.get("fs") or session.get("fs") or 30000.0)
+    q = incisor.decimation_for(fs, float(spec.get("lfp_fs") or incisor.LFP_FS))
+    lfp_fs = fs / q
+    band = spec.get("band") or incisor.DS_BAND
+    win = window_s(spec.get("window_ms", WINDOW_MS))
+
+    segs = incisor._segment_traces(session, ch, report, spec, job, on_read)
+    if not segs:
+        return None
+
+    tops = []
+    for seg_i, start_concat, tr in segs:
+        if job:
+            job.check()
+        mag = np.abs(incisor._filtered(tr, lfp_fs, band))
+        # Where this segment sits on the clock, so a stamp can be turned
+        # into an index into it without assuming a linear axis.
+        t0 = continuity.sample_to_true(report, start_concat)
+        if t0 is None:
+            continue
+        n = mag.size
+        half = max(1, int(round(win * lfp_fs)))
+        for t in stamps:
+            i = int(round((t - t0) * lfp_fs))
+            if i < -half or i > n + half:
+                continue                    # not in this segment
+            lo = max(0, i - half)
+            hi = min(n, i + half + 1)
+            if hi > lo:
+                tops.append(float(mag[lo:hi].max()))
+    if not tops:
+        return None
+    arr = np.asarray(tops, dtype=np.float64)
+    return {
+        "number": int(ch["number"]),
+        "index": int(ch["index"]),
+        "label": ch.get("label"),
+        "bad": bool(ch.get("bad")),
+        "n": int(arr.size),
+        "mean_uv": round(float(arr.mean()), 3),
+        "median_uv": round(float(np.median(arr)), 3),
+    }
+
+
+def pick_channel(rows):
+    """The channel these events are biggest on, and how clear the win was.
+
+    Ranked on the MEDIAN rather than the mean. A single artifact inside one
+    stamp's window is enough to carry a mean on a set of eighty, and the
+    thing being asked is "where do these events look biggest", which is a
+    question about the typical one.
+
+    The margin travels with the answer, as Incisor's channel pick does: a
+    win of thirty per cent and a win of two per cent are different facts
+    about a probe, and only the second one is worth a second look.
+    """
+    got = [r for r in rows if r and not r.get("bad")]
+    if not got:
+        got = [r for r in rows if r]
+    if not got:
+        return None, []
+    got.sort(key=lambda r: -(r.get("median_uv") or 0.0))
+    best = got[0]
+    runner = got[1] if len(got) > 1 else None
+    top = best.get("median_uv") or 0.0
+    second = (runner or {}).get("median_uv") or 0.0
+    best = dict(best)
+    best["margin_pct"] = (round((top - second) / second * 100.0, 1)
+                          if second > 0 else None)
+    best["runner_up"] = runner.get("number") if runner else None
+    return best, got
 
 
 # --------------------------------------------------------------------------
@@ -639,8 +736,6 @@ def summarize(rows, peaks, window_ms, edge_frac, same_ms,
         "edge_frac": float(edge_frac),
         "same_ms": float(same_ms),
         "n_peaks": len(peaks.get("times") or []),
-        "floor_uv": peaks.get("floor_uv"),
-        "floor_source": peaks.get("floor_source"),
         "thr_uv": peaks.get("thr_uv"),
         "channel": peaks.get("channel"),
         "band": peaks.get("band"),
@@ -663,7 +758,6 @@ def params_of(spec, peaks):
         "measure": "abs",
         "window_ms": float(spec.get("window_ms", WINDOW_MS)),
         "dist_ms": float(peaks.get("dist_ms") or incisor.DS_DIST_MS),
-        "floor_uv": peaks.get("floor_uv"),
         "estimator": peaks.get("estimator"),
         "lfp_fs": round(float(peaks.get("lfp_fs") or incisor.LFP_FS), 4),
         "invert": bool(spec.get("invert", True)),

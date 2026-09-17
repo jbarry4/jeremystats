@@ -2906,16 +2906,15 @@ BARRY.views.toolkit = (function () {
     }
   }
 
-  function init() {
-    const r = $('#tkRefresh');
-    if (r) {
-      r.addEventListener('click', async () => {
-        scopes = null;
-        await loadScopes();
-        refresh();
-      });
-    }
-  }
+  /* Nothing to wire up any more.
+
+     The header used to carry a Refresh button. Every tool in here reloads
+     what it needs when it is opened, and each one that can go stale has its
+     own control saying what it would actually re-fetch -- so a general
+     "Refresh" in the corner was a button whose effect nobody could predict
+     and which was mostly pressed out of doubt. Kept as a function because
+     the view loop calls `init` on every view. */
+  function init() {}
 
   return {
     init,

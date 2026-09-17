@@ -36,9 +36,9 @@ BARRY.braces = (function () {
   const q = {
     entry: null,        // the chosen bank entry id
     from_version: null, // null means "the stamps as they are now"
-    channel: null,      // null means "whatever the set was detected on"
+    channel: null,      // null means "sweep and pick one"
+    channels: null,     // which to sweep; null means "whatever is not bad"
     window_ms: 100,
-    floor_uv: null,     // null means half the detection threshold
     estimator: 'sd',
   };
 
@@ -107,9 +107,9 @@ BARRY.braces = (function () {
       started = await apiPost('/api/braces/run', {
         entry_id: q.entry,
         channel: q.channel,
+        channels: q.channels,
         from_version: q.from_version,
         window_ms: q.window_ms,
-        floor_uv: q.floor_uv,
         estimator: q.estimator,
       });
     } catch (e) {
@@ -294,8 +294,7 @@ BARRY.braces = (function () {
                                 text: 'Settings' }));
     set.appendChild(el('div', { class: 'br-fields' }, [
       field('Channel', el('input', {
-        type: 'number',
-        placeholder: (plan && plan.needs_channel) ? 'pick one' : '',
+        type: 'number', placeholder: 'auto',
         value: q.channel == null
           ? ((plan && plan.channel && plan.channel.number) || '')
           : q.channel,
@@ -304,7 +303,8 @@ BARRY.braces = (function () {
           q.channel = isNaN(v) ? null : v;
           refreshPlan();
         },
-      }), plan && plan.channel ? plan.channel.how : ''),
+      }), (plan && plan.channel) ? plan.channel.how
+          : 'blank = sweep them all'),
       field('Window ±ms', el('input', {
         type: 'number', step: '10', min: '5', value: String(q.window_ms),
         onchange: (e) => {
@@ -312,20 +312,19 @@ BARRY.braces = (function () {
           render();
         },
       }), 'how far a stamp may move'),
-      field('Floor µV', el('input', {
-        type: 'number', placeholder: 'auto',
-        value: q.floor_uv == null ? '' : String(q.floor_uv),
-        onchange: (e) => {
-          const v = parseFloat(e.target.value);
-          q.floor_uv = isNaN(v) ? null : v;
-        },
-      }), 'blank = half the detection threshold'),
     ]));
+    if (plan && plan.ok && plan.sweeps) set.appendChild(channelPicker());
     set.appendChild(el('p', { class: 'hint', text:
-      'The floor is lower than detection on purpose. These events are '
-      + 'already known to be events — somebody said so in Checkup — '
-      + 'so making each one clear 4.5 SD a second time would strand the real '
-      + 'ones whose peak on this channel is a little smaller.' }));
+      (plan && plan.sweeps)
+        ? 'This set does not say which channel it came from, so every '
+          + 'channel is read and the one these events are biggest on wins '
+          + '— measured at the stamps themselves, not over the whole '
+          + 'recording, because how loud a wire hums is a different question '
+          + 'from where the dentate spikes are.'
+        : 'Nothing is thresholded. A peak is already the largest thing '
+          + 'within a hundred milliseconds of itself, and a height on top '
+          + 'of that could only throw away the right answer for a real '
+          + 'event that happens to be small here.' }));
     box.appendChild(set);
 
     /* Go. */
@@ -344,18 +343,72 @@ BARRY.braces = (function () {
          true while the channel is still missing -- that state is a prompt,
          and a button that offers to start a read it cannot aim is worse
          than one that waits. */
-      const ready = !!(plan && plan.ok
-                       && (plan.channel || q.channel != null));
+      const ready = !!(plan && plan.ok);
       go.appendChild(el('button', {
         class: 'btn primary', text: 'Line them up',
         disabled: ready ? null : 'disabled',
-        title: ready ? '' : 'Pick the channel these stamps were detected on',
+        title: ready ? '' : 'This set cannot be read here',
         onclick: run,
       }));
     }
     box.appendChild(go);
 
     box.appendChild(recentSets());
+    return box;
+  }
+
+  /* Which channels the sweep reads.
+
+     Every one of them, with the ones this recording has marked bad already
+     unticked. Not hidden: a sweep that silently leaves eight channels out
+     produces a ranking somebody will read as complete, and the one thing
+     worse than a bad channel in a table is a good one missing from it with
+     nothing to say so. */
+  function channelPicker() {
+    const all = (plan && plan.channels) || [];
+    if (!all.length) return el('span');
+    if (q.channels == null) {
+      q.channels = all.filter((c) => !c.bad).map((c) => c.number);
+    }
+    const on = new Set(q.channels);
+    const nBad = all.filter((c) => c.bad).length;
+
+    const box = el('div', { class: 'br-chans' });
+    box.appendChild(el('div', { class: 'br-chans-head' }, [
+      el('label', { text: 'Channels to sweep' }),
+      el('span', { class: 'br-hint',
+                   text: on.size + ' of ' + all.length
+                         + (nBad ? '  ·  ' + nBad + ' marked bad, '
+                                   + 'unticked' : '') }),
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost sm', text: 'All',
+        onclick: () => { q.channels = all.map((c) => c.number); render(); } }),
+      el('button', { class: 'btn ghost sm', text: 'Good ones',
+        onclick: () => { q.channels = all.filter((c) => !c.bad)
+                                          .map((c) => c.number);
+                         render(); } }),
+    ]));
+    const grid = el('div', { class: 'br-chan-grid' });
+    for (const c of all) {
+      const id = 'brCh' + c.number;
+      grid.appendChild(el('label', {
+        class: 'br-chan' + (c.bad ? ' bad' : '') + (on.has(c.number) ? ' on' : ''),
+        title: c.bad ? 'Marked bad on this recording' : (c.label || ''),
+      }, [
+        el('input', {
+          type: 'checkbox', id: id,
+          checked: on.has(c.number) ? 'checked' : null,
+          onchange: (e) => {
+            const next = new Set(q.channels);
+            if (e.target.checked) next.add(c.number); else next.delete(c.number);
+            q.channels = [...next].sort((a2, b2) => a2 - b2);
+            render();
+          },
+        }),
+        el('span', { text: String(c.number) }),
+      ]));
+    }
+    box.appendChild(grid);
     return box;
   }
 
@@ -389,40 +442,109 @@ BARRY.braces = (function () {
       plan.channel
         ? dt('Channel', 'CSC' + plan.channel.number
                         + '  (' + plan.channel.how + ')')
-        : dt('Channel', 'not recorded — pick one below'),
+        : dt('Channel', 'swept — all '
+                        + ((plan.channels || []).length || '')
+                        + ' of them, then the one these events are '
+                        + 'biggest on'),
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
       dt('Stamps', plan.entry.n + ' in v' + plan.current_version),
     ].filter(Boolean)));
 
-    if (plan.needs_channel) {
-      card.appendChild(el('p', { class: 'hint br-warn', text:
-        plan.needs_channel }));
-    }
+
 
     /* Which version supplies the stamps. Only where there is a choice --
        a set with one version does not need a dropdown saying so. */
+    /* Which version supplies the stamps.
+
+       A list rather than a dropdown, in the same shape the curation version
+       chooser uses -- the radio, the version chip, what it did, who and
+       when. Not the same FUNCTION: that one is built around a curation
+       history, with a bench to restore onto and a mix of labels per
+       version, and reshaping this into that contract would be inventing
+       fields to satisfy an adapter. The look is what is worth sharing.
+
+       It earns the room. A dropdown shows one line at a time, and the thing
+       being chosen between is "which pass of curation" -- which is a
+       question about who did what and when, not about a number. */
     const usable = (plan.versions || []).filter((v) => v.usable);
     if (usable.length > 1) {
-      const sel = el('select', {
-        onchange: (e) => {
-          q.from_version = e.target.value === '' ? null
-            : parseInt(e.target.value, 10);
-        },
-      });
-      sel.appendChild(el('option', { value: '',
-        text: 'the stamps as they are now (v' + plan.current_version + ')' }));
+      const group = 'brver' + Math.random().toString(36).slice(2, 8);
+      const list = el('div', { class: 'bm-list ver-pick-list br-vers' });
+
+      const row = (opts) => {
+        const r = el('label', {
+          class: 'bm-row' + (opts.off ? ' off' : ''),
+          title: opts.title || null,
+        }, [
+          el('input', {
+            type: 'radio', name: group,
+            disabled: opts.off ? 'disabled' : null,
+            checked: opts.on ? 'checked' : null,
+            onchange: () => {
+              q.from_version = opts.ref;
+              // Only the chips that say what is selected need repainting,
+              // and a full render would rebuild the radio being clicked.
+              for (const n of list.querySelectorAll('.bm-row')) {
+                n.classList.toggle('on', n === r);
+              }
+            },
+          }),
+          el('span', { class: 'ver-n', text: opts.v }),
+          opts.chip ? el('span', { class: 'flagchip', text: opts.chip }) : null,
+          el('div', { class: 'ver-pick-mid' }, [
+            el('span', { class: 'mk-name', text: opts.what }),
+            el('span', { class: 'ver-does' + (opts.branch ? ' branch' : ''),
+                         text: opts.does }),
+          ]),
+          el('span', { class: 'person-what', text: opts.who }),
+        ].filter(Boolean));
+        if (opts.on) r.classList.add('on');
+        return r;
+      };
+
+      const tip = usable[usable.length - 1];
+      list.appendChild(row({
+        ref: null, on: q.from_version == null,
+        v: 'v' + plan.current_version,
+        chip: 'now',
+        what: plan.entry.n + ' stamps, as they stand',
+        does: 'the next version continues the line',
+        who: '',
+      }));
       for (const v of usable) {
-        sel.appendChild(el('option', {
-          value: String(v.v),
-          text: 'v' + v.v + (v.note ? ' — ' + v.note.slice(0, 60) : ''),
+        list.appendChild(row({
+          ref: v.ref,
+          on: q.from_version === v.ref,
+          v: 'v' + (v.name || v.v),
+          chip: v.aligned ? 'aligned' : null,
+          what: (v.note || (v.n || 0) + ' stamps').slice(0, 70),
+          does: v === tip ? 'the newest of these'
+                          : 'branches off it — nothing after it is touched',
+          branch: v !== tip,
+          who: (v.by || 'unknown')
+               + (v.at && BARRY.when ? '  ·  ' + BARRY.when(v.at, 'minute')
+                                     : ''),
         }));
       }
-      card.appendChild(el('div', { class: 'br-field' }, [
-        el('label', { text: 'Read the stamps from' }), sel,
-        el('span', { class: 'br-hint', text:
-          'Aligning an older version branches off it. Nothing after it is '
-          + 'touched.' }),
+
+      /* The ones that cannot be a starting point, said rather than hidden:
+         their counts and their notes are still worth reading, and a version
+         that silently is not in the list reads as a version that does not
+         exist. */
+      for (const v of (plan.versions || []).filter((x) => !x.usable)) {
+        list.appendChild(row({
+          ref: v.ref, off: true, title: v.why_not,
+          v: 'v' + (v.name || v.v),
+          what: (v.note || (v.n || 0) + ' stamps').slice(0, 70),
+          does: v.why_not || 'cannot be read back',
+          who: v.by || '',
+        }));
+      }
+
+      card.appendChild(el('div', { class: 'br-field br-vers-field' }, [
+        el('label', { text: 'Read the stamps from' }),
+        list,
       ]));
     }
     return card;
@@ -480,10 +602,10 @@ BARRY.braces = (function () {
         el('strong', { text: s.name || s.entry_id }),
         el('span', { class: 'br-sub', text:
           'CSC' + (s.params || {}).channel + '  ·  ±'
-          + (s.params || {}).window_ms + ' ms  ·  floor '
-          + Math.round((s.params || {}).floor_uv || 0) + ' µV'
-          + (s.from_version == null ? '' : '  ·  from v'
-                                           + s.from_version) }),
+          + (s.params || {}).window_ms + ' ms  ·  '
+          + ((s.params || {}).band || [5, 100]).join('–') + ' Hz'
+          + (s.from_version == null ? '' : '  ·  read from an earlier '
+                                           + 'version') }),
       ]),
     ]));
 
@@ -523,6 +645,34 @@ BARRY.braces = (function () {
     /* The histogram, before the table. */
     box.appendChild(histCard(sum));
 
+    /* Which channel the sweep chose, and how clear the win was. A margin
+       of thirty per cent and a margin of two are different facts about a
+       probe, and only the second is worth a second look -- the same reason
+       Incisor shows its own margin rather than only its pick. */
+    if (sum.sweep && sum.sweep.picked) {
+      const p = sum.sweep.picked;
+      const close = p.margin_pct != null && p.margin_pct < 5;
+      box.appendChild(el('p', { class: 'hint br-note', text:
+        (sum.sweep.reused_from
+          ? 'Channel reused from an earlier sweep of this recording: '
+          : 'Swept all ' + sum.sweep.n_channels + ' channels. ')
+        + 'These events are biggest on CSC' + p.number + ' (median '
+        + Math.round(p.median_uv) + ' µV'
+        + (p.margin_pct != null
+            ? ', ' + p.margin_pct + '% clear of CSC' + p.runner_up
+            : '')
+        + '). Measured at the stamps themselves, not over the whole '
+        + 'recording.'
+        + (close
+            ? '  That margin is small — adjacent sites on a shank see '
+              + 'the same spikes at almost the same size, so CSC'
+              + p.runner_up + ' would do about as well. It is worth knowing '
+              + 'rather than worth worrying about: the stamps land in the '
+              + 'same place either way.'
+            : '') }));
+      box.appendChild(sweepTable(sum.sweep));
+    }
+
     /* Why the rule earned its keep. Only when it actually did. */
     if (sum.greedy_stranded) {
       box.appendChild(el('p', { class: 'hint br-note', text:
@@ -540,6 +690,52 @@ BARRY.braces = (function () {
 
     if (bench) box.appendChild(benchCard());
     return box;
+  }
+
+  /* Every channel the sweep read, in order. The shape of this column is
+     the answer: a gradient down the shank is a probe working and a set
+     measured against the right thing; a flat table is neither, and no
+     single number says so. */
+  function sweepTable(sw) {
+    const ranked = sw.ranked || [];
+    if (!ranked.length) return el('span');
+    const card = el('div', { class: 'card' });
+    const open = { on: false };
+    const top = Math.max(...ranked.map((r) => r.median_uv || 0)) || 1;
+    const body = el('div', { class: 'br-sweep hidden' });
+    for (const r of ranked) {
+      body.appendChild(el('div', {
+        class: 'br-sweep-row' + (r.number === (sw.picked || {}).number
+                                 ? ' won' : ''),
+      }, [
+        el('span', { class: 'n', text: 'CSC' + r.number }),
+        el('span', { class: 'bar' },
+           [el('i', { style: 'width:' + ((r.median_uv / top) * 100) + '%' })]),
+        el('span', { class: 'v', text: Math.round(r.median_uv) + ' µV' }),
+      ]));
+    }
+    const btn = el('button', {
+      class: 'btn ghost sm',
+      text: 'Show all ' + ranked.length + ' channels',
+      onclick: () => {
+        open.on = !open.on;
+        body.classList.toggle('hidden', !open.on);
+        btn.textContent = open.on ? 'Hide the channel table'
+                                  : 'Show all ' + ranked.length + ' channels';
+      },
+    });
+    card.appendChild(el('div', { class: 'br-chans-head' }, [
+      el('label', { text: 'How every channel scored' }),
+      el('div', { style: 'flex:1' }),
+      btn,
+    ]));
+    if ((sw.skipped || []).length) {
+      card.appendChild(el('p', { class: 'hint', text:
+        'Not read: CSC' + sw.skipped.join(', CSC')
+        + ' — unticked before the run.' }));
+    }
+    card.appendChild(body);
+    return card;
   }
 
   function count(v, label, tone) {
@@ -840,10 +1036,13 @@ BARRY.braces = (function () {
       g.lineWidth = 1.4;
       g.stroke();
 
-      /* The floor the peaks had to clear. */
-      const floor = (s.params || {}).floor_uv;
-      if (floor && floor < top) {
-        const y = base - (floor / top) * (base - 14);
+      /* What the detector would have called an event on this channel.
+         Not a threshold any more -- nothing is gated on it -- but a peak
+         under this line is why a row reads "weak peak", and the line is
+         how that stops being an assertion. */
+      const thr = (s.summary || {}).thr_uv;
+      if (thr && thr < top) {
+        const y = base - (thr / top) * (base - 14);
         g.save();
         g.setLineDash([3, 4]);
         g.strokeStyle = tone('--text-3', '#6f8c7d');
@@ -852,7 +1051,8 @@ BARRY.braces = (function () {
         g.restore();
         g.fillStyle = tone('--text-3', '#6f8c7d');
         g.font = '10px ui-monospace, monospace';
-        g.fillText('floor ' + Math.round(floor) + ' µV', 4, y - 3);
+        g.fillText('detection threshold ' + Math.round(thr) + ' µV',
+                   4, y - 3);
       }
     }
     g.strokeStyle = tone('--line', '#244737');

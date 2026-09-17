@@ -44,6 +44,55 @@ async function until(fn, ms) {
   await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
   const D = () => frame.contentDocument;
 
+  say('=== two halves, and the cluster one is locked until the mode is on ===');
+  // Open the Incisor tool the way a person does.
+  await ev('setView("toolkit")');
+  await sleep(300);
+  // `until` here returns a boolean, not the thing it found -- the one in
+  // incisor.html returns the value and the two are easy to confuse.
+  let toolBtn = null;
+  await until(() => {
+    toolBtn = Array.from(D().querySelectorAll('#tkBody .tk-tool'))
+      .find((b) => /Incisor/.test(b.textContent));
+    return !!toolBtn;
+  }, 15000);
+  check('the Incisor tool is in the ToolKit', !!toolBtn);
+  if (toolBtn) { toolBtn.click(); await sleep(500); }
+
+  const tabsOf = () => Array.from(D().querySelectorAll('#tkBody .inc-tab'));
+  check('the panel has two tabs', tabsOf().length === 2,
+        String(tabsOf().length));
+  check('and they are named for where the work happens',
+        /This computer/.test((tabsOf()[0] || {}).textContent || '')
+        && /VACC/.test((tabsOf()[1] || {}).textContent || ''),
+        tabsOf().map((t) => t.textContent.slice(0, 20)).join(' | '));
+
+  // Mode off: the cluster tab is visible and locked. Visible matters --
+  // a tab that is simply absent teaches nobody the cluster exists.
+  await ev('applyVacc(false)');
+  await sleep(350);
+  const off = tabsOf();
+  check('with the mode off the VACC tab is still shown', off.length === 2,
+        String(off.length));
+  check('but it is locked', !!off[1] && off[1].disabled,
+        off[1] ? String(off[1].disabled) : 'missing');
+  check('and says why', /VACC Mode is off/.test((off[1] || {}).textContent || ''),
+        (off[1] || {}).textContent || '');
+  check('the local half is what is showing',
+        !!off[0] && off[0].classList.contains('on'));
+
+  await ev('applyVacc(true)');
+  await sleep(400);
+  const on2 = tabsOf();
+  check('turning the mode on unlocks it without navigating away',
+        !!on2[1] && !on2[1].disabled, on2[1] ? String(on2[1].disabled) : 'missing');
+  if (on2[1]) { on2[1].click(); await sleep(600); }
+  check('and opening it shows which recordings would go',
+        /Which recordings/.test(
+          (D().getElementById('tkBody') || {}).textContent || ''),
+        ((D().getElementById('tkBody') || {}).textContent || '').slice(0, 70));
+
+  say('');
   say('=== the queue the batch leaves behind ===');
   const rv = JSON.parse(await ev('fetch("/api/incisor/reviews").then(r=>r.text())'));
   check('/api/incisor/reviews answers', rv.ok === true);

@@ -15,6 +15,121 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.7 - Braces picks its own channel, and stops asking for a number two versions share
+
+### Changed
+
+- **Braces finds the channel itself.** It used to ask, and on this archive
+  that meant asking every time: forty-one of the forty-five curated sets were
+  banked before Incisor existed and record no channel anywhere. Falling back
+  to the recording's hilus channel only moved the problem, because most of
+  them have no hilus channel on record either.
+
+  It now reads every channel, filters 5-100 Hz, takes the magnitude, and at
+  each stamp looks at the largest value inside the window that stamp is
+  allowed to move in. The channel with the highest median across the set
+  wins.
+
+  **Measured at the stamps, not over the recording.** A channel's overall
+  magnitude is a fact about how noisy it is; what decides where a dentate
+  spike should be measured is how big the dentate spikes are on it, and the
+  set already says when those happened. Averaging over the whole trace would
+  hand the answer to whichever wire hums loudest.
+
+  **Ranked on the median, not the mean.** One artifact inside one stamp's
+  window is enough to carry a mean on a set of eighty, and the question is
+  where the typical event looks biggest. The margin travels with the answer
+  the way Incisor's channel pick does — a win of thirty per cent and a win of
+  two are different facts about a probe, and only the second is worth a
+  second look.
+
+  A channel can still be typed in, and then it is used and said so. Which of
+  the two happened is recorded on the proposal and on the version, because a
+  channel chosen by sweep and a channel chosen by hand must not be
+  indistinguishable afterwards.
+
+  On M8s9feb8's 1213 spikes it picks CSC40, with CSC41 and CSC39 a fraction
+  behind — a smooth gradient down the shank, which is what a real answer
+  looks like. The margin over the runner-up is **0.3%**, and the panel says
+  so: adjacent sites see the same spikes at almost the same size, so the
+  choice between those two is a coin toss. It is worth knowing rather than
+  worth worrying about — the alignment lands in the same place either way,
+  a median of −5.6 ms on both.
+
+  **Swept once, not once per run.** Reading sixty-four channels is 208
+  seconds, and which channel a recording's dentate spikes are biggest on
+  does not change between two runs over the same band. Every proposal already
+  records the sweep that produced it, so the cheapest store is the one
+  already there: a previous proposal on the same recording, asked the same
+  question. No new book, nothing to go stale against a recording, and it is
+  visible to anybody who opens that proposal rather than hidden in a cache.
+
+- **The alignment floor is gone.** It was a knob that could only be wrong.
+  Peaks are found with a spacing rule, which already makes each one the
+  largest thing within a hundred milliseconds of itself — so every peak found
+  is a candidate a stamp could sensibly move to, and a height requirement on
+  top of that could only remove the right answer for a real event whose peak
+  on this channel happens to be small. Which is the case alignment exists to
+  handle.
+
+  The detector's own threshold is still computed, because "this peak is
+  smaller than the detector would have called an event" is worth saying on a
+  row and is what the *weak peak* flag means. It is a remark, not a gate, and
+  the bench draws it as a line so it stops being an assertion.
+
+### Fixed
+
+- **The version chooser listed v3 twice and v4 twice, and picking one was a
+  coin toss.** Both halves of that were real.
+
+  The duplicates are real data and are correct: two machines curating one
+  entry both mint the next number, the union keeps both, and the per-version
+  id is what tells them apart — `versions.py` has said so since it was
+  written, and this bank holds a history numbered 0,1,2,3,4,3,4. What was
+  wrong is that Braces listed them by number, so two rows were the same
+  sentence twice, and then sent that number back to be resolved by taking
+  whichever came first in the file. Asking to read "v3" could read one
+  person's pass while naming the other's.
+
+  The list is now named through the lineage labeller the curation version
+  chooser already uses, which walks `from_v` and gives the second line its
+  own name — v3.1 rather than a second v3. And the id, not the number, is
+  what travels back — except where there is no id to send. Versions minted
+  before ids existed have none, and this archive still holds plenty: three
+  of the eight on M8s9feb8. Those fall back to their number, which is the
+  only handle they have -- except that the stored number is the one thing
+  that is NOT unique, so that fallback reproduced the fault it was meant to
+  cure: the chooser showed **v6**, sent back **4**, and the bank replied
+  about a version numbered 4 that nobody had seen. The two halves of one row
+  disagreed about which version it was.
+
+  An id-less version is keyed on what it contains instead: its number, its
+  time, who made it, its note and its size. Derived rather than minted, so
+  nothing has to be written into the archive to make old versions
+  addressable; content-based rather than positional, so a shard arriving
+  between choosing and running cannot shift it. Checked against every
+  version of M8s9feb8: all eight now resolve to the one the chooser names.
+
+  Asking the bank for a version by a number only one version has still
+  works; asking by a number two versions share is refused, and the refusal
+  hands back the keys to choose between rather than being a dead end.
+
+- **The sweep reads every channel and says how each one scored.** It used to
+  drop the ones marked bad before it started, which produces a ranking
+  somebody reads as complete. They are listed now and arrive unticked, so
+  leaving one out is visible and putting it back is one click -- and the
+  result carries the whole table rather than only the winner, because the
+  shape of that column is the answer: a gradient down the shank is a probe
+  working, and a flat table is a set measured against the wrong thing. No
+  single number says either.
+
+- **Braces threw on every set with no channel on record.** `Cannot read
+  properties of null (reading 'number')`, seven times in one sitting.
+  Teaching the panel that a channel might be missing left one row still
+  reading it as though it never could be. Moot now that the channel is swept,
+  and fixed anyway: a value that can be absent has to be absent everywhere it
+  is read.
+
 ## 2026.09.17.6 - The curation list stops asking the same question forty-eight times
 
 ### Fixed
