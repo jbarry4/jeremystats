@@ -15,6 +15,220 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.5 - Curation remembers where you were
+
+### Added
+
+- **Leaving a curation set and coming back lands you where you left off.**
+  The decisions always survived; the place never did. Coming back to 430
+  candidates with no idea whether you had reached 134 or 208 means
+  re-reviewing the overlap to be safe, and that is the real cost of
+  switching tabs to look something up — paid in minutes, every time.
+
+  Kept per recording and per kind, in the same synced preferences file
+  `span` already lives in, whose own header has said "where was I" since it
+  was written. It is remembered **by candidate, not by index**: a set can
+  gain or lose candidates between sittings — a re-import, a dedupe, a
+  snapshot folder absorbed — and an index would then point at a different
+  spike with perfect confidence. The candidate's id is what survives that,
+  with its time as the fallback for a set rebuilt from a snapshot, which
+  does not carry ids.
+
+  The pass is restored before the position, because landing on candidate 208
+  while the Undecided pass is showing would put you on a candidate that pass
+  does not contain, and n/p would then walk away from it. A remembered pass
+  with nothing left in it is dropped rather than restored — that is what
+  happens when somebody finishes the undecided pass and comes back, and
+  opening on an empty screen is the fault this sits next to.
+
+  It says so on the way in: *Back where you left off: 208 of 430*. Landing
+  in the middle of a set with no explanation reads as a bug, and the point
+  is to be able to trust it. Where the candidate itself has gone, it says
+  that too, and lands on the next one along rather than at the top.
+
+  Written on the way out as well as on every jump. Preference writes are
+  coalesced by a third of a second, and leaving is exactly the moment
+  somebody is about to do something else.
+
+### Changed
+
+- **The loading line at the top of the window is twice as tall.** It was a
+  two-pixel hairline, which was doing its job and being missed — nobody is
+  watching the top of the window while they wait, so it is only ever seen
+  out of the corner of an eye, and two pixels is not enough to catch one.
+  Four now, over a faint track so the sweep reads as one object travelling
+  rather than a glow appearing and vanishing at the edges, with a soft
+  shadow that lifts it off the pale header on the light themes.
+
+  Still fixed, still a fixed height. That was the constraint — it has to be
+  able to appear during a mutation without shifting the list somebody is
+  reading — and the thinness was never the point.
+
+  It also now stays put rather than disappearing for anyone who has asked
+  for less motion: it stops sweeping and holds. An indicator that vanishes
+  under a motion preference is the one case where that setting costs
+  information rather than saving annoyance.
+
+## 2026.09.17.4 - The Dentist, and stamps that sit on their own peak
+
+### Added
+
+- **Bundles, and the first one.** The ToolKit rail was a flat list of nine
+  tools with nothing to do with each other, three of which are one job done
+  in three sittings. **The Dentist** groups them: Incisor finds the dentate
+  spikes, **Checkup** says which ones are real, **Braces** puts every stamp
+  on the peak it belongs to. The steps are numbered because the order is a
+  real dependency rather than a suggestion — Checkup has nothing to show
+  until Incisor has banked candidates, and Braces has nothing to move until
+  Checkup has said which stamps are spikes.
+
+  Grouping them is the small half. Each step reads its own state, so the rail
+  says where the lab is — *56 DS sets banked, 45 of 56 decided, 0 of 45
+  aligned* — rather than listing three tools that happen to be related.
+
+  Checkup is a name on a door, not a second engine. `curation.py` is
+  deliberately one engine with a vocabulary per kind, because deciding
+  *dentate spike or garbage* and deciding *solid or sputter* are the same job
+  once you stop looking at the biology; the flat tool list keeps **Event
+  curation** for anyone arriving to do IEDs. One engine, one set of keys, one
+  version history, two doors.
+
+- **Braces.** A set's stamps are only as good as the trace they were measured
+  against. A set detected on CSC38 and read back against CSC41 is a few
+  milliseconds out, because adjacent sites on a shank see the same spike at
+  slightly different times; one that came through Toothy was measured on a
+  1 kHz grid over a nominal rate; one imported from a snapshot folder has
+  whatever time was in the file name. None of that is wrong enough to notice
+  one event at a time, and all of it is wrong enough to smear an average
+  across a thousand.
+
+  Braces reads one channel, band-passes it 5–100 Hz, takes the magnitude, and
+  puts each stamp on its own peak within ±100 ms. Measured on M8s9feb8's 1213
+  curated spikes against CSC41: 4161 peaks found in three seconds, a median
+  shift of −5.6 ms, and nothing further out than 18.9 ms. The shift histogram
+  is one tight lobe left of zero, which is what a systematic offset looks
+  like and is the thing this tool exists to remove.
+
+  **Magnitude, not the signed trace.** Incisor runs `find_peaks` on the
+  signed trace, which is why polarity is a correctness question there and not
+  a preference. A stamp that arrived from Toothy, from a snapshot folder, or
+  from somebody's hand may sit on a trough. `|x|` finds the event under
+  either convention, and is the one measure that does not care which tool
+  produced the stamp.
+
+  **A lower floor than detection.** Detection asks *is anything here*;
+  alignment asks *where is the thing we already know is here*. Making each
+  peak clear 4.5 SD a second time would strand the real events whose peak on
+  this channel is a little smaller — and this channel is often not the one
+  detection ran on. The floor is half the set's own detection threshold, so
+  it travels with the parameters the set was made with rather than being a
+  new number nobody chose.
+
+- **One peak per stamp, and no crossing.** Nearest-peak-wins is wrong, and
+  wrong in a way that quietly loses events. Take two stamps and two peaks
+  where the first stamp sits between the peaks nearer the later one, and the
+  second can only reach the later one: nearest-peak-wins gives that peak to
+  the first stamp and the second — a real, curated dentate spike — is left
+  with nothing. The right answer moves the first stamp *further*, onto the
+  earlier peak, so the second can have the later one.
+
+  So the objective is not "move as little as possible". It is, in order:
+  match as many stamps as possible, then move them the least in total,
+  subject to a stamp taking at most one peak, a peak being taken by at most
+  one stamp, and the assignment never crossing. Solved per *run* — the
+  contiguous group of stamps and peaks that can reach one another — which on
+  real data is one stamp and one or two peaks and is settled by inspection.
+
+  The two constraints are not decoration. Without **one peak per stamp**, two
+  stamps snap onto the same peak and the set acquires two events at an
+  identical time, which the bank's duplicate machinery would then make
+  somebody resolve by hand at 0.1 ms. Without **no crossing**, two events
+  swap places and their curation calls follow them — a Garbage and a Dentate
+  Spike trading identities. Events in a recording do not reorder, so neither
+  may this. Both are checked again immediately before the write.
+
+- **Only the stamps somebody called a dentate spike.** A curated set is not a
+  list of events; it is a list of candidates, most of which are events and
+  some of which were looked at and rejected. Garbage and unsettled Flags are
+  kept out of the run **entirely**, not filtered out of the answer
+  afterwards: one peak per stamp means a Garbage stamp sitting nearer a peak
+  would take it, and the real spike beside it would be stranded or pushed
+  onto the wrong one. What was left alone is counted and named on the
+  proposal rather than quietly dropped.
+
+- **Most of them arrive confirmed.** Four situations Braces will not vouch
+  for, each pre-flagged with its reason: *no peak in reach* (the stamp does
+  not move), *near the edge* (further than 80% of the window, where the peak
+  it found is about as likely to be the next spike as this one), *not the
+  nearest peak* (the run overrode nearest-peak-wins so a neighbour could have
+  one — the only flag that reports a decision the tool actually made), and
+  *weak peak* (cleared the alignment floor but not the detection threshold).
+  Everything else confirms on arrival, and anything can still be flagged by
+  hand.
+
+- **A proposal is not a version.** Running Braces writes nothing to the bank.
+  What comes out is an alignment set — the measurement, plus every decision
+  made about it — kept in `GUI_logs/braces/` so that reviewing twenty-six
+  flags does not have to happen in one sitting. The decisions are a `MAPLWW`
+  field, so two people reviewing different flags on one proposal merge row by
+  row. Accepting it previews exactly what the write would do first, the way
+  re-timing already does, because a timestamp rewrite that cannot be read
+  before it happens should not be offered at all.
+
+  **A flag nobody resolved does not move.** Not moved quietly on the grounds
+  that the proposal was probably right — the flag exists because the tool
+  would not vouch for it, and accepting it by default would make the flag
+  decorative. The count of them sits beside the button.
+
+### Changed
+
+- **The event bank can tell a stamp that moved from one that was deleted.**
+  A banked event's only identity was its time. That held until something
+  moved one, and Braces does exactly that — so an aligned set would have
+  arrived as every event vanishing and an unrelated one appearing, and the
+  history would have read *1198 lost, 1198 gained* about a pass in which
+  nothing was decided differently at all.
+
+  A stamp Braces moved now carries `from_t`, the time it used to have, and
+  the diff matches in two passes: every event still where it was claims its
+  own slot first, and only the leftovers are matched on where they came from.
+  The order is not a style choice — one pass, whichever key it preferred,
+  could hand a moved event the slot belonging to an event that had not moved.
+  Versions gained a `shifted` count, written only when something did.
+
+  `from_t` also had to be added to the whitelist `add()` builds each event
+  from. It was being dropped on the way in, which is the same fault seen from
+  the other end: the field exists to make the next diff possible, and a diff
+  that cannot see it is blind again.
+
+### Fixed
+
+- **A registry row has no `path`.** It has `here` — the folders *this*
+  machine can actually reach, which is not the same list as `paths`, because
+  a recording seen on the rig and on a laptop has two and only one of them
+  opens here. Asking for `path` returns nothing for every recording in the
+  archive, so the first version of Braces reported that not one of the 45
+  curated sets could be aligned. `curate.js` has taken `here[0]` since the
+  workbench was written; this now does too, and a recording that is known but
+  not plugged in gets a different sentence from one that was never recorded
+  against a session at all.
+
+- **Forty-one of the forty-five curated sets say nothing about which channel
+  they were detected on.** They were banked before Incisor existed. That was
+  a hard refusal, so the tool worked on nothing anybody actually has; it now
+  falls back to the recording's own hilus channel, and where there is not one
+  either it *asks* rather than refusing — the panel has the box, so a missing
+  channel is a prompt, not a failure. Which of the four ways the channel was
+  arrived at is always said out loud beside it, because a channel chosen by
+  rule and one chosen by hand must not be indistinguishable.
+
+- **Older entries store `label` without `label_id`.** Their `by_label` reads
+  `{"Dentate Spike": 10}` rather than `{"spike": 10}`, so matching the
+  dentate-spike category by id alone silently skipped every real stamp in
+  them — which would have looked like a set with nothing to align rather than
+  like a bug. Matched by id *and* by display name, and by whatever the entry
+  itself calls them.
+
 ## 2026.09.17.3 - The band line says which channel it came from, and can carry ten
 
 ### Added
@@ -49,6 +263,7 @@ This file is the only place the version is written. The app reads it.
   because you cannot tell there are two. A single line keeps the accent colour
   it has always had, so turning a second channel off puts the strip back
   exactly as it was.
+
 
 ## 2026.09.17.2 - The Strip panel answers the button you press
 

@@ -150,7 +150,35 @@ BARRY.curate = (function () {
       review = events().some((e) => e.label && flagIds().has(e.label))
       ? 'flag' : 'all';
     }
-    goTo(firstWanted(), true);
+
+    /* Back where you left off, if you have been here before.
+
+       The pass is restored first, because landing on candidate 208 while
+       the Undecided pass is showing would put you on a candidate the pass
+       does not contain -- and n/p would then walk away from it. A
+       remembered pass with nothing in it is dropped rather than restored:
+       that happens when somebody finishes the undecided pass and comes back,
+       and opening on an empty screen is the fault this is next to. */
+    const back = recallWhere();
+    if (back) {
+      const was = review;
+      review = back.review;
+      if (!nWanted()) review = was;
+      goTo(back.index, true);
+      /* Said out loud. Landing in the middle of a set with no explanation
+         reads as a bug, and the whole point is to be able to trust it -- so
+         it names the number, and says when the candidate itself has gone
+         and this is the next one along. */
+      const total = nWanted();
+      const at = events().slice(0, index + 1).filter(wanted).length;
+      toast(back.gone
+        ? 'Back where you were — that candidate is no longer in this '
+          + 'set, so this is the next one along (' + at + ' of ' + total + ').'
+        : 'Back where you left off: ' + at + ' of ' + total + '.',
+        null, 5000);
+    } else {
+      goTo(firstWanted(), true);
+    }
     render();
 
     BARRY.activity.log('curation.enter', {
@@ -229,6 +257,12 @@ BARRY.curate = (function () {
 
   function exit() {
     if (!set_) return;
+    /* The place, written now rather than in 350 ms. Preference writes are
+       coalesced, and leaving is exactly the moment somebody is about to do
+       something else -- the whole point is that it survives a tab switch,
+       so it must not depend on a timer that has not fired yet. */
+    rememberWhere();
+    try { BARRY.prefs.flush(); } catch (e) { /* the timer will get it */ }
     BARRY.activity.log('curation.leave', {
       gid: set_.gid, kind: set_.kind, left: left(),
     }, sess);
@@ -406,12 +440,82 @@ BARRY.curate = (function () {
     }
   }
 
+  /* ==================================================================
+     Where you were
+
+     Leaving a set keeps the decisions and used to lose the place. Coming
+     back to 430 candidates with no idea whether you had reached 134 or 208
+     means re-reviewing the overlap to be safe, every time -- which is the
+     cost of a tab switch, paid in minutes.
+
+     Kept per (recording, kind) in the synced preferences, which is where
+     `span` already lives and what that file's own header calls "where was
+     I". BY EVENT, NOT BY INDEX: a set can gain or lose candidates between
+     sittings -- a re-import, a dedupe, a snapshot folder absorbed -- and an
+     index would then point at a different spike with perfect confidence.
+     The id is what survives that; the time is the fallback for a set
+     rebuilt from a snapshot, which does not carry ids.
+     ================================================================== */
+  const WHERE_KEY = 'curate_at';
+  // Enough to cover everything anybody has open at once, several times
+  // over. Trimmed rather than unbounded: this file syncs.
+  const WHERE_MAX = 60;
+
+  const whereKey = (gid, k) => String(gid) + ':' + String(k);
+
+  function rememberWhere() {
+    if (!set_ || !kind) return;
+    const ev = current();
+    if (!ev) return;
+    const all = Object.assign({}, BARRY.prefs.get(WHERE_KEY, {}) || {});
+    all[whereKey(set_.gid, set_.kind)] = {
+      id: ev.id || null,
+      t: ev.start,
+      review: review,
+      n: events().length,
+      at: Date.now(),
+    };
+    const keys = Object.keys(all);
+    if (keys.length > WHERE_MAX) {
+      keys.sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+      for (const k of keys.slice(WHERE_MAX)) delete all[k];
+    }
+    BARRY.prefs.set(WHERE_KEY, all);
+  }
+
+  /* Where to land, and what to say about it. Returns null for a set nobody
+     has been in, which opens at the start as it always did. */
+  function recallWhere() {
+    if (!set_) return null;
+    const got = (BARRY.prefs.get(WHERE_KEY, {}) || {})[
+      whereKey(set_.gid, set_.kind)];
+    if (!got) return null;
+    const all = events();
+    let i = -1;
+    if (got.id) i = all.findIndex((e) => e.id === got.id);
+    if (i < 0 && got.t != null) {
+      // Same candidate, no id to prove it: four places is 0.1 ms, which is
+      // the tolerance the bank calls one event written twice.
+      const want = Math.round(got.t * 1e4);
+      i = all.findIndex((e) => Math.round(e.start * 1e4) === want);
+    }
+    if (i < 0 && got.t != null) {
+      // The one you were on is gone. The next one along is where you would
+      // have got to, which is better than the top of the set.
+      i = all.findIndex((e) => e.start > got.t);
+    }
+    if (i < 0) return null;
+    return { index: i, review: got.review || 'left', gone: !got.id
+             || all[i].id !== got.id };
+  }
+
   function goTo(i, quiet) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (sess.curation) sess.curation.index = index;
+    rememberWhere();
     publishMarks();
     // Somebody zoomed the pane: that is the window they want, so take it
     // rather than putting it back. Only a real change counts -- the

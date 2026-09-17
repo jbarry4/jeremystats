@@ -8138,22 +8138,46 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .net-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 2px;
+  /* Was a 2px hairline, which was doing its job and being missed. Four
+     pixels with a faint wash under it is still nothing to look at when the
+     app is idle, and is catchable out of the corner of an eye -- which is
+     the only way this is ever seen, because nobody is watching the top of
+     the window while they wait.
+
+     Still fixed, still a fixed height, so it cannot shift the list
+     underneath it during a mutation. That was the constraint, not the
+     thinness. */
+  height: 4px;
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
   transition: opacity .12s ease;
-  background: linear-gradient(90deg,
-    transparent 0%, var(--accent) 50%, transparent 100%);
-  background-size: 40% 100%;
-  background-repeat: no-repeat;
+  /* Two layers, not a pseudo-element: a `::before` track is painted AFTER
+     its parent's background and would have covered the sweep it is
+     supposed to sit behind. The travelling highlight is the first layer,
+     the track is the second, and only the first one's position is
+     animated. */
+  background:
+    linear-gradient(90deg,
+      transparent 0%, var(--accent) 50%, transparent 100%),
+    linear-gradient(var(--accent-soft), var(--accent-soft));
+  background-size: 46% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: -46% 0, 0 0;
 }
-.net-bar.on { opacity: 1; animation: netSweep 1.1s linear infinite; }
+.net-bar.on {
+  opacity: 1;
+  animation: netSweep 1.25s linear infinite;
+  /* Lifts it off a pale header on the light themes, where a 4px gold line
+     on white is otherwise about as loud as the 2px one was. */
+  box-shadow: 0 1px 6px var(--accent-soft);
+}
 
 @keyframes netSweep {
-  from { background-position: -40% 0; }
-  to   { background-position: 140% 0; }
+  from { background-position: -46% 0, 0 0; }
+  to   { background-position: 146% 0, 0 0; }
 }
+
 
 /* Why the confirm dialog is still open. Sits under the question, where the
    person is already looking, rather than in a toast behind a closed box. */
@@ -8166,8 +8190,19 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   padding-left: 9px;
 }
 
+/* Somebody who does not want the movement still gets the indicator: it
+   stays, and stops sweeping. An indicator that vanishes under a motion
+   preference is the one case where the setting costs information.
+
+   The whole background is replaced rather than only its position: the bar
+   paints in two layers now, and parking a 46%-wide highlight at 50% leaves
+   the ends of the track bare, which reads as a bar that failed to load. */
 @media (prefers-reduced-motion: reduce) {
-  .net-bar.on { animation: none; background-position: 50% 0; }
+  .net-bar.on {
+    animation: none;
+    background: linear-gradient(var(--accent), var(--accent));
+    opacity: .9;
+  }
 }
 
 /* A list that is on screen and being re-read, because somebody just changed
