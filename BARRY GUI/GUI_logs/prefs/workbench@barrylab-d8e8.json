@@ -4,7 +4,8 @@
     "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
     "radio": "2026-09-15T21:04:56.695923+00:00",
     "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
-    "updated": "2026-09-16T17:36:31.217374+00:00"
+    "result_group": "2026-09-16T13:32:20.412633+00:00",
+    "updated": "2026-09-16T20:09:22.104237+00:00"
   },
   "_keys": {
     "themes": {
@@ -31,7 +32,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-16T17:36:31.217374+00:00",
+    "at": "2026-09-16T20:09:22.104237+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -60,11 +61,12 @@
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
     "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
+  "result_group": "",
   "themes": {
     "BarryLab": "horizon-night",
     "DESKTOP-4H65AI7": "jirai-yami",
     "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-16T13:36:31-04:00"
+  "updated": "2026-09-16T16:09:22-04:00"
 }

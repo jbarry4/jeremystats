@@ -6,6 +6,7 @@
     "converted": "2026-09-04T15:57:01.804684+00:00",
     "created": "2026-09-02T23:51:19.876365+00:00",
     "duration_s": "2026-09-04T15:57:01.804684+00:00",
+    "event_classes": "2026-09-16T17:44:17.047971+00:00",
     "first_seen_by": "2026-09-04T15:57:01.804684+00:00",
     "fs": "2026-09-04T15:57:01.804684+00:00",
     "gid": "2026-09-02T23:51:19.876365+00:00",
@@ -24,7 +25,7 @@
     "schema": "2026-09-04T15:57:01.804684+00:00",
     "session": "2026-09-04T15:57:01.804684+00:00",
     "start": "2026-09-04T15:57:01.804684+00:00",
-    "updated": "2026-09-16T17:40:36.027047+00:00",
+    "updated": "2026-09-16T17:44:18.950556+00:00",
     "view_state": "2026-09-16T17:37:29.169324+00:00"
   },
   "_keys": {
@@ -83,11 +84,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-16T17:40:36.027047+00:00"
+        "2026-09-16T17:44:08.192377+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-15T20:41:37.876968+00:00"
+        "2026-09-15T23:08:58.031894+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -96,7 +97,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-16T17:40:36.027047+00:00",
+    "at": "2026-09-16T17:44:18.950556+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -147,6 +148,23 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1811.6608,
+  "event_classes": {
+    "Starting Recording": {
+      "color": "#FF6B6B",
+      "name": "Starting Recording",
+      "visible": true
+    },
+    "Stopping Recording": {
+      "color": "#FFB81C",
+      "name": "Stopping Recording",
+      "visible": true
+    },
+    "m34s8jun10": {
+      "color": "#4DD4C4",
+      "name": "m34s8jun10",
+      "visible": true
+    }
+  },
   "first_seen_by": "scan",
   "fs": 30000.0,
   "gid": "s8d50a361b096",
@@ -201,7 +219,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-16T13:40:36-04:00",
+      "at": "2026-09-16T13:44:08-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -209,7 +227,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-15T16:41:37-04:00",
+      "at": "2026-09-15T19:08:58-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -228,7 +246,8 @@
   "session": 8,
   "start": "2024-06-10T17:00:07",
   "updated": {
-    "at": "2026-09-16T13:40:36-04:00",
+    "app_version": "2026.09.16.2",
+    "at": "2026-09-16T13:44:18-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
