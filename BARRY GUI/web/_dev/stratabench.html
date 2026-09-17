@@ -88,7 +88,7 @@ const untilN = async (fn, n) => {
   await sleep(900);
   /* The tools are buttons with their names in them; there is no export to
      select one, and driving the real button is the truer test anyway. */
-  const toolBtn = $$('.tk-tool').find(
+  const toolBtn = $$('.tk-tool, .tk-step').find(
     (b) => /stratascope/i.test(b.textContent || ''));
   ck('the ToolKit offers StrataScope', !!toolBtn);
   if (toolBtn) toolBtn.click();

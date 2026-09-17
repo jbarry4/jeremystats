@@ -114,6 +114,25 @@ This file is the only place the version is written. The app reads it.
   works; asking by a number two versions share is refused, and the refusal
   hands back the keys to choose between rather than being a dead end.
 
+- **Picking which version to read is a list, not a dropbox.** A dropdown
+  shows one line at a time, and the thing being chosen between is which pass
+  of curation to work from -- which is a question about who did what, when,
+  and what picking it would do, none of which fits on the one line a `select`
+  gives you.
+
+  It is drawn with the same parts the curation version chooser uses: the
+  radio, the version chip, what is in it, what picking it would do, and who
+  and when. Not the same function -- that one is built around a curation
+  history with a bench to restore onto, and reshaping this into that contract
+  would mean inventing fields to satisfy an adapter. The look is the part
+  worth sharing, and it was already styled down to the disabled rows and the
+  wrap at narrow widths.
+
+  Versions that cannot be a starting point are listed rather than hidden,
+  greyed, with the reason on them. Their counts and their notes are still
+  worth reading, and a version that silently is not in the list reads as a
+  version that does not exist.
+
 - **The sweep reads every channel and says how each one scored.** It used to
   drop the ones marked bad before it started, which produces a ranking
   somebody reads as complete. They are listed now and arrive unticked, so

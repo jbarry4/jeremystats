@@ -134,7 +134,7 @@ const TOOLS = ['bad', 'curate', 'strata', 'cfc', 'kilosort', 'snapshots'];
 
   head('Switching tools switches the feed');
   const btn2 = Array.from(D().querySelectorAll('#view-toolkit button'))
-    .find((b) => /Event curation/.test(b.textContent));
+    .find((b) => /Event curation|Checkup/.test(b.textContent));
   if (btn2) {
     btn2.click();
     await sleep(2500);

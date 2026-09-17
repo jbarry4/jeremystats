@@ -62,7 +62,7 @@ const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } }
   await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.views.toolkit'),
               40000);
   const tools = await until(() => {
-    const n = D().querySelectorAll('#tkBody .tk-tool');
+    const n = D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step');
     return n.length ? n : null;
   }, 30000);
   ck('the toolkit rendered its tools', !!tools, 'none');

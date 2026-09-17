@@ -53,12 +53,12 @@ const hd = (t) => p('\n== ' + t + ' ==');
   ev('setView("toolkit")');
   ok = await untilN(() => D().querySelector('.tk-tools'));
   ck('the ToolKit rendered', ok >= 0);
-  const btns = () => Array.from(D().querySelectorAll('.tk-tool strong'))
+  const btns = () => Array.from(D().querySelectorAll('.tk-tool strong, .tk-step .tk-step-n'))
     .map((b) => b.textContent.trim());
   ck('Panorama has a button', btns().indexOf('Panorama') >= 0,
      btns().join(' | '));
 
-  const hit = Array.from(D().querySelectorAll('.tk-tool'))
+  const hit = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
     .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
   hit.click();
   ok = await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
@@ -183,7 +183,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
   ck('still one run after switching rule', ev('!!BARRY.panorama.result'));
 
   hd('it does not sit under another tool');
-  ev('BARRY.views.toolkit && document.querySelector(".tk-tool").click()');
+  ev('BARRY.views.toolkit && document.querySelector(".tk-tool, .tk-step").click()');
   await sleep(400);
   ck('leaving the tool leaves no Panorama panel behind',
      !D().querySelector('.pn-setup') || ev('BARRY.views.toolkit.tool()') === 'panorama');

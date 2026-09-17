@@ -411,12 +411,12 @@ const hd = (t) => p('\n== ' + t + ' ==');
   /* The curation section of the toolkit, reached the way a person reaches
      it: the view, then the tool. */
   run("setView('toolkit')");
-  await untilN(() => D().querySelectorAll('.tk-tool').length, 120);
+  await untilN(() => D().querySelectorAll('.tk-tool, .tk-step').length, 120);
   await sleep(600);
   /* The tool is chosen by its own button, and the toolkit remembers
      whichever one was last used -- so it has to be clicked, not assumed. */
-  const curBtn = Array.from(D().querySelectorAll('.tk-tool'))
-    .find((b) => /Event curation/.test(
+  const curBtn = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
+    .find((b) => /Event curation|Checkup/.test(
       (b.querySelector('strong') || {}).textContent || ''));
   ck('the curation tool is offered', !!curBtn);
   if (curBtn) { curBtn.click(); }

@@ -93,6 +93,164 @@ BARRY.vacc = (function () {
     return knows[gid] || null;
   }
 
+  /* ---- looking around the cluster --------------------------------------- */
+  let here = null;           // the listing of wherever we are
+  let scanning = false;
+  let lastScan = null;       // what the last dry run said it would do
+
+  async function go(path) {
+    here = null;
+    reopen();
+    try {
+      here = await api('/api/vacc/browse' + (path ? ('?path='
+             + encodeURIComponent(path)) : ''));
+    } catch (e) {
+      here = { error: e.message, dirs: [], recordings: [] };
+    }
+    lastScan = null;
+    reopen();
+  }
+
+  /* The panel is a modal built in one go, so changing what is in it means
+     building it again. Cheap, and it keeps the browse state in one place
+     rather than threading DOM nodes through every handler.
+
+     `replace` rather than close-then-open: `showModal` keeps a stack so a
+     dialog can sit over a panel and give it back afterwards, and closing to
+     redraw would pop whatever was underneath. Rebuilt in place, and only
+     while the panel is actually open -- a browse that finished after
+     somebody shut the window must not reopen it. */
+  function reopen() {
+    const shell = document.getElementById('bigModal');
+    if (!shell || shell.classList.contains('hidden')) return;
+    showVacc();
+  }
+
+  function crumbs(at) {
+    const root = (last || {}).scratch_root
+      || ((here || {}).root) || '';
+    const out = [];
+    const parts = String(at || '').split('/').filter(Boolean);
+    let acc = '';
+    out.push(el('button', { class: 'vacc-crumb', text: '/',
+                            onclick: () => go('/') }));
+    for (const p of parts) {
+      acc += '/' + p;
+      const target = acc;
+      out.push(el('button', { class: 'vacc-crumb', text: p,
+                              onclick: () => go(target) }));
+    }
+    return el('div', { class: 'vacc-crumbs' }, out);
+  }
+
+  function browseBox() {
+    const box = el('div', { class: 'vacc-browse' });
+    if (!here) {
+      box.appendChild(el('p', { class: 'hint quiet', text: 'Looking…' }));
+      go(null);
+      return box;
+    }
+    if (here.error) {
+      box.appendChild(el('p', { class: 'warn-line', text: here.error }));
+      return box;
+    }
+    box.appendChild(crumbs(here.at));
+
+    const list = el('div', { class: 'vacc-ls' });
+    const up = String(here.at || '').replace(/\/[^/]+$/, '') || '/';
+    if (here.at && here.at !== '/') {
+      list.appendChild(el('button', { class: 'vacc-ls-row up', text: '..',
+                                      onclick: () => go(up) }));
+    }
+    for (const d of (here.dirs || [])) {
+      list.appendChild(el('button', { class: 'vacc-ls-row dir', text: d.name,
+                                      onclick: () => go(d.path) }));
+    }
+    for (const r of (here.recordings || [])) {
+      list.appendChild(el('div', { class: 'vacc-ls-row rec' }, [
+        el('span', { text: r.name }),
+        el('span', { class: 'vr-n', text: r.n_channels + ' ch' }),
+      ]));
+    }
+    if (!(here.dirs || []).length && !(here.recordings || []).length) {
+      list.appendChild(el('p', { class: 'hint quiet', text: 'Nothing here.' }));
+    }
+    box.appendChild(list);
+
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn ghost', text: scanning ? 'Scanning…' : 'Scan this folder',
+        disabled: scanning ? 'disabled' : null,
+        onclick: () => scan(here.at, true),
+      }),
+      el('span', { class: 'hint quiet',
+        text: 'Walks everything under it and says what it would do first.' }),
+    ]));
+
+    if (lastScan) box.appendChild(scanReport(lastScan));
+    return box;
+  }
+
+  function scanReport(d) {
+    const box = el('div', { class: 'vacc-scan' });
+    const n = (d.added || []).length;
+    box.appendChild(el('div', { class: 'hint',
+      text: d.n_found + ' recording(s) under it. '
+          + (d.dry ? 'Nothing has been written yet.' : 'Done.') }));
+    const line = (label, rows, cls) => rows.length
+      ? el('details', { class: cls || '' }, [
+          el('summary', { text: rows.length + ' ' + label }),
+          el('div', {}, rows.slice(0, 40).map((r) => el('div', {
+            class: 'hint quiet',
+            text: (r.label ? r.label + ' — ' : '')
+                + (r.path || '').replace(d.root + '/', '')
+                + (r.why ? '  (' + r.why + ')' : '') }))),
+        ])
+      : null;
+    const bits = [
+      line(d.dry ? 'would gain a cluster path' : 'gained a cluster path',
+           d.added || []),
+      line('already had it', d.already || []),
+      line('not a recording Jarvis knows — left alone', d.unmatched || []),
+      line('too ambiguous to match — refused', d.ambiguous || [], 'warn-line'),
+    ].filter(Boolean);
+    bits.forEach((b) => box.appendChild(b));
+
+    if (d.dry && n) {
+      box.appendChild(el('div', { class: 'tk-actions' }, [
+        el('button', {
+          class: 'btn', text: 'Add ' + n + ' path(s) to the registry',
+          disabled: scanning ? 'disabled' : null,
+          onclick: () => scan(d.root, false),
+        }),
+        el('span', { class: 'hint quiet',
+          text: 'Paths only. Nothing new is created.' }),
+      ]));
+    } else if (d.dry && !n) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: 'Nothing to add — every recording under here that Jarvis knows '
+            + 'already carries its cluster path.' }));
+    }
+    return box;
+  }
+
+  async function scan(path, dry) {
+    scanning = true;
+    reopen();
+    try {
+      lastScan = await apiPost('/api/vacc/scan', { path, dry: !!dry });
+      if (!dry) {
+        toast((lastScan.added || []).length + ' cluster path(s) added.', 'ok');
+        knows = null;            // reachability just changed
+      }
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+    } finally {
+      scanning = false;
+      reopen();
+    }
+  }
+
   /* ---- the panel -------------------------------------------------------- */
   function showVacc() {
     const d = last || {};
@@ -148,6 +306,15 @@ BARRY.vacc = (function () {
           row('Quota', d.quota || null),
         ]),
 
+        el('h4', { text: 'Look around it' }),
+        el('p', { class: 'hint',
+          text: 'The cluster’s own filesystem. Scanning a folder tells '
+              + 'recordings Jarvis already knows that they also live there '
+              + '— it adds a path, and never invents a recording: a '
+              + 'permanent id is not something a directory walk should be '
+              + 'allowed to mint.' }),
+        browseBox(),
+
         el('h4', { text: 'What it can already read' }),
         el('p', { class: 'hint',
           text: 'Worked out from the paths every machine has recorded for a '
@@ -172,7 +339,7 @@ BARRY.vacc = (function () {
                          } }),
         ]),
       ]),
-    ]));
+    ]), { replace: true });
   }
 
   /* ---- boot ------------------------------------------------------------- */

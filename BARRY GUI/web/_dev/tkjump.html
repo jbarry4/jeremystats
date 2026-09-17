@@ -63,7 +63,7 @@ const untilN = async (fn, n) => {
   const hits = (re) => (run('window.__hits') || [])
     .filter((u) => re.test(u)).length;
 
-  const tool = (name) => $$('.tk-tool').find(
+  const tool = (name) => $$('.tk-tool, .tk-step').find(
     (b) => new RegExp(name, 'i').test(b.textContent || ''));
   const showing = () => (D().querySelector('#strataBench') ? 'strata'
     : (D().querySelector('#curBench') ? 'curate'
@@ -71,17 +71,17 @@ const untilN = async (fn, n) => {
 
   hd('0. The ToolKit, and its two slow tools');
   run("setView('toolkit')");
-  await untilN(() => $$('.tk-tool').length, 200);
+  await untilN(() => $$('.tk-tool, .tk-step').length, 200);
   await sleep(900);
-  ck('the tools are listed', $$('.tk-tool').length >= 4,
-     $$('.tk-tool').length);
-  ck('Event curation is one of them', !!tool('Event curation'));
+  ck('the tools are listed', $$('.tk-tool, .tk-step').length >= 4,
+     $$('.tk-tool, .tk-step').length);
+  ck('Event curation is one of them', !!tool('Event curation|Checkup'));
   ck('StrataScope is another', !!tool('StrataScope'));
 
   hd('1. A slow answer cannot paint over the tool you moved to');
   /* Click the slow one, then immediately move on -- which is exactly what
      somebody does when a pane takes four seconds to arrive. */
-  tool('Event curation').click();
+  tool('Event curation|Checkup').click();
   await sleep(150);
   tool('StrataScope').click();
   p('  clicked Curation, then StrataScope 150 ms later');
@@ -109,7 +109,7 @@ const untilN = async (fn, n) => {
   hd('3. Switching back and forth does not re-read the registry');
   const n0 = hits(/\/api\/registry/);
   p('  registry reads so far: ' + n0);
-  for (const name of ['Event curation', 'StrataScope', 'Event curation',
+  for (const name of ['Event curation|Checkup', 'StrataScope', 'Event curation|Checkup',
                       'StrataScope']) {
     tool(name).click();
     await sleep(1400);

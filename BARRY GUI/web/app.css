@@ -660,6 +660,41 @@
 .vacc-v { color: var(--text); font-family: var(--mono); font-size: 11px;
           overflow: hidden; text-overflow: ellipsis; }
 .vacc-state { font-size: 12.5px; margin: 2px 0 10px; }
+
+/* ---- looking around the cluster ---- */
+.vacc-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+               margin: 6px 0; }
+.vacc-crumb {
+  border: 0; background: transparent; cursor: pointer; font: inherit;
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  padding: 2px 5px; border-radius: 4px;
+}
+.vacc-crumb:hover { background: var(--bg-3); color: var(--text); }
+.vacc-crumb + .vacc-crumb::before { content: '/'; color: var(--text-3);
+                                    margin-right: 6px; }
+.vacc-ls {
+  max-height: 260px; overflow: auto; margin: 4px 0 10px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.vacc-ls-row {
+  display: flex; gap: 10px; justify-content: space-between; width: 100%;
+  text-align: left; padding: 4px 10px; font-size: 12px; font: inherit;
+  border: 0; border-bottom: 1px solid var(--line-soft);
+  background: transparent; color: var(--text); font-family: var(--mono);
+}
+.vacc-ls-row:last-child { border-bottom: 0; }
+.vacc-ls-row.dir, .vacc-ls-row.up { cursor: pointer; }
+.vacc-ls-row.dir:hover, .vacc-ls-row.up:hover { background: var(--bg-3); }
+.vacc-ls-row.dir::before { content: '▸ '; color: var(--text-3); }
+.vacc-ls-row.up { color: var(--text-3); }
+/* A recording is a leaf, and is not clickable: there is nothing below it
+   to browse into, which is the same reason discovery.py stops here. */
+.vacc-ls-row.rec { color: var(--accent); }
+.vr-n { color: var(--text-3); font-size: 10.5px; }
+.vacc-scan { margin-top: 10px; border-top: 1px solid var(--line-soft);
+             padding-top: 10px; }
+.vacc-scan details { margin: 4px 0; font-size: 11.5px; }
+.vacc-scan summary { cursor: pointer; color: var(--text-2); }
 .vacc-state.up { color: var(--ok); }
 .vacc-state.down { color: var(--text-2); }
 /* A live cluster shows on the chip even with the mode off, because whether
@@ -679,6 +714,14 @@
    not a sentence about it. Dim when the cluster is configured but not
    answering, so it says "there is a VACC and it is not there right now"
    rather than disappearing and saying nothing. */
+/* On a bundle step the mark gets its own column at the end, rather than
+   landing in the one the name and blurb share and pushing the blurb onto a
+   third row. `.tk-step` is 15px / 1fr, so this adds the third. */
+.tk-step { grid-template-columns: 15px 1fr auto; }
+.tk-step .tk-vacc {
+  grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0;
+}
+
 .tk-vacc {
   margin-left: auto; align-self: center;
   font-size: 9px; font-weight: 700; letter-spacing: .07em;
@@ -8537,6 +8580,9 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 }
 .tk-step:hover { background: var(--bg-hover); }
 .tk-step.now { background: var(--bg-3); border-color: var(--accent-line); }
+/* It is a `strong` so that a tool's name has one shape wherever it is
+   drawn; the weight is decided here rather than by the tag. */
+.tk-step-n { font-weight: 400; }
 .tk-step.now .tk-step-n { color: var(--text); font-weight: 600; }
 .tk-step-i {
   font-size: 10.5px; color: var(--text-3);
@@ -8790,4 +8836,28 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 .br-sweep-row .v { text-align: right; }
 .br-sweep-row.won { color: var(--text); font-weight: 600; }
 .br-sweep-row.won .bar i { background: var(--accent); }
+
+
+/* Braces asks the same "which version" question the curation chooser does,
+   and draws it with the same .bm-row / .ver-n / .ver-pick-mid parts rather
+   than inventing a fourth way to draw one question. All this adds is the
+   room it needs inside a settings card -- the list itself is already
+   styled, including the disabled rows and the wrap at narrow widths. */
+.br-vers-field { gap: 6px; }
+.br-vers-field > label { margin-bottom: 2px; }
+.br-vers {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+  background: var(--bg);
+}
+/* A version nobody has to scroll for. Eight is the worst real history in
+   this archive and they fit; past that it scrolls rather than pushing the
+   button that runs the thing off the bottom of the card. */
+.br-vers.bm-list.ver-pick-list { max-height: min(38vh, 330px); }
+.br-vers .ver-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.br-vers .bm-row.off .ver-n { color: var(--text-3); }
 

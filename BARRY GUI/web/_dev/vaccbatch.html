@@ -52,7 +52,7 @@ async function until(fn, ms) {
   // incisor.html returns the value and the two are easy to confuse.
   let toolBtn = null;
   await until(() => {
-    toolBtn = Array.from(D().querySelectorAll('#tkBody .tk-tool'))
+    toolBtn = Array.from(D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
       .find((b) => /Incisor/.test(b.textContent));
     return !!toolBtn;
   }, 15000);

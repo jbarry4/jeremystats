@@ -64,7 +64,7 @@ const WANT = Math.max(2, Math.min(12, Number(q.get('n')) || 5));
 
   await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'));
   const tool = await until(() => Array.from(
-    D().querySelectorAll('#tkBody .tk-tool'))
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
     .find((b) => /Incisor/.test(b.textContent)), 20000);
   if (!tool) { document.title = 'incisorshot: no tool'; return; }
   tool.click();

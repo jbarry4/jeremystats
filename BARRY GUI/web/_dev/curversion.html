@@ -225,8 +225,8 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
       .map((v) => 'v' + v.label + '(#' + v.v + ')').join(' '));
 
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 400);
-  const tool = byText(D, '.tk-tool', /Event curation/);
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 400);
+  const tool = byText(D, '.tk-tool, .tk-step', /Event curation|Checkup/);
   check('Event curation is there', !!tool);
   tool.click();
   await untilN(() => D.querySelector('#curBench'), 400);

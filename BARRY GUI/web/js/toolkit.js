@@ -185,18 +185,18 @@ BARRY.views.toolkit = (function () {
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
                    + 'project or date range.'),
-        toolButton('curate', 'Event curation',
-                   'Import candidate dentate spikes or IEDs, then go through '
-                   + 'them one at a time and say what each one is.'),
+        /* Incisor and Checkup are NOT here.
+
+           They are steps one and two of The Dentist above, and listing them
+           again underneath put the same tool on screen twice with two
+           different names for it -- "Incisor / find them" in the bundle and
+           "Incisor / Dentate spike detection..." in the flat list, both
+           opening the same panel. A bundle that does not remove its members
+           from the list below is a menu that describes one thing twice and
+           makes the reader work out that it is one thing. */
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
-        toolButton('incisor', 'Incisor',
-                   'Dentate spike detection, on the recording\u2019s own '
-                   + 'clock. A port of Toothy\u2019s detector \u2014 '
-                   + 'checked against its code on identical input \u2014 so '
-                   + 'a set from here never needs the concatenation '
-                   + 'correction.'),
         toolButton('cfc', 'Braid',
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
@@ -274,9 +274,18 @@ BARRY.views.toolkit = (function () {
           onclick: () => pickTool(id),
         }, [
           el('span', { class: 'tk-step-i', text: String(i + 1) }),
-          el('span', { class: 'tk-step-n', text: name }),
+          /* `strong`, like the flat tool buttons use, because the name of a
+             tool is the same thing in both shapes. Several checks find a
+             tool by reading the `strong` inside whatever was clicked, and
+             having one shape spell it `span` made those look straight past
+             the two tools that now live only here. Weight is set in CSS, so
+             nothing moves. */
+          el('strong', { class: 'tk-step-n', text: name }),
           el('span', { class: 'tk-step-s', text: does }),
-        ]);
+          // The mark belongs on the step, now that the step is the only
+          // place this tool appears.
+          vaccMark(id),
+        ].filter(Boolean));
       })));
     return box;
   }

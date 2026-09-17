@@ -11524,6 +11524,107 @@ def _vacc_run_for(tool, sess, spec, plan, report, tool_steps):
     return run, where
 
 
+@app.route("/api/vacc/browse")
+def api_vacc_browse():
+    """One level of the cluster's filesystem. `?path=` to go deeper."""
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+        got = vaccmod.browse(cfg, request.args.get("path"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/browse", exc, 400,
+                    {"path": request.args.get("path")})
+    got["ok"] = True
+    got["root"] = cfg.get("scratch_root")
+    got["home"] = cfg.get("workspace")
+    return jsonify(got)
+
+
+@app.route("/api/vacc/scan", methods=["POST"])
+def api_vacc_scan():
+    """Walk a cluster folder and tell known recordings they also live there.
+
+    Paths only. A recording found here that Jarvis has never met is
+    REPORTED, not minted: a gid is permanent and everything in the lab hangs
+    off it, so creating five hundred of them from a directory walk is a
+    decision somebody should make deliberately and not a side effect of
+    pressing Scan.
+
+    What it does add is a path, which is exactly what `paths` is for --
+    "every absolute path it has ever been opened from, on any machine".
+    A cluster path is one more mount of the same recording, and everything
+    downstream already knows how to show a path this computer cannot reach.
+
+    `?dry=1` says what it would do and writes nothing.
+    """
+    body = request.get_json(force=True) or {}
+    dry = bool(body.get("dry"))
+    root = body.get("path")
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+        found = vaccmod.inventory(cfg, root or cfg.get("scratch_root"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/scan", exc, 400, {"path": root})
+
+    by_key, by_loose = {}, {}
+    for rec in (REG.all() or []):
+        if not rec.get("gid"):
+            continue
+        if rec.get("key"):
+            by_key.setdefault(str(rec["key"]).lower(), rec)
+        if rec.get("loose_key"):
+            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+
+    added, already, unmatched, ambiguous = [], [], [], []
+    for row in found:
+        ident = ids.identify(row["path"])
+        key = str(ident.get("key") or "").lower()
+        loose = str(ident.get("loose_key") or "").lower()
+        rec = by_key.get(key)
+        how = "exact"
+        if rec is None and loose in by_loose:
+            cand = by_loose[loose]
+            mine = str(ident.get("start") or "")[:10]
+            theirs = str(cand.get("start") or "")[:10]
+            # Same guard as the batch matcher: mouse+session is not an
+            # identity, and this lab has the same one in two projects.
+            if mine and theirs and mine != theirs:
+                ambiguous.append({"path": row["path"],
+                                  "why": "same mouse and session as %s but "
+                                         "recorded on %s rather than %s"
+                                         % (cand.get("gid"), mine, theirs)})
+                continue
+            rec, how = cand, "loose"
+        if rec is None:
+            unmatched.append({"path": row["path"],
+                              "n_channels": row.get("n_channels"),
+                              "mouse": ident.get("mouse"),
+                              "session": ident.get("session"),
+                              "start": ident.get("start")})
+            continue
+        entry = {"gid": rec["gid"], "label": rec.get("label") or rec.get("key"),
+                 "path": row["path"], "how": how}
+        if row["path"] in (rec.get("paths") or []):
+            already.append(entry)
+            continue
+        if not dry:
+            try:
+                REG.add_path(rec["gid"], row["path"])
+            except Exception as exc:                     # noqa: BLE001
+                entry["error"] = str(exc)[:160]
+        added.append(entry)
+
+    if not dry and added:
+        STORE.record_activity([{
+            "action": "vacc.scan",
+            "detail": {"root": root, "added": len(added),
+                       "unmatched": len(unmatched)},
+        }])
+    return jsonify({"ok": True, "dry": dry, "root": root or cfg.get("scratch_root"),
+                    "n_found": len(found),
+                    "added": added, "already": already,
+                    "unmatched": unmatched, "ambiguous": ambiguous})
+
+
 @app.route("/api/vacc/inventory")
 def api_vacc_inventory():
     """What the cluster holds. `?force=1` walks it again rather than using

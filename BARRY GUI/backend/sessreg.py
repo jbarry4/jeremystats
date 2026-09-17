@@ -456,7 +456,18 @@ class Registry:
         rec = self.by_gid(gid)
         if not rec:
             raise KeyError(gid)
-        p = os.path.abspath(str(path))
+        p = str(path)
+        # `abspath` only when the path is not already absolute.
+        #
+        # A POSIX path IS absolute, and on Windows `abspath` does not know
+        # that: `/gpfs2/scratch/sakhava1/m22s3` comes back as
+        # `C:\gpfs2\scratch\sakhava1\m22s3`, which is not anywhere. That
+        # would be written into the shared registry and synced to everybody,
+        # and nothing downstream would question it -- a path that does not
+        # resolve is the ordinary state of a path belonging to another
+        # machine.
+        if not p.startswith("/"):
+            p = os.path.abspath(p)
         paths = list(rec.get("paths") or [])
         if p not in paths:
             paths.append(p)
