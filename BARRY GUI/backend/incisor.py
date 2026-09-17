@@ -99,6 +99,18 @@ EDGE_SECONDS = 1.0
 # second is four cycles of the low edge of the band.
 MIN_SEGMENT_S = 0.5
 
+# How many amplitudes per channel travel with the answer, for the strip plot
+# that Toothy draws off every event (`ephys.py:1177`).
+#
+# Every one of them would be right and is not affordable: sixty-four channels
+# of two thousand events is the payload that arrives as a 200 with a body
+# that will not parse, which is the same failure `_incisor_public` exists to
+# avoid. Four hundred dots in a column forty pixels wide are already drawn on
+# top of one another -- the sample is taken at an even STRIDE so it spans the
+# recording rather than its first minutes, and the count panel is drawn from
+# `n`, never from this.
+AMP_SAMPLE_MAX = 400
+
 
 # --------------------------------------------------------------------------
 # Cache
@@ -612,6 +624,28 @@ def pick_ripple(channels):
                    "most ripple power relative to theta")
 
 
+def pick_most_spikes(channels):
+    """The channel carrying the most dentate spikes, and nothing else.
+
+    NOT the hilus pick. `pick_hilus` is Toothy's, and it is an argmax over a
+    PRODUCT of normalised amplitude and normalised count (`ephys.py:916`),
+    so a channel with many small events loses to one with fewer large ones.
+    That is usually the right trade and sometimes it is not -- a hilus site
+    next to a quiet one can come second on amplitude while carrying nearly
+    every spike in the recording.
+
+    Offered rather than applied. "The most events are here" and "the hilus
+    is here" are different claims, and the second is the one being banked,
+    so somebody presses a button and owns it.
+    """
+    ok = [c for c in channels if not c.get("bad") and not c.get("error")
+          and c.get("n")]
+    if not ok:
+        return None
+    v = [int(c.get("n") or 0) for c in ok]
+    return _winner(ok, int(np.argmax(v)), "n", "most dentate spikes detected")
+
+
 def _winner(rows, i, field, why):
     """The pick, with the runner-up and the margin between them.
 
@@ -779,6 +813,28 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
 
     events.sort(key=lambda e: e["start"])
     amps = np.array([e["amp"] for e in events]) if events else np.array([])
+
+    # What the three per-channel plots are drawn from. Toothy draws the same
+    # three off `DF_MEAN` and `DF_ALL` in `ephys.py:1144
+    # plot_channel_events`: the count, every event's amplitude, and the mean
+    # half-prominence height with its standard error.
+    #
+    # `width_height` is `peak_widths(rel_height=0.5)`'s evaluation height --
+    # the trace level halfway down the peak's own prominence. Toothy labels
+    # that axis "prominence / 2" and this keeps the name, because a plot
+    # somebody has been reading for two years should not change its labels
+    # on the way into a second tool.
+    wh = np.array([e["width_height"] for e in events
+                   if e["width_height"] is not None], dtype=np.float64)
+    # `.agg('sem')`, which is what Toothy takes: the ddof=1 standard
+    # deviation over the root of the count. Zero for a single event, because
+    # one measurement has no spread -- not NaN, which would put a hole in
+    # the error bar rather than a point with none.
+    wh_sem = (float(np.std(wh, ddof=1) / math.sqrt(wh.size))
+              if wh.size > 1 else 0.0)
+    stride = max(1, int(math.ceil(len(events) / float(AMP_SAMPLE_MAX))))
+    amp_sample = [round(float(e["amp"]), 3) for e in events[::stride]
+                  if e["amp"] is not None]
     span = sum(float(x["duration_s"]) for x in (report.get("segments") or [])
                if x["duration_s"] >= MIN_SEGMENT_S) or 1.0
     summary = dict(base, **{
@@ -792,6 +848,13 @@ def _channel_pass(session, ch, report, spec, job=None, on_read=None):
              if e["half_width_ms"] is not None] or [0.0]), 3),
         "std_theta": _finite(std_theta, 4),
         "std_swr": _finite(std_swr, 4),
+        # The third plot: mean height above the surround, with its error.
+        "width_height_mean": _finite(wh.mean(), 4) if wh.size else None,
+        "width_height_sem": _finite(wh_sem, 4),
+        "n_width_height": int(wh.size),
+        # The second plot. `n` above is the first, and is exact.
+        "amp_sample": amp_sample,
+        "amp_sample_stride": int(stride),
         "n_near_stitch": sum(1 for e in events if e["near_stitch"]),
         "n_samples": int(raw_all.size),
         # Decimated samples the reader could not supply at the tail of a
@@ -870,6 +933,9 @@ def run(session, spec, report, job=None):
         "theta": pick_theta(per_channel),
         "ripple": pick_ripple(per_channel),
     }
+    # Beside the picks, not among them: a second answer to the hilus
+    # question that the panel offers as a button. See `pick_most_spikes`.
+    alternates = {"most_spikes": pick_most_spikes(per_channel)}
     hil = picked["hilus"]
     chosen = hil["index"] if hil else want[0]["index"]
 
@@ -911,6 +977,7 @@ def run(session, spec, report, job=None):
         "plan": plan,
         "channels": per_channel,
         "picked": picked,
+        "alternates": alternates,
         "chosen": chosen,
         "events": rows.get(chosen) or [],
         "n": len(rows.get(chosen) or []),

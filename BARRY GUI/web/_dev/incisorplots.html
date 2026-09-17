@@ -1,0 +1,358 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Incisor: the three channel plots</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1400px; height:1100px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">The three plots Toothy draws beside its channel picker — DS
+count, DS amplitude, DS height above surround — on an Incisor scan. Checked as
+pictures, not as function calls: that each canvas has ink on it, that the
+tallest bar in the count plot stands over the channel that actually has the
+most events, and that clicking a plot puts the hilus on the channel under the
+pointer. Then the other way of choosing one: that "Most spikes" names the
+argmax over the counts, which is a different channel from the scan's own pick
+whenever a channel carries many small events.</p>
+<p class="note">Three channels, not sixty-four. This is about the wiring and
+the picture; the arithmetic is checked against Toothy's own code in
+`tools/check_against_toothy_code.py`.</p>
+<div id="out"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(200);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+/* `BARRY` is a `const` in core.js -- a lexical binding, not a property of
+   `window`. Reached through the frame's own `eval`. Same as incisor.html. */
+const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } };
+const JEV = (src) => { const r = EV('JSON.stringify(' + src + ')');
+                       try { return r ? JSON.parse(r) : null; }
+                       catch (e) { return null; } };
+const body = () => (D().getElementById('tkResult') || {}).textContent || '';
+const post = async (url, obj) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(obj),
+})).json();
+
+/* Local before the share, then fewest channels -- a scan reads the whole
+   recording on every channel it is given, and doing that over \\netfiles is
+   minutes. Nothing here writes, so no starting state has to be restored. */
+async function pick() {
+  const reg = await (await fetch('/api/registry')).json();
+  const list = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        const local = (s.here || []).find((x) => !/^\\\\/.test(x));
+        if (!local) continue;
+        list.push({ row: s, path: local, n: Number(s.n_channels) || 1e9 });
+      }
+    }
+  }
+  list.sort((a, b) => a.n - b.n);
+  for (const c of list.slice(0, 8)) {
+    const est = await post('/api/incisor/estimate', { path: c.path });
+    if (est.ok && (est.channels || []).length >= 3) return { c, est };
+  }
+  return null;
+}
+
+/* How much ink is on a canvas, and where the highest of it sits.
+
+   Read off the pixels rather than off the drawing code: "drawCount was
+   called" and "there is a bar over channel 42" are different claims and
+   only the second is the one anybody cares about.
+
+   Three things on these canvases are ink and are not data, and each one of
+   them was found by this check reporting the wrong channel:
+
+   - the bold TITLE, drawn centred at the very top, which is above every bar
+     and so is always the topmost ink (it read as a bar over CSC26, the
+     middle of the axis);
+   - the y-axis tick labels and the axis line, at and left of the left pad;
+   - the accent band behind the CHOSEN channel and the grey column of an
+     unread one, both of which run the full height of the plot.
+
+   So the scan is confined to the plotting area below the title, and the
+   alpha floor is set above the two translucent fills (0.22 and 0.18, which
+   are 56 and 46 of 255) and below anything drawn solid. */
+const PAD = { l: 44, r: 8, t: 22, b: 26 };
+function inkOf(cv, opts) {
+  const g = cv.getContext('2d');
+  const { width: w, height: h } = cv;
+  let img;
+  try { img = g.getImageData(0, 0, w, h); } catch (e) { return null; }
+  const d = img.data;
+  const dpr = w / cv.getBoundingClientRect().width;
+  const bars = !!(opts && opts.barsOnly);
+  const x0 = bars ? Math.round((PAD.l + 3) * dpr) : 0;
+  const x1 = bars ? Math.round(w - PAD.r * dpr) : w;
+  const y0 = bars ? Math.round((PAD.t + 6) * dpr) : 0;
+  const y1 = bars ? Math.round(h - PAD.b * dpr) : h;
+  const floor = bars ? 120 : 40;
+  let n = 0, topY = h, topX = -1;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      if (d[(y * w + x) * 4 + 3] > floor) {
+        n += 1;
+        if (y < topY) { topY = y; topX = x; }
+      }
+    }
+  }
+  return { n, topX, topY, w, h, dpr };
+}
+
+/* `new W().MouseEvent(...)` parses as `(new W()).MouseEvent(...)` -- the
+   frame's window is not a constructor and this threw. The constructor has
+   to be parenthesised, and it must be the FRAME's, not this page's: an
+   event built from the wrong realm is not an instance of the one the
+   listener is in. */
+function clickAt(cv, cssX, cssY) {
+  const r = cv.getBoundingClientRect();
+  const Ev = W().MouseEvent;
+  cv.dispatchEvent(new Ev('click', {
+    bubbles: true, clientX: r.left + cssX, clientY: r.top + cssY,
+  }));
+}
+
+/* The canvas by id, NOW.
+
+   `paint()` rebuilds the whole panel with `innerHTML = ''` -- which every
+   pick does, including the ones this makes -- so a canvas held from before
+   is a detached node. It keeps its bitmap, so `getImageData` still answers,
+   but `getBoundingClientRect()` on it is all zeros: the device-pixel ratio
+   came out Infinity, the pixel scan covered nothing, and every channel
+   under every click read as the first one. Five failures, one stale
+   reference. Nothing is held across an action that repaints. */
+const cv = (id) => D().getElementById(id);
+
+(async () => { try {
+  const got = await pick();
+  ck('a local recording with an estimate', !!got, 'none reachable');
+  if (!got) { document.title = 'incisorplots: ' + (bad || 1) + ' FAILED'; return; }
+  const path = got.c.path;
+  const row = got.c.row;
+  const all = got.est.channels;
+  say('note', '  ' + (row.label || row.gid) + '  ' + path
+              + '  (' + all.length + ' channels)');
+
+  A.src = '/#toolkit';
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'), 40000);
+  const tool = await until(() => Array.from(
+    D().querySelectorAll('#tkBody .tk-tool'))
+    .find((b) => /Incisor/.test(b.textContent)), 15000);
+  ck('the Incisor panel opens', !!tool, 'no tool button');
+  if (!tool) { document.title = 'incisorplots: ' + (bad || 1) + ' FAILED'; return; }
+  tool.click();
+  await until(() => /Which recording/.test(body()), 15000);
+
+  head('A scan, on three channels');
+  /* Three from the middle third of the probe, not the two ends.
+
+     The ends were the first choice and gave one non-empty channel out of
+     three: a dentate spike is a hilar event, the hilus is not at the top of
+     a shank, and a plot of two empty channels and one full one is a weak
+     thing to check an argmax against. */
+  const idx = [0.40, 0.55, 0.70]
+    .map((f) => Math.min(all.length - 1, Math.floor(all.length * f)))
+    .filter((v, i, a) => a.indexOf(v) === i).map((i) => all[i].index);
+  EV('BARRY.incisor._state().q.gid = ' + JSON.stringify(row.gid));
+  EV('BARRY.incisor._state().q.path = ' + JSON.stringify(path));
+  EV('BARRY.incisor._state().q.channels = ' + JSON.stringify(idx));
+  EV('(async function(){ await BARRY.incisor._refresh(); '
+     + 'BARRY.incisor.paint(); await BARRY.incisor.scan(); })()');
+  const res = await until(() => JEV('BARRY.incisor._state().res'), 240000);
+  ck('the scan finished and landed in the panel', !!res, 'no result');
+  if (!res) { document.title = 'incisorplots: ' + (bad || 1) + ' FAILED'; return; }
+  say('note', '  ' + (res.channels || []).map(
+    (c) => c.label + ':' + c.n).join('  '));
+
+  head('Each channel carries what the three plots are drawn from');
+  ck('an exact count',
+     (res.channels || []).every((c) => typeof c.n === 'number'), 'missing');
+  ck('a sample of amplitudes, capped and strided',
+     (res.channels || []).every(
+       (c) => !c.n || (Array.isArray(c.amp_sample)
+                       && c.amp_sample.length > 0
+                       && c.amp_sample.length <= 400
+                       && c.amp_sample_stride >= 1)),
+     JSON.stringify((res.channels || []).map(
+       (c) => [c.n, (c.amp_sample || []).length, c.amp_sample_stride])));
+  ck('and a mean height above surround with its standard error',
+     (res.channels || []).every(
+       (c) => !c.n || (typeof c.width_height_mean === 'number'
+                       && typeof c.width_height_sem === 'number')),
+     JSON.stringify((res.channels || []).map(
+       (c) => [c.n, c.width_height_mean, c.width_height_sem])));
+  /* The cap is the whole reason the sample exists, so check it BINDS rather
+     than that it is merely not exceeded: a stride above one is the evidence
+     that a channel had more events than travel with the answer. */
+  const strided = (res.channels || []).filter((c) => c.amp_sample_stride > 1);
+  say('note', '  ' + (strided.length
+    ? strided.length + ' channel(s) had more than 400 events and were strided'
+    : 'no channel exceeded the 400-event sample on this recording'));
+
+  head('The plots are drawn, and drawn from that');
+  const ids = ['incPlotCount', 'incPlotAmp', 'incPlotProm'];
+  for (const id of ids) await until(() => cv(id), 20000);
+  ck('all three canvases exist', ids.every((i) => !!cv(i)),
+     ids.filter((i) => !cv(i)).join(','));
+  if (!ids.every((i) => cv(i))) {
+    document.title = 'incisorplots: ' + (bad || 1) + ' FAILED'; return;
+  }
+  await sleep(600);
+  const inks = {};
+  for (const id of ids) inks[id] = inkOf(cv(id));
+  for (const id of ids) {
+    ck(id + ' has been drawn on',
+       inks[id] && inks[id].n > 200 && inks[id].w > 100,
+       JSON.stringify(inks[id]));
+  }
+  ck('and they are laid out at a readable width',
+     ids.every((i) => cv(i).getBoundingClientRect().width >= 200),
+     ids.map((i) => Math.round(cv(i).getBoundingClientRect().width)).join(','));
+
+  /* The picture against the numbers. The topmost ink in the count plot is
+     the top of the tallest bar, and the channel under it has to be the one
+     with the most events -- otherwise the plot is drawing something, but
+     not this. `channelAtX` is the panel's own, so this is not a second copy
+     of the axis arithmetic to drift from the first. */
+  head('The tallest bar stands over the channel with the most events');
+  const scanned = (res.channels || []).filter((c) => c.n > 0);
+  const busiest = scanned.slice().sort((a, b) => b.n - a.n)[0];
+  ck('some channel had events', !!busiest, 'every channel came back empty');
+  say('note', '  counts: ' + scanned.map((c) => c.label + '=' + c.n).join(', '));
+  if (busiest) {
+    /* The chosen channel is drawn as a full-height band behind the bars, so
+       whichever one the scan picked would otherwise be the topmost ink in
+       the plotting area regardless of its count. Cleared first, and the
+       pick is put back afterwards. */
+    const held = (JEV('BARRY.incisor._state().chosen') || {}).hilus;
+    EV('BARRY.incisor._choose("hilus", null)');
+    await sleep(300);
+    const ci = inkOf(cv('incPlotCount'), { barsOnly: true });
+    /* Kept: a canvas still at the HTML default 300x150 is how "the plots
+       are blank after a repick" looked from here, and the numbers say which
+       of the two it is without another run. */
+    say('note', '  count plot: ' + cv('incPlotCount').width + 'x'
+                + cv('incPlotCount').height + ' device px, '
+                + (ci && ci.n) + ' pixels of bar');
+    const cssX = ci.topX / ci.dpr;
+    const under = EV('BARRY.incisor._channelAtX('
+                     + 'document.getElementById("incPlotCount"), ' + cssX + ')');
+    ck('the highest point of the count plot is over ' + busiest.label,
+       Number(under) === Number(busiest.number),
+       'ink at x=' + Math.round(cssX) + ' reads CSC' + under
+       + ', busiest is ' + busiest.label);
+    if (held != null) EV('BARRY.incisor._choose("hilus", ' + held + ')');
+    await sleep(200);
+  }
+
+  head('Clicking a plot chooses the hilus there');
+  const axis = JEV('BARRY.incisor._plotAxis().axis') || [];
+  ck('the axis spans every channel on the probe, read or not',
+     axis.length === all.length, axis.length + ' vs ' + all.length);
+  /* Two claims at once, and both are needed.
+
+     "The click picked the channel under the pointer" is the behaviour, and
+     it is asked of the panel's OWN `_channelAtX` rather than of a second
+     copy of the axis arithmetic here -- a copy would agree with itself
+     while both were wrong. "And that channel is the last one on the probe"
+     is what stops the first claim from being satisfied by a handler that
+     always answers the same thing, which is exactly how this read before
+     the stale-node bug was found. */
+  for (const id of ids) {
+    const node = cv(id);
+    const r = node.getBoundingClientRect();
+    const x = r.width - 4;
+    const want = EV('BARRY.incisor._channelAtX('
+                    + 'document.getElementById("' + id + '"), ' + x + ')');
+    clickAt(node, x, r.height / 2);
+    await sleep(250);
+    const now = (JEV('BARRY.incisor._state().chosen') || {}).hilus;
+    ck('clicking the right edge of ' + id + ' picks the channel there',
+       Number(now) === Number(want)
+       && Number(want) === Number(axis[axis.length - 1]),
+       'picked ' + now + ', pointer was over ' + want
+       + ', last on the probe is ' + axis[axis.length - 1]);
+  }
+  {
+    const node = cv('incPlotCount');
+    const r = node.getBoundingClientRect();
+    const x = 46;
+    const want = EV('BARRY.incisor._channelAtX('
+                    + 'document.getElementById("incPlotCount"), ' + x + ')');
+    clickAt(node, x, r.height / 2);
+    await sleep(250);
+    const now = (JEV('BARRY.incisor._state().chosen') || {}).hilus;
+    ck('and clicking near the left edge picks the first',
+       Number(now) === Number(want) && Number(want) === Number(axis[0]),
+       'picked ' + now + ', pointer was over ' + want
+       + ', first on the probe is ' + axis[0]);
+  }
+
+  head('Most dentate spikes is offered as its own answer');
+  const most = (res.alternates || {}).most_spikes;
+  ck('the scan reports it', !!most, JSON.stringify(res.alternates || {}));
+  if (most) {
+    ck('and it is the argmax over the counts',
+       Number(most.number) === Number(busiest.number),
+       most.label + ' vs ' + busiest.label);
+    ck('carrying the count it won with', Number(most.value) === Number(busiest.n),
+       most.value + ' vs ' + busiest.n);
+    const btn = Array.from(D().querySelectorAll('#tkResult button'))
+      .find((b) => /^Most spikes:/.test(b.textContent.trim()));
+    ck('there is a button for it', !!btn,
+       Array.from(D().querySelectorAll('#tkResult button'))
+         .map((b) => b.textContent.trim()).join(' | '));
+    if (btn) {
+      ck('which names the channel', btn.textContent.indexOf(most.label) >= 0,
+         btn.textContent);
+      btn.click();
+      await sleep(300);
+      ck('and pressing it puts the hilus there',
+         Number((JEV('BARRY.incisor._state().chosen') || {}).hilus)
+           === Number(most.number),
+         JSON.stringify(JEV('BARRY.incisor._state().chosen')));
+    }
+    const hil = (res.picked || {}).hilus;
+    say('note', '  scan picked ' + (hil || {}).label + ' (amplitude × count)'
+                + ', most spikes on ' + most.label
+                + (hil && Number(hil.number) !== Number(most.number)
+                    ? ' — they disagree, which is what the button is for'
+                    : ' — they agree here'));
+  }
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'incisorplots: ' + bad + ' FAILED'
+                       : 'incisorplots: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'incisorplots: harness CRASH';
+} })();
+</script>

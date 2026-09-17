@@ -71,6 +71,11 @@ PREFS_SPEC = {
     # Already a map keyed by hostname, which is the same idea one level down;
     # merging it per key means each machine only ever changes its own entry.
     "themes": shards.MAPLWW,
+    # VACC Mode, keyed by hostname for the same reason and with the same
+    # consequence if it is left out: anything not named here is LWW, so the
+    # rig turning the mode off would replace the whole map and the laptop's
+    # entry would vanish on its next pull.
+    "vacc": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -79,6 +84,9 @@ PREFS_SPEC = {
 # do not exist on the other machine anyway. Stored per machine like everything
 # else, and simply read from your own shard.
 PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
+               # How wide somebody likes the curation window. About this
+               # screen and this pair of eyes, not about the project.
+               "curate_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
                "scratch_draft")

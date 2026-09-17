@@ -1,0 +1,455 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — layer bands in ordinary XploreFinder</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .skip::before { content: 'SKIP  '; color: #ffb81c; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "An option to add the layer view in normal XploreFinder from StrataScope
+   ... no editing capabilities, but just easy viewing."
+
+   Three claims to measure, and the second is the one worth the harness:
+
+     it draws        are there bands on the canvas, at the wash alpha, and
+                     on the rasters as well as the traces
+     it cannot edit  not "there is no button" but "the sheet on the server
+                     is byte-for-byte the same after clicking the bands,
+                     pressing the labelling mode's keys, and everything else
+                     a reader might do"
+     it sits under   the bands are a backdrop; an event line drawn beneath
+                     one is a mark you cannot see. Measured as the ORDER of
+                     the real canvas calls, not by looking at a picture.
+
+   And the honest-failure half: a recording with no sheet has to say so
+   rather than offer a switch that turns on and shows nothing. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* Generous counts, because --virtual-time-budget fast-forwards these timers
+   while the server is still doing real work: 900 tries is 900 iterations,
+   not 90 seconds. */
+async function untilN(fn, tries = 900, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  // BARRY is a top-level const in core.js, so it is not a property of the
+  // frame's window; setView is a function declaration, so it is.
+  await untilN(() => typeof W.setView === 'function');
+  const ev = (s) => W.eval(s);
+
+  /* ---------------------------------------------------------------
+     Pick a recording that actually has a labelled sheet.
+     --------------------------------------------------------------- */
+  head('the recording');
+  const sheets = (await (await fetch('/api/layers')).json()).sheets || [];
+  const reg = (await (await fetch('/api/registry')).json()).tree || [];
+  const flat = [];
+  for (const p of reg) for (const m of p.mice) for (const s of m.sessions) flat.push(s);
+  const labelled = new Map();
+  for (const s of sheets) {
+    const n = (s.progress || {}).labelled || 0;
+    if (n) labelled.set(s.gid, n);
+  }
+  const reachable = flat.filter((s) => (s.here || []).length);
+  /* The built-in recording by preference. This harness clicks on layer
+     bands to prove the click does nothing -- and if the proof ever fails it
+     should fail on a demo, not on somebody's PTEN sheet. */
+  const withSheet = reachable.filter((s) => labelled.has(s.gid));
+  withSheet.sort((a, b) =>
+    (String(b.gid).startsWith('demo') ? 1 : 0)
+    - (String(a.gid).startsWith('demo') ? 1 : 0)
+    || (a.duration_s || 1e9) - (b.duration_s || 1e9));
+  if (!withSheet.length) {
+    say('skip', 'no reachable recording has a labelled layer sheet on this '
+              + 'machine -- nothing to view, so nothing is checked');
+    document.title = 'skipped — layerview';
+    return;
+  }
+
+  const readSheet = async (gid) => {
+    const res = await fetch('/api/layers/' + encodeURIComponent(gid));
+    const r = await res.json();
+    const sh = (r && r.sheet) || {};
+    return JSON.stringify({ labels: sh.labels || {}, updated: sh.updated || {},
+                            versions: (sh.versions || []).length });
+  };
+  const labelCount = async (gid) => {
+    try {
+      const r = await (await fetch('/api/layers/'
+                                   + encodeURIComponent(gid))).json();
+      return Object.keys(((r || {}).sheet || {}).labels || {}).length;
+    } catch (e) { return 0; }
+  };
+
+  /* Every request the page makes, so "read-only" can be asserted about the
+     wire rather than about the buttons on screen. */
+  ev('(function(){ window.__reqs = []; const real = window.fetch;'
+     + ' window.fetch = function(u, o){'
+     + '   window.__reqs.push(((o && o.method) || "GET") + " " + String(u));'
+     + '   return real.apply(this, arguments); }; })()');
+
+  /* Every fillRect and every dashed stroke, with the alpha it was drawn at
+     and whether it landed on a traces canvas or a raster. The stamp the
+     traces pane sets is the discriminator, which makes this a test of that
+     stamp too. */
+  ev('(function(){ const P = CanvasRenderingContext2D.prototype;'
+     + ' window.__log = [];'
+     + ' if (!P.__hlog) { P.__hlog = true;'
+     + '   const fr = P.fillRect, sd = P.setLineDash;'
+     + '   P.fillRect = function(x, y, w, h){'
+     + '     if (window.__log) window.__log.push(["fill",'
+     + '       Math.round(this.globalAlpha * 1000) / 1000, Math.round(w),'
+     + '       this.canvas && this.canvas.__layerBandsDrawn ? "T" : "I"]);'
+     + '     return fr.apply(this, arguments); };'
+     + '   P.setLineDash = function(a){'
+     + '     if (window.__log && a && a.length) window.__log.push(["dash", 0, 0,'
+     + '       this.canvas && this.canvas.__layerBandsDrawn ? "T" : "I"]);'
+     + '     return sd.apply(this, arguments); }; } })()');
+
+  W.eval("setView('xplore')");
+  await sleep(200);
+
+  /* Opened, and then asked what gid it thinks it is.
+
+     Not the registry row's gid: the control looks the sheet up by the gid
+     the OPEN session reports, and those two can differ -- the built-in
+     64-channel demo is a case in point, because the open route prefers the
+     stored record's gid and the demo's stored record is a different row
+     (demo-long-session in the registry, s058294e1529d once opened). A
+     harness that picked from the registry and assumed would have reported
+     "no bands" as a bug in the bands. */
+  let pick = null, GID = null;
+  for (const cand of withSheet.slice(0, 5)) {
+    await ev('BARRY.views.xplore.open(' + JSON.stringify(cand.here[0]) + ')');
+    const ok = await untilN(() => ev('!!(BARRY.views.xplore.current() && '
+                                   + 'BARRY.views.xplore.current().win)'), 900);
+    if (ok < 0) { say('note', '  ' + cand.label + ': would not open'); continue; }
+    const gid = ev('(BARRY.views.xplore.current().identity || {}).gid || ""');
+    const n = await labelCount(gid);
+    if (n) { pick = cand; GID = gid; break; }
+    say('note', '  ' + cand.label + ': opens as gid ' + gid
+              + ', which has no sheet -- trying the next');
+  }
+  if (!pick) {
+    say('skip', 'every candidate opened under a gid with no layer sheet '
+              + 'behind it, so there is nothing to view and nothing to check');
+    document.title = 'skipped — layerview';
+    return;
+  }
+  say('note', '  ' + pick.label + '   open gid=' + GID
+            + '   ' + (await labelCount(GID)) + ' channels labelled');
+  const before = await readSheet(GID);
+
+  ck('recording opened in ordinary XploreFinder',
+     ev('!!((BARRY.views.xplore.current() || {}).win)'));
+  ck('and the labelling mode was NOT entered',
+     ev('!!(BARRY.strata && BARRY.strata.active)') === false);
+
+  /* What is under the middle of the pane, with no menu open. Read here and
+     again once the bands are on: a backdrop painted INTO the canvas cannot
+     take a click off it, while one laid over the pane as an element
+     silently would -- and the symptom would turn up somewhere else
+     entirely, as a bookmark that stops being placeable. */
+  const hitOf = () => {
+    const c = D.querySelector('#paneGrid canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return D.elementFromPoint(Math.round(r.left + r.width / 2),
+                              Math.round(r.top + r.height / 2));
+  };
+  const hitOff = hitOf();
+
+  /* ---------------------------------------------------------------
+     The control
+     --------------------------------------------------------------- */
+  head('the control');
+  const openMore = async () => {
+    const btn = D.querySelector('.ctl-menu[data-menu="More"]');
+    if (!btn) return null;
+    if (D.querySelector('#layerGroup')) btn.click();   // close a stale one
+    btn.click();
+    await untilN(() => D.querySelector('.ctl-pop'), 200);
+    return D.querySelector('#layerGroup');
+  };
+  let grp = await openMore();
+  ck('there is a More menu on the pane control strip',
+     !!D.querySelector('.ctl-menu[data-menu="More"]'));
+  ck('and a Layers group inside it', !!grp);
+  const title = grp && grp.querySelector('.ctl-pop-title');
+  ck('titled so it reads as viewing, not labelling',
+     !!title && /read-only/i.test(title.textContent),
+     title ? title.textContent : 'no title');
+  await untilN(() => D.querySelector('#layerBandsOn'), 300);
+  grp = D.querySelector('#layerGroup');
+  const toggle = D.querySelector('#layerBandsOn');
+  ck('with a switch, because this recording has a sheet', !!toggle);
+  const keys = grp ? grp.querySelectorAll('.layer-key').length : 0;
+  ck('and no colour key yet — it names bands that are on screen',
+     keys === 0, keys + ' legend entries with the bands off');
+
+  /* ---------------------------------------------------------------
+     Turning it on
+     --------------------------------------------------------------- */
+  head('turning it on');
+  // The switch closes the menu, so this is measured with nothing over the
+  // pane, the same as hitOff was.
+  if (toggle) toggle.click();
+  await sleep(300);
+  const hitOn = hitOf();
+  ck('the bands swallow no pointer events — the same element is under '
+     + 'the middle of the pane as before',
+     !!hitOff && hitOff === hitOn,
+     (hitOff ? hitOff.tagName + '.' + hitOff.className : 'none') + ' -> '
+     + (hitOn ? hitOn.tagName + '.' + hitOn.className : 'none'));
+  ck('the session now carries a layer view',
+     ev('!!BARRY.views.xplore.current().layerView'));
+  ck('and sess.strata, which is what the rasters are gated on',
+     ev('!!BARRY.views.xplore.current().strata'));
+  ck('the labelling mode is still not open',
+     ev('!!(BARRY.strata && BARRY.strata.active)') === false);
+  ck('no StrataScope rail was created', !D.querySelector('#strataRail'),
+     'a rail is a click target for labelling');
+  ck('no StrataScope toolbar either', !D.querySelector('#strataBar'));
+  ck('and the shell is not in a mode',
+     !D.querySelector('.strata-mode') && !D.querySelector('#xfBody.strata-on'));
+  const washId = ev('BARRY.views.xplore.current().layerWash');
+  say('note', '  wash it came on at: ' + washId + '  (strata.js default)');
+
+  /* ---------------------------------------------------------------
+     What actually got painted, and in what order
+     --------------------------------------------------------------- */
+  head('the bands, and where they sit');
+  /* A mark to sit under. Pushed onto the session's own array rather than
+     saved: this harness must not write an event to a real recording any
+     more than it may write a label. */
+  const nEv = ev('(function(){ const s = BARRY.views.xplore.current();'
+               + ' s.events.push({ id: "_harness", start: s.t0 + s.span / 2,'
+               + ' end: null, klass: "_harness", name: "h" });'
+               + ' return s.events.length; })()');
+  say('note', '  ' + nEv + ' event(s) on the session, one of them planted here');
+
+  ev('window.__log = []');
+  ev('BARRY.views.xplore._redrawPane(0)');
+  await sleep(200);
+  let log = ev('JSON.stringify(window.__log)');
+  log = JSON.parse(log || '[]');
+  const alpha = LAYER_ALPHA(washId);
+  const bandFills = log.filter((r) => r[0] === 'fill' && near(r[1], alpha));
+  ck('bands are painted on the traces canvas', bandFills.length > 0,
+     bandFills.length + ' fills at alpha ' + alpha + ' of '
+     + log.length + ' ops');
+  say('note', '  ' + bandFills.length + ' band fills at alpha ' + alpha
+            + ' out of ' + log.length + ' canvas ops on the traces pane');
+  const firstBand = log.findIndex((r) => r[0] === 'fill' && near(r[1], alpha));
+  const firstDash = log.findIndex((r) => r[0] === 'dash');
+  ck('and the event mark is drawn AFTER them, so it is on top',
+     firstBand >= 0 && firstDash >= 0 && firstBand < firstDash,
+     'band at op ' + firstBand + ', dashed mark at op ' + firstDash);
+  say('note', '  first band at op ' + firstBand + ', first dashed event mark '
+            + 'at op ' + firstDash);
+  ck('the bands landed on the traces canvas, not a second layer over it',
+     bandFills.length > 0 && bandFills.every((r) => r[3] === 'T'));
+
+  /* The strength control. A person who turned the wash down does not want
+     it blazing, and the same person turning it up has to see it move. */
+  head('strength');
+  grp = await openMore();
+  const solid = grp && Array.from(grp.querySelectorAll('.ctl-seg .mini'))
+    .find((b) => b.textContent === 'Solid');
+  ck('the colour key turns up with the bands, naming what is on screen',
+     !!grp && grp.querySelectorAll('.layer-key').length > 0,
+     grp ? grp.querySelectorAll('.layer-key').length + ' entries' : 'no group');
+  ck('the strata.js wash vocabulary is offered here too',
+     !!grp && grp.querySelectorAll('.ctl-seg .mini').length === 3,
+     grp ? grp.querySelectorAll('.ctl-seg .mini').length + ' choices' : 'no group');
+  if (solid) solid.click();
+  await sleep(250);
+  ev('window.__log = []');
+  ev('BARRY.views.xplore._redrawPane(0)');
+  await sleep(150);
+  log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
+  const solidFills = log.filter((r) => r[0] === 'fill' && near(r[1], 0.42));
+  ck('picking Solid repaints at 0.42, strata.js’s own number',
+     solidFills.length > 0, solidFills.length + ' fills at 0.42');
+  // Back down, so the rest of the run measures the ordinary case.
+  grp = await openMore();
+  const faint = grp && Array.from(grp.querySelectorAll('.ctl-seg .mini'))
+    .find((b) => b.textContent === 'Faint');
+  if (faint) faint.click();
+  await sleep(250);
+
+  /* ---------------------------------------------------------------
+     A raster, which is the "overlaps with other views" half
+     --------------------------------------------------------------- */
+  head('over the other views');
+  ev('BARRY.views.xplore.setPanes([{panel:"traces"},{panel:"csd"}],'
+     + '{col:0.5,row:0.5})');
+  ev('window.__log = []');
+  const drew = await untilN(() => {
+    const l = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
+    return l.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], 0.10));
+  }, 900, 150);
+  log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
+  const rast = log.filter((r) => r[3] === 'I');
+  ck('the CSD raster gets the same bands', drew >= 0,
+     rast.length + ' ops on raster canvases, '
+     + rast.filter((r) => r[0] === 'fill' && near(r[1], 0.10)).length
+     + ' of them band fills');
+  const rb = rast.findIndex((r) => r[0] === 'fill' && near(r[1], 0.10));
+  const rd = rast.findIndex((r) => r[0] === 'dash');
+  ck('and they sit under its marks too',
+     rb >= 0 && rd >= 0 && rb < rd,
+     'band at raster op ' + rb + ', dashed mark at ' + rd);
+  say('note', '  ' + rast.length + ' ops on raster canvases; band at op ' + rb
+            + ', first dashed mark at op ' + rd);
+
+  /* ---------------------------------------------------------------
+     Read-only, asserted about the sheet on the server
+     --------------------------------------------------------------- */
+  head('read-only');
+  const canvas = D.querySelector('#paneGrid canvas');
+  if (canvas) {
+    const r = canvas.getBoundingClientRect();
+    const cx = Math.round(r.left + r.width / 2);
+    /* Clicks on the band itself -- the thing a labelling rail would turn
+       into a label -- at a handful of heights down the probe, plus the
+       keys StrataScope labels with. */
+    for (let k = 1; k <= 9; k++) {
+      const y = Math.round(r.top + r.height * (k / 10));
+      for (const type of ['mousedown', 'mouseup', 'click']) {
+        canvas.dispatchEvent(new W.MouseEvent(type, {
+          bubbles: true, cancelable: true, clientX: cx, clientY: y,
+        }));
+      }
+    }
+    for (const key of ['1', '2', '3', '4', '5', 'f', 'a', 'Enter']) {
+      D.dispatchEvent(new W.KeyboardEvent('keydown',
+                                          { bubbles: true, key: key }));
+    }
+  }
+  ck('there was a pane canvas to click on', !!canvas);
+  await sleep(600);
+  const after = await readSheet(GID);
+  ck('THE SHEET ON THE SERVER IS UNCHANGED after all of that',
+     before === after,
+     before === after ? '' : 'before/after differ');
+  say('note', '  ' + before.length + ' bytes of sheet, identical');
+
+  const reqs = JSON.parse(ev('JSON.stringify(window.__reqs)') || '[]');
+  const layerReqs = reqs.filter((r) => /\/api\/layers/.test(r));
+  const writes = layerReqs.filter((r) => !/^GET /.test(r));
+  ck('and every layers request this page made was a GET',
+     layerReqs.length > 0 && writes.length === 0,
+     layerReqs.length + ' layers requests, ' + writes.length + ' of them writes'
+     + (writes.length ? ': ' + writes.join(', ') : ''));
+  say('note', '  ' + layerReqs.join('\n  '));
+
+  /* ---------------------------------------------------------------
+     Turning it off again
+     --------------------------------------------------------------- */
+  head('turning it off');
+  grp = await openMore();
+  const off = D.querySelector('#layerBandsOn');
+  if (off) off.click();
+  await sleep(250);
+  ev('window.__log = []');
+  ev('BARRY.views.xplore._redrawPane(0)');
+  await sleep(150);
+  log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
+  ck('the bands stop being drawn',
+     !log.some((r) => r[0] === 'fill' && near(r[1], 0.10)),
+     log.filter((r) => r[0] === 'fill' && near(r[1], 0.10)).length + ' left');
+  ck('and the session stops carrying the flags',
+     ev('!BARRY.views.xplore.current().layerView')
+     && ev('!BARRY.views.xplore.current().strata'));
+
+  /* ---------------------------------------------------------------
+     The recordings that have nothing to show
+     --------------------------------------------------------------- */
+  head('a recording with no sheet');
+  /* Through the real lookup, by pointing the session at a gid the server
+     has never heard of: the note has to come from the 404 rather than from
+     the harness being told the answer. */
+  ev('BARRY.views.xplore.current().identity.gid = "no-such-gid-harness"');
+  grp = await openMore();
+  await untilN(() => {
+    const g = D.querySelector('#layerGroup .ctl-pop-note');
+    return g && !/Checking/i.test(g.textContent);
+  }, 400);
+  grp = D.querySelector('#layerGroup');
+  const note = grp && grp.querySelector('.ctl-pop-note');
+  ck('says there is no layer sheet',
+     !!note && /No layer sheet for this recording/i.test(note.textContent),
+     note ? note.textContent.slice(0, 90) : 'no note');
+  ck('and offers no switch to turn on',
+     !D.querySelector('#layerBandsOn'),
+     'a switch here would turn on and show nothing');
+  ck('it points at where a sheet comes from',
+     !!note && /StrataScope/.test(note.textContent));
+
+  head('a lookup that fails');
+  /* Not the same thing as "no layers", and the difference is invisible on
+     the canvas -- so it has to be visible in the note. */
+  ev('(function(){ const real = window.fetch;'
+     + ' window.fetch = function(u, o){'
+     + '   if (String(u).indexOf("/api/layers/broken-gid-harness") >= 0) {'
+     + '     return Promise.reject(new Error("network is down"));'
+     + '   } return real.apply(this, arguments); }; })()');
+  ev('BARRY.views.xplore.current().identity.gid = "broken-gid-harness"');
+  grp = await openMore();
+  await untilN(() => {
+    const g = D.querySelector('#layerGroup .ctl-pop-note');
+    return g && /could not ask|Could not read/i.test(g.textContent);
+  }, 400);
+  grp = D.querySelector('#layerGroup');
+  const enote = grp && grp.querySelector('.ctl-pop-note');
+  ck('a failed read says so, and says it is not the same as "no layers"',
+     !!enote && /could not ask/i.test(enote.textContent),
+     enote ? enote.textContent.slice(0, 110) : 'no note');
+  ck('and it is marked as a warning, not as a fact about the recording',
+     !!enote && enote.classList.contains('warn'));
+  ck('with no switch offered', !D.querySelector('#layerBandsOn'));
+
+  head('page errors');
+  ck('nothing threw', errs.length === 0, errs.join(' | '));
+
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'layerview';
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message + '  ' + (e.stack || ''));
+  document.title = bad + ' FAILED — layerview';
+} })();
+
+function near(a, b) { return Math.abs(a - b) < 0.006; }
+function LAYER_ALPHA(id) {
+  return ({ off: 0, faint: 0.10, clear: 0.22, solid: 0.42 })[id] || 0.10;
+}
+</script>

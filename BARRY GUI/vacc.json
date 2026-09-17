@@ -1,0 +1,15 @@
+{
+  "_note": "Where the VACC is and which shares it mounts. Tracked on purpose, so a clone knows the lab-wide facts. Who you are on it is NOT here: that lives in GUI_logs/.vacc.json, which git ignores.",
+  "_path_map": "A share this lab keeps recordings on, and the path the cluster mounts it at. Measured: 2732 of 4574 recorded paths are on bigdata_jbarry, so most recordings need no transfer at all. A drive letter is NOT a rule here -- Y: means different things on different machines and is discovered per machine.",
+  "enabled": true,
+  "host": "login.vacc.uvm.edu",
+  "partition": "general",
+  "modules": [],
+  "env": "",
+  "path_map": [
+    {
+      "unc": "//netfiles03.uvm.edu/bigdata_jbarry",
+      "vacc": "/netfiles/bigdata_jbarry"
+    }
+  ]
+}

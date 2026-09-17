@@ -43,7 +43,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, video)
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, video)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -68,6 +68,10 @@ cfcmod.configure(LOGS_DIR)
 # deep-check extra; the cache is what keeps a re-scan of the archive from
 # re-reading the ones that are not clean.
 continuitymod.configure(LOGS_DIR)
+# Where the cluster is, and who this machine is on it. Reads two JSON files
+# and nothing else -- no connection is made here, and none is ever made on
+# the path of a request. `vacc.loop` below keeps the answer worth reading.
+vaccmod.configure(LOGS_DIR)
 # When each recording was last checked for gaps, by whom, and what the answer
 # was. Kept because "which of these three hundred have a problem" is a
 # question about the archive, and a check that runs when you open one session
@@ -4427,13 +4431,62 @@ def api_curation_kinds():
                     "reserved": sorted(curation.RESERVED_KEYS)})
 
 
+def _cur_history(gid, kind, summaries=None):
+    """The banked versions of one curation set, newest first.
+
+    What the bench offers when somebody picks a set up: which pass to work
+    from. Read off the bank's cached summaries -- the history is the bank's,
+    not the curation record's, because banking is what mints a version.
+
+    `snap` is what makes a version restorable, and a version banked on
+    another machine arrives here as metadata before its snapshot does. So
+    `has_snap` is reported per version: offering to pick up something this
+    machine cannot actually read back would fail at the click.
+    """
+    rows = summaries if summaries is not None else BANK.summaries()
+    out = []
+    for rec in rows:
+        if rec.get("gid") != gid or (rec.get("type") or "") != kind:
+            continue
+        vers = []
+        for ver in (rec.get("versions") or []):
+            vers.append({
+                "v": ver.get("v"),
+                "label": ver.get("label"),
+                "at": ver.get("at"),
+                "by": ver.get("by"),
+                "n": ver.get("n"),
+                "note": ver.get("note"),
+                "imported": bool(ver.get("imported")),
+                "from_v": ver.get("from_v"),
+                "has_snap": bool(ver.get("has_snap")),
+                "by_label": ver.get("by_label"),
+            })
+        vers.sort(key=lambda r: -(r["v"] if isinstance(r["v"], int) else -1))
+        out.append({
+            "entry": rec.get("id"),
+            "name": rec.get("name"),
+            "n": rec.get("n"),
+            "versions": vers,
+        })
+    # Newest entry first, by its newest version.
+    out.sort(key=lambda e: -max([(v["v"] if isinstance(v["v"], int) else -1)
+                                 for v in e["versions"]] or [-1]))
+    return out
+
+
 @app.route("/api/curation")
 def api_curation_list():
     """Every curation set, with how far through each one is."""
     out = []
+    # Read once for the whole list rather than per set: the summaries are
+    # cached but the match is a scan, and forty sets against a bank of
+    # hundreds is forty scans for one request.
+    banked = BANK.summaries()
     for row in CURATE.summaries():
         rec = REG.by_gid(row["gid"])
         row["session"] = REG.summary(rec) if rec else None
+        row["history"] = _cur_history(row["gid"], row.get("kind"), banked)
         out.append(row)
     out.sort(key=lambda r: (r.get("progress", {}).get("left", 0) == 0,
                             -(r.get("progress", {}).get("total") or 0)))
@@ -4450,6 +4503,7 @@ def api_curation_get(gid, kind):
         return jsonify({"ok": False, "error": "No such curation set."}), 404
     return jsonify({"ok": True, "set": rec,
                     "progress": CURATE.progress(rec),
+                    "history": _cur_history(gid, kind),
                     "session": _session_by_gid(gid)})
 
 
@@ -4713,7 +4767,8 @@ def api_curation_open(gid, kind):
     on = True if on is None else bool(on)
     try:
         rec = CURATE.open_set(gid, kind, on, who=body.get("who"),
-                              unarchive=bool(body.get("unarchive")))
+                              unarchive=bool(body.get("unarchive")),
+                              based_on=body.get("based_on"))
     except curation.CurationError as exc:
         got = CURATE.get(gid, kind)
         # An archived set is not a missing one, and the caller can do
@@ -5474,6 +5529,12 @@ def api_curation_bank(gid, kind):
                          or "Jarvis curation (" + kind + ")"),
             "added_by": body.get("added_by"),
             "version_note": body.get("note"),
+            # Where this pass belongs in the history. The caller may say;
+            # otherwise it is whatever the set was picked up from, and
+            # failing that whatever was newest.
+            "based_on": (body.get("based_on")
+                         if body.get("based_on") is not None
+                         else rec.get("based_on")),
             # What the bank needs to tell a guess from a decision.
             "curated": True,
             "import_from": adopt,
@@ -5685,6 +5746,13 @@ def api_curation_restore(gid, kind):
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
+    # From here the decisions on the bench are that version's. Said, so
+    # banking afterwards lands as a branch off it rather than as another
+    # pass on top of whatever was newest.
+    try:
+        CURATE.set_based_on(gid, kind, want_v)
+    except curation.CurationError:
+        pass        # the set is gone; the restore already reported that
     STORE.record_activity([{
         "action": "curation.restore",
         "detail": {"gid": gid, "kind": kind, "entry": entry_id,
@@ -7229,10 +7297,27 @@ def api_csc_overview():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    bins = int(body.get("bins") or extras.OVERVIEW_BINS)
+    # Two profiles off one route, because they are two answers to the same
+    # question -- what is where in this recording -- drawn on the same strip.
+    # 'amplitude' is the cheap one (a 0.35 s probe per bin) and stays the
+    # default so the strip appears immediately; 'band' reads the channel
+    # right through at 250 Hz and is asked for separately, once somebody
+    # wants it.
+    if (body.get("profile") or "amplitude") == "band":
+        band = body.get("band") or {}
+        try:
+            res = extras.band_profile(
+                sess, channel=body.get("channel"), bins=bins,
+                lo=float(band.get("lo", extras.BAND_DEFAULT[0])),
+                hi=float(band.get("hi", extras.BAND_DEFAULT[1])),
+                measure=body.get("measure") or "abs")
+        except Exception as exc:
+            return fail("csc/overview band", exc, 400,
+                        {"path": body.get("path"), "band": band})
+        return jsonify(res)
     try:
-        res = extras.overview(sess, channel=body.get("channel"),
-                              bins=int(body.get("bins") or
-                                       extras.OVERVIEW_BINS))
+        res = extras.overview(sess, channel=body.get("channel"), bins=bins)
     except Exception as exc:
         return fail("csc/overview", exc, 400, {"path": body.get("path")})
     return jsonify(res)
@@ -10155,6 +10240,167 @@ def _seed_demo():
 
 
 threading.Thread(target=_seed_demo, daemon=True, name="barry-demo-seed").start()
+
+
+# ==========================================================================
+# VACC -- the cluster link
+#
+# One background thread asks how the cluster is; every route below reads what
+# it last found. Nothing here connects on the path of a request, because a
+# status chip renders on every page load and a ten-second connect timeout on
+# a login node that is busy would be ten seconds of Jarvis not starting.
+# ==========================================================================
+threading.Thread(target=vaccmod.loop, daemon=True, name="barry-vacc").start()
+
+
+@app.route("/api/vacc/status")
+def api_vacc_status():
+    """How the cluster is, from the cache. Never connects."""
+    return jsonify(vaccmod.status())
+
+
+@app.route("/api/vacc/check", methods=["POST"])
+def api_vacc_check():
+    """Ask now, rather than waiting for the loop.
+
+    Behind a POST because it costs a connection, and separate from
+    `/api/vacc/status` so that reading the chip can never be the thing that
+    makes the page slow.
+    """
+    try:
+        vaccmod.refresh(force=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/check", exc, 400)
+    return jsonify(vaccmod.status())
+
+
+def _vacc_staged(force=False):
+    """What the cluster already holds, keyed by the gid it belongs to.
+
+    The matching is done HERE rather than in `vacc.py`, and on this machine
+    rather than on the cluster, because `ids.identify` works from a path
+    string alone -- so a remote folder is identified by exactly the rules a
+    local one is, by exactly the same code. Nothing about identity has to be
+    reimplemented for the cluster, and the two cannot drift.
+
+    Measured against the real scratch: 120 recordings there, 36 of which the
+    registry already knows -- 29 by exact key and 7 by the loose one. The
+    other 84 are real recordings that Jarvis has never been shown; they are
+    reported separately rather than silently dropped, because "the cluster
+    has 84 recordings you have never opened" is worth knowing.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    root = cfg.get("scratch_root") or os.path.dirname(cfg.get("scratch") or "")
+    if not root:
+        return {}, []
+    found = vaccmod.inventory_cached(cfg, root, force=force)
+
+    by_key, by_loose = {}, {}
+    for rec in REG.all():
+        gid = rec.get("gid")
+        if not gid:
+            continue
+        if rec.get("key"):
+            by_key.setdefault(str(rec["key"]).lower(), gid)
+        if rec.get("loose_key"):
+            by_loose.setdefault(str(rec["loose_key"]).lower(), gid)
+
+    staged, unknown = {}, []
+    for row in found:
+        ident = ids.identify(row["path"])
+        key = str(ident.get("key") or "").lower()
+        loose = str(ident.get("loose_key") or "").lower()
+        gid = by_key.get(key) or by_loose.get(loose)
+        if not gid:
+            unknown.append(row)
+            continue
+        staged[gid] = dict(row, how="exact" if key in by_key else "loose")
+    return staged, unknown
+
+
+@app.route("/api/vacc/inventory")
+def api_vacc_inventory():
+    """What the cluster holds. `?force=1` walks it again rather than using
+    the five-minute cache."""
+    try:
+        staged, unknown = _vacc_staged(force=bool(request.args.get("force")))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/inventory", exc, 400)
+    return jsonify({"ok": True, "staged": staged,
+                    "n_staged": len(staged),
+                    "unknown": unknown[:200], "n_unknown": len(unknown)})
+
+
+@app.route("/api/vacc/knows")
+def api_vacc_knows():
+    """Which recordings the cluster can already read, keyed by gid.
+
+    Read-only and offline: this is arithmetic over the registry's own paths
+    plus a `net use` on this machine, and it answers even when the cluster is
+    unreachable. Worth having on its own -- "nine of these are blocked here,
+    and VACC can read all nine" is the sentence the whole feature is for.
+    """
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+        rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
+                for r in REG.all() if r.get("gid")]
+        # What the cluster physically holds, so a recording it already has a
+        # copy of is not reported as something to upload. Best effort: the
+        # reachability arithmetic above is local and must still answer when
+        # the cluster is down.
+        try:
+            staged, _unknown = _vacc_staged()
+        except Exception:                                # noqa: BLE001
+            staged = {}
+        got = vaccmod.resolve_many(rows, cfg, staged=staged)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/knows", exc, 400)
+    return jsonify({"ok": True, "knows": got,
+                    "counts": vaccmod.histogram(got),
+                    "n_rules": len(cfg.get("path_map") or []),
+                    "drives": vaccmod.drive_map()})
+
+
+@app.route("/api/vacc/setup", methods=["POST"])
+def api_vacc_setup():
+    """Record who this machine is on the cluster.
+
+    Only the per-machine half. The tracked file -- where the cluster is, and
+    which shares it mounts -- is a lab-wide fact edited in the repository and
+    reviewed like any other change, not something one machine sets for
+    everybody from a text box.
+    """
+    body = request.get_json(force=True) or {}
+    netid = (body.get("netid") or "").strip()
+    if netid and not re.match(r"^[a-z0-9._-]{2,32}$", netid, re.I):
+        return jsonify({"ok": False,
+                        "error": "That does not look like a NetID."}), 400
+    key_path = (body.get("key_path") or "").strip()
+    if key_path:
+        repo = os.path.dirname(APP_DIR)
+        try:
+            inside = os.path.commonpath(
+                [os.path.abspath(key_path), repo]) == repo
+        except ValueError:
+            inside = False
+        if inside:
+            # The one arrangement that turns "there is no secret here" into a
+            # lie. Refused rather than warned about.
+            return jsonify({
+                "ok": False,
+                "error": "That key is inside the repository. Move it to "
+                         "~/.ssh and point at it there.",
+            }), 400
+    try:
+        vaccmod.save_config(LOGS_DIR, netid=netid or None,
+                            key_path=key_path or None,
+                            account=(body.get("account") or "").strip() or None)
+        vaccmod.refresh(force=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/setup", exc, 400)
+    STORE.record_activity([{"action": "vacc.setup",
+                            "detail": {"netid": bool(netid)}}])
+    return jsonify(vaccmod.status())
 
 
 @app.route("/api/cloud/mirror", methods=["POST"])

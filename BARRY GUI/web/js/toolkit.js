@@ -1063,6 +1063,18 @@ BARRY.views.toolkit = (function () {
                + 'was written as you made it, and it is all still here.',
           onclick: () => openSet(st, false),
         }),
+        /* Only where there is a choice. A set with one banked version, or
+           none, has nothing to switch between, and a button that answers
+           every press with "there is nothing to do" teaches people not to
+           press buttons. 1 of the 45 sets here has no banked history at
+           all. */
+        BARRY.vers.askable(st.history) ? el('button', {
+          class: 'btn ghost sm', text: 'Version\u2026',
+          title: 'Which banked pass this one is carrying on from. Switching '
+               + 'puts the current version down and picks another up \u2014 '
+               + 'the decisions on the set become that version\u2019s.',
+          onclick: () => switchSetVersion(st),
+        }) : null,
         el('div', { style: 'flex:1' }),
         el('button', {
           class: 'btn ghost sm', text: curMore[key] ? 'Less' : 'More…',
@@ -1187,7 +1199,7 @@ BARRY.views.toolkit = (function () {
           title: 'Put it on the bench. Opening the recording is the '
                + 'next step, not this one — a set you cannot curate '
                + 'right now can still be claimed, named and exported.',
-          onclick: () => openSet(st, true),
+          onclick: () => pickUpSet(st),
         }),
         el('button', {
           class: 'btn ghost sm icon-only',
@@ -1195,16 +1207,11 @@ BARRY.views.toolkit = (function () {
             ? 'Pick it up and go straight to the recording'
             : 'This recording is not on a drive this machine can reach',
           disabled: reach ? null : 'disabled',
-          /* Through openSet, so an archived set asks the same question
-             here as the button beside it -- going straight to the
-             recording is still picking it up. */
-          onclick: async () => {
-            if (st.archived) {
-              await openSet(st, true);
-              if (st.archived) return;      // the question was declined
-            }
-            BARRY.curate.enter(st.gid, st.kind);
-          },
+          /* Through the same pick-up as the button beside it: going
+             straight to the recording is still picking it up, so it asks
+             the same two questions -- un-archive this, and which version
+             are you carrying on from -- rather than skipping both. */
+          onclick: () => pickUpSet(st, true),
         }),
         ]),
       ]));
@@ -1463,7 +1470,13 @@ BARRY.views.toolkit = (function () {
   }
 
   /* ---- the workbench verbs ---- */
-  async function openSet(st, on, unarchive) {
+  /* `based` is which banked version this pass is being picked up FROM.
+     It is the stored integer, not the lineage name: the cloud table's
+     `version` column is an integer and the sync casts to int, so the number
+     is the identity and "1.1" is worked out from it. Null leaves the server
+     to default to the newest, which is what happened before this was
+     askable. */
+  async function openSet(st, on, unarchive, based) {
     /* Archiving is a decision, so un-doing it is one too. Picking up an
        archived set used to un-archive it silently -- "archived it and could
        still just open it" was the report. */
@@ -1474,8 +1487,8 @@ BARRY.views.toolkit = (function () {
         + 'the bench means taking it back out \u2014 a set cannot be both '
         + 'archived and in use, or it shows up in neither list.',
         'Un-archive and pick it up');
-      if (!ok) return;
-      return openSet(st, true, true);
+      if (!ok) return false;
+      return openSet(st, true, true, based);
     }
 
     /* On screen first. The round trip is seconds on a network share, and
@@ -1510,15 +1523,140 @@ BARRY.views.toolkit = (function () {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(st.gid) + '/'
         + encodeURIComponent(st.kind) + '/open',
-        { open: !!on, unarchive: !!unarchive });
+        { open: !!on, unarchive: !!unarchive,
+          based_on: (based === null || based === undefined)
+            ? undefined : based });
       // The server's answer is the truth; the guess above only had to be
       // fast. They agree in every ordinary case.
-      if (res.set) { Object.assign(st, res.set); renderCuration(); }
+      /* The summary does not carry `history`, and losing it would empty the
+         version button on the card that was just picked up. */
+      if (res.set) {
+        const keep = st.history;
+        Object.assign(st, res.set);
+        if (keep && !st.history) st.history = keep;
+        renderCuration();
+      }
     } catch (e) {
       Object.assign(st, was);
       renderCuration();
       toast('That did not save: ' + (e && e.message || e), 'err', 8000);
+      return false;
     }
+    return true;
+  }
+
+  /* ==================================================================
+     Which version a sitting works from
+     ==================================================================
+     A curation set is one row per recording per kind, but the bank behind
+     it keeps every pass anybody ever banked -- seven of them on entry
+     7d5fa32206b4. Picking the set up used to say nothing about which of
+     those the sitting was carrying on from, so banking always landed on top
+     of whatever was newest. That is right until somebody goes back to an
+     earlier pass on purpose, and then it silently buries the work that came
+     after it.
+
+     So both doors ask. Picking up records where the next bank lands, and
+     puts that version's decisions on the bench if it is not the one the set
+     already reflects. Switching while it is on the bench always does both:
+     the current version goes down, the chosen one comes up.
+     ================================================================== */
+
+  /* Put that version's decisions onto the set. Restore is the one route
+     that does it, and it records what the set is now based on as well --
+     so the next bank lands as a pass on that version rather than on top of
+     whatever happened to be newest. */
+  async function restoreVersion(st, pick) {
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                          + encodeURIComponent(st.kind) + '/restore',
+                          { entry: pick.entry, version: pick.v });
+    } catch (e) {
+      toast('Could not work from v' + pick.name + ': '
+            + (e && e.message || e), 'err', 9000);
+      return null;
+    }
+    toast('Working from v' + pick.name + '. '
+          + (res.changed ? res.changed + ' decision(s) changed to match it'
+                         : 'Nothing on the set had to change')
+          + (res.missing
+              ? ', ' + res.missing + ' of its candidate(s) are not in this '
+                + 'set any more' : '')
+          + '. ' + (pick.branches
+              ? 'Banking from here starts a new line at v' + pick.next + '.'
+              : 'Banking from here writes v' + pick.next + '.'),
+          'ok', 9000);
+    BARRY.activity.log('curation.version',
+                       { gid: st.gid, kind: st.kind, entry: pick.entry,
+                         version: pick.v, label: pick.name,
+                         changed: res.changed });
+    return res;
+  }
+
+  /* Off the shelf and onto the bench, having said which pass it carries on
+     from. `andEnter` is the arrow beside it: same question, then straight
+     into the recording. */
+  async function pickUpSet(st, andEnter) {
+    let pick = null;
+    if (BARRY.vers.askable(st.history)) {
+      pick = await BARRY.pickVersion(st.history, {
+        title: 'Which version to work from',
+        sub: (st.name || st.gid) + '  \u00b7  '
+           + ((st.session || {}).label || st.gid),
+        lead: 'Picking it up says which banked pass this sitting carries on '
+            + 'from. That is what decides where the next bank lands \u2014 '
+            + 'on the end of a line, or as a new line off an older pass.',
+        labels: st.labels || [],
+        mode: 'pickup',
+        verb: 'Pick it up from', okLabel: 'Pick it up',
+      });
+      if (!pick) return false;      // asked, and called off
+    }
+    const got = await openSet(st, true, false, pick ? pick.v : null);
+    if (!got) return false;
+    /* Before entering, not after: the panel reads the set when it opens, and
+       restoring underneath it would leave the decisions on screen belonging
+       to the version that was just put down. */
+    if (pick && pick.restores) {
+      await restoreVersion(st, pick);
+      await loadCuration();
+    }
+    if (andEnter) BARRY.curate.enter(st.gid, st.kind);
+    return true;
+  }
+
+  /* Switching while it is on the bench. Destructive to what is there, so it
+     says so with the count before it happens, and the button is the danger
+     one. If the panel is actually open on this set it does it, because it
+     has to redraw the candidates and the marks afterwards. */
+  async function switchSetVersion(st) {
+    const live = BARRY.curate && BARRY.curate.active && BARRY.curate.state;
+    if (live && live.gid === st.gid && live.kind === st.kind) {
+      await BARRY.curate.switchVersion();
+      await loadCuration();
+      return;
+    }
+    if (!BARRY.vers.askable(st.history)) {
+      toast('There is only one banked version of this set, so there is '
+            + 'nothing to switch between.', null, 6000);
+      return;
+    }
+    const pick = await BARRY.pickVersion(st.history, {
+      title: 'Switch to another version',
+      sub: (st.name || st.gid) + '  \u00b7  '
+         + ((st.session || {}).label || st.gid),
+      lead: 'Switching puts the current version down and picks the chosen '
+          + 'one up. The decisions on the set become that version\u2019s, '
+          + 'and everything decided after it is written onto that line. '
+          + 'Nothing is deleted \u2014 every version stays in the bank.',
+      labels: st.labels || [],
+      mode: 'switch',
+      danger: true, verb: 'Switch to', okLabel: 'Switch',
+    });
+    if (!pick) return;
+    const res = await restoreVersion(st, pick);
+    if (res) await loadCuration();
   }
 
   async function closeAllSets() {

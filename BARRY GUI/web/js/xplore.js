@@ -111,6 +111,19 @@ BARRY.views.xplore = (function () {
       nev: info.nev || [],
       overview: null,          // whole-recording amplitude profile
       overviewReq: false,
+      /* What the line on the overview strip is. Amplitude answers "how big
+         is the signal here"; band power answers "is there theta here", and
+         they are different questions -- a loud stretch of delta and a loud
+         stretch of theta draw the same amplitude line. The band is settable
+         because "theta" is 4-12 in some labs, 6-10 in others, and the point
+         of the control is to be able to narrow it and watch what happens. */
+      stripMode: 'amp',        // 'amp' | 'band'
+      stripBand: { lo: 4, hi: 12 },
+      stripMeasure: 'abs',     // 'abs' | 'rel' | 'ratio'
+      overviewBand: null,      // the band profile, once it has been asked for
+      overviewBandReq: false,
+      overviewBandErr: null,
+      overviewBandErrKey: null,
       color: BARRY.hues(XF.order.length),
     };
 
@@ -1796,6 +1809,220 @@ BARRY.views.xplore = (function () {
     refreshSession(sess);
   }
 
+  /* ----------------------------------------------------------------------
+     Band power on the same strip
+
+     Same route, same bins, same x axis -- so the theta line lands pixel for
+     pixel on the amplitude line it replaces and the two can be compared by
+     flicking between them.
+
+     This one is expensive where the amplitude profile is not: it reads the
+     channel right through instead of probing 0.35 s per bin. The server
+     decimates to 250 Hz first (28.5 min of CSC1 came back in 2.8 s) and
+     caches the spectrogram rather than the line, so moving the band edges
+     afterwards is a few milliseconds and does not read the file again.
+     Async and fire-and-forget, exactly like loadOverview: the strip keeps
+     drawing the amplitude profile until this lands.
+     ---------------------------------------------------------------------- */
+  const STRIP_MEASURES = [
+    { id: 'abs', name: 'Power',
+      why: 'Integrated power in the band, uV². The direct answer, and '
+         + 'the one that also moves when the 1/f background shifts or the '
+         + 'electrode impedance changes' },
+    { id: 'rel', name: 'Relative',
+      why: 'Band power as a share of 1–100 Hz. Divides out a broadband '
+         + 'offset, so this is the one to compare between channels and '
+         + 'between recordings' },
+    { id: 'ratio', name: 'vs delta',
+      why: 'Band power divided by 1–4 Hz — the classic hippocampal '
+         + 'theta index. Both bands are local, so a broadband change '
+         + 'largely divides out' },
+  ];
+
+  const STRIP_BANDS = [
+    ['theta', 4, 12], ['theta (narrow)', 6, 10], ['delta', 1, 4],
+    ['beta', 13, 30], ['low gamma', 30, 60],
+  ];
+
+  function stripBand(sess) {
+    const b = sess.stripBand || {};
+    return { lo: Number(b.lo) || 4, hi: Number(b.hi) || 12 };
+  }
+
+  /* One key per (channel, band, measure-independent) request. The measure
+     costs nothing server-side -- all three series come back together -- so
+     it is deliberately NOT in the key: switching Power/Relative/vs delta is
+     instant and offline. Only moving the band edges or the channel refetches. */
+  function bandKey(sess) {
+    const b = stripBand(sess);
+    return [firstSel(sess), b.lo, b.hi].join('|');
+  }
+
+  async function loadOverviewBand(sess) {
+    const key = bandKey(sess);
+    if (sess.overviewBandReq === key) return;
+    if (sess.overviewBand && sess.overviewBand._key === key) return;
+    /* A failure has to stick to the request that caused it. This is called
+       from the paint, the paint is what reports the failure, and reporting
+       it repaints -- so without remembering WHICH request failed, a bad
+       band or an unreadable channel becomes an unbounded retry loop at
+       frame rate. Changing the band or the channel changes the key, which
+       is what makes the retry deliberate. */
+    if (sess.overviewBandErrKey === key) return;
+    sess.overviewBandReq = key;
+    sess.overviewBandErr = null;
+    const b = stripBand(sess);
+    try {
+      const res = await apiPost('/api/csc/overview', {
+        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        channel: firstSel(sess), bins: 700,
+        profile: 'band', band: { lo: b.lo, hi: b.hi },
+        measure: sess.stripMeasure || 'abs',
+      });
+      if (res && res.ok) {
+        res._key = key;
+        sess.overviewBand = res;
+        sess.overviewBandErrKey = null;
+      } else {
+        sess.overviewBandErr = (res && res.error) || 'No band profile.';
+        sess.overviewBandErrKey = key;
+      }
+    } catch (e) {
+      sess.overviewBandErr = String((e && e.message) || e);
+      sess.overviewBandErrKey = key;
+    }
+    if (sess.overviewBandReq === key) sess.overviewBandReq = false;
+    refreshSession(sess);
+  }
+
+  /* The series the strip should draw, or null while it is still coming. */
+  function stripSeries(sess) {
+    const ob = sess.overviewBand;
+    if (!ob || ob._key !== bandKey(sess)) return null;
+    const m = sess.stripMeasure || 'abs';
+    const v = ob[m];
+    return (v && v.length === ob.bins) ? v : null;
+  }
+
+  /* Which measure, in the fewest characters that still distinguish them --
+       power        uV^2 in the band
+       rel. power   the band's share of 1-100 Hz
+       / delta      the band over 1-4 Hz
+     This is what goes on the strip itself, so a screenshot of the line can
+     be read without the popover that set it. */
+  function measureWord(sess) {
+    const m = sess.stripMeasure || 'abs';
+    return m === 'rel' ? 'rel. power' : (m === 'ratio' ? '/ delta' : 'power');
+  }
+
+  /* What the strip is showing, short enough for a control strip. */
+  function stripWord(sess) {
+    if ((sess.stripMode || 'amp') !== 'band') return 'amplitude';
+    const b = stripBand(sess);
+    const m = STRIP_MEASURES.find((o) => o.id === (sess.stripMeasure || 'abs'));
+    return trimNum(b.lo) + '–' + trimNum(b.hi) + ' Hz '
+      + (m ? m.name.toLowerCase() : '');
+  }
+
+  function setStripBand(index, sess, lo, hi) {
+    lo = Math.max(0.5, Math.min(99, Number(lo)));
+    hi = Math.max(lo + 0.5, Math.min(100, Number(hi)));
+    sess.stripBand = { lo: Math.round(lo * 100) / 100,
+                       hi: Math.round(hi * 100) / 100 };
+    sess.stripMode = 'band';
+    relabelMenu(index, 'Strip', stripWord(sess));
+    loadOverviewBand(sess);
+    refreshSession(sess);
+  }
+
+  function stripPop(index, sess) {
+    const b = stripBand(sess);
+    const mode = sess.stripMode || 'amp';
+    const ob = stripSeries(sess) ? sess.overviewBand : null;
+    const busy = !!sess.overviewBandReq;
+
+    const seg = (value, options, onpick) => el('div', { class: 'ctl-seg' },
+      options.map((o) => el('button', {
+        class: 'mini' + (value === o.id ? ' on' : ''),
+        text: o.name, title: o.why,
+        onclick: () => { if (value !== o.id) onpick(o.id); },
+      })));
+
+    const edge = (which, value) => el('input', {
+      type: 'number', value: String(value), step: '0.5', min: '0.5',
+      max: '100', style: 'width:62px',
+      title: which === 'lo' ? 'Bottom of the band, Hz'
+                            : 'Top of the band, Hz',
+      onchange: (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isFinite(v)) return;
+        setStripBand(index, sess, which === 'lo' ? v : b.lo,
+                     which === 'lo' ? b.hi : v);
+      },
+    });
+
+    const rows = [
+      popRow('The line on the overview strip', [
+        seg(mode, [
+          { id: 'amp', name: 'Average magnitude',
+            why: 'Mean |amplitude| per bin — how big the signal is, '
+               + 'whatever it is made of' },
+          { id: 'band', name: 'Band power',
+            why: 'Power in one frequency band through the whole recording' },
+        ], (v) => {
+          sess.stripMode = v;
+          relabelMenu(index, 'Strip', stripWord(sess));
+          if (v === 'band') loadOverviewBand(sess);
+          refreshSession(sess);
+        }),
+      ]),
+    ];
+
+    if (mode === 'band') {
+      rows.push(popRow('Band (Hz)', [
+        edge('lo', b.lo),
+        el('span', { class: 'hint', text: 'to' }),
+        edge('hi', b.hi),
+      ]));
+      rows.push(popRow(null, STRIP_BANDS.map(([name, lo, hi]) => el('button', {
+        class: 'mini' + (b.lo === lo && b.hi === hi ? ' on' : ''),
+        text: name, title: lo + '–' + hi + ' Hz',
+        onclick: () => setStripBand(index, sess, lo, hi),
+      }))));
+      rows.push(popRow('Measure', [
+        seg(sess.stripMeasure || 'abs', STRIP_MEASURES, (v) => {
+          sess.stripMeasure = v;
+          relabelMenu(index, 'Strip', stripWord(sess));
+          refreshSession(sess);       // already downloaded; no refetch
+        }),
+      ]));
+      /* Say what it cost and what it is, because a line with no units is a
+         line nobody can quote. */
+      rows.push(el('p', { class: 'ctl-pop-note' + (busy ? ' warn' : ''),
+        text: busy
+          ? 'Reading the channel through at 250 Hz… the strip keeps '
+            + 'showing amplitude until this lands.'
+          : (sess.overviewBandErr
+             ? sess.overviewBandErr
+             : (ob
+                ? (ob.channel.label || 'channel') + ', '
+                  + trimNum(ob.band.lo) + '–' + trimNum(ob.band.hi)
+                  + ' Hz, ' + measureWord(sess) + '. '
+                  + ob.n_valid + ' of ' + ob.bins + ' bins have data; '
+                  + ob.resolution_hz + ' Hz resolution, '
+                  + trimNum(ob.duration_s / ob.bins) + ' s per bin, '
+                  + 'read at ' + ob.fs_used + ' Hz in ' + ob.surface_s
+                  + ' s, 60 Hz bridged out.'
+                : 'Nothing read yet.')) }));
+      rows.push(el('p', { class: 'ctl-pop-note',
+        text: 'Power in a band is not the strength of a rhythm: it also '
+            + 'rises when the 1/f background does. Relative and vs delta '
+            + 'divide most of that out.' }));
+    }
+
+    return popBody(rows);
+  }
+
   /* ======================================================================
      The scale control
 
@@ -2674,6 +2901,14 @@ BARRY.views.xplore = (function () {
         'Which channels are drawn', () => channelPop(index, sess)));
     }
 
+    /* What the overview strip's line is. It belongs with the controls
+       rather than on the strip itself: the strip is 40 px tall and a button
+       laid over it covers the very envelope it is describing. */
+    host.appendChild(menu(index, 'Strip', stripWord(sess),
+      'What the line on the overview strip shows — average magnitude, '
+      + 'or power in a frequency band you choose',
+      () => stripPop(index, sess)));
+
     host.appendChild(el('div', { class: 'ctl-sep' }));
 
     const marks = markCounts(sess);
@@ -3059,6 +3294,342 @@ BARRY.views.xplore = (function () {
     ]);
   }
 
+  /* ==================================================================
+     Layer bands, read-only
+     ==================================================================
+
+     StrataScope's layer sheet, shown in ordinary XploreFinder.
+
+     Labelling is a mode: it takes the panes, the keyboard and a second
+     window. You do not want to be in it to answer "is this ripple in the
+     pyramidal layer" -- but that was the only place the bands were drawn,
+     so answering it meant entering a labelling mode in order to look at
+     something. The sheet itself is only a channel -> region map, and
+     drawing it needs none of the mode: one GET and a wash behind the data.
+
+     Nothing below writes. The only request is the GET, there is no click
+     target and no key handler, and the wash is painted into the pane canvas
+     rather than laid over it -- so it cannot take a click off the pane
+     either. A reader cannot relabel a channel from here by accident, which
+     is the whole reason this is separate from the mode rather than a
+     read-only flag inside it. */
+
+  /* The strengths are strata.js's (strata.js ~line 49), copied rather than
+     imported, because `wash` and `washAlpha` are private to that module.
+     The two lists have to agree: the same recording looking different
+     depending on which way you came into it is exactly what a wash setting
+     exists to stop. */
+  const LAYER_WASHES = [
+    { id: 'off', name: 'Off', alpha: 0, why: 'No bands at all' },
+    { id: 'faint', name: 'Faint', alpha: 0.10,
+      why: 'Just enough to see the boundary' },
+    { id: 'clear', name: 'Clear', alpha: 0.22,
+      why: 'Readable without hiding the trace' },
+    { id: 'solid', name: 'Solid', alpha: 0.42,
+      why: 'For checking the layout at a glance' },
+  ];
+
+  function layerWash(sess) {
+    const got = sess && sess.layerWash;
+    return LAYER_WASHES.some((w) => w.id === got) ? got : 'off';
+  }
+
+  function layerWashAlpha(sess) {
+    const w = LAYER_WASHES.find((x) => x.id === layerWash(sess));
+    return w ? w.alpha : 0;
+  }
+
+  /* What strength to come on at: whatever the labelling mode is set to,
+     when it will say.
+
+     Read at the moment the switch is flipped rather than on every repaint.
+     Somebody who turned the wash down while labelling should not get it
+     blazing here -- and having turned it down HERE afterwards, should not
+     have the mode put it back on the next frame.
+
+     strata.js keeps `wash` private today, so this falls through to the same
+     'faint' it starts at. Both ends of the try are deliberate: this is a
+     courtesy read of another module's state and must never be the reason a
+     menu fails to open. */
+  function strataWashId() {
+    const s = BARRY.strata;
+    let got = null;
+    try {
+      got = s && (typeof s.washId === 'function' ? s.washId()
+                  : ((s.state || {}).wash || null));
+    } catch (e) { got = null; }
+    return LAYER_WASHES.some((w) => w.id === got && w.id !== 'off')
+      ? got : 'faint';
+  }
+
+  /* One lookup per recording per window, remembered including the answer
+     "there isn't one".
+
+     The control has to be able to say "no layer sheet for this recording"
+     instead of offering a switch that turns on and shows nothing, and it
+     has to say it without a round trip every time the menu opens. A real
+     failure is deliberately NOT cached: "we could not ask" and "there is
+     nothing to ask about" look identical on the canvas, so they are kept
+     apart here and said differently in the note. */
+  const layerCache = new Map();   // gid -> {state, sheet, error}
+  const layerAsking = new Map();  // gid -> promise, so a burst asks once
+
+  function layerLook(gid) {
+    if (!gid) return Promise.resolve({ state: 'nogid' });
+    if (layerCache.has(gid)) return Promise.resolve(layerCache.get(gid));
+    if (layerAsking.has(gid)) return layerAsking.get(gid);
+    const p = api('/api/layers/' + encodeURIComponent(gid)).then((r) => {
+      const sh = (r && r.sheet) || null;
+      const labels = (sh && sh.labels) || {};
+      /* A sheet with no channel labelled is a row somebody's scan made, not
+         something to look at: offering the switch for it would turn on and
+         draw nothing, which is the failure this is meant to avoid. */
+      const got = (sh && Object.keys(labels).length)
+        ? { state: 'ready',
+            sheet: { gid, labels, regions: (sh.regions || []) } }
+        : { state: 'blank' };
+      layerCache.set(gid, got);
+      return got;
+    }).catch((e) => {
+      const msg = (e && e.message) || 'unknown error';
+      // The route's own answer for a recording nobody has labelled.
+      const none = /no layer sheet/i.test(msg);
+      const got = none ? { state: 'none' } : { state: 'error', error: msg };
+      if (none) layerCache.set(gid, got);
+      return got;
+    }).then((got) => { layerAsking.delete(gid); return got; });
+    layerAsking.set(gid, p);
+    return p;
+  }
+
+  /* The bands.
+
+     Not strata.js's draw(): that one paints out of the labelling module's
+     own `sheet`, and returns at its first line while the mode is closed
+     (strata.js:781) -- so with the mode shut it draws nothing whatever
+     sess.strata says. Same geometry and the same boundary line, no module
+     state behind it.
+
+     `nums` is the CSC numbers of the rows this canvas actually drew, in the
+     order it drew them; the caller knows that and this does not. A traces
+     pane draws only the ticked channels and a CSD drops the first and last,
+     so laying the sheet's own channel order over either puts every band a
+     channel or two off -- worse than no overlay, because it looks right. */
+  function drawLayerBands(ctx, sess, nums, x0, plotW, y0, plotH) {
+    const view = sess && sess.layerView;
+    if (!view || !nums || !nums.length) return;
+    const alpha = layerWashAlpha(sess);
+    if (alpha <= 0) return;
+    const byId = new Map((view.regions || []).map((r) => [r.id, r]));
+    const lane = plotH / nums.length;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    for (let i = 0; i < nums.length; i++) {
+      const reg = byId.get(view.labels[String(nums[i])]);
+      if (!reg) continue;
+      ctx.fillStyle = reg.color;
+      ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
+    }
+    /* A firm line where the region changes. At 10% the wash says roughly
+       where a layer is and cannot say where it ends, and the boundary is
+       the thing a sheet actually records. Four or five strokes on a
+       64-channel probe, so it is not worth a setting of its own. */
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 1;
+    let prev = null;
+    for (let i = 0; i < nums.length; i++) {
+      const id = view.labels[String(nums[i])] || null;
+      if (prev !== null && id !== prev) {
+        const reg = byId.get(id) || byId.get(prev);
+        if (reg) {
+          ctx.strokeStyle = reg.color;
+          ctx.beginPath();
+          ctx.moveTo(x0, Math.round(y0 + i * lane) + 0.5);
+          ctx.lineTo(x0 + plotW, Math.round(y0 + i * lane) + 0.5);
+          ctx.stroke();
+        }
+      }
+      prev = id;
+    }
+    ctx.restore();
+  }
+
+  /* How the bands reach an image panel.
+
+     The overlay slot on a raster is BARRY.strata.draw, called at the top of
+     drawOverlayMarks -- already gated on sess.strata, and already run
+     before the event, bookmark and curation marks, which is the ordering a
+     backdrop needs. That entry point paints from strata.js's module state,
+     so with the mode closed it returns immediately; wrapping it puts the
+     read-only bands in the same slot in the same order, with no second call
+     site in the panel-drawing code.
+
+     Installed the first time somebody turns the bands on rather than at
+     load, so a window that never uses this leaves the labelling mode's
+     function exactly as it found it. */
+  let layerHooked = false;
+
+  function installLayerHook() {
+    if (layerHooked || !BARRY.strata || !BARRY.strata.draw) return;
+    layerHooked = true;
+    const real = BARRY.strata.draw;
+    BARRY.strata.draw = function (ctx, s, win, x0, plotW, y0, plotH,
+                                  P, panelRes) {
+      // While the mode is open it owns the overlay, untouched.
+      if (BARRY.strata.active) {
+        return real.call(BARRY.strata, ctx, s, win, x0, plotW, y0, plotH,
+                         P, panelRes);
+      }
+      if (!s || !s.layerView || !ctx) return;
+      /* A traces pane paints its own bands early, under the marks, and then
+         reaches this same function again at the end of that pass -- after
+         them. Without the stamp the wash would land back on top of the very
+         marks it is meant to sit behind. */
+      if (ctx.canvas && ctx.canvas.__layerBandsDrawn) return;
+      let nums = ((s.info && s.info.channels) || []).map((c) => c.number);
+      if (panelRes && Array.isArray(panelRes.rows) && panelRes.rows.length) {
+        nums = panelRes.rows.map((r) => r.number);
+      }
+      drawLayerBands(ctx, s, nums, x0, plotW, y0, plotH);
+    };
+  }
+
+  /* Repaint what is loaded rather than refetch it. A wash changes nothing
+     about the samples or the rendered raster, and a 64-channel panel is
+     half a second to two and a half seconds of server work to get the same
+     picture back. */
+  function repaintLayers(sess) {
+    XF.panes.forEach((p, i) => {
+      if (p && p.sessionId === sess.id) redrawGeometry(i);
+    });
+  }
+
+  function setLayerWash(index, sess, id) {
+    const gid = (sess.identity || {}).gid;
+    sess.layerWash = id;
+    if (id === 'off') {
+      delete sess.layerView;
+      /* Only ours to remove. While the labelling mode is open sess.strata
+         is its flag, and deleting it there blanks the overlay it is in the
+         middle of drawing. */
+      if (!(BARRY.strata && BARRY.strata.active)) delete sess.strata;
+    } else {
+      const got = layerCache.get(gid);
+      // Nothing to show: leave the switch off rather than on and blank.
+      if (!got || got.state !== 'ready') { sess.layerWash = 'off'; return; }
+      sess.layerView = got.sheet;
+      /* The same object shape strata.js sets (strata.js:144), because the
+         image-panel overlay is gated on this flag and nothing else. */
+      if (!(BARRY.strata && BARRY.strata.active)) {
+        sess.strata = { gid, labels: got.sheet.labels,
+                        regions: got.sheet.regions };
+      }
+      installLayerHook();
+    }
+    BARRY.activity.log('display.layers', { wash: sess.layerWash,
+                                           gid: gid || null }, sess);
+    repaintLayers(sess);
+  }
+
+  /* The switch itself.
+
+     A live group rather than a row built once: whether this recording has a
+     layer sheet is a request, and a menu opened before it lands should say
+     it is checking and then say what it found, rather than offer a switch
+     that might be a lie. */
+  function layerGroup(index, sess, choose) {
+    const gid = (sess.identity || {}).gid;
+    const row = el('div', { class: 'ctl-pop-row' });
+    const note = el('p', { class: 'ctl-pop-note' });
+    const legend = el('div', { class: 'layer-legend' });
+
+    const fill = (got) => {
+      row.textContent = '';
+      legend.textContent = '';
+      note.classList.remove('warn');
+      const st = (got && got.state) || 'loading';
+
+      if (st === 'ready') {
+        const on = layerWash(sess) !== 'off';
+        row.appendChild(el('label', {
+          class: 'toggle sm' + (on ? ' on' : ''),
+          title: 'Draw the layer sheet behind the data. Viewing only \u2014 '
+               + 'labelling is StrataScope.',
+        }, [
+          el('input', {
+            id: 'layerBandsOn', type: 'checkbox',
+            checked: on ? 'checked' : null,
+            onchange: (e) => {
+              setLayerWash(index, sess,
+                           e.target.checked ? strataWashId() : 'off');
+              closeMenu();
+            },
+          }),
+          el('span', { text: 'Show layer bands' }),
+        ]));
+        if (on) {
+          row.appendChild(choose(layerWash(sess),
+            LAYER_WASHES.filter((w) => w.id !== 'off'),
+            (v) => { setLayerWash(index, sess, v); closeMenu(); }));
+        }
+        const n = Object.keys(got.sheet.labels).length;
+        const total = (sess.info.channels || []).length;
+        note.textContent = on
+          ? 'On, behind the traces and the rasters. Read-only: clicking a '
+            + 'band does nothing and nothing here is ever saved. Labelling '
+            + 'is StrataScope, from the ToolKit.'
+          : n + ' of ' + total + ' channels are labelled on this recording. '
+            + 'The bands draw behind the data; nothing here can change them.';
+        /* The key only while the bands are on. It names colours that are on
+           screen; with the bands off it is a list of regions next to
+           nothing, and on a sheet using eleven of the vocabulary it is the
+           tallest thing in the menu. */
+        const seen = on ? new Set(Object.values(got.sheet.labels)) : new Set();
+        for (const r of (got.sheet.regions || [])) {
+          if (!seen.has(r.id)) continue;
+          legend.appendChild(el('span', { class: 'layer-key',
+                                          title: r.note || '' }, [
+            el('i', { style: 'background:' + r.color }),
+            el('span', { text: r.name }),
+          ]));
+        }
+      } else if (st === 'loading') {
+        note.textContent = 'Checking whether this recording has a layer '
+                         + 'sheet\u2026';
+      } else if (st === 'nogid') {
+        note.textContent = 'This recording is not in the registry, so there '
+                         + 'is no layer sheet to look up. Scan it in, then '
+                         + 'label it in StrataScope.';
+      } else if (st === 'error') {
+        note.classList.add('warn');
+        /* Said out loud, because a failed read and an unlabelled recording
+           both come out as a blank pane -- and the second is a fact about
+           the recording while the first is a fact about this window. */
+        note.textContent = 'Could not read the layer sheet: ' + got.error
+                         + '. No bands are drawn \u2014 that is not "no '
+                         + 'layers", it is "could not ask".';
+      } else {
+        note.textContent = st === 'blank'
+          ? 'This recording has a layer sheet, but no channel in it is '
+            + 'labelled yet, so there is nothing to draw. Label it in '
+            + 'StrataScope, from the ToolKit.'
+          : 'No layer sheet for this recording. Label one in StrataScope, '
+            + 'from the ToolKit, and the bands turn up here.';
+      }
+    };
+
+    fill(layerCache.get(gid) || { state: gid ? 'loading' : 'nogid' });
+    // The menu can be closed and rebuilt while this is in flight; writing
+    // into a detached node is harmless, and the next open reads the cache.
+    if (gid && !layerCache.has(gid)) layerLook(gid).then(fill);
+
+    return el('div', { class: 'ctl-pop-group', id: 'layerGroup' }, [
+      el('div', { class: 'ctl-pop-title',
+                  text: 'Layers \u2014 StrataScope bands, read-only' }),
+      row, note, legend,
+    ]);
+  }
+
   function morePop(index, pane, sess) {
     const rows = [];
 
@@ -3103,6 +3674,10 @@ BARRY.views.xplore = (function () {
               + 'has no events in it. The pane header says so while this is on.'
             : 'Marks are FADED. They are all still there, and still in the '
               + 'counts \u2014 just quiet enough to be missed.') }));
+
+    /* Under Marks, because it is the same kind of switch: what this pane
+       draws over the data rather than what the data is. */
+    rows.push(layerGroup(index, sess, choose));
 
     rows.push(popRow(sess.events.length
       ? 'Events \u2014 ' + sess.events.length + ' loaded'
@@ -7062,6 +7637,30 @@ BARRY.views.xplore = (function () {
       reportClientError('alignChannelRows', err.message, err.stack);
     }
 
+    /* The layer bands go down first -- under the grid, the marks and the
+       traces. Same reasoning as the image panels: a band is background, and
+       an event line drawn under one is a mark you cannot see.
+
+       The stamp is set whether or not a band is drawn, because it is what
+       tells the BARRY.strata.draw hook at the end of this function -- which
+       runs after the marks -- that this canvas has had its turn.
+
+       Lanes come from win.series, not from the sheet's channel list: this
+       pane draws one lane per TICKED channel, so a 64-channel sheet laid
+       over it would be off by however many are unticked. */
+    canvas.__layerBandsDrawn = true;
+    if (sess.layerView && !(BARRY.strata && BARRY.strata.active)) {
+      // Re-asserted because leaving StrataScope deletes this flag
+      // (strata.js:163), and the image panels are gated on it.
+      if (!sess.strata) {
+        sess.strata = { gid: sess.layerView.gid,
+                        labels: sess.layerView.labels,
+                        regions: sess.layerView.regions };
+      }
+      drawLayerBands(ctx, sess, win.series.map((x) => x.number),
+                     padL, plotW, padTop, plotH);
+    }
+
     const ticks = niceTicks(win.t0, win.t1, Math.max(2, Math.floor(plotW / 100)));
     ctx.strokeStyle = P.grid; ctx.lineWidth = 1;
     ctx.font = '9px ' + MONO; ctx.fillStyle = P.dim; ctx.textAlign = 'center';
@@ -7358,6 +7957,64 @@ BARRY.views.xplore = (function () {
     return m;
   }
 
+  /* The band-power line on the overview strip.
+
+     Drawn in log10 for 'abs' and 'vs delta' and linearly for 'relative'.
+     Absolute band power on CSC1 of M1ptens2oct2 runs 359 to 2616 uV^2
+     between the 5th and 95th percentile -- a factor of seven, which on a
+     linear 24 px strip puts nine tenths of the recording in the bottom
+     third. 'Relative' is already a fraction of a whole and has no such
+     spread, so a log there would only make a share of 20% look dramatic.
+
+     Scaled to the 2nd/98th percentile rather than min/max: one artifact bin
+     is enough to flatten the entire rest of the line against the floor, and
+     the strip exists to show where the band is high through the recording,
+     not to give a single bin its correct height. */
+  function drawStripBand(ctx, sess, w, top, bot) {
+    if ((sess.stripMode || 'amp') !== 'band') return;
+    const v = stripSeries(sess);
+    if (!v) { loadOverviewBand(sess); return; }
+
+    const logged = (sess.stripMeasure || 'abs') !== 'rel';
+    const y = new Array(v.length);
+    const fin = [];
+    for (let i = 0; i < v.length; i++) {
+      const raw = v[i];
+      if (raw === null || !isFinite(raw) || (logged && raw <= 0)) {
+        y[i] = null;
+      } else {
+        y[i] = logged ? Math.log10(raw) : raw;
+        fin.push(y[i]);
+      }
+    }
+    if (fin.length < 2) return;
+    fin.sort((a, b) => a - b);
+    const at = (q) => fin[Math.max(0, Math.min(fin.length - 1,
+                                               Math.round(q * (fin.length - 1))))];
+    let lo = at(0.02), hi = at(0.98);
+    if (!(hi > lo)) { lo = fin[0]; hi = fin[fin.length - 1]; }
+    if (!(hi > lo)) { hi = lo + 1; }
+
+    const P = palette();
+    const bw = w / v.length;
+    const h = (bot - top) * 0.92;
+    ctx.save();
+    ctx.strokeStyle = P.accent;
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath();
+    let pen = false;
+    for (let i = 0; i < v.length; i++) {
+      if (y[i] === null) { pen = false; continue; }   // a gap is not a zero
+      const frac = Math.max(0, Math.min(1, (y[i] - lo) / (hi - lo)));
+      const py = bot - frac * h;
+      if (pen) ctx.lineTo(i * bw, py); else ctx.moveTo(i * bw, py);
+      pen = true;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   /* ---------- minimap ---------- */
   function drawMini(index, pane, sess) {
     const c = pane._mini;
@@ -7413,7 +8070,11 @@ BARRY.views.xplore = (function () {
         const avg = (ov.mabs && ov.mabs.length === ov.bins) ? ov.mabs : ov.rms;
         let rpeak = 0;
         for (const v of avg) rpeak = Math.max(rpeak, v);
-        if (rpeak > 0) {
+        // Not both lines at once. Two traces on a 40 px strip in a
+        // screenshot with no legend is two unlabelled lines; the min/max
+        // envelope behind them stays either way, so position is still
+        // readable when the amplitude line steps aside for the band one.
+        if (rpeak > 0 && (sess.stripMode || 'amp') !== 'band') {
           ctx.globalAlpha = .8;
           ctx.strokeStyle = P.dim;
           ctx.lineWidth = 1;
@@ -7426,8 +8087,13 @@ BARRY.views.xplore = (function () {
         }
         ctx.globalAlpha = 1;
       }
+      drawStripBand(ctx, sess, w, top, bot);
     } else {
       loadOverview(sess);
+      // The amplitude probe is a fraction of a second per bin and the band
+      // profile reads the whole file, so the slow one must not wait on the
+      // quick one having arrived.
+      if ((sess.stripMode || 'amp') === 'band') drawStripBand(ctx, sess, w, 3, h - 13);
     }
 
     /* Curation candidates along the whole recording, so the strip shows
@@ -7496,9 +8162,26 @@ BARRY.views.xplore = (function () {
     ctx.textAlign = 'left'; ctx.fillText('0', 3, h - 3);
     ctx.textAlign = 'right'; ctx.fillText(fmtTime(dur), w - 3, h - 3);
     ctx.textAlign = 'center';
+    /* What the line is, on the strip itself. A screenshot of a theta
+       profile that does not say 4-12 Hz, or does not say whether it is
+       power or a share of it, is a picture nobody can put in a figure --
+       and the control that set it is three clicks away in a popover. */
+    const band = (sess.stripMode || 'amp') === 'band' ? sess.overviewBand : null;
+    /* The measure comes off the SESSION, not off the payload. All three
+       series arrive together and switching between them never refetches, so
+       `overviewBand.measure` is whichever one happened to be asked for
+       first -- writing that on the strip would label a relative-power line
+       "power" from the second click onwards. */
+    const bandWord = (sess.stripMode || 'amp') !== 'band' ? null
+      : (stripSeries(sess)
+         ? trimNum(band.band.lo) + '–' + trimNum(band.band.hi) + ' Hz '
+           + measureWord(sess)
+         : (sess.overviewBandErr ? 'band: ' + sess.overviewBandErr
+                                 : 'reading band power…'));
     ctx.fillText(fmtTime(sess.t0) + ' → ' + fmtTime(sess.t0 + sess.span)
                  + (sess.events.length ? '  ·  ' + sess.events.length + ' events' : '')
-                 + (ov && ov.channel ? '  ·  ' + ov.channel.label : ''),
+                 + (ov && ov.channel ? '  ·  ' + ov.channel.label : '')
+                 + (bandWord ? '  ·  ' + bandWord : ''),
                  w / 2, h - 3);
   }
 

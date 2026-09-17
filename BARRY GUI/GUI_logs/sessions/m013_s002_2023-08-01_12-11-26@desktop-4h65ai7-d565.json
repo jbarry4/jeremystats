@@ -29,8 +29,8 @@
     "schema": "2026-09-04T15:57:01.661821+00:00",
     "session": "2026-09-04T15:57:01.661821+00:00",
     "start": "2026-09-04T15:57:01.661821+00:00",
-    "updated": "2026-09-14T18:41:11.163758+00:00",
-    "view_state": "2026-09-10T18:15:31.346177+00:00"
+    "updated": "2026-09-16T20:44:41.042616+00:00",
+    "view_state": "2026-09-16T20:44:41.042616+00:00"
   },
   "_keys": {
     "paths": {
@@ -78,16 +78,16 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T18:41:11.163758+00:00"
+        "2026-09-16T20:43:42.512082+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:47.212073+00:00"
+        "2026-09-14T14:10:04.157321+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T18:41:11.163758+00:00",
+    "at": "2026-09-16T20:44:41.042616+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -171,26 +171,28 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T14:41:11-04:00",
+      "at": "2026-09-16T16:43:42-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_f143e6c51b"
+      "root": null,
+      "scan": null
     },
     "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:47-04:00",
-      "by": "Shahriar Tafti",
-      "machine": "Bluebarry",
+      "at": "2026-09-14T10:10:04-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M13_s2\\2023-08-01_12-11-26",
       "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 2,
   "start": "2023-08-01T12:11:26",
   "updated": {
-    "at": "2026-09-14T14:41:11-04:00",
+    "app_version": "2026.09.16.5",
+    "at": "2026-09-16T16:44:41-04:00",
+    "commit": "8ac9ca7",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -199,37 +201,69 @@
   },
   "view_state": {
     "channels": [
+      0,
       1,
+      2,
       3,
+      4,
       5,
+      6,
       7,
+      8,
       9,
+      10,
       11,
+      12,
       13,
+      14,
       15,
+      16,
       17,
+      18,
       19,
+      20,
       21,
+      22,
       23,
+      24,
       25,
+      26,
       27,
+      28,
       29,
+      30,
       31,
+      32,
       33,
+      34,
       35,
+      36,
       37,
+      38,
       39,
+      40,
       41,
+      42,
       43,
+      44,
       45,
+      46,
       47,
+      48,
       49,
+      50,
       51,
+      52,
       53,
+      54,
       55,
+      56,
       57,
+      58,
       59,
+      60,
       61,
+      62,
       63
     ],
     "clim": null,
@@ -237,17 +271,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 5,
+    "hp": 4,
     "invert": true,
-    "lp": 100,
+    "lp": 12,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 60,
+    "notch": 0,
     "probe": null,
     "spacing": 50,
-    "span": 1,
+    "span": 6,
     "stft_mode": null,
-    "t0": 1854.576,
+    "t0": 433.1867098566246,
     "ylim": null
   }
 }

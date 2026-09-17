@@ -574,6 +574,17 @@ STAGES = [
     # mixing twenty-minute and forty-minute recordings. Which session is
     # at which step is carried by `Job.members`, not by stages.
     ("panorama bulk", "seconds"),
+    # Offloaded to the VACC. These sit in FRONT of whatever the tool itself
+    # does, and they have to be declared here or `Job.begin` drops them
+    # without a word -- a run that works perfectly and shows no progress.
+    #
+    # `vacc queue` is in _NOLEARN as well as _FLAT: waiting in a queue is not
+    # a rate. It is seconds at three in the morning and hours before a
+    # deadline, and a running mean over the two is a number that describes
+    # neither.
+    ("vacc stage", "files"),
+    ("vacc queue", "jobs"),
+    ("vacc fetch", "files"),
 ]
 
 # Seconds per unit, measured on the machine this was built on: a 60 s window at
@@ -619,6 +630,15 @@ _RATES = {
     # and the fit about 65 ms a window at one window a second, so the
     # fit dominates and this is close to the two added together.
     "panorama bulk": 7.0e-2,      # per second of recording
+    # Offload. Seeds only, and deliberately poor ones: what a transfer costs
+    # depends on the share and what a queue costs depends on the cluster, so
+    # both are replaced by measurement on the first real run. They are here
+    # at all because `configure` drops any saved rate whose stage it does not
+    # recognise -- without a seed, what the cluster teaches would be thrown
+    # away on the next start.
+    "vacc stage": 2.0,            # per file moved
+    "vacc queue": 0.0,            # never learned; see _NOLEARN
+    "vacc fetch": 1.0,            # per file brought home
 }
 # Stages the per-megasample normalisation must NOT be applied to: either the
 # cost does not scale with the window at all (`draw` -- one picture, whatever
@@ -626,7 +646,11 @@ _RATES = {
 # spectrum's, counted in seconds of recording). Normalising those a second
 # time would make the estimate scale as the square of the window.
 _FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect",
-         "panorama windows", "panorama pool", "panorama bulk"}
+         "panorama windows", "panorama pool", "panorama bulk",
+         # Moving files and waiting in a queue do not cost more because the
+         # recording is longer -- they cost what the network and the cluster
+         # are doing at the time.
+         "vacc stage", "vacc queue", "vacc fetch"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -644,6 +668,32 @@ _RATES_LOCK = threading.Lock()
 # busier share at another site will be worse than this one.
 _PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
                "panorama bulk"}
+
+
+# Stages whose rate is never learned.
+#
+# Queue wait is not a rate. It is seconds at three in the morning and hours
+# before a deadline, and the same job submitted twice teaches two numbers an
+# order of magnitude apart -- so a running mean over it is not an estimate,
+# it is the average of two unrelated things. `eta` adds every stage to the
+# total from t=0, so this one would make the bar and the time-left wrong from
+# the first paint rather than settling as the run goes on.
+#
+# Slurm answers it properly anyway: `squeue --start` is its own estimate,
+# made from a queue it can see and this machine cannot.
+_NOLEARN = {"vacc queue"}
+
+
+def _is_remote(where):
+    """Did this run happen somewhere that is not this computer?
+
+    `volume_key` answers "which disk", which is the whole question while every
+    run is local. A run on the cluster is a different machine -- different
+    cores, different filesystem, different Python -- so its seconds-per-unit
+    is not a measurement of this computer at all, and folding the two together
+    corrupts both directions at once.
+    """
+    return bool(where) and str(where).startswith("vacc:")
 
 
 def volume_key(path):
@@ -667,8 +717,14 @@ def volume_key(path):
 
 
 def _key(stage, where):
-    """The rates-table key for a stage on a volume."""
-    if where and stage in _PER_VOLUME:
+    """The rates-table key for a stage on a volume.
+
+    Per volume for the reading stages, because the disk is where the evidence
+    is -- and for EVERY stage when the run was not on this computer, because
+    arithmetic is arithmetic only for as long as it is the same processor
+    doing it.
+    """
+    if where and (stage in _PER_VOLUME or _is_remote(where)):
         return "%s @ %s" % (stage, where)
     return stage
 
@@ -774,13 +830,24 @@ def _learn(stage, seconds, units, msamples=1.0, where=None):
     """
     if units <= 0 or seconds <= 0:
         return
+    if stage in _NOLEARN:
+        return
     denom = units * (1.0 if stage in _FLAT else max(msamples, 1e-6))
     with _RATES_LOCK:
         rate = seconds / denom
         # The volume-blind rate as well as the per-volume one, so a drive
         # nobody has run on yet is quoted something measured rather than the
         # figure this file shipped with.
-        for k in {stage, _key(stage, where)}:
+        #
+        # Not off this computer, though. `_key` namespaces every stage for a
+        # remote run, but the bare name is in that set too and writing it as
+        # well would be a second, silent fold: three cluster runs and this
+        # machine's own `ds detect` estimate quotes the cluster, at 0.3
+        # weight a time, taking about ten local runs to wash back out. The
+        # measurement is true. It is true about somewhere else.
+        keys = ({_key(stage, where)} if _is_remote(where)
+                else {stage, _key(stage, where)})
+        for k in keys:
             was = _RATES.get(k)
             _RATES[k] = rate if not was else (0.7 * was + 0.3 * rate)
         if not _RATES_PATH:
@@ -800,7 +867,7 @@ class Canceled(Exception):
 
 
 class Job:
-    def __init__(self, spec, plan, msamples=1.0, where=None):
+    def __init__(self, spec, plan, msamples=1.0, where=None, id=None):
         """`plan` is [(stage, units)] for the stages this run will actually do.
 
         `msamples` is how many megasamples the run works over, which is what
@@ -809,8 +876,15 @@ class Job:
         `where` is the volume the recording is on, so what this run teaches
         about reading is filed against the disk it read from -- about 1.6x
         between the share and local disk here, measured warm.
+
+        `id` is for a run this process did not start. A job on a cluster
+        outlives the app that submitted it, so after a restart there is
+        something still running and nothing here that represents it; a job
+        rebuilt around the id already written down is pollable on the URL the
+        browser is already holding. Minted when it is not given, which is
+        every run that starts here.
         """
-        self.id = uuid.uuid4().hex[:12]
+        self.id = id or uuid.uuid4().hex[:12]
         self.spec = spec
         self.status = "running"
         self.error = None
@@ -1049,9 +1123,15 @@ def exists(job_id):
         return bool(job_id) and job_id in _JOBS
 
 
-def start(spec, plan, work, msamples=1.0, where=None):
-    """Run `work(job)` in a thread. Returns the Job at once."""
-    job = Job(spec, plan, msamples, where)
+def adopt(job):
+    """Make a job pollable without starting it. Returns the job.
+
+    `start` mints a job and drives it; this only makes one visible, and whose
+    thread is driving it is the caller's business. A run that outlives the
+    process that submitted it needs the two halves apart: after a restart the
+    work is already happening somewhere else, and all this process has to do
+    is represent it on the URL the browser is still holding.
+    """
     with _JOBS_LOCK:
         # Oldest finished jobs first: a result somebody may still be looking at
         # is worth more than one they have forgotten.
@@ -1061,6 +1141,12 @@ def start(spec, plan, work, msamples=1.0, where=None):
             for old in spent[:max(1, len(_JOBS) - MAX_JOBS + 1)]:
                 _JOBS.pop(old.id, None)
         _JOBS[job.id] = job
+    return job
+
+
+def start(spec, plan, work, msamples=1.0, where=None):
+    """Run `work(job)` in a thread. Returns the Job at once."""
+    job = adopt(Job(spec, plan, msamples, where))
 
     def go():
         try:

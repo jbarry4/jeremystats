@@ -235,6 +235,15 @@
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
       </button>
+      <!-- VACC Mode. Hidden until the server says the cluster is configured,
+           the same way the cloud key only asks to be typed when there is
+           somewhere for it to go -- a switch for a machine you have no
+           account on is a switch that does nothing and says nothing. -->
+      <button class="chip-btn" id="vaccToggle"
+              title="VACC Mode — light the interface up while the cluster is live">
+        <svg viewBox="0 0 20 20"><path d="M10 2.5 5.5 11h3.2l-1.2 6.5L14.5 9h-3.2z"/></svg>
+        <span>VACC</span>
+      </button>
       <!-- Off by default, and the only thing in Jarvis that reaches the
            internet. It says so before it is turned on. -->
       <button class="chip-btn" id="radioBtn" title="A radio to work to">
@@ -681,6 +690,7 @@
 <script src="js/strata.js"></script>
 <script src="js/incisor.js"></script>
 <script src="js/panorama.js"></script>
+<script src="js/vacc.js"></script>
 <script src="js/cfcscope.js"></script>
 <script src="js/comod.js"></script>
 <script src="js/spectrum.js"></script>
