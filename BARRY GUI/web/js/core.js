@@ -2706,7 +2706,41 @@ function applyVacc(on, remember) {
   // Same three surfaces as a theme change: the tokens moved, and anything
   // holding a color it read earlier is now holding the wrong one.
   repaintThemedSurfaces();
+
+  /* And anything whose CONTENT depends on the mode, which a theme change
+     never had to care about.
+
+     VACC Mode does not only recolour: it adds the mark on a ToolKit tool
+     and the second button in Incisor's action row. Those are drawn when
+     their view last painted, so without this the switch appeared to do
+     nothing until you navigated away and came back -- the rail chip lit up
+     and the panel it was talking about did not. */
+  try {
+    const tk = BARRY.views.toolkit;
+    if (tk && typeof tk.render === 'function' && BARRY.state.view === 'toolkit') {
+      tk.render();
+    }
+    if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
+      BARRY.incisor.paint();
+    }
+  } catch (e) { /* a repaint must never take the switch down with it */ }
 }
+
+/* Other windows of the same app, told without being polled.
+
+   A pop-out gets `?vacc=` when it opens and then knows nothing more, so
+   turning the mode off in the main window left every open pane still lit.
+   `localStorage` already carries the value for the no-flash first paint,
+   and the `storage` event fires in every OTHER window of this origin when
+   it changes -- so the sync costs one listener and no traffic.
+
+   `remember: false` on the way back in, or two windows would write the same
+   preference to the shared store in a loop. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.vacc') return;
+  const on = e.newValue === '1';
+  if (on !== BARRY.state.vacc) applyVacc(on, false);
+});
 
 function vaccForThisMachine() {
   const host = ((BARRY.state.catalog || {}).system || {}).hostname;

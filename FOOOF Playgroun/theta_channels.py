@@ -62,9 +62,14 @@ Not as 32 overlaid lines. The layout here is:
                             strongest, and where the gamma is.
   per-channel profiles      theta power, peak frequency and exponent against
                             channel number, i.e. against depth.
-  agreement matrix          channel-by-channel correlation of the theta time
-                            course. Blocks are layers; a lone dark row is a
-                            channel that agrees with nobody.
+  three matrices            the same 496 pairs asked three questions:
+                            CORRELATION of the theta envelope (do they wax
+                            and wane together over seconds), COHERENCE at
+                            theta (are they the same oscillation cycle to
+                            cycle), and cross-spectral PHASE (which side of
+                            the dipole each one is on). See cross_spectra()
+                            for why all three are needed -- they disagree,
+                            and the disagreements are the findings.
 
 Run:
   python theta_channels.py
@@ -144,6 +149,74 @@ def screen_channels(sigs, nums):
                 reasons[n] = "amplitude %.0f uV, %+.1f SD from the others" \
                     % (sd[i], dev)
     return good, sd, reasons
+
+
+def cross_spectra(sigs, fs, nperseg):
+    """Coherence and cross-spectral phase between every pair of channels.
+
+    WHY BOTH THIS AND CORRELATION
+    -----------------------------
+    They are different questions and they can disagree, which is the useful
+    part.
+
+    CORRELATION, as used above, is Pearson r between two channels' theta
+    POWER TIME COURSES -- the z traces, one value per second. It asks: do
+    these two channels get strong and weak together over seconds? It is an
+    envelope measure. It knows nothing about phase, and it cannot tell a
+    rhythm from a slow drift in amplitude.
+
+    COHERENCE is computed on the raw signals, frequency by frequency:
+
+        Cxy(f) = |Pxy(f)|^2 / (Pxx(f) Pyy(f))
+
+    It asks: at 5 Hz, do these channels hold a CONSTANT PHASE RELATIONSHIP
+    cycle to cycle? That is the question "are these two the same oscillation",
+    and correlation cannot answer it at all.
+
+    THE TRAP, and the reason phase is returned alongside: the MAGNITUDE of
+    coherence is blind to what the phase actually is. Two channels 180
+    degrees apart are perfectly coherent -- |Cxy| = 1. So on a probe
+    spanning the hippocampal fissure, the channels above and below it, which
+    are inverted with respect to each other, look maximally coherent and
+    maximally similar. Coherence alone would call that one population. The
+    ANGLE of Pxy is what finds the reversal, and it is the measurement that
+    locates the dipole.
+
+    THE OTHER TRAP: coherence is inflated by volume conduction and by a
+    shared reference. Two nearby contacts on a common reference are coherent
+    whether or not anything is interacting. High coherence on a dense probe
+    is the null expectation, not a finding -- so what is worth reading here
+    is the STRUCTURE of the matrix, not its level.
+
+    Computed from one STFT per channel rather than a pairwise loop: the
+    segment spectra are the same ones every pair needs, so computing them
+    496 times over would be 496 times the work for the same numbers.
+    """
+    from scipy.signal import stft
+
+    x = np.array([np.nan_to_num(s, nan=0.0) for s in sigs], dtype=float)
+    f, _t, Z = stft(x, fs=fs, nperseg=nperseg, noverlap=nperseg // 2, axis=-1)
+    # Z: channels x freqs x segments.  S: channels x channels x freqs
+    S = np.einsum("ift,jft->ijf", Z, np.conj(Z)) / Z.shape[-1]
+    p = np.real(np.einsum("iif->if", S))
+    denom = p[:, None, :] * p[None, :, :]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        coh = np.abs(S) ** 2 / np.where(denom > 0, denom, np.nan)
+    return f, np.clip(np.nan_to_num(coh), 0, 1), S
+
+
+def band_coherence(f, coh, S, band):
+    """Collapse to one number per pair: mean coherence, and mean phase.
+
+    Coherence is averaged over the band. Phase is taken as the angle of the
+    band-SUMMED cross-spectrum rather than the mean of per-bin angles,
+    because angles do not average -- the bins where there is power should
+    dominate, and summing the complex cross-spectrum does that for free.
+    """
+    sel = (f >= band[0]) & (f <= band[1])
+    c = np.nanmean(coh[:, :, sel], axis=2)
+    ph = np.angle(S[:, :, sel].sum(axis=2))
+    return c, np.degrees(ph)
 
 
 def _runs(ch):
@@ -256,7 +329,11 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--folder", default=FOLDER)
-    ap.add_argument("--t0", type=float, default=200.0, help="window start (s)")
+    # 60-160 s on PTEN M1 s2 spans the 1:08-1:55 theta bout AND the quiet
+    # stretch after it. That matters: z is measured against the snippet, so a
+    # window containing only one state has a flat z however much theta is in
+    # it. A snippet for this analysis wants a state CHANGE in it.
+    ap.add_argument("--t0", type=float, default=60.0, help="window start (s)")
     ap.add_argument("--dur", type=float, default=100.0, help="window length (s)")
     ap.add_argument("--all", action="store_true",
                     help="every channel, not only the even ones")
@@ -336,6 +413,11 @@ def main():
     mean_pxx = np.nanmean(pxx_all, axis=1)           # freq x channel
     prof = fit_mean_spectra(freqs, mean_pxx, [args.fit_lo, args.fit_hi], mode)
 
+    # ---- coherence and phase, on the raw signals ----
+    fc, coh_f, S = cross_spectra([sigs[i] for i in keep], fs,
+                                 int(round(args.sub * fs)))
+    coh, phase = band_coherence(fc, coh_f, S, THETA)
+
     # ---- does pooling these channels even make sense? ----
     cc = np.corrcoef(zz.T)
     grp, sep = channel_groups(cc, nums_ok)
@@ -412,6 +494,23 @@ def main():
             if v.size:
                 print("  %-21s %8.2f %-5s  spread %.2f  (%d/%d channels)"
                       % (lab, np.median(v), unit, np.std(v), v.size, len(keep)))
+        # THETA_CF is a hard window on where a peak is allowed to count as
+        # theta. When the rhythm sits on its edge, the constrained detector
+        # rejects most channels while the unconstrained one finds the peak
+        # on all of them -- and the "theta peak frequency" line above then
+        # describes a minority of the probe without saying so.
+        n_cf = int(np.isfinite(prof["theta_cf"]).sum())
+        in_theta = int(np.sum((prof["dom_all"] >= THETA[0])
+                              & (prof["dom_all"] <= THETA[1])))
+        if in_theta - n_cf > 0.25 * len(keep):
+            print("  WARNING: the loudest rhythm is inside 4-12 Hz on %d "
+                  "channels but only %d\n    got a fitted 'theta peak'. "
+                  "THETA_CF is %g-%g Hz and the rhythm is at %.2f,\n    so "
+                  "the bound is clipping it. Trust the 'loudest rhythm' row, "
+                  "not the\n    'theta peak' row, or widen THETA_CF."
+                  % (in_theta, n_cf, THETA_CF[0], THETA_CF[1],
+                     np.nanmedian(prof["dom_all"])))
+
         nb = [band_of(f) for f in prof["dom_all"]]
         names, counts = np.unique(nb, return_counts=True)
         print("  loudest rhythm sat in: "
@@ -431,16 +530,81 @@ def main():
                      np.nanmedian(prof["exponent"][sel]),
                      np.nanmedian(prof["theta_pw"][sel])))
 
-    # Agreement between channels: does the theta time course look the same
-    # everywhere? This is the number that says whether pooling was justified.
+    # Two different questions about the same pairs of channels.
     iu = np.triu_indices(len(keep), 1)
-    print("  pairwise correlation of the theta trace: median r = %+.2f "
-          "(%.0f%% of pairs above 0.5)"
+    print("\n  CROSS-CHANNEL, two ways (they answer different questions)")
+    print("    correlation of theta ENVELOPE (do they wax and wane together,"
+          " over seconds)")
+    print("      median r = %+.2f, %.0f%% of pairs above 0.5"
           % (np.median(cc[iu]), 100.0 * np.mean(cc[iu] > 0.5)))
+    print("    coherence at %g-%g Hz (are they the SAME OSCILLATION, cycle "
+          "to cycle)" % THETA)
+    print("      median coh = %.2f, %.0f%% of pairs above 0.5"
+          % (np.median(coh[iu]), 100.0 * np.mean(coh[iu] > 0.5)))
+    print("      (dense probe + shared reference inflates this -- read the "
+          "structure, not the level)")
+
+    # The measurement coherence magnitude cannot make. |Cxy| is 1 for a pair
+    # 180 degrees apart just as it is for a pair in phase, so a dipole
+    # reversal is invisible in the coherence matrix and obvious here.
+    ph = phase[iu]
+    n_flip = int(np.sum(np.abs(ph) > 90))
+    print("    cross-spectral PHASE at theta (which coherence magnitude "
+          "cannot see)")
+    print("      %d of %d pairs are more than 90 deg apart (%.0f%%)"
+          % (n_flip, len(ph), 100.0 * n_flip / len(ph)))
+    if n_flip > 0.05 * len(ph):
+        # Where along the probe does it flip? Referenced to the channel with
+        # the most theta power, which is the one nearest the source.
+        # Referenced to the FIRST channel, not the strongest. An end of the
+        # probe is a fixed point on one side of the dipole, so the profile
+        # runs monotonically through the reversal and every crossing shows.
+        # Seeding on the strongest channel puts the reference near the
+        # dipole's own null, where the phase is least stable, and the
+        # crossings it reports then move with the noise.
+        rel = phase[0]
+        flipped = np.abs(rel) > 90
+        edges = [nums_ok[i] for i in range(1, len(nums_ok))
+                 if flipped[i] != flipped[i - 1]]
+        print("      relative to CSC%d (one end of the probe), the phase "
+              "crosses 90 deg at: %s"
+              % (nums_ok[0], ", ".join("CSC%d" % e for e in edges) or "nowhere"))
+        print("      phase by channel: "
+              + " ".join("%d:%+.0f" % (nums_ok[i], rel[i])
+                         for i in range(0, len(nums_ok),
+                                        max(1, len(nums_ok) // 10))))
+        print("      -> a theta dipole reversal. Channels either side of "
+              "that are NOT\n         interchangeable, and averaging their "
+              "raw signals would cancel them.")
+    else:
+        print("      no reversal: every channel is within 90 deg of every "
+              "other, so this\n      probe span sits on one side of the "
+              "dipole.")
+
     worst = np.argsort(np.nanmean(cc, axis=1))[:3]
-    print("  least typical channels: "
+    print("    least typical channels (envelope): "
           + ", ".join("CSC%d (mean r %+.2f)" % (nums_ok[w], np.nanmean(cc[w]))
                       for w in worst))
+
+    # Where the two measures disagree is where something interesting is.
+    # Each direction is checked on its own: with correlation near 1 for every
+    # pair, the "most positive" difference can easily be 0.03, and printing
+    # that as a disagreement would be inventing one.
+    dis = coh[iu] - np.abs(cc[iu])
+    hi, lo = int(np.argmax(dis)), int(np.argmin(dis))
+    if dis[hi] > 0.3 or dis[lo] < -0.3:
+        print("    biggest disagreements:")
+    if dis[hi] > 0.3:
+        print("      CSC%d-CSC%d  coh %.2f but r %+.2f -- locked in phase, "
+              "but their\n        amplitudes move independently"
+              % (nums_ok[iu[0][hi]], nums_ok[iu[1][hi]], coh[iu][hi],
+                 cc[iu][hi]))
+    if dis[lo] < -0.3:
+        print("      CSC%d-CSC%d  coh %.2f but r %+.2f -- envelopes track "
+              "each other\n        without a fixed phase: a shared input, "
+              "not a shared rhythm"
+              % (nums_ok[iu[0][lo]], nums_ok[iu[1][lo]], coh[iu][lo],
+                 cc[iu][lo]))
 
     if args.csv:
         with open(args.csv, "w", newline="") as fh:
@@ -462,7 +626,8 @@ def main():
         os.path.basename(args.folder.rstrip("\\/")), len(keep),
         args.t0, args.t0 + args.dur)
     fig = plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
-                        prof, meas, nums_ok, epochs, grp, sep, args, title)
+                        coh, phase, fc, coh_f, prof, meas, nums_ok, epochs,
+                        grp, sep, args, title)
     if args.save:
         fig.savefig(args.save, dpi=125, bbox_inches="tight")
         print("  wrote " + args.save)
@@ -475,14 +640,15 @@ GRP_COLORS = ["#1f77b4", "#d62728", "#2ca02c", "#ff7f0e"]
 
 
 def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
-                  prof, meas, nums, epochs, grp, sep, args, title):
+                  coh, phase, fc, coh_f, prof, meas, nums, epochs, grp, sep,
+                  args, title):
     nch = len(nums)
     n_grp = len(np.unique(grp))
     ext_t = [times[0], times[-1], -0.5, nch - 0.5]
-    fig = plt.figure(figsize=(15, 17))
-    gs = fig.add_gridspec(4, 6, height_ratios=[1.5, 0.8, 1.5, 1.3],
-                          hspace=0.42, wspace=0.75,
-                          left=0.06, right=0.97, top=0.955, bottom=0.05)
+    fig = plt.figure(figsize=(15, 24))
+    gs = fig.add_gridspec(6, 6, height_ratios=[1.5, 0.8, 1.35, 1.5, 1.3, 1.3],
+                          hspace=0.5, wspace=0.75,
+                          left=0.06, right=0.97, top=0.965, bottom=0.035)
 
     def chan_ticks(ax):
         step = max(1, nch // 16)
@@ -511,23 +677,22 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
                  fontsize=10)
     fig.colorbar(im, ax=ax, pad=0.01, label="robust z")
 
-    # -- 2. do the channels agree with each other
-    ax = fig.add_subplot(gs[0, 4:])
-    im = ax.imshow(cc, cmap="viridis", vmin=0, vmax=1, origin="lower",
-                   interpolation="nearest")
-    chan_ticks(ax)
-    ax.set_xticks(ax.get_yticks())
-    ax.set_xticklabels(ax.get_yticklabels(), rotation=90)
-    ax.set_xlim(-0.5, nch - 0.5)
-    for i in range(1, nch):
-        if grp[i] != grp[i - 1]:
-            ax.axhline(i - 0.5, color="lime", lw=1.2)
-            ax.axvline(i - 0.5, color="lime", lw=1.2)
-    ax.set_title("agreement: correlation of the theta\ntrace between "
-                 "channels (%s, separation %.2f)"
-                 % ("2 populations" if n_grp > 1 else "one population", sep),
-                 fontsize=10)
-    fig.colorbar(im, ax=ax, pad=0.02, label="r")
+    def matrix_panel(slot, M, cmap, vmin, vmax, title, cbar):
+        ax = fig.add_subplot(slot)
+        im = ax.imshow(M, cmap=cmap, vmin=vmin, vmax=vmax, origin="lower",
+                       interpolation="nearest")
+        chan_ticks(ax)
+        ax.set_xticks(ax.get_yticks())
+        ax.set_xticklabels([t.get_text() for t in ax.get_yticklabels()],
+                           rotation=90, fontsize=7)
+        ax.set_xlim(-0.5, nch - 0.5)
+        for i in range(1, nch):
+            if grp[i] != grp[i - 1]:
+                ax.axhline(i - 0.5, color="lime", lw=1.2)
+                ax.axvline(i - 0.5, color="lime", lw=1.2)
+        ax.set_title(title, fontsize=9.5)
+        fig.colorbar(im, ax=ax, pad=0.02, label=cbar)
+        return ax
 
     # -- 3. the consensus, one per population
     ax = fig.add_subplot(gs[1, :4])
@@ -548,8 +713,8 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
     ax.set_title("consensus theta per population -- a median is a statement "
                  "about brain state, not field strength", fontsize=10)
 
-    # -- 3b. amplitude profile reminder (why raw power was not pooled)
-    ax = fig.add_subplot(gs[1, 4:])
+    # -- amplitude profile reminder (why raw power was not pooled)
+    ax = fig.add_subplot(gs[0, 4:])
     tp = np.nanmedian(meas["abs"], axis=0)
     ax.plot(tp, np.arange(nch), "-", color="#999999", lw=1, zorder=1)
     for g in range(n_grp):
@@ -564,8 +729,45 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
                  fontsize=9)
     ax.grid(alpha=0.3)
 
-    # -- 4. the laminar spectrum
-    ax = fig.add_subplot(gs[2, :3])
+    # -- coherence against frequency: is theta special, or is everything
+    #    coherent on this probe?
+    ax = fig.add_subplot(gs[1, 4:])
+    iu = np.triu_indices(nch, 1)
+    pair = coh_f[iu[0], iu[1], :]
+    ax.fill_between(fc, np.percentile(pair, 25, axis=0),
+                    np.percentile(pair, 75, axis=0), color="#ff7f0e",
+                    alpha=0.25, lw=0)
+    ax.plot(fc, np.median(pair, axis=0), color="#ff7f0e", lw=1.6,
+            label="median pair")
+    ax.axvspan(THETA[0], THETA[1], color="#17becf", alpha=0.15, lw=0)
+    ax.set_xscale("log")
+    ax.set_xlim(1, FMAX)
+    ax.set_xticks([1, 2, 4, 8, 12, 20, 40, 100])
+    ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+    ax.get_xaxis().set_minor_formatter(plt.NullFormatter())
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("frequency (Hz)")
+    ax.set_ylabel("coherence")
+    ax.legend(fontsize=7, loc="lower left")
+    ax.set_title("coherence against frequency, all pairs\n"
+                 "(shaded = theta)", fontsize=9.5)
+
+    # -- the three cross-channel views, side by side
+    matrix_panel(gs[2, 0:2], cc, "viridis", 0, 1,
+                 "ENVELOPE correlation\n(wax and wane together over seconds)"
+                 "\n%s, separation %.2f"
+                 % ("2 populations" if n_grp > 1 else "one population", sep),
+                 "r")
+    matrix_panel(gs[2, 2:4], coh, "viridis", 0, 1,
+                 "COHERENCE at %g-%g Hz\n(same oscillation, cycle to cycle)"
+                 "\nmedian %.2f -- read structure, not level"
+                 % (THETA[0], THETA[1], np.median(coh[iu])), "coherence")
+    matrix_panel(gs[2, 4:6], phase, "twilight_shifted", -180, 180,
+                 "cross-spectral PHASE at theta\n(what coherence magnitude "
+                 "cannot see)\nred/blue split = a dipole reversal", "degrees")
+
+    # -- the laminar spectrum
+    ax = fig.add_subplot(gs[3, :3])
     show = (freqs >= 1) & (freqs <= 60)
     im = ax.pcolormesh(freqs[show], np.arange(nch),
                        np.log10(mean_pxx[show].T), cmap="magma",
@@ -583,8 +785,8 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
                  "(the laminar profile; dotted = theta)", fontsize=10)
     fig.colorbar(im, ax=ax, pad=0.01, label="log10 power")
 
-    # -- 5. all spectra as lines, so the shape is visible
-    ax = fig.add_subplot(gs[2, 3:])
+    # -- all spectra as lines, so the shape is visible
+    ax = fig.add_subplot(gs[3, 3:])
     for c in range(nch):
         ax.plot(freqs, mean_pxx[:, c], lw=0.6, alpha=0.45,
                 color=plt.cm.viridis(c / max(1, nch - 1)))
@@ -603,13 +805,13 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
     ax.set_title("the same spectra as lines, coloured by channel\n"
                  "(shaded = theta)", fontsize=10)
 
-    # -- 6. the three depth profiles
+    # -- the three depth profiles
     panels = [("theta_cf", "theta peak (Hz)", "#17becf", None),
               ("exponent", "aperiodic exponent", "#9467bd", None),
               ("theta_pw", "theta peak height\n(log10 over 1/f)", "#d62728",
                None)]
     for k, (key, lab, col, _x) in enumerate(panels):
-        ax = fig.add_subplot(gs[3, 2 * k:2 * k + 2])
+        ax = fig.add_subplot(gs[4, 2 * k:2 * k + 2])
         v = prof[key]
         ax.plot(v, np.arange(nch), "-", lw=1, color="#bbbbbb", zorder=1)
         for g in range(n_grp):
@@ -631,7 +833,51 @@ def plot_channels(freqs, times, pxx_all, mean_pxx, zz, cons_by, cc,
         ax.grid(alpha=0.3)
         ax.set_xlabel(lab.split("\n")[0])
 
-    fig.suptitle(title, y=0.985, fontsize=12)
+    # -- the classic depth profile: theta phase and coherence against a
+    #    fixed end of the probe. This is how a fissure gets located.
+    rel_ph = phase[0]
+    rel_co = coh[0]
+    ax = fig.add_subplot(gs[5, 0:3])
+    ax.plot(rel_ph, np.arange(nch), "o-", ms=4, lw=1.2, color="#8c564b")
+    ax.axvline(0, color="k", lw=0.9)
+    for v in (-90, 90):
+        ax.axvline(v, color="#999999", lw=0.8, ls=":")
+    cross = [i for i in range(1, nch)
+             if (abs(rel_ph[i]) > 90) != (abs(rel_ph[i - 1]) > 90)]
+    for i in cross:
+        ax.axhline(i - 0.5, color="lime", lw=1.4)
+        ax.text(ax.get_xlim()[1], i - 0.5, " CSC%d" % nums[i], fontsize=7,
+                va="center", color="green")
+    chan_ticks(ax)
+    ax.set_xlim(-185, 185)
+    ax.set_xticks([-180, -90, 0, 90, 180])
+    ax.set_xlabel("theta phase relative to CSC%d (deg)" % nums[0])
+    ax.set_ylabel("channel")
+    ax.grid(alpha=0.3)
+    ax.set_title("THETA PHASE AGAINST DEPTH -- where this crosses +-90 the\n"
+                 "dipole reverses, and the two sides are not interchangeable",
+                 fontsize=9.5)
+
+    ax = fig.add_subplot(gs[5, 3:6])
+    ax.plot(rel_co, np.arange(nch), "o-", ms=4, lw=1.2, color="#ff7f0e")
+    for i in cross:
+        ax.axhline(i - 0.5, color="lime", lw=1.4)
+    chan_ticks(ax)
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("coherence with CSC%d" % nums[0])
+    ax.grid(alpha=0.3)
+    # Deliberately does NOT claim coherence stays high across the reversal.
+    # It may or may not: coherence also falls with distance, and on this
+    # recording it drops from 1.0 to 0.1 across the probe. The point is that
+    # whatever it does here, it is not reporting the reversal either way --
+    # |Cxy| is identical for 0 and 180 degrees, so the left panel is the one
+    # doing that work.
+    ax.set_title("coherence against depth, same reference.\n"
+                 "Whatever this does, it cannot show the reversal: |Cxy| is\n"
+                 "the same at 0 and 180 deg. The left panel is that "
+                 "measurement", fontsize=9.5)
+
+    fig.suptitle(title, y=0.988, fontsize=12)
     return fig
 
 

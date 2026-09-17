@@ -2525,7 +2525,13 @@ def api_incisor_estimate():
     key = incisormod.cache_key(spec, rep)
     return jsonify({
         "ok": True, "plan": plan, "spec": spec,
-        "cached": incisormod.cache_get(key) is not None,
+        # The vault as well as memory, because `/api/incisor/scan` consults
+        # both -- so checking only memory here told somebody a scan would
+        # take two minutes and then returned it instantly, or worse, offered
+        # to send a recording to the cluster that had already been answered
+        # on it. The two have to agree about what "cached" means.
+        "cached": (incisormod.cache_get(key) is not None
+                   or _incisor_recall(sess, key) is not None),
         # What the cluster would make of the same scan. On the ESTIMATE
         # rather than behind its own request, because "six minutes here,
         # forty seconds there" is the reason anybody presses the button and
@@ -2784,10 +2790,17 @@ def api_incisor_reviews():
             # re-enters the ordinary panel rather than needing a second way
             # to render a scan. The answer is already in the vault, so that
             # re-entry costs a cache hit and nothing else.
-            local, label = None, None
+            local, label, row = None, None, None
             for r2 in (REG.all() or []):
                 if r2.get("gid") != gid:
                     continue
+                # The whole registry row, because banking needs it. An entry
+                # without project/mouse/session files itself under "Unfiled"
+                # and cannot be found by the animal it came from -- which is
+                # the one thing a banked set has to be findable by.
+                row = {k: r2.get(k) for k in
+                       ("project", "mouse", "session", "key", "loose_key",
+                        "label", "duration_s", "cohort")}
                 # The registry's label, not the record's. A scan run in a
                 # batch never went through the panel, so `session_label` was
                 # never filled in and every row in the queue read as a bare
@@ -2802,13 +2815,20 @@ def api_incisor_reviews():
             rows.append({
                 "gid": gid,
                 "local": local,
+                "row": row,
                 "params_hash": rec.get("params_hash"),
                 "label": label or rec.get("session_label") or gid,
+                # NOT the per-channel summaries. Sixty-four of them per
+                # recording across thirty-one recordings is about two
+                # megabytes to draw a list of names, and the panel reads
+                # them out of the vault anyway the moment one is opened --
+                # the same argument `_incisor_public` already makes about
+                # `_rows`.
+                "n_summaries": len(rec.get("channels") or []),
                 # Where it was computed, which is NOT where it was filed.
                 # `computed` below carries the machine that accepted it.
                 "ran_on": ran.get("kind") or "here",
                 "slurm_id": ran.get("slurm_id"),
-                "channels": rec.get("channels") or [],
                 "picked": picked,
                 "hilus": (picked.get("hilus") or {}).get("index"),
                 "n_channels": rec.get("n_channels"),
@@ -2984,6 +3004,19 @@ def _incisor_run_array(job, tasks, failed, concurrency=None):
                     _incisor_remember(t["sess"], t["spec_local"], t["key"], out)
                     done += 1
                     job.member(t["gid"], status="done", step=None)
+                    # Let the answer go as soon as it is written down.
+                    #
+                    # A scan of sixty-four channels carries every event on
+                    # every one of them in `_rows`, and a batch of
+                    # twenty-eight holding all of those at once is what
+                    # killed the server the first time this ran in parallel:
+                    # no traceback, no error, the process simply gone. The
+                    # durable copy is on disk and the recent ones are in
+                    # incisor's own bounded cache; this reference is the
+                    # only unbounded one.
+                    out = None
+                    t["sess"] = None
+                    t["report"] = None
                 except Exception as exc:                 # noqa: BLE001
                     failed += 1
                     job.member(t["gid"], status="failed", step=None,

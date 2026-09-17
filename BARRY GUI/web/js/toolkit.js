@@ -2850,6 +2850,10 @@ BARRY.views.toolkit = (function () {
     registryRows: () => (((regCache.data) || {}).tree || [])
       .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
     tool: () => q.tool, onShow, refresh,
+    /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
+       to the tool row, and turning it on has to show up in the panel it is
+       talking about rather than at the next navigation. */
+    render,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

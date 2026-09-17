@@ -422,6 +422,13 @@ BARRY.incisor = (function () {
     }
     q.path = r.local;
     q.gid = r.gid;
+    /* The registry row travels with the review, and it is not decoration:
+       `bank` reads project, mouse and session off it, and an entry without
+       them files itself under "Unfiled" and can never be found by the
+       animal it came from. Opening a review is the only way into banking
+       that does not go through the session picker, so this is the only
+       place that row can come from. */
+    q.row = r.row || null;
     res = null;
     await refreshEstimate();
     // Comes back cached, out of the vault, on either machine's answer.
