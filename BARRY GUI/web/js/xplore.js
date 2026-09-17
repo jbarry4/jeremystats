@@ -120,10 +120,13 @@ BARRY.views.xplore = (function () {
       stripMode: 'amp',        // 'amp' | 'band'
       stripBand: { lo: 4, hi: 12 },
       stripMeasure: 'abs',     // 'abs' | 'rel' | 'ratio'
-      overviewBand: null,      // the band profile, once it has been asked for
-      overviewBandReq: false,
+      stripChans: null,        // channels the band line reads; null = the
+                               // first selected one, as it always was
+      stripNames: false,       // write each line's channel on the strip
+      overviewBands: {},       // channel -> band profile, once asked for
+      bandReq: {},             // channel -> the request in flight
+      bandErrKey: {},          // channel -> the request that failed
       overviewBandErr: null,
-      overviewBandErrKey: null,
       color: BARRY.hues(XF.order.length),
     };
 
@@ -1853,59 +1856,165 @@ BARRY.views.xplore = (function () {
      costs nothing server-side -- all three series come back together -- so
      it is deliberately NOT in the key: switching Power/Relative/vs delta is
      instant and offline. Only moving the band edges or the channel refetches. */
-  function bandKey(sess) {
-    const b = stripBand(sess);
-    return [firstSel(sess), b.lo, b.hi].join('|');
+  /* How many lines the strip will carry at once.
+
+     Ten is what was asked for, and about where the strip stops being
+     readable anyway: they share one 40 px band and one scale, so past
+     ten they are stacked hair-widths. */
+  const STRIP_MAX_CHANS = 10;
+
+  /* Ten colours that survive being a 1 px line on a dark strip.
+
+     Not BARRY.hues(): that is the theme's categorical ramp and the right
+     answer for four or fewer, but past four it wraps -- and two channels
+     drawn the same colour on the same axis is worse than drawing them in
+     no colour at all, because you cannot tell there are two. The first is
+     the cyan the single line has always been, so turning a second channel
+     on does not recolour the first. */
+  const STRIP_HUES = ['#4bc7f0', '#ffb81c', '#7ee081', '#ff8a7a',
+                      '#c58cf5', '#4ad9c0', '#ffd166', '#7aa5ff',
+                      '#ff6fd8', '#b0e04a'];
+  const stripHue = (i) => STRIP_HUES[i % STRIP_HUES.length];
+
+  const chanLabel = (sess, num) => {
+    const c = ((sess.info && sess.info.channels) || [])
+      .find((x) => x.number === num);
+    return c ? c.label : ('CSC' + num);
+  };
+
+  /* Which channels the band line is read from.
+
+     Unset means the first selected channel -- exactly what this read
+     before it could hold more than one, so a session that never touches
+     the control behaves as it always did. Filtered against the channels
+     the recording actually has: the list is saved with the session and
+     outlives the recording it was chosen on, and asking the server for a
+     channel that is not there is a 400 per repaint. */
+  function stripChans(sess) {
+    const have = new Set(((sess.info && sess.info.channels) || [])
+                         .map((c) => c.number));
+    const want = Array.isArray(sess.stripChans) ? sess.stripChans : null;
+    const out = [];
+    for (const n of (want && want.length ? want : [firstSel(sess)])) {
+      const v = Number(n);
+      if (!isFinite(v)) continue;
+      if (have.size && !have.has(v)) continue;
+      if (out.indexOf(v) < 0) out.push(v);
+      if (out.length >= STRIP_MAX_CHANS) break;
+    }
+    if (!out.length) out.push(firstSel(sess));
+    return out;
   }
 
-  async function loadOverviewBand(sess) {
-    const key = bandKey(sess);
-    if (sess.overviewBandReq === key) return;
-    if (sess.overviewBand && sess.overviewBand._key === key) return;
-    /* A failure has to stick to the request that caused it. This is called
-       from the paint, the paint is what reports the failure, and reporting
-       it repaints -- so without remembering WHICH request failed, a bad
-       band or an unreadable channel becomes an unbounded retry loop at
-       frame rate. Changing the band or the channel changes the key, which
-       is what makes the retry deliberate. */
-    if (sess.overviewBandErrKey === key) return;
-    sess.overviewBandReq = key;
-    sess.overviewBandErr = null;
+  /* One key per (channel, band). The measure is deliberately not in it:
+     all three series come back together, so switching Power / Relative /
+     vs delta is offline. */
+  function bandKeyFor(sess, ch) {
     const b = stripBand(sess);
-    try {
-      const res = await apiPost('/api/csc/overview', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
-        channel: firstSel(sess), bins: 700,
-        profile: 'band', band: { lo: b.lo, hi: b.hi },
-        measure: sess.stripMeasure || 'abs',
-      });
-      if (res && res.ok) {
-        res._key = key;
-        sess.overviewBand = res;
-        sess.overviewBandErrKey = null;
-      } else {
-        sess.overviewBandErr = (res && res.error) || 'No band profile.';
-        sess.overviewBandErrKey = key;
+    return [ch, b.lo, b.hi].join('|');
+  }
+
+  function bandKey(sess) {
+    return bandKeyFor(sess, stripChans(sess)[0]);
+  }
+
+  /* The first chosen channel's payload. The panel's note and the strip's
+     caption speak for the reading as a whole -- bins, resolution, what
+     was bridged out -- and those belong to the request, which is the
+     same for every channel in the set. */
+  const stripPrimary = (sess) =>
+    ((sess.overviewBands || {})[stripChans(sess)[0]] || null);
+
+  async function loadOverviewBand(sess) {
+    if (!sess.overviewBands) sess.overviewBands = {};
+    if (!sess.bandReq) sess.bandReq = {};
+    if (!sess.bandErrKey) sess.bandErrKey = {};
+    const b = stripBand(sess);
+    /* Whether anything actually moved.
+
+       The paint calls this whenever a line is missing, and a channel that
+       has failed for good stays missing -- so refreshing unconditionally
+       at the end would repaint, find it missing, call back here, and
+       refresh again, at frame rate, forever. */
+    let changed = false;
+    await Promise.all(stripChans(sess).map(async (ch) => {
+      const key = bandKeyFor(sess, ch);
+      const got = sess.overviewBands[ch];
+      if (got && got._key === key) return;
+      if (sess.bandReq[ch] === key) return;
+      /* A failure sticks to the request that caused it, for the same
+         reason. Changing the band or the channel changes the key, which
+         is what makes a retry deliberate. */
+      if (sess.bandErrKey[ch] === key) return;
+      sess.bandReq[ch] = key;
+      try {
+        const res = await apiPost('/api/csc/overview', {
+          path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+          channel: ch, bins: 700,
+          profile: 'band', band: { lo: b.lo, hi: b.hi },
+          measure: sess.stripMeasure || 'abs',
+        });
+        if (res && res.ok) {
+          res._key = key;
+          sess.overviewBands[ch] = res;
+          delete sess.bandErrKey[ch];
+          sess.overviewBandErr = null;
+        } else {
+          /* Named, because with ten lines "no band profile" does not say
+             which one went missing. */
+          sess.overviewBandErr = chanLabel(sess, ch) + ': '
+            + ((res && res.error) || 'no band profile');
+          sess.bandErrKey[ch] = key;
+        }
+      } catch (e) {
+        sess.overviewBandErr = chanLabel(sess, ch) + ': '
+          + String((e && e.message) || e);
+        sess.bandErrKey[ch] = key;
       }
-    } catch (e) {
-      sess.overviewBandErr = String((e && e.message) || e);
-      sess.overviewBandErrKey = key;
+      if (sess.bandReq[ch] === key) delete sess.bandReq[ch];
+      changed = true;
+    }));
+    if (changed) {
+      refreshSession(sess);
+      /* The panel says what the line cost and what its units are, and
+         says "reading the recording" until this lands. Without this it
+         goes on saying it with the answer already drawn behind it. */
+      repaintMenu();
     }
-    if (sess.overviewBandReq === key) sess.overviewBandReq = false;
+  }
+
+  /* Set the channels the line is read from, and go and get them. */
+  function setStripChans(index, sess, list) {
+    const out = [];
+    for (const n of (list || [])) {
+      const v = Number(n);
+      if (isFinite(v) && out.indexOf(v) < 0) out.push(v);
+      if (out.length >= STRIP_MAX_CHANS) break;
+    }
+    /* Never empty: an empty strip with the control still saying Band
+       power is a blank picture with no way to tell why. Taking the last
+       one off falls back to the selection, which is where this started. */
+    sess.stripChans = out.length ? out : null;
+    sess.stripMode = 'band';
+    relabelMenu(index, 'Strip', stripWord(sess));
+    loadOverviewBand(sess);
     refreshSession(sess);
-    /* The panel says what the line cost and what its units are, and says
-       "reading the recording" until this lands. Without this it goes on
-       saying it with the answer already drawn behind it. */
     repaintMenu();
   }
 
   /* The series the strip should draw, or null while it is still coming. */
-  function stripSeries(sess) {
-    const ob = sess.overviewBand;
-    if (!ob || ob._key !== bandKey(sess)) return null;
+  function stripSeriesFor(sess, ch) {
+    const ob = (sess.overviewBands || {})[ch];
+    if (!ob || ob._key !== bandKeyFor(sess, ch)) return null;
     const m = sess.stripMeasure || 'abs';
     const v = ob[m];
     return (v && v.length === ob.bins) ? v : null;
+  }
+
+  /* The first line, for the callers that only need to know whether there
+     is an answer yet. */
+  function stripSeries(sess) {
+    return stripSeriesFor(sess, stripChans(sess)[0]);
   }
 
   /* Which measure, in the fewest characters that still distinguish them --
@@ -1924,8 +2033,10 @@ BARRY.views.xplore = (function () {
     if ((sess.stripMode || 'amp') !== 'band') return 'amplitude';
     const b = stripBand(sess);
     const m = STRIP_MEASURES.find((o) => o.id === (sess.stripMeasure || 'abs'));
+    const n = stripChans(sess).length;
     return trimNum(b.lo) + '–' + trimNum(b.hi) + ' Hz '
-      + (m ? m.name.toLowerCase() : '');
+      + (m ? m.name.toLowerCase() : '')
+      + (n > 1 ? '  \u00b7 ' + n + ' ch' : '');
   }
 
   function setStripBand(index, sess, lo, hi) {
@@ -1943,8 +2054,10 @@ BARRY.views.xplore = (function () {
   function stripPop(index, sess) {
     const b = stripBand(sess);
     const mode = sess.stripMode || 'amp';
-    const ob = stripSeries(sess) ? sess.overviewBand : null;
-    const busy = !!sess.overviewBandReq;
+    const ob = stripSeries(sess) ? stripPrimary(sess) : null;
+    const chans = stripChans(sess);
+    const busy = Object.keys(sess.bandReq || {}).length > 0;
+    const PAL = palette();
 
     const seg = (value, options, onpick) => el('div', { class: 'ctl-seg' },
       options.map((o) => el('button', {
@@ -1985,6 +2098,72 @@ BARRY.views.xplore = (function () {
     ];
 
     if (mode === 'band') {
+      /* Which channels the line is read from.
+
+         Chips rather than a checklist against every channel: a 64-channel
+         probe would be a 64-row menu to answer a question that is almost
+         always about two or three of them. What is chosen is shown; what
+         is not is one dropdown away. */
+      rows.push(popRow('Channels \u2014 ' + chans.length + ' of '
+                       + STRIP_MAX_CHANS,
+        chans.map((ch, i) => el('button', {
+          class: 'mini strip-chip',
+          title: chans.length > 1
+            ? 'Stop reading ' + chanLabel(sess, ch)
+            : chanLabel(sess, ch) + ' \u2014 the only one, so there is'
+              + ' nothing to remove',
+          onclick: () => {
+            if (chans.length < 2) return;
+            setStripChans(index, sess,
+                          chans.filter((x) => x !== ch));
+          },
+        }, [
+          el('span', { class: 'strip-dot',
+            style: 'background:' + (chans.length > 1 ? stripHue(i)
+                                                     : PAL.accent) }),
+          el('span', { text: chanLabel(sess, ch) }),
+          chans.length > 1
+            ? el('span', { class: 'hint', text: '\u00d7' }) : null,
+        ]))));
+
+      const rest = ((sess.info && sess.info.channels) || [])
+        .filter((c) => chans.indexOf(c.number) < 0);
+      if (rest.length) {
+        rows.push(popRow(null, [
+          chans.length >= STRIP_MAX_CHANS
+            ? el('span', { class: 'hint',
+                text: 'Ten lines is the most this strip will carry. Take'
+                    + ' one off to add another.' })
+            : el('select', {
+                title: 'Read one more channel into the same strip',
+                onchange: (e) => {
+                  const v = Number(e.target.value);
+                  if (!isFinite(v) || !e.target.value) return;
+                  setStripChans(index, sess, chans.concat([v]));
+                },
+              }, [el('option', { value: '', text: 'Add a channel\u2026' })]
+                 .concat(rest.map((c) => el('option', {
+                   value: String(c.number), text: c.label })))),
+        ]));
+      }
+
+      /* Naming them costs room on a 40 px strip, so it is asked for rather
+         than assumed -- but a screenshot of five unlabelled coloured
+         lines is a picture nobody can put in a figure. */
+      rows.push(popRow('On the strip', [
+        seg(sess.stripNames ? 'named' : 'plain', [
+          { id: 'plain', name: 'Lines only',
+            why: 'Just the lines. The colours match the chips above' },
+          { id: 'named', name: 'Name each line',
+            why: 'Write the channel at the end of its own line, so a '
+               + 'screenshot says which is which' },
+        ], (v) => {
+          sess.stripNames = (v === 'named');
+          refreshSession(sess);
+          repaintMenu();
+        }),
+      ]));
+
       rows.push(popRow('Band (Hz)', [
         edge('lo', b.lo),
         el('span', { class: 'hint', text: 'to' }),
@@ -8185,46 +8364,96 @@ BARRY.views.xplore = (function () {
      not to give a single bin its correct height. */
   function drawStripBand(ctx, sess, w, top, bot) {
     if ((sess.stripMode || 'amp') !== 'band') return;
-    const v = stripSeries(sess);
-    if (!v) { loadOverviewBand(sess); return; }
+    const chans = stripChans(sess);
+    const series = chans.map((ch) => stripSeriesFor(sess, ch));
+    // Anything still missing is worth asking for; the loader decides
+    // what is already in flight or already failed for good.
+    if (series.some((s) => !s)) loadOverviewBand(sess);
+    const drawn = [];
+    for (let k = 0; k < chans.length; k++) {
+      if (series[k]) drawn.push({ ch: chans[k], v: series[k], i: k });
+    }
+    if (!drawn.length) return;
 
     const logged = (sess.stripMeasure || 'abs') !== 'rel';
-    const y = new Array(v.length);
+    /* One scale across every line, not one each.
+
+       The reason to put two channels on one strip is to compare them, and
+       a per-line scale would draw a weak channel and a strong one at the
+       same height -- the picture would say they were the same when the
+       numbers say one is ten times the other. */
     const fin = [];
-    for (let i = 0; i < v.length; i++) {
-      const raw = v[i];
-      if (raw === null || !isFinite(raw) || (logged && raw <= 0)) {
-        y[i] = null;
-      } else {
-        y[i] = logged ? Math.log10(raw) : raw;
-        fin.push(y[i]);
+    const ys = drawn.map(({ v }) => {
+      const y = new Array(v.length);
+      for (let i2 = 0; i2 < v.length; i2++) {
+        const raw = v[i2];
+        if (raw === null || !isFinite(raw) || (logged && raw <= 0)) {
+          y[i2] = null;                       // a gap is not a zero
+        } else {
+          y[i2] = logged ? Math.log10(raw) : raw;
+          fin.push(y[i2]);
+        }
       }
-    }
+      return y;
+    });
     if (fin.length < 2) return;
     fin.sort((a, b) => a - b);
     const at = (q) => fin[Math.max(0, Math.min(fin.length - 1,
-                                               Math.round(q * (fin.length - 1))))];
+                                   Math.round(q * (fin.length - 1))))];
     let lo = at(0.02), hi = at(0.98);
     if (!(hi > lo)) { lo = fin[0]; hi = fin[fin.length - 1]; }
     if (!(hi > lo)) { hi = lo + 1; }
 
     const P = palette();
-    const bw = w / v.length;
+    const many = drawn.length > 1;
     const h = (bot - top) * 0.92;
+    const ends = [];
     ctx.save();
-    ctx.strokeStyle = P.accent;
     ctx.lineWidth = 1.2;
-    ctx.globalAlpha = 0.95;
-    ctx.beginPath();
-    let pen = false;
-    for (let i = 0; i < v.length; i++) {
-      if (y[i] === null) { pen = false; continue; }   // a gap is not a zero
-      const frac = Math.max(0, Math.min(1, (y[i] - lo) / (hi - lo)));
-      const py = bot - frac * h;
-      if (pen) ctx.lineTo(i * bw, py); else ctx.moveTo(i * bw, py);
-      pen = true;
+    for (let k = 0; k < drawn.length; k++) {
+      const v = drawn[k].v, y = ys[k];
+      const bw = w / v.length;
+      /* A single line keeps the accent it has always had, so turning the
+         second channel off puts the strip back exactly as it was. */
+      ctx.strokeStyle = many ? stripHue(drawn[k].i) : P.accent;
+      ctx.globalAlpha = many ? 0.9 : 0.95;
+      ctx.beginPath();
+      let pen = false, lastX = 0, lastY = 0, any = false;
+      for (let i2 = 0; i2 < v.length; i2++) {
+        if (y[i2] === null) { pen = false; continue; }
+        const frac = Math.max(0, Math.min(1, (y[i2] - lo) / (hi - lo)));
+        const py = bot - frac * h;
+        const px = i2 * bw;
+        if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        pen = true; lastX = px; lastY = py; any = true;
+      }
+      ctx.stroke();
+      if (any) ends.push({ x: lastX, y: lastY, i: drawn[k].i,
+                           ch: drawn[k].ch });
     }
-    ctx.stroke();
+
+    /* The names, when asked for.
+
+       At the end of each line rather than in a legend box: on a 40 px
+       strip a legend is most of the picture, and a label sitting on its
+       own line needs no key to read. Each gets its own backing because
+       the line it is naming runs underneath it. */
+    if (sess.stripNames && ends.length) {
+      ctx.globalAlpha = 1;
+      ctx.font = '9px ' + MONO;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right';
+      for (const e of ends) {
+        const t = chanLabel(sess, e.ch);
+        const tw = ctx.measureText(t).width;
+        const x = Math.min(w - 3, e.x + 2);
+        const ty = Math.max(top + 6, Math.min(bot - 6, e.y));
+        ctx.fillStyle = 'rgba(0,0,0,0.66)';
+        ctx.fillRect(x - tw - 3, ty - 6, tw + 5, 12);
+        ctx.fillStyle = many ? stripHue(e.i) : P.accent;
+        ctx.fillText(t, x - 1, ty + 0.5);
+      }
+    }
     ctx.restore();
   }
 
@@ -8379,7 +8608,7 @@ BARRY.views.xplore = (function () {
        profile that does not say 4-12 Hz, or does not say whether it is
        power or a share of it, is a picture nobody can put in a figure --
        and the control that set it is three clicks away in a popover. */
-    const band = (sess.stripMode || 'amp') === 'band' ? sess.overviewBand : null;
+    const band = (sess.stripMode || 'amp') === 'band' ? stripPrimary(sess) : null;
     /* The measure comes off the SESSION, not off the payload. All three
        series arrive together and switching between them never refetches, so
        `overviewBand.measure` is whichever one happened to be asked for

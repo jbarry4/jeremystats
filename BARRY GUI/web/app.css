@@ -6199,6 +6199,23 @@ body.aid-window .xf-tabs { display: none !important; }
 /* A segmented chooser in a popover: three states of one setting, so they
    look like one control rather than three buttons. */
 .ctl-seg { display: inline-flex; gap: 0; }
+
+/* A channel on the overview strip: the colour its line is drawn in, the
+   channel's own name, and the x that takes it off again. Wrapping,
+   because ten of these do not fit a popover on one line, and the row
+   they sit in is the answer to "which channels is this reading" --
+   truncating it would hide the ones somebody is looking for. */
+.strip-chip { display: inline-flex; align-items: center; gap: 5px; }
+.strip-chip .hint { opacity: 0.7; }
+.strip-chip:hover .hint { opacity: 1; }
+.strip-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  display: inline-block; flex: none;
+  /* The strip's ground is dark whatever the theme, and these colours
+     are chosen against it; a hairline keeps the palest of them off a
+     pale popover. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
 .ctl-seg .mini { border-radius: 0; margin: 0; }
 .ctl-seg .mini:first-child {
   border-top-left-radius: 5px; border-bottom-left-radius: 5px;
@@ -8401,3 +8418,207 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   width: 9px; height: 9px; border-radius: 2px;
   border: 1px solid var(--line); display: inline-block;
 }
+
+/* ==========================================================================
+   The Dentist -- the bundle in the ToolKit rail
+   ========================================================================== */
+/* A bundle is not a tool, and must not read as one. It is a group with an
+   order, so it gets an edge the flat buttons do not have and its steps are
+   numbered -- the numbering is the information, because each step has
+   nothing to show until the one before it has run. */
+.tk-bundle {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 70%);
+  border-radius: 6px;
+  padding: 10px 11px 11px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.tk-bundle.on { border-color: var(--accent); }
+.tk-bundle-hd { display: flex; align-items: center; gap: 7px; }
+.tk-bundle-hd strong { font-size: 12.5px; }
+.tk-bundle-hd .tk-ico { color: var(--accent); }
+.tk-bundle-c {
+  margin-left: auto; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-steps { display: flex; flex-direction: column; gap: 4px; }
+.tk-step {
+  display: grid; grid-template-columns: 15px 1fr; gap: 3px 8px;
+  align-items: center; text-align: left;
+  padding: 6px 8px; border-radius: 4px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer;
+}
+.tk-step:hover { background: var(--bg-hover); }
+.tk-step.now { background: var(--bg-3); border-color: var(--accent-line); }
+.tk-step.now .tk-step-n { color: var(--text); font-weight: 600; }
+.tk-step-i {
+  font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.done .tk-step-n { color: var(--text); }
+.tk-step-s {
+  grid-column: 2; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.now .tk-step-s { color: var(--accent); }
+
+/* ==========================================================================
+   Braces
+   ========================================================================== */
+.br-wrap { display: flex; flex-direction: column; gap: 12px; }
+.br-intro p { margin: 6px 0 0; }
+.br-empty strong { display: block; margin-bottom: 6px; }
+.br-set { width: 100%; }
+.br-warn { color: var(--warn); }
+.br-err { color: var(--err); }
+.br-note { border-left: 2px solid var(--accent); padding-left: 10px; }
+
+.br-fields { display: flex; flex-wrap: wrap; gap: 14px; }
+.br-field { display: flex; flex-direction: column; gap: 4px; }
+.br-field > label {
+  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.br-field input { width: 110px; }
+.br-hint { font-size: 10.5px; color: var(--text-3); }
+
+.br-dl { margin: 0; display: grid; gap: 4px; }
+.br-dl > div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 10px; }
+.br-dl dt { font-size: 11px; color: var(--text-3); margin: 0; }
+.br-dl dd { margin: 0; font-size: 12.5px; }
+
+.br-go { display: flex; align-items: center; gap: 12px; }
+.br-job {
+  flex: 1; display: flex; flex-direction: column; gap: 5px;
+  font-size: 12px; color: var(--text-2);
+}
+.br-bar {
+  height: 4px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-bar i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .2s linear;
+}
+
+.br-recent-list { display: flex; flex-direction: column; gap: 5px; }
+.br-recent-row {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 4px; padding: 7px 10px; font: inherit; cursor: pointer;
+  color: var(--text);
+}
+.br-recent-row:hover { background: var(--bg-hover); }
+.br-recent-row span { font-size: 11px; color: var(--text-3); }
+.br-recent-row.done { opacity: .72; }
+
+.br-head { display: flex; align-items: center; gap: 12px; }
+.br-head strong { display: block; font-size: 14px; }
+.br-sub {
+  font-size: 11.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.br-done { border-left: 3px solid var(--ok); font-size: 12.5px; }
+
+.br-counts {
+  display: flex; flex-wrap: wrap; gap: 0;
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.br-count {
+  padding: 11px 15px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px;
+  flex: 1 1 auto; min-width: 106px;
+}
+.br-count:last-child { border-right: 0; }
+.br-count b {
+  font-size: 19px; font-weight: 500; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.br-count span { font-size: 10.5px; color: var(--text-3); }
+.br-count.ok b { color: var(--ok); }
+.br-count.warn b { color: var(--warn); }
+
+/* The histogram answers "is this the right channel" before the table
+   answers "is this stamp right". */
+.br-hist { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
+.br-hist i {
+  flex: 1; display: block; background: var(--accent); opacity: .78;
+  border-radius: 1px 1px 0 0; min-height: 0;
+}
+.br-hist i.edge { background: var(--warn); }
+.br-axis {
+  display: flex; justify-content: space-between;
+  border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px;
+  font-size: 10px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.br-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.br-scroll {
+  overflow-x: auto; border: 1px solid var(--line); border-radius: 5px;
+}
+table.br-tbl {
+  border-collapse: collapse; width: 100%; font-size: 11.5px; min-width: 520px;
+}
+table.br-tbl th {
+  text-align: left; font-size: 10px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-3); font-weight: 600;
+  padding: 8px 11px; border-bottom: 1px solid var(--line);
+  background: var(--bg-2); white-space: nowrap; position: sticky; top: 0;
+}
+table.br-tbl td {
+  padding: 7px 11px; border-bottom: 1px solid var(--line-soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  color: var(--text-2);
+}
+table.br-tbl tr { cursor: pointer; }
+table.br-tbl tr:hover td { background: var(--bg-hover); }
+table.br-tbl tr:last-child td { border-bottom: 0; }
+table.br-tbl tr.flagged td { background: var(--warn-soft); color: var(--text); }
+table.br-tbl tr.said td { opacity: .78; }
+table.br-tbl td.st { width: 1%; }
+table.br-tbl td.why {
+  white-space: normal; min-width: 140px; color: var(--warn);
+}
+table.br-tbl tr.said td.why { color: var(--text-3); }
+.br-tbl .tick { color: var(--ok); }
+.br-tbl .flagmark, .br-bench-head .flagmark { color: var(--warn); }
+.br-tbl .dim { color: var(--text-3); }
+
+.br-accept { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.br-accept .hint { flex: 1 1 260px; }
+
+/* The bench: one channel, six hundred milliseconds, and the two lines the
+   decision is actually between. */
+.br-bench { position: sticky; bottom: 0; }
+.br-bench-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.br-canvas {
+  width: 100%; height: 190px; display: block;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--bg); touch-action: none; cursor: ew-resize;
+}
+.br-bench-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.br-key {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; color: var(--text-3);
+}
+.br-key kbd {
+  font-family: ui-monospace, Consolas, monospace; font-size: 10.5px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 3px; padding: 2px 6px; color: var(--text-2);
+  background: var(--bg);
+}
+
+.br-modal { max-width: 620px; }
+.br-confirm ul { margin: 8px 0; padding-left: 18px; }
+.br-confirm li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
+
+@media (max-width: 720px) {
+  .br-fields { gap: 10px; }
+  .br-field input { width: 92px; }
+}
+

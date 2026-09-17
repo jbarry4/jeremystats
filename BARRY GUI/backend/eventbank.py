@@ -347,6 +347,25 @@ class EventBank:
             for key in ("channel", "amplitude", "label", "label_id"):
                 if ev.get(key) is not None:
                     item[key] = ev[key]
+            # Where this stamp was before Braces moved it, and why it was
+            # asked about. Whitelisted explicitly, because the whitelist is
+            # what an event IS here -- and a `from_t` dropped on the way in
+            # is the diff losing the one thing that lets it tell a stamp
+            # that moved from a stamp that was deleted. Coerced and rounded
+            # like `start`, since it is the same kind of thing.
+            src = ev.get("from_t")
+            if src is not None:
+                try:
+                    src = round(float(src), 6)
+                    # A stamp that came back to where it started did not
+                    # move, and carrying a from_t equal to start would make
+                    # the history claim a shift that cancelled out.
+                    if abs(src - item["start"]) > 1e-9:
+                        item["from_t"] = src
+                except (TypeError, ValueError):
+                    pass
+            if ev.get("align_flag"):
+                item["align_flag"] = ev["align_flag"]
             clean.append(item)
         if not clean:
             raise BankError("None of those events had a usable time.")
@@ -473,7 +492,22 @@ class EventBank:
         # reads "nothing moved" about a pass in which four decisions
         # changed. So the comparison is per candidate, matched on time, and
         # what it reports is which category each one came from and went to.
-        moves, changed, gained, lost = {}, 0, 0, 0
+        #
+        # MATCHED ON TIME, WHICH BRACES CHANGES ON PURPOSE.
+        #
+        # Time was the only identity a banked event had, and that held until
+        # something moved one. `braces` does exactly that, so a stamp it
+        # shifted would arrive here as one event vanishing and an unrelated
+        # one appearing -- a history reading "1198 lost, 1198 gained" about a
+        # pass in which nothing was decided differently at all.
+        #
+        # So an event Braces moved carries `from_t`: the time it used to
+        # have. Matched in TWO PASSES rather than one, and the order is not a
+        # style choice: every event that is still where it was claims its own
+        # slot first, and only the leftovers are matched on where they came
+        # from. One pass, whichever key it preferred, could hand a moved
+        # event the slot belonging to an event that had not moved at all.
+        moves, changed, gained, lost, shifted = {}, 0, 0, 0, 0
         if prior:
             was = {}
             for ev in prior.get("events") or []:
@@ -481,23 +515,42 @@ class EventBank:
                     was[round(float(ev["start"]), 4)] = ev.get("label")
                 except (TypeError, ValueError, KeyError):
                     continue
+
+            def _pair(before, after):
+                if before != after:
+                    step = "%s → %s" % (before or "undecided",
+                                        after or "undecided")
+                    moves[step] = moves.get(step, 0) + 1
+                    return 1
+                return 0
+
+            left = []
             for ev in clean:
                 try:
                     key = round(float(ev["start"]), 4)
                 except (TypeError, ValueError):
                     continue
-                if key not in was:
+                if key in was:
+                    changed += _pair(was.pop(key), ev.get("label"))
+                else:
+                    left.append(ev)
+            # Second pass: what did this used to be?
+            for ev in left:
+                src = ev.get("from_t")
+                key = None
+                if src is not None:
+                    try:
+                        key = round(float(src), 4)
+                    except (TypeError, ValueError):
+                        key = None
+                if key is None or key not in was:
                     gained += 1
                     continue
-                before, after = was.pop(key), ev.get("label")
-                if before != after:
-                    changed += 1
-                    step = "%s → %s" % (before or "undecided",
-                                             after or "undecided")
-                    moves[step] = moves.get(step, 0) + 1
+                shifted += 1
+                changed += _pair(was.pop(key), ev.get("label"))
             lost = len(was)
 
-        moved = ((not prior) or changed or gained or lost
+        moved = ((not prior) or changed or gained or lost or shifted
                  or prior.get("n") != rec["n"]
                  or (prior.get("by_label") or {}) != counts)
         if moved:
@@ -543,6 +596,10 @@ class EventBank:
                 "moves": moves,
                 "machine": entry.get("machine") or platform.node(),
             }
+            # Only when something did. A zero on every version in a history
+            # that has never been aligned is a column of noise.
+            if shifted:
+                fresh["shifted"] = shifted
             if len(clean) <= self.SNAP_MAX_EVENTS:
                 fresh["snap"] = [[ev.get("start"),
                                   ev.get("label_id") or ev.get("label")]
@@ -1171,6 +1228,249 @@ class EventBank:
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         report["time_basis"] = rec["time_basis"]
+        return report
+
+    # ------------------------------------------------------------------
+    # Alignment
+    # ------------------------------------------------------------------
+    @shards.atomic
+    def align(self, entry_id, moves, params, note=None, by=None,
+              dry_run=True, from_version=None, flags=None):
+        """Mint a version of `entry_id` with every stamp on its own peak.
+
+        `moves` is `{index_into_the_source_events: new_start}`. Indices
+        rather than times, because the whole point is that a time is not an
+        identity here -- two stamps 0.05 ms apart would key to one entry in
+        a dict and one of them would be silently skipped.
+
+        An index absent from `moves` is a stamp that stays where it is: a
+        flag nobody resolved, or one with no peak in reach. It is written
+        unchanged, and it is NOT an error.
+
+        Everything else is `retime`'s shape, for the same reasons written
+        there: a dry run that shows what the write would do, a version id
+        derived from what was applied so two machines converge on one
+        version, a refusal to apply the same alignment twice, and `from_v`
+        pointing at the version the stamps were read from.
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No bank entry %s." % entry_id)
+
+        src_v, dropped = None, []
+        if from_version is not None:
+            try:
+                src_v = int(from_version)
+            except (TypeError, ValueError):
+                raise BankError("%r is not a version number." % from_version)
+
+        if src_v is None:
+            events = rec.get("events") or []
+        else:
+            events, dropped = self.events_at(rec, src_v)
+
+        flags = flags or {}
+        out, shifts = [], []
+        for i, ev in enumerate(events):
+            item = dict(ev)
+            # `from_t` never accumulates: a stamp aligned twice records the
+            # place it started this round from, not two rounds ago. The
+            # version record is where the whole lineage lives.
+            item.pop("from_t", None)
+            new_t = moves.get(i, moves.get(str(i)))
+            if new_t is not None:
+                try:
+                    was_t = float(ev.get("start"))
+                    new_t = float(new_t)
+                except (TypeError, ValueError):
+                    raise BankError(
+                        "Event %d has no usable time, so it cannot be "
+                        "aligned." % i)
+                if abs(new_t - was_t) > 1e-9:
+                    item["start"] = round(new_t, 6)
+                    item["from_t"] = round(was_t, 6)
+                    shifts.append(round((new_t - was_t) * 1e3, 4))
+            why = flags.get(i, flags.get(str(i)))
+            if why:
+                # Why it was asked about, kept on the event. Six months on,
+                # "this one is 94 ms off its neighbour" is a question the
+                # record should answer rather than the person who was there.
+                item["align_flag"] = why
+            else:
+                item.pop("align_flag", None)
+            out.append(item)
+
+        ordered = sorted(out, key=lambda e: float(e.get("start") or 0.0))
+        order_held = [id(x) for x in ordered] == [id(x) for x in out]
+
+        # Two stamps at one time is the failure the one-peak-per-stamp rule
+        # exists to prevent, so it is checked here too rather than trusted
+        # across a module boundary: this is the last place before the write.
+        seen, collided = set(), []
+        for e in out:
+            try:
+                k = round(float(e["start"]), self.DUP_DP)
+            except (TypeError, ValueError, KeyError):
+                continue
+            if k in seen:
+                collided.append(k)
+            seen.add(k)
+
+        absol = sorted(abs(s) for s in shifts)
+        report = {
+            "entry_id": entry_id,
+            "name": rec.get("name"),
+            "gid": rec.get("gid"),
+            "session_label": rec.get("session_label"),
+            "was": len(events),
+            "moved": len(shifts),
+            "unmoved": len(events) - len(shifts),
+            "order_held": order_held,
+            "collisions": collided[:10],
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "shift_max_abs_ms": absol[-1] if absol else 0.0,
+            "params": dict(params or {}),
+            "dry_run": bool(dry_run),
+            "moves": [
+                [e.get("from_t"), e.get("start"),
+                 round((float(e["start"]) - float(e["from_t"])) * 1e3, 3),
+                 e.get("label"), e.get("align_flag")]
+                for e in out if e.get("from_t") is not None
+            ][:self.PREVIEW_MAX],
+            "moves_capped": len(shifts) > self.PREVIEW_MAX,
+            "current_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            "next_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])]
+                or [0]) + 1,
+            "n_versions": len(rec.get("versions") or []),
+            "from_version": src_v,
+            "drops_fields": dropped,
+        }
+        if dropped:
+            report["warning"] = (
+                "Version %s's snapshot holds a start and a label only, so "
+                "%s would not survive being read back from it."
+                % (src_v, ", ".join(dropped)))
+        if not order_held:
+            report["error"] = (
+                "The alignment reordered the events, which the no-crossing "
+                "rule makes impossible -- so something upstream is wrong. "
+                "Nothing was written.")
+            return report
+        if collided:
+            report["error"] = (
+                "%d stamp(s) would land on a time another stamp already "
+                "holds, which is a duplicate rather than an alignment. "
+                "Nothing was written." % len(collided))
+            return report
+        if not shifts:
+            report["error"] = (
+                "Nothing moved, so there is no new version to write.")
+            return report
+
+        twin = "br-" + hashlib.sha256(
+            ("%s|%s|%s" % (entry_id, src_v,
+                           json.dumps(params or {}, sort_keys=True,
+                                      separators=(",", ":")))
+             ).encode("utf-8")).hexdigest()[:10]
+        for ver in (rec.get("versions") or []):
+            if ver.get("id") == twin:
+                report["already_version"] = ver.get("v")
+                report["error"] = (
+                    "This exact alignment is already version %s of this set "
+                    "— same channel, same settings, same source. Delete "
+                    "that version to undo it, or align from a different one."
+                    % ver.get("v"))
+                return report
+
+        if dry_run:
+            return report
+
+        prov = self.store.provenance() if self.store else {}
+        who = (by or prov.get("user") or "unknown").strip()
+        versions = list(rec.get("versions") or [])
+        counts = {}
+        for ev in out:
+            key = ev.get("label") or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+
+        by_reason = {}
+        for why in flags.values():
+            if why:
+                by_reason[why] = by_reason.get(why, 0) + 1
+
+        fresh = {
+            "id": twin,
+            "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+            # An alignment applied to a chosen version is a branch off that
+            # version, not a continuation of whatever happened to be newest.
+            "from_v": (src_v if src_v is not None
+                       else versionsmod.based_on_default(versions)),
+            "at": _now(),
+            "by": who,
+            "n": len(out),
+            "by_label": dict(counts),
+            # Nothing was decided differently. Braces never reads a label,
+            # let alone writes one, and a relabelling in the history that
+            # never happened is worse than no history at all.
+            "changed": 0, "gained": 0, "lost": 0, "moves": {},
+            "shifted": len(shifts),
+            # `platform.node()`, as `bank` and `retime` both write it. NOT
+            # `provenance()["machine"]`, which is what the lab calls this
+            # computer -- one history carrying both names for one machine is
+            # unreadable, and the rest of this file already chose.
+            "machine": platform.node(),
+            "aligned": {
+                "tool": "jarvis.braces/1",
+                "source_version": src_v,
+                "n_moved": len(shifts),
+                "n_unmoved": len(events) - len(shifts),
+                "shift_min_ms": report["shift_min_ms"],
+                "shift_max_ms": report["shift_max_ms"],
+                "shift_median_ms": (absol[len(absol) // 2] if absol else 0.0),
+                "flagged": by_reason,
+                "order_held": True,
+            },
+        }
+        fresh["aligned"].update(params or {})
+        fresh["note"] = note or (
+            "Aligned to CSC%s peaks, ±%g ms%s. %d stamp(s) moved by "
+            "%.1f to %.1f ms; %d left where they were. No labels changed."
+            % ((params or {}).get("channel"), (params or {}).get("window_ms"),
+               "" if src_v is None else ", reading v%d" % src_v,
+               len(shifts), report["shift_min_ms"], report["shift_max_ms"],
+               len(events) - len(shifts)))
+        if len(out) <= self.SNAP_MAX_EVENTS:
+            fresh["snap"] = [[ev.get("start"),
+                              ev.get("label_id") or ev.get("label")]
+                             for ev in out]
+        versions.append(fresh)
+
+        rec["events"] = out
+        rec["versions"] = versions
+        rec["n"] = len(out)
+        rec["by_label"] = counts
+        # What the CURRENT events are aligned to, the way `time_basis` says
+        # what clock they are on. Read by the panel to mark a set that has
+        # already been done, and by `align` itself through the twin check.
+        rec["aligned"] = {
+            "tool": "jarvis.braces/1",
+            "at": _now(),
+            "by": who,
+            "version": fresh["v"],
+            "source_version": src_v,
+        }
+        rec["aligned"].update(params or {})
+
+        base = self._base_of(rec)
+        with _LOCK:
+            rec = self.book.write(base, rec)
+            self._drop_cache()
+        report["version"] = fresh["v"]
+        report["version_id"] = fresh["id"]
+        report["aligned"] = rec["aligned"]
         return report
 
     # ------------------------------------------------------------------

@@ -15,6 +15,41 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.3 - The band line says which channel it came from, and can carry ten
+
+### Added
+
+- **Choose the channels the band line is read from - up to ten.** It read
+  whichever channel happened to come first in the selection, which answers "is
+  there theta in this recording" and not the question people actually bring to
+  this strip: which channel has it, and how do they compare down the probe.
+  The Strip panel now lists the channels it is reading as chips, each with the
+  colour its line is drawn in, and offers the rest in a dropdown. A chip takes
+  its channel off again; the last one stays, because an empty strip still
+  labelled Band power is a blank picture with no way to tell why.
+
+  Ten is the cap. They share one 40 px band, so past ten they are stacked
+  hair-widths.
+
+- **Every line on one scale.** The reason to put two channels on one strip is
+  to compare them, so the scale is computed across all of them together. A
+  per-line scale would draw a weak channel and a strong one at the same height
+  - the picture saying they match while the numbers say one is ten times the
+  other.
+
+- **Name each line on the strip.** Optional, because names cost room on a strip
+  this short, but five unlabelled coloured lines is a picture nobody can put in
+  a figure. The channel is written at the end of its own line rather than in a
+  legend box: on a 40 px strip a legend would be most of the picture, and a
+  label sitting on its own line needs no key to read.
+
+  Colours come from a fixed ten-step ramp rather than the theme's categorical
+  one, which guarantees four and wraps after that - and two channels drawn the
+  same colour on one axis is worse than drawing them in no colour at all,
+  because you cannot tell there are two. A single line keeps the accent colour
+  it has always had, so turning a second channel off puts the strip back
+  exactly as it was.
+
 ## 2026.09.17.2 - The Strip panel answers the button you press
 
 ### Fixed

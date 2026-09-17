@@ -76,9 +76,17 @@ const miniURL = () => {
 };
 
 /* Wait for a band profile matching this band to have landed. */
+/* The first chosen channel's profile. The strip can carry ten now, but every
+   one of them is the same request against a different channel, so the
+   first answers "did the read work, and at what resolution". */
+const FIRST_BAND = '(function(){ var s = ' + SESS + ';'
+  + ' var o = s.overviewBands || {};'
+  + ' var ks = Object.keys(o);'
+  + ' return ks.length ? o[ks[0]] : null; })()';
+
 async function awaitBand(lo, hi) {
   return await until(() => {
-    const ob = J(SESS + '.overviewBand');
+    const ob = J(FIRST_BAND);
     if (ob && ob.ok && ob.band
         && Math.abs(ob.band.lo - lo) < 1e-6 && Math.abs(ob.band.hi - hi) < 1e-6) {
       return ob;
@@ -307,7 +315,7 @@ const med = (a) => {
   }
 
   /* ---------- 6. the measures switch without refetching ---------- */
-  const before = ev(SESS + '.overviewBand && ' + SESS + '.overviewBand._key');
+  const before = ev('(' + FIRST_BAND + ' || {})._key || null');
   await closePop(); await sleep(300);
   const absPNG = miniURL();
   p = await openPop();
@@ -316,7 +324,7 @@ const med = (a) => {
   if (rel) {
     rel.click();
     await sleep(400);
-    const after = ev(SESS + '.overviewBand && ' + SESS + '.overviewBand._key');
+    const after = ev('(' + FIRST_BAND + ' || {})._key || null');
     ck('switching measure reuses what was already downloaded', after === before,
        String(before) + ' -> ' + String(after));
     ck('and the control says so', /rel/.test(stripVal() || ''),
@@ -393,6 +401,118 @@ const med = (a) => {
 
   ck('nothing threw while drawing any of it', thrown.length === 0,
      thrown.join(' | '));
+
+  /* ---------- 6. more than one channel ---------- */
+  /* The strip read whichever channel came first in the selection, which
+     answers "is there theta here" and not "which channel has it". */
+  await openPop();
+  const chipNames = () => Array.from(
+    (pop() || D()).querySelectorAll('.strip-chip'))
+    .map((b) => b.textContent.replace(/\u00d7/g, '').trim());
+  const chansBefore = chipNames();
+  say('note', '  channels to begin with: ' + JSON.stringify(chansBefore));
+  ck('the panel names the channel the line is read from',
+     chansBefore.length === 1, JSON.stringify(chansBefore));
+
+  const addSel = () => (pop() || D()).querySelector('select');
+  ck('and offers the others', !!addSel(), 'no add-a-channel select');
+
+  if (addSel()) {
+    /* Through the control, not by writing stripChans: what is being
+       tested is that the control reaches the drawing. */
+    const sel = addSel();
+    const opt = Array.from(sel.options).find((o) => o.value !== '');
+    const added = opt ? opt.textContent.trim() : null;
+    sel.value = opt.value;
+    // W() is the frame's window; its Event constructor, not this page's.
+    sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(400);
+    const chansAfter = chipNames();
+    say('note', '  after adding ' + added + ': ' + JSON.stringify(chansAfter));
+    ck('adding one puts a second channel on the panel',
+       chansAfter.length === 2 && chansAfter.indexOf(added) >= 0,
+       JSON.stringify(chansAfter));
+
+    /* `until` returns the first truthy value or null, so the predicate
+       reports the count only once it has reached two. */
+    const both = await until(() => {
+      const n = ev('Object.keys((' + SESS + ').overviewBands || {}).length');
+      return n >= 2 ? n : null;
+    }, 900);
+    ck('and both channels are actually read', both >= 2,
+       'band profiles held: ' + both);
+
+    /* Each line its own colour, or there is no telling them apart. */
+    const dots = Array.from((pop() || D())
+      .querySelectorAll('.strip-dot'))
+      .map((d) => d.style.background);
+    say('note', '  line colours: ' + JSON.stringify(dots));
+    ck('each line gets its own colour',
+       dots.length === 2 && dots[0] && dots[1] && dots[0] !== dots[1],
+       JSON.stringify(dots));
+
+    /* One scale for both, so the picture does not say two channels are
+       the same strength when the numbers say one is ten times the
+       other. Checked on the numbers the strip draws from. */
+    const medPerChan = JSON.parse(ev('JSON.stringify((function(){'
+      + ' var s = ' + SESS + ';'
+      + ' var o = s.overviewBands || {};'
+      + ' var out = [];'
+      + ' for (var k in o) { var a = (o[k].abs || []).filter(function(x){'
+      + '   return x !== null && isFinite(x); });'
+      + '   a.sort(function(p,q){return p-q;});'
+      + '   out.push(a.length ? a[Math.floor(a.length/2)] : null); }'
+      + ' return out; })())') || '[]');
+    say('note', '  median power per channel: ' + JSON.stringify(medPerChan));
+    ck('both channels returned a usable series',
+       medPerChan.length >= 2 && medPerChan.every((x) => x !== null),
+       JSON.stringify(medPerChan));
+
+    /* And the second line is actually DRAWN, not merely fetched. Pixels,
+       because "the data arrived" and "the strip shows it" are different
+       claims and only the second one is the feature. */
+    const twoPNG = miniURL();
+    ck('the strip repaints once the second channel lands',
+       !!twoPNG && !!bandPNG && twoPNG !== bandPNG,
+       'the strip is pixel-identical to the single-channel one');
+
+    /* Naming them is what makes a screenshot readable. */
+    const nameBtn = popBtn('Name each line');
+    ck('the panel can name the lines on the strip', !!nameBtn);
+    if (nameBtn) {
+      nameBtn.click();
+      await sleep(300);
+      ck('and says so once it is on',
+         ev('!!(' + SESS + ').stripNames'), 'stripNames not set');
+      ck('and the naming choice takes the highlight',
+         lit('Name each line'), 'the pressed segment stayed unlit');
+      /* The names go on the strip, so the strip must change again. */
+      const namedPNG = miniURL();
+      ck('and naming them changes what the strip draws',
+         !!namedPNG && namedPNG !== twoPNG,
+         'the strip did not change when the names went on');
+    }
+
+    /* Back to one, and the strip is what it was. */
+    const chip = Array.from((pop() || D())
+      .querySelectorAll('.strip-chip'))
+      .find((b) => b.textContent.indexOf(added) >= 0);
+    if (chip) {
+      chip.click();
+      await sleep(350);
+      ck('taking one off leaves the other', chipNames().length === 1,
+         JSON.stringify(chipNames()));
+    }
+    /* The last one cannot be removed: an empty strip still labelled
+       Band power is a blank picture with no way to tell why. */
+    const solo = (pop() || D()).querySelector('.strip-chip');
+    if (solo) {
+      solo.click();
+      await sleep(300);
+      ck('and the last one stays', chipNames().length === 1,
+         JSON.stringify(chipNames()));
+    }
+  }
 
 } catch (e) {
   say('bad', 'threw: ' + (e && e.stack ? e.stack : e));

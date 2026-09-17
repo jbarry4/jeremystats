@@ -27,6 +27,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
                incisor as incisormod,
+               braces as bracesmod,
+               bracesset as brsetmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
                retime as retimemod,
@@ -3075,6 +3077,519 @@ class _MemberJob:
 
     def member(self, *a, **k):
         return None
+
+
+# ==========================================================================
+# Braces -- putting every dentate spike stamp on the peak it belongs to
+# ==========================================================================
+# Step three of The Dentist. Incisor found them, Checkup said which ones are
+# real, and this says where each one actually is.
+#
+# The read is one channel, so none of Incisor's per-channel scan machinery is
+# here -- but the SPEC is Incisor's, built by `_incisor_spec`, because the
+# band, the decimation and the threshold have to be the detector's or "weak
+# peak" means weak by a standard nobody chose.
+
+
+def _braces_who(body):
+    """Who is doing this. The profile wins; the body is a fallback for a
+    caller that already knows (the harness, and a batch acting for someone
+    who started it elsewhere)."""
+    return ((body or {}).get("by")
+            or (STORE.provenance() or {}).get("user") or "unknown")
+
+
+def _braces_entry(entry_id):
+    """The bank entry, or a 400 that says which id was not found."""
+    rec = BANK.get(entry_id)
+    if not rec:
+        raise ValueError("No bank entry %s." % entry_id)
+    return rec
+
+
+def _braces_session(rec):
+    """The recording an entry's events were detected in.
+
+    Through the registry gid, never through the mouse and session numbers.
+    Numbering restarts per project -- m1 s1 exists once in every one of them
+    -- so matching on the pair finds a different animal's recording and says
+    nothing about it. `session_path` is tried first only because it is the
+    exact folder the set was banked against; the gid is what makes it
+    findable at all on a machine where that path does not exist.
+    """
+    gid = rec.get("gid")
+    row = _session_by_gid(gid) if gid else None
+    # `here` is the folders THIS machine can actually reach, which is not
+    # the same list as `paths` -- a recording seen on the rig and on a
+    # laptop has two, and only one of them opens here. There is no `path`
+    # key on a registry row at all; asking for one gets None for every
+    # recording in the archive, which reads as "no set can be aligned".
+    # `curate.js` has taken `here[0]` since the workbench was written.
+    here = (row or {}).get("here") or []
+    path = (here[0] if here else None) or rec.get("session_path")
+    if not path and (row or {}).get("paths"):
+        # Known, but not on this machine. A different sentence, because it
+        # is a different problem: nobody has to re-bank anything, they have
+        # to plug in the drive.
+        raise ValueError(
+            "The recording this set came from is not reachable on this "
+            "machine. It was last seen at %s."
+            % ((row["paths"] or [""])[-1]))
+    if not path:
+        raise ValueError(
+            "This set does not say which recording it came from, so there "
+            "is nothing to measure its stamps against. Re-bank it from a "
+            "curation set, or import it onto a recording first.")
+    sess, err = _session_for(path, None, True)
+    if err:
+        raise ValueError(
+            "The recording this set came from could not be opened here (%s). "
+            "It may be on a drive this machine cannot see."
+            % ((err or {}).get("error") or "unknown"))
+    if not sess.get("gid"):
+        sess["gid"] = gid or _gid_for_path(path)
+    return sess, (row or {})
+
+
+class _NeedsChannel(ValueError):
+    """No channel could be worked out, and the panel should ask for one.
+
+    Its own type rather than a message the route pattern-matches on: the
+    panel has a channel box, so this is a prompt, not a failure, and the two
+    have to be told apart by something sturdier than the wording.
+    """
+
+
+def _braces_channel(rec, sess, body, row=None):
+    """Which channel to measure against, and how that was decided.
+
+    In order: what the caller asked for, what the set itself was detected
+    on, what the detector recorded, then the recording's own hilus channel.
+    Never a bare default -- a channel chosen by rule and a channel chosen by
+    hand must not be indistinguishable, which is the same discipline
+    `panoramaset.CHANNEL_FROM` applies, and the answer travels with `how` so
+    the panel can say which happened.
+    """
+    want, how = body.get("channel"), "asked for"
+    if want is None:
+        # What the events themselves say. A set detected by Incisor carries
+        # the channel on every event.
+        seen = {ev.get("channel") for ev in (rec.get("events") or [])
+                if ev.get("channel") is not None}
+        if len(seen) == 1:
+            want, how = seen.pop(), "the channel this set was detected on"
+    if want is None:
+        pick = ((rec.get("source") or {}).get("parameters") or {})
+        if pick.get("channel") is not None:
+            want, how = pick["channel"], "the channel the detector recorded"
+    if want is None and (row or {}).get("hilus_channel") is not None:
+        # The recording's own anatomy. Measured on this archive: 41 of the
+        # 45 curated sets carry no channel anywhere -- they were banked
+        # before Incisor existed -- so without this every one of them
+        # refused, and the tool worked on nothing anybody actually has.
+        want, how = row["hilus_channel"], "this recording's hilus channel"
+    if want is None:
+        raise _NeedsChannel(
+            "This set does not say which channel it was detected on, and "
+            "this recording has no hilus channel on record either. Aligning "
+            "against the wrong channel moves every stamp somewhere "
+            "plausible and wrong, so pick one before running it.")
+    by_number = {int(c["number"]): c for c in (sess.get("channels") or [])}
+    try:
+        want = int(want)
+    except (TypeError, ValueError):
+        raise ValueError("%r is not a channel number." % want)
+    if want not in by_number:
+        raise ValueError(
+            "This recording has no CSC%d. It has %s."
+            % (want, ", ".join(str(n) for n in sorted(by_number)[:8]) or "none"))
+    return by_number[want], how
+
+
+def _braces_spec(body, sess):
+    """Incisor's spec, narrowed to the one channel and given Braces' own
+    two numbers. Built from `_incisor_spec` so the band, the decimation and
+    the threshold cannot drift from the detector's."""
+    spec = _incisor_spec(dict(body, channels=None), sess)
+    for key, default in (("window_ms", bracesmod.WINDOW_MS),
+                         ("floor_frac", bracesmod.FLOOR_FRAC),
+                         ("edge_frac", bracesmod.EDGE_FRAC),
+                         ("same_ms", bracesmod.SAME_MS)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+    if body.get("floor_uv"):
+        spec["floor_uv"] = float(body["floor_uv"])
+    return spec
+
+
+@app.route("/api/braces/plan", methods=["POST"])
+def api_braces_plan():
+    """What a run would read, and from which version -- before it reads it.
+
+    Everything knowable up front is settled up front: which recording, which
+    channel and why, which versions can supply the stamps. A set whose
+    recording this machine cannot open should say so while somebody can
+    still do something about it.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec = _braces_entry(body.get("entry_id"))
+        sess, row = _braces_session(rec)
+        spec = _braces_spec(body, sess)
+        needs_channel = None
+        try:
+            ch, how = _braces_channel(rec, sess, body, row)
+        except _NeedsChannel as exc:
+            # Not a failure: the panel has a box for this. It comes back as
+            # a plan that names everything else it worked out, so somebody
+            # can see which recording and which band before choosing.
+            ch, how, needs_channel = None, None, str(exc)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/plan", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+
+    versions = []
+    for ver in sorted((rec.get("versions") or []),
+                      key=lambda x: x.get("v") or 0):
+        v = ver.get("v") or 0
+        why = None
+        if not ver.get("snap"):
+            why = ("no snapshot on this machine, so the stamps it held "
+                   "cannot be read back")
+        versions.append({
+            "v": v, "id": ver.get("id"), "at": ver.get("at"),
+            "by": ver.get("by"), "n": ver.get("n"), "note": ver.get("note"),
+            "aligned": bool(ver.get("aligned")),
+            "usable": why is None, "why_not": why,
+        })
+    return jsonify({
+        "ok": True,
+        "entry": {"id": rec["id"], "name": rec.get("name"),
+                  "n": rec.get("n"), "gid": rec.get("gid"),
+                  "type": rec.get("type"),
+                  "session_label": rec.get("session_label"),
+                  "aligned": rec.get("aligned")},
+        "session": {"path": sess.get("path"), "name": sess.get("name"),
+                    "fs": sess.get("fs"),
+                    "n_channels": len(sess.get("channels") or [])},
+        "channel": (None if ch is None else
+                    {"number": int(ch["number"]), "index": int(ch["index"]),
+                     "label": ch.get("label"), "how": how}),
+        "needs_channel": needs_channel,
+        "channels": [int(c["number"]) for c in (sess.get("channels") or [])],
+        "versions": versions,
+        "current_version": max([v["v"] for v in versions] or [0]),
+        "spec": {k: spec.get(k) for k in
+                 ("band", "lfp_fs", "height_sd", "abs_uv", "dist_ms",
+                  "estimator", "window_ms", "floor_frac", "edge_frac",
+                  "same_ms", "invert")},
+    })
+
+
+@app.route("/api/braces/run", methods=["POST"])
+def api_braces_run():
+    """Read the channel, find its peaks, and propose where each stamp goes.
+
+    A job, because it reads a whole channel -- seconds on a local drive and
+    a good deal longer over the network, which is long enough that a request
+    holding the connection open is the wrong shape. Poll it on
+    /api/cfc/job/<id>, which is not cfc-specific.
+
+    Nothing is written to the bank here. What comes out is a proposal.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec = _braces_entry(body.get("entry_id"))
+        sess, row = _braces_session(rec)
+        ch, how = _braces_channel(rec, sess, body, row)
+        spec = _braces_spec(body, sess)
+        report = _incisor_report(sess["path"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/run", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+
+    src_v = body.get("from_version")
+    try:
+        if src_v is None:
+            events = rec.get("events") or []
+        else:
+            src_v = int(src_v)
+            events, _dropped = BANK.events_at(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/run", exc, 400, {"from_version": src_v})
+    if not events:
+        return jsonify({"ok": False,
+                        "error": "There are no stamps in that version to "
+                                 "align."}), 400
+
+    who = _braces_who(body)
+    span = sum(float(s.get("duration_s") or 0.0)
+               for s in (report.get("segments") or [])) or 1.0
+
+    # Only the stamps somebody called a dentate spike. `good: True` is the
+    # curation vocabulary's own mark for "this names a real event", so the
+    # set of things worth aligning is read from there rather than spelled
+    # out here -- a fifth category added to the DS vocabulary tomorrow gets
+    # this right without anybody remembering to come back.
+    #
+    # BY ID *AND* BY DISPLAY NAME. Older entries in this bank carry only
+    # `label` -- "Dentate Spike" -- because `label_id` was added later, and
+    # `by_label` on those reads {"Dentate Spike": 10} rather than
+    # {"spike": 10}. Matching on the id alone silently skipped every stamp
+    # in them, which would have looked like a set with nothing to align
+    # rather than like a bug.
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    align_ids = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    # And whatever this entry itself calls them, for a set banked under a
+    # vocabulary that has since been renamed.
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in align_ids:
+            align_ids.add(name)
+
+    def work(job):
+        peaks = bracesmod.channel_peaks(sess, ch, report, spec, job)
+        job.check()
+        out = bracesmod.propose(events, peaks,
+                               window_ms=spec["window_ms"],
+                               edge_frac=spec["edge_frac"],
+                               same_ms=spec["same_ms"],
+                               align_ids=align_ids)
+        params = bracesmod.params_of(spec, peaks)
+        rows = out.pop("rows")
+        made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
+                             out, name=rec.get("name"), by=who)
+        # The summary travels with the job's result so the panel can draw
+        # the counts and the histogram without a second request.
+        return {"set_id": made["set_id"], "summary": out, "params": params,
+                "n_rows": len(rows),
+                "channel": int(ch["number"]), "channel_how": how,
+                "from_version": src_v}
+
+    steps = [("ds read", int(span)), ("ds detect", 1)]
+    job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
+    STORE.record_activity([{
+        "action": "braces.run",
+        "detail": {"entry": rec["id"], "channel": int(ch["number"]),
+                   "n": len(events), "from_version": src_v,
+                   "window_ms": spec["window_ms"]},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(),
+                    "channel": int(ch["number"]), "channel_how": how,
+                    "n": len(events)})
+
+
+@app.route("/api/braces/sets")
+def api_braces_sets():
+    """Every alignment on this machine, accepted or still being reviewed."""
+    gid = request.args.get("gid")
+    out = []
+    for rec in BRACES.all():
+        if gid and rec.get("gid") != gid:
+            continue
+        _moves, _flags, counts = brsetmod.resolve(rec)
+        out.append({
+            "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
+            "gid": rec.get("gid"), "name": rec.get("name"),
+            "created": rec.get("created"),
+            "from_version": rec.get("from_version"),
+            "params": rec.get("params"),
+            "summary": rec.get("summary"),
+            "committed": rec.get("committed"),
+            "n": len(rec.get("rows") or []),
+            "counts": counts,
+        })
+    return jsonify({"ok": True, "sets": out, "n": len(out)})
+
+
+@app.route("/api/braces/set/<set_id>")
+def api_braces_set(set_id):
+    """One proposal, with every row and whatever has been decided about it."""
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    moves, _flags, counts = brsetmod.resolve(rec)
+    entry = BANK.get(rec.get("entry_id")) or {}
+    return jsonify({
+        "ok": True,
+        "set": {k: rec.get(k) for k in
+                ("set_id", "entry_id", "gid", "name", "from_version",
+                 "params", "summary", "created", "committed", "rows",
+                 "calls")},
+        "counts": counts,
+        "would_move": len(moves),
+        "entry": {"id": entry.get("id"), "name": entry.get("name"),
+                  "n": entry.get("n"),
+                  "session_label": entry.get("session_label"),
+                  "label_names": entry.get("label_names") or {},
+                  "current_version": max(
+                      [v.get("v") or 0
+                       for v in (entry.get("versions") or [])] or [0])},
+    })
+
+
+@app.route("/api/braces/set/<set_id>/decide", methods=["POST"])
+def api_braces_decide(set_id):
+    """Confirm a row, keep it where it was, or move it somewhere else."""
+    body = request.get_json(force=True) or {}
+    calls = body.get("calls")
+    if calls is None and body.get("call") is not None:
+        # One row, which is what the bench sends on every keystroke.
+        calls = {str(body.get("row")): {"call": body["call"],
+                                        "t": body.get("t")}}
+    try:
+        rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/decide", exc, 400, {"set_id": set_id})
+    moves, _flags, counts = brsetmod.resolve(rec)
+    return jsonify({"ok": True, "counts": counts, "would_move": len(moves),
+                    "calls": rec.get("calls") or {}})
+
+
+@app.route("/api/braces/set/<set_id>/commit", methods=["POST"])
+def api_braces_commit(set_id):
+    """Write the alignment as the next version of the bank entry.
+
+    A dry run by default, and the panel shows what comes back before
+    anything happens: a timestamp rewrite that cannot be read before it
+    happens should not be offered at all. The same rule `retime` follows,
+    for the same reason.
+    """
+    body = request.get_json(force=True) or {}
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    if rec.get("committed"):
+        return jsonify({
+            "ok": False,
+            "error": "This alignment is already version %s of the set."
+                     % (rec["committed"] or {}).get("version")}), 400
+
+    moves, flags, counts = brsetmod.resolve(rec)
+    dry = body.get("apply") is not True
+    try:
+        report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
+                            note=body.get("note"), by=_braces_who(body),
+                            dry_run=dry,
+                            from_version=rec.get("from_version"),
+                            flags=flags)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/commit", exc, 400, {"set_id": set_id})
+
+    report["counts"] = counts
+    # Said out loud rather than left to be noticed: a flag nobody resolved
+    # does not move, and the number of them belongs beside the button.
+    report["left_alone"] = counts.get("waiting", 0)
+    if dry or report.get("error"):
+        return jsonify({"ok": not report.get("error"), "report": report})
+
+    BRACES.mark_committed(set_id, report.get("version"),
+                          report.get("version_id"), by=_braces_who(body))
+    STORE.record_activity([{
+        "action": "braces.commit",
+        "detail": {"entry": rec["entry_id"], "set": set_id,
+                   "version": report.get("version"),
+                   "moved": report.get("moved"),
+                   "left_alone": report["left_alone"]},
+    }])
+    return jsonify({"ok": True, "report": report})
+
+
+@app.route("/api/braces/set/<set_id>/delete", methods=["POST"])
+def api_braces_delete(set_id):
+    """Throw away a proposal nobody accepted."""
+    try:
+        return jsonify(BRACES.forget(set_id))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/delete", exc, 400, {"set_id": set_id})
+
+
+@app.route("/api/dentist/state")
+def api_dentist_state():
+    """Where each step of The Dentist has got to.
+
+    What makes a bundle more than a folder: the rail can say you are on step
+    two of three rather than listing three tools that happen to be related.
+
+    Counted over dentate-spike sets rather than over recordings, because a
+    set is what each step actually acts on -- Incisor makes one, Checkup
+    decides it, Braces moves it -- and a recording with two sets on it is at
+    two different places at once. Pass ?gid= for one recording.
+    """
+    gid = request.args.get("gid")
+    detected = curated = aligned = 0
+    waiting = 0
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ds":
+            continue
+        if gid and rec.get("gid") != gid:
+            continue
+        detected += 1
+        if rec.get("specified"):
+            curated += 1
+            if rec.get("aligned"):
+                aligned += 1
+    # Proposals somebody started and has not finished. The one number that
+    # is about a person rather than about the data.
+    for rec in BRACES.all():
+        if gid and rec.get("gid") != gid:
+            continue
+        if rec.get("committed"):
+            continue
+        _m, _f, counts = brsetmod.resolve(rec)
+        if counts.get("waiting"):
+            waiting += 1
+    return jsonify({
+        "ok": True, "gid": gid,
+        "steps": {
+            "incisor": {"n": detected, "label": "%d DS set%s banked"
+                        % (detected, "" if detected == 1 else "s")},
+            "curate": {"n": curated, "of": detected,
+                       "label": "%d of %d decided" % (curated, detected)},
+            "braces": {"n": aligned, "of": curated, "waiting": waiting,
+                       "label": ("%d of %d aligned" % (aligned, curated))
+                       + (", %d waiting on you" % waiting if waiting else "")},
+        },
+    })
+
+
+@app.route("/api/braces/candidates")
+def api_braces_candidates():
+    """Dentate spike sets that could be aligned, newest first.
+
+    Curated sets only. An uncurated import is a list of candidates rather
+    than a list of events, and moving those before anybody has said which
+    are real is work done twice -- the flags would be about stamps that get
+    thrown away an hour later.
+    """
+    gid = request.args.get("gid")
+    out = []
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ds":
+            continue
+        if gid and rec.get("gid") != gid:
+            continue
+        if not rec.get("specified"):
+            continue
+        vers = rec.get("versions") or []
+        out.append({
+            "id": rec["id"], "name": rec.get("name"),
+            "gid": rec.get("gid"), "n": rec.get("n"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"),
+            "session_label": rec.get("session_label"),
+            "by_label": rec.get("by_label") or {},
+            "current_version": max([v.get("v") or 0 for v in vers] or [0]),
+            "aligned": rec.get("aligned"),
+            "added": rec.get("added"),
+        })
+    out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
+             reverse=True)
+    return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
 @app.route("/api/cfc/cache")
@@ -9643,6 +10158,9 @@ def api_debug_report():
 # Event bank -- the shared record of detected events
 # ==========================================================================
 BANK = eventbank.EventBank(LOGS_DIR, STORE)
+# Alignments waiting to be accepted. Beside the bank rather than inside it:
+# a proposal is not a version until somebody says so.
+BRACES = brsetmod.BracesSets(LOGS_DIR, STORE)
 REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)

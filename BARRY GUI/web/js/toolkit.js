@@ -35,6 +35,10 @@ BARRY.views.toolkit = (function () {
   async function onShow() {
     render();
     if (!scopes) await loadScopes();
+    // Where the bundle's three steps have got to. Not awaited: the rail is
+    // useful without the counts, and a slow bank read should not hold up
+    // the tool somebody actually clicked.
+    loadDentist();
     refresh();
     // Who is in what, and keep it current while this view is open.
     startPresence();
@@ -129,6 +133,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
     if (q.tool === 'incisor') { await loadIncisor(); return; }
+    if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
@@ -178,7 +183,9 @@ BARRY.views.toolkit = (function () {
     host.appendChild(el('div', { class: 'tk-layout' }, [
       el('div', { class: 'tk-tools' }, [
         el('div', { class: 'section-label', style: 'margin-top:0',
-                    text: 'Tools' }),
+                    text: 'Bundles' }),
+        bundleCard(),
+        el('div', { class: 'section-label', text: 'Tools' }),
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
                    + 'project or date range.'),
@@ -225,6 +232,8 @@ BARRY.views.toolkit = (function () {
           // Incisor picks its own recording and scans every channel, so the
           // bad-channel scope card above would be describing something else.
           || q.tool === 'incisor'
+          // Braces picks a banked set, which carries its own recording.
+          || q.tool === 'braces'
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
@@ -234,6 +243,64 @@ BARRY.views.toolkit = (function () {
               el('div', { class: 'tk-result', id: 'tkResult' })]),
     ]));
     renderResult();
+  }
+
+  /* ---------- bundles ----------
+
+     A bundle is three tools that are one job done in three sittings, and
+     the flat list above could not say so. Grouping them is the small half;
+     the half worth having is that each step reads its own state, so the
+     rail says where you are rather than what exists.
+
+     The order is a real dependency. Checkup has nothing to show until
+     Incisor has banked candidates, and Braces has nothing to move until
+     Checkup has said which stamps are spikes -- which is why these are
+     numbered and the other tools are not. */
+  const DENTIST = [
+    ['incisor', 'Incisor', 'find them'],
+    ['curate', 'Checkup', 'call them'],
+    ['braces', 'Braces', 'line them up'],
+  ];
+
+  let dentist = null;
+
+  function bundleCard() {
+    const on = DENTIST.some(([id]) => id === q.tool);
+    const box = el('div', { class: 'tk-bundle' + (on ? ' on' : '') });
+    box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
+      toolIcon('incisor'),
+      el('strong', { text: 'The Dentist' }),
+      el('span', { class: 'tk-bundle-c', text: '3 tools' }),
+    ]));
+    box.appendChild(el('div', { class: 'tk-steps' },
+      DENTIST.map(([id, name, does], i) => {
+        const st = (dentist || {})[id] || {};
+        return el('button', {
+          class: 'tk-step' + (q.tool === id ? ' now' : '')
+                 + (st.n ? ' done' : ''),
+          title: name + ' — ' + does,
+          onclick: () => pickTool(id),
+        }, [
+          el('span', { class: 'tk-step-i', text: String(i + 1) }),
+          el('span', { class: 'tk-step-n', text: name }),
+          el('span', { class: 'tk-step-s',
+                       text: st.label || does }),
+        ]);
+      })));
+    return box;
+  }
+
+  /* Asked for once per visit rather than on every redraw: it walks the
+     bank, and the rail redraws on every tool click. */
+  async function loadDentist() {
+    if (dentist) return;
+    try {
+      const got = await api('/api/dentist/state');
+      dentist = got.steps || {};
+    } catch (e) {
+      dentist = {};       // the rail still draws, without the counts
+    }
+    if (document.getElementById('tkBody')) render();
   }
 
   /* One per tool, drawing the thing the tool is about rather than a generic
@@ -251,6 +318,10 @@ BARRY.views.toolkit = (function () {
     incisor: 'M4.2 3c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
              + '1-1.4 1-1.7 0L8.6 8.6c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
              + '1.7 0L3.5 7.1C3.1 5.6 3.1 3.9 4.2 3z',
+    // A tooth with a wire across it, which is what braces are.
+    braces: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+            + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+            + '1.7 0L3.5 6.7C3.1 5.2 3.1 3.5 4.2 2.6zM1.5 6.2h13',
     // Two waves braided through one another.
     cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
     // A wide frame with a horizon in it.
@@ -269,17 +340,22 @@ BARRY.views.toolkit = (function () {
                        html: '<path d="' + d + '" />' });
   }
 
+  /* Switching tools. One function, because the bundle's steps and the flat
+     list are two doors onto the same thing and a second copy of this drifts
+     -- the Kilosort host reset below was already missed once. */
+  function pickTool(id) {
+    q.tool = id;
+    // The Kilosort pane owns its own host; let it rebuild.
+    const host = document.getElementById('tkResult');
+    if (host) delete host.dataset.ks;
+    render();
+    refresh();
+  }
+
   function toolButton(id, name, blurb) {
     return el('button', {
       class: 'tk-tool' + (q.tool === id ? ' on' : ''),
-      onclick: () => {
-        q.tool = id;
-        // The Kilosort pane owns its own host; let it rebuild.
-        const host = document.getElementById('tkResult');
-        if (host) delete host.dataset.ks;
-        render();
-        refresh();
-      },
+      onclick: () => pickTool(id),
     }, [
       el('div', { class: 'tk-tool-head' }, [
         toolIcon(id),
@@ -2688,6 +2764,7 @@ BARRY.views.toolkit = (function () {
     }
     if (q.tool === 'strata') { renderStrata(); return; }
     if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
+    if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
