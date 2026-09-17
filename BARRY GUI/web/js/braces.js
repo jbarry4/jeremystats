@@ -122,7 +122,14 @@ BARRY.braces = (function () {
       let got;
       try { got = await api('/api/cfc/job/' + job.id); } catch (e) { return; }
       job = got.job;
-      render();
+      /* The bar only, not the panel.
+         A full render empties #tkResult, which takes ToolKit's tool feed
+         with it -- and the feed's own observer then mounts a fresh one,
+         which is a fetch. At four ticks a second that was fifteen requests
+         for /api/toolfeed/braces in half a minute, none of them asked for.
+         Nothing on this panel changes while a read is running except how
+         far through it is. */
+      paintJob();
       if (job.status === 'running') return;
       clearInterval(poll);
       const done = job; job = null;
@@ -144,6 +151,16 @@ BARRY.braces = (function () {
       }
       render();
     }, 400);
+  }
+
+  /* The progress bar, updated in place. Returns false when the panel is
+     not showing one, which is when a full render is the right answer. */
+  function paintJob() {
+    const bar = document.querySelector('#brJob i');
+    const step = document.querySelector('#brJob span');
+    if (!bar || !step) { render(); return; }
+    bar.style.width = Math.round(((job && job.frac) || 0) * 100) + '%';
+    step.textContent = (job && job.step) || 'reading the channel…';
   }
 
   async function cancel() {
@@ -277,7 +294,9 @@ BARRY.braces = (function () {
                                 text: 'Settings' }));
     set.appendChild(el('div', { class: 'br-fields' }, [
       field('Channel', el('input', {
-        type: 'number', value: q.channel == null
+        type: 'number',
+        placeholder: (plan && plan.needs_channel) ? 'pick one' : '',
+        value: q.channel == null
           ? ((plan && plan.channel && plan.channel.number) || '')
           : q.channel,
         onchange: (e) => {
@@ -312,7 +331,7 @@ BARRY.braces = (function () {
     /* Go. */
     const go = el('div', { class: 'br-go' });
     if (job) {
-      go.appendChild(el('div', { class: 'br-job' }, [
+      go.appendChild(el('div', { class: 'br-job', id: 'brJob' }, [
         el('span', { text: job.step || 'reading the channel…' }),
         el('div', { class: 'br-bar' },
            [el('i', { style: 'width:' + Math.round((job.frac || 0) * 100)
@@ -321,9 +340,16 @@ BARRY.braces = (function () {
       go.appendChild(el('button', { class: 'btn ghost', text: 'Stop',
                                     onclick: cancel }));
     } else {
+      /* Runnable means a readable recording AND a channel. `plan.ok` is
+         true while the channel is still missing -- that state is a prompt,
+         and a button that offers to start a read it cannot aim is worse
+         than one that waits. */
+      const ready = !!(plan && plan.ok
+                       && (plan.channel || q.channel != null));
       go.appendChild(el('button', {
         class: 'btn primary', text: 'Line them up',
-        disabled: (plan && plan.ok) ? null : 'disabled',
+        disabled: ready ? null : 'disabled',
+        title: ready ? '' : 'Pick the channel these stamps were detected on',
         onclick: run,
       }));
     }
@@ -356,12 +382,23 @@ BARRY.braces = (function () {
     const s = plan.spec || {};
     card.appendChild(el('dl', { class: 'br-dl' }, [
       dt('Recording', (plan.session || {}).name || '—'),
-      dt('Channel', 'CSC' + plan.channel.number
-                    + '  (' + plan.channel.how + ')'),
+      /* `plan.channel` is null whenever nothing could work one out, which
+         is most of this archive -- 41 of 45 sets were banked before Incisor
+         existed and say nothing about which channel they came from. That is
+         a prompt, not a failure, so the row says so rather than throwing. */
+      plan.channel
+        ? dt('Channel', 'CSC' + plan.channel.number
+                        + '  (' + plan.channel.how + ')')
+        : dt('Channel', 'not recorded — pick one below'),
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
       dt('Stamps', plan.entry.n + ' in v' + plan.current_version),
     ].filter(Boolean)));
+
+    if (plan.needs_channel) {
+      card.appendChild(el('p', { class: 'hint br-warn', text:
+        plan.needs_channel }));
+    }
 
     /* Which version supplies the stamps. Only where there is a choice --
        a set with one version does not need a dropdown saying so. */

@@ -1413,6 +1413,40 @@ BARRY.views.eventbank = (function () {
       selected: e.type === t.id ? 'selected' : null,
     })));
 
+    /* The name, with the session offered beside it.
+
+       Most of the names in this bank were typed while somebody was looking
+       at the recording, when "CSC61" was obviously enough. In a list of
+       forty-five it is not. The suggestion is one press rather than
+       something that happens on its own: a name somebody chose on purpose
+       is not a mistake to be corrected. */
+    function nameField(rec) {
+      const input = el('input', { type: 'text',
+                                  value: rec.name == null ? '' : String(rec.name) });
+      f.name = input;
+      const want = BARRY.bankName.suggest(rec, typeName(rec.type));
+      const loose = BARRY.bankName.vague(rec.name, rec);
+      const use = el('button', {
+        class: 'btn ghost sm' + (loose ? ' hot' : ''),
+        text: 'Use the session name',
+        title: want,
+        onclick: () => {
+          input.value = BARRY.bankName.suggest(rec, typeName(typeSel.value));
+          input.focus();
+        },
+      });
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Name' }),
+        el('div', { class: 'bank-name-row' }, [input, use]),
+        el('span', { class: 'hint',
+          text: loose
+            ? 'This name does not say which recording it belongs to, so it '
+              + 'cannot be told apart in a list. The session name is '
+              + '“' + want + '”.'
+            : 'Suggested: “' + want + '”' }),
+      ]);
+    }
+
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Edit entry' }),
@@ -1422,7 +1456,7 @@ BARRY.views.eventbank = (function () {
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
-        field('name', 'Name', e.name),
+        nameField(e),
         field('project', 'Project', e.project),
         field('mouse', 'Mouse', e.mouse),
         field('session', 'Session', e.session),

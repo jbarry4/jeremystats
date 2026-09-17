@@ -15,6 +15,74 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.6 - The curation list stops asking the same question forty-eight times
+
+### Fixed
+
+- **Opening Event curation took four and a half seconds.** Measured, not
+  guessed: `/api/curation` came back in 4537 ms on this archive, and it now
+  takes about 400.
+
+  `REG.by_gid` is not a scan — it keeps an index, and it has since the last
+  time this was slow. What it does on every call is re-check the session
+  shards' signature, to know the index it is holding is still good. That
+  check is 77 ms here. The curation list called it once per set, which at
+  forty-eight sets is forty-eight freshness checks of a list that cannot
+  change halfway through being built.
+
+  The index is now built once for the request, exactly as the bank
+  summaries already were three lines above it and for the same reason. The
+  freshness check is worth its cost once and nothing at all per row.
+
+  Nothing else changed: the same forty-eight sets come back with the same
+  session records and the same histories.
+
+- **Braces threw on every set that does not record a channel.** Which is
+  forty-one of the forty-five curated ones — `Cannot read properties of null
+  (reading 'number')`, seven times in one sitting. Making a missing channel
+  a question rather than a refusal left the panel still reading the answer
+  as though it were always there. The row now says "not recorded — pick one
+  below", the reason is printed under it, and **Line them up** stays
+  disabled until there is a channel to aim at, rather than offering to start
+  a read it cannot point anywhere.
+
+- **Braces asked for its tool feed fifteen times in thirty seconds.** The
+  panel rebuilt itself on every tick of the job poll — four times a second
+  while a read was running — and rebuilding empties the panel host, which
+  takes ToolKit's tool feed with it. The feed's own observer then mounted a
+  fresh one, and a fresh mount is a request.
+
+  Two halves, both fixed. The read now repaints only the progress bar, since
+  nothing else on that panel changes while it runs. And ToolKit's observer
+  coalesces: a panel that rebuilds does not fire once, and every firing that
+  landed while the feed was absent used to mount another.
+
+### Changed
+
+- **A banked set can be named when it is banked, and renamed with the
+  session already in it.** The names in this bank are "Incisor CSC61",
+  "m33s8", "dupes seed" and "DS candidates (ETS)". Every one of them made
+  sense to whoever typed it while they were looking at the recording, and
+  none of them says which animal, which session or which day — so the Event
+  Bank is a list of forty-five things you have to open to tell apart.
+
+  Incisor now asks what to call a set at the moment of banking, with the
+  session already filled in, rather than assembling "Incisor CSC61" silently.
+  The Edit dialog — which could always rename an entry — gets the same
+  suggestion on a button beside the field, and says so more loudly when the
+  current name carries nothing about which recording it belongs to.
+
+  Offered, never imposed. A name somebody chose on purpose is not a mistake
+  to be corrected, so nothing is renamed without a press, and the rule lives
+  in one place because two callers need it and a second copy would drift.
+
+### Removed
+
+- **The Dentist's step counts.** The rail was reporting how many DS sets are
+  banked, how many decided and how many aligned. It was a number nobody
+  asked of a rail, and the route behind it went with it rather than being
+  left as something nothing calls.
+
 ## 2026.09.17.5 - Curation remembers where you were
 
 ### Added

@@ -1688,9 +1688,26 @@ BARRY.incisor = (function () {
       banking = false; paint();
     }
     if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
+
+    /* What this set will be called, chosen here rather than assembled
+       silently. It used to go in as "Incisor CSC61", which is plenty while
+       you are looking at the recording and says nothing at all in a list of
+       forty-five — so the name is offered, with the session already in it,
+       at the one moment somebody knows what this set is for. */
+    const nameBox = el('input', {
+      type: 'text', class: 'inc-name',
+      value: BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
+    });
     const ok = await BARRY.confirm(
       'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
       el('div', { class: 'fix-facts' }, [
+        el('div', { class: 'field' }, [
+          el('label', { text: 'Call this set' }),
+          nameBox,
+          el('span', { class: 'hint', text:
+            'The session is in it already. Anything you type here is what '
+            + 'the Event Bank lists it under, and it can be changed later.' }),
+        ]),
         el('p', { text: 'They go in as a detector’s output, not as a '
             + 'curated set — nothing is decided, and the next step is '
             + 'vetting them in DS curation.' }),
@@ -1720,7 +1737,11 @@ BARRY.incisor = (function () {
         duration_s: r.duration_s,
         type: 'ds',
         type_name: 'Dentate spike',
-        name: 'Incisor ' + row.label,
+        // What the dialog was left showing. Blank falls back to the
+        // suggestion rather than to nothing: an entry with no name at all
+        // is the one thing worse than a vague one.
+        name: (nameBox.value || '').trim()
+              || BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
         pipeline: 'Incisor (dentate spike)',
         added_by: who,
         session_path: q.path,

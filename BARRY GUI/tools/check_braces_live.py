@@ -73,17 +73,6 @@ def truthy(name, got, why=""):
 
 print("\nagainst %s" % BASE)
 
-print("\nTHE BUNDLE KNOWS WHERE IT IS")
-print("-" * 68)
-st = call("/api/dentist/state")
-truthy("the three steps report their state", (st.get("steps") or {}).get("braces"))
-for k in ("incisor", "curate", "braces"):
-    print("       %-8s %s" % (k, st["steps"][k]["label"]))
-check("Checkup cannot be ahead of Incisor",
-      st["steps"]["curate"]["n"] <= st["steps"]["incisor"]["n"], True)
-check("Braces cannot be ahead of Checkup",
-      st["steps"]["braces"]["n"] <= st["steps"]["curate"]["n"], True)
-
 print("\nWHAT IT OFFERS")
 print("-" * 68)
 cands = call("/api/braces/candidates")
@@ -106,16 +95,23 @@ n_bank_before = len(entries)
 print("\nA PLAN IS NOT A WRITE")
 print("-" * 68)
 picked = None
+asked = 0
 for cand in (cands.get("sets") or []):
     plan = call("/api/braces/plan", {"entry_id": cand["id"]})
-    if plan.get("ok"):
-        picked = (cand, plan)
-        break
+    if not plan.get("ok"):
+        continue
+    # `ok` with no channel is the prompt state, not a runnable plan: most of
+    # this archive was banked before Incisor existed and records none.
+    if not plan.get("channel"):
+        asked += 1
+        continue
+    picked = (cand, plan)
+    break
 if not picked:
-    print("  ..   no set on this machine can be opened for reading, so the "
-          "run is skipped")
-    print("       (every candidate's recording is on a drive this machine "
-          "cannot see)")
+    print("  ..   no set here both opens and names a channel, so the run "
+          "is skipped")
+    print("       (%d set(s) opened but would have to be told which "
+          "channel)" % asked)
 else:
     cand, plan = picked
     print("       %s" % cand["name"])

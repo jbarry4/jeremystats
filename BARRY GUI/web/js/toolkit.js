@@ -35,10 +35,6 @@ BARRY.views.toolkit = (function () {
   async function onShow() {
     render();
     if (!scopes) await loadScopes();
-    // Where the bundle's three steps have got to. Not awaited: the rail is
-    // useful without the counts, and a slow bank read should not hold up
-    // the tool somebody actually clicked.
-    loadDentist();
     refresh();
     // Who is in what, and keep it current while this view is open.
     startPresence();
@@ -262,8 +258,6 @@ BARRY.views.toolkit = (function () {
     ['braces', 'Braces', 'line them up'],
   ];
 
-  let dentist = null;
-
   function bundleCard() {
     const on = DENTIST.some(([id]) => id === q.tool);
     const box = el('div', { class: 'tk-bundle' + (on ? ' on' : '') });
@@ -274,33 +268,17 @@ BARRY.views.toolkit = (function () {
     ]));
     box.appendChild(el('div', { class: 'tk-steps' },
       DENTIST.map(([id, name, does], i) => {
-        const st = (dentist || {})[id] || {};
         return el('button', {
-          class: 'tk-step' + (q.tool === id ? ' now' : '')
-                 + (st.n ? ' done' : ''),
+          class: 'tk-step' + (q.tool === id ? ' now' : ''),
           title: name + ' — ' + does,
           onclick: () => pickTool(id),
         }, [
           el('span', { class: 'tk-step-i', text: String(i + 1) }),
           el('span', { class: 'tk-step-n', text: name }),
-          el('span', { class: 'tk-step-s',
-                       text: st.label || does }),
+          el('span', { class: 'tk-step-s', text: does }),
         ]);
       })));
     return box;
-  }
-
-  /* Asked for once per visit rather than on every redraw: it walks the
-     bank, and the rail redraws on every tool click. */
-  async function loadDentist() {
-    if (dentist) return;
-    try {
-      const got = await api('/api/dentist/state');
-      dentist = got.steps || {};
-    } catch (e) {
-      dentist = {};       // the rail still draws, without the counts
-    }
-    if (document.getElementById('tkBody')) render();
   }
 
   /* One per tool, drawing the thing the tool is about rather than a generic
@@ -2708,6 +2686,7 @@ BARRY.views.toolkit = (function () {
 
   function mountFeed() {
     if (!BARRY.toolfeed) return;
+    if (feedSoon) { clearTimeout(feedSoon); feedSoon = null; }
     BARRY.toolfeed.stop();
     const host = $('#tkResult');
     if (!host || !q.tool) return;
@@ -2731,13 +2710,32 @@ BARRY.views.toolkit = (function () {
      mount would have run and repaints over it. Watching the host covers
      sync tools, async tools and anything added later without each of them
      having to remember. */
+  /* Coalesced, because a panel does not rebuild once.
+
+     A tool that redraws its whole host -- emptying it and appending a fresh
+     tree -- fires this several times for one repaint, and every firing that
+     lands while `.tf` is absent mounts a feed, which is a fetch. Measured on
+     Braces during a read: fifteen requests for /api/toolfeed/braces in
+     thirty seconds, because the panel was rebuilding four times a second
+     and taking the feed with it each time.
+
+     The tool that rebuilt too eagerly has been fixed as well; this is the
+     side of it that keeps the next tool from doing the same thing. One
+     frame is enough for a rebuild to finish appending. */
+  let feedSoon = null;
+
   function watchPanel(host) {
     if (feedWatch) { feedWatch.disconnect(); feedWatch = null; }
     if (typeof MutationObserver !== 'function') return;
     feedWatch = new MutationObserver(() => {
       if (!q.tool) return;
-      const now = $('#tkResult');
-      if (now) tryFeed(now, q.tool);
+      if (feedSoon) return;
+      feedSoon = setTimeout(() => {
+        feedSoon = null;
+        if (!q.tool) return;
+        const now = $('#tkResult');
+        if (now) tryFeed(now, q.tool);
+      }, 60);
     });
     feedWatch.observe(host, { childList: true });
   }

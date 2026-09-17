@@ -3508,55 +3508,6 @@ def api_braces_delete(set_id):
         return fail("braces/delete", exc, 400, {"set_id": set_id})
 
 
-@app.route("/api/dentist/state")
-def api_dentist_state():
-    """Where each step of The Dentist has got to.
-
-    What makes a bundle more than a folder: the rail can say you are on step
-    two of three rather than listing three tools that happen to be related.
-
-    Counted over dentate-spike sets rather than over recordings, because a
-    set is what each step actually acts on -- Incisor makes one, Checkup
-    decides it, Braces moves it -- and a recording with two sets on it is at
-    two different places at once. Pass ?gid= for one recording.
-    """
-    gid = request.args.get("gid")
-    detected = curated = aligned = 0
-    waiting = 0
-    for rec in BANK.all():
-        if (rec.get("type") or "") != "ds":
-            continue
-        if gid and rec.get("gid") != gid:
-            continue
-        detected += 1
-        if rec.get("specified"):
-            curated += 1
-            if rec.get("aligned"):
-                aligned += 1
-    # Proposals somebody started and has not finished. The one number that
-    # is about a person rather than about the data.
-    for rec in BRACES.all():
-        if gid and rec.get("gid") != gid:
-            continue
-        if rec.get("committed"):
-            continue
-        _m, _f, counts = brsetmod.resolve(rec)
-        if counts.get("waiting"):
-            waiting += 1
-    return jsonify({
-        "ok": True, "gid": gid,
-        "steps": {
-            "incisor": {"n": detected, "label": "%d DS set%s banked"
-                        % (detected, "" if detected == 1 else "s")},
-            "curate": {"n": curated, "of": detected,
-                       "label": "%d of %d decided" % (curated, detected)},
-            "braces": {"n": aligned, "of": curated, "waiting": waiting,
-                       "label": ("%d of %d aligned" % (aligned, curated))
-                       + (", %d waiting on you" % waiting if waiting else "")},
-        },
-    })
-
-
 @app.route("/api/braces/candidates")
 def api_braces_candidates():
     """Dentate spike sets that could be aligned, newest first.
@@ -5436,8 +5387,18 @@ def api_curation_list():
     # cached but the match is a scan, and forty sets against a bank of
     # hundreds is forty scans for one request.
     banked = BANK.summaries()
+    # The same rule for the registry, for a reason that is not the same.
+    #
+    # `REG.by_gid` keeps an index and is not a scan -- but it re-checks the
+    # shard directory's signature on every call to know the index is still
+    # good, and that check is 77 ms on this archive. Forty-eight sets is
+    # forty-eight checks, which measured at 5.2 s of the 4.5 s this request
+    # was taking. The freshness check is worth its cost once per request and
+    # nothing at all per row: the answer cannot change halfway through
+    # building one list.
+    by_gid = {r.get("gid"): r for r in REG.all() if r.get("gid")}
     for row in CURATE.summaries():
-        rec = REG.by_gid(row["gid"])
+        rec = by_gid.get(row["gid"])
         row["session"] = REG.summary(rec) if rec else None
         row["history"] = _cur_history(row["gid"], row.get("kind"), banked)
         out.append(row)

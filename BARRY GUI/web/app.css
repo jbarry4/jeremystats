@@ -8657,3 +8657,30 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   .br-field input { width: 92px; }
 }
 
+
+/* ==========================================================================
+   Naming a banked set
+   ========================================================================== */
+/* The name and the button that fills it in, on one line: the suggestion is
+   about the field it sits beside, and underneath it would read as an action
+   on the whole dialog. */
+.bank-name-row { display: flex; gap: 8px; align-items: stretch; }
+.bank-name-row input { flex: 1 1 auto; min-width: 0; }
+.bank-name-row .btn { flex: none; white-space: nowrap; }
+
+/* A ghost button that has something to say. Used where the current name
+   carries nothing about which recording it belongs to -- the press is still
+   optional, it is just worth noticing. */
+.btn.ghost.hot {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.btn.ghost.hot:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.inc-name { width: 100%; }
+
+@media (max-width: 560px) {
+  .bank-name-row { flex-direction: column; align-items: stretch; }
+}
+
