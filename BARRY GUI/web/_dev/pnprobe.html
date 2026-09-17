@@ -38,7 +38,7 @@ async function untilN(fn, t = 600, g = 100) {
     await sleep(400);
     p('\n== frame ' + Math.round(f.getBoundingClientRect().width) + 'px ==');
     for (const name of tools) {
-      const btn = Array.from(D().querySelectorAll('.tk-tool'))
+      const btn = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
         .find((b) => (b.querySelector('strong') || {}).textContent === name);
       if (!btn) { p('   ' + name.padEnd(14) + 'no button'); continue; }
       btn.click();

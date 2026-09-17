@@ -665,6 +665,80 @@ PYEOF
                        "env", raw)
 
 
+_BROWSE = r"""
+D=%s
+if [ ! -d "$D" ]; then echo "err=not a directory"; exit 0; fi
+echo "at=$D"
+for f in "$D"/*; do
+  [ -e "$f" ] || continue
+  n=$(basename "$f")
+  if [ -d "$f" ]; then
+    # Is it a recording? One CSC file is the same test discovery.py makes
+    # locally, so the two agree about what counts as one.
+    if [ -e "$f/CSC1.ncs" ]; then
+      echo "rec	$(ls "$f"/CSC*.ncs 2>/dev/null | wc -l)	$n"
+    else
+      echo "dir	0	$n"
+    fi
+  fi
+done
+echo "end=1"
+"""
+
+
+def browse(cfg, path=None, timeout=60):
+    """One level of the cluster's filesystem, as folders and recordings.
+
+    Folders only. The point of looking at a cluster from here is to find
+    recordings, and a listing that also carried every `.ncs` would be four
+    thousand lines to show one folder. A recording is marked as one -- by
+    the same test `discovery.py` makes locally, the presence of `CSC1.ncs`
+    -- so the tree can stop there rather than descending into sixty-four
+    files that are one thing.
+    """
+    root = path or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    if not root:
+        return {"at": None, "dirs": [], "recordings": [], "error": "nowhere to look"}
+    # Refuse to climb out of what the config points at, the same way
+    # `_remote_path` does: this is a path from a browser.
+    root = str(root)
+    if ".." in root.split("/"):
+        raise ValueError("Refusing a path containing '..'")
+    raw = _ssh(cfg, "bash -s", stdin=_BROWSE % q(root), timeout=timeout)
+    at, dirs, recs, done, err = root, [], [], False, None
+    for line in (raw or "").splitlines():
+        line = line.rstrip()
+        if line.startswith("at="):
+            at = line[3:]
+            continue
+        if line.startswith("err="):
+            err = line[4:]
+            continue
+        if line.strip() == "end=1":
+            done = True
+            continue
+        bits = line.split("\t")
+        if len(bits) < 3:
+            continue
+        name = bits[2]
+        if bits[0] == "rec":
+            try:
+                n_ch = int(bits[1])
+            except ValueError:
+                n_ch = 0
+            recs.append({"name": name, "path": at.rstrip("/") + "/" + name,
+                         "n_channels": n_ch})
+        elif bits[0] == "dir":
+            dirs.append({"name": name, "path": at.rstrip("/") + "/" + name})
+    if err:
+        return {"at": at, "dirs": [], "recordings": [], "error": err}
+    if not done:
+        raise SSHError("The listing was cut short.", "garbled", raw)
+    dirs.sort(key=lambda d: d["name"].lower())
+    recs.sort(key=lambda d: d["name"].lower())
+    return {"at": at, "dirs": dirs, "recordings": recs, "error": None}
+
+
 def quota(cfg, timeout=40):
     """How full the filesystems are. Slow on purpose to ask, so ask rarely.
 

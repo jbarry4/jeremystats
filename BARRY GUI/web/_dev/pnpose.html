@@ -30,7 +30,7 @@ async function untilN(fn, t = 900, g = 100) {
   await untilN(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.panorama'));
   ev('setView("toolkit")');
   await untilN(() => D().querySelector('.tk-tools'));
-  const hit = Array.from(D().querySelectorAll('.tk-tool'))
+  const hit = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
     .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
   if (hit) hit.click();
   await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');

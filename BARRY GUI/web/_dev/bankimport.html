@@ -171,8 +171,8 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   head('5. The interface offers it, and no longer offers importing');
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  const tool = byText(D, '.tk-tool', /Event curation/);
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 200);
+  const tool = byText(D, '.tk-tool, .tk-step', /Event curation|Checkup/);
   check('the curation tool is there', !!tool);
   tool.click();
   await untilN(() => D.querySelector('#curBench'), 300);

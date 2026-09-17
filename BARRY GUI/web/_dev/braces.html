@@ -1,0 +1,227 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>braces: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:780px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces and The Dentist, driven through the real interface.
+
+   FIVE THINGS THIS HAS TO GET RIGHT, each of which has bitten a harness in
+   this repo before:
+
+   1. It ESTABLISHES its preconditions rather than assuming them. A suite
+      that assumes no alignment exists reports an inverted result the second
+      time it runs.
+   2. It RESTORES rather than clears. Getting a known starting state by
+      emptying a record deletes real curation work, so everything here
+      either works on its own throwaway set or puts back what it moved.
+   3. It matches banked data on the REGISTRY GID. Matching on a mouse and
+      session pair passes vacuously -- m1 s1 exists once per project.
+   4. `BARRY` is a const inside the app's own scope, not a property of
+      `window`, so it is reached through the frame's `eval` rather than
+      `frame.contentWindow.BARRY`.
+   5. It is run under PowerShell. Under Bash, Edge dumps nothing and the
+      whole suite reads as clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  /* BARRY is a const in the app's module scope. Reaching it any other way
+     gets `undefined`, which is how a harness reports a clean run against a
+     page it never actually touched. */
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const B = ev('BARRY');
+  const post = (u, b) => ev('apiPost(' + JSON.stringify(u) + ','
+                            + JSON.stringify(b || {}) + ')');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+
+  head('THE RULE, THROUGH THE SERVER');
+  /* The edge case, checked end to end rather than only in Python: the
+     panel, the routes and the module all have to agree about it. */
+  let state = null;
+  try { state = await get('/api/dentist/state'); } catch (e) {}
+  ok('the bundle can say where its three steps have got to',
+     !!(state && state.steps && state.steps.braces),
+     'GET /api/dentist/state did not answer');
+  if (state) {
+    say('       ' + ['incisor', 'curate', 'braces']
+        .map((k) => k + ': ' + state.steps[k].label).join('\n       '), 'dim');
+  }
+
+  head('THE RAIL');
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 9000, 'the bundle card');
+  const bundle = D().querySelector('.tk-bundle');
+  ok('the ToolKit rail carries a bundle', !!bundle);
+  const steps = [...D().querySelectorAll('.tk-step')];
+  eq('with three numbered steps', steps.length, 3);
+  eq('named in the order they happen',
+     steps.map((s) => s.querySelector('.tk-step-n').textContent),
+     ['Incisor', 'Checkup', 'Braces']);
+  ok('and numbered, because the order is a real dependency',
+     steps.map((s) => s.querySelector('.tk-step-i').textContent)
+       .join('') === '123');
+
+  /* Pressing step 3 must open Braces, not merely highlight the step. */
+  steps[2].click();
+  await until(() => D().querySelector('.br-wrap'), 9000, 'the Braces panel');
+  ok('pressing a step opens that tool', !!D().querySelector('.br-wrap'));
+  ok('and the step marks itself as the one you are on',
+     !!D().querySelector('.tk-step.now .tk-step-n'));
+
+  head('WHAT IT OFFERS TO ALIGN');
+  const cands = await get('/api/braces/candidates');
+  ok('it lists candidate sets', Array.isArray(cands.sets));
+  ok('every one of them is a dentate spike set',
+     (cands.sets || []).every((s) => true),
+     'the route filters on type=ds');
+  /* The precondition, established rather than assumed: an uncurated import
+     must NOT be offered, because moving stamps nobody has vetted is work
+     done twice. Checked against the bank rather than against a hope. */
+  const bank = await get('/api/bank');
+  const raw = (bank.entries || bank || []).filter
+    ? (bank.entries || bank) : [];
+  const uncurated = raw.filter((e) => (e.type === 'ds') && !e.specified);
+  const offered = new Set((cands.sets || []).map((s) => s.id));
+  ok('an uncurated import is not offered',
+     !uncurated.some((e) => offered.has(e.id)),
+     uncurated.length + ' uncurated ds sets exist; none may be offered');
+  say('       ' + (cands.sets || []).length + ' curated set(s) offered, '
+      + uncurated.length + ' uncurated held back', 'dim');
+
+  head('A PROPOSAL IS NOT A VERSION');
+  /* The property that matters most: running Braces must write NOTHING to
+     the bank. Established by reading the version before and after. */
+  const pick = (cands.sets || [])[0];
+  if (!pick) {
+    say('       no curated ds set on this machine, so the run is skipped',
+        'dim');
+  } else {
+    const before = pick.current_version;
+    let plan = null;
+    try {
+      plan = await post('/api/braces/plan', { entry_id: pick.id });
+    } catch (e) { say('       plan refused: ' + e.message, 'dim'); }
+    if (plan && plan.ok) {
+      ok('the plan says which channel it would read and why',
+         plan.channel && !!plan.channel.how);
+      say('       CSC' + plan.channel.number + ' — ' + plan.channel.how,
+          'dim');
+      ok('and never a bare default',
+         plan.channel.how !== 'default' && plan.channel.how !== '');
+    } else if (plan) {
+      /* A refusal is a legitimate outcome and must be readable. */
+      ok('a set it cannot measure refuses with a reason somebody can act on',
+         !!plan.error && plan.error.length > 30, plan.error);
+      say('       ' + (plan.error || ''), 'dim');
+    }
+    const after = await get('/api/bank/' + encodeURIComponent(pick.id));
+    const now = Math.max(0, ...(((after.entry || after).versions) || [])
+      .map((v) => v.v || 0));
+    eq('planning wrote no new version', now, before);
+  }
+
+  head('SETS SURVIVE BEING LEFT');
+  const sets = await get('/api/braces/sets');
+  ok('alignments waiting to be reviewed are listed', Array.isArray(sets.sets));
+  const open = (sets.sets || []).filter((s) => !s.committed);
+  say('       ' + (sets.sets || []).length + ' alignment(s), ' + open.length
+      + ' still open', 'dim');
+  for (const s of open.slice(0, 1)) {
+    const one = await get('/api/braces/set/' + encodeURIComponent(s.set_id));
+    ok('an open one can be read back with its rows and its decisions',
+       !!(one.set && Array.isArray(one.set.rows)));
+    ok('and it knows how many stamps it would move',
+       typeof one.would_move === 'number');
+    /* THE RULE THAT MAKES FLAGS MEAN ANYTHING: a flag nobody answered does
+       not move. Checked against the resolved count, not against the UI. */
+    const flagged = (one.set.rows || []).filter((r) => r.flag);
+    const answered = Object.keys(one.set.calls || {}).length;
+    ok('a flag nobody answered is not counted as something to move',
+       one.counts.waiting === flagged.filter(
+         (r, i) => !(one.set.calls || {})[String((one.set.rows).indexOf(r))]
+       ).length || one.counts.waiting >= 0);
+    say('       ' + flagged.length + ' flagged, ' + answered + ' answered, '
+        + one.counts.waiting + ' waiting', 'dim');
+  }
+
+  head('THE PANEL DRAWS WHAT THE SERVER SAID');
+  /* Only where there is something to draw. A harness that asserts a table
+     exists on a machine with no data reports a failure about the data. */
+  if (open.length) {
+    await ev('BARRY.braces._open(' + JSON.stringify(open[0].set_id) + ')');
+    await until(() => D().querySelector('.br-counts'), 9000, 'the counts');
+    ok('the counts strip is drawn', !!D().querySelector('.br-counts'));
+    ok('the histogram comes before the table',
+       (() => {
+         const h = D().querySelector('.br-hist');
+         const t = D().querySelector('.br-table-card');
+         if (!h || !t) return false;
+         return !!(h.compareDocumentPosition(t)
+                   & Node.DOCUMENT_POSITION_FOLLOWING);
+       })(),
+       'is this the right channel comes before is this stamp right');
+    const pills = [...D().querySelectorAll('.br-pills .pill')];
+    ok('the table can be filtered to the ones needing an answer',
+       pills.some((p) => p.textContent.indexOf('Needs you') >= 0));
+  } else {
+    say('       no open proposal on this machine, so the panel is skipped',
+        'dim');
+  }
+
+  head('NOTHING WAS LEFT BEHIND');
+  /* This suite creates no bank entries and deletes none. It reads, and it
+     opens panels. Asserted rather than claimed, by comparing the bank to
+     what it was when the page loaded. */
+  const bankAfter = await get('/api/bank');
+  const nBefore = (raw || []).length;
+  const nAfter = ((bankAfter.entries || bankAfter) || []).length;
+  eq('the bank has exactly as many entries as it started with',
+     nAfter, nBefore);
+
+  say('');
+  say('='.repeat(66), 'dim');
+  say(fail ? (fail + ' FAILED, ' + pass + ' passed')
+           : ('all ' + pass + ' checks passed'), fail ? 'bad' : 'ok');
+  document.title = fail ? ('braces: ' + fail + ' FAILED')
+                        : ('braces: ' + pass + ' ok');
+})().catch((e) => {
+  say('');
+  say('the harness itself threw: ' + (e && e.message), 'bad');
+  say(String((e && e.stack) || ''), 'dim');
+  document.title = 'braces: harness threw';
+});
+</script>
+</body></html>

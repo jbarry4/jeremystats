@@ -164,7 +164,7 @@ const cv = (id) => D().getElementById(id);
   A.src = '/#toolkit';
   await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'), 40000);
   const tool = await until(() => Array.from(
-    D().querySelectorAll('#tkBody .tk-tool'))
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
     .find((b) => /Incisor/.test(b.textContent)), 15000);
   ck('the Incisor panel opens', !!tool, 'no tool button');
   if (!tool) { document.title = 'incisorplots: ' + (bad || 1) + ' FAILED'; return; }

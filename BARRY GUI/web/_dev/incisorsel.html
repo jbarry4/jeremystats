@@ -165,7 +165,7 @@ let restore = null;   // {path, was} -- put back in the finally, regardless
      roles.join(',') === 'theta,ripple,hilus', roles.join(',') || 'none');
 
   const tool = await until(() => Array.from(
-    D().querySelectorAll('#tkBody .tk-tool'))
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
     .find((b) => /Incisor/.test(b.textContent)), 15000);
   ck('there is an Incisor tool button', !!tool, 'not in the list');
   if (!tool) { document.title = 'incisorsel: ' + (bad || 1) + ' FAILED'; return; }

@@ -72,9 +72,9 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('=== the ToolKit lists it ===', 'hd');
   ev("setView('toolkit')");
   await sleep(700);
-  const curBtn = $$('.tk-tool').find((b) => /Event curation/.test(b.textContent));
+  const curBtn = $$('.tk-tool, .tk-step').find((b) => /Event curation|Checkup/.test(b.textContent));
   check('there is an Event curation tool', !!curBtn,
-        $$('.tk-tool strong').map((n) => n.textContent).join(' | '));
+        $$('.tk-tool strong, .tk-step .tk-step-n').map((n) => n.textContent).join(' | '));
   curBtn.click();
   await until(() => $('#tkResult .cur-set'), 12000);
   await sleep(600);

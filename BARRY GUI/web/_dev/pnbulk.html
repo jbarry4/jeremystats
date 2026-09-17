@@ -49,7 +49,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
     if (ok < 0) { p('\nFAILED ' + (++bad)); document.title = 'FAIL'; return; }
     ev('setView("toolkit")');
     await untilN(() => D().querySelector('.tk-tools'));
-    const hit = Array.from(D().querySelectorAll('.tk-tool'))
+    const hit = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
       .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama');
     hit.click();
     await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');

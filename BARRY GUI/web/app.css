@@ -660,6 +660,41 @@
 .vacc-v { color: var(--text); font-family: var(--mono); font-size: 11px;
           overflow: hidden; text-overflow: ellipsis; }
 .vacc-state { font-size: 12.5px; margin: 2px 0 10px; }
+
+/* ---- looking around the cluster ---- */
+.vacc-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+               margin: 6px 0; }
+.vacc-crumb {
+  border: 0; background: transparent; cursor: pointer; font: inherit;
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  padding: 2px 5px; border-radius: 4px;
+}
+.vacc-crumb:hover { background: var(--bg-3); color: var(--text); }
+.vacc-crumb + .vacc-crumb::before { content: '/'; color: var(--text-3);
+                                    margin-right: 6px; }
+.vacc-ls {
+  max-height: 260px; overflow: auto; margin: 4px 0 10px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.vacc-ls-row {
+  display: flex; gap: 10px; justify-content: space-between; width: 100%;
+  text-align: left; padding: 4px 10px; font-size: 12px; font: inherit;
+  border: 0; border-bottom: 1px solid var(--line-soft);
+  background: transparent; color: var(--text); font-family: var(--mono);
+}
+.vacc-ls-row:last-child { border-bottom: 0; }
+.vacc-ls-row.dir, .vacc-ls-row.up { cursor: pointer; }
+.vacc-ls-row.dir:hover, .vacc-ls-row.up:hover { background: var(--bg-3); }
+.vacc-ls-row.dir::before { content: '▸ '; color: var(--text-3); }
+.vacc-ls-row.up { color: var(--text-3); }
+/* A recording is a leaf, and is not clickable: there is nothing below it
+   to browse into, which is the same reason discovery.py stops here. */
+.vacc-ls-row.rec { color: var(--accent); }
+.vr-n { color: var(--text-3); font-size: 10.5px; }
+.vacc-scan { margin-top: 10px; border-top: 1px solid var(--line-soft);
+             padding-top: 10px; }
+.vacc-scan details { margin: 4px 0; font-size: 11.5px; }
+.vacc-scan summary { cursor: pointer; color: var(--text-2); }
 .vacc-state.up { color: var(--ok); }
 .vacc-state.down { color: var(--text-2); }
 /* A live cluster shows on the chip even with the mode off, because whether
@@ -679,6 +714,14 @@
    not a sentence about it. Dim when the cluster is configured but not
    answering, so it says "there is a VACC and it is not there right now"
    rather than disappearing and saying nothing. */
+/* On a bundle step the mark gets its own column at the end, rather than
+   landing in the one the name and blurb share and pushing the blurb onto a
+   third row. `.tk-step` is 15px / 1fr, so this adds the third. */
+.tk-step { grid-template-columns: 15px 1fr auto; }
+.tk-step .tk-vacc {
+  grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0;
+}
+
 .tk-vacc {
   margin-left: auto; align-self: center;
   font-size: 9px; font-weight: 700; letter-spacing: .07em;
@@ -691,6 +734,57 @@
 
 /* Why a scan can or cannot go to the cluster, under the buttons it explains. */
 .vacc-why { margin: 6px 0 0; }
+
+/* ---- this computer, or the cluster ----
+
+   Two tabs rather than a switch inside one panel, because they answer two
+   different questions. The locked one stays visible and says why it is
+   locked: a tab that is simply absent teaches nobody that the cluster is
+   there at all. */
+.inc-tabs { display: flex; gap: 8px; margin: 0 0 14px; }
+.inc-tab {
+  flex: 1 1 0; min-width: 0; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 14px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--bg-2);
+  color: var(--text-2); font: inherit;
+}
+.inc-tab strong { font-size: 13px; color: var(--text); }
+.inc-tab span { font-size: 11px; color: var(--text-3); }
+.inc-tab:hover:not(.locked) { background: var(--bg-3); }
+.inc-tab.on {
+  border-color: var(--accent-line); background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.inc-tab.on strong { color: var(--accent); }
+.inc-tab.locked { opacity: .55; cursor: not-allowed; }
+
+/* ---- picking which recordings go ---- */
+.inc-pick-list {
+  margin: 10px 0; max-height: 320px; overflow: auto;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.inc-pick {
+  display: grid; grid-template-columns: auto minmax(0,1fr) auto auto;
+  gap: 10px; align-items: center; padding: 5px 10px;
+  font-size: 12px; cursor: pointer; border-bottom: 1px solid var(--line-soft);
+}
+.inc-pick:last-child { border-bottom: 0; }
+.inc-pick:hover { background: var(--bg-3); }
+.ip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-where { font-size: 9px; font-weight: 700; letter-spacing: .06em;
+            color: var(--accent); font-family: var(--mono); }
+.ip-done { font-size: 10.5px; color: var(--ok); white-space: nowrap; }
+.inc-blocked { margin: 8px 0; font-size: 11.5px; color: var(--text-3); }
+.inc-blocked summary { cursor: pointer; }
+
+/* The plots for the row above, not for the list. */
+.inc-drop {
+  margin: 2px 0 10px; padding: 10px 12px 2px;
+  border: 1px solid var(--accent-line); border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-2);
+}
 
 /* ---- a batch, and the queue it leaves behind ---- */
 .inc-batch { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
@@ -6199,6 +6293,23 @@ body.aid-window .xf-tabs { display: none !important; }
 /* A segmented chooser in a popover: three states of one setting, so they
    look like one control rather than three buttons. */
 .ctl-seg { display: inline-flex; gap: 0; }
+
+/* A channel on the overview strip: the colour its line is drawn in, the
+   channel's own name, and the x that takes it off again. Wrapping,
+   because ten of these do not fit a popover on one line, and the row
+   they sit in is the answer to "which channels is this reading" --
+   truncating it would hide the ones somebody is looking for. */
+.strip-chip { display: inline-flex; align-items: center; gap: 5px; }
+.strip-chip .hint { opacity: 0.7; }
+.strip-chip:hover .hint { opacity: 1; }
+.strip-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  display: inline-block; flex: none;
+  /* The strip's ground is dark whatever the theme, and these colours
+     are chosen against it; a hairline keeps the palest of them off a
+     pale popover. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
 .ctl-seg .mini { border-radius: 0; margin: 0; }
 .ctl-seg .mini:first-child {
   border-top-left-radius: 5px; border-bottom-left-radius: 5px;
@@ -8121,22 +8232,46 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .net-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 2px;
+  /* Was a 2px hairline, which was doing its job and being missed. Four
+     pixels with a faint wash under it is still nothing to look at when the
+     app is idle, and is catchable out of the corner of an eye -- which is
+     the only way this is ever seen, because nobody is watching the top of
+     the window while they wait.
+
+     Still fixed, still a fixed height, so it cannot shift the list
+     underneath it during a mutation. That was the constraint, not the
+     thinness. */
+  height: 4px;
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
   transition: opacity .12s ease;
-  background: linear-gradient(90deg,
-    transparent 0%, var(--accent) 50%, transparent 100%);
-  background-size: 40% 100%;
-  background-repeat: no-repeat;
+  /* Two layers, not a pseudo-element: a `::before` track is painted AFTER
+     its parent's background and would have covered the sweep it is
+     supposed to sit behind. The travelling highlight is the first layer,
+     the track is the second, and only the first one's position is
+     animated. */
+  background:
+    linear-gradient(90deg,
+      transparent 0%, var(--accent) 50%, transparent 100%),
+    linear-gradient(var(--accent-soft), var(--accent-soft));
+  background-size: 46% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: -46% 0, 0 0;
 }
-.net-bar.on { opacity: 1; animation: netSweep 1.1s linear infinite; }
+.net-bar.on {
+  opacity: 1;
+  animation: netSweep 1.25s linear infinite;
+  /* Lifts it off a pale header on the light themes, where a 4px gold line
+     on white is otherwise about as loud as the 2px one was. */
+  box-shadow: 0 1px 6px var(--accent-soft);
+}
 
 @keyframes netSweep {
-  from { background-position: -40% 0; }
-  to   { background-position: 140% 0; }
+  from { background-position: -46% 0, 0 0; }
+  to   { background-position: 146% 0, 0 0; }
 }
+
 
 /* Why the confirm dialog is still open. Sits under the question, where the
    person is already looking, rather than in a toast behind a closed box. */
@@ -8149,8 +8284,19 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   padding-left: 9px;
 }
 
+/* Somebody who does not want the movement still gets the indicator: it
+   stays, and stops sweeping. An indicator that vanishes under a motion
+   preference is the one case where the setting costs information.
+
+   The whole background is replaced rather than only its position: the bar
+   paints in two layers now, and parking a 46%-wide highlight at 50% leaves
+   the ends of the track bare, which reads as a bar that failed to load. */
 @media (prefers-reduced-motion: reduce) {
-  .net-bar.on { animation: none; background-position: 50% 0; }
+  .net-bar.on {
+    animation: none;
+    background: linear-gradient(var(--accent), var(--accent));
+    opacity: .9;
+  }
 }
 
 /* A list that is on screen and being re-read, because somebody just changed
@@ -8401,3 +8547,317 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   width: 9px; height: 9px; border-radius: 2px;
   border: 1px solid var(--line); display: inline-block;
 }
+
+/* ==========================================================================
+   The Dentist -- the bundle in the ToolKit rail
+   ========================================================================== */
+/* A bundle is not a tool, and must not read as one. It is a group with an
+   order, so it gets an edge the flat buttons do not have and its steps are
+   numbered -- the numbering is the information, because each step has
+   nothing to show until the one before it has run. */
+.tk-bundle {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 70%);
+  border-radius: 6px;
+  padding: 10px 11px 11px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.tk-bundle.on { border-color: var(--accent); }
+.tk-bundle-hd { display: flex; align-items: center; gap: 7px; }
+.tk-bundle-hd strong { font-size: 12.5px; }
+.tk-bundle-hd .tk-ico { color: var(--accent); }
+.tk-bundle-c {
+  margin-left: auto; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-steps { display: flex; flex-direction: column; gap: 4px; }
+.tk-step {
+  display: grid; grid-template-columns: 15px 1fr; gap: 3px 8px;
+  align-items: center; text-align: left;
+  padding: 6px 8px; border-radius: 4px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer;
+}
+.tk-step:hover { background: var(--bg-hover); }
+.tk-step.now { background: var(--bg-3); border-color: var(--accent-line); }
+/* It is a `strong` so that a tool's name has one shape wherever it is
+   drawn; the weight is decided here rather than by the tag. */
+.tk-step-n { font-weight: 400; }
+.tk-step.now .tk-step-n { color: var(--text); font-weight: 600; }
+.tk-step-i {
+  font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.done .tk-step-n { color: var(--text); }
+.tk-step-s {
+  grid-column: 2; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.now .tk-step-s { color: var(--accent); }
+
+/* ==========================================================================
+   Braces
+   ========================================================================== */
+.br-wrap { display: flex; flex-direction: column; gap: 12px; }
+.br-intro p { margin: 6px 0 0; }
+.br-empty strong { display: block; margin-bottom: 6px; }
+.br-set { width: 100%; }
+.br-warn { color: var(--warn); }
+.br-err { color: var(--err); }
+.br-note { border-left: 2px solid var(--accent); padding-left: 10px; }
+
+.br-fields { display: flex; flex-wrap: wrap; gap: 14px; }
+.br-field { display: flex; flex-direction: column; gap: 4px; }
+.br-field > label {
+  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.br-field input { width: 110px; }
+.br-hint { font-size: 10.5px; color: var(--text-3); }
+
+.br-dl { margin: 0; display: grid; gap: 4px; }
+.br-dl > div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 10px; }
+.br-dl dt { font-size: 11px; color: var(--text-3); margin: 0; }
+.br-dl dd { margin: 0; font-size: 12.5px; }
+
+.br-go { display: flex; align-items: center; gap: 12px; }
+.br-job {
+  flex: 1; display: flex; flex-direction: column; gap: 5px;
+  font-size: 12px; color: var(--text-2);
+}
+.br-bar {
+  height: 4px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-bar i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .2s linear;
+}
+
+.br-recent-list { display: flex; flex-direction: column; gap: 5px; }
+.br-recent-row {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 4px; padding: 7px 10px; font: inherit; cursor: pointer;
+  color: var(--text);
+}
+.br-recent-row:hover { background: var(--bg-hover); }
+.br-recent-row span { font-size: 11px; color: var(--text-3); }
+.br-recent-row.done { opacity: .72; }
+
+.br-head { display: flex; align-items: center; gap: 12px; }
+.br-head strong { display: block; font-size: 14px; }
+.br-sub {
+  font-size: 11.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.br-done { border-left: 3px solid var(--ok); font-size: 12.5px; }
+
+.br-counts {
+  display: flex; flex-wrap: wrap; gap: 0;
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.br-count {
+  padding: 11px 15px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px;
+  flex: 1 1 auto; min-width: 106px;
+}
+.br-count:last-child { border-right: 0; }
+.br-count b {
+  font-size: 19px; font-weight: 500; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.br-count span { font-size: 10.5px; color: var(--text-3); }
+.br-count.ok b { color: var(--ok); }
+.br-count.warn b { color: var(--warn); }
+
+/* The histogram answers "is this the right channel" before the table
+   answers "is this stamp right". */
+.br-hist { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
+.br-hist i {
+  flex: 1; display: block; background: var(--accent); opacity: .78;
+  border-radius: 1px 1px 0 0; min-height: 0;
+}
+.br-hist i.edge { background: var(--warn); }
+.br-axis {
+  display: flex; justify-content: space-between;
+  border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px;
+  font-size: 10px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.br-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.br-scroll {
+  overflow-x: auto; border: 1px solid var(--line); border-radius: 5px;
+}
+table.br-tbl {
+  border-collapse: collapse; width: 100%; font-size: 11.5px; min-width: 520px;
+}
+table.br-tbl th {
+  text-align: left; font-size: 10px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-3); font-weight: 600;
+  padding: 8px 11px; border-bottom: 1px solid var(--line);
+  background: var(--bg-2); white-space: nowrap; position: sticky; top: 0;
+}
+table.br-tbl td {
+  padding: 7px 11px; border-bottom: 1px solid var(--line-soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  color: var(--text-2);
+}
+table.br-tbl tr { cursor: pointer; }
+table.br-tbl tr:hover td { background: var(--bg-hover); }
+table.br-tbl tr:last-child td { border-bottom: 0; }
+table.br-tbl tr.flagged td { background: var(--warn-soft); color: var(--text); }
+table.br-tbl tr.said td { opacity: .78; }
+table.br-tbl td.st { width: 1%; }
+table.br-tbl td.why {
+  white-space: normal; min-width: 140px; color: var(--warn);
+}
+table.br-tbl tr.said td.why { color: var(--text-3); }
+.br-tbl .tick { color: var(--ok); }
+.br-tbl .flagmark, .br-bench-head .flagmark { color: var(--warn); }
+.br-tbl .dim { color: var(--text-3); }
+
+.br-accept { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.br-accept .hint { flex: 1 1 260px; }
+
+/* The bench: one channel, six hundred milliseconds, and the two lines the
+   decision is actually between. */
+.br-bench { position: sticky; bottom: 0; }
+.br-bench-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.br-canvas {
+  width: 100%; height: 190px; display: block;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--bg); touch-action: none; cursor: ew-resize;
+}
+.br-bench-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.br-key {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; color: var(--text-3);
+}
+.br-key kbd {
+  font-family: ui-monospace, Consolas, monospace; font-size: 10.5px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 3px; padding: 2px 6px; color: var(--text-2);
+  background: var(--bg);
+}
+
+.br-modal { max-width: 620px; }
+.br-confirm ul { margin: 8px 0; padding-left: 18px; }
+.br-confirm li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
+
+@media (max-width: 720px) {
+  .br-fields { gap: 10px; }
+  .br-field input { width: 92px; }
+}
+
+
+/* ==========================================================================
+   Naming a banked set
+   ========================================================================== */
+/* The name and the button that fills it in, on one line: the suggestion is
+   about the field it sits beside, and underneath it would read as an action
+   on the whole dialog. */
+.bank-name-row { display: flex; gap: 8px; align-items: stretch; }
+.bank-name-row input { flex: 1 1 auto; min-width: 0; }
+.bank-name-row .btn { flex: none; white-space: nowrap; }
+
+/* A ghost button that has something to say. Used where the current name
+   carries nothing about which recording it belongs to -- the press is still
+   optional, it is just worth noticing. */
+.btn.ghost.hot {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.btn.ghost.hot:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.inc-name { width: 100%; }
+
+@media (max-width: 560px) {
+  .bank-name-row { flex-direction: column; align-items: stretch; }
+}
+
+
+/* ==========================================================================
+   Braces -- which channels the sweep reads, and how they scored
+   ========================================================================== */
+.br-chans { display: flex; flex-direction: column; gap: 8px; }
+.br-chans-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.br-chans-head > label {
+  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+
+/* A grid rather than a list: sixty-four numbers read as a probe when they
+   are laid out in rows, and as a wall of text when they are not. */
+.br-chan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 4px;
+}
+.br-chan {
+  display: flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 4px 6px; cursor: pointer;
+  font-size: 11px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-2);
+}
+.br-chan input { margin: 0; flex: none; }
+.br-chan.on { color: var(--text); border-color: var(--accent-line); }
+.br-chan:hover { background: var(--bg-hover); }
+/* Marked bad: shown, unticked, and saying so. Hiding it would make a
+   ranking look complete when eight channels were never read. */
+.br-chan.bad { border-style: dashed; opacity: .72; }
+.br-chan.bad span { text-decoration: line-through; }
+.br-chan.bad.on { opacity: 1; text-decoration: none; }
+.br-chan.bad.on span { text-decoration: none; color: var(--warn); }
+
+.br-sweep { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.br-sweep.hidden { display: none; }
+.br-sweep-row {
+  display: grid; grid-template-columns: 4.2rem 1fr 4.5rem;
+  gap: 8px; align-items: center;
+  font-size: 11px; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.br-sweep-row .bar {
+  height: 8px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-sweep-row .bar i {
+  display: block; height: 100%; background: var(--text-3);
+}
+.br-sweep-row .v { text-align: right; }
+.br-sweep-row.won { color: var(--text); font-weight: 600; }
+.br-sweep-row.won .bar i { background: var(--accent); }
+
+
+/* Braces asks the same "which version" question the curation chooser does,
+   and draws it with the same .bm-row / .ver-n / .ver-pick-mid parts rather
+   than inventing a fourth way to draw one question. All this adds is the
+   room it needs inside a settings card -- the list itself is already
+   styled, including the disabled rows and the wrap at narrow widths. */
+.br-vers-field { gap: 6px; }
+.br-vers-field > label { margin-bottom: 2px; }
+.br-vers {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+  background: var(--bg);
+}
+/* A version nobody has to scroll for. Eight is the worst real history in
+   this archive and they fit; past that it scrolls rather than pushing the
+   button that runs the thing off the bottom of the card. */
+.br-vers.bm-list.ver-pick-list { max-height: min(38vh, 330px); }
+.br-vers .ver-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.br-vers .bm-row.off .ver-n { color: var(--text-3); }
+
