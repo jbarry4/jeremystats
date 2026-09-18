@@ -2,15 +2,16 @@
   "_at": {
     "assigned_at": "2026-09-16T21:06:27.028775+00:00",
     "assignee": "2026-09-16T21:06:27.028775+00:00",
-    "created": "2026-09-16T21:06:26.975209+00:00",
+    "closed_at": "2026-09-17T15:23:33.255089+00:00",
+    "created": "2026-09-16T20:54:11.112358+00:00",
     "gid": "2026-09-16T21:06:26.975209+00:00",
-    "open": "2026-09-16T21:06:27.045265+00:00",
+    "open": "2026-09-17T15:23:33.255089+00:00",
     "opened_at": "2026-09-16T21:06:27.045265+00:00",
     "opened_by": "2026-09-16T21:06:27.045265+00:00",
     "regions": "2026-09-16T21:06:26.975209+00:00",
     "schema": "2026-09-16T21:06:26.975209+00:00",
     "session_label": "2026-09-16T21:06:26.975209+00:00",
-    "updated": "2026-09-16T21:06:27.028775+00:00"
+    "updated": "2026-09-17T15:23:33.255089+00:00"
   },
   "_keys": {
     "channels": {
@@ -273,7 +274,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-16T21:06:27.045265+00:00",
+    "at": "2026-09-17T15:23:33.255089+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -345,18 +346,20 @@
     63,
     64
   ],
+  "closed_at": "2026-09-17T11:23:33-0400",
   "created": {
-    "app_version": "2026.09.16.2",
-    "at": "2026-09-16T17:06:26-04:00",
-    "email": "rain.younger@uvm.edu",
-    "host": "BarryLab",
-    "machine": "Strawbarry",
+    "app_version": "2026.09.16.5",
+    "at": "2026-09-16T16:54:11-04:00",
+    "commit": "8ac9ca7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
   "gid": "s9a8f6138b49e",
   "labels": {},
-  "open": true,
+  "open": false,
   "opened_at": "2026-09-16T17:06:27-0400",
   "opened_by": "Shahriar Tafti",
   "regions": [
@@ -454,8 +457,8 @@
   "schema": 1,
   "session_label": "KCNT1 m1606 s1 2026-08-04",
   "updated": {
-    "app_version": "2026.09.16.2",
-    "at": "2026-09-16T17:06:27-04:00",
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-17T11:23:33-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
