@@ -219,9 +219,8 @@ print("-" * 68)
 # The flags, on the edge case. Stamp 1 gave up a nearer peak, so it is
 # contested; stamp 2 got what it wanted, so it is clean.
 fake = {"times": [27.800, 27.920], "amps": [612.0, 840.0],
-        "thr_uv": 434.0, "channel": 41, "band": [5, 100],
-        "dist_ms": 100.0, "estimator": "sd", "lfp_fs": 1000.0,
-        "floor_uv": 217.0, "floor_source": "0.5 of sd (434 uV)"}
+        "thr_uv": 434.0, "band": [5, 100], "n_channels": 64,
+        "dist_ms": 100.0, "estimator": "sd", "lfp_fs": 1000.0}
 out = braces.propose([{"start": 27.894}, {"start": 27.955}], fake, 100)
 rows = out["rows"]
 check("the contested stamp is flagged", rows[0]["flag"], "contested")
@@ -232,7 +231,7 @@ check("both are counted as moved", out["n_moved"], 2)
 check("and the summary says greedy would have stranded one",
       out["greedy_stranded"], 1)
 
-# A weak peak: under the detection threshold but over the floor.
+# A weak peak: under what a detector would have called an event.
 weak = dict(fake, times=[10.000], amps=[240.0])
 out = braces.propose([{"start": 10.010}], weak, 100)
 check("a peak under the detection threshold is flagged weak",
@@ -263,6 +262,44 @@ back = {r["i"]: r["now"] for r in out["rows"]}
 check("unsorted events still align to the right peaks",
       [back[0], back[1]], [2.000, 1.000])
 
+print("\nA MOVE UNLIKE THE OTHERS")
+print("-" * 68)
+# The fixed edge rule is about the window and says nothing when a set's
+# jitter is small. Measured on M8s9feb8: median 5.6 ms, largest 59.7, and at
+# a 100 ms window not one of those trips an 80 ms edge -- so the one stamp
+# that went sixty was confirmed silently along with the rest.
+tight = {"times": [], "amps": [], "thr_uv": 1.0, "band": [5, 100],
+         "n_channels": 64, "dist_ms": 100.0, "estimator": "sd",
+         "lfp_fs": 1000.0}
+evs = []
+for i in range(30):
+    # Thirty stamps 1 s apart, every one 5 ms early...
+    tight["times"].append(round(10.0 + i, 3))
+    tight["amps"].append(900.0)
+    evs.append({"start": round(10.0 + i - 0.005, 3), "label_id": "spike"})
+# ...except one, which is sixty early.
+evs[17]["start"] = round(10.0 + 17 - 0.060, 3)
+out = braces.propose(evs, tight, 100, align_ids={"spike"})
+flags = [r["flag"] for r in out["rows"]]
+check("the one that moved differently is flagged",
+      flags[17], "outlier",
+      "a 60 ms move in a set whose moves are all 5 ms is worth a look, and "
+      "an 80 ms edge rule never sees it")
+check("...and the twenty-nine that agree are not",
+      [f for n, f in enumerate(flags) if n != 17], [None] * 29)
+check("...and it is counted under its own reason",
+      out["by_reason"], {"outlier": 1})
+
+# A set with no spread at all must not flag everything: six MADs of nothing
+# is nothing.
+same = dict(tight, times=[round(10.0 + i, 3) for i in range(30)])
+evs2 = [{"start": round(10.0 + i - 0.005, 3), "label_id": "spike"}
+        for i in range(30)]
+out = braces.propose(evs2, same, 100, align_ids={"spike"})
+check("a set that all moved the same way flags nothing",
+      out["n_flagged"], 0,
+      "without a floor, six MADs of zero spread makes every stamp unusual")
+
 print("\nONLY THE DENTATE SPIKES")
 print("-" * 68)
 # A curated set is not a list of events. It is a list of candidates, most of
@@ -271,9 +308,8 @@ print("-" * 68)
 # worse, one peak per stamp means it would TAKE the peak the real spike next
 # to it needed.
 one_peak = {"times": [50.000], "amps": [900.0], "thr_uv": 434.0,
-            "channel": 41, "band": [5, 100], "dist_ms": 100.0,
-            "estimator": "sd", "lfp_fs": 1000.0, "floor_uv": 217.0,
-            "floor_source": "0.5 of sd (434 uV)"}
+            "band": [5, 100], "n_channels": 64, "dist_ms": 100.0,
+            "estimator": "sd", "lfp_fs": 1000.0}
 mixed = [
     # Garbage sits NEARER the peak, so nearest-peak-wins inside the run
     # would hand it over and strand the real spike.

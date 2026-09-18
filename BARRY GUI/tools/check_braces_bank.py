@@ -83,8 +83,8 @@ try:
     print("\nTHE DRY RUN")
     print("-" * 68)
     moves = {0: 1.000, 1: 2.000, 2: 3.000, 3: 27.800, 4: 27.920}
-    params = {"channel": 41, "window_ms": 100.0, "band": [5, 100],
-              "floor_uv": 217.0, "measure": "abs", "estimator": "sd"}
+    params = {"n_channels": 64, "window_ms": 100.0, "band": [5, 100],
+              "measure": "abs", "estimator": "sd"}
     rep = BANK.align(eid, moves, params, dry_run=True,
                      flags={3: "contested"})
     check("a dry run reports what it would move", rep["moved"], 5)
@@ -127,7 +127,7 @@ try:
     check("it continues the version it read",
           ver["from_v"], v_before)
     truthy("it records how it was aligned", ver.get("aligned"))
-    check("...on which channel", ver["aligned"]["channel"], 41)
+    check("...over how many channels", ver["aligned"]["n_channels"], 64)
     check("...and which flags were raised",
           ver["aligned"]["flagged"], {"contested": 1})
     truthy("...with a note a person can read", ver.get("note"))

@@ -23,23 +23,39 @@ here is WHERE each one is, and the answer is never "nowhere": a stamp this
 cannot place stays exactly where it was and is flagged. Nothing is dropped,
 nothing is invented, and no label is ever read, let alone changed.
 
-TWO DELIBERATE DIFFERENCES FROM INCISOR
----------------------------------------
+THREE DELIBERATE DIFFERENCES FROM INCISOR
+-----------------------------------------
+**Every channel at once, not one of them.** Incisor detects per channel and
+then picks the hilus, because detection is a question about a site. Alignment
+is not. A dentate spike is a population event -- it appears across most of
+the shank at the same instant, largest near the hilus and smaller either side
+-- so the instant it happened is best estimated from the whole probe, not
+from whichever electrode somebody detected on six months ago.
+
+The measure is the mean |filtered| ACROSS CHANNELS, as one trace: at each
+moment, how much dentate-spike-band activity there was anywhere on the probe.
+One noisy wire cannot carry that and a dead one cannot sink it. Measured on
+M8s9feb8, the best and second-best single channels scored within 0.3% of each
+other -- which is another way of saying that picking one of them was close to
+arbitrary, and that the question was never about a channel.
+
 **Magnitude, not the signed trace.** `incisor._detect` runs `find_peaks` on
 the signed trace, which is why polarity is a correctness question there and
 not a preference (`incisor.py`, "TWO THINGS THAT WOULD BE SILENTLY WRONG").
 A stamp that arrived from Toothy, from a snapshot folder, or from somebody's
 hand may sit on a trough. `|x|` finds the event under either convention, and
-is the one measure that does not care which tool produced the stamp.
+is the one measure that does not care which tool produced the stamp. It is
+also what makes summing across channels meaningful: a signed sum across a
+probe cancels, because the deflection reverses across the layer.
 
 **No threshold at all.** Detection asks *is anything here*; alignment asks
 *where is the thing we already know is here*. `distance` already makes a peak
 the largest thing within a hundred milliseconds of itself, so every peak
 found here is a candidate a stamp could sensibly move to. A height on top of
-that can only remove the right answer -- for a real event whose peak on this
-channel happens to be small, which is the case alignment exists to handle.
-The detector's own threshold is still computed, so a row can say "smaller
-than the detector would have called an event", but nothing is gated on it.
+that can only remove the right answer -- for a real event that happens to be
+small, which is the case alignment exists to handle. The profile's own 4.5 SD
+is still computed, so a row can say "smaller than a detector would have called
+an event", but nothing is gated on it.
 
 THE RULE, WHICH IS THE INTERESTING PART
 ---------------------------------------
@@ -111,6 +127,25 @@ WINDOW_MS = 100.0
 # this one. Flagged rather than refused -- a window is a guess about jitter,
 # not a measurement of it, and the person looking can tell.
 EDGE_FRAC = 0.8
+
+# How far from what this set typically did before a move is worth a look.
+#
+# The fixed "near the edge" rule is about the WINDOW -- it catches a stamp
+# that went almost as far as it was allowed to. It says nothing when a set's
+# jitter is small: measured on M8s9feb8, the median move is 5.6 ms and the
+# largest is 59.7, and at a window of 100 ms not one of those trips an
+# 80 ms edge. The stamp that moved sixty is still the one worth looking at.
+#
+# So this is measured against the set's own spread, robustly: the median
+# absolute deviation, scaled to a standard deviation the way `analysis.py`
+# and `incisor.threshold_for(estimator="mad")` both do it. Six of those is
+# far enough out to be about this event rather than about the recording.
+OUTLIER_MADS = 6.0
+
+# ...but not for a set whose moves are all within a millisecond of each
+# other, where six MADs is a fraction of a sample and every stamp is an
+# outlier. Nothing closer to the median than this is ever unusual.
+OUTLIER_FLOOR_MS = 8.0
 
 # Below this, a stamp counts as having been right already. One millisecond
 # is one sample at the rate everything here is decimated to, so a "move"
@@ -353,204 +388,219 @@ def greedy(stamps, peaks, window_ms=WINDOW_MS):
 # --------------------------------------------------------------------------
 # Reading the channel
 # --------------------------------------------------------------------------
-def channel_peaks(session, ch, report, spec, job=None, on_read=None):
-    """Every DS-band magnitude peak on one channel, on the recording's clock.
+def profile(session, channels, report, spec, job=None, on_read=None):
+    """The mean |DS-filtered| across every channel, as one trace.
 
-    The read is `incisor._segment_traces` and the filter is
-    `incisor._filtered`, both used as they are rather than re-derived --
-    everything those two know about chunk edges, decimation phase and
-    segment stitching is the reason a stamp made here lands on the same
-    sample Toothy would have put it on.
+    THIS IS THE MEASUREMENT, and it is why there is no channel setting.
 
-    What differs is three lines: the threshold is scaled by `floor_frac`,
-    the peaks are found on `|x|`, and nothing is rejected on shape.
+    A dentate spike is a population event: it appears on most of the shank at
+    once, largest near the hilus and smaller either side. Picking one channel
+    and finding its peak answers "when was it biggest HERE", which is a
+    question about that electrode as much as about the event -- and on this
+    archive the best and second-best channels were 0.3% apart, so "here" was
+    close to arbitrary.
+
+    Summing the magnitude across channels first asks the question that was
+    actually being asked: at which instant was there most dentate-spike-band
+    activity anywhere on the probe. One noisy wire cannot carry that, a dead
+    one cannot sink it, and the answer does not depend on which electrode
+    somebody happened to detect on six months ago.
+
+    Accumulated channel by channel rather than stacked. Sixty-four channels
+    of an hour at 1 kHz is 230 million floats held at once; one accumulator
+    plus one channel is two arrays. The read is `incisor._segment_traces` and
+    the filter `incisor._filtered`, both used exactly as they are, so every
+    sample lands where Incisor would have put it.
     """
     if not HAVE_SCIPY:
         raise BracesError(
             "SciPy is not installed on this machine, so no filtering or "
             "peak finding can be done here.")
+    if not channels:
+        raise BracesError("No channels to read.")
 
     fs = float(report.get("fs") or session.get("fs") or 30000.0)
     q = incisor.decimation_for(fs, float(spec.get("lfp_fs") or incisor.LFP_FS))
     lfp_fs = fs / q
     band = spec.get("band") or incisor.DS_BAND
 
-    segs = incisor._segment_traces(session, ch, report, spec, job, on_read)
-    if not segs:
+    acc = None            # [(seg_index, concat_start, summed magnitude)]
+    used, skipped = [], []
+    # `begin` is what makes a stage the running one and gives it a size;
+    # `tick` only moves a counter inside a stage that has already started.
+    # Ticking without beginning left the job with no running stage at all,
+    # so the panel had nothing to report and sat on "reading the channel"
+    # for three minutes while sixty-four of them went past.
+    if job:
+        job.begin("ds profile", of=len(channels), unit="channels")
+    for n, ch in enumerate(channels):
+        if job:
+            job.check()
+            job.tick("ds profile", n)
+        try:
+            segs = incisor._segment_traces(session, ch, report, spec, job)
+        except Exception as exc:                         # noqa: BLE001
+            skipped.append({"number": int(ch["number"]),
+                            "why": str(exc)[:120]})
+            continue
+        if not segs:
+            skipped.append({"number": int(ch["number"]),
+                            "why": "nothing readable"})
+            continue
+        mags = [(i, st, np.abs(incisor._filtered(tr, lfp_fs, band)))
+                for i, st, tr in segs]
+        if acc is None:
+            acc = [[i, st, m] for i, st, m in mags]
+            used.append(int(ch["number"]))
+            continue
+        if len(mags) != len(acc):
+            # A channel the reader could not segment the same way. Left out
+            # and said so rather than part-added: half a channel in an
+            # average is a number nobody can reason about.
+            skipped.append({"number": int(ch["number"]),
+                            "why": "read as %d segments, not %d"
+                                   % (len(mags), len(acc))})
+            continue
+        ok = True
+        for k in range(len(acc)):
+            if mags[k][2].size != acc[k][2].size:
+                # A tail short by the reader's own granularity is ordinary
+                # (see `incisor._channel_pass`); the shared prefix is still
+                # the same samples, so the accumulator is trimmed to it.
+                keep = min(mags[k][2].size, acc[k][2].size)
+                if keep < 0.98 * max(mags[k][2].size, acc[k][2].size):
+                    ok = False
+                    break
+        if not ok:
+            skipped.append({"number": int(ch["number"]),
+                            "why": "length disagrees with the others"})
+            continue
+        for k in range(len(acc)):
+            keep = min(mags[k][2].size, acc[k][2].size)
+            acc[k][2] = acc[k][2][:keep] + mags[k][2][:keep]
+        used.append(int(ch["number"]))
+        if on_read:
+            on_read(n + 1)
+
+    if acc is None or not used:
         raise BracesError(
-            "Nothing readable on CSC%s, so there are no peaks to align to."
-            % ch.get("number"))
+            "None of the chosen channels could be read, so there is no "
+            "profile to align these stamps against.")
 
-    ds = [(i, start, incisor._filtered(tr, lfp_fs, band))
-          for i, start, tr in segs]
-    pooled = np.concatenate([f for _, _, f in ds])
+    for k in range(len(acc)):
+        acc[k][2] = acc[k][2] / float(len(used))
+    return {"segments": acc, "lfp_fs": lfp_fs, "band": list(band),
+            "channels": used, "n_channels": len(used), "skipped": skipped}
 
-    # The SAME threshold Incisor would set on this channel, so "weak peak"
-    # means weak by the detector's own standard rather than by one invented
-    # here. The floor for FINDING peaks is a fraction of it; the threshold
-    # itself is kept, and is what a peak is called weak against.
-    thr = incisor.threshold_for(pooled,
-                                spec.get("height_sd", incisor.DS_HEIGHT_SD),
-                                spec.get("abs_uv", incisor.DS_ABS_THR_UV),
-                                spec.get("estimator") or "sd")
-    if not math.isfinite(thr["thr_uv"]) or not math.isfinite(thr["sd_uv"]):
-        n_bad = int(np.count_nonzero(~np.isfinite(pooled)))
-        raise BracesError(
-            "CSC%s's filtered trace is not all numbers (%d of %d samples), "
-            "so no floor can be set from it."
-            % (ch.get("number"), n_bad, pooled.size))
 
-    # NO FLOOR.
-    #
-    # There was one, as a fraction of the detection threshold, and it was a
-    # knob that could only be wrong. `distance` already says a peak is the
-    # largest thing within a hundred milliseconds of itself, so the peaks
-    # this finds ARE the candidates a stamp could sensibly move to -- adding
-    # a height on top of that only removes the right answer for a real event
-    # whose peak on this channel happens to be small, which is exactly the
-    # case alignment exists to handle.
-    #
-    # The detector's threshold is still computed, because "this peak is
-    # smaller than the detector would have called an event" is worth saying
-    # on a row. It is a remark, not a gate.
+def profile_window(session, channels, report, spec, t0, t1):
+    """The same profile, over one short window, for drawing.
+
+    Read at full rate and filtered per channel exactly as the whole-recording
+    profile is, then averaged -- so the line the bench draws is the line the
+    decision was made on, at the same scale, rather than something that looks
+    like it. A window the size of a bench view is a fraction of a second per
+    channel, so this reads directly rather than going through the segment
+    walker.
+
+    Filtered with a margin either side and trimmed after: a Butterworth rings
+    at the edge of whatever array it is handed, and a bench drawn from a
+    600 ms slice would put that ringing exactly where the stamp is.
+    """
+    if not HAVE_SCIPY:
+        raise BracesError("SciPy is not installed on this machine.")
+    band = spec.get("band") or incisor.DS_BAND
+    pad = 1.0                              # see `incisor.EDGE_SECONDS`
+    acc, n, fs_out, got_t0 = None, 0, None, None
+    for ch in channels:
+        raw, ch_t0, ch_fs = csc._read_channel_window(
+            session, ch, max(0.0, t0 - pad), t1 + pad)
+        if not raw.size:
+            continue
+        q = incisor.decimation_for(ch_fs, float(spec.get("lfp_fs")
+                                                or incisor.LFP_FS))
+        dec = incisor._decimate(raw, q) if q > 1 else raw.astype(float)
+        lfp_fs = ch_fs / q
+        mag = np.abs(incisor._filtered(dec, lfp_fs, band))
+        if acc is None:
+            acc, fs_out, got_t0 = mag.astype(np.float64), lfp_fs, ch_t0
+        elif mag.size == acc.size:
+            acc += mag
+        else:
+            keep = min(mag.size, acc.size)
+            acc = acc[:keep] + mag[:keep]
+        n += 1
+    if acc is None or not n:
+        raise BracesError("None of those channels could be read here.")
+    acc /= float(n)
+
+    # Trim the margin that was only there to keep the filter honest.
+    lo = max(0, int(round((t0 - got_t0) * fs_out)))
+    hi = min(acc.size, int(round((t1 - got_t0) * fs_out)))
+    if hi <= lo:
+        lo, hi = 0, acc.size
+    return {
+        "t0": round(got_t0 + lo / fs_out, 6),
+        "fs": fs_out,
+        "n_channels": n,
+        "values": [round(float(v), 2) for v in acc[lo:hi]],
+    }
+
+
+def profile_peaks(prof, report, spec, job=None):
+    """Every peak in the summed profile, on the recording's clock.
+
+    No height threshold. `distance` already makes a peak the largest thing
+    within a hundred milliseconds of itself, so every peak found is somewhere
+    a stamp could sensibly move to, and a height on top of that could only
+    remove the right answer for a real event that happens to be small.
+
+    The profile's own 4.5 SD is computed anyway, because "this peak is
+    smaller than a detector would have called an event" is worth saying on a
+    row. It is a remark, not a gate.
+    """
+    lfp_fs = prof["lfp_fs"]
+    pooled = np.concatenate([m for _i, _st, m in prof["segments"]])
+    sd = float(np.std(pooled, dtype=np.float64))
+    thr = sd * float(spec.get("height_sd", incisor.DS_HEIGHT_SD))
     dist = max(1, int(round(lfp_fs * float(spec.get("dist_ms",
                                                     incisor.DS_DIST_MS))
                             / 1000.0)))
+    q = int(round((report.get("fs") or 30000.0) / lfp_fs))
+    if job:
+        job.begin("ds detect", of=len(prof["segments"]), unit="segments")
 
     times, amps = [], []
-    for seg_i, start_concat, f in ds:
+    for si, (seg_i, start_concat, mag) in enumerate(prof["segments"]):
         if job:
             job.check()
-        mag = np.abs(f)
+            job.tick("ds detect", si)
         idx, props = _sig.find_peaks(mag, distance=dist)
         heights = props.get("peak_heights",
                             mag[idx] if idx.size else np.array([]))
         for n in range(idx.size):
             j = int(idx[n])
-            # The decimated index back to a full-rate index in the whole
-            # recording, then to a time through the breakpoint map. The same
-            # single place a time is made in `incisor._channel_pass`, and it
-            # never assumes a linear axis.
             t = continuity.sample_to_true(report, start_concat + j * q)
             if t is None:
                 continue
             times.append(round(float(t), 6))
             amps.append(round(float(heights[n]), 3))
 
-    # Sorted together. Segments arrive in order and peaks within a segment
-    # are in order, so this is already true -- asserted by construction
-    # rather than trusted, because `assign` is only correct on sorted input
-    # and a silently unsorted peak list would mis-align quietly.
     order = sorted(range(len(times)), key=lambda i: times[i])
-    times = [times[i] for i in order]
-    amps = [amps[i] for i in order]
-
     return {
-        "times": times,
-        "amps": amps,
-        "thr_uv": round(float(thr["thr_uv"]), 3),
-        "sd_uv": round(float(thr["sd_uv"]), 3),
-        "thr_source": thr["thr_source"],
-        "estimator": thr["estimator"],
+        "times": [times[i] for i in order],
+        "amps": [amps[i] for i in order],
+        "thr_uv": round(thr, 3),
+        "sd_uv": round(sd, 3),
+        "estimator": "sd",
         "lfp_fs": lfp_fs,
-        "band": list(band),
+        "band": prof["band"],
         "dist_ms": float(spec.get("dist_ms", incisor.DS_DIST_MS)),
         "n_peaks": len(times),
-        "channel": int(ch["number"]),
+        "channels": prof["channels"],
+        "n_channels": prof["n_channels"],
+        "skipped_channels": prof["skipped"],
     }
-
-
-# --------------------------------------------------------------------------
-# Choosing the channel
-# --------------------------------------------------------------------------
-def score_channel(session, ch, report, spec, stamps, job=None, on_read=None):
-    """How big these stamps' events are on this channel.
-
-    The measure is the one you would use by eye: filter 5-100 Hz, take the
-    magnitude, and at each stamp look at the largest value within the window
-    it is allowed to move in. Average that over every stamp.
-
-    AT THE STAMPS, not over the whole trace. A channel's overall magnitude is
-    a fact about how noisy it is; what decides where a dentate spike should
-    be measured is how big the DENTATE SPIKES are on it, and the set already
-    says when those happened. Averaging over the recording would hand the
-    answer to whichever wire hums loudest.
-
-    The median goes back as well as the mean. One artifact inside one window
-    can carry a mean on a set of eighty, and two numbers that disagree are
-    worth seeing -- `pick_channel` uses the median for exactly that reason.
-    """
-    fs = float(report.get("fs") or session.get("fs") or 30000.0)
-    q = incisor.decimation_for(fs, float(spec.get("lfp_fs") or incisor.LFP_FS))
-    lfp_fs = fs / q
-    band = spec.get("band") or incisor.DS_BAND
-    win = window_s(spec.get("window_ms", WINDOW_MS))
-
-    segs = incisor._segment_traces(session, ch, report, spec, job, on_read)
-    if not segs:
-        return None
-
-    tops = []
-    for seg_i, start_concat, tr in segs:
-        if job:
-            job.check()
-        mag = np.abs(incisor._filtered(tr, lfp_fs, band))
-        # Where this segment sits on the clock, so a stamp can be turned
-        # into an index into it without assuming a linear axis.
-        t0 = continuity.sample_to_true(report, start_concat)
-        if t0 is None:
-            continue
-        n = mag.size
-        half = max(1, int(round(win * lfp_fs)))
-        for t in stamps:
-            i = int(round((t - t0) * lfp_fs))
-            if i < -half or i > n + half:
-                continue                    # not in this segment
-            lo = max(0, i - half)
-            hi = min(n, i + half + 1)
-            if hi > lo:
-                tops.append(float(mag[lo:hi].max()))
-    if not tops:
-        return None
-    arr = np.asarray(tops, dtype=np.float64)
-    return {
-        "number": int(ch["number"]),
-        "index": int(ch["index"]),
-        "label": ch.get("label"),
-        "bad": bool(ch.get("bad")),
-        "n": int(arr.size),
-        "mean_uv": round(float(arr.mean()), 3),
-        "median_uv": round(float(np.median(arr)), 3),
-    }
-
-
-def pick_channel(rows):
-    """The channel these events are biggest on, and how clear the win was.
-
-    Ranked on the MEDIAN rather than the mean. A single artifact inside one
-    stamp's window is enough to carry a mean on a set of eighty, and the
-    thing being asked is "where do these events look biggest", which is a
-    question about the typical one.
-
-    The margin travels with the answer, as Incisor's channel pick does: a
-    win of thirty per cent and a win of two per cent are different facts
-    about a probe, and only the second one is worth a second look.
-    """
-    got = [r for r in rows if r and not r.get("bad")]
-    if not got:
-        got = [r for r in rows if r]
-    if not got:
-        return None, []
-    got.sort(key=lambda r: -(r.get("median_uv") or 0.0))
-    best = got[0]
-    runner = got[1] if len(got) > 1 else None
-    top = best.get("median_uv") or 0.0
-    second = (runner or {}).get("median_uv") or 0.0
-    best = dict(best)
-    best["margin_pct"] = (round((top - second) / second * 100.0, 1)
-                          if second > 0 else None)
-    best["runner_up"] = runner.get("number") if runner else None
-    return best, got
 
 
 # --------------------------------------------------------------------------
@@ -564,6 +614,7 @@ REASONS = {
     "edge": "near the edge",
     "contested": "not the nearest peak",
     "weak": "weak peak",
+    "outlier": "unlike the others",
 }
 
 
@@ -660,6 +711,29 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
             flag = "weak"
         row["flag"] = flag
 
+    # Which moves are unlike the rest of this set's.
+    #
+    # Second pass, because it cannot be known one row at a time: whether
+    # 60 ms is remarkable depends on what the other twelve hundred did. The
+    # flags already set are left alone -- a stamp that gave up a nearer peak
+    # is a more specific thing to say than "this one moved further".
+    moved = [r["shift_ms"] for r in rows if r.get("moved")
+             and r.get("shift_ms") is not None]
+    if len(moved) >= 8:
+        srt = sorted(moved)
+        mid = len(srt) // 2
+        med = srt[mid] if len(srt) % 2 else (srt[mid - 1] + srt[mid]) / 2.0
+        devs = sorted(abs(x - med) for x in moved)
+        m = devs[len(devs) // 2]
+        spread = max(OUTLIER_FLOOR_MS, (m / 0.6745) * OUTLIER_MADS)
+        for row in rows:
+            if row.get("flag") or not row.get("moved"):
+                continue
+            if row.get("shift_ms") is None:
+                continue
+            if abs(row["shift_ms"] - med) > spread:
+                row["flag"] = "outlier"
+
     # Strictly increasing over what was matched. Guaranteed by the
     # non-crossing rule, and checked anyway: if it ever failed, the set and
     # the bank would stop lining up and nothing else would notice.
@@ -737,7 +811,9 @@ def summarize(rows, peaks, window_ms, edge_frac, same_ms,
         "same_ms": float(same_ms),
         "n_peaks": len(peaks.get("times") or []),
         "thr_uv": peaks.get("thr_uv"),
-        "channel": peaks.get("channel"),
+        "n_channels": peaks.get("n_channels"),
+        "channels": peaks.get("channels"),
+        "skipped_channels": peaks.get("skipped_channels"),
         "band": peaks.get("band"),
         "dist_ms": peaks.get("dist_ms"),
         "estimator": peaks.get("estimator"),
@@ -752,7 +828,10 @@ def params_of(spec, peaks):
     separately on the version itself.
     """
     return {
-        "channel": peaks.get("channel"),
+        # The channels that went into the profile, and how many. There is no
+        # single channel any more: the measurement is the probe.
+        "channels": list(peaks.get("channels") or []),
+        "n_channels": int(peaks.get("n_channels") or 0),
         "band": list(peaks.get("band") or incisor.DS_BAND),
         "order": incisor.DS_ORDER,
         "measure": "abs",

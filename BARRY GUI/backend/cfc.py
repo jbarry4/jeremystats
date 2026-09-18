@@ -546,6 +546,16 @@ STAGES = [
     # Incisor. Its own names, for the reason given above the spectrum's: a
     # stage name shared between two tools that count it differently corrupts
     # the rate of whichever ran second.
+    # Braces, before the two Incisor stages because `Job.__init__` keeps a
+    # run's stages in THIS list's order: Braces profiles and then detects,
+    # and listed the other way round a job reports its steps backwards.
+    #
+    # Its own name for the same reason as the spectrum's: it counts CHANNELS
+    # READ WHOLE, where `ds read` counts seconds of recording, and `_learn`
+    # divides seconds by units without knowing which -- so sharing a name
+    # would rewrite Incisor's read rate by the length of the recording every
+    # time somebody aligned a set.
+    ("ds profile", "channels"),
     ("ds read", "seconds"),
     ("ds detect", "channels"),
     ("slow bank", "bands"),

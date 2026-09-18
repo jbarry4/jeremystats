@@ -2276,9 +2276,10 @@ BARRY.views.sessions = (function () {
 
   function setMode(next) {
     mode = next;
-    const scan = $('#sessScanPad'), hk = $('#hkBody');
+    const scan = $('#sessScanPad'), hk = $('#hkBody'), vc = $('#vaccBody');
     if (scan) scan.classList.toggle('hidden', mode !== 'scan');
     if (hk) hk.classList.toggle('hidden', mode !== 'housekeeping');
+    if (vc) vc.classList.toggle('hidden', mode !== 'vacc');
     $$('#sessModeSeg button').forEach(
       (b) => b.classList.toggle('active', b.dataset.mode === mode));
     /* Re-drawn, because the mode is a question about the list and not

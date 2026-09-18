@@ -8861,3 +8861,31 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 }
 .br-vers .bm-row.off .ver-n { color: var(--text-3); }
 
+
+/* ==========================================================================
+   Braces -- waiting, and what a proposal would do
+   ========================================================================== */
+/* A read of sixty-four channels is minutes, so the line above the bar has to
+   say which channel and how much longer. "Reading the channelâ€¦" for three
+   minutes is indistinguishable from a hang. */
+.br-job-line {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.br-job-what { font-size: 12.5px; color: var(--text); }
+.br-job-sub {
+  font-size: 11px; color: var(--text-3); margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one sentence before the statistics: is this worth banking. */
+.br-verdict {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 80%);
+  border-radius: 6px;
+  padding: 13px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.br-verdict strong { font-size: 15px; letter-spacing: -.01em; }
+.br-verdict > span { font-size: 13px; color: var(--text-2); }
+.br-verdict .br-verdict-sub { font-size: 11.5px; color: var(--text-3); }
+

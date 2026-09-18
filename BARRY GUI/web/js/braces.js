@@ -36,8 +36,7 @@ BARRY.braces = (function () {
   const q = {
     entry: null,        // the chosen bank entry id
     from_version: null, // null means "the stamps as they are now"
-    channel: null,      // null means "sweep and pick one"
-    channels: null,     // which to sweep; null means "whatever is not bad"
+    channels: null,     // which go into the profile; null = whatever is good
     window_ms: 100,
     estimator: 'sd',
   };
@@ -87,7 +86,6 @@ BARRY.braces = (function () {
     try {
       plan = await apiPost('/api/braces/plan', {
         entry_id: q.entry,
-        channel: q.channel,
         window_ms: q.window_ms,
         estimator: q.estimator,
       });
@@ -106,7 +104,6 @@ BARRY.braces = (function () {
     try {
       started = await apiPost('/api/braces/run', {
         entry_id: q.entry,
-        channel: q.channel,
         channels: q.channels,
         from_version: q.from_version,
         window_ms: q.window_ms,
@@ -153,14 +150,68 @@ BARRY.braces = (function () {
     }, 400);
   }
 
-  /* The progress bar, updated in place. Returns false when the panel is
-     not showing one, which is when a full render is the right answer. */
+  /* What a job is doing, in words somebody waiting can use.
+
+     A job's snapshot carries `stages` -- each with a name, how many units it
+     has and how many are done -- plus an ETA. It has no `frac` and no
+     `step`, which is what the first version of this read: the bar never
+     moved and the line said "reading the channel" for three minutes while
+     sixty-four of them went past. */
+  const STAGE_NAMES = {
+    'ds profile': 'Reading channel',
+    'ds detect': 'Finding the peaks',
+    'ds read': 'Reading',
+  };
+
+  function jobSays(j) {
+    const stages = (j && j.stages) || [];
+    const now = stages.find((x) => x.status === 'running')
+             || stages.find((x) => (x.done || 0) < (x.of || 0))
+             || stages[stages.length - 1] || {};
+    const name = STAGE_NAMES[now.name] || now.name || 'Working';
+    const of = now.of || 0;
+    const done = Math.min(now.done || 0, of);
+    // Counted units where the stage has them -- "channel 12 of 64" is the
+    // sentence somebody wants, not a percentage of an unnamed whole.
+    const what = of > 1 ? name + ' ' + (done + 1) + ' of ' + of
+                        : name + '…';
+    let total = 0, spent = 0;
+    for (const st of stages) {
+      const n = st.of || 1;
+      total += n;
+      spent += Math.min(st.done || 0, n);
+    }
+    const eta = (j && j.eta_s) ? spellLeft(j.eta_s) : '';
+    return { what: what, frac: total ? spent / total : 0, eta: eta,
+             elapsed: (j && j.elapsed) || 0 };
+  }
+
+  function spellLeft(sec) {
+    const n = Math.round(sec);
+    if (n < 45) return 'about ' + Math.max(5, Math.round(n / 5) * 5)
+                     + ' seconds left';
+    const m = Math.round(n / 60);
+    return 'about ' + m + (m === 1 ? ' minute left' : ' minutes left');
+  }
+
+  /* Updated in place rather than by re-rendering: a full render empties the
+     panel host, which takes ToolKit's tool feed with it, and the feed then
+     re-mounts itself -- a request per tick. */
   function paintJob() {
-    const bar = document.querySelector('#brJob i');
-    const step = document.querySelector('#brJob span');
-    if (!bar || !step) { render(); return; }
-    bar.style.width = Math.round(((job && job.frac) || 0) * 100) + '%';
-    step.textContent = (job && job.step) || 'reading the channel…';
+    const host = document.getElementById('brJob');
+    if (!host) { render(); return; }
+    const say = jobSays(job);
+    const bar = host.querySelector('i');
+    const step = host.querySelector('.br-job-what');
+    const sub = host.querySelector('.br-job-sub');
+    if (bar) bar.style.width = Math.round(say.frac * 100) + '%';
+    if (step) step.textContent = say.what;
+    if (sub) {
+      sub.textContent = [say.eta,
+                         say.elapsed > 4
+                           ? Math.round(say.elapsed) + 's so far' : '']
+        .filter(Boolean).join('  ·  ');
+    }
   }
 
   async function cancel() {
@@ -262,8 +313,14 @@ BARRY.braces = (function () {
                                  text: 'Which set' }));
     const sel = el('select', {
       class: 'br-set',
-      onchange: (e) => { q.entry = e.target.value; q.channel = null;
-                         q.from_version = null; refreshPlan(); },
+      onchange: (e) => {
+        q.entry = e.target.value;
+        // A different set is a different recording, so the channels ticked
+        // for the last one mean nothing here.
+        q.channels = null;
+        q.from_version = null;
+        refreshPlan();
+      },
     });
     for (const c of cands) {
       const done = c.aligned ? '  · aligned' : '';
@@ -293,18 +350,6 @@ BARRY.braces = (function () {
     set.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
                                 text: 'Settings' }));
     set.appendChild(el('div', { class: 'br-fields' }, [
-      field('Channel', el('input', {
-        type: 'number', placeholder: 'auto',
-        value: q.channel == null
-          ? ((plan && plan.channel && plan.channel.number) || '')
-          : q.channel,
-        onchange: (e) => {
-          const v = parseInt(e.target.value, 10);
-          q.channel = isNaN(v) ? null : v;
-          refreshPlan();
-        },
-      }), (plan && plan.channel) ? plan.channel.how
-          : 'blank = sweep them all'),
       field('Window ±ms', el('input', {
         type: 'number', step: '10', min: '5', value: String(q.window_ms),
         onchange: (e) => {
@@ -313,28 +358,32 @@ BARRY.braces = (function () {
         },
       }), 'how far a stamp may move'),
     ]));
-    if (plan && plan.ok && plan.sweeps) set.appendChild(channelPicker());
+    if (plan && plan.ok) set.appendChild(channelPicker());
     set.appendChild(el('p', { class: 'hint', text:
-      (plan && plan.sweeps)
-        ? 'This set does not say which channel it came from, so every '
-          + 'channel is read and the one these events are biggest on wins '
-          + '— measured at the stamps themselves, not over the whole '
-          + 'recording, because how loud a wire hums is a different question '
-          + 'from where the dentate spikes are.'
-        : 'Nothing is thresholded. A peak is already the largest thing '
-          + 'within a hundred milliseconds of itself, and a height on top '
-          + 'of that could only throw away the right answer for a real '
-          + 'event that happens to be small here.' }));
+      'There is no channel to pick. A dentate spike appears across most of '
+      + 'the shank at the same instant, so the magnitudes are averaged over '
+      + 'every ticked channel into one trace, and the stamp goes to the '
+      + 'highest point of THAT inside the window. One noisy wire cannot '
+      + 'carry it and a dead one cannot sink it — and nothing is '
+      + 'thresholded, because a peak is already the largest thing within a '
+      + 'hundred milliseconds of itself.' }));
     box.appendChild(set);
 
     /* Go. */
     const go = el('div', { class: 'br-go' });
     if (job) {
+      const say = jobSays(job);
       go.appendChild(el('div', { class: 'br-job', id: 'brJob' }, [
-        el('span', { text: job.step || 'reading the channel…' }),
+        el('div', { class: 'br-job-line' }, [
+          el('span', { class: 'br-job-what', text: say.what }),
+          el('span', { class: 'br-job-sub', text: say.eta }),
+        ]),
         el('div', { class: 'br-bar' },
-           [el('i', { style: 'width:' + Math.round((job.frac || 0) * 100)
-                             + '%' })]),
+           [el('i', { style: 'width:' + Math.round(say.frac * 100) + '%' })]),
+        el('span', { class: 'br-hint', text:
+          'Every ticked channel is read once, filtered and added into the '
+          + 'average. It is the whole recording, so it takes about as long '
+          + 'as an Incisor scan.' }),
       ]));
       go.appendChild(el('button', { class: 'btn ghost', text: 'Stop',
                                     onclick: cancel }));
@@ -375,7 +424,7 @@ BARRY.braces = (function () {
 
     const box = el('div', { class: 'br-chans' });
     box.appendChild(el('div', { class: 'br-chans-head' }, [
-      el('label', { text: 'Channels to sweep' }),
+      el('label', { text: 'Channels in the average' }),
       el('span', { class: 'br-hint',
                    text: on.size + ' of ' + all.length
                          + (nBad ? '  ·  ' + nBad + ' marked bad, '
@@ -439,13 +488,9 @@ BARRY.braces = (function () {
          is most of this archive -- 41 of 45 sets were banked before Incisor
          existed and say nothing about which channel they came from. That is
          a prompt, not a failure, so the row says so rather than throwing. */
-      plan.channel
-        ? dt('Channel', 'CSC' + plan.channel.number
-                        + '  (' + plan.channel.how + ')')
-        : dt('Channel', 'swept — all '
-                        + ((plan.channels || []).length || '')
-                        + ' of them, then the one these events are '
-                        + 'biggest on'),
+      dt('Measured on', ((q.channels && q.channels.length)
+                         || (plan.channels || []).filter((c) => !c.bad).length)
+                        + ' channels, averaged into one trace'),
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
       dt('Stamps', plan.entry.n + ' in v' + plan.current_version),
@@ -601,7 +646,7 @@ BARRY.braces = (function () {
       el('div', {}, [
         el('strong', { text: s.name || s.entry_id }),
         el('span', { class: 'br-sub', text:
-          'CSC' + (s.params || {}).channel + '  ·  ±'
+          ((s.params || {}).n_channels || '?') + ' channels  ·  ±'
           + (s.params || {}).window_ms + ' ms  ·  '
           + ((s.params || {}).band || [5, 100]).join('–') + ' Hz'
           + (s.from_version == null ? '' : '  ·  read from an earlier '
@@ -615,6 +660,34 @@ BARRY.braces = (function () {
         + s.committed.by + '. This is the record of how that version was '
         + 'made, so it cannot be changed — run Braces again to propose '
         + 'something different.' }));
+    }
+
+    /* What this would do, in one sentence, before any of the numbers.
+
+       The counts, the histogram and the table each answer a different
+       question and all three are worth having, but none of them says the
+       thing somebody wants first: is this worth banking. Nothing here is
+       written until the button at the bottom, and a proposal that opens on
+       six panels of statistics does not make that obvious. */
+    if (!s.committed) {
+      const willMove = set_.would_move || 0;
+      const waiting = c.waiting || 0;
+      box.appendChild(el('div', { class: 'br-verdict' }, [
+        el('strong', { text: willMove
+          ? willMove + ' stamp' + (willMove === 1 ? '' : 's') + ' would move'
+          : 'Nothing would move' }),
+        el('span', { text: willMove
+          ? 'by ' + ms(sum.shift_median_ms) + ' ms typically, '
+            + (sum.shift_max_ms || 0).toFixed(1) + ' ms at most. '
+            + (waiting
+                ? waiting + ' need a decision first — look at those '
+                  + 'below, then bank it.'
+                : 'Look them over below, then bank it.')
+          : 'These stamps are already where the recording puts them.' }),
+        el('span', { class: 'br-verdict-sub', text:
+          'Nothing has been written. The set is still on v'
+          + ((set_.entry || {}).current_version) + '.' }),
+      ]));
     }
 
     /* The counts. */
@@ -645,32 +718,23 @@ BARRY.braces = (function () {
     /* The histogram, before the table. */
     box.appendChild(histCard(sum));
 
-    /* Which channel the sweep chose, and how clear the win was. A margin
-       of thirty per cent and a margin of two are different facts about a
-       probe, and only the second is worth a second look -- the same reason
-       Incisor shows its own margin rather than only its pick. */
-    if (sum.sweep && sum.sweep.picked) {
-      const p = sum.sweep.picked;
-      const close = p.margin_pct != null && p.margin_pct < 5;
+    /* What it was measured on. Only worth a line, now that there is no
+       channel to second-guess -- but which channels went in, and which were
+       left out, is still the difference between a number and a number you
+       can act on. */
+    if (sum.n_channels) {
+      const out = sum.left_out || [];
       box.appendChild(el('p', { class: 'hint br-note', text:
-        (sum.sweep.reused_from
-          ? 'Channel reused from an earlier sweep of this recording: '
-          : 'Swept all ' + sum.sweep.n_channels + ' channels. ')
-        + 'These events are biggest on CSC' + p.number + ' (median '
-        + Math.round(p.median_uv) + ' µV'
-        + (p.margin_pct != null
-            ? ', ' + p.margin_pct + '% clear of CSC' + p.runner_up
-            : '')
-        + '). Measured at the stamps themselves, not over the whole '
-        + 'recording.'
-        + (close
-            ? '  That margin is small — adjacent sites on a shank see '
-              + 'the same spikes at almost the same size, so CSC'
-              + p.runner_up + ' would do about as well. It is worth knowing '
-              + 'rather than worth worrying about: the stamps land in the '
-              + 'same place either way.'
+        'Averaged over ' + sum.n_channels + ' channel'
+        + (sum.n_channels === 1 ? '' : 's')
+        + (out.length ? ', leaving out CSC' + out.join(', CSC') : '')
+        + '. Each stamp went to the highest point of that average inside its '
+        + '±' + (s.params || {}).window_ms + ' ms window.'
+        + ((sum.skipped_channels || []).length
+            ? '  ' + sum.skipped_channels.length + ' could not be read: '
+              + sum.skipped_channels.map((x) => 'CSC' + x.number).join(', ')
+              + '.'
             : '') }));
-      box.appendChild(sweepTable(sum.sweep));
     }
 
     /* Why the rule earned its keep. Only when it actually did. */
@@ -690,52 +754,6 @@ BARRY.braces = (function () {
 
     if (bench) box.appendChild(benchCard());
     return box;
-  }
-
-  /* Every channel the sweep read, in order. The shape of this column is
-     the answer: a gradient down the shank is a probe working and a set
-     measured against the right thing; a flat table is neither, and no
-     single number says so. */
-  function sweepTable(sw) {
-    const ranked = sw.ranked || [];
-    if (!ranked.length) return el('span');
-    const card = el('div', { class: 'card' });
-    const open = { on: false };
-    const top = Math.max(...ranked.map((r) => r.median_uv || 0)) || 1;
-    const body = el('div', { class: 'br-sweep hidden' });
-    for (const r of ranked) {
-      body.appendChild(el('div', {
-        class: 'br-sweep-row' + (r.number === (sw.picked || {}).number
-                                 ? ' won' : ''),
-      }, [
-        el('span', { class: 'n', text: 'CSC' + r.number }),
-        el('span', { class: 'bar' },
-           [el('i', { style: 'width:' + ((r.median_uv / top) * 100) + '%' })]),
-        el('span', { class: 'v', text: Math.round(r.median_uv) + ' µV' }),
-      ]));
-    }
-    const btn = el('button', {
-      class: 'btn ghost sm',
-      text: 'Show all ' + ranked.length + ' channels',
-      onclick: () => {
-        open.on = !open.on;
-        body.classList.toggle('hidden', !open.on);
-        btn.textContent = open.on ? 'Hide the channel table'
-                                  : 'Show all ' + ranked.length + ' channels';
-      },
-    });
-    card.appendChild(el('div', { class: 'br-chans-head' }, [
-      el('label', { text: 'How every channel scored' }),
-      el('div', { style: 'flex:1' }),
-      btn,
-    ]));
-    if ((sw.skipped || []).length) {
-      card.appendChild(el('p', { class: 'hint', text:
-        'Not read: CSC' + sw.skipped.join(', CSC')
-        + ' — unticked before the run.' }));
-    }
-    card.appendChild(body);
-    return card;
   }
 
   function count(v, label, tone) {
@@ -776,6 +794,7 @@ BARRY.braces = (function () {
     edge: 'near the edge',
     contested: 'not the nearest peak',
     weak: 'weak peak',
+    outlier: 'unlike the others',
   };
 
   function tableCard(c) {
@@ -846,9 +865,11 @@ BARRY.braces = (function () {
     const bar = el('div', { class: 'br-accept' });
     if (s.committed) return bar;
     const waiting = c.waiting || 0;
+    const nextV = ((set_.entry || {}).current_version || 0) + 1;
     bar.appendChild(el('button', {
       class: 'btn primary',
-      text: 'Accept and bank…',
+      text: 'Bank it as v' + nextV + '…',
+      title: 'Shows exactly what would be written before writing it',
       onclick: () => commit(false),
     }));
     bar.appendChild(el('span', { class: 'hint', text: waiting
@@ -893,16 +914,14 @@ BARRY.braces = (function () {
     const s = set_.set;
     const r = s.rows[bench.n];
     const span = ((s.params || {}).window_ms || 100) / 1000 * 3;
-    const t0 = r.was - span, t1 = r.was + span;
     try {
-      const got = await apiPost('/api/csc/window', {
-        path: (plan && plan.session && plan.session.path)
-              || (set_.session_path || ''),
-        channels: [(s.params || {}).channel],
-        t0: t0, t1: t1, px: 900,
-        highpass: (s.params.band || [5, 100])[0],
-        lowpass: (s.params.band || [5, 100])[1],
-      });
+      /* The summed profile, which is the thing the rule looked at. Drawing
+         one channel here would be drawing something else -- a trace that
+         peaks a few milliseconds from where the decision was made, shown to
+         the person being asked to adjudicate that exact disagreement. */
+      const got = await apiPost(
+        '/api/braces/set/' + encodeURIComponent(s.set_id) + '/profile',
+        { t0: r.was - span, t1: r.was + span });
       if (bench) { bench.trace = got; drawBench(); }
     } catch (e) {
       if (bench) { bench.error = e.message; render(); }
@@ -1015,26 +1034,28 @@ BARRY.braces = (function () {
     g.fillStyle = tone('--accent-soft', 'rgba(255,184,28,.12)');
     g.fillRect(X(r.was - win), 0, X(r.was + win) - X(r.was - win), base);
 
-    /* The magnitude, from the band-passed envelope. `max(|lo|,|hi|)` per
-       column IS the magnitude envelope -- the same |x| the rule measured,
-       at the resolution the screen can show. */
-    const ser = ((bench.trace || {}).series || [])[0];
-    if (ser && ser.min) {
-      const n = ser.min.length;
+    /* The summed profile itself, sample for sample. Its own time base --
+       the read starts where the file's records start, not where the window
+       was asked for, and drawing it against the asked-for edges would slide
+       the whole trace by up to a sample. */
+    const pf = bench.trace || {};
+    const vals = pf.values || [];
+    if (vals.length && pf.fs) {
       let top = 1;
-      for (let i = 0; i < n; i++) {
-        top = Math.max(top, Math.abs(ser.min[i]), Math.abs(ser.max[i]));
-      }
+      for (const v of vals) top = Math.max(top, v);
       g.beginPath();
-      for (let i = 0; i < n; i++) {
-        const v = Math.max(Math.abs(ser.min[i]), Math.abs(ser.max[i]));
-        const x = (i / (n - 1)) * w;
-        const y = base - (v / top) * (base - 14);
+      for (let i = 0; i < vals.length; i++) {
+        const x = X(pf.t0 + i / pf.fs);
+        const y = base - (vals[i] / top) * (base - 14);
         if (i) g.lineTo(x, y); else g.moveTo(x, y);
       }
       g.strokeStyle = tone('--accent-2', '#7FE3B0');
-      g.lineWidth = 1.4;
+      g.lineWidth = 1.6;
       g.stroke();
+      g.fillStyle = tone('--text-3', '#6f8c7d');
+      g.font = '10px ui-monospace, monospace';
+      g.fillText('mean |5–100 Hz| over ' + pf.n_channels + ' channels',
+                 4, 12);
 
       /* What the detector would have called an event on this channel.
          Not a threshold any more -- nothing is gated on it -- but a peak

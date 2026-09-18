@@ -414,6 +414,11 @@
           <div class="seg" id="sessModeSeg" title="Two views of the same thing">
             <button class="active" data-mode="scan">Scan a drive</button>
             <button data-mode="housekeeping">Everything Jarvis knows</button>
+            <!-- The third view of the same thing: what the cluster holds.
+                 Hidden until there is a cluster configured, the same way the
+                 mode chip in the rail is -- a source you have no account on
+                 is not a view of anything. -->
+            <button data-mode="vacc" id="sessModeVacc" hidden>Everything VACC knows</button>
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
@@ -423,6 +428,8 @@
       </header>
 
       <div class="pad hidden" id="hkBody"></div>
+
+      <div class="pad hidden" id="vaccBody"></div>
 
       <div class="pad" id="sessScanPad">
         <div class="root-bar" id="rootBar">

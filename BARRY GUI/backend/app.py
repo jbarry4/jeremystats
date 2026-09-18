@@ -2718,7 +2718,7 @@ def api_incisor_scan():
                     "plan": plan})
 
 
-@app.route("/api/incisor/batch/plan", methods=["POST"])
+@app.route("/api/incisor/batch/plan", methods=["GET", "POST"])
 def api_incisor_batch_plan():
     """Which recordings a batch would do, and why the rest are left out.
 
@@ -2727,8 +2727,13 @@ def api_incisor_batch_plan():
     should say so while somebody can still fix it rather than wait its turn
     behind thirty others and then fail -- which is the discipline
     `panoramaset.pending` already applies locally.
+
+    GET as well as POST, because it reads and answers a question rather than
+    doing anything -- and because it was POST-only while the panel asked for
+    it with `api()`, which is a GET. That is a 404 on a route that is right
+    there in the file, and the app correctly reported it as the server being
+    older than the code, which was the one explanation that was not true.
     """
-    body = request.get_json(force=True) or {}
     try:
         staged, _unknown = _vacc_staged()
         cfg = vaccmod.load_config(LOGS_DIR)
@@ -3152,53 +3157,28 @@ def _braces_session(rec):
     return sess, (row or {})
 
 
-class _NeedsChannel(ValueError):
-    """No channel could be worked out, and the panel should ask for one.
+def _braces_channels(sess):
+    """This recording's channels, with the bad ones actually marked.
 
-    Its own type rather than a message the route pattern-matches on: the
-    panel has a channel box, so this is a prompt, not a failure, and the two
-    have to be told apart by something sturdier than the wording.
+    `csc.open_session` writes `"bad": False` on every channel it builds --
+    which channels are bad is not in the `.ncs` files, it is a decision
+    somebody made about the recording, and it lives in the session record
+    keyed on identity. `_incisor_spec` has always looked it up separately for
+    exactly this reason.
+
+    Braces did not, so every channel arrived good and the list came up
+    sixty-four of sixty-four ticked on a recording with bad channels on
+    record. One place now, called by the plan and by the run, so the ticks
+    somebody sees are the ticks the read honours.
     """
-
-
-def _braces_channel(rec, sess, body, row=None):
-    """Which channel to measure against, and how that was decided.
-
-    In order: what the caller asked for, what the set itself was detected
-    on, what the detector recorded, then the recording's own hilus channel.
-    Never a bare default -- a channel chosen by rule and a channel chosen by
-    hand must not be indistinguishable, which is the same discipline
-    `panoramaset.CHANNEL_FROM` applies, and the answer travels with `how` so
-    the panel can say which happened.
-    """
-    want, how = body.get("channel"), "asked for"
-    if want is None:
-        # What the events themselves say. A set detected by Incisor carries
-        # the channel on every event.
-        seen = {ev.get("channel") for ev in (rec.get("events") or [])
-                if ev.get("channel") is not None}
-        if len(seen) == 1:
-            want, how = seen.pop(), "the channel this set was detected on"
-    if want is None:
-        pick = ((rec.get("source") or {}).get("parameters") or {})
-        if pick.get("channel") is not None:
-            want, how = pick["channel"], "the channel the detector recorded"
-    if want is None:
-        # Nothing on record. Rather than refuse, or pick by anatomy and hope,
-        # the run sweeps every channel and takes the one these events are
-        # biggest on -- see `braces.score_channel`. Signalled by returning
-        # None, which only `/api/braces/run` can act on.
-        return None, "swept"
-    by_number = {int(c["number"]): c for c in (sess.get("channels") or [])}
-    try:
-        want = int(want)
-    except (TypeError, ValueError):
-        raise ValueError("%r is not a channel number." % want)
-    if want not in by_number:
-        raise ValueError(
-            "This recording has no CSC%d. It has %s."
-            % (want, ", ".join(str(n) for n in sorted(by_number)[:8]) or "none"))
-    return by_number[want], how
+    stored = _stored_for(sess)
+    bad = {int(b) for b in (stored.get("bad_channels") or [])}
+    out = []
+    for c in (sess.get("channels") or []):
+        row = dict(c)
+        row["bad"] = int(c["number"]) in bad
+        out.append(row)
+    return out
 
 
 def _braces_spec(body, sess):
@@ -3228,7 +3208,6 @@ def api_braces_plan():
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
         spec = _braces_spec(body, sess)
-        ch, how = _braces_channel(rec, sess, body, row)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/plan", exc, 400,
                     {"entry_id": body.get("entry_id")})
@@ -3276,12 +3255,7 @@ def api_braces_plan():
         "session": {"path": sess.get("path"), "name": sess.get("name"),
                     "fs": sess.get("fs"),
                     "n_channels": len(sess.get("channels") or [])},
-        "channel": (None if ch is None else
-                    {"number": int(ch["number"]), "index": int(ch["index"]),
-                     "label": ch.get("label"), "how": how}),
-        # What will happen when there is no channel on record: every channel
-        # is read and the one these events are biggest on wins.
-        "sweeps": ch is None,
+
         # Every channel, with whether it is marked bad. ALL of them, not
         # only the good ones: a sweep that silently leaves eight channels
         # out is a ranking somebody will read as complete. They arrive
@@ -3289,7 +3263,7 @@ def api_braces_plan():
         "channels": [{"number": int(c["number"]),
                       "label": c.get("label"),
                       "bad": bool(c.get("bad"))}
-                     for c in (sess.get("channels") or [])],
+                     for c in _braces_channels(sess)],
         "versions": versions,
         "current_version": max([v["v"] for v in versions] or [0]),
         "spec": {k: spec.get(k) for k in
@@ -3314,7 +3288,6 @@ def api_braces_run():
     try:
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
-        ch, how = _braces_channel(rec, sess, body, row)
         spec = _braces_spec(body, sess)
         report = _incisor_report(sess["path"])
     except Exception as exc:                             # noqa: BLE001
@@ -3364,91 +3337,31 @@ def api_braces_run():
         if lid in align_ids:
             align_ids.add(name)
 
-    # Which channels the sweep looks at.
+    # Which channels go into the profile.
     #
     # Whatever the caller ticked, and where it said nothing, every channel
-    # this recording has not marked bad. A bad channel is not hidden from
-    # the list -- it arrives unticked, so leaving it out is visible and
-    # putting it back is one click -- but it is not read unless somebody
-    # asks for it.
+    # this recording has not marked bad. A bad channel is not hidden from the
+    # list -- it arrives unticked, so leaving it out is visible and putting it
+    # back is one click -- but it is not read unless somebody asks for it.
     want_ch = body.get("channels")
-    all_ch = sess.get("channels") or []
+    all_ch = _braces_channels(sess)
     if want_ch:
         want = {int(x) for x in want_ch}
-        sweep_chans = [c for c in all_ch if int(c["number"]) in want]
+        use_chans = [c for c in all_ch if int(c["number"]) in want]
     else:
-        sweep_chans = [c for c in all_ch if not c.get("bad")]
-    if ch is None and not sweep_chans:
+        use_chans = [c for c in all_ch if not c.get("bad")]
+    if not use_chans:
         return jsonify({"ok": False,
                         "error": "No channels are ticked, so there is "
-                                 "nothing to sweep."}), 400
-
-    # A sweep this recording has already had.
-    #
-    # Reading sixty-four channels is 208 seconds on M8s9feb8, and the answer
-    # -- which channel are this recording's dentate spikes biggest on -- does
-    # not change between two runs over the same band. Every proposal already
-    # records the sweep that produced it, so the cheapest store is the one
-    # that is already there: a previous proposal on this recording, asked the
-    # same question. No new book, no cache to go stale against a recording,
-    # and it is visible to anybody who opens that proposal.
-    band_key = tuple(spec.get("band") or incisormod.DS_BAND)
-    prior_sweep = None
-    for old in BRACES.all():
-        if old.get("gid") != rec.get("gid"):
-            continue
-        sw = (old.get("summary") or {}).get("sweep") or {}
-        if not sw.get("picked"):
-            continue
-        pr = old.get("params") or {}
-        if tuple(pr.get("band") or ()) != band_key:
-            continue
-        prior_sweep = dict(sw, reused_from=old.get("set_id"),
-                           reused_at=(old.get("created") or {}).get("at"))
-        break
+                                 "nothing to build a profile from."}), 400
+    left_out = [int(c["number"]) for c in all_ch
+                if int(c["number"]) not in
+                {int(x["number"]) for x in use_chans}]
 
     def work(job):
-        chan, sweep = ch, None
-        if chan is None and prior_sweep:
-            want = (prior_sweep.get("picked") or {}).get("number")
-            match = next((c for c in sweep_chans
-                          if int(c["number"]) == want), None)
-            if match is not None:
-                chan, sweep = match, prior_sweep
-        if chan is None:
-            # No channel on record. Read them all and take the one these
-            # events are actually biggest on -- the stamps are the only
-            # evidence there is about where this set should be measured,
-            # and they are already in hand.
-            rows_s = []
-            for n, cand in enumerate(sweep_chans):
-                job.check()
-                # The stage named in `steps` below, advanced by one.
-                # `tick` is what a job understands; there is no per-call
-                # label, and the stage name is the label.
-                job.tick("ds sweep", n)
-                got = bracesmod.score_channel(
-                    sess, cand, report, spec,
-                    [float(e["start"]) for e in events if e.get("start")
-                     is not None], job)
-                if got:
-                    rows_s.append(got)
-            best, ranked = bracesmod.pick_channel(rows_s)
-            if not best:
-                raise RuntimeError(
-                    "None of this recording's channels could be read, so "
-                    "there is nothing to measure these stamps against.")
-            chan = next(c for c in sweep_chans
-                        if int(c["number"]) == best["number"])
-            # All of them. The ranking IS the answer somebody wants to
-            # look at -- a gradient down the shank is a probe working and a
-            # flat table is a set measured against the wrong thing -- and
-            # sixty-four rows of four numbers is nothing to carry.
-            sweep = {"picked": best, "ranked": ranked,
-                     "n_channels": len(rows_s),
-                     "skipped": [int(c["number"]) for c in all_ch
-                                 if c not in sweep_chans]}
-        peaks = bracesmod.channel_peaks(sess, chan, report, spec, job)
+        prof = bracesmod.profile(sess, use_chans, report, spec, job)
+        job.check()
+        peaks = bracesmod.profile_peaks(prof, report, spec, job)
         job.check()
         out = bracesmod.propose(events, peaks,
                                window_ms=spec["window_ms"],
@@ -3456,41 +3369,31 @@ def api_braces_run():
                                same_ms=spec["same_ms"],
                                align_ids=align_ids)
         params = bracesmod.params_of(spec, peaks)
-        # How the channel was arrived at, kept beside the channel itself so
-        # a number chosen by sweep and a number chosen by hand are never
-        # confused -- the discipline `panoramaset.CHANNEL_FROM` applies.
-        params["channel_from"] = "swept" if sweep else (how or "given")
+        params["left_out"] = left_out
         rows = out.pop("rows")
-        if sweep:
-            # Into the set, not only into the job's result: the job is gone
-            # by tomorrow and somebody opening this proposal then still has
-            # to be able to ask why it chose CSC41.
-            out["sweep"] = sweep
+        # Into the set, not only into the job's result: the job is gone by
+        # tomorrow, and somebody opening this proposal then still has to be
+        # able to ask which channels it was measured from.
+        out["left_out"] = left_out
         made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
                              out, name=rec.get("name"), by=who)
         # The summary travels with the job's result so the panel can draw
         # the counts and the histogram without a second request.
         return {"set_id": made["set_id"], "summary": out, "params": params,
                 "n_rows": len(rows),
-                "channel": int(chan["number"]),
-                "channel_how": ("swept: these events are biggest on it"
-                                if sweep else how),
-                "sweep": sweep,
+                "n_channels": peaks.get("n_channels"),
                 "from_version": src_v}
 
-    steps = ([("ds sweep", len(sweep_chans))]
-             if (ch is None and not prior_sweep) else [])         + [("ds read", int(span)), ("ds detect", 1)]
+    steps = [("ds profile", len(use_chans)), ("ds detect", 1)]
     job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
-        "detail": {"entry": rec["id"],
-                   "channel": None if ch is None else int(ch["number"]),
+        "detail": {"entry": rec["id"], "n_channels": len(use_chans),
                    "n": len(events), "from_version": src_v,
                    "window_ms": spec["window_ms"]},
     }])
     return jsonify({"ok": True, "job": job.snapshot(),
-                    "channel": None if ch is None else int(ch["number"]),
-                    "channel_how": how, "sweeping": ch is None,
+                    "n_channels": len(use_chans), "left_out": left_out,
                     "n": len(events)})
 
 
@@ -3610,6 +3513,51 @@ def api_braces_commit(set_id):
                    "left_alone": report["left_alone"]},
     }])
     return jsonify({"ok": True, "report": report})
+
+
+@app.route("/api/braces/set/<set_id>/profile", methods=["POST"])
+def api_braces_profile(set_id):
+    """The summed profile over one short window, for the bench.
+
+    The bench has to draw the thing the rule actually looked at. Drawing one
+    channel would be drawing something else -- a trace that peaks a few
+    milliseconds from where the decision was made, which is exactly the
+    disagreement this tool exists to remove, shown to the person being asked
+    to adjudicate it.
+
+    Read here rather than assembled in the browser: six hundred milliseconds
+    of sixty-four channels is a short read on this side and sixty-four
+    requests on the other.
+    """
+    body = request.get_json(force=True) or {}
+    rec = BRACES.get(set_id)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "No alignment set %s." % set_id}), 404
+    entry = BANK.get(rec.get("entry_id"))
+    if not entry:
+        return jsonify({"ok": False,
+                        "error": "That set's bank entry is gone."}), 404
+    try:
+        sess, _row = _braces_session(entry)
+        report = _incisor_report(sess["path"])
+        pr = rec.get("params") or {}
+        spec = _braces_spec(dict(body, band=pr.get("band")), sess)
+        want = {int(x) for x in (pr.get("channels") or [])}
+        chans = [c for c in _braces_channels(sess)
+                 if int(c["number"]) in want] or _braces_channels(sess)
+        t0 = float(body.get("t0"))
+        t1 = float(body.get("t1"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/profile", exc, 400, {"set_id": set_id})
+    if not (t1 > t0):
+        return jsonify({"ok": False, "error": "Empty window."}), 400
+
+    try:
+        got = bracesmod.profile_window(sess, chans, report, spec, t0, t1)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/profile", exc, 400, {"set_id": set_id})
+    return jsonify({"ok": True, **got})
 
 
 @app.route("/api/braces/set/<set_id>/delete", methods=["POST"])
@@ -11304,7 +11252,7 @@ def api_vacc_check():
     return jsonify(vaccmod.status())
 
 
-def _vacc_staged(force=False):
+def _vacc_staged(force=False, wait=True):
     """What the cluster already holds, keyed by the gid it belongs to.
 
     The matching is done HERE rather than in `vacc.py`, and on this machine
@@ -11322,6 +11270,13 @@ def _vacc_staged(force=False):
     cfg = vaccmod.load_config(LOGS_DIR)
     root = cfg.get("scratch_root") or os.path.dirname(cfg.get("scratch") or "")
     if not root:
+        return {}, []
+    if not wait and not vaccmod.inventory_ready(cfg, root):
+        # Nothing in hand and the caller cannot afford to wait for a walk of
+        # the cluster's filesystem. Start one and answer with what is known
+        # now, which is nothing -- and nothing renders as `unknown`, which is
+        # the honest state for a question that has not been asked yet.
+        vaccmod.inventory_soon(cfg, root)
         return {}, []
     found = vaccmod.inventory_cached(cfg, root, force=force)
 
@@ -11652,11 +11607,16 @@ def api_vacc_knows():
         rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
                 for r in REG.all() if r.get("gid")]
         # What the cluster physically holds, so a recording it already has a
-        # copy of is not reported as something to upload. Best effort: the
-        # reachability arithmetic above is local and must still answer when
-        # the cluster is down.
+        # copy of is not reported as something to upload.
+        #
+        # `wait=False`: this renders on the Sessions view, and the walk that
+        # answers it takes about ten seconds. Waiting for it made a page load
+        # take thirteen and a half. The first call starts the walk and says
+        # "not established" for the staged ones; the next call, a few seconds
+        # later, has the answer. A slightly late chip is worth far more than
+        # a view that does not appear.
         try:
-            staged, _unknown = _vacc_staged()
+            staged, _unknown = _vacc_staged(wait=False)
         except Exception:                                # noqa: BLE001
             staged = {}
         got = vaccmod.resolve_many(rows, cfg, staged=staged)
