@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-09-08T21:04:13.023922+00:00",
+    "bad_channels": "2026-09-15T22:52:19.541890+00:00",
     "bad_channels_note": "2026-09-04T15:57:01.566631+00:00",
     "condition": "2026-09-04T15:57:01.566631+00:00",
     "converted": "2026-09-04T15:57:01.566631+00:00",
@@ -25,14 +25,14 @@
     "session": "2026-09-04T15:57:01.566631+00:00",
     "spike_labels": "2026-09-04T15:57:01.566631+00:00",
     "start": "2026-09-04T15:57:01.566631+00:00",
-    "updated": "2026-09-14T14:16:29.941480+00:00",
-    "view_state": "2026-09-11T16:13:01.677633+00:00"
+    "updated": "2026-09-15T22:52:19.541890+00:00",
+    "view_state": "2026-09-14T19:40:10.137534+00:00"
   },
   "_keys": {
     "paths": {
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
         "set",
-        "2026-09-14T14:16:29.941480+00:00"
+        "2026-09-14T16:39:34.776738+00:00"
       ],
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
         "set",
@@ -84,9 +84,13 @@
         "set",
         "2026-09-08T21:03:18.599744+00:00"
       ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-14T19:18:19.500911+00:00"
+      ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T13:59:12.696115+00:00"
+        "2026-09-14T18:41:10.705330+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -95,7 +99,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-14T14:16:29.941480+00:00",
+    "at": "2026-09-15T22:52:19.541890+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -184,13 +188,21 @@
       "root": null,
       "scan": null
     },
+    "barrylab-d8e8": {
+      "at": "2026-09-14T15:18:19-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": null,
+      "scan": null
+    },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T09:59:12-04:00",
+      "at": "2026-09-14T14:41:10-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
       "root": "D:/PTEN/PTEN",
-      "scan": "scan_f179140bc2"
+      "scan": "scan_f143e6c51b"
     },
     "lcom549913-e62b": {
       "at": "2026-09-14T10:10:03-04:00",
@@ -207,7 +219,7 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "at": "2026-09-14T10:16:29-04:00",
+    "at": "2026-09-15T18:52:19-04:00",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -253,7 +265,7 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
+    "gain": 2.25,
     "hp": 5,
     "invert": true,
     "lp": 100,
@@ -262,9 +274,9 @@
     "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 6,
+    "span": 1,
     "stft_mode": null,
-    "t0": 529.387646060606,
+    "t0": 1705.194965,
     "ylim": null
   }
 }

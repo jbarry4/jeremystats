@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-16T13:36:13.546646+00:00",
+    "rel": "2026-09-16T13:36:13.546646+00:00",
+    "starred": "2026-09-16T13:36:13.546646+00:00",
+    "updated": "2026-09-16T13:36:13.546646+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-16T13:36:13.546646+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "_scratch/rebuild harness_20260916_092848.png",
+  "rel": "_scratch/rebuild harness_20260916_092848.png",
+  "starred": false,
+  "updated": {
+    "at": "2026-09-16T09:36:13-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}
