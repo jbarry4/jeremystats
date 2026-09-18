@@ -33,10 +33,20 @@ BARRY.views.eventbank = (function () {
   let sheetSel = null;        // the gid shown in the detail pane
   let sheetOne = null;        // that sheet, with its snapshots
 
-  async function load() {
-    // Nothing on screen yet means an empty panel for the length of the read.
+  /* `mine` means the person looking at this list is the reason it is being
+     re-read -- they deleted an entry, edited one, restored a version.
+
+     That case needs saying out loud and used to say nothing. The bank is
+     seven megabytes of shards across a hundred and fifty files, every write
+     drops the cache, and so a delete was: click, a second of a list still
+     showing the row you just removed, then a snap. Bones were suppressed
+     because the list was not empty, which is right for a background refresh
+     and exactly wrong for this. */
+  async function load(mine) {
+    const host = $('#bankBody');
     const bones = entries.length
-      ? null : BARRY.skeleton.into($('#bankBody'), 'row', 7);
+      ? (mine ? BARRY.skeleton.stale(host) : null)
+      : BARRY.skeleton.into(host, 'row', 7);
     /* Both lists, in parallel. The switch between them has to be instant --
        it is a switch, not a navigation -- and the sheets are a single small
        read. */
@@ -934,7 +944,7 @@ BARRY.views.eventbank = (function () {
         ? 'Put version ' + v.v + ' back: ' + res.changed
           + ' decision(s) changed, ' + res.unchanged + ' already matched.'
         : 'The set already matches version ' + v.v + '.', 'ok', 8000);
-      load();
+      load(true);
     } catch (err) { toast(err.message, 'err', 9000); }
   }
 
@@ -1403,6 +1413,40 @@ BARRY.views.eventbank = (function () {
       selected: e.type === t.id ? 'selected' : null,
     })));
 
+    /* The name, with the session offered beside it.
+
+       Most of the names in this bank were typed while somebody was looking
+       at the recording, when "CSC61" was obviously enough. In a list of
+       forty-five it is not. The suggestion is one press rather than
+       something that happens on its own: a name somebody chose on purpose
+       is not a mistake to be corrected. */
+    function nameField(rec) {
+      const input = el('input', { type: 'text',
+                                  value: rec.name == null ? '' : String(rec.name) });
+      f.name = input;
+      const want = BARRY.bankName.suggest(rec, typeName(rec.type));
+      const loose = BARRY.bankName.vague(rec.name, rec);
+      const use = el('button', {
+        class: 'btn ghost sm' + (loose ? ' hot' : ''),
+        text: 'Use the session name',
+        title: want,
+        onclick: () => {
+          input.value = BARRY.bankName.suggest(rec, typeName(typeSel.value));
+          input.focus();
+        },
+      });
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Name' }),
+        el('div', { class: 'bank-name-row' }, [input, use]),
+        el('span', { class: 'hint',
+          text: loose
+            ? 'This name does not say which recording it belongs to, so it '
+              + 'cannot be told apart in a list. The session name is '
+              + '“' + want + '”.'
+            : 'Suggested: “' + want + '”' }),
+      ]);
+    }
+
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Edit entry' }),
@@ -1412,7 +1456,7 @@ BARRY.views.eventbank = (function () {
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
-        field('name', 'Name', e.name),
+        nameField(e),
         field('project', 'Project', e.project),
         field('mouse', 'Mouse', e.mouse),
         field('session', 'Session', e.session),
@@ -1440,7 +1484,7 @@ BARRY.views.eventbank = (function () {
                 note: f.note.value.trim(),
               });
               closeModal();
-              await load();
+              await load(true);
               BARRY.refreshSync();
             } catch (err) { toast(err.message, 'err'); }
           },
@@ -1449,23 +1493,37 @@ BARRY.views.eventbank = (function () {
     ]));
   }
 
+  /* The dialog now holds itself open until the delete has actually happened,
+     which is the difference between this and what it used to be.
+
+     Before: the box closed on the click, and then four things happened in a
+     row -- the delete, a re-read of the whole bank, a sync status check, and
+     a health recount -- with the row still on screen throughout and the toast
+     arriving last of all. The one sentence confirming it had worked was the
+     last thing to appear, well after the person had already decided nothing
+     had.
+
+     Now the box stays up while the delete goes through, and the two reads
+     that only refresh things elsewhere no longer hold the confirmation
+     hostage: they run after, on their own time. */
   async function removeEntry(e) {
-    const ok = await BARRY.confirm(
+    await BARRY.confirm(
       'Delete "' + e.name + '"?',
       'Removes ' + e.n + ' banked event(s) and the record of where they came '
       + 'from. The recording itself is untouched.',
-      'Delete it', true);
-    if (!ok) return;
-    try {
-      await apiPost('/api/bank/' + e.id + '/delete');
-      selected = null;
-      await load();
-      BARRY.refreshSync();
-      // Removing a banked set changes whether its recording counts as
-      // patched -- that is computed from the sets, and there is one fewer.
-      healthChanged();
-      toast('Removed from the bank', 'ok');
-    } catch (err) { toast(err.message, 'err'); }
+      'Delete it', true,
+      async () => {
+        await apiPost('/api/bank/' + e.id + '/delete');
+        selected = null;
+        toast('Removed from the bank', 'ok');
+        // Not awaited: neither changes this list, and the person is waiting
+        // on the row going away, not on a sync chip.
+        load(true);
+        BARRY.refreshSync();
+        // Removing a banked set changes whether its recording counts as
+        // patched -- that is computed from the sets, and there is one fewer.
+        healthChanged();
+      });
   }
 
   /* ======================================================================
@@ -1724,7 +1782,7 @@ BARRY.views.eventbank = (function () {
                       ? ' — ' + res.conflicts + ' contested time(s) '
                         + 'settled on the ' + policy + ' copy.'
                       : '.'), 'ok', 10000);
-            await load();
+            await load(true);
           } catch (err) {
             toast(err.message, 'err', 9000);
           } finally { busy = false; go.disabled = false; }

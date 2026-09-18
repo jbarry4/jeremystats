@@ -171,8 +171,8 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   head('5. The interface offers it, and no longer offers importing');
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  const tool = byText(D, '.tk-tool', /Event curation/);
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 200);
+  const tool = byText(D, '.tk-tool, .tk-step', /Event curation|Checkup/);
   check('the curation tool is there', !!tool);
   tool.click();
   await untilN(() => D.querySelector('#curBench'), 300);
@@ -200,29 +200,64 @@ async function untilN(fn, tries = 250, gap = 100) {
      one -- and the steps after this depend on which recording is chosen,
      so leaving it to the default made the rest of this section test
      whichever session happened to sort first. */
-  const label = (info.session || {}).label || '';
-  const mouse = (label.match(/\bm(\d+)\b/i) || [])[1];
+  /* Type the gid, and take the option with a mousedown.
+
+     The gid because it is the only term guaranteed to pick out one row.
+     `BARRY.pickSession` searches label, key, gid, mouse, session and date
+     (`hayOf` in core.js), and labels repeat: the registry on this machine
+     holds two rows reading "DEMO m1 s1 (dentate spikes)" -- the demo gid
+     and a scanned copy of it -- so typing the label offers both and the
+     first is the one with nothing on it.
+
+     Mousedown because that is the event an option is bound to: core.js
+     wires `onmousedown` so the choice lands before the input's blur can
+     close the list, and `.click()` fires no mousedown. So the click here
+     did nothing at all, silently: the typed text stayed in the box (which
+     is why the note below used to look right), the picker's value never
+     changed, and the wizard went on describing whatever recording it had
+     defaulted to -- one with a banked entry but no curation set. That is
+     the whole of the "no warning about replacing" failure. */
+  const pickBox = sessField && sessField.querySelector('.sp-box');
   const sessInput = sessField && sessField.querySelector('input');
-  if (sessInput && mouse) {
+  if (sessInput) {
     sessInput.focus();
-    sessInput.value = 'm' + mouse;
+    sessInput.value = gid;
     sessInput.dispatchEvent(new W.Event('input', { bubbles: true }));
     await sleep(500);
-    const opt = D.querySelector('.pick-row, .picker-list button, .picker-opt');
-    if (opt) { opt.click(); }
-    await sleep(1500);
+    const opts = Array.from(D.querySelectorAll('.sp-row'));
+    say('note', '  ' + opts.length + ' recording(s) offered for ' + gid);
+    if (opts.length) {
+      opts[0].dispatchEvent(new W.MouseEvent(
+        'mousedown', { bubbles: true, cancelable: true }));
+    }
+    await untilN(() => pickBox && pickBox.pickerValue() === gid, 300);
     say('note', '  recording box now: ' + (sessInput.value || '(empty)'));
-  } else {
-    say('note', '  using the wizard default recording');
-    await sleep(800);
   }
+  /* Asserted, not hoped for. Everything below describes the chosen
+     recording, so if the pick did not take, the rest of this section is
+     reporting on some other session and its verdicts mean nothing. */
+  check('the picker lands on the recording asked for',
+        !!pickBox && pickBox.pickerValue() === gid,
+        'picker is on ' + ((pickBox && pickBox.pickerValue()) || '(nothing)'));
+  /* And that recording does have a set to be warned about: sections 2 and 3
+     just built one on it. */
+  check('and that recording does have a set to replace',
+        (info.existing || []).some((x) => x.kind === 'ds'),
+        JSON.stringify(info.existing));
 
   /* The three questions are asked in order, and each one appears only once
      the one before it has an answer. */
   const step = (re) => byText(D, '.section-label', re);
+  /* `pickerValue` turns over the instant the option is taken, but the
+     questions under it are painted only once the wizard's re-read of
+     /for-recording lands. Wait for the paint, not for the pick. */
+  await untilN(() => step(/Which banked entry/), 300);
   check('then which banked entry', !!step(/Which banked entry/),
         'no entry step');
-  await untilN(() => step(/Which version/), 60);
+  /* 300, not 60. Under --virtual-time-budget these are 300 turns of the
+     event loop, not 30 seconds, and the entry list only appears after the
+     pick's re-read of /for-recording has come back. */
+  await untilN(() => step(/Which version/), 300);
   check('then which version', !!step(/Which version/), 'no version step');
 
   const vrows = Array.from(D.querySelectorAll('.bm-row'))

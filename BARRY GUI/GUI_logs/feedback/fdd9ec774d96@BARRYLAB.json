@@ -13,7 +13,7 @@
   "window": null,
   "recording": null
  },
- "state": "open",
+ "state": "done",
  "at": "2026-09-09T21:57:51+00:00",
  "by": "Shahriar Tafti",
  "machine": "BARRYLAB",
@@ -21,5 +21,7 @@
  "screenshots": [],
  "recent": null,
  "notes": [],
- "from_cloud": true
+ "from_cloud": true,
+ "state_at": "2026-09-09T22:06:00+00:00",
+ "state_by": "Shahriar Tafti"
 }

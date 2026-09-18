@@ -128,7 +128,10 @@ const post = (u, b) => fetch(u, { method: 'POST',
     };
     const res = await fetch('/api/figure/export', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout, format: 'png', dpi: 110,
+      // lane: 'scratch' so the figure this harness renders to prove that
+      // rendering works lands in Results/_scratch and not in the gallery.
+      // Forty-five "rebuild harness_*.png" were committed before this.
+      body: JSON.stringify({ layout, format: 'png', dpi: 110, lane: 'scratch',
         sessions: { default: { path, even_only: true, invert: true } } }),
     });
     check('the export succeeded', res.ok, 'HTTP ' + res.status

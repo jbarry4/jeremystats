@@ -76,6 +76,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 import nlx           # noqa: E402
 import cfc           # noqa: E402
 
+# PTEN M1 s2. theta_shape.py and theta_channels.py import this, so changing
+# it here changes all three; fooof_window_psd.py keeps its own copy because
+# it is meant to stand alone.
 FOLDER = r"D:/PTEN/PTEN/M1_Pten/M1ptens2oct2/2023-10-02_16-58-03"
 
 # Bands, taken from backend/spectrum.py so a number here means the same thing

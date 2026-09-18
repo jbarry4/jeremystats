@@ -1,0 +1,312 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Incisor: what it scans, and what that moves</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1400px; height:1000px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Four claims the panel makes about its own selection, checked
+against the panel rather than against the comments. The landmarks are listed
+theta, ripple, hilus — down the probe, not in the order the code computes
+them. The step-2 card names the probe configuration and says outright whether
+bad channels were removed. Marking one bad actually drops it from the plan and
+throws the scan away, because the candidate times came out of reading a
+particular set of channels. And the traces window opens on a CSD, even
+channels, five seconds.</p>
+<p class="note">Bad channels are somebody's work, not scratch state. The first
+version of this established its starting point by clearing them — which read
+as twenty-six passing checks and had quietly deleted "59, from the Toothy
+workbook" off a real PTEN recording. So this one never clears: it READS what
+is there, ADDS one channel to it, and puts the original set back, through a
+finally so that a crash mid-run restores it too. What it does leave behind is
+a touched timestamp on the record, which is what writing the same list back
+costs and is the whole of it.</p>
+<div id="out"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+/* `BARRY` is a `const` in core.js -- a lexical binding, not a property of
+   `window` -- so `W().BARRY` is undefined however completely the app has
+   loaded. Reached through the frame's own `eval`, where that binding is in
+   scope. Same as incisor.html. */
+const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } };
+const JEV = (src) => { const r = EV('JSON.stringify(' + src + ')');
+                       try { return r ? JSON.parse(r) : null; }
+                       catch (e) { return null; } };
+const body = () => (D().getElementById('tkResult') || {}).textContent || '';
+
+const post = async (url, obj) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(obj),
+})).json();
+
+const nums = (list) => (list || []).map(Number).sort((a, b) => a - b);
+const same = (a, b) => nums(a).join(',') === nums(b).join(',');
+
+/* Candidates, cheapest first: local before the share, then fewest channels.
+   `duration_s` is not to be trusted for the ordering -- see the note in
+   incisor.html -- and nothing here scans, it only estimates. But an
+   estimate still segments the recording, which means reading every .ncs
+   header, and doing that over \\netfiles is minutes rather than seconds. */
+async function candidates() {
+  const reg = await (await fetch('/api/registry')).json();
+  const list = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        const local = (s.here || []).find((x) => !/^\\\\/.test(x));
+        const path = local || (s.here || [])[0];
+        if (!path) continue;
+        list.push({ row: s, path, remote: local ? 0 : 1,
+                    n: Number(s.n_channels) || 1e9 });
+      }
+    }
+  }
+  list.sort((a, b) => (a.remote - b.remote) || (a.n - b.n));
+  return list;
+}
+
+/* The first candidate this can work on, with its starting state READ rather
+   than imposed.
+
+   Two things have to hold and neither is assumed: the recording has an
+   estimate to check, and its record will accept a bad-channel write -- bad
+   channels are remembered against a mouse and session read out of the path,
+   so a folder that does not spell one cannot hold them. The write is tested
+   by putting back exactly what is already there, which proves the path
+   resolves without changing anything anybody marked. */
+async function usable(list) {
+  const why = [];
+  for (const c of list.slice(0, 12)) {
+    const base = await post('/api/incisor/estimate', { path: c.path });
+    if (!base.ok) {
+      why.push(c.path + ': ' + String(base.error).slice(0, 60));
+      continue;
+    }
+    const was = nums((base.channels || []).filter((x) => x.bad)
+      .map((x) => x.number));
+    const back = await post('/api/session/bad-for-path',
+                            { path: c.path, bad_channels: was });
+    if (!back.ok) {
+      why.push(c.path + ': ' + String(back.error).slice(0, 60));
+      continue;
+    }
+    if (!same(back.bad_channels, was)) {
+      why.push(c.path + ': the record did not keep what it was given');
+      continue;
+    }
+    return { cand: c, base, was };
+  }
+  return { why };
+}
+
+let restore = null;   // {path, was} -- put back in the finally, regardless
+
+(async () => { try {
+  const list = await candidates();
+  const got = await usable(list);
+  ck('a recording with an estimate and a record that takes a write',
+     !!got.cand, (got.why || []).slice(0, 4).join(' | ') || 'none reachable');
+  if (!got.cand) { document.title = 'incisorsel: ' + (bad || 1) + ' FAILED'; return; }
+
+  const row = got.cand.row;
+  const path = got.cand.path;
+  const base = got.base;
+  const was = got.was;
+  restore = { path, was };
+  const nAll = base.plan.n_channels;
+  const nProbe = (base.channels || []).length;
+  say('note', '  ' + (row.label || row.gid) + '  ' + path);
+  say('note', '  ' + nAll + ' of ' + nProbe + ' channels read, probe '
+              + base.plan.probe_name + ', already marked bad: '
+              + (was.join(', ') || 'none'));
+
+  /* The starting point, read and then asserted, so every later number is a
+     delta from something known rather than from something hoped for. */
+  ck('the plan agrees with the record about what is excluded',
+     same(base.plan.bad_channels, was) && base.plan.n_excluded === was.length,
+     JSON.stringify(base.plan.bad_channels) + ' vs ' + JSON.stringify(was));
+
+  /* ---------------- the panel ------------------------------------------ */
+  A.src = '/#toolkit';
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'), 40000);
+  ck('the module loaded', !!EV('!!BARRY.incisor'), 'no BARRY.incisor');
+
+  head('The landmarks are listed down the probe');
+  const roles = JEV('BARRY.incisor._roles()') || [];
+  ck('theta, then ripple, then hilus',
+     roles.join(',') === 'theta,ripple,hilus', roles.join(',') || 'none');
+
+  const tool = await until(() => Array.from(
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
+    .find((b) => /Incisor/.test(b.textContent)), 15000);
+  ck('there is an Incisor tool button', !!tool, 'not in the list');
+  if (!tool) { document.title = 'incisorsel: ' + (bad || 1) + ' FAILED'; return; }
+  tool.click();
+  await until(() => /Which recording/.test(body()), 15000);
+
+  EV('BARRY.incisor._state().q.gid = ' + JSON.stringify(row.gid));
+  EV('BARRY.incisor._state().q.path = ' + JSON.stringify(path));
+  EV('(async function(){ await BARRY.incisor._refresh(); '
+     + 'BARRY.incisor.paint(); })()');
+  const sel = await until(() => {
+    const n = D().querySelector('.inc-selection');
+    return n && /will be read/.test(n.textContent) ? n : null;
+  }, 40000);
+  ck('step 2 says what it will read', !!sel,
+     (D().querySelector('.inc-selection') || {}).textContent || 'no card');
+  if (!sel) { document.title = 'incisorsel: ' + (bad || 1) + ' FAILED'; return; }
+  const text = () => (D().querySelector('.inc-selection') || {}).textContent || '';
+
+  head('And says what it is reading it as');
+  ck('it names the probe configuration',
+     /Probe configuration:/.test(text())
+     && text().indexOf(base.plan.probe_name) >= 0, text().slice(0, 180));
+  ck('it says whether the channels are read whole or even-only',
+     /even-numbered channels only|every channel/.test(text()),
+     text().slice(0, 180));
+  ck('it counts what will be read against the whole probe',
+     text().indexOf(nAll + ' of ' + nProbe) >= 0, text().slice(0, 120));
+  /* Both branches, because the recording this lands on decides which one is
+     true and only one is ever on screen. A check that knows only the empty
+     case passes vacuously on a recording that HAS channels marked, which is
+     the case worth getting right. */
+  ck('and states the bad-channel position either way',
+     was.length ? /removed from processing/.test(text())
+                : /No channels are marked bad/.test(text()),
+     text().slice(0, 240));
+  if (was.length) {
+    ck('naming the ones it left out',
+       was.every((n) => text().indexOf('CSC' + n) >= 0), text().slice(0, 240));
+  }
+  ck('there is a way to change that',
+     !!D().querySelector('.inc-chan-edit .inc-chan-grid input'),
+     'no channel editor');
+  ck('which lists every channel, not only the ones being read',
+     D().querySelectorAll('.inc-chan-grid .inc-chan').length === nProbe,
+     D().querySelectorAll('.inc-chan-grid .inc-chan').length + ' of ' + nProbe);
+  ck('with the excluded ones shown unticked rather than hidden',
+     D().querySelectorAll('.inc-chan.bad').length === was.length,
+     D().querySelectorAll('.inc-chan.bad').length + ' vs ' + was.length);
+
+  head('The traces window opens on a CSD, even channels, five seconds');
+  const u = new URL(EV('BARRY.incisor._traceUrl()') || '', location.origin);
+  let panes = [];
+  try { panes = JSON.parse(u.searchParams.get('panes') || '[]'); } catch (e) {}
+  ck('the pane is a CSD', (panes[0] || {}).panel === 'csd',
+     JSON.stringify(panes));
+  ck('it asks for the even channels', u.searchParams.get('even') === '1',
+     String(u.searchParams.get('even')));
+  ck('and a five second window', u.searchParams.get('span') === '5',
+     String(u.searchParams.get('span')));
+  ck('on the recording the panel is on',
+     u.searchParams.get('csc') === path, String(u.searchParams.get('csc')));
+  /* The window is a real pop-up and a harness cannot open one, so the other
+     half of the arrangement is checked where it lives: the deep link only
+     means anything if the app reads `even` off it. */
+  const coreSrc = await (await fetch('/js/core.js')).text();
+  ck('and the app reads ?even off a deep link',
+     /params\.get\('even'\)/.test(coreSrc), 'core.js ignores it');
+
+  head('Marking one more bad removes it from processing');
+  const victim = (base.channels || []).find((c) => !c.bad);
+  ck('there is a channel still being read', !!victim, 'none');
+  if (!victim) { document.title = 'incisorsel: ' + (bad || 1) + ' FAILED'; return; }
+
+  /* A pick to lose. `chosen` is what step 3 holds and step 4 banks from, so
+     it standing in for "there is a result here" is the point: if changing
+     the selection did not throw it away, the panel would be offering to
+     bank candidates that came off a channel set it no longer describes. */
+  EV('BARRY.incisor._choose("hilus", ' + victim.number + ')');
+  const before = JEV('BARRY.incisor._state().chosen') || {};
+  ck('a pick is standing before the change',
+     Number(before.hilus) === Number(victim.number), JSON.stringify(before));
+
+  const marked = was.concat([Number(victim.number)]);
+  await EV('BARRY.incisor._setBad(' + JSON.stringify(marked) + ')');
+  await until(() => text().indexOf(victim.label) >= 0, 40000);
+
+  const after = await post('/api/incisor/estimate', { path });
+  ck('the plan reads one channel fewer',
+     after.plan.n_channels === nAll - 1,
+     after.plan.n_channels + ' vs ' + (nAll - 1));
+  ck('and the one it left out is the one that was marked',
+     same(after.plan.bad_channels, marked)
+     && (after.plan.excluded || []).some(
+          (x) => Number(x.number) === Number(victim.number)),
+     JSON.stringify(after.plan.bad_channels));
+  ck('the panel says it was removed from processing',
+     /removed from processing/.test(text()), text().slice(0, 240));
+  ck('and names it', text().indexOf(victim.label) >= 0, text().slice(0, 240));
+  const now = JEV('BARRY.incisor._state().chosen') || {};
+  ck('the standing pick was thrown away with the scan',
+     now.hilus == null, JSON.stringify(now));
+  ck('and so was the result',
+     JEV('BARRY.incisor._state().res') == null,
+     'a result survived a change to what was scanned');
+
+  head('Putting it back exactly as it was found');
+  await EV('BARRY.incisor._setBad(' + JSON.stringify(was) + ')');
+  await until(() => {
+    const t = text();
+    return was.length ? (t.indexOf(victim.label) < 0
+                         && /removed from processing/.test(t))
+                      : /No channels are marked bad/.test(t);
+  }, 40000);
+  const back = await post('/api/incisor/estimate', { path });
+  ck('the channel is read again', back.plan.n_channels === nAll,
+     back.plan.n_channels + ' vs ' + nAll);
+  ck('and the record holds what it held to begin with',
+     same(back.plan.bad_channels, was),
+     JSON.stringify(back.plan.bad_channels) + ' vs ' + JSON.stringify(was));
+  restore = null;
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'incisorsel: ' + bad + ' FAILED' : 'incisorsel: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'incisorsel: harness CRASH';
+} finally {
+  /* Whatever happened above, the recording goes back to what it was found
+     holding. A harness that edits somebody's data and then throws must not
+     leave the edit behind as well. */
+  if (restore) {
+    try {
+      const r = await post('/api/session/bad-for-path',
+                           { path: restore.path, bad_channels: restore.was });
+      say(same(r.bad_channels, restore.was) ? 'note' : 'bad',
+          '  restored ' + restore.path + ' to [' + restore.was.join(', ') + ']');
+    } catch (e) {
+      say('bad', '  COULD NOT RESTORE ' + restore.path + ' to ['
+                 + restore.was.join(', ') + '] -- ' + e);
+    }
+  }
+} })();
+</script>

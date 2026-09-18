@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-16T17:00:00.481783+00:00",
+    "gid": "2026-09-16T17:00:00.481783+00:00",
+    "group": "2026-09-16T17:00:00.481783+00:00",
+    "key": "2026-09-16T17:00:00.481783+00:00",
+    "label": "2026-09-16T17:00:00.481783+00:00",
+    "loose_key": "2026-09-16T17:00:00.481783+00:00",
+    "mouse": "2026-09-16T17:00:00.481783+00:00",
+    "project": "2026-09-16T17:00:00.481783+00:00",
+    "project_source": "2026-09-16T17:00:00.481783+00:00",
+    "retired": "2026-09-16T17:00:00.481783+00:00",
+    "schema": "2026-09-16T17:00:00.481783+00:00",
+    "session": "2026-09-16T17:00:00.481783+00:00",
+    "start": "2026-09-16T17:00:00.481783+00:00",
+    "updated": "2026-09-16T17:00:31.016777+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260916_124810\\FAKEPROJ\\fake_m901\\m901s1_2026-09-16\\2026-09-16_12-48-10": [
+        "set",
+        "2026-09-16T17:00:31.016777+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-16T17:00:31.016777+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-16T13:00:00-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "sdd1214a735b6",
+  "group": null,
+  "key": "m901_s001_2026-09-16_12-48-10",
+  "label": "m901 s1 2026-09-16",
+  "loose_key": "m901_s001",
+  "mouse": 901,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260916_124810\\FAKEPROJ\\fake_m901\\m901s1_2026-09-16\\2026-09-16_12-48-10"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-16T16:48:10+00:00",
+  "updated": {
+    "at": "2026-09-16T13:00:31-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

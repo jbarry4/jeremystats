@@ -197,10 +197,10 @@ async function until(fn, ms = 15000) {
   }
   W.eval("setView('toolkit')");
   await sleep(600);
-  const btn = Array.from(D.querySelectorAll('.tk-tool'))
+  const btn = Array.from(D.querySelectorAll('.tk-tool, .tk-step'))
     .find((b) => /Kilosort/.test(b.textContent));
   check('ToolKit offers Kilosort', !!btn,
-        Array.from(D.querySelectorAll('.tk-tool strong'))
+        Array.from(D.querySelectorAll('.tk-tool strong, .tk-step .tk-step-n'))
           .map((n) => n.textContent).join(' | '));
   if (btn) {
     btn.click();

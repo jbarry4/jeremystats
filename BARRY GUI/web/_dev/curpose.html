@@ -47,9 +47,9 @@ async function untilN(fn, tries = 250, gap = 100) {
   }
 
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  Array.from(D.querySelectorAll('.tk-tool'))
-    .find((b) => /Event curation/.test(b.textContent)).click();
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 200);
+  Array.from(D.querySelectorAll('.tk-tool, .tk-step'))
+    .find((b) => /Event curation|Checkup/.test(b.textContent)).click();
   await untilN(() => D.querySelector('#curBench'), 300);
   await sleep(900);
   if (Q.get('shelf')) {

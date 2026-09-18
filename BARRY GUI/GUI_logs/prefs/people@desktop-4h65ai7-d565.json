@@ -8,11 +8,11 @@
       ],
       "Harness Probe Person": [
         "gone",
-        "2026-09-14T18:47:02.261051+00:00"
+        "2026-09-16T16:42:09.120422+00:00"
       ],
       "Isabella Piatek": [
         "set",
-        "2026-09-11T15:23:46.778188+00:00"
+        "2026-09-14T14:09:33.869433+00:00"
       ],
       "Rain": [
         "gone",
@@ -20,7 +20,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-09-14T18:47:01.225426+00:00"
+        "2026-09-16T16:42:07.931477+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,7 +28,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-14T13:26:58.987348+00:00"
+        "2026-09-16T16:22:08.432525+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -80,7 +80,7 @@
       ],
       "zz edit probe": [
         "gone",
-        "2026-09-14T18:47:10.589130+00:00"
+        "2026-09-16T16:42:17.968342+00:00"
       ],
       "zz edit probe renamed": [
         "gone",
@@ -93,7 +93,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-14T18:47:10.589130+00:00",
+    "at": "2026-09-16T16:42:17.968342+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -183,7 +183,7 @@
     {
       "at": "2026-09-08T21:23:16.555182+00:00",
       "by": "Isabella Piatek",
-      "edited_at": "2026-09-11T15:23:46.777605+00:00",
+      "edited_at": "2026-09-14T14:09:33.867425+00:00",
       "email": "Isabella.Piatek@uvm.edu",
       "id": "Isabella Piatek",
       "initials": "IP",
@@ -206,8 +206,8 @@
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-09-14T13:26:58.986884+00:00",
+      "by": "zz probe person",
+      "edited_at": "2026-09-16T16:22:08.432145+00:00",
       "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
@@ -226,9 +226,9 @@
       "aliases": [
         "rain"
       ],
-      "at": "2026-09-14T18:47:00.807256+00:00",
+      "at": "2026-09-16T16:42:07.540586+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-14T18:47:01.224996+00:00",
+      "edited_at": "2026-09-16T16:42:07.931018+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
       "initials": "RY",

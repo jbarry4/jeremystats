@@ -22,9 +22,31 @@ GUI_logs/index.json
 # rotate it in the Supabase dashboard; that is the only real fix.
 GUI_logs/.cloud.json
 
+# Who this machine is on the VACC: netid, key path, slurm account. Not a
+# secret -- with key authentication the private key never leaves ~/.ssh and
+# Jarvis never reads it -- but a netid is somebody's name, and where the
+# cluster is and what it mounts are lab-wide facts that live in the tracked
+# vacc.json instead. tools/vacc_setup.py refuses to write this unless git is
+# already ignoring it.
+GUI_logs/.vacc.json
+
 # The browsable copy of the Event Bank. Derived from GUI_logs/event_bank (and
 # from Supabase), regenerated whenever the bank changes, and deterministic --
 # so it is safe to delete and pointless to track. Committing it would mean two
 # machines with different halves of the bank taking turns adding and deleting
 # each other's CSVs on every push.
 Data Bank/
+
+# The by-product lane. Harness screenshots, debug reports, the figure a test
+# rendered to prove that rendering works -- real output of real runs, and
+# nobody will ever cite one.
+#
+# They used to land in Results/ beside the figures. Of 197 files there, about
+# 120 were this: forty-five "rebuild harness" PNGs, forty-nine debug reports,
+# thirty "arrow harness" exports of which twenty-three were byte-identical to
+# each other. A folder that is five percent results is not a folder anybody
+# reads, and every one of them was committed.
+#
+# Still written and still findable -- `save_output(lane="scratch")` puts them
+# here, the catalogue skips the folder, and git no longer carries them.
+Results/_scratch/

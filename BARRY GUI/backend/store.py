@@ -71,6 +71,11 @@ PREFS_SPEC = {
     # Already a map keyed by hostname, which is the same idea one level down;
     # merging it per key means each machine only ever changes its own entry.
     "themes": shards.MAPLWW,
+    # VACC Mode, keyed by hostname for the same reason and with the same
+    # consequence if it is left out: anything not named here is LWW, so the
+    # rig turning the mode off would replace the whole map and the laptop's
+    # entry would vanish on its next pull.
+    "vacc": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -79,6 +84,9 @@ PREFS_SPEC = {
 # do not exist on the other machine anyway. Stored per machine like everything
 # else, and simply read from your own shard.
 PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
+               # How wide somebody likes the curation window. About this
+               # screen and this pair of eyes, not about the project.
+               "curate_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
                "scratch_draft")
@@ -263,6 +271,20 @@ class Store:
         # a different question from "what does the lab call it".
         if device and device != platform.node():
             out["host"] = platform.node()
+        # Which code did it.
+        #
+        # "Who made this figure and when" was answerable and "what was it made
+        # with" was not, which is the half that matters six months later when
+        # two figures of the same recording disagree and the question is
+        # whether the detector changed in between. The version is the one in
+        # the changelog -- the thing people actually say to each other -- and
+        # the commit is what pins it, because BARRY ships continuously and a
+        # version covers however many commits happened that day.
+        ver, commit = _code_version()
+        if ver:
+            out["app_version"] = ver
+        if commit:
+            out["commit"] = commit
         return out
 
     # ------------------------------------------------------------------
@@ -689,6 +711,49 @@ def _os_user():
         return getpass.getuser()
     except Exception:
         return "unknown"
+
+
+_CODE_VERSION_CACHE = {}
+
+
+def _code_version():
+    """(changelog version, short commit) for the code that is running.
+
+    Cached for the life of the process, deliberately. Both are fixed the
+    moment Python started -- editing the changelog does not change the code
+    already imported -- and provenance() is called on every record written,
+    so shelling out to git each time would put a subprocess in the path of
+    every curation decision.
+
+    Either half may be None: a fresh clone with no commits, or a copy handed
+    over as a zip with no .git at all. A record that can only name one of
+    them still says more than one that names neither.
+    """
+    if "v" in _CODE_VERSION_CACHE:
+        return _CODE_VERSION_CACHE["v"]
+    ver = commit = None
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        app = os.path.dirname(here)
+        with open(os.path.join(app, "CHANGELOG.md"), "r",
+                  encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("## "):
+                    ver = line[3:].strip().split()[0].strip("-— ")
+                    break
+    except Exception:                                # noqa: BLE001
+        ver = None
+    try:
+        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                             cwd=os.path.dirname(os.path.dirname(
+                                 os.path.abspath(__file__))),
+                             capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
+            commit = (res.stdout or "").strip() or None
+    except Exception:                                # noqa: BLE001
+        commit = None
+    _CODE_VERSION_CACHE["v"] = (ver, commit)
+    return ver, commit
 
 
 _GIT_USER_CACHE = {}

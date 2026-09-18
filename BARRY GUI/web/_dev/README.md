@@ -17,6 +17,7 @@ live server with no build step and no test framework:
 | `strip.html` | the old pane control strip measurements, kept for comparison |
 | `strip2.html` | the compacted strip: that it fits, that each menu opens outside the scroller, and that a setting relabels its own button |
 | `theme.html` | every theme's tokens, that the categorical ramp is internally distinct, that Horizon leads with pink, and that the favicon repaints |
+| `results.html` | the catalogue: that the by-product lane stays out of it through all three doors, that results know which animal they are about, and that grouping puts every result in a room rather than quietly dropping the ones it has no heading for |
 | `rebuild.html` | Figure rebuild end to end: exports a figure, audits the recipe, walks the steps, then checks the session really was restored |
 | `toolkit.html` | ToolKit: all five scopes, both shapes, the refusals, and the CSV's header and filing |
 | `arrows.html` | that a line or arrow points where it was dragged in all eight directions, the endpoint grips, and rotation — on screen and through the export |
@@ -43,10 +44,20 @@ live server with no build step and no test framework:
 | `presence.html` | who is curating what: that a beat carries the counters, that a second machine is seen and reported back, that the workbench treats the set as held, that taking it marks their session rather than deleting it, and that a failed presence read never breaks the bench. Writes to the live table and clears up after itself |
 | `people.html` | that a name carried by the data is refused and a hand-added one goes; and that the removability rule does not use the count that includes the hand-add itself, which would refuse everything |
 | `strata.html` | that selecting a channel writes nothing, that a layer button names everything selected, that the number keys do the same, and that the overlay reaches image panels at every strength |
+| `strataxis.html` | that the layer overlay paints only where a lane is a channel -- the traces and a raster that names its rows, and NOT a single-channel spectrogram, a scalogram or the band-power map, whose y axis is frequency and which therefore report no rows -- and that a page carrying only `sess.strata`, with the labelling mode shut, gets the bands |
 | `sessfilter.html` | that the layer and reachability filters divide the list rather than emptying it — the two layer halves must account for every card, which catches a filter matching on the wrong field |
 | `banklayers.html` | that the bank's two kinds stay separate while living in one view, that a sheet shows its runs and history, that a version's CSV comes from that version's snapshot rather than the sheet as it stands, and that snapshotting adds one |
 | `errctx.html` | that an error's context window holds only actions actually inside it (compared as moments, not strings — mixed timezones is what broke it), that an empty window answers ok rather than failing, and that a device being online is independent of its having anything to say |
 | `history.html` | that the shared scope really spans more than one machine, that the kind filter matches a family of actions rather than one verb, that the per-person counts add up, and that the answer never claims to be showing everyone when it is not |
+| `panorama.html` | Panorama end to end: that the tool owns the pane, that the cost and the step size are stated before anything runs, that the waiting screen shows both stages and builds the spectrogram up while you wait, and that all three steps end up on screen together. Forces a real run rather than taking the cached one, or there is nothing to watch |
+| `pnbulk.html` | Panorama over a set: that a set can be built from the registry with a layer rule, that the tree shows every recording and what each is doing, that the bar never goes backwards, that a finished row draws its histogram and opens its spectrogram from the cache rather than from the record, and that re-running a finished set does nothing. Then converges: that the histograms pool, that the curve and both strip plots are drawn, that each recording integrates to 1, and that switching the weighting re-pools without starting another run. Writes a real set and deletes it again - unless something failed, in which case it leaves it behind on purpose |
+| `pnshow.html` | that the four controls which change only how a finished run is SHOWN - log/linear bins, the bin count, the colormap, log power - leave the result on screen and start no job, while a control that changes the measurement still clears it. Written after log/linear was reported as making the Holistic view disappear. Also checks every control offers an explanation and that it opens and closes |
+| `pngeo.html` | measures Panorama's boxes at two widths -- that the axes overlay sits exactly on the spectrogram it labels, that no canvas is zero-height, and that the two-column step 1 stacks rather than scrolling sideways. Names the offending element when something sticks out, which is how the colormap dropdown was caught being ninety-one pixels wider than the pane |
+| `pnpose.html` | poses Panorama with a finished run, for screenshots: `?t1=<seconds>`, `?wait=0` for the form alone |
+| `pnprobe.html` | a scratch page for one question at a time: currently, which ToolKit tools overflow at which widths |
+| `incisorsel.html` | what Incisor reads and what changing it moves: that the landmarks are listed theta, ripple, hilus; that step 2 names the probe configuration and states the bad-channel position either way; that marking one bad really drops it from the plan and throws the standing scan away; and that the traces window opens on a CSD, even channels, five seconds. READS the recording's bad channels and puts them back through a `finally` — the first version established its starting point by clearing them, which read as twenty-six passing checks and had deleted a real one |
+| `incisorplots.html` | the three channel plots: that each canvas has ink on it, that the tallest bar in the count plot stands over the channel that actually has the most events (read off the PIXELS, with the title, the axis furniture and the chosen-channel band excluded -- each of those read as a bar once), that clicking any plot picks the channel under the pointer, and that “Most spikes” is the argmax over the counts. Nothing is held across an action that repaints: `paint()` rebuilds the panel, and a canvas kept from before is a detached node whose rect is all zeros |
+| `incisorshot.html` | poses Incisor with a finished scan for screenshots: `?n=<channels>` (default 5, from the middle of the probe, where a hilus is), `?path=<folder>` |
 
 Run them by opening, with the server up:
 
@@ -71,8 +82,14 @@ recording are skipped and the rest still run.
 `pose.html` accepts `pose=` one of `xplore`, `errors`, `layouts`,
 `preflight`, `palette`, `health`.
 
-Two things to know when writing one of these:
+Three things to know when writing one of these:
 
+- **A waiting loop needs far more iterations than the wall clock suggests.** The runner drives Edge with `--virtual-time-budget`, which
+  fast-forwards timers - so a poll of `untilN(fn, 900, 100)` is not 90
+  seconds, it is 900 iterations that can all fire before the server has
+  finished forty seconds of real work. A harness that passes when opened
+  by hand and fails in the sweep, on a check that waits for something
+  slow, is almost always this. `panorama.html` did exactly that, twice.
 - **`.sb-item:last-child` is not the last item.** `drawSlide` appends the
   slide heading after the items, so the last child of `#sbCanvas` is the
   heading. Take the last `.sb-item` from a `querySelectorAll` instead.

@@ -19,9 +19,10 @@ import os
 import platform
 import re
 import threading
+import time
 import uuid
 
-from . import shards
+from . import shards, versions as versionsmod
 from datetime import datetime, timezone
 
 SCHEMA = 1
@@ -120,14 +121,50 @@ class EventBank:
             "versions": shards.BYID,
         }, store)
         self.book.absorb_legacy()
-        self._cache = None
-        self._stamp = None
+        self._drop_cache()
 
     # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
+    def _drop_cache(self):
+        """Forget everything read from disk. Called by every write.
+
+        One method rather than a line per write site, because there are eight
+        of them and `summaries` and the id index are derived from `all` -- so
+        a write that dropped only `_cache` would leave the other two holding
+        the previous answer. They are also fingerprint-checked, but a
+        fingerprint is (count, newest mtime, total mtime) and mtime is only
+        good to the second on some filesystems: two writes inside one tick
+        are indistinguishable. Dropping them outright is the part that does
+        not depend on the clock.
+        """
+        self._cache = None
+        self._stamp = None
+        self._summaries = None
+        self._sum_stamp = None
+        self._by_id = None
+        self._id_stamp = None
+        self._fp = None
+        self._fp_at = 0.0
+
+    # How long a fingerprint is trusted without re-taking it. This only
+    # governs how fast a change made *outside this process* is noticed -- a
+    # git pull, or the sync applying a colleague's entry. Our own writes call
+    # _drop_cache and are seen immediately regardless.
+    FINGERPRINT_TTL = 0.25
+
     def _fingerprint(self):
-        """Changes when any entry does, so a colleague's pull is picked up."""
+        """Changes when any entry does, so a colleague's pull is picked up.
+
+        Memoised for a quarter of a second, because taking it means a stat of
+        every shard in the bank and the three readers that check it -- all(),
+        summaries() and get() -- are usually called within one request. Forty
+        get() calls in a loop meant forty sweeps of a hundred and fifty files
+        to answer forty dictionary lookups.
+        """
+        now = time.time()
+        if self._fp is not None and now - self._fp_at < self.FINGERPRINT_TTL:
+            return self._fp
         count = newest = total = 0
         try:
             with os.scandir(self.root) as it:
@@ -143,7 +180,9 @@ class EventBank:
                     newest = max(newest, mt)
         except OSError:
             pass
-        return (count, newest, total)
+        self._fp = (count, newest, total)
+        self._fp_at = now
+        return self._fp
 
     def all(self):
         stamp = self._fingerprint()
@@ -168,22 +207,51 @@ class EventBank:
         on one entry, and several megabytes across a bank once everything
         has a history. The listing does not need them; opening an entry
         fetches the whole record, which does.
+
+        Cached on the same fingerprint as `all()`, because it was rebuilding
+        every record on every call and `/api/bank` asks for it twice: once
+        directly and once inside `tree()`. So a hundred and fifty entries,
+        each with its version history, were stripped and rebuilt twice per
+        request -- and every write drops the cache, which is why the request
+        right after a delete was the slow one.
         """
+        stamp = self._fingerprint()
+        if self._summaries is not None and stamp == self._sum_stamp:
+            return self._summaries
         out = []
         for rec in self.all():
             row = {k: v for k, v in rec.items() if k != "events"}
             if row.get("versions"):
+                # The name each version is known by, worked out from what
+                # each was based on. Computed here rather than stored: a
+                # name depends on the whole history, and a stored one
+                # would go stale the moment a branch arrived from another
+                # machine.
+                # Per ROW, not per version number: this bank really does
+                # hold entries whose numbers repeat, where two machines
+                # minted the same one and the union rightly kept both.
+                # Keyed on the number, two versions would share a name.
                 row["versions"] = [
-                    {k: v for k, v in ver.items() if k != "snap"}
-                    for ver in row["versions"]]
+                    dict({k: v for k, v in ver.items() if k != "snap"},
+                         label=nm, has_snap=bool(ver.get("snap")))
+                    for ver, nm in versionsmod.label_rows(row["versions"])]
             out.append(row)
+        self._summaries = out
+        self._sum_stamp = stamp
         return out
 
     def get(self, entry_id):
-        for rec in self.all():
-            if rec.get("id") == entry_id:
-                return rec
-        return None
+        """One entry by id.
+
+        Through an index rather than a scan of the whole bank: this is called
+        once per id inside loops that walk a selection, so the linear version
+        made those quadratic.
+        """
+        stamp = self._fingerprint()
+        if self._by_id is None or stamp != self._id_stamp:
+            self._by_id = {r.get("id"): r for r in self.all() if r.get("id")}
+            self._id_stamp = stamp
+        return self._by_id.get(entry_id)
 
     def tree(self):
         """Grouped project -> mouse -> session, which is how people look."""
@@ -279,10 +347,36 @@ class EventBank:
             for key in ("channel", "amplitude", "label", "label_id"):
                 if ev.get(key) is not None:
                     item[key] = ev[key]
+            # Where this stamp was before Braces moved it, and why it was
+            # asked about. Whitelisted explicitly, because the whitelist is
+            # what an event IS here -- and a `from_t` dropped on the way in
+            # is the diff losing the one thing that lets it tell a stamp
+            # that moved from a stamp that was deleted. Coerced and rounded
+            # like `start`, since it is the same kind of thing.
+            src = ev.get("from_t")
+            if src is not None:
+                try:
+                    src = round(float(src), 6)
+                    # A stamp that came back to where it started did not
+                    # move, and carrying a from_t equal to start would make
+                    # the history claim a shift that cancelled out.
+                    if abs(src - item["start"]) > 1e-9:
+                        item["from_t"] = src
+                except (TypeError, ValueError):
+                    pass
+            if ev.get("align_flag"):
+                item["align_flag"] = ev["align_flag"]
             clean.append(item)
         if not clean:
             raise BankError("None of those events had a usable time.")
         clean.sort(key=lambda e: e["start"])
+
+        # A detector that knows what clock it produced may say so, and the
+        # stamp travels with the entry. Belt and braces beside
+        # `retime.basis_of`, which can already work it out from the
+        # pipeline: a fact recorded on the thing itself survives a rename
+        # of the pipeline that produced it.
+        basis = entry.get("time_basis")
 
         rec = {
             "id": entry.get("id") or uuid.uuid4().hex[:12],
@@ -398,7 +492,22 @@ class EventBank:
         # reads "nothing moved" about a pass in which four decisions
         # changed. So the comparison is per candidate, matched on time, and
         # what it reports is which category each one came from and went to.
-        moves, changed, gained, lost = {}, 0, 0, 0
+        #
+        # MATCHED ON TIME, WHICH BRACES CHANGES ON PURPOSE.
+        #
+        # Time was the only identity a banked event had, and that held until
+        # something moved one. `braces` does exactly that, so a stamp it
+        # shifted would arrive here as one event vanishing and an unrelated
+        # one appearing -- a history reading "1198 lost, 1198 gained" about a
+        # pass in which nothing was decided differently at all.
+        #
+        # So an event Braces moved carries `from_t`: the time it used to
+        # have. Matched in TWO PASSES rather than one, and the order is not a
+        # style choice: every event that is still where it was claims its own
+        # slot first, and only the leftovers are matched on where they came
+        # from. One pass, whichever key it preferred, could hand a moved
+        # event the slot belonging to an event that had not moved at all.
+        moves, changed, gained, lost, shifted = {}, 0, 0, 0, 0
         if prior:
             was = {}
             for ev in prior.get("events") or []:
@@ -406,23 +515,42 @@ class EventBank:
                     was[round(float(ev["start"]), 4)] = ev.get("label")
                 except (TypeError, ValueError, KeyError):
                     continue
+
+            def _pair(before, after):
+                if before != after:
+                    step = "%s → %s" % (before or "undecided",
+                                        after or "undecided")
+                    moves[step] = moves.get(step, 0) + 1
+                    return 1
+                return 0
+
+            left = []
             for ev in clean:
                 try:
                     key = round(float(ev["start"]), 4)
                 except (TypeError, ValueError):
                     continue
-                if key not in was:
+                if key in was:
+                    changed += _pair(was.pop(key), ev.get("label"))
+                else:
+                    left.append(ev)
+            # Second pass: what did this used to be?
+            for ev in left:
+                src = ev.get("from_t")
+                key = None
+                if src is not None:
+                    try:
+                        key = round(float(src), 4)
+                    except (TypeError, ValueError):
+                        key = None
+                if key is None or key not in was:
                     gained += 1
                     continue
-                before, after = was.pop(key), ev.get("label")
-                if before != after:
-                    changed += 1
-                    step = "%s → %s" % (before or "undecided",
-                                             after or "undecided")
-                    moves[step] = moves.get(step, 0) + 1
+                shifted += 1
+                changed += _pair(was.pop(key), ev.get("label"))
             lost = len(was)
 
-        moved = ((not prior) or changed or gained or lost
+        moved = ((not prior) or changed or gained or lost or shifted
                  or prior.get("n") != rec["n"]
                  or (prior.get("by_label") or {}) != counts)
         if moved:
@@ -431,6 +559,22 @@ class EventBank:
             # numbering it 1 would make the first real pass v2 and leave the
             # history claiming a pass that never happened.
             first_import = (not versions) and not rec["specified"]
+            # Which version this pass was worked from.
+            #
+            # The stored number stays a plain increasing integer -- it is
+            # what the cloud table and the sync are keyed on. This is
+            # what makes the LINEAGE recoverable: a pass based on v1
+            # while v2 and v3 already existed is a branch off v1, and
+            # `versions.labels` reads that back out as "v1.1". Without
+            # it, going back to an earlier version and carrying on left
+            # a history claiming the work came after everything before
+            # it.
+            #
+            # Absent means "from whatever was newest", which is what
+            # every pass did before there was a choice.
+            based_on = entry.get("based_on")
+            if based_on is None and not first_import:
+                based_on = versionsmod.based_on_default(versions)
             fresh = {
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
@@ -439,6 +583,8 @@ class EventBank:
                 # A stable key, so two machines' histories union instead
                 # of one replacing the other.
                 "id": uuid.uuid4().hex[:12],
+                # The version this one was worked from, by stored id.
+                "from_v": (None if first_import else based_on),
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -450,6 +596,10 @@ class EventBank:
                 "moves": moves,
                 "machine": entry.get("machine") or platform.node(),
             }
+            # Only when something did. A zero on every version in a history
+            # that has never been aligned is a column of noise.
+            if shifted:
+                fresh["shifted"] = shifted
             if len(clean) <= self.SNAP_MAX_EVENTS:
                 fresh["snap"] = [[ev.get("start"),
                                   ev.get("label_id") or ev.get("label")]
@@ -479,6 +629,9 @@ class EventBank:
             # pass that decided them.
             if (not prior) and rec["specified"] and len(versions) == 1:
                 fresh["v"] = 1
+                # The unsorted list going in below it IS what this pass
+                # was done to, whatever the caller said.
+                fresh["from_v"] = 0
                 versions.insert(0, {
                     "v": 0,
                     "id": "v0-" + uuid.uuid4().hex[:8],
@@ -543,7 +696,7 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         rec["path"] = self.book.mine(base)
         rec["replaced"] = bool(prior)
         rec["new_version"] = bool(moved) and bool(prior)
@@ -654,7 +807,7 @@ class EventBank:
         with _LOCK:
             base = self._base_for_id(entry_id)
             rec = self.book.write(base, rec) if base else rec
-            self._cache = None
+            self._drop_cache()
         return rec
 
     @shards.atomic
@@ -702,7 +855,7 @@ class EventBank:
             base = self._base_for_id(eid)
             if base:
                 self.book.write(base, live)
-            self._cache = None
+            self._drop_cache()
             n += hit
         return n
 
@@ -740,6 +893,75 @@ class EventBank:
         # the thing it converted FROM.
         return tb.get("converted_from") or tb.get("kind")
 
+    @staticmethod
+    def version_key(ver):
+        """A handle that names one version and only one.
+
+        The `id` where there is one. Versions minted before ids existed have
+        none -- three of the eight on M8s9feb8 -- and the obvious fallback,
+        the stored number, is the one thing that is NOT unique. Falling back
+        to it produced exactly the confusion it was meant to avoid: a chooser
+        showing "v6" sent back "4", and the bank answered about a version
+        numbered 4 that the person had never heard of.
+
+        So an id-less version is keyed on what it contains. Deterministic,
+        so the key a plan hands out is the key a run sends back; derived
+        rather than minted, so nothing has to be written to the archive to
+        make old versions addressable; and content-based rather than
+        positional, so a shard arriving between the two does not shift it.
+        """
+        if ver.get("id"):
+            return str(ver["id"])
+        seed = json.dumps([ver.get("v"), ver.get("at"), ver.get("by"),
+                           ver.get("note"), ver.get("n")],
+                          sort_keys=True, separators=(",", ":"))
+        return "vk-" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+
+    @staticmethod
+    def version_at(rec, want):
+        """One version, by its id, by its content key, or by its number.
+
+        THE NUMBER IS NOT UNIQUE. Two machines curating the same entry both
+        mint the next number and the union keeps both, which is the right
+        outcome and is what the per-version `id` exists for -- this bank
+        holds an entry numbered 0,1,2,3,4,3,4. So a caller that asks for "3"
+        is asking an ambiguous question, and answering it by taking whichever
+        came first in the file would quietly read one person's pass while
+        naming the other's.
+
+        Asked by id, it is exact. Asked by a number only one version has, it
+        is exact. Asked by a number two versions share, it refuses and says
+        which ids to choose between, because there is no defensible way to
+        pick and a wrong answer here reads events that somebody else decided.
+        """
+        vers = list(rec.get("versions") or [])
+        if want is None:
+            raise BankError("No version was asked for.")
+        # Exact first: the id, then the content key an id-less version is
+        # addressed by. Only if neither matches is the ambiguous number
+        # tried at all.
+        for ver in vers:
+            if ver.get("id") is not None and ver.get("id") == want:
+                return ver
+        for ver in vers:
+            if EventBank.version_key(ver) == want:
+                return ver
+        try:
+            n = int(want)
+        except (TypeError, ValueError):
+            raise BankError("This set has no version %r." % (want,))
+        same = [v for v in vers if (v.get("v") or 0) == n]
+        if not same:
+            raise BankError("This set has no version %s." % n)
+        if len(same) > 1:
+            raise BankError(
+                "This set has %d versions numbered %s -- they were minted "
+                "independently on different machines and both were kept. "
+                "Ask for one of them by its key: %s."
+                % (len(same), n,
+                   ", ".join(EventBank.version_key(v) for v in same)))
+        return same[0]
+
     def events_at(self, rec, v):
         """Rebuild one version's events from its snapshot.
 
@@ -747,13 +969,7 @@ class EventBank:
         current events carry that a snapshot cannot hold. Never guesses at
         one: an event with a channel comes back without it, said out loud.
         """
-        hit = None
-        for ver in (rec.get("versions") or []):
-            if (ver.get("v") or 0) == v:
-                hit = ver
-                break
-        if hit is None:
-            raise BankError("This set has no version %s." % v)
+        hit = self.version_at(rec, v)
         snap = hit.get("snap")
         if not snap:
             raise BankError(
@@ -1011,6 +1227,12 @@ class EventBank:
                 ("%s|%s|%s|%s" % (entry_id, gap_map_sha, target, src_v)
                  ).encode("utf-8")).hexdigest()[:10],
             "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+            # A correction applied to a chosen version is a branch off that
+            # version, not a continuation of whatever happened to be newest.
+            # Without this, re-timing v1 while v2 and v3 existed produced a
+            # v4 whose history claimed it came after them.
+            "from_v": (src_v if src_v is not None
+                       else versionsmod.based_on_default(versions)),
             "at": _now(),
             "by": who,
             "note": note or (
@@ -1065,10 +1287,260 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         report["time_basis"] = rec["time_basis"]
+        return report
+
+    # ------------------------------------------------------------------
+    # Alignment
+    # ------------------------------------------------------------------
+    @shards.atomic
+    def align(self, entry_id, moves, params, note=None, by=None,
+              dry_run=True, from_version=None, flags=None):
+        """Mint a version of `entry_id` with every stamp on its own peak.
+
+        `moves` is `{index_into_the_source_events: new_start}`. Indices
+        rather than times, because the whole point is that a time is not an
+        identity here -- two stamps 0.05 ms apart would key to one entry in
+        a dict and one of them would be silently skipped.
+
+        An index absent from `moves` is a stamp that stays where it is: a
+        flag nobody resolved, or one with no peak in reach. It is written
+        unchanged, and it is NOT an error.
+
+        Everything else is `retime`'s shape, for the same reasons written
+        there: a dry run that shows what the write would do, a version id
+        derived from what was applied so two machines converge on one
+        version, a refusal to apply the same alignment twice, and `from_v`
+        pointing at the version the stamps were read from.
+        """
+        rec = self.get(entry_id)
+        if not rec:
+            raise BankError("No bank entry %s." % entry_id)
+
+        # By id where the caller has one, because the NUMBER is not unique
+        # -- see `version_at`. `src_v` stays the number for the record, since
+        # `from_v` is what `versions.label_rows` walks to work out lineage
+        # and that is numbered; `src_id` is what actually chose the version.
+        src_v, src_id, dropped = None, None, []
+        if from_version is not None:
+            src = self.version_at(rec, from_version)
+            src_v = src.get("v") or 0
+            src_id = src.get("id")
+
+        if from_version is None:
+            events = rec.get("events") or []
+        else:
+            events, dropped = self.events_at(rec, from_version)
+
+        flags = flags or {}
+        out, shifts = [], []
+        for i, ev in enumerate(events):
+            item = dict(ev)
+            # `from_t` never accumulates: a stamp aligned twice records the
+            # place it started this round from, not two rounds ago. The
+            # version record is where the whole lineage lives.
+            item.pop("from_t", None)
+            new_t = moves.get(i, moves.get(str(i)))
+            if new_t is not None:
+                try:
+                    was_t = float(ev.get("start"))
+                    new_t = float(new_t)
+                except (TypeError, ValueError):
+                    raise BankError(
+                        "Event %d has no usable time, so it cannot be "
+                        "aligned." % i)
+                if abs(new_t - was_t) > 1e-9:
+                    item["start"] = round(new_t, 6)
+                    item["from_t"] = round(was_t, 6)
+                    shifts.append(round((new_t - was_t) * 1e3, 4))
+            why = flags.get(i, flags.get(str(i)))
+            if why:
+                # Why it was asked about, kept on the event. Six months on,
+                # "this one is 94 ms off its neighbour" is a question the
+                # record should answer rather than the person who was there.
+                item["align_flag"] = why
+            else:
+                item.pop("align_flag", None)
+            out.append(item)
+
+        ordered = sorted(out, key=lambda e: float(e.get("start") or 0.0))
+        order_held = [id(x) for x in ordered] == [id(x) for x in out]
+
+        # Two stamps at one time is the failure the one-peak-per-stamp rule
+        # exists to prevent, so it is checked here too rather than trusted
+        # across a module boundary: this is the last place before the write.
+        seen, collided = set(), []
+        for e in out:
+            try:
+                k = round(float(e["start"]), self.DUP_DP)
+            except (TypeError, ValueError, KeyError):
+                continue
+            if k in seen:
+                collided.append(k)
+            seen.add(k)
+
+        absol = sorted(abs(s) for s in shifts)
+        report = {
+            "entry_id": entry_id,
+            "name": rec.get("name"),
+            "gid": rec.get("gid"),
+            "session_label": rec.get("session_label"),
+            "was": len(events),
+            "moved": len(shifts),
+            "unmoved": len(events) - len(shifts),
+            "order_held": order_held,
+            "collisions": collided[:10],
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "shift_max_abs_ms": absol[-1] if absol else 0.0,
+            "params": dict(params or {}),
+            "dry_run": bool(dry_run),
+            "moves": [
+                [e.get("from_t"), e.get("start"),
+                 round((float(e["start"]) - float(e["from_t"])) * 1e3, 3),
+                 e.get("label"), e.get("align_flag")]
+                for e in out if e.get("from_t") is not None
+            ][:self.PREVIEW_MAX],
+            "moves_capped": len(shifts) > self.PREVIEW_MAX,
+            "current_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            "next_version": max(
+                [v.get("v") or 0 for v in (rec.get("versions") or [])]
+                or [0]) + 1,
+            "n_versions": len(rec.get("versions") or []),
+            "from_version": src_v,
+            "drops_fields": dropped,
+        }
+        if dropped:
+            report["warning"] = (
+                "Version %s's snapshot holds a start and a label only, so "
+                "%s would not survive being read back from it."
+                % (src_v, ", ".join(dropped)))
+        if not order_held:
+            report["error"] = (
+                "The alignment reordered the events, which the no-crossing "
+                "rule makes impossible -- so something upstream is wrong. "
+                "Nothing was written.")
+            return report
+        if collided:
+            report["error"] = (
+                "%d stamp(s) would land on a time another stamp already "
+                "holds, which is a duplicate rather than an alignment. "
+                "Nothing was written." % len(collided))
+            return report
+        if not shifts:
+            report["error"] = (
+                "Nothing moved, so there is no new version to write.")
+            return report
+
+        twin = "br-" + hashlib.sha256(
+            ("%s|%s|%s" % (entry_id, src_id or src_v,
+                           json.dumps(params or {}, sort_keys=True,
+                                      separators=(",", ":")))
+             ).encode("utf-8")).hexdigest()[:10]
+        for ver in (rec.get("versions") or []):
+            if ver.get("id") == twin:
+                report["already_version"] = ver.get("v")
+                report["error"] = (
+                    "This exact alignment is already version %s of this set "
+                    "— same channel, same settings, same source. Delete "
+                    "that version to undo it, or align from a different one."
+                    % ver.get("v"))
+                return report
+
+        if dry_run:
+            return report
+
+        prov = self.store.provenance() if self.store else {}
+        who = (by or prov.get("user") or "unknown").strip()
+        versions = list(rec.get("versions") or [])
+        counts = {}
+        for ev in out:
+            key = ev.get("label") or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+
+        by_reason = {}
+        for why in flags.values():
+            if why:
+                by_reason[why] = by_reason.get(why, 0) + 1
+
+        fresh = {
+            "id": twin,
+            "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
+            # An alignment applied to a chosen version is a branch off that
+            # version, not a continuation of whatever happened to be newest.
+            "from_v": (src_v if src_v is not None
+                       else versionsmod.based_on_default(versions)),
+            "at": _now(),
+            "by": who,
+            "n": len(out),
+            "by_label": dict(counts),
+            # Nothing was decided differently. Braces never reads a label,
+            # let alone writes one, and a relabelling in the history that
+            # never happened is worse than no history at all.
+            "changed": 0, "gained": 0, "lost": 0, "moves": {},
+            "shifted": len(shifts),
+            # `platform.node()`, as `bank` and `retime` both write it. NOT
+            # `provenance()["machine"]`, which is what the lab calls this
+            # computer -- one history carrying both names for one machine is
+            # unreadable, and the rest of this file already chose.
+            "machine": platform.node(),
+            "aligned": {
+                "tool": "jarvis.braces/1",
+                "source_version": src_v,
+                "source_version_id": src_id,
+                "n_moved": len(shifts),
+                "n_unmoved": len(events) - len(shifts),
+                "shift_min_ms": report["shift_min_ms"],
+                "shift_max_ms": report["shift_max_ms"],
+                "shift_median_ms": (absol[len(absol) // 2] if absol else 0.0),
+                "flagged": by_reason,
+                "order_held": True,
+            },
+        }
+        fresh["aligned"].update(params or {})
+        fresh["note"] = note or (
+            "Aligned to the mean magnitude over %s channels, ±%g ms%s. "
+            "%d stamp(s) moved by %.1f to %.1f ms; %d left where they were. "
+            "No labels changed."
+            % ((params or {}).get("n_channels"),
+               (params or {}).get("window_ms"),
+               "" if src_v is None else ", reading v%d" % src_v,
+               len(shifts), report["shift_min_ms"], report["shift_max_ms"],
+               len(events) - len(shifts)))
+        if len(out) <= self.SNAP_MAX_EVENTS:
+            fresh["snap"] = [[ev.get("start"),
+                              ev.get("label_id") or ev.get("label")]
+                             for ev in out]
+        versions.append(fresh)
+
+        rec["events"] = out
+        rec["versions"] = versions
+        rec["n"] = len(out)
+        rec["by_label"] = counts
+        # What the CURRENT events are aligned to, the way `time_basis` says
+        # what clock they are on. Read by the panel to mark a set that has
+        # already been done, and by `align` itself through the twin check.
+        rec["aligned"] = {
+            "tool": "jarvis.braces/1",
+            "at": _now(),
+            "by": who,
+            "version": fresh["v"],
+            "source_version": src_v,
+            "source_version_id": src_id,
+        }
+        rec["aligned"].update(params or {})
+
+        base = self._base_of(rec)
+        with _LOCK:
+            rec = self.book.write(base, rec)
+            self._drop_cache()
+        report["version"] = fresh["v"]
+        report["version_id"] = fresh["id"]
+        report["aligned"] = rec["aligned"]
         return report
 
     # ------------------------------------------------------------------
@@ -1367,7 +1839,7 @@ class EventBank:
         base = self._base_of(rec)
         with _LOCK:
             rec = self.book.write(base, rec)
-            self._cache = None
+            self._drop_cache()
         report["version"] = fresh["v"]
         report["version_id"] = fresh["id"]
         return report
@@ -1676,7 +2148,7 @@ class EventBank:
         """Write a record back under the id it already has."""
         base = self._base_for_id(rec["id"]) or self._base_of(rec)
         out = self.book.write(base, rec)
-        self._cache = None
+        self._drop_cache()
         return out
 
     def delete(self, entry_id):
@@ -1685,7 +2157,7 @@ class EventBank:
             return False
         with _LOCK:
             gone = self.book.erase(base)
-            self._cache = None
+            self._drop_cache()
         return bool(gone)
 
     def _base_for_id(self, entry_id):

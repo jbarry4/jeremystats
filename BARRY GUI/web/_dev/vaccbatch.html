@@ -1,0 +1,197 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccbatch: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:720px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:720px;top:0;right:0;bottom:0;width:calc(100vw - 720px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/#toolkit"></iframe>
+<script>
+/* The batch, the queue it leaves, and the pick that gets banked.
+
+   The thing this is really guarding is the last step. A batch that banks
+   its own answers is a batch nobody looks at, and a review that loses the
+   registry row behind it banks a set under "Unfiled" where nobody can find
+   it by the animal it came from. Both of those are silent: the numbers are
+   right, the entry exists, and it is in the wrong place.
+
+   So the assertions are about what a review CARRIES, not only about what it
+   shows: the per-channel summaries the three plots are drawn from, the pick
+   with its margin, and the project/mouse/session that banking reads. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const D = () => frame.contentDocument;
+
+  say('=== two halves, and the cluster one is locked until the mode is on ===');
+  // Open the Incisor tool the way a person does.
+  await ev('setView("toolkit")');
+  await sleep(300);
+  // `until` here returns a boolean, not the thing it found -- the one in
+  // incisor.html returns the value and the two are easy to confuse.
+  let toolBtn = null;
+  await until(() => {
+    toolBtn = Array.from(D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
+      .find((b) => /Incisor/.test(b.textContent));
+    return !!toolBtn;
+  }, 15000);
+  check('the Incisor tool is in the ToolKit', !!toolBtn);
+  if (toolBtn) { toolBtn.click(); await sleep(500); }
+
+  const tabsOf = () => Array.from(D().querySelectorAll('#tkBody .inc-tab'));
+  check('the panel has two tabs', tabsOf().length === 2,
+        String(tabsOf().length));
+  check('and they are named for where the work happens',
+        /This computer/.test((tabsOf()[0] || {}).textContent || '')
+        && /VACC/.test((tabsOf()[1] || {}).textContent || ''),
+        tabsOf().map((t) => t.textContent.slice(0, 20)).join(' | '));
+
+  // Mode off: the cluster tab is visible and locked. Visible matters --
+  // a tab that is simply absent teaches nobody the cluster exists.
+  await ev('applyVacc(false)');
+  await sleep(350);
+  const off = tabsOf();
+  check('with the mode off the VACC tab is still shown', off.length === 2,
+        String(off.length));
+  check('but it is locked', !!off[1] && off[1].disabled,
+        off[1] ? String(off[1].disabled) : 'missing');
+  check('and says why', /VACC Mode is off/.test((off[1] || {}).textContent || ''),
+        (off[1] || {}).textContent || '');
+  check('the local half is what is showing',
+        !!off[0] && off[0].classList.contains('on'));
+
+  await ev('applyVacc(true)');
+  await sleep(400);
+  const on2 = tabsOf();
+  check('turning the mode on unlocks it without navigating away',
+        !!on2[1] && !on2[1].disabled, on2[1] ? String(on2[1].disabled) : 'missing');
+  if (on2[1]) { on2[1].click(); await sleep(600); }
+  check('and opening it shows which recordings would go',
+        /Which recordings/.test(
+          (D().getElementById('tkBody') || {}).textContent || ''),
+        ((D().getElementById('tkBody') || {}).textContent || '').slice(0, 70));
+
+  say('');
+  say('=== the queue the batch leaves behind ===');
+  const rv = JSON.parse(await ev('fetch("/api/incisor/reviews").then(r=>r.text())'));
+  check('/api/incisor/reviews answers', rv.ok === true);
+  check('there are finished scans to review', (rv.n || 0) > 0, String(rv.n));
+  if (!rv.n) { say('nothing scanned yet; the rest needs a batch', 'note'); }
+
+  const rows = rv.reviews || [];
+  const onVacc = rows.filter((r) => r.ran_on === 'vacc');
+  check('some of them were computed on the cluster', onVacc.length > 0,
+        onVacc.length + ' of ' + rows.length);
+  check('and each of those names the slurm job that did it',
+        onVacc.every((r) => !!r.slurm_id),
+        JSON.stringify(onVacc.slice(0, 2).map((r) => r.slurm_id)));
+
+  say('');
+  say('=== what a review carries ===');
+  for (const r of rows.slice(0, 6)) {
+    const h = (r.picked || {}).hilus || {};
+    check('has a readable name: ' + (r.label || '').slice(0, 26),
+          !!r.label && r.label !== r.gid, r.gid);
+  }
+  /* A cluster-computed one, not merely the first with a local path.
+     The batch ran every recording with this tool's default settings, so a
+     review from it is answerable out of the vault instantly. An older scan
+     made with different parameters has a different `params_hash`, is not a
+     cache hit, and starts a real sixty-four channel run -- which is minutes,
+     and read here as "the stored scan did not come back". */
+  const one = rows.find((r) => r.local && r.ran_on === 'vacc')
+           || rows.find((r) => r.local) || rows[0];
+  check('at least one is openable on this machine', !!(one && one.local),
+        one ? String(one.local) : 'none');
+
+  // The summaries the three plots are drawn from are counted here and
+  // fetched by the panel when a review is opened -- shipping 64 of them per
+  // recording to draw a list of names is two megabytes to render text.
+  check('each review says how many channel summaries it has',
+        rows.every((r) => typeof r.n_summaries === 'number'),
+        JSON.stringify(rows.slice(0, 2).map((r) => r.n_summaries)));
+  check('and the scans actually have them',
+        rows.some((r) => r.n_summaries > 1),
+        JSON.stringify(rows.map((r) => r.n_summaries).slice(0, 6)));
+
+  say('');
+  say('=== the registry row banking needs ===');
+  // Without this a banked set files under "Unfiled" and cannot be found by
+  // the animal it came from. Silent: the entry exists and the numbers are
+  // right, and it is in the wrong place.
+  check('a review carries its registry row', !!(one && one.row),
+        JSON.stringify(one && one.row));
+  if (one && one.row) {
+    for (const k of ['project', 'mouse', 'session']) {
+      check('  row has ' + k, one.row[k] != null,
+            JSON.stringify(one.row));
+    }
+  }
+
+  say('');
+  say('=== the pick, and whether it was close ===');
+  const withPick = rows.filter((r) => ((r.picked || {}).hilus || {}).index != null);
+  check('the scans picked a hilus', withPick.length > 0,
+        withPick.length + ' of ' + rows.length);
+  const margins = withPick.map((r) => r.picked.hilus.margin)
+    .filter((m) => m != null);
+  check('every pick reports how far it beat the runner-up',
+        margins.length === withPick.length,
+        margins.length + ' of ' + withPick.length);
+  const close = margins.filter((m) => m < 0.1).length;
+  say('    ' + close + ' of ' + margins.length
+      + ' picks were within 10% of the runner-up -- which is why the plots '
+      + 'are the answer and the number is a formality', 'note');
+
+  say('');
+  say('=== opening one puts it in the ordinary panel ===');
+  if (one && one.local) {
+    await ev('BARRY.views.toolkit && BARRY.views.toolkit.onShow && '
+             + 'BARRY.views.toolkit.onShow()');
+    await sleep(400);
+    // Straight at the module, rather than hunting for a button: what is
+    // being checked is that a review re-enters the normal scan path and
+    // comes back out of the vault, not how it was clicked.
+    ev('BARRY.incisor._state().q.path = ' + JSON.stringify(one.local));
+    ev('BARRY.incisor._state().q.gid = ' + JSON.stringify(one.gid));
+    await ev('BARRY.incisor.scan()');
+    await until(() => ev('!!BARRY.incisor._state().res'), 60000);
+    const res = ev('JSON.stringify(!!BARRY.incisor._state().res)');
+    check('the stored scan came back without recomputing', res === 'true',
+          String(res));
+    check('and it has the three plots’ data',
+          ev('(BARRY.incisor._state().res.channels||[]).length') > 0,
+          String(ev('(BARRY.incisor._state().res.channels||[]).length')));
+  } else {
+    check('the stored scan came back without recomputing', true,
+          'no locally-openable review; skipped');
+    check('and it has the three plots’ data', true, 'skipped');
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vaccbatch: ' + fails + ' FAILED' : 'vaccbatch: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vaccbatch CRASH'; });
+</script></body></html>

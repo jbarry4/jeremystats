@@ -543,11 +543,58 @@ STAGES = [
     # somebody looked at a spectrum.
     ("spectrum read", "seconds"),
     ("spectrum", "channels"),
+    # Incisor. Its own names, for the reason given above the spectrum's: a
+    # stage name shared between two tools that count it differently corrupts
+    # the rate of whichever ran second.
+    # Braces, before the two Incisor stages because `Job.__init__` keeps a
+    # run's stages in THIS list's order: Braces profiles and then detects,
+    # and listed the other way round a job reports its steps backwards.
+    #
+    # Its own name for the same reason as the spectrum's: it counts CHANNELS
+    # READ WHOLE, where `ds read` counts seconds of recording, and `_learn`
+    # divides seconds by units without knowing which -- so sharing a name
+    # would rewrite Incisor's read rate by the length of the recording every
+    # time somebody aligned a set.
+    ("ds profile", "channels"),
+    ("ds read", "seconds"),
+    ("ds detect", "channels"),
     ("slow bank", "bands"),
     ("fast bank", "bands"),
     ("modulation index", "cells"),
     ("surrogates", "surrogates"),
     ("draw", "images"),
+    # Panorama. Its own names, for the reason given above the spectrum's.
+    # Its READ is deliberately not one of them: Panorama reads with the
+    # spectrum's own code in the same units, so it shares "spectrum read"
+    # and inherits a rate this machine has already measured per volume --
+    # which is why its very first run can quote an honest ETA.
+    ("panorama windows", "windows"),
+    ("panorama pool", "sessions"),
+    # A run over many recordings, counted in seconds of RECORDING rather
+    # than in sessions.
+    #
+    # Its own stage, and only one, because a bulk run cannot use the two
+    # above. `begin` closes whatever stage is running, so a stage may be
+    # opened once per run -- and bulk has to read, fit and discard one
+    # session before the next starts, which makes reading and fitting
+    # interleave. Folding the fitting into "spectrum read" instead would
+    # teach the Spectrum view that reading costs what fitting costs.
+    #
+    # Seconds rather than sessions so the rate is stable across a set
+    # mixing twenty-minute and forty-minute recordings. Which session is
+    # at which step is carried by `Job.members`, not by stages.
+    ("panorama bulk", "seconds"),
+    # Offloaded to the VACC. These sit in FRONT of whatever the tool itself
+    # does, and they have to be declared here or `Job.begin` drops them
+    # without a word -- a run that works perfectly and shows no progress.
+    #
+    # `vacc queue` is in _NOLEARN as well as _FLAT: waiting in a queue is not
+    # a rate. It is seconds at three in the morning and hours before a
+    # deadline, and a running mean over the two is a number that describes
+    # neither.
+    ("vacc stage", "files"),
+    ("vacc queue", "jobs"),
+    ("vacc fetch", "files"),
 ]
 
 # Seconds per unit, measured on the machine this was built on: a 60 s window at
@@ -569,6 +616,11 @@ _RATES = {
     # Measured here: 16 channels of a 2124 s recording, 33984 stage-units, in
     # 47.5 s wall -- so 1.4 ms of wall per second of recording per channel.
     # Flat (see _FLAT): these units are already counted in samples.
+    # Incisor reads at full rate and decimates like the spectrum does, but
+    # filters three bands afterwards instead of one transform. Seeded a shade
+    # higher and measured on the first run.
+    "ds read": 1.5e-3,            # per second of recording, per channel
+    "ds detect": 0.15,            # per channel
     "spectrum read": 1.4e-3,      # per second of recording, per channel
     # Near zero because the transforms are interleaved with the reads to keep
     # memory bounded, so their wall time is inside the stage above. This one
@@ -577,13 +629,38 @@ _RATES = {
     "modulation index": 2.7e-3,   # per cell, per megasample
     "surrogates": 0.106,          # per (band x surrogate), per megasample
     "draw": 0.30,                 # flat: 629 cells to a PNG, whatever the window
+    # One short Welch plus one bounded spectral fit, per window. Seeded
+    # from the playground scripts and measured on the first run like
+    # everything else here.
+    # Measured here: 893 windows of a 900 s recording over 2-200 Hz,
+    # 397 frequency bins, in 57.9 s wall.
+    "panorama windows": 6.5e-2,   # per window
+    "panorama pool": 0.05,        # per session
+    # Read plus fit, per second of recording. The read is about 2.5 ms
+    # and the fit about 65 ms a window at one window a second, so the
+    # fit dominates and this is close to the two added together.
+    "panorama bulk": 7.0e-2,      # per second of recording
+    # Offload. Seeds only, and deliberately poor ones: what a transfer costs
+    # depends on the share and what a queue costs depends on the cluster, so
+    # both are replaced by measurement on the first real run. They are here
+    # at all because `configure` drops any saved rate whose stage it does not
+    # recognise -- without a seed, what the cluster teaches would be thrown
+    # away on the next start.
+    "vacc stage": 2.0,            # per file moved
+    "vacc queue": 0.0,            # never learned; see _NOLEARN
+    "vacc fetch": 1.0,            # per file brought home
 }
 # Stages the per-megasample normalisation must NOT be applied to: either the
 # cost does not scale with the window at all (`draw` -- one picture, whatever
 # went into it), or the stage's own units already carry the sample count (the
 # spectrum's, counted in seconds of recording). Normalising those a second
 # time would make the estimate scale as the square of the window.
-_FLAT = {"draw", "spectrum read", "spectrum"}
+_FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect",
+         "panorama windows", "panorama pool", "panorama bulk",
+         # Moving files and waiting in a queue do not cost more because the
+         # recording is longer -- they cost what the network and the cluster
+         # are doing at the time.
+         "vacc stage", "vacc queue", "vacc fetch"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -599,7 +676,34 @@ _RATES_LOCK = threading.Lock()
 # -- it is not the order of magnitude a network share sounds like it should
 # be -- but a systematic one, and free to track now that the key exists. A
 # busier share at another site will be worse than this one.
-_PER_VOLUME = {"read", "decimate", "spectrum read"}
+_PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
+               "panorama bulk"}
+
+
+# Stages whose rate is never learned.
+#
+# Queue wait is not a rate. It is seconds at three in the morning and hours
+# before a deadline, and the same job submitted twice teaches two numbers an
+# order of magnitude apart -- so a running mean over it is not an estimate,
+# it is the average of two unrelated things. `eta` adds every stage to the
+# total from t=0, so this one would make the bar and the time-left wrong from
+# the first paint rather than settling as the run goes on.
+#
+# Slurm answers it properly anyway: `squeue --start` is its own estimate,
+# made from a queue it can see and this machine cannot.
+_NOLEARN = {"vacc queue"}
+
+
+def _is_remote(where):
+    """Did this run happen somewhere that is not this computer?
+
+    `volume_key` answers "which disk", which is the whole question while every
+    run is local. A run on the cluster is a different machine -- different
+    cores, different filesystem, different Python -- so its seconds-per-unit
+    is not a measurement of this computer at all, and folding the two together
+    corrupts both directions at once.
+    """
+    return bool(where) and str(where).startswith("vacc:")
 
 
 def volume_key(path):
@@ -623,14 +727,20 @@ def volume_key(path):
 
 
 def _key(stage, where):
-    """The rates-table key for a stage on a volume."""
-    if where and stage in _PER_VOLUME:
+    """The rates-table key for a stage on a volume.
+
+    Per volume for the reading stages, because the disk is where the evidence
+    is -- and for EVERY stage when the run was not on this computer, because
+    arithmetic is arithmetic only for as long as it is the same processor
+    doing it.
+    """
+    if where and (stage in _PER_VOLUME or _is_remote(where)):
         return "%s @ %s" % (stage, where)
     return stage
 
 
-def _stamp():
-    """What the saved numbers mean: the stages, their units, their scaling.
+def _stage_stamp(name, unit):
+    """What one stage's saved number means: its unit and its scaling.
 
     A rate is seconds per unit, and a unit is only a unit while the stage is
     counted the same way -- and, for the reading stages, while it is about
@@ -638,11 +748,31 @@ def _stamp():
     a different currency -- and one such number, `read` in seconds
     against a table measured in samples, sat at four hundred times its true
     value until somebody read the file.
+
+    Stamped per stage rather than over the whole table, because the table
+    grows. It used to be one hash of all of STAGES and `configure` dropped
+    the entire file on a mismatch -- so adding a stage for a new tool cost
+    every OTHER tool its measured rates, and every estimate in the app was
+    wrong for one run of each. Three tools have now wanted new stages.
     """
-    parts = ["%s|%s|%d|%d" % (name, unit, name in _FLAT,
-                              name in _PER_VOLUME)
-             for name, unit in STAGES]
-    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(
+        ("%s|%s|%d|%d" % (name, unit, name in _FLAT, name in _PER_VOLUME))
+        .encode("utf-8")).hexdigest()[:12]
+
+
+def _stamps():
+    return dict((name, _stage_stamp(name, unit)) for name, unit in STAGES)
+
+
+# The whole-table stamp as it was before rates were stamped per stage.
+#
+# A file carrying exactly this in `_stamp` was written by that code against
+# that table, so every number in it is known good and is kept. Without it,
+# the very change that stops a growing table costing everybody their rates
+# would itself have cost everybody their rates, once. Anything else with no
+# per-stage stamps predates the units being written down at all, and there
+# is no way to know what its numbers counted: dropped.
+_LEGACY_STAMP = "47ed72f08b686509"
 
 
 def configure(logs_dir):
@@ -654,17 +784,29 @@ def configure(logs_dir):
             saved = json.load(fh) or {}
     except (OSError, ValueError):
         return          # first run on this machine, or the file went bad
-    # No stamp means it predates the units being written down, so there is no
-    # way to know what its numbers counted. Dropped, and measured again on the
-    # next run: it is a cache, and a wrong cache is worse than a cold one.
-    if saved.get("_stamp") != _stamp():
-        return
+    want = _stamps()
+    got = saved.get("_stamps")
+    if not isinstance(got, dict):
+        # Written before rates were stamped per stage. Trusted only if it
+        # names the exact table it was written against; otherwise there is
+        # no way to know what its numbers counted, and a wrong cache is
+        # worse than a cold one.
+        if saved.get("_stamp") != _LEGACY_STAMP:
+            return
+        got = dict(want)
+
     for k, v in (saved.get("rates") or {}).items():
         # A per-volume key is not in the defaults -- it cannot be, the
         # defaults do not know what disks this machine has -- so it is
         # accepted on the strength of its stage name.
-        known = k in _RATES or k.split(" @ ")[0] in _RATES
-        if known and isinstance(v, (int, float)) and v > 0:
+        stage = k if k in _RATES else k.split(" @ ")[0]
+        if stage not in _RATES:
+            continue
+        # Only the stages whose own meaning has not changed. The rest of
+        # the file survives, which is the point of stamping per stage.
+        if stage in want and got.get(stage) != want[stage]:
+            continue
+        if isinstance(v, (int, float)) and v > 0:
             _RATES[k] = float(v)
 
 
@@ -698,13 +840,24 @@ def _learn(stage, seconds, units, msamples=1.0, where=None):
     """
     if units <= 0 or seconds <= 0:
         return
+    if stage in _NOLEARN:
+        return
     denom = units * (1.0 if stage in _FLAT else max(msamples, 1e-6))
     with _RATES_LOCK:
         rate = seconds / denom
         # The volume-blind rate as well as the per-volume one, so a drive
         # nobody has run on yet is quoted something measured rather than the
         # figure this file shipped with.
-        for k in {stage, _key(stage, where)}:
+        #
+        # Not off this computer, though. `_key` namespaces every stage for a
+        # remote run, but the bare name is in that set too and writing it as
+        # well would be a second, silent fold: three cluster runs and this
+        # machine's own `ds detect` estimate quotes the cluster, at 0.3
+        # weight a time, taking about ten local runs to wash back out. The
+        # measurement is true. It is true about somewhere else.
+        keys = ({_key(stage, where)} if _is_remote(where)
+                else {stage, _key(stage, where)})
+        for k in keys:
             was = _RATES.get(k)
             _RATES[k] = rate if not was else (0.7 * was + 0.3 * rate)
         if not _RATES_PATH:
@@ -712,7 +865,7 @@ def _learn(stage, seconds, units, msamples=1.0, where=None):
         try:
             tmp = "%s.%d.tmp" % (_RATES_PATH, os.getpid())
             with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-                json.dump({"_stamp": _stamp(), "rates": dict(_RATES)},
+                json.dump({"_stamps": _stamps(), "rates": dict(_RATES)},
                           fh, indent=1, sort_keys=True)
             os.replace(tmp, _RATES_PATH)
         except OSError:
@@ -724,7 +877,7 @@ class Canceled(Exception):
 
 
 class Job:
-    def __init__(self, spec, plan, msamples=1.0, where=None):
+    def __init__(self, spec, plan, msamples=1.0, where=None, id=None):
         """`plan` is [(stage, units)] for the stages this run will actually do.
 
         `msamples` is how many megasamples the run works over, which is what
@@ -733,8 +886,15 @@ class Job:
         `where` is the volume the recording is on, so what this run teaches
         about reading is filed against the disk it read from -- about 1.6x
         between the share and local disk here, measured warm.
+
+        `id` is for a run this process did not start. A job on a cluster
+        outlives the app that submitted it, so after a restart there is
+        something still running and nothing here that represents it; a job
+        rebuilt around the id already written down is pollable on the URL the
+        browser is already holding. Minted when it is not given, which is
+        every run that starts here.
         """
-        self.id = uuid.uuid4().hex[:12]
+        self.id = id or uuid.uuid4().hex[:12]
         self.spec = spec
         self.status = "running"
         self.error = None
@@ -758,6 +918,25 @@ class Job:
         self._order = 0          # how many stages have finished
         self.msamples = max(float(msamples), 1e-6)
         self.where = where or volume_key((spec or {}).get("path"))
+
+        # A run that walks a list of recordings, one at a time.
+        #
+        # Not stages: stage names are filtered against STAGES above, so a
+        # plan entry named after a session is silently dropped -- no error,
+        # no stage, no progress -- and one stage per session would also put
+        # a permanent key per session into the learned rates. The stages
+        # stay fixed and count units summed across the run; WHICH session
+        # is at which step is this, beside them.
+        #
+        # Empty for every single-recording run, and `snapshot` reports it
+        # as None then, so nothing else has to know this exists.
+        self.members = []
+        self._member_at = {}
+        # Bumped on any member change, so a poller can tell "nothing moved"
+        # from "the same row moved twice" without diffing forty rows.
+        self.rev = 0
+        self._preview = None
+        self.preview_rev = 0
 
     # -- driving it ------------------------------------------------------
     def _find(self, name):
@@ -827,6 +1006,65 @@ class Job:
         if self._cancel:
             raise Canceled("Stopped.")
 
+    # -- a run over many recordings --------------------------------------
+    def members_init(self, items):
+        """Declare the list up front, so the tree is whole before it runs.
+
+        `items` is [{"id": gid, "label": str}]. Declaring them all at the
+        start rather than as each begins is what lets the view show forty
+        recordings waiting their turn instead of growing a row at a time,
+        which reads as "it has only found one of them".
+        """
+        with self._lock:
+            self.members = [
+                {"id": it.get("id"), "label": it.get("label"),
+                 "status": "waiting", "step": None,
+                 "done": 0, "of": 0, "seconds": None, "error": None,
+                 "cached": False}
+                for it in (items or [])
+            ]
+            self._member_at = dict(
+                (m["id"], i) for i, m in enumerate(self.members))
+            self.rev += 1
+
+    def member(self, mid, **patch):
+        """Merge scalars into one member's row.
+
+        Scalars only, and deliberately: these rows ride on a poll that runs
+        several times a second, and an array per member -- a histogram, a
+        spectrum -- would put megabytes through it. Numbers that large
+        belong in the durable per-session record, which the view fetches
+        once, when the row is clicked.
+        """
+        with self._lock:
+            i = self._member_at.get(mid)
+            if i is None:
+                return
+            for k, v in patch.items():
+                if isinstance(v, (list, dict, tuple, set)):
+                    raise TypeError(
+                        "member(%r): %r is not a scalar. Per-member arrays "
+                        "do not go through the job poll." % (mid, k))
+            self.members[i].update(patch)
+            self.rev += 1
+
+    def set_preview(self, data_uri):
+        """The picture so far, for the waiting screen.
+
+        Kept off the snapshot on purpose: `snapshot` carries only
+        `preview_rev`, an int, and the client fetches the image when that
+        changes. Inlining sixty kilobytes of base64 in a poll that runs
+        three times a second is two hundred kilobytes a second, and it
+        would land in every OTHER tool's poll response too.
+        """
+        with self._lock:
+            self._preview = data_uri
+            self.preview_rev += 1
+
+    def preview(self):
+        with self._lock:
+            return self._preview, self.preview_rev
+
     # -- reporting it ----------------------------------------------------
     def eta(self):
         """Seconds left, or None while we do not honestly know yet.
@@ -863,6 +1101,13 @@ class Job:
                 "eta_s": self.eta() if self.status == "running" else None,
                 "spent": round(done_s, 2),
                 "spec": self.spec,
+                # None for a single-recording run, which is every run the
+                # comodulogram and the spectrum make. Additive: the pollers
+                # that predate this read stages/status/eta_s and ignore it.
+                "members": ([dict(m) for m in self.members]
+                            if self.members else None),
+                "rev": self.rev,
+                "preview_rev": self.preview_rev,
             }
 
 
@@ -876,9 +1121,27 @@ def get(job_id):
         return _JOBS.get(job_id)
 
 
-def start(spec, plan, work, msamples=1.0, where=None):
-    """Run `work(job)` in a thread. Returns the Job at once."""
-    job = Job(spec, plan, msamples, where)
+def exists(job_id):
+    """Whether a job id is still known to this process.
+
+    A set that records the job it is running under needs this after a
+    restart: the record still says "running" and the job it names is gone,
+    which is "interrupted" and not "running". Without it the view waits
+    for progress from a thread that died with the last process.
+    """
+    with _JOBS_LOCK:
+        return bool(job_id) and job_id in _JOBS
+
+
+def adopt(job):
+    """Make a job pollable without starting it. Returns the job.
+
+    `start` mints a job and drives it; this only makes one visible, and whose
+    thread is driving it is the caller's business. A run that outlives the
+    process that submitted it needs the two halves apart: after a restart the
+    work is already happening somewhere else, and all this process has to do
+    is represent it on the URL the browser is still holding.
+    """
     with _JOBS_LOCK:
         # Oldest finished jobs first: a result somebody may still be looking at
         # is worth more than one they have forgotten.
@@ -888,6 +1151,12 @@ def start(spec, plan, work, msamples=1.0, where=None):
             for old in spent[:max(1, len(_JOBS) - MAX_JOBS + 1)]:
                 _JOBS.pop(old.id, None)
         _JOBS[job.id] = job
+    return job
+
+
+def start(spec, plan, work, msamples=1.0, where=None):
+    """Run `work(job)` in a thread. Returns the Job at once."""
+    job = adopt(Job(spec, plan, msamples, where))
 
     def go():
         try:

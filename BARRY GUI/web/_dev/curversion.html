@@ -1,0 +1,539 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — choosing which version a sitting works from</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 46vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 54vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Which version a sitting works from, and what happens when you change it.
+
+   Three claims are being checked, and only the first one is arithmetic.
+
+   THE NAME. The bank stores a plain integer per version, because the cloud
+   table's `version` column is an integer. The name people read -- "1.1" --
+   is worked out from which version each one was banked FROM. The interface
+   has to say what a click would produce BEFORE the click, which means doing
+   that walk in the browser, which means there are now two implementations of
+   one rule. So the first section re-derives every label the server already
+   sent, for every set, and compares. A drift there would show up in the
+   interface as a confident sentence about the wrong version.
+
+   THE CONSEQUENCE. Picking up the tip of a line continues it; picking up
+   something with work already after it branches off it, leaving what came
+   after alone. That is the whole rule and the whole reason the dialog
+   exists, so it is checked on a lineage that actually records where each
+   version came from -- which no version in this bank does yet, every
+   `from_v` being null until something is banked through the new path.
+
+   THE DAMAGE. Switching while a set is on the bench is destructive: the
+   decisions on screen become that version's. So it has to say so with a
+   count before it happens, and it has to actually do it. That is done for
+   real, on the demo recording, and put back afterwards decision by
+   decision -- the harness fails if what it put back is not what it found. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* Generous counts on purpose. --virtual-time-budget fast-forwards timers, so
+   these are turns of the event loop rather than seconds, and a poll can run
+   itself out while the server is still perfectly willing to answer. */
+async function untilN(fn, tries = 400, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+const DEMO = 'demo-ds-tutorial';        // written to, and put back
+const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  W.addEventListener('unhandledrejection',
+                     (e) => errs.push('rejected: ' + e.reason));
+  /* `BARRY` is a top-level const in core.js, so it is in the script scope and
+     not on the frame's window -- W.BARRY is undefined forever. `setView` is a
+     function declaration, so it does land on the window. */
+  await untilN(() => typeof W.setView === 'function');
+  const V = W.eval('BARRY.vers');
+  const get = (u) => W.fetch(u).then((r) => r.json());
+  const post = (u, b) => W.fetch(u, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}) }).then(async (r) => {
+      const j = await r.json(); j._status = r.status; return j;
+    });
+  const byText = (root, sel, re) => Array.from(root.querySelectorAll(sel))
+    .find((n) => re.test((n.textContent || '').trim()));
+  const seen = (n) => !!(n && n.offsetParent !== null);
+  const rows = () => Array.from(D.querySelectorAll('.ver-pick-list .bm-row'));
+  const vtext = (r) => ((r.querySelector('.ver-n') || {}).textContent || '').trim();
+  const does = (r) => ((r.querySelector('.ver-does') || {}).textContent || '').trim();
+  const said = () => Array.from(D.querySelectorAll('.ver-said .confirm-sub'))
+    .map((n) => n.textContent.trim());
+  const dialogGone = () => !D.querySelector('.ver-pick-list');
+  const cancel = () => {
+    const b = byText(D, '.mf button', /^Cancel$/);
+    if (b) b.click();
+  };
+
+  check('BARRY.vers is on the page', !!V && typeof V.labelRows === 'function');
+  if (!V) throw new Error('no version module');
+
+  /* ------------------------------------------------------------------ */
+  head('1. The names in the browser are the names on the server');
+  const cur = await get('/api/curation');
+  const sets = cur.sets || [];
+  let nEntries = 0, nVersions = 0, nMismatch = 0, nNoSnap = 0;
+  const wrong = [];
+  for (const st of sets) {
+    for (const ent of (st.history || [])) {
+      nEntries += 1;
+      const named = V.labelRows(ent.versions || []);
+      for (const x of named) {
+        nVersions += 1;
+        if (!x.row.has_snap) nNoSnap += 1;
+        if (String(x.row.label) !== String(x.name)) {
+          nMismatch += 1;
+          if (wrong.length < 5) {
+            wrong.push(ent.entry + ' v' + x.row.v + ': server "' + x.row.label
+                       + '" vs here "' + x.name + '"');
+          }
+        }
+      }
+    }
+  }
+  say('note', '  ' + sets.length + ' set(s), ' + nEntries + ' banked entr(ies), '
+      + nVersions + ' version(s), ' + nNoSnap + ' of them with no snapshot');
+  check('every label the server computed is re-derived identically',
+        nMismatch === 0 && nVersions > 0, wrong.join(' | '));
+
+  /* The one entry where the stored numbers are not unique: two machines
+     minted 3 and 4 independently and the union kept both. A lookup keyed on
+     the number would give two versions one name and lose a third. */
+  let stress = null;
+  for (const st of sets) {
+    for (const ent of (st.history || [])) if (ent.entry === STRESS) stress = ent;
+  }
+  check('the entry with duplicate stored numbers is here', !!stress, STRESS);
+  if (stress) {
+    const vs = stress.versions || [];
+    const named = V.labelRows(vs);
+    const names = named.map((x) => x.name);
+    /* Paired, in creation order, because that is the point: two of these
+       share a stored number and none of them share a name. */
+    say('note', '  ' + named.map((x) => '#' + x.row.v + '→v' + x.name)
+        .join('  '));
+    check('it has more versions than it has distinct numbers',
+          new Set(vs.map((v) => v.v)).size < vs.length,
+          'numbers are unique after all');
+    check('and every one of them still gets its own name',
+          new Set(names).size === vs.length,
+          names.join(','));
+  }
+
+  /* ------------------------------------------------------------------ */
+  head('2. The rule: the tip continues, an older one branches');
+  /* A lineage that records where each version came from. Nothing in this
+     bank does yet -- every `from_v` is null until a pass is banked through
+     the new path -- so the rule is checked on the shape it is built for. */
+  const line = [
+    { v: 0, from_v: null, at: '1' },
+    { v: 1, from_v: 0, at: '2' },
+    { v: 2, from_v: 1, at: '3' },
+    { v: 3, from_v: 2, at: '4' },
+  ];
+  const nm = V.labelRows(line).map((x) => x.name).join(',');
+  check('a straight line is named 0,1,2,3', nm === '0,1,2,3', nm);
+  const tip = V.nextFor(line, line[3]);
+  check('picking up the tip continues it: v3 -> v4',
+        tip.to === '4' && tip.branches === false,
+        tip.to + ' branches=' + tip.branches);
+  const back = V.nextFor(line, line[1]);
+  check('picking up v1, with v2 and v3 after it, branches: v1 -> v1.1',
+        back.to === '1.1' && back.branches === true,
+        back.to + ' branches=' + back.branches);
+  check('and says so in the words the panel uses',
+        V.describe(line, line[1])
+          === 'branches off v1 as v1.1, leaving what came after it alone',
+        V.describe(line, line[1]));
+  check('while the tip says it continues',
+        V.describe(line, line[3]) === 'continues from v3 as v4',
+        V.describe(line, line[3]));
+
+  /* Applied again, without a second rule. */
+  const line2 = line.concat([{ v: 4, from_v: 1, at: '5' }]);
+  const nm2 = V.labelRows(line2).map((x) => x.name).join(',');
+  check('the branch is named 1.1', nm2 === '0,1,2,3,1.1', nm2);
+  const onBranch = V.nextFor(line2, line2[4]);
+  check('picking up v1.1 continues the branch: v1.1 -> v1.2',
+        onBranch.to === '1.2' && onBranch.branches === false, onBranch.to);
+  const again = V.nextFor(line2, line2[1]);
+  check('picking up v1 a second time branches again: v1 -> v1.2',
+        again.to === '1.2' && again.branches === true, again.to);
+  const line3 = line2.concat([{ v: 5, from_v: 4, at: '6' }]);
+  const deeper = V.nextFor(line3, line3[4]);
+  check('and v1.1 once v1.2 exists branches: v1.1 -> v1.1.1',
+        deeper.to === '1.1.1' && deeper.branches === true, deeper.to);
+
+  check('a set with one version or none is not asked about',
+        V.askable([]) === false
+        && V.askable([{ versions: [{ v: 0, has_snap: true }] }]) === false
+        && V.askable([{ versions: [{ v: 0, has_snap: true },
+                                   { v: 1, has_snap: true }] }]) === true);
+  check('and a version with no snapshot does not count towards the choice',
+        V.askable([{ versions: [{ v: 0, has_snap: true },
+                                { v: 1, has_snap: false }] }]) === false);
+
+  /* ------------------------------------------------------------------ */
+  head('3. Picking a set up off the shelf asks which version');
+  const before = await get('/api/curation/' + DEMO + '/ds');
+  const wasOpen = !!before.set.open;
+  const wasLabels = {};
+  for (const e of before.set.events || []) wasLabels[e.id] = e.label || null;
+  const tally = (m) => {
+    const c = {};
+    for (const k in m) c[m[k] || 'undecided'] = (c[m[k] || 'undecided'] || 0) + 1;
+    return JSON.stringify(c);
+  };
+  say('note', '  ' + DEMO + ' starts: open=' + wasOpen + ' based_on='
+      + before.set.based_on + '  ' + tally(wasLabels));
+  const demoHist = (before.history || [])[0] || { versions: [] };
+  say('note', '  its history: ' + (demoHist.versions || [])
+      .map((v) => 'v' + v.label + '(#' + v.v + ')').join(' '));
+
+  W.eval("setView('toolkit')");
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 400);
+  const tool = byText(D, '.tk-tool, .tk-step', /Event curation|Checkup/);
+  check('Event curation is there', !!tool);
+  tool.click();
+  await untilN(() => D.querySelector('#curBench'), 400);
+  await sleep(600);
+
+  const toggle = D.querySelector('.cur-shelf-toggle');
+  check('the shelf is there', !!toggle);
+  if (toggle && !D.querySelector('#curShelfList')) toggle.click();
+  await untilN(() => D.querySelector('#curShelfList'), 300);
+  const search = D.querySelector('.cur-search');
+  check('the shelf can be searched', !!search);
+  search.focus();
+  search.value = 'DEMO m1 s1';
+  search.dispatchEvent(new W.Event('input', { bubbles: true }));
+  await sleep(400);
+  const shelfRow = Array.from(D.querySelectorAll('.cur-shelf-row')).find(
+    (r) => /DEMO m1 s1/.test((r.querySelector('.csr-name') || {}).textContent || ''));
+  check('the demo set is on the shelf', !!shelfRow,
+        D.querySelectorAll('.cur-shelf-row').length + ' row(s) matched');
+  if (!shelfRow) throw new Error('nothing to pick up');
+
+  byText(shelfRow, 'button', /^Pick it up$/).click();
+  await untilN(() => D.querySelector('.ver-pick-list'), 400);
+  check('picking it up asks which version first',
+        !!D.querySelector('.ver-pick-list'),
+        'it went straight onto the bench');
+  const vr = rows();
+  say('note', '  offered: ' + vr.map(vtext).join(' '));
+  check('every banked version is offered',
+        vr.length === (demoHist.versions || []).length,
+        vr.length + ' rows for ' + (demoHist.versions || []).length + ' versions');
+  check('the detector’s own version is marked',
+        !!byText(D, '.ver-pick-list .flagchip', /the detector/));
+
+  /* The requirement in one check: what the click would do is readable
+     without making it. */
+  check('every usable row says what picking it would do, before the click',
+        vr.filter((r) => !r.classList.contains('off'))
+          .every((r) => /^(continues from v|branches off v)/.test(does(r))),
+        vr.map(does).join(' | '));
+
+  const onRow = vr.find((r) => r.classList.contains('on'));
+  check('it opens on the newest version', !!onRow && vtext(onRow) === 'v4',
+        onRow ? vtext(onRow) : 'nothing selected');
+  check('and its radio is actually checked',
+        !!onRow && onRow.querySelector('input').checked);
+  const okBtn = byText(D, '.mf button', /^Pick it up from /);
+  check('the button names the version it would use',
+        !!okBtn && /Pick it up from v4$/.test(okBtn.textContent.trim()),
+        okBtn ? okBtn.textContent : 'no button');
+  say('note', '  newest says: ' + said().join('  //  '));
+  check('choosing the newest promises to leave the decisions alone',
+        said().some((t) => /left exactly as they are/.test(t)),
+        said().join(' | '));
+  check('and says where the next bank lands',
+        said().some((t) => /^Banking after this continues from v4 as v5\./.test(t)),
+        said().join(' | '));
+
+  /* Now an older one, without committing to it. */
+  const older = vr.find((r) => vtext(r) === 'v1');
+  check('an older version can be chosen', !!older);
+  older.querySelector('input').click();
+  await sleep(200);
+  say('note', '  v1 says: ' + said().join('  //  '));
+  check('choosing an older one warns that the decisions are replaced',
+        said().some((t) => /replaced by v1’s/.test(t)),
+        said().join(' | '));
+  check('and the warning is drawn as a warning',
+        !!D.querySelector('.ver-said .confirm-sub.warn'));
+  check('and it counts the candidates it would re-stamp',
+        said().some((t) => /24 candidate\(s\) re-stamped/.test(t)),
+        said().join(' | '));
+  const okBtn2 = byText(D, '.mf button', /^Pick it up from /);
+  check('the button follows the choice',
+        !!okBtn2 && /v1$/.test(okBtn2.textContent.trim()),
+        okBtn2 ? okBtn2.textContent : 'no button');
+
+  /* Take the newest after all, which is the non-destructive path: it says
+     where the next bank lands and touches nothing. */
+  onRow.querySelector('input').click();
+  await sleep(200);
+  const goPick = byText(D, '.mf button', /^Pick it up from /);
+  if (!goPick) throw new Error('no button to pick it up with');
+  goPick.click();
+  await untilN(dialogGone, 300);
+  await sleep(900);
+  const afterPick = await get('/api/curation/' + DEMO + '/ds');
+  check('it is on the bench', afterPick.set.open === true);
+  check('and the set records which version it was picked up from',
+        afterPick.set.based_on === 5, 'based_on=' + afterPick.set.based_on);
+  const nowLabels = {};
+  for (const e of afterPick.set.events || []) nowLabels[e.id] = e.label || null;
+  check('picking up the newest changed no decision',
+        JSON.stringify(nowLabels) === JSON.stringify(wasLabels),
+        tally(nowLabels) + ' vs ' + tally(wasLabels));
+
+  /* ------------------------------------------------------------------ */
+  head('4. A version with no snapshot cannot be a starting point');
+  /* Not the demo: every version of it kept a snapshot. 23 of the 100-odd
+     versions on this machine did not, and one of them is on a set that is
+     already on the bench. */
+  let noSnapSet = null;
+  for (const st of sets) {
+    for (const ent of (st.history || [])) {
+      if ((ent.versions || []).some((v) => !v.has_snap) && st.open) {
+        noSnapSet = { st, ent };
+      }
+    }
+  }
+  check('there is a set on the bench with an unrestorable version',
+        !!noSnapSet, 'none of the open sets has one');
+  if (noSnapSet) {
+    say('note', '  using "' + noSnapSet.st.name + '" ('
+        + noSnapSet.st.gid + ')');
+    await untilN(() => D.querySelector('#curBench .cur-set'), 300);
+    const card = Array.from(D.querySelectorAll('#curBench .cur-set')).find(
+      (c) => ((c.querySelector('strong') || {}).textContent || '')
+               === noSnapSet.st.name);
+    check('its card is on the bench', !!card);
+    const verBtn = card && byText(card, 'button', /^Version/);
+    check('the card offers to change the version', !!verBtn && seen(verBtn));
+    if (verBtn) {
+      verBtn.click();
+      await untilN(() => D.querySelector('.ver-pick-list'), 400);
+      const vr2 = rows();
+      const dead = vr2.filter((r) => r.classList.contains('off'));
+      say('note', '  ' + vr2.length + ' version(s), ' + dead.length
+          + ' with no snapshot kept');
+      check('a version with no snapshot is there but marked', dead.length > 0);
+      check('and cannot be chosen',
+            dead.every((r) => r.querySelector('input').disabled),
+            'an unusable version is selectable');
+      check('and says why, rather than failing at the click',
+            dead.every((r) => /no snapshot kept/.test(does(r))),
+            dead.map(does).join(' | '));
+      check('the usable ones are still usable',
+            vr2.filter((r) => !r.classList.contains('off'))
+               .every((r) => !r.querySelector('input').disabled));
+      /* Measured, not eyeballed. `.mk-name` comes from the bookmark list
+         with `text-overflow: ellipsis` on it, and a consequence that stops
+         halfway through is worse than no consequence at all -- "branches
+         off v3 as v3.1, leaving what came after it a…" reads as a
+         promise it does not make. */
+      const clipped = [];
+      for (const r of vr2) {
+        for (const sel of ['.ver-does', '.mk-name', '.person-what', '.ver-n']) {
+          const x = r.querySelector(sel);
+          if (x && x.scrollWidth > x.clientWidth + 1) {
+            clipped.push(vtext(r) + ' ' + sel + ' ' + x.scrollWidth + '>'
+                         + x.clientWidth + ' "'
+                         + x.textContent.trim().slice(0, 40) + '"');
+          }
+        }
+      }
+      check('no row cuts off what it says', clipped.length === 0,
+            clipped.join(' | '));
+      check('and every row is actually drawn',
+            vr2.every((r) => r.offsetHeight > 10),
+            vr2.map((r) => r.offsetHeight).join(','));
+      cancel();
+      await untilN(dialogGone, 300);
+      check('cancelling leaves it alone', dialogGone());
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  head('5. Switching while it is on the bench, for real');
+  const demoCard = Array.from(D.querySelectorAll('#curBench .cur-set')).find(
+    (c) => /DEMO m1 s1/.test((c.querySelector('strong') || {}).textContent || ''));
+  check('the demo set is now on the bench', !!demoCard);
+  const swBtn = demoCard && byText(demoCard, 'button', /^Version/);
+  check('its card offers to switch version', !!swBtn);
+  if (swBtn) {
+    swBtn.click();
+    await untilN(() => D.querySelector('.ver-pick-list'), 400);
+    check('the switch dialog says it is a switch',
+          !!byText(D, '.mh h3', /Switch to another version/),
+          (D.querySelector('.mh h3') || {}).textContent);
+    check('and warns before anything is chosen that the bench is replaced',
+          /decisions on the set become/.test(
+            (D.querySelector('.ver-pick-wrap .confirm-msg') || {}).textContent || ''),
+          'no lead-in about what switching does');
+    const target = rows().find((r) => vtext(r) === 'v1');
+    check('v1 is offered to switch to', !!target);
+    target.querySelector('input').click();
+    await sleep(200);
+    check('switching to it says the decisions are replaced, not merged',
+          said().some((t) => /replaced by v1’s/.test(t)),
+          said().join(' | '));
+    const go = byText(D, '.mf button', /^Switch to v1$/);
+    check('and the button is the dangerous one',
+          !!go && go.classList.contains('danger'),
+          go ? go.className : 'no button');
+    go.click();
+    await untilN(dialogGone, 400);
+    await sleep(1200);
+
+    const sw = await get('/api/curation/' + DEMO + '/ds');
+    const swLabels = {};
+    for (const e of sw.set.events || []) swLabels[e.id] = e.label || null;
+    say('note', '  after the switch: based_on=' + sw.set.based_on + '  '
+        + tally(swLabels));
+    check('the set now says it is working from that version',
+          sw.set.based_on === 1, 'based_on=' + sw.set.based_on);
+    /* v1 of this entry is 24 spikes and nothing else, which is a different
+       thing from what was on the bench a moment ago. */
+    check('and the decisions on it really are that version’s',
+          (sw.set.events || []).every((e) => e.label === 'spike'),
+          tally(swLabels));
+    check('which is not what was there before',
+          JSON.stringify(swLabels) !== JSON.stringify(wasLabels));
+
+    /* And a bank from here lands somewhere new. Not a branch on this
+       entry, because none of its versions records what it was banked from
+       -- they all predate that being written down, so every one of them
+       reads as a root and the next name is the next free trunk number.
+       Which is the point being checked: whatever it is called, it is not a
+       name something else already holds. */
+    const h = (sw.history || [])[0] || { versions: [] };
+    const v1row = (h.versions || []).find((v) => v.v === 1);
+    const nxt = v1row ? V.nextFor(h.versions, v1row) : null;
+    const taken = new Set(V.labelRows(h.versions).map((x) => x.name));
+    say('note', '  banking from here would make v' + (nxt ? nxt.to : '?')
+        + (nxt && nxt.branches ? ' (a branch)' : '')
+        + ', beside v' + Array.from(taken).join(' v'));
+    check('banking from here would not take a name another version holds',
+          !!nxt && !taken.has(nxt.to), nxt ? nxt.to : 'no answer');
+  }
+
+  /* ------------------------------------------------------------------ */
+  head('6. The panel says which version it is writing onto');
+  /* The demo recordings are not on a drive this machine can reach, so the
+     curation panel cannot open on one. Any reachable open set will do --
+     this only reads the bar and opens the dialog, then cancels. */
+  const reachable = sets.find((s) => s.open && s.session && s.session.reachable
+                                  && V.askable(s.history));
+  check('there is a reachable set on the bench to open', !!reachable,
+        'no open set with a history is on a drive this machine can read');
+  if (reachable) {
+    say('note', '  entering "' + reachable.name + '" (' + reachable.gid + ')');
+    W.eval('BARRY.curate.enter(' + JSON.stringify(reachable.gid) + ', '
+           + JSON.stringify(reachable.kind) + ')');
+    const got = await untilN(() => D.querySelector('#curBar'), 900);
+    check('the curation panel opens', got >= 0);
+    const chip = D.querySelector('#curBar .cur-ver');
+    check('the bar says which version the sitting is writing onto',
+          !!chip && seen(chip), 'no version chip on the bar');
+    if (chip) {
+      say('note', '  the chip reads: "' + chip.textContent.trim() + '"');
+      check('and it reads as a version, or says one has not been chosen',
+            /^(from v[\d.]+|pick a version)$/.test(chip.textContent.trim()),
+            chip.textContent);
+      check('a set never picked up from a version says so rather than guessing',
+            !(W.eval('BARRY.curate.version')) === /pick a version/.test(
+              chip.textContent.trim()),
+            'chip and state disagree');
+      chip.click();
+      await untilN(() => D.querySelector('.ver-pick-list'), 400);
+      check('clicking it offers the switch',
+            !!byText(D, '.mh h3', /Switch to another version/),
+            (D.querySelector('.mh h3') || {}).textContent);
+      check('with the same list and the same rules',
+            rows().length > 1
+            && rows().filter((r) => r.classList.contains('off'))
+                 .every((r) => r.querySelector('input').disabled),
+            rows().length + ' row(s)');
+      cancel();
+      await untilN(dialogGone, 300);
+    }
+    W.eval('BARRY.curate.exit && BARRY.curate.exit()');
+    await sleep(600);
+  }
+
+  /* ------------------------------------------------------------------ */
+  head('7. Putting the demo set back the way it was found');
+  const back2 = {};
+  for (const id in wasLabels) back2[id] = wasLabels[id];
+  const put = await post('/api/curation/' + DEMO + '/ds/label', { labels: back2 });
+  const end = await get('/api/curation/' + DEMO + '/ds');
+  const endLabels = {};
+  for (const e of end.set.events || []) endLabels[e.id] = e.label || null;
+  check('every decision is back as it was found',
+        JSON.stringify(endLabels) === JSON.stringify(wasLabels),
+        tally(endLabels) + ' vs ' + tally(wasLabels));
+  say('note', '  ' + (put.changed || 0) + ' decision(s) put back');
+  /* Where it was picked up from is left pointing at the newest, which is
+     what the server would have defaulted to anyway -- the field did not
+     exist on this set before and there is no route that unsets it. Said on
+     the way in, not on the way out: open_set only records `based_on` when
+     it is opening, because putting a set down does not decide where the
+     work belongs in the history. */
+  await post('/api/curation/' + DEMO + '/ds/open',
+             { open: true, based_on: 5 });
+  await post('/api/curation/' + DEMO + '/ds/open', { open: wasOpen });
+  const backOn = await get('/api/curation/' + DEMO + '/ds');
+  check('and it no longer claims to be working from a version it is not',
+        backOn.set.based_on === 5, 'based_on=' + backOn.set.based_on);
+  const shut = await get('/api/curation/' + DEMO + '/ds');
+  check('and it is back ' + (wasOpen ? 'on' : 'off') + ' the bench',
+        shut.set.open === wasOpen, 'open=' + shut.set.open);
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'curation versions';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message) + ' @' + (e && e.lineNumber));
+  document.title = 'harness threw';
+} })();
+</script>

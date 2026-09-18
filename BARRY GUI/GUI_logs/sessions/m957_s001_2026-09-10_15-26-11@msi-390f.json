@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-10T20:56:49.074365+00:00",
+    "gid": "2026-09-10T20:56:49.074365+00:00",
+    "group": "2026-09-10T20:56:49.074365+00:00",
+    "key": "2026-09-10T20:56:49.074365+00:00",
+    "label": "2026-09-10T20:56:49.074365+00:00",
+    "loose_key": "2026-09-10T20:56:49.074365+00:00",
+    "mouse": "2026-09-10T20:56:49.074365+00:00",
+    "project": "2026-09-10T20:56:49.074365+00:00",
+    "project_source": "2026-09-10T20:56:49.074365+00:00",
+    "retired": "2026-09-10T20:56:49.074365+00:00",
+    "schema": "2026-09-10T20:56:49.074365+00:00",
+    "session": "2026-09-10T20:56:49.074365+00:00",
+    "start": "2026-09-10T20:56:49.074365+00:00",
+    "updated": "2026-09-13T16:25:48.539605+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260910_152611\\FAKEPROJ\\fake_m957\\m957s1_2026-09-10\\2026-09-10_15-26-11": [
+        "set",
+        "2026-09-13T16:25:48.539605+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-13T16:25:48.539605+00:00",
+    "machine": "msi-390f",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-10T16:56:49-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  },
+  "gid": "sd7b587e83e10",
+  "group": null,
+  "key": "m957_s001_2026-09-10_15-26-11",
+  "label": "m957 s1 2026-09-10",
+  "loose_key": "m957_s001",
+  "mouse": 957,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260910_152611\\FAKEPROJ\\fake_m957\\m957s1_2026-09-10\\2026-09-10_15-26-11"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-10T19:26:11+00:00",
+  "updated": {
+    "at": "2026-09-13T12:25:48-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  }
+}

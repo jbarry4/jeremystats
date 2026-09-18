@@ -185,9 +185,14 @@ BARRY.views.sessions = (function () {
     /* The registry read takes about five seconds on a full catalogue, and
        this view opened as an empty box for all of it -- which reads as "no
        sessions" rather than "not yet". Only when there is nothing already on
-       screen: refreshing a list that is already there should not blank it. */
+       screen: refreshing a list that is already there should not blank it.
+
+       `force` is only ever passed by something the person just did -- they
+       accepted a held-back folder, or applied a time correction -- and five
+       seconds of a tree that still shows the old state, with nothing to say
+       so, is the same complaint in a slower view. Dim it for those. */
     const bones = sessions.length
-      ? null
+      ? (force ? BARRY.skeleton.stale($('#sessTree')) : null)
       : BARRY.skeleton.into($('#sessTree'), 'card', 6);
     const sub = $('#sessSub');
     if (bones && sub) sub.textContent = 'Reading the catalogue\u2026';
@@ -542,7 +547,12 @@ BARRY.views.sessions = (function () {
        is what the log and the bank both file under. */
     const cont = continuityOf(s);
     if (flags.has('concat') && !(cont && cont.concat_issue)) return false;
-    if (flags.has('unpatched') && !(cont && cont.unpatched)) return false;
+    /* `unpatched` is computed server-side from what clock each banked set
+       is on, so a recording whose sets were detected in house is already
+       excluded. Stated here as well because this filter is the thing that
+       sends somebody off to correct something. */
+    if (flags.has('unpatched')
+        && !(cont && cont.unpatched && !cont.all_concat_safe)) return false;
     if (flags.has('unchecked') && cont) return false;
     /* Layer state, from the registry's own count rather than by asking the
        layers store per card: four hundred cards would be four hundred
@@ -983,6 +993,7 @@ BARRY.views.sessions = (function () {
           text: 'remembered',
         }) : null,
         concatChip(s),
+        vaccChip(s),
         healthPill(s),
         noteChip(s),
       ]),
@@ -996,24 +1007,73 @@ BARRY.views.sessions = (function () {
      costs nothing per card and says nothing at all about a recording nobody
      has checked -- which is the honest answer for one, and not the same as
      saying it is clean. */
+  /* What the cluster makes of this recording, or nothing at all.
+
+     Four states and only two of them draw. `BARRY.vacc.of` returns null for
+     a recording nobody has established an answer for -- which is most of a
+     fresh scan, because exact ids are minted when headers are read and a
+     scanned row often has no gid. Reading that as "the cluster cannot reach
+     it" would put an upload badge on four hundred recordings that are
+     already sitting on the share it mounts.
+
+     This is the same mistake `canOpen` above documents: a missing field read
+     as "no" hid every recording that was certainly openable. Absent is not
+     negative, and the only honest thing to draw for it is nothing. */
+  function vaccChip(s) {
+    if (!BARRY.vacc) return null;
+    const got = BARRY.vacc.of(s);
+    if (!got) return null;
+    if (got.state !== 'native' && got.state !== 'staged') return null;
+    const native = got.state === 'native';
+    return el('span', {
+      class: 'flagchip vacc ' + got.state,
+      text: native ? 'VACC' : 'VACC copy',
+      title: native
+        ? 'The cluster reads this one where it already is — ' + got.remote
+          + '\n\nNothing to upload: it is on a share VACC mounts.'
+        : 'A copy of this recording is in cluster scratch.\n\n'
+          + 'Scratch is not storage — VACC may clear it without notice, so '
+          + 'this is a cache and never the only copy. If it goes, the next '
+          + 'run puts it back.',
+    });
+  }
+
   function concatChip(s) {
     const c = continuityOf(s);
     if (!c || !c.concat_issue) return null;
     const fixed = !!c.patched;
+    /* Three states, not two. A set detected in house was never on the wrong
+       clock, so it has nothing to be corrected -- and calling that
+       "corrected" would put an event in the history that never happened.
+       "Born right" and "repaired" are different things. */
+    const safe = !!c.all_concat_safe && c.n_banked > 0;
     const worst = Number(c.max_time_error_ms) || 0;
     const chip = el('button', {
-      class: 'flagchip concat' + (fixed ? ' fixed' : ''),
-      title: c.n_segments + ' segments, ' + (c.n_gaps || 0) + ' gap(s). '
+      class: 'flagchip concat' + (fixed ? ' fixed' : '')
+             + (safe ? ' safe' : ''),
+      title: (safe ? 'The dentate spikes here are safe: detected in house '
+                     + 'from the raw .ncs files, so they were never on the '
+                     + 'concatenated clock and there is nothing to correct. '
+                     + 'The correction is refused for them — applying it '
+                     + 'would shift them a second time.\n\n'
+                     + 'The recording still has the gaps, though, and '
+                     + 'anything else read off it still has to reckon with '
+                     + 'them: Kilosort unit times for this session are in '
+                     + 'concatenated time.\n\n'
+                   : '')
+           + c.n_segments + ' segments, ' + (c.n_gaps || 0) + ' gap(s). '
            + 'Times taken from the concatenated file run up to '
            + (worst < 1 ? worst.toFixed(2) : worst.toFixed(1))
            + ' ms early against the raw recording.'
-           + (fixed
-              ? '\n\nThe events banked against it have been moved onto the '
-                + 'recording\u2019s own clock.'
-              : (c.n_banked
-                 ? '\n\n' + c.n_events + ' banked event(s) have NOT been '
-                   + 'corrected.'
-                 : '\n\nNothing is banked against it yet.'))
+           + (safe
+              ? ''
+              : fixed
+                ? '\n\nThe events banked against it have been moved onto '
+                  + 'the recording\u2019s own clock.'
+                : (c.n_banked
+                   ? '\n\n' + c.n_events + ' banked event(s) have NOT been '
+                     + 'corrected.'
+                   : '\n\nNothing is banked against it yet.'))
            + '\n\nClick for the gap table.',
       onclick: (e) => { e.stopPropagation(); openContinuity(s); },
     }, [
@@ -1021,8 +1081,11 @@ BARRY.views.sessions = (function () {
          missing. It is the thing being reported, at 9 px. */
       el('svg', { class: 'cc-ico', viewBox: '0 0 16 10',
         html: '<path d="M1 5h4M11 5h4M7 2.5v5" />' }),
+      /* Always the segment count. The conclusion is the colour and the
+         first line of the tooltip; this is the fact, and a list of
+         recordings is scanned for facts. */
       el('span', { text: c.n_segments + ' seg' }),
-      fixed ? el('svg', { class: 'cc-tick', viewBox: '0 0 12 12',
+      (fixed || safe) ? el('svg', { class: 'cc-tick', viewBox: '0 0 12 12',
         html: '<path d="m2.5 6.5 2.5 2.5 4.5-5"/>' }) : null,
     ]);
     return chip;
@@ -1920,15 +1983,30 @@ BARRY.views.sessions = (function () {
     return el('span', { class: 'flagchip', text: 'note', title: n });
   }
 
+  /* The most-clicked write in the app, and it used to wait on the server
+     before the chip moved -- so going down a list flagging recordings meant a
+     pause after every single one, on the one action people repeat dozens of
+     times in a sitting.
+
+     The answer is already known locally: you pressed "review", so the chip
+     says review. The write follows, the server's copy of the record replaces
+     the guess when it lands, and a failure puts the old flag back and says so
+     rather than leaving a mark nobody made. */
   async function setQuality(s, quality) {
+    const was = s.stored;
+    s.stored = Object.assign({}, s.stored || {}, { quality: quality || null });
+    renderTree();
+    toast(quality ? 'Marked ' + (s.identity.label || s.name) + ' "' + quality + '"'
+                  : 'Cleared the flag', 'ok', 2400);
     try {
       const res = await apiPost('/api/session/note',
                                 { identity: s.identity, quality });
-      s.stored = res.session || s.stored;
+      if (res.session) { s.stored = res.session; renderTree(); }
+    } catch (e) {
+      s.stored = was;
       renderTree();
-      toast(quality ? 'Marked ' + (s.identity.label || s.name) + ' "' + quality + '"'
-                    : 'Cleared the flag', 'ok', 2400);
-    } catch (e) { toast(e.message, 'err'); }
+      toast('That did not save: ' + e.message, 'err', 8000);
+    }
   }
 
   function editNote(s) {
@@ -2198,9 +2276,10 @@ BARRY.views.sessions = (function () {
 
   function setMode(next) {
     mode = next;
-    const scan = $('#sessScanPad'), hk = $('#hkBody');
+    const scan = $('#sessScanPad'), hk = $('#hkBody'), vc = $('#vaccBody');
     if (scan) scan.classList.toggle('hidden', mode !== 'scan');
     if (hk) hk.classList.toggle('hidden', mode !== 'housekeeping');
+    if (vc) vc.classList.toggle('hidden', mode !== 'vacc');
     $$('#sessModeSeg button').forEach(
       (b) => b.classList.toggle('active', b.dataset.mode === mode));
     /* Re-drawn, because the mode is a question about the list and not

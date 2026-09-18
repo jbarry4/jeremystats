@@ -12,6 +12,7 @@ const BARRY = {
     jobSeq: 0,          // last log line seen for that job
     poll: null,
     theme: 'dark',
+    vacc: false,        // VACC Mode -- the look, not the capability
   },
   views: {},
 };
@@ -383,7 +384,80 @@ BARRY.debug = (function () {
 })();
 
 /* ---------- API ---------- */
+/* The one place that knows a request is outstanding.
+ *
+ * Every view used to answer "is anything happening?" for itself, or more
+ * often not at all -- a mutation would fire, the list would sit there showing
+ * the state before it, and a second later it would snap. api() is the single
+ * chokepoint every one of those goes through, so a counter here covers the
+ * lot, including the call sites nobody has got round to fixing properly.
+ *
+ * Two rules keep it from becoming wallpaper:
+ *
+ *   The pollers never raise it. The job dock ticks every 500ms, sync progress
+ *   every 300ms, presence every 20s. Counting those means the bar is simply
+ *   always on, which tells you nothing.
+ *
+ *   It waits 150ms before showing. Borrowed from BARRY.boot, which says it
+ *   better: complaining immediately teaches people to expect a wait that
+ *   usually is not there. Most requests here finish well inside that and the
+ *   bar never appears at all.
+ */
+const QUIET_PATHS = [
+  '/api/job/', '/api/sync/progress', '/api/sync/status', '/api/presence',
+  '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
+  '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
+  '/api/discover/', '/api/toolfeed', '/api/errors/client',
+];
+
+const BUSY = (function () {
+  let live = 0;
+  let show = null;
+  let bar = null;
+
+  function node() {
+    if (!bar) {
+      bar = el('div', { class: 'net-bar', 'aria-hidden': 'true' });
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function paint() {
+    if (live > 0) node().classList.add('on');
+    else if (bar) bar.classList.remove('on');
+  }
+  return {
+    start(path) {
+      if (QUIET_PATHS.some((p) => path.startsWith(p))) return false;
+      live += 1;
+      if (live === 1 && !show) show = setTimeout(() => { show = null; paint(); }, 150);
+      return true;
+    },
+    stop(counted) {
+      if (!counted) return;
+      live = Math.max(0, live - 1);
+      if (live === 0) {
+        if (show) { clearTimeout(show); show = null; }
+        paint();
+      }
+    },
+  };
+}());
+
+/* A wrapper rather than a `finally` threaded through the body: the real api()
+   below has five ways out, four of them throws, and counting down on each one
+   is exactly the kind of bookkeeping that gets a new exit path added past it
+   later and leaves the bar stuck on. */
 async function api(path, opts) {
+  const counted = BUSY.start(path.split('?')[0]);
+  try {
+    return await apiCall(path, opts);
+  } finally {
+    BUSY.stop(counted);
+  }
+}
+
+async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
   const record = (status, error) => BARRY.debug.request({
@@ -413,15 +487,22 @@ async function api(path, opts) {
      never heard of answers 404 to a GET and 405 to a POST depending on what
      else is registered. Treating only 404 as stale is why a failed bug
      report said "non-JSON response (405)" and nothing else. */
-  const missing = (res.status === 404 || res.status === 405)
-                  && path.startsWith('/api/');
-  if (missing) staleServer(path);
+  /* A route that is not registered, as against one that ran and said no.
+     Both answer 404, and the difference is whether anything answered: a
+     route that ran returns a JSON body with an error in it, and Flask's own
+     404 page does not. Deciding before reading the body told somebody to
+     restart Jarvis because a bank entry could not be found. */
+  const maybeMissing = (res.status === 404 || res.status === 405)
+                       && path.startsWith('/api/');
 
   let data;
+  let missing = false;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    missing = maybeMissing;
     if (missing) {
+      staleServer(path);
       throw new Error('This Jarvis is running older code than the files on '
                       + 'disk, so it has no ' + path.split('?')[0]
                       + '. Restart it and try again.');
@@ -640,14 +721,51 @@ function keepFocus(render) {
   return out;
 }
 
+/* Returns a handle, so a message can be corrected rather than repeated.
+ *
+ * Nearly every call here is fire-and-forget and stays that way. But "Saving…"
+ * followed by "Saved" was impossible to say: with no handle, the second one
+ * is a second toast, and the first sits there for its full three seconds
+ * underneath it claiming the work is still going. So the app either said
+ * nothing during the wait or lied afterwards, and mostly chose nothing.
+ *
+ * `ms: 0` means "stay until I say otherwise", which is what a pending message
+ * wants -- the work decides when it is over, not a timer.
+ */
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);
-  setTimeout(() => {
+
+  let timer = null;
+  let gone = false;
+
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    if (timer) clearTimeout(timer);
     node.style.opacity = '0';
     node.style.transition = 'opacity .2s';
     setTimeout(() => node.remove(), 220);
-  }, ms || (kind === 'err' ? 6000 : 3200));
+  };
+
+  const arm = (hold, k) => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (hold === 0) return;                 // held open on purpose
+    timer = setTimeout(close, hold || (k === 'err' ? 6000 : 3200));
+  };
+  arm(ms, kind);
+
+  return {
+    update(text, nextKind, nextMs) {
+      if (gone) return this;
+      node.textContent = text;
+      node.className = 'toast' + (nextKind ? ' ' + nextKind : '');
+      arm(nextMs === undefined ? null : nextMs, nextKind);
+      return this;
+    },
+    close,
+  };
 }
 
 /* ---------- path prompt modal ---------- */
@@ -2466,10 +2584,22 @@ function applyTheme(theme, remember) {
       BARRY.prefs.set('themes', all);
     }
   }
+  repaintThemedSurfaces();
+}
+
+/* Everything that reads a CSS token once and keeps the answer.
+
+   A canvas paints from `BARRY.token()` at draw time and then holds those
+   colors until something asks it to draw again, so changing the tokens under
+   it leaves the last palette on screen -- the trace stays green on a pink
+   interface until you happen to pan. Which surfaces those are is not
+   obvious and the list has been wrong before, so it lives in one function
+   and every path that changes a token calls it. `applyTheme` is one such
+   path; VACC Mode is about to be the second. */
+function repaintThemedSurfaces() {
   paintFavicon();
-  // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
-  // Same for the explainer's figures, if it happens to be open.
+  // The explainer's figures, if it happens to be open.
   if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
@@ -2535,6 +2665,122 @@ function paintFavicon() {
   link.type = 'image/svg+xml';
   link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
 }
+
+/* ==========================================================================
+   VACC Mode
+
+   A second attribute on the root, orthogonal to the theme: `data-theme` says
+   which palette, `data-vacc` says how hard it is running. The CSS layer adds
+   six `--fire-*` tokens and touches none of the thirty a theme defines, which
+   `web/_dev/vaccskin.html` asserts token by token across all ten.
+
+   It is a display preference and nothing else. It never gates a control --
+   turning the glow off because your eyes hurt must not take away the Cancel
+   button for a job still running on a shared cluster. What the cluster can
+   do is `/api/vacc/status`; this is only what it looks like while it does it.
+   ========================================================================== */
+function applyVacc(on, remember) {
+  on = !!on;
+  BARRY.state.vacc = on;
+  if (on) document.documentElement.dataset.vacc = 'on';
+  else delete document.documentElement.dataset.vacc;
+
+  const label = $('#vaccToggle span');
+  if (label) label.textContent = on ? 'VACC on' : 'VACC';
+  const btn = $('#vaccToggle');
+  if (btn) btn.classList.toggle('on', on);
+
+  if (remember !== false) {
+    // Same split as the theme, for the same reason: localStorage so the
+    // first paint is already right with nothing fetched, and a map keyed by
+    // hostname so the rig and the laptop disagree without overwriting each
+    // other. See PREFS_SPEC in store.py -- the key is merged per host.
+    try { localStorage.setItem('barry.vacc', on ? '1' : ''); } catch (e) { /* private */ }
+    const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+    if (host) {
+      const all = Object.assign({}, BARRY.prefs.get('vacc', {}) || {});
+      all[host] = on;
+      BARRY.prefs.set('vacc', all);
+    }
+  }
+  // Same three surfaces as a theme change: the tokens moved, and anything
+  // holding a color it read earlier is now holding the wrong one.
+  repaintThemedSurfaces();
+
+  /* And anything whose CONTENT depends on the mode, which a theme change
+     never had to care about.
+
+     VACC Mode does not only recolour: it adds the mark on a ToolKit tool
+     and the second button in Incisor's action row. Those are drawn when
+     their view last painted, so without this the switch appeared to do
+     nothing until you navigated away and came back -- the rail chip lit up
+     and the panel it was talking about did not.
+
+     Guarded on the catalog, because `applyVacc` runs during boot -- before
+     any view has been initialised, and before prefs have loaded. Asking a
+     view to redraw at that point renders it out of an empty module and
+     leaves it half-built: three harnesses that had nothing to do with VACC
+     started reporting a spectrum panel with no preset buttons and no number
+     inputs in it. Nothing to repaint yet is the normal state on the way up,
+     and the first real paint happens moments later anyway. */
+  if (BARRY.state.catalog) {
+    try {
+      const tk = BARRY.views.toolkit;
+      if (tk && typeof tk.render === 'function'
+          && BARRY.state.view === 'toolkit') {
+        tk.render();
+      }
+      if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
+        BARRY.incisor.paint();
+      }
+    } catch (e) { /* a repaint must never take the switch down with it */ }
+  }
+}
+
+/* Other windows of the same app, told without being polled.
+
+   A pop-out gets `?vacc=` when it opens and then knows nothing more, so
+   turning the mode off in the main window left every open pane still lit.
+   `localStorage` already carries the value for the no-flash first paint,
+   and the `storage` event fires in every OTHER window of this origin when
+   it changes -- so the sync costs one listener and no traffic.
+
+   `remember: false` on the way back in, or two windows would write the same
+   preference to the shared store in a loop. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.vacc') return;
+  const on = e.newValue === '1';
+  if (on !== BARRY.state.vacc) applyVacc(on, false);
+});
+
+function vaccForThisMachine() {
+  const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+  const byHost = BARRY.prefs.get('vacc', {}) || {};
+  if (host && Object.prototype.hasOwnProperty.call(byHost, host)) return !!byHost[host];
+  try {
+    return localStorage.getItem('barry.vacc') === '1';
+  } catch (e) { /* private mode */ }
+  return false;
+}
+
+/* Whether a VACC job is being polled right now. The pulse is the only
+   animated thing the mode adds and it runs off this, so that the interface
+   is lit because the cluster is working rather than because somebody once
+   flipped a switch. Reference-counted: two jobs at once must not have the
+   first one to finish stop the pulse for the second. */
+BARRY.vaccBusy = (function () {
+  let n = 0;
+  const paint = () => {
+    if (n > 0) document.documentElement.dataset.vaccBusy = '1';
+    else delete document.documentElement.dataset.vaccBusy;
+  };
+  return {
+    start() { n += 1; paint(); },
+    stop() { n = Math.max(0, n - 1); paint(); },
+    reset() { n = 0; paint(); },
+    get count() { return n; },
+  };
+})();
 
 function themeForThisMachine() {
   const host = ((BARRY.state.catalog || {}).system || {}).hostname;
@@ -2714,17 +2960,45 @@ BARRY.skeleton = (function () {
     return () => { if (b.parentNode === host) host.removeChild(b); };
   }
 
-  return { block, into };
+  /* For a list that is already on screen, when the person who is looking at
+     it just caused it to be re-read.
+
+     `into` is no use here: it empties the host, and blanking a list somebody
+     is reading to tell them it is being re-read is worse than saying nothing.
+     That is exactly why the three views that use it gate it on the list being
+     empty -- and why deleting a bank entry, which re-reads seven megabytes of
+     shards, showed nothing at all and then snapped to the new list.
+
+     So: leave the rows where they are, dim them, and stop them taking clicks
+     until the answer lands. Same teardown contract as `into`. */
+  function stale(host) {
+    if (!host) return () => {};
+    host.classList.add('is-stale');
+    return () => host.classList.remove('is-stale');
+  }
+
+  return { block, into, stale };
 })();
 
 BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
   // A ?theme= in the URL wins but is not remembered -- it is for a link, not
   // a preference.
-  const urlTheme = new URLSearchParams(location.search).get('theme');
+  const q0 = new URLSearchParams(location.search);
+  const urlTheme = q0.get('theme');
   let saved = null;
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
+
+  // VACC Mode reads the same way and for the same reason -- before anything
+  // is fetched, so the first paint is already right. `?vacc=` wins and is not
+  // remembered: it is how a pop-out inherits the window it came from, which
+  // is a link rather than a preference.
+  const urlVacc = q0.get('vacc');
+  let savedVacc = false;
+  try { savedVacc = localStorage.getItem('barry.vacc') === '1'; } catch (e) { /* ignore */ }
+  applyVacc(urlVacc === null ? savedVacc : urlVacc === 'on' || urlVacc === '1',
+            urlVacc === null);
 
   BARRY.boot.say('wiring up the interface');
 
@@ -2739,6 +3013,14 @@ BARRY.init = async function init() {
   BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
+
+  const vaccBtn = $('#vaccToggle');
+  if (vaccBtn) {
+    vaccBtn.addEventListener('click', () => {
+      applyVacc(!BARRY.state.vacc);
+      BARRY.activity.log('vacc.mode', { on: BARRY.state.vacc });
+    });
+  }
 
   $('#syncBtn').addEventListener('click', showSync);
   const goBtn = $('#syncNowBtn');
@@ -2821,7 +3103,19 @@ BARRY.init = async function init() {
   if (mine && mine !== BARRY.state.theme) applyTheme(mine);
   else applyTheme(BARRY.state.theme, true);   // records it for this machine
 
+  // Same reconciliation for VACC Mode, and skipped entirely when the URL
+  // asked for a particular state -- a pop-out must keep what it was handed
+  // rather than adopting this machine's preference a second later.
+  if (new URLSearchParams(location.search).get('vacc') === null) {
+    const mineVacc = vaccForThisMachine();
+    if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
+  }
+
   BARRY.activity.init();
+  // Asked once, here, rather than on a timer: a permanent poller for a
+  // cluster nobody is using is what the tool feed's stop() discipline
+  // exists to prevent. It also decides whether the rail chip appears.
+  if (BARRY.vacc) BARRY.vacc.init();
   // Housekeeping lives inside the Sessions view rather than owning a rail
   // slot, so it is wired here rather than by the view loop.
   if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();
@@ -2870,7 +3164,16 @@ BARRY.init = async function init() {
   requestAnimationFrame(() => BARRY.boot.clear());
 
   if (cscPath && BARRY.views.xplore) {
-    BARRY.views.xplore.open(cscPath).then((sess) => {
+    /* `?even=1` forces the even-channel read, `?even=0` forces the whole
+       list, and no `even` at all leaves the recording to answer for itself
+       -- which is the default, because neither answer is right for both
+       rigs. Incisor's traces window asks for even, because a CSD wants one
+       line of contacts and that is what the 32-channel probe on 64 inputs
+       is. */
+    const evenArg = params.get('even');
+    const openOpts = evenArg == null ? undefined
+      : { evenOnly: evenArg !== '0' && evenArg !== 'false' };
+    BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));

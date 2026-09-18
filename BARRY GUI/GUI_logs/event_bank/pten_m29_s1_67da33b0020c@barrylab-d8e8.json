@@ -1,10 +1,10 @@
 {
   "_at": {
-    "added": "2026-09-12T20:36:58.120935+00:00",
-    "by_label": "2026-09-12T20:36:58.120935+00:00",
+    "added": "2026-09-09T02:03:41.089356+00:00",
+    "by_label": "2026-09-15T19:12:00.226801+00:00",
     "curation_label": "2026-09-12T20:36:58.120935+00:00",
     "duration_s": "2026-09-12T20:36:58.120935+00:00",
-    "events": "2026-09-12T20:36:58.120935+00:00",
+    "events": "2026-09-15T19:12:00.226801+00:00",
     "gid": "2026-09-12T20:36:58.120935+00:00",
     "id": "2026-09-12T20:36:58.120935+00:00",
     "label_names": "2026-09-12T20:36:58.120935+00:00",
@@ -22,10 +22,11 @@
     "session_path": "2026-09-12T20:36:58.120935+00:00",
     "source": "2026-09-12T20:36:58.120935+00:00",
     "specified": "2026-09-12T20:36:58.120935+00:00",
+    "time_basis": "2026-09-15T19:12:00.226801+00:00",
     "type": "2026-09-12T20:36:58.120935+00:00",
     "type_name": "2026-09-12T20:36:58.120935+00:00",
     "units": "2026-09-12T20:36:58.120935+00:00",
-    "version": "2026-09-12T20:36:58.120935+00:00"
+    "version": "2026-09-12T20:37:13.936029+00:00"
   },
   "_keys": {
     "history": {
@@ -47,6 +48,10 @@
         "set",
         "2026-09-12T20:36:58.120935+00:00"
       ],
+      "rt-339594973b": [
+        "set",
+        "2026-09-15T19:12:00.226801+00:00"
+      ],
       "v0-9368f56c": [
         "set",
         "2026-09-12T20:36:58.120935+00:00"
@@ -54,11 +59,15 @@
       "v1-ff6a304c": [
         "set",
         "2026-09-12T20:36:58.120935+00:00"
+      ],
+      "{\"at\": \"2026-09-12T16:36:58-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 30}, \"machine\": \"BarryLab\", \"n\": 30, \"note\": \"Gui final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-12T20:37:13.936029+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-12T20:36:58.120935+00:00",
+    "at": "2026-09-15T19:12:00.226801+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -68,7 +77,7 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
-    "garbage": 30
+    "Garbage": 30
   },
   "curation_label": "*",
   "duration_s": null,
@@ -76,152 +85,152 @@
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 109.343
+      "start": 109.349084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 153.781
+      "start": 153.787084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 159.04
+      "start": 159.046084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 284.261
+      "start": 284.267084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 477.384
+      "start": 477.390084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 509.731
+      "start": 509.737084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 519.174
+      "start": 519.180084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 529.386
+      "start": 529.392084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 565.93
+      "start": 565.936084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 592.64
+      "start": 592.646084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 657.825
+      "start": 657.831084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 764.643
+      "start": 764.649084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 773.434
+      "start": 773.440084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 799.744
+      "start": 799.750084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 918.399
+      "start": 918.405084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 932.359
+      "start": 932.365084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1011.782
+      "start": 1011.788084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1034.516
+      "start": 1034.522084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1051.498
+      "start": 1051.504084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1054.487
+      "start": 1054.493084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1097.577
+      "start": 1097.583084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1098.743
+      "start": 1098.749084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1190.181
+      "start": 1190.187084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1201.898
+      "start": 1201.904084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1266.503
+      "start": 1266.509084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1307.779
+      "start": 1307.785084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1402.971
+      "start": 1402.977084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1533.857
+      "start": 1533.863084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1546.637
+      "start": 1546.643084
     },
     {
       "label": "Garbage",
       "label_id": "garbage",
-      "start": 1555.435
+      "start": 1555.441084
     }
   ],
   "gid": "sf95925ed3403",
@@ -281,6 +290,14 @@
     "run_id": null
   },
   "specified": true,
+  "time_basis": {
+    "at": "2026-09-15T15:12:00-04:00",
+    "by": "Rain Younger",
+    "converted_from": "toothy_concat",
+    "gap_map_sha": "326920c03ef77d43",
+    "kind": "neuralynx_true",
+    "tool": "jarvis.retime/1"
+  },
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
@@ -708,6 +725,164 @@
         ]
       ],
       "v": 2
+    },
+    {
+      "at": "2026-09-12T16:36:58-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 30
+      },
+      "machine": "BarryLab",
+      "n": 30,
+      "note": "Gui final curation\n-RY",
+      "snap_elsewhere": true,
+      "v": 2
+    },
+    {
+      "at": "2026-09-15T15:12:00-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Garbage": 30
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "rt-339594973b",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 30,
+      "note": "Re-timed from toothy_concat to neuralynx_true. 30 event(s) moved by 6.1 to 6.1 ms; every label kept, nothing re-detected.",
+      "retimed": {
+        "from": "toothy_concat",
+        "gap_map_sha": "326920c03ef77d43",
+        "shift_max_ms": 6.0843,
+        "shift_min_ms": 6.0843,
+        "source_version": null,
+        "to": "neuralynx_true"
+      },
+      "snap": [
+        [
+          109.349084,
+          "garbage"
+        ],
+        [
+          153.787084,
+          "garbage"
+        ],
+        [
+          159.046084,
+          "garbage"
+        ],
+        [
+          284.267084,
+          "garbage"
+        ],
+        [
+          477.390084,
+          "garbage"
+        ],
+        [
+          509.737084,
+          "garbage"
+        ],
+        [
+          519.180084,
+          "garbage"
+        ],
+        [
+          529.392084,
+          "garbage"
+        ],
+        [
+          565.936084,
+          "garbage"
+        ],
+        [
+          592.646084,
+          "garbage"
+        ],
+        [
+          657.831084,
+          "garbage"
+        ],
+        [
+          764.649084,
+          "garbage"
+        ],
+        [
+          773.440084,
+          "garbage"
+        ],
+        [
+          799.750084,
+          "garbage"
+        ],
+        [
+          918.405084,
+          "garbage"
+        ],
+        [
+          932.365084,
+          "garbage"
+        ],
+        [
+          1011.788084,
+          "garbage"
+        ],
+        [
+          1034.522084,
+          "garbage"
+        ],
+        [
+          1051.504084,
+          "garbage"
+        ],
+        [
+          1054.493084,
+          "garbage"
+        ],
+        [
+          1097.583084,
+          "garbage"
+        ],
+        [
+          1098.749084,
+          "garbage"
+        ],
+        [
+          1190.187084,
+          "garbage"
+        ],
+        [
+          1201.904084,
+          "garbage"
+        ],
+        [
+          1266.509084,
+          "garbage"
+        ],
+        [
+          1307.785084,
+          "garbage"
+        ],
+        [
+          1402.977084,
+          "garbage"
+        ],
+        [
+          1533.863084,
+          "garbage"
+        ],
+        [
+          1546.643084,
+          "garbage"
+        ],
+        [
+          1555.441084,
+          "garbage"
+        ]
+      ],
+      "v": 3
     }
   ]
 }

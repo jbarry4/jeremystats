@@ -218,7 +218,7 @@ async function until(fn, ms) {
 
   say('');
   say('=== the export ===', 'hd');
-  const csvRes = await fetch('/api/toolkit/bad-channels/export?scope=all&form=long');
+  const csvRes = await fetch('/api/toolkit/bad-channels/export?scope=all&form=long&lane=scratch');
   check('the CSV comes back', csvRes.ok, 'HTTP ' + csvRes.status);
   const csv = await csvRes.text();
   const lines = csv.trim().split('\n');
@@ -249,7 +249,8 @@ async function until(fn, ms) {
   say('');
   say('=== an empty export is refused, not silently empty ===', 'hd');
   const empty = await fetch(
-    '/api/toolkit/bad-channels/export?scope=range&from=1990-01-01&to=1990-01-02');
+    '/api/toolkit/bad-channels/export?scope=range&from=1990-01-01&to=1990-01-02'
+    + '&lane=scratch');
   check('a scope with nothing in it gives a 400', empty.status === 400,
         'HTTP ' + empty.status);
   const msg = await empty.json();

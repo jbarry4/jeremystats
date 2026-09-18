@@ -235,6 +235,15 @@
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
       </button>
+      <!-- VACC Mode. Hidden until the server says the cluster is configured,
+           the same way the cloud key only asks to be typed when there is
+           somewhere for it to go -- a switch for a machine you have no
+           account on is a switch that does nothing and says nothing. -->
+      <button class="chip-btn" id="vaccToggle"
+              title="VACC Mode — light the interface up while the cluster is live">
+        <svg viewBox="0 0 20 20"><path d="M10 2.5 5.5 11h3.2l-1.2 6.5L14.5 9h-3.2z"/></svg>
+        <span>VACC</span>
+      </button>
       <!-- Off by default, and the only thing in Jarvis that reaches the
            internet. It says so before it is turned on. -->
       <button class="chip-btn" id="radioBtn" title="A radio to work to">
@@ -405,6 +414,11 @@
           <div class="seg" id="sessModeSeg" title="Two views of the same thing">
             <button class="active" data-mode="scan">Scan a drive</button>
             <button data-mode="housekeeping">Everything Jarvis knows</button>
+            <!-- The third view of the same thing: what the cluster holds.
+                 Hidden until there is a cluster configured, the same way the
+                 mode chip in the rail is -- a source you have no account on
+                 is not a view of anything. -->
+            <button data-mode="vacc" id="sessModeVacc" hidden>Everything VACC knows</button>
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
@@ -414,6 +428,8 @@
       </header>
 
       <div class="pad hidden" id="hkBody"></div>
+
+      <div class="pad hidden" id="vaccBody"></div>
 
       <div class="pad" id="sessScanPad">
         <div class="root-bar" id="rootBar">
@@ -564,9 +580,6 @@
           <h1>ToolKit</h1>
           <p class="sub">Jobs that run across many recordings at once.</p>
         </div>
-        <div class="head-actions">
-          <button class="btn ghost sm" id="tkRefresh">Refresh</button>
-        </div>
       </header>
       <div class="pad" id="tkBody"></div>
     </section>
@@ -679,6 +692,10 @@
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
 <script src="js/strata.js"></script>
+<script src="js/incisor.js"></script>
+<script src="js/braces.js"></script>
+<script src="js/panorama.js"></script>
+<script src="js/vacc.js"></script>
 <script src="js/cfcscope.js"></script>
 <script src="js/comod.js"></script>
 <script src="js/spectrum.js"></script>

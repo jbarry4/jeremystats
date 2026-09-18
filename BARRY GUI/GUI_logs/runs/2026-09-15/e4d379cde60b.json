@@ -1,0 +1,52 @@
+{
+  "format": "png",
+  "id": "e4d379cde60b",
+  "kind": "panorama",
+  "label": "Panorama convergence -- HARNESS converge",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Panorama\\converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png",
+    "rel": "Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png"
+  },
+  "outputs": [
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png",
+      "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Panorama\\converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png",
+      "rel": "Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834.png"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_recordings.csv",
+      "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Panorama\\converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_recordings.csv",
+      "rel": "Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_recordings.csv"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_histograms.csv",
+      "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Panorama\\converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_histograms.csv",
+      "rel": "Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_histograms.csv"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_params.json",
+      "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Panorama\\converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_params.json",
+      "rel": "Panorama/converge_HARNESS_converge_pn6bc29b79e4_5f47bd33c81b_20260915_185834_params.json"
+    }
+  ],
+  "parameters": {
+    "dominant": "peak",
+    "grouping": null,
+    "n_recordings": 2,
+    "params_hash": "5f47bd33c81b",
+    "set_id": "pn6bc29b79e4",
+    "weight": "session"
+  },
+  "provenance": {
+    "at": "2026-09-15T18:58:34-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "schema": 1,
+  "script": "Panorama convergence",
+  "status": "done"
+}

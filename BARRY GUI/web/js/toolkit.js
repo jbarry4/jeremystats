@@ -128,7 +128,10 @@ BARRY.views.toolkit = (function () {
   const refresh = debounce(async function refresh_() {
     if (q.tool === 'curate') { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
+    if (q.tool === 'incisor') { await loadIncisor(); return; }
+    if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
+    if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
 
        It used to fall through to the query below, which fetched the whole
@@ -176,13 +179,21 @@ BARRY.views.toolkit = (function () {
     host.appendChild(el('div', { class: 'tk-layout' }, [
       el('div', { class: 'tk-tools' }, [
         el('div', { class: 'section-label', style: 'margin-top:0',
-                    text: 'Tools' }),
+                    text: 'Bundles' }),
+        bundleCard(),
+        el('div', { class: 'section-label', text: 'Tools' }),
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
                    + 'project or date range.'),
-        toolButton('curate', 'Event curation',
-                   'Import candidate dentate spikes or IEDs, then go through '
-                   + 'them one at a time and say what each one is.'),
+        /* Incisor and Checkup are NOT here.
+
+           They are steps one and two of The Dentist above, and listing them
+           again underneath put the same tool on screen twice with two
+           different names for it -- "Incisor / find them" in the bundle and
+           "Incisor / Dentate spike detection..." in the flat list, both
+           opening the same panel. A bundle that does not remove its members
+           from the list below is a menu that describes one thing twice and
+           makes the reader work out that it is one thing. */
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
@@ -190,6 +201,11 @@ BARRY.views.toolkit = (function () {
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
                    + 'in it is saved.'),
+        toolButton('panorama', 'Panorama',
+                   'The whole recording at once: the spectrogram end to '
+                   + 'end, which frequency was dominant and how often, '
+                   + 'and the power spectrum over the range you ask '
+                   + 'for. Saves into Results.'),
         toolButton('kilosort', 'Kilosort',
                    'Check this machine can sort, run a sort against a '
                    + 'recording, then open it in Phy.'),
@@ -208,7 +224,16 @@ BARRY.views.toolkit = (function () {
             snapshot importer was showing it and asking which recordings to
             scope a folder read to. */
          (q.tool === 'curate' || q.tool === 'strata' || q.tool === 'cfc'
-          || q.tool === 'kilosort' || q.tool === 'snapshots')
+          || q.tool === 'kilosort' || q.tool === 'snapshots'
+          // Incisor picks its own recording and scans every channel, so the
+          // bad-channel scope card above would be describing something else.
+          || q.tool === 'incisor'
+          // Braces picks a banked set, which carries its own recording.
+          || q.tool === 'braces'
+          // Panorama picks its own recording and its own channel, so
+          // the bad-channel scope card above would be describing
+          // something else.
+          || q.tool === 'panorama')
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
@@ -216,21 +241,141 @@ BARRY.views.toolkit = (function () {
     renderResult();
   }
 
+  /* ---------- bundles ----------
+
+     A bundle is three tools that are one job done in three sittings, and
+     the flat list above could not say so. Grouping them is the small half;
+     the half worth having is that each step reads its own state, so the
+     rail says where you are rather than what exists.
+
+     The order is a real dependency. Checkup has nothing to show until
+     Incisor has banked candidates, and Braces has nothing to move until
+     Checkup has said which stamps are spikes -- which is why these are
+     numbered and the other tools are not. */
+  const DENTIST = [
+    ['incisor', 'Incisor', 'find them'],
+    ['curate', 'Checkup', 'call them'],
+    ['braces', 'Braces', 'line them up'],
+  ];
+
+  function bundleCard() {
+    const on = DENTIST.some(([id]) => id === q.tool);
+    const box = el('div', { class: 'tk-bundle' + (on ? ' on' : '') });
+    box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
+      toolIcon('incisor'),
+      el('strong', { text: 'The Dentist' }),
+      el('span', { class: 'tk-bundle-c', text: '3 tools' }),
+    ]));
+    box.appendChild(el('div', { class: 'tk-steps' },
+      DENTIST.map(([id, name, does], i) => {
+        return el('button', {
+          class: 'tk-step' + (q.tool === id ? ' now' : ''),
+          title: name + ' — ' + does,
+          onclick: () => pickTool(id),
+        }, [
+          el('span', { class: 'tk-step-i', text: String(i + 1) }),
+          /* `strong`, like the flat tool buttons use, because the name of a
+             tool is the same thing in both shapes. Several checks find a
+             tool by reading the `strong` inside whatever was clicked, and
+             having one shape spell it `span` made those look straight past
+             the two tools that now live only here. Weight is set in CSS, so
+             nothing moves. */
+          el('strong', { class: 'tk-step-n', text: name }),
+          el('span', { class: 'tk-step-s', text: does }),
+          // The mark belongs on the step, now that the step is the only
+          // place this tool appears.
+          vaccMark(id),
+        ].filter(Boolean));
+      })));
+    return box;
+  }
+
+  /* One per tool, drawing the thing the tool is about rather than a generic
+     gear -- what makes a row findable at a glance is a shape that is about
+     it. Stroke on `currentColor` at 16px, so they take the button's state
+     and need no second set for the dark theme. */
+  const TOOL_ICONS = {
+    // Channel rows, one of them struck out.
+    bad: 'M2 4h12M2 8h5M2 12h12M9.5 6.5l4 3M13.5 6.5l-4 3',
+    // A dentate spike, and a tick for the decision made about it.
+    curate: 'M1 11.5h2.5l2-6.5 2 6.5H10M11.5 10.5l1.5 1.5L15.5 8',
+    // Layers, with the probe going down through them.
+    strata: 'M2 4.5h12M2 8h12M2 11.5h12M11 2.5v11',
+    // A tooth. Dentate means toothed, and an incisor is the sharp one.
+    incisor: 'M4.2 3c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+             + '1-1.4 1-1.7 0L8.6 8.6c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+             + '1.7 0L3.5 7.1C3.1 5.6 3.1 3.9 4.2 3z',
+    // A tooth with a wire across it, which is what braces are.
+    braces: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+            + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+            + '1.7 0L3.5 6.7C3.1 5.2 3.1 3.5 4.2 2.6zM1.5 6.2h13',
+    // Two waves braided through one another.
+    cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
+    // A wide frame with a horizon in it.
+    panorama: 'M1.5 3.5h13v9h-13zM2.5 10.5l3-3 2.5 2.5 3-3.5 2.5 3',
+    // Units sorted into ordered bars.
+    kilosort: 'M2.5 13.5V9M6.5 13.5V5.5M10.5 13.5V7.5M14.5 13.5V3',
+    // A stack of frames.
+    snapshots: 'M5 2.5h9v9M2.5 5.5h9v9h-9zM5 11l2-2 1.5 1.5L11 8',
+  };
+
+  function toolIcon(id) {
+    const d = TOOL_ICONS[id];
+    if (!d) return null;
+    return el('svg', { class: 'tk-ico', viewBox: '0 0 16 16',
+                       'aria-hidden': 'true',
+                       html: '<path d="' + d + '" />' });
+  }
+
+  /* Switching tools. One function, because the bundle's steps and the flat
+     list are two doors onto the same thing and a second copy of this drifts
+     -- the Kilosort host reset below was already missed once. */
+  function pickTool(id) {
+    q.tool = id;
+    // The Kilosort pane owns its own host; let it rebuild.
+    const host = document.getElementById('tkResult');
+    if (host) delete host.dataset.ks;
+    render();
+    refresh();
+  }
+
   function toolButton(id, name, blurb) {
     return el('button', {
       class: 'tk-tool' + (q.tool === id ? ' on' : ''),
-      onclick: () => {
-        q.tool = id;
-        // The Kilosort pane owns its own host; let it rebuild.
-        const host = document.getElementById('tkResult');
-        if (host) delete host.dataset.ks;
-        render();
-        refresh();
-      },
+      onclick: () => pickTool(id),
     }, [
-      el('strong', { text: name }),
+      el('div', { class: 'tk-tool-head' }, [
+        toolIcon(id),
+        el('strong', { text: name }),
+        vaccMark(id),
+      ].filter(Boolean)),
       el('span', { text: blurb }),
     ]);
+  }
+
+  /* A VACC mark on the tools that can run there.
+
+     Only while the mode is on and the server says there is a cluster: the
+     mark is how somebody finds out the tool has somewhere else to run, and
+     a mark on a machine you have no account on would be an advertisement
+     rather than an affordance.
+
+     Listed rather than assumed, because a tool that cannot be offloaded and
+     is marked as though it can is worse than one with no mark at all. */
+  const VACC_TOOLS = ['incisor'];
+
+  function vaccMark(id) {
+    if (VACC_TOOLS.indexOf(id) < 0) return null;
+    if (!(BARRY.state.vacc && BARRY.vacc
+          && (BARRY.vacc.last || {}).configured)) return null;
+    const up = !!(BARRY.vacc.last || {}).available;
+    return el('span', {
+      class: 'tk-vacc' + (up ? ' up' : ''),
+      text: 'VACC',
+      title: up ? 'This one can run on the cluster'
+                : ((BARRY.vacc.last || {}).why
+                   || 'The cluster is not reachable right now'),
+    });
   }
 
   /* ---------- picking the scope ---------- */
@@ -1007,6 +1152,18 @@ BARRY.views.toolkit = (function () {
                + 'was written as you made it, and it is all still here.',
           onclick: () => openSet(st, false),
         }),
+        /* Only where there is a choice. A set with one banked version, or
+           none, has nothing to switch between, and a button that answers
+           every press with "there is nothing to do" teaches people not to
+           press buttons. 1 of the 45 sets here has no banked history at
+           all. */
+        BARRY.vers.askable(st.history) ? el('button', {
+          class: 'btn ghost sm', text: 'Version\u2026',
+          title: 'Which banked pass this one is carrying on from. Switching '
+               + 'puts the current version down and picks another up \u2014 '
+               + 'the decisions on the set become that version\u2019s.',
+          onclick: () => switchSetVersion(st),
+        }) : null,
         el('div', { style: 'flex:1' }),
         el('button', {
           class: 'btn ghost sm', text: curMore[key] ? 'Less' : 'More…',
@@ -1131,7 +1288,7 @@ BARRY.views.toolkit = (function () {
           title: 'Put it on the bench. Opening the recording is the '
                + 'next step, not this one — a set you cannot curate '
                + 'right now can still be claimed, named and exported.',
-          onclick: () => openSet(st, true),
+          onclick: () => pickUpSet(st),
         }),
         el('button', {
           class: 'btn ghost sm icon-only',
@@ -1139,16 +1296,11 @@ BARRY.views.toolkit = (function () {
             ? 'Pick it up and go straight to the recording'
             : 'This recording is not on a drive this machine can reach',
           disabled: reach ? null : 'disabled',
-          /* Through openSet, so an archived set asks the same question
-             here as the button beside it -- going straight to the
-             recording is still picking it up. */
-          onclick: async () => {
-            if (st.archived) {
-              await openSet(st, true);
-              if (st.archived) return;      // the question was declined
-            }
-            BARRY.curate.enter(st.gid, st.kind);
-          },
+          /* Through the same pick-up as the button beside it: going
+             straight to the recording is still picking it up, so it asks
+             the same two questions -- un-archive this, and which version
+             are you carrying on from -- rather than skipping both. */
+          onclick: () => pickUpSet(st, true),
         }),
         ]),
       ]));
@@ -1407,7 +1559,13 @@ BARRY.views.toolkit = (function () {
   }
 
   /* ---- the workbench verbs ---- */
-  async function openSet(st, on, unarchive) {
+  /* `based` is which banked version this pass is being picked up FROM.
+     It is the stored integer, not the lineage name: the cloud table's
+     `version` column is an integer and the sync casts to int, so the number
+     is the identity and "1.1" is worked out from it. Null leaves the server
+     to default to the newest, which is what happened before this was
+     askable. */
+  async function openSet(st, on, unarchive, based) {
     /* Archiving is a decision, so un-doing it is one too. Picking up an
        archived set used to un-archive it silently -- "archived it and could
        still just open it" was the report. */
@@ -1418,8 +1576,8 @@ BARRY.views.toolkit = (function () {
         + 'the bench means taking it back out \u2014 a set cannot be both '
         + 'archived and in use, or it shows up in neither list.',
         'Un-archive and pick it up');
-      if (!ok) return;
-      return openSet(st, true, true);
+      if (!ok) return false;
+      return openSet(st, true, true, based);
     }
 
     /* On screen first. The round trip is seconds on a network share, and
@@ -1454,15 +1612,140 @@ BARRY.views.toolkit = (function () {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(st.gid) + '/'
         + encodeURIComponent(st.kind) + '/open',
-        { open: !!on, unarchive: !!unarchive });
+        { open: !!on, unarchive: !!unarchive,
+          based_on: (based === null || based === undefined)
+            ? undefined : based });
       // The server's answer is the truth; the guess above only had to be
       // fast. They agree in every ordinary case.
-      if (res.set) { Object.assign(st, res.set); renderCuration(); }
+      /* The summary does not carry `history`, and losing it would empty the
+         version button on the card that was just picked up. */
+      if (res.set) {
+        const keep = st.history;
+        Object.assign(st, res.set);
+        if (keep && !st.history) st.history = keep;
+        renderCuration();
+      }
     } catch (e) {
       Object.assign(st, was);
       renderCuration();
       toast('That did not save: ' + (e && e.message || e), 'err', 8000);
+      return false;
     }
+    return true;
+  }
+
+  /* ==================================================================
+     Which version a sitting works from
+     ==================================================================
+     A curation set is one row per recording per kind, but the bank behind
+     it keeps every pass anybody ever banked -- seven of them on entry
+     7d5fa32206b4. Picking the set up used to say nothing about which of
+     those the sitting was carrying on from, so banking always landed on top
+     of whatever was newest. That is right until somebody goes back to an
+     earlier pass on purpose, and then it silently buries the work that came
+     after it.
+
+     So both doors ask. Picking up records where the next bank lands, and
+     puts that version's decisions on the bench if it is not the one the set
+     already reflects. Switching while it is on the bench always does both:
+     the current version goes down, the chosen one comes up.
+     ================================================================== */
+
+  /* Put that version's decisions onto the set. Restore is the one route
+     that does it, and it records what the set is now based on as well --
+     so the next bank lands as a pass on that version rather than on top of
+     whatever happened to be newest. */
+  async function restoreVersion(st, pick) {
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                          + encodeURIComponent(st.kind) + '/restore',
+                          { entry: pick.entry, version: pick.v });
+    } catch (e) {
+      toast('Could not work from v' + pick.name + ': '
+            + (e && e.message || e), 'err', 9000);
+      return null;
+    }
+    toast('Working from v' + pick.name + '. '
+          + (res.changed ? res.changed + ' decision(s) changed to match it'
+                         : 'Nothing on the set had to change')
+          + (res.missing
+              ? ', ' + res.missing + ' of its candidate(s) are not in this '
+                + 'set any more' : '')
+          + '. ' + (pick.branches
+              ? 'Banking from here starts a new line at v' + pick.next + '.'
+              : 'Banking from here writes v' + pick.next + '.'),
+          'ok', 9000);
+    BARRY.activity.log('curation.version',
+                       { gid: st.gid, kind: st.kind, entry: pick.entry,
+                         version: pick.v, label: pick.name,
+                         changed: res.changed });
+    return res;
+  }
+
+  /* Off the shelf and onto the bench, having said which pass it carries on
+     from. `andEnter` is the arrow beside it: same question, then straight
+     into the recording. */
+  async function pickUpSet(st, andEnter) {
+    let pick = null;
+    if (BARRY.vers.askable(st.history)) {
+      pick = await BARRY.pickVersion(st.history, {
+        title: 'Which version to work from',
+        sub: (st.name || st.gid) + '  \u00b7  '
+           + ((st.session || {}).label || st.gid),
+        lead: 'Picking it up says which banked pass this sitting carries on '
+            + 'from. That is what decides where the next bank lands \u2014 '
+            + 'on the end of a line, or as a new line off an older pass.',
+        labels: st.labels || [],
+        mode: 'pickup',
+        verb: 'Pick it up from', okLabel: 'Pick it up',
+      });
+      if (!pick) return false;      // asked, and called off
+    }
+    const got = await openSet(st, true, false, pick ? pick.v : null);
+    if (!got) return false;
+    /* Before entering, not after: the panel reads the set when it opens, and
+       restoring underneath it would leave the decisions on screen belonging
+       to the version that was just put down. */
+    if (pick && pick.restores) {
+      await restoreVersion(st, pick);
+      await loadCuration();
+    }
+    if (andEnter) BARRY.curate.enter(st.gid, st.kind);
+    return true;
+  }
+
+  /* Switching while it is on the bench. Destructive to what is there, so it
+     says so with the count before it happens, and the button is the danger
+     one. If the panel is actually open on this set it does it, because it
+     has to redraw the candidates and the marks afterwards. */
+  async function switchSetVersion(st) {
+    const live = BARRY.curate && BARRY.curate.active && BARRY.curate.state;
+    if (live && live.gid === st.gid && live.kind === st.kind) {
+      await BARRY.curate.switchVersion();
+      await loadCuration();
+      return;
+    }
+    if (!BARRY.vers.askable(st.history)) {
+      toast('There is only one banked version of this set, so there is '
+            + 'nothing to switch between.', null, 6000);
+      return;
+    }
+    const pick = await BARRY.pickVersion(st.history, {
+      title: 'Switch to another version',
+      sub: (st.name || st.gid) + '  \u00b7  '
+         + ((st.session || {}).label || st.gid),
+      lead: 'Switching puts the current version down and picks the chosen '
+          + 'one up. The decisions on the set become that version\u2019s, '
+          + 'and everything decided after it is written onto that line. '
+          + 'Nothing is deleted \u2014 every version stays in the bank.',
+      labels: st.labels || [],
+      mode: 'switch',
+      danger: true, verb: 'Switch to', okLabel: 'Switch',
+    });
+    if (!pick) return;
+    const res = await restoreVersion(st, pick);
+    if (res) await loadCuration();
   }
 
   async function closeAllSets() {
@@ -1560,17 +1843,30 @@ BARRY.views.toolkit = (function () {
     };
     paint();
 
+    /* Optimistic, and the modal closes first on purpose here -- picking a
+       name from a list is a decision, and the list has served its purpose the
+       moment you make it.
+
+       What was wrong was what happened next: nothing, for a round trip, with
+       the card still showing the previous owner. Whoever you picked goes on
+       the card immediately now, and only an actual failure takes it off. */
     const save = async (who) => {
+      const was = st.assignee;
+      st.assignee = who || null;
       closeModal();
+      renderCuration();
+      toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
+            + 'has this one now.', 'ok', 4000);
       try {
         const res = await apiPost(
           '/api/curation/' + encodeURIComponent(st.gid) + '/'
           + encodeURIComponent(st.kind) + '/assign', { who: who });
-        if (res.set) Object.assign(st, res.set);
+        if (res.set) { Object.assign(st, res.set); renderCuration(); }
+      } catch (e) {
+        st.assignee = was;
         renderCuration();
-        toast(who ? 'Assigned to ' + who + '.' : 'Handed back \u2014 nobody '
-              + 'has this one now.', 'ok', 4000);
-      } catch (e) { toast(e.message, 'err', 8000); }
+        toast('That did not save: ' + e.message, 'err', 8000);
+      }
     };
 
     showModal(el('div', {}, [
@@ -1616,21 +1912,36 @@ BARRY.views.toolkit = (function () {
     ]));
   }
 
+  /* The comment here used to say "change the list now rather than after a
+     round trip" and sat directly underneath the await, so it did neither: the
+     card stayed put for the whole request and was then followed by a reload
+     of every curation set and the entire recording registry -- the second of
+     which is over a second on a network share -- to carry one boolean.
+
+     Now it means it. The card moves on the click, the write follows, and a
+     failure puts it back and says so rather than leaving the list claiming
+     something that did not happen. Same shape as openSet just below. */
   async function archiveSet(st, on) {
+    const was = st.archived;
+    st.archived = on;
+    // The whole panel, not just the list: the filter chips carry counts, and
+    // archiving changes what those counts are counting.
+    renderCuration();
+    toast(on ? 'Archived. It is still there \u2014 the Archived filter '
+               + 'brings it back.'
+             : 'Back in the list.', 'ok', 5000);
     try {
-      await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
-                    + encodeURIComponent(st.kind) + '/archive',
-                    { archived: on });
-      // Change the list now rather than after a round trip.
-      st.archived = on;
-      // The whole panel, not just the list: the filter chips carry counts,
-      // and archiving changes what those counts are counting.
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(st.gid) + '/'
+        + encodeURIComponent(st.kind) + '/archive', { archived: on });
+      // Reconcile with what the server actually stored, in case it knows
+      // something this copy did not -- but no reload: one field changed.
+      if (res && res.set) { Object.assign(st, res.set); renderCuration(); }
+    } catch (e) {
+      st.archived = was;
       renderCuration();
-      toast(on ? 'Archived. It is still there \u2014 the Archived filter '
-                 + 'brings it back.'
-               : 'Back in the list.', 'ok', 5000);
-      loadCuration();
-    } catch (e) { toast(e.message, 'err', 8000); }
+      toast('That did not save: ' + e.message, 'err', 8000);
+    }
   }
 
 
@@ -1967,6 +2278,33 @@ BARRY.views.toolkit = (function () {
      there is no state to come back to, because looking does not leave any.
      ================================================================== */
   let cfcReg = null;
+
+  /* Incisor needs the registry and nothing else -- it does its own
+     estimating once a recording is chosen. The rows come from the same
+     sixty-second cache every other tool uses, because reading the registry
+     takes eight seconds on this lab's data. */
+  async function loadIncisor() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'incisor') return;
+    BARRY.incisor.paint();
+  }
+
+  /* Panorama needs the registry for its recording picker and nothing
+     else -- it estimates its own cost once a recording is chosen. Same
+     sixty-second cache as every other tool. */
+  async function loadPanorama() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'panorama') return;
+    BARRY.panorama.paint();
+  }
 
   async function loadCFC() {
     renderCFC();
@@ -2357,6 +2695,7 @@ BARRY.views.toolkit = (function () {
 
   function mountFeed() {
     if (!BARRY.toolfeed) return;
+    if (feedSoon) { clearTimeout(feedSoon); feedSoon = null; }
     BARRY.toolfeed.stop();
     const host = $('#tkResult');
     if (!host || !q.tool) return;
@@ -2380,13 +2719,32 @@ BARRY.views.toolkit = (function () {
      mount would have run and repaints over it. Watching the host covers
      sync tools, async tools and anything added later without each of them
      having to remember. */
+  /* Coalesced, because a panel does not rebuild once.
+
+     A tool that redraws its whole host -- emptying it and appending a fresh
+     tree -- fires this several times for one repaint, and every firing that
+     lands while `.tf` is absent mounts a feed, which is a fetch. Measured on
+     Braces during a read: fifteen requests for /api/toolfeed/braces in
+     thirty seconds, because the panel was rebuilding four times a second
+     and taking the feed with it each time.
+
+     The tool that rebuilt too eagerly has been fixed as well; this is the
+     side of it that keeps the next tool from doing the same thing. One
+     frame is enough for a rebuild to finish appending. */
+  let feedSoon = null;
+
   function watchPanel(host) {
     if (feedWatch) { feedWatch.disconnect(); feedWatch = null; }
     if (typeof MutationObserver !== 'function') return;
     feedWatch = new MutationObserver(() => {
       if (!q.tool) return;
-      const now = $('#tkResult');
-      if (now) tryFeed(now, q.tool);
+      if (feedSoon) return;
+      feedSoon = setTimeout(() => {
+        feedSoon = null;
+        if (!q.tool) return;
+        const now = $('#tkResult');
+        if (now) tryFeed(now, q.tool);
+      }, 60);
     });
     feedWatch.observe(host, { childList: true });
   }
@@ -2412,7 +2770,10 @@ BARRY.views.toolkit = (function () {
       return;
     }
     if (q.tool === 'strata') { renderStrata(); return; }
+    if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
+    if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
+    if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     const host = $('#tkResult');
     if (!host) return;
@@ -2554,19 +2915,28 @@ BARRY.views.toolkit = (function () {
     }
   }
 
-  function init() {
-    const r = $('#tkRefresh');
-    if (r) {
-      r.addEventListener('click', async () => {
-        scopes = null;
-        await loadScopes();
-        refresh();
-      });
-    }
-  }
+  /* Nothing to wire up any more.
+
+     The header used to carry a Refresh button. Every tool in here reloads
+     what it needs when it is opened, and each one that can go stale has its
+     own control saying what it would actually re-fetch -- so a general
+     "Refresh" in the corner was a button whose effect nobody could predict
+     and which was mostly pressed out of doubt. Kept as a function because
+     the view loop calls `init` on every view. */
+  function init() {}
 
   return {
-    init, onShow, refresh,
+    init,
+    /* The cached registry rows, flattened, for a tool that wants its own
+       session picker. Through here rather than each tool fetching, so one
+       sixty-second cache serves them all. */
+    registryRows: () => (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    tool: () => q.tool, onShow, refresh,
+    /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
+       to the tool row, and turning it on has to show up in the panel it is
+       talking about rather than at the next navigation. */
+    render,
     /* For web/_dev/presence.html, which drives the real workbench rather
        than a copy: it needs to hand in a known set of sessions and ask what
        the bench makes of them. */

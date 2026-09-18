@@ -1,19 +1,22 @@
 {
   "_at": {
+    "curate_span": "2026-09-17T15:12:14.571580+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
     "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
-    "radio": "2026-09-14T18:48:06.193238+00:00",
+    "radio": "2026-09-16T16:46:56.784774+00:00",
     "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
-    "smoke_probe": "2026-09-15T14:18:13.695621+00:00",
+    "result_group": "2026-09-16T16:47:27.723505+00:00",
+    "smoke_probe": "2026-09-17T17:26:25.497980+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-15T14:29:52.624709+00:00"
+    "updated": "2026-09-18T13:23:03.111578+00:00",
+    "vacc": "2026-09-16T14:55:08.027793+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-15T14:18:15.799030+00:00"
+        "2026-09-17T17:26:28.165399+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -45,13 +48,20 @@
         "gone",
         "2026-09-09T15:29:08.445863+00:00"
       ]
+    },
+    "vacc": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-17T17:29:56.492043+00:00"
+      ]
     }
   },
   "_shard": {
-    "at": "2026-09-15T14:29:52.624709+00:00",
+    "at": "2026-09-18T13:23:03.111578+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "curate_span": 10,
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
@@ -60,7 +70,7 @@
   "radio": {
     "agreed": true,
     "small": true,
-    "station": "rFZHOHl-L8A",
+    "station": "4xDzrJKXOOY",
     "volume": 55
   },
   "recent_scripts": [
@@ -77,6 +87,7 @@
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
     "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
+  "result_group": "",
   "smoke_probe": null,
   "themes": {
     "BarryLab": "horizon-night",
@@ -84,5 +95,8 @@
     "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-15T10:29:52-04:00"
+  "updated": "2026-09-18T09:23:03-04:00",
+  "vacc": {
+    "DESKTOP-4H65AI7": true
+  }
 }

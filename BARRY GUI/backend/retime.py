@@ -65,6 +65,16 @@ RAW_PIPELINES = {
         "recording's own clock."),
     "Jarvis threshold detector": (
         "Detected from the raw .ncs files by Jarvis itself."),
+    "Incisor (dentate spike)": (
+        "Detected from the raw .ncs files by Jarvis itself, and stamped "
+        "through `continuity.sample_to_true` -- the recording's own record "
+        "timestamps and its measured sample rate -- rather than from a "
+        "sample index over a nominal one. Checked against Toothy's own "
+        "`get_ds_peaks` on identical input over ten real and ten synthetic "
+        "recordings: 4430 events at exactly the same samples, with the "
+        "timestamp difference accounted for by the rig's crystal and "
+        "Toothy's linspace axis to within 0.42 ppm. A set from here has "
+        "the gaps in it already and must never be offered the correction."),
 }
 
 TRUE = "neuralynx_true"

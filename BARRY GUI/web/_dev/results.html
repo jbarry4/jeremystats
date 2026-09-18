@@ -1,0 +1,341 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the Results view</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* The catalogue, and whether it can be walked through.
+ *
+ * Two claims are checked here, and they fail in different ways.
+ *
+ * The first is that the by-product lane stays out. That has three doors into
+ * the catalogue -- the folder scan, the run records, and the curation
+ * sidecars -- and shutting one is not shutting the others. When it went
+ * wrong, the folder was clean, git was clean, and the view was not, with
+ * nothing anywhere saying the two disagreed. So it is asserted against the
+ * API rather than against the screen.
+ *
+ * The second is grouping: every result still shown, just in rooms. A grouping
+ * that quietly drops the rows it has no heading for is worse than no grouping
+ * at all, because the count at the top still says the right number.
+ *
+ * This harness establishes what it needs rather than assuming it. A check
+ * that reads whatever the previous run happened to leave behind reports on
+ * that, not on the code.
+ */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 12000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const D = frame.contentDocument;
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+
+  // BARRY is a `const`, not a property of window, so it is only reachable
+  // through eval inside the frame.
+  const ev = (src) => W.eval(src);
+
+  head('1. Does the catalogue answer at all?');
+  const got = await (await fetch('/api/results?refresh=1')).json();
+  check('/api/results returns ok', !!got.ok, JSON.stringify(got).slice(0, 120));
+  const rows = got.results || [];
+  say('note', '  ' + rows.length + ' result(s), total ' + got.total);
+  check('it reports a total', typeof got.total === 'number', String(got.total));
+  check('the count it returns is the count it claims',
+        rows.length === got.total || rows.length === 800,
+        rows.length + ' vs ' + got.total);
+
+  head('2. Is the by-product lane out of it?');
+  const leaked = rows.filter((r) => String(r.rel || '').startsWith('_scratch'));
+  check('nothing from _scratch is catalogued', leaked.length === 0,
+        leaked.length + ' leaked, e.g. ' + (leaked[0] || {}).rel);
+  // The three doors, named, so a failure says which one opened.
+  const byRun = leaked.filter((r) => r.run_id).length;
+  const byTag = leaked.filter((r) => !r.run_id && (r.tags || []).length).length;
+  if (leaked.length) {
+    say('note', '  via run records: ' + byRun + ', via curation sidecars: '
+        + byTag + ', via the folder scan: '
+        + (leaked.length - byRun - byTag));
+  }
+  const folders = await (await fetch('/api/results/folders')).json();
+  const fLeak = (folders.folders || [])
+    .filter((f) => String(f.path || '').split('/')[0] === '_scratch');
+  check('and it is not offered as a folder either', fLeak.length === 0,
+        fLeak.map((f) => f.path).join(', '));
+
+  head('3. Do results know which animal they are about?');
+  const withRun = rows.filter((r) => r.run_id);
+  say('note', '  ' + withRun.length + ' of ' + rows.length
+      + ' carry a run record');
+  check('a result from a run carries its tool',
+        !withRun.length || withRun.some((r) => r.script),
+        'none of ' + withRun.length + ' had `script`');
+  check('kinds are real, not all "file"',
+        new Set(rows.map((r) => r.kind)).size > 1,
+        'every row says ' + (rows[0] || {}).kind);
+  const animal = rows.filter((r) => r.mouse != null);
+  say('note', '  ' + animal.length + ' name an animal (the rest are lab-wide '
+      + 'exports, decks and manifests, which belong to none)');
+  check('the ones that name an animal name a session too',
+        animal.every((r) => r.session_no != null),
+        animal.filter((r) => r.session_no == null).length + ' had a mouse '
+        + 'and no session');
+
+  head('4. Does grouping put every result in a room?');
+  ev("setView('results')");
+  await until(() => D.querySelector('#resultsBody .res-toolbar'));
+  await sleep(400);
+
+  const shown = () => ev('BARRY.views.results.all().length');
+  const cards = () => D.querySelectorAll('#resultsBody .res-card').length;
+  const heads = () => D.querySelectorAll('#resultsBody .room-head').length;
+
+  ev("BARRY.views.results.groupBy('')");
+  await sleep(250);
+  const flat = cards();
+  check('ungrouped shows the catalogue', flat > 0, String(flat));
+  check('and draws no headings', heads() === 0, heads() + ' headings');
+
+  for (const by of ['animal', 'tool', 'day']) {
+    ev("BARRY.views.results.groupBy(" + JSON.stringify(by) + ")");
+    await sleep(300);
+    const n = cards();
+    const h = heads();
+    say('note', '  ' + by + ': ' + h + ' room(s), ' + n + ' card(s)');
+    check('grouping ' + by + ' keeps every result', n === flat,
+          flat + ' ungrouped -> ' + n + ' grouped');
+    check('grouping ' + by + ' actually draws rooms', h > 0, h + ' headings');
+  }
+
+  head('5. Does a room hand you its contents?');
+  ev("BARRY.views.results.groupBy('tool')");
+  await sleep(300);
+  const firstBtn = D.querySelector('#resultsBody .room-head .btn');
+  check('a room offers to select everything in it', !!firstBtn,
+        'no button in the first heading');
+  if (firstBtn) {
+    const before = ev('BARRY.views.results.selectedCount()');
+    firstBtn.click();
+    await sleep(250);
+    const after = ev('BARRY.views.results.selectedCount()');
+    check('and selecting it selects more than nothing', after > before,
+          before + ' -> ' + after);
+    const again = D.querySelector('#resultsBody .room-head .btn');
+    if (again) { again.click(); await sleep(250); }
+    check('and it clears again',
+          ev('BARRY.views.results.selectedCount()') === before,
+          before + ' -> ' + ev('BARRY.views.results.selectedCount()'));
+  }
+
+  head('6. Does the list view group too?');
+  ev("BARRY.views.results.setView('list')");
+  await sleep(300);
+  const trs = D.querySelectorAll('#resultsBody .res-table tbody tr').length;
+  const roomRows = D.querySelectorAll('#resultsBody .res-table .room-row').length;
+  say('note', '  ' + roomRows + ' heading row(s), ' + (trs - roomRows)
+      + ' result row(s)');
+  check('the table shows every result', (trs - roomRows) === flat,
+        flat + ' expected, ' + (trs - roomRows) + ' drawn');
+  check('with headings among the rows', roomRows > 0, String(roomRows));
+  // Put it back, so the next harness does not inherit a grouped list view.
+  ev("BARRY.views.results.setView('grid')");
+  ev("BARRY.views.results.groupBy('')");
+  await sleep(200);
+
+  head('7. Does searching one field search only that field?');
+  /* The point of `mouse:306` is that it is narrower than typing 306, and the
+     way it goes wrong is matching m3060 -- a wrong answer that looks exactly
+     like a right one, which is why it is asserted rather than eyeballed. */
+  const find = (q) => {
+    ev("BARRY.views.results.search(" + JSON.stringify(q) + ")");
+    return ev('BARRY.views.results.shownCount()');
+  };
+  const all = find('');
+  check('an empty search shows everything', all === flat, all + ' vs ' + flat);
+
+  const anyMouse = rows.find((r) => r.mouse != null);
+  if (anyMouse) {
+    const m = anyMouse.mouse;
+    const exact = find('mouse:' + m);
+    const withM = find('mouse:m' + m);
+    say('note', '  mouse:' + m + ' -> ' + exact + ', mouse:m' + m + ' -> ' + withM);
+    check('a field search finds something', exact > 0, String(exact));
+    check('and m306 asks the same question as 306', exact === withM,
+          exact + ' vs ' + withM);
+    check('it is narrower than the whole catalogue', exact < all,
+          exact + ' of ' + all);
+    // The anchoring: a prefix of the number must not match the number.
+    const stub = String(m).slice(0, -1);
+    if (stub) {
+      const loose = find('mouse:' + stub);
+      const same = rows.filter((r) => String(r.mouse) === stub).length;
+      check('mouse:' + stub + ' does not match m' + m, loose === same,
+            loose + ' matched, ' + same + ' actually are m' + stub);
+    }
+  } else {
+    say('note', '  no result names an animal here, so field search is '
+        + 'checked on `type:` instead');
+  }
+
+  const tables = find('type:table');
+  const reallyTables = rows.filter((r) => r.type === 'table').length;
+  check('type:table finds exactly the tables', tables === reallyTables,
+        tables + ' found, ' + reallyTables + ' in the catalogue');
+
+  check('an unknown prefix is searched as plain text, not dropped',
+        find('nosuchfield:zzzz') === 0, 'matched something');
+  check('a path with a colon does not explode',
+        typeof find('C:\\Users\\nothing') === 'number', 'threw');
+  find('');
+
+  head('8. Is the grid asking for thumbnails, not whole figures?');
+  const pics = rows.filter((r) => r.type === 'image');
+  if (!pics.length) {
+    say('note', '  no image results here to check');
+  } else {
+    const r0 = pics[0];
+    const big = await fetch('/api/results/file?id=' + encodeURIComponent(r0.id));
+    const small = await fetch('/api/results/thumb?id=' + encodeURIComponent(r0.id));
+    const nBig = (await big.blob()).size;
+    const nSmall = (await small.blob()).size;
+    say('note', '  ' + (r0.title || r0.name).slice(0, 40) + ': '
+        + Math.round(nBig / 1024) + ' KB -> ' + Math.round(nSmall / 1024) + ' KB');
+    check('a thumbnail is served', small.ok, 'HTTP ' + small.status);
+    check('and it is markedly smaller than the original', nSmall < nBig / 4,
+          nBig + ' -> ' + nSmall);
+    /* The cards must actually use it. Pointing the endpoint at a smaller
+       picture and then leaving the grid on the original is the version of
+       this change that measures well and changes nothing. */
+    ev("BARRY.views.results.setView('grid')");
+    await sleep(300);
+    const srcs = Array.from(D.querySelectorAll('#resultsBody .res-thumb img'))
+      .map((i) => i.getAttribute('src') || '');
+    check('every card in the grid asks for a thumbnail',
+          srcs.length > 0 && srcs.every((u) => u.includes('/api/results/thumb')),
+          srcs.filter((u) => !u.includes('/api/results/thumb')).length
+          + ' of ' + srcs.length + ' asked for the full file');
+    /* ...and the full-size preview must NOT, or opening a figure shows you a
+       320-pixel version of it. */
+    const full = ev("BARRY.views.results.urlFor(BARRY.views.results.all()"
+                    + ".find(function (x) { return x.type === 'image'; }))");
+    check('the full-size preview still asks for the original',
+          String(full).includes('/api/results/file'), String(full));
+  }
+
+  head('9. Does a result say what made it, followably?');
+  const fromRun = rows.find((r) => r.run_id
+                                   && Object.keys(r.parameters || {}).length);
+  if (!fromRun) {
+    say('note', '  nothing here carries a run record with settings');
+  } else {
+    ev("BARRY.views.results.describe(" + JSON.stringify(fromRun.id) + ")");
+    await until(() => D.querySelector('#bigModal .prov'));
+    await sleep(200);
+    const prov = D.querySelector('#bigModal .prov');
+    check('the placard opens', !!prov);
+    const params = D.querySelectorAll('#bigModal .prov-params tr').length;
+    say('note', '  ' + params + ' setting(s) listed');
+    check('settings are a table, not one line of JSON', params > 0,
+          'no rows in .prov-params');
+    const txt = prov ? prov.textContent : '';
+    check('it does not print raw JSON braces at the reader',
+          !/\{"|":\s*\{/.test(txt), txt.slice(0, 80));
+    check('it names which code made it',
+          /Version|Tool|Run/.test(txt), 'no version, tool or run named');
+    const links = D.querySelectorAll('#bigModal .prov .kv dd a').length;
+    check('and the things it points at are followable', links > 0,
+          'every fact is inert text');
+    ev('closeModal()');
+    await sleep(200);
+  }
+
+  head('10. Does the Run button open the run?');
+  /* It used to call setView("history") and reload(), landing you at the top
+     of every run the lab has ever done -- having just clicked something that
+     displayed the id of the one you wanted. */
+  check('history can be asked for one run',
+        ev('typeof BARRY.views.history.show') === 'function',
+        'history exposes no show()');
+  const runRow = rows.find((r) => r.run_id);
+  if (runRow) {
+    const ok = await ev("BARRY.views.history.show("
+                        + JSON.stringify(runRow.run_id) + ")");
+    await sleep(500);
+    check('and it selects the one asked for', ok === true, String(ok));
+    const active = D.querySelector('#histList .hist-row.active');
+    check('with that row actually marked in the list', !!active,
+          'nothing is selected');
+    ev("setView('results')");
+    await sleep(200);
+  }
+
+  head('11. Can anything but a figure be rebuilt?');
+  /* The old gate was `kind !== 'figure'`, which hid the button rather than
+     showing an empty one -- so a Panorama, a ToolKit export and a deck each
+     offered nothing at all. */
+  const kinds = {};
+  for (const r of rows) if (r.run_id) kinds[r.kind] = r;
+  say('note', '  kinds with a run record: ' + Object.keys(kinds).join(', '));
+  const reg = await (await fetch('/api/recipe/' + encodeURIComponent(
+    (Object.values(kinds)[0] || {}).run_id || 'nope'))).json();
+  check('the registry answers for something', !!reg.ok || !!reg.error,
+        JSON.stringify(reg).slice(0, 80));
+
+  let planned = 0;
+  for (const [kind, r] of Object.entries(kinds)) {
+    const j = await (await fetch('/api/recipe/'
+      + encodeURIComponent(r.run_id))).json();
+    if (!j.ok) { say('note', '  ' + kind + ': no plan (' + j.error + ')'); continue; }
+    planned += 1;
+    say('note', '  ' + kind + ': ' + j.steps.length + ' step(s), verdict '
+        + j.verdict + (j.offer.can_verify ? ', can verify' : ''));
+    check(kind + ' gets a plan with steps', (j.steps || []).length > 0,
+          'no steps');
+    check(kind + "'s every step says what it found",
+          (j.steps || []).every((s) => s.status && s.title),
+          'a step had no status or title');
+  }
+  check('more than figures can be rebuilt now', planned > 1,
+        planned + ' kind(s) had a plan');
+
+  head('12. Anything thrown?');
+  check('no uncaught errors in the app', errors.length === 0,
+        errors.slice(0, 2).join(' | '));
+
+  say('note', '');
+  say(bad ? 'bad' : 'ok', bad ? (bad + ' check(s) failed') : 'all checks passed');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message ? e.message : e));
+} })();
+</script>

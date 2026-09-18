@@ -18,7 +18,7 @@ import time
 
 import numpy as np
 
-from . import continuity, csc, ids, nlx
+from . import continuity, csc, ids, nlx, panorama, spectrum
 
 
 # ==========================================================================
@@ -479,6 +479,234 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     if len(_OVERVIEW_CACHE) > 24:
         _OVERVIEW_CACHE.clear()
     _OVERVIEW_CACHE[key] = res
+    return res
+
+
+# ==========================================================================
+# Band power over the whole recording -- the other thing the strip can show
+#
+# The amplitude profile above answers "how big is the signal here". It cannot
+# answer "is there theta here": a stretch of high-amplitude delta and a
+# stretch of high-amplitude theta draw the same line. So the strip can also
+# show band power through time, which is `FOOOF Playgroun/theta_through_time.py`
+# collapsed to one series.
+#
+# Nothing here computes a spectrogram of its own. `panorama` already reads a
+# channel on the TRUE time axis with NaN in the gaps and already bridges the
+# mains out of a spectrogram, both of which took a while to get right -- so
+# the numbers on this strip and the numbers in the Panorama tool come off the
+# same code and can be compared.
+# ==========================================================================
+# The reference bands. Same numbers as `spectrum.BANDS`, so "theta" on this
+# strip means what "theta" means beside a spectrum.
+BAND_DEFAULT = (4.0, 12.0)
+BAND_TOTAL = (1.0, 100.0)
+BAND_DELTA = (1.0, 4.0)
+
+# What the spectrogram behind the strip is computed with.
+#
+# `sub_s` 2 s gives 0.5 Hz bins, so a 4-12 Hz band is seventeen of them and
+# the band edges can be moved a hertz at a time and mean something. `step_s`
+# is per-call (see `_bandgram`) because a column per second is wasted on a
+# strip whose bins are three seconds wide.
+BG_SUB_S = 2.0
+BG_WIN_S = 4.0
+BG_FMAX = 100.0          # matches BAND_TOTAL's top: the denominator of `rel`
+BG_MAX_COLUMNS = 6000
+
+_BANDGRAM_CACHE = {}
+_BANDGRAM_ORDER = []
+_BANDGRAM_MAX = 3
+
+
+def _bandgram(session, ch, bins):
+    """(freqs, pxx[freq, bin], meta): the whole recording as power per bin.
+
+    The band limits are NOT baked in here, and that is the point. Integrating
+    a band out of this array is microseconds; reading twenty-eight minutes of
+    a 30 kHz channel is most of a minute. Caching the surface rather than the
+    line means moving the theta edges from 4-12 to 5-10 is instant, which is
+    what makes "optimize the range" a thing somebody will actually do rather
+    than a thing they try once.
+
+    About 200 rows x 700 columns of float64 -- under two megabytes, so three
+    of them can sit in memory without anybody noticing.
+    """
+    key = (session.get("path"), ch.get("number"), int(bins),
+           bool(session.get("invert", True)), "v1")
+    hit = _BANDGRAM_CACHE.get(key)
+    if hit is not None:
+        return hit[0], hit[1], dict(hit[2], cached=True)
+
+    t_start = time.time()
+    dur = float(session.get("duration_s") or 0.0)
+    fs = float(session.get("fs") or 0.0) or 30000.0
+    step = dur / bins
+
+    # Never read at full rate: the question stops at 100 Hz, so 250 Hz is
+    # enough and `spectrum.target_rate` is where that margin is decided.
+    want_fs = spectrum.target_rate(BG_FMAX)
+    factor = max(1, int(fs // want_fs)) if want_fs < fs else 1
+    out_fs = fs / factor
+
+    # At least two columns per strip bin, so a bin is an average and not one
+    # periodogram -- but never finer than a quarter second, and never more
+    # columns than BG_MAX_COLUMNS however long the recording is.
+    step_s = max(0.25, min(1.0, step / 2.0), dur / BG_MAX_COLUMNS)
+    win_s = max(BG_SUB_S, min(BG_WIN_S, 4.0 * step_s))
+
+    x, gaps = panorama.read_gapped(session, ch, 0.0, dur, factor, out_fs)
+    freqs, times, pxx, n_avg = panorama.spectrogram(
+        x, out_fs, BG_SUB_S, win_s, step_s, 1.0, BG_FMAX)
+
+    # 60 Hz sits inside the `rel` denominator, so leaving it in would make
+    # relative theta fall wherever the mains got worse.
+    mask, at = spectrum.line_bins(freqs, spectrum.LINE_HZ, BG_FMAX)
+    if mask.any():
+        pxx, _removed = panorama._bridge_line(freqs, pxx, mask)
+
+    # Columns onto the strip's own bins, so this line and the amplitude line
+    # are the same x axis pixel for pixel.
+    grid = np.full((freqs.size, bins), np.nan, dtype=np.float64)
+    if times.size:
+        which = np.clip((times / step).astype(int), 0, bins - 1)
+        for i in range(bins):
+            sel = which == i
+            if sel.any():
+                col = pxx[:, sel]
+                if np.isfinite(col).any():
+                    grid[:, i] = np.nanmean(col, axis=1)
+
+    meta = {
+        "fs_used": out_fs, "decimate": factor,
+        "sub_s": BG_SUB_S, "win_s": win_s, "step_s": step_s,
+        "n_avg": int(n_avg), "n_columns": int(times.size),
+        "resolution_hz": round(float(freqs[1] - freqs[0]), 4)
+        if freqs.size > 1 else None,
+        "line_hz": spectrum.LINE_HZ if at else None,
+        "gaps": gaps,
+        "nan_fraction": round(float(np.isnan(x).mean()), 4) if x.size else 0.0,
+        # What the READ cost, not what this request cost. A second request
+        # with different band edges answers off the cache in milliseconds
+        # and still reports this, which is the number worth knowing.
+        "surface_s": round(time.time() - t_start, 2),
+        "cached": False,
+    }
+    out = (freqs, grid, meta)
+    _BANDGRAM_CACHE[key] = out
+    _BANDGRAM_ORDER.append(key)
+    while len(_BANDGRAM_ORDER) > _BANDGRAM_MAX:
+        _BANDGRAM_CACHE.pop(_BANDGRAM_ORDER.pop(0), None)
+    return out
+
+
+def _integrate(freqs, grid, lo, hi):
+    """Integrated power in [lo, hi] for every bin -- uV^2, NaN where no data.
+
+    Trapezoid over the bins rather than a mean, because "how much theta"
+    is a quantity of power and not a density; the two differ by the
+    bandwidth, which is why the band edges have to be reported next to the
+    number for it to mean anything.
+    """
+    sel = (freqs >= lo) & (freqs <= hi)
+    if sel.sum() < 2:
+        return np.full(grid.shape[1], np.nan)
+    return np.trapezoid(grid[sel, :], freqs[sel], axis=0)
+
+
+def _jsonable(v, digits=6):
+    """A float series as JSON, with NaN as null rather than as a number.
+
+    `json` writes bare NaN, which every strict parser rejects and
+    `JSON.parse` in the browser refuses outright -- and a gap is genuinely
+    absent, not zero. Drawing zero there would put a flat stretch on the
+    strip where the recording was paused.
+    """
+    out = []
+    for x in v:
+        f = float(x)
+        out.append(None if not np.isfinite(f)
+                   else float("%.*g" % (digits, f)))
+    return out
+
+
+MEASURES = ("abs", "rel", "ratio")
+MEASURE_WHAT = {
+    "abs": "absolute band power (uV^2)",
+    "rel": "share of 1-100 Hz power",
+    "ratio": "band / delta (1-4 Hz)",
+}
+
+
+def band_profile(session, channel=None, bins=OVERVIEW_BINS,
+                 lo=BAND_DEFAULT[0], hi=BAND_DEFAULT[1], measure="abs"):
+    """Band power through the whole recording, for the overview strip.
+
+    All three measures come back in one payload -- they cost nothing once the
+    surface exists, and they answer different questions. `abs` is the direct
+    one and moves with the aperiodic slope and with electrode impedance;
+    `rel` divides that out and is the one to compare between recordings;
+    `ratio` is the classic hippocampal theta index. Donoghue et al. (2020) is
+    the argument for not offering only the first.
+    """
+    chans = session.get("channels") or []
+    if not chans:
+        return {"ok": False, "error": "No channels."}
+    idx = channel if channel is not None else len(chans) // 2
+    idx = max(0, min(int(idx), len(chans) - 1))
+    ch = chans[idx]
+
+    dur = float(session.get("duration_s") or 0)
+    if dur <= 0:
+        return {"ok": False, "error": "Unknown duration."}
+    bins = int(max(60, min(int(bins), 2000)))
+
+    lo = max(0.5, float(lo))
+    hi = min(BG_FMAX, float(hi))
+    if hi <= lo:
+        return {"ok": False,
+                "error": "Band high (%g) must be above band low (%g)."
+                         % (hi, lo)}
+    measure = measure if measure in MEASURES else "abs"
+
+    freqs, grid, meta = _bandgram(session, ch, bins)
+    band = _integrate(freqs, grid, lo, hi)
+    total = _integrate(freqs, grid, *BAND_TOTAL)
+    delta = _integrate(freqs, grid, *BAND_DELTA)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rel = np.where(total > 0, band / total, np.nan)
+        ratio = np.where(delta > 0, band / delta, np.nan)
+
+    series = {"abs": band, "rel": rel, "ratio": ratio}
+    good = np.isfinite(series[measure])
+    pick = series[measure][good]
+
+    res = {
+        "ok": True,
+        "kind": "band",
+        "bins": bins,
+        "duration_s": dur,
+        "channel": {"index": idx, "number": ch.get("number"),
+                    "label": ch.get("label")},
+        "band": {"lo": round(lo, 3), "hi": round(hi, 3)},
+        "reference": {"total": list(BAND_TOTAL), "delta": list(BAND_DELTA)},
+        "measure": measure,
+        "measures": list(MEASURES),
+        "what": MEASURE_WHAT[measure],
+        # Everything a screenshot needs to be read back later without the
+        # window that produced it.
+        "label": "%s %g-%g Hz, %s, %s"
+                 % (ch.get("label") or "ch", lo, hi, MEASURE_WHAT[measure],
+                    "%g s bins" % round(dur / bins, 2)),
+        "abs": _jsonable(band),
+        "rel": _jsonable(rel),
+        "ratio": _jsonable(ratio),
+        "n_valid": int(good.sum()),
+        "median": round(float(np.median(pick)), 6) if pick.size else None,
+        "p5": round(float(np.percentile(pick, 5)), 6) if pick.size else None,
+        "p95": round(float(np.percentile(pick, 95)), 6) if pick.size else None,
+    }
+    res.update(meta)
     return res
 
 

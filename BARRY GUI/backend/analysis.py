@@ -9,7 +9,7 @@ Panel kinds
     traces        stacked waveforms (vector, drawn by the browser)
     voltage       voltage raster, channels x time   (imagesc + jet)
     csd           current source density raster      (myCSDPP2 + jet)
-    theta         theta-band raster, optional voltage contour overlay
+    theta         theta-band CSD raster, with adjustable spatial smoothing
     bandpower     power per narrow band across theta, which theta not how much
     spectrogram   single-channel STFT
     scalogram     single-channel continuous wavelet transform
@@ -83,8 +83,9 @@ PANELS = [
      "note": "Channels x time heatmap, as VoltageRaster.m"},
     {"id": "csd", "name": "CSD raster", "kind": "image",
      "note": "Current source density, as myCSDPP2.m"},
-    {"id": "theta", "name": "Theta raster", "kind": "image",
-     "note": "Theta-band (4-12 Hz) raster with optional voltage contours"},
+    {"id": "theta", "name": "Theta CSD", "kind": "image",
+     "note": "Current source density of the theta band (4-12 Hz), as "
+             "xplorefinder's Csdview draws it, with adjustable smoothing"},
     {"id": "bandpower", "name": "Theta power (band-resolved)", "kind": "image",
      "single_channel": True,
      "note": "Power per narrow band across 4-12 Hz -- which theta, not just "
@@ -103,8 +104,13 @@ class PanelError(Exception):
 # --------------------------------------------------------------------------
 # Shared data access
 # --------------------------------------------------------------------------
-def _stack(session, spec, channels=None):
-    """Read a [nCh x nSamp] microvolt block for the window, filters applied."""
+def _stack(session, spec, channels=None, band=None):
+    """Read a [nCh x nSamp] microvolt block for the window, filters applied.
+
+    `band` is for a panel that fixes its own (lo, hi) and ignores the
+    session's corners entirely. It also unlocks the decimate-before-filter
+    shortcut, which is only sound when a low-pass is guaranteed -- see below.
+    """
     all_ch = session["channels"]
     idx = channels if channels is not None else spec.get("channels")
     sel = [all_ch[i] for i in idx if 0 <= i < len(all_ch)] if idx else all_ch
@@ -116,12 +122,32 @@ def _stack(session, spec, channels=None):
     if t1 <= t0:
         raise PanelError("The time window is empty (t1 must be after t0).")
 
-    hp = float(spec.get("highpass", 0) or 0)
-    lp = float(spec.get("lowpass", 0) or 0)
-    notch = float(spec.get("notch", 0) or 0)
+    if band:
+        # A panel that fixed its own band (see `_panel_raster`, theta). The
+        # session's corners never ran, so they are not read here either.
+        hp, lp, notch = float(band[0]), float(band[1]), 0.0
+    else:
+        hp = float(spec.get("highpass", 0) or 0)
+        lp = float(spec.get("lowpass", 0) or 0)
+        notch = float(spec.get("notch", 0) or 0)
 
     rows, actual_t0, fs = [], t0, session["fs"]
     frep = {}
+    # Read at the recording's rate and filter there.
+    #
+    # `csc._prep_for_filter` would decimate first -- a 12 Hz low-pass is
+    # exactly the guarantee that shortcut is built on, and it takes this
+    # panel from 1.6 s to 0.45 s. It is NOT taken, and the reason is worth
+    # writing down so nobody re-adds it as an obvious win: measured on
+    # demo:long-session, the decimated read moves this panel's automatic
+    # colour range by a factor of two. The band-passed traces agree to 1.3%
+    # either way -- it is the second spatial derivative that pulls the
+    # difference out, because a derivative across channels is precisely a
+    # measurement of what neighbouring channels do NOT share.
+    #
+    # Which of the two is the better estimate is a real question and not one
+    # to settle inside a speed-up. Until it is settled, this panel reads the
+    # way the CSD panel beside it reads, so the two can be compared.
     for ch in sel:
         seg, seg_t0, seg_fs = csc._read_channel_window(session, ch, t0, t1)
         actual_t0, fs = seg_t0, seg_fs
@@ -280,6 +306,83 @@ def _robust_clim(m, pct=99.5, symmetric=True, dyn_range=None):
     return (lo, hi)
 
 
+# The theta band, as the panel band-passes it. Same numbers as
+# `spectrum.BANDS` and `store`'s theta preset, so the panel and the spectrum
+# beside it are never quietly talking about different rhythms.
+THETA_BAND = (4.0, 12.0)
+
+# How far the CSD's spatial smoothing is allowed to reach. Past a few
+# channels the second derivative has been averaged back into the field it
+# was meant to remove, so this is a guard rail rather than a preference.
+SMOOTH_MAX_SIGMA = 4.0
+
+
+def _smooth_channels(m, sigma):
+    """Gaussian smoothing DOWN the channel axis. `sigma` is in channels.
+
+    A CSD is a second difference, and a second difference amplifies whatever
+    is uncorrelated between neighbours -- a little noise on one contact comes
+    out as a stripe across the whole picture. So every CSD tool in this
+    lineage smooths across channels before drawing: icsd's `filter_csd`,
+    which Toothy calls through `get_csd_obj`, convolves each time column with
+    a normalised Gaussian window, `f_order=(3, 1)` by default -- three taps,
+    sigma one channel. Sigma is the knob here because it is the half of that
+    pair that says how far the smoothing reaches; the window length follows
+    from it rather than being a second number that can disagree with it.
+
+    One deliberate difference from icsd. Its 'same' convolution pads with
+    zeros, so the top and bottom rows are smoothed towards nothing and come
+    out fainter than they are -- an attenuation that looks exactly like a
+    real fall-off in current at the ends of the probe. Here the window is
+    renormalised by the weight that actually landed on data, so an edge row
+    is the average of the rows that exist. The same arithmetic carries NaN
+    rows (a bad channel left blank) without bleeding them into neighbours.
+    """
+    sigma = float(sigma or 0.0)
+    if sigma <= 0 or m.shape[0] < 2:
+        return m
+    sigma = min(sigma, SMOOTH_MAX_SIGMA)
+
+    n = m.shape[0]
+    half = min(max(1, int(np.ceil(3.0 * sigma))), n - 1)
+    offs = np.arange(-half, half + 1)
+    win = np.exp(-0.5 * (offs / sigma) ** 2).astype(np.float32)
+
+    good = np.isfinite(m)
+    data = np.where(good, m, 0.0).astype(np.float32)
+
+    num = np.zeros_like(data)
+    # When nothing is missing, the weight a row collects depends only on how
+    # near the end of the probe it is -- one column of it, not a whole
+    # array. That is the usual case and worth not allocating for.
+    all_good = bool(good.all())
+    den = (np.zeros(n, dtype=np.float32) if all_good
+           else np.zeros_like(data))
+    ones = np.ones(n, dtype=np.float32)
+
+    for w, off in zip(win, offs):
+        # out[i] gathers in[i + off], for the i where both ends exist.
+        dst0, dst1 = max(0, -off), min(n, n - off)
+        if dst0 >= dst1:
+            continue
+        src0, src1 = dst0 + off, dst1 + off
+        num[dst0:dst1] += w * data[src0:src1]
+        if all_good:
+            den[dst0:dst1] += w * ones[src0:src1]
+        else:
+            den[dst0:dst1] += w * good[src0:src1]
+
+    if all_good:
+        return num / den[:, None]
+    out = np.divide(num, den, out=np.full_like(num, np.nan), where=den > 0)
+    # A blank stays blank. Without this the smoothing quietly fills a bad
+    # channel in from its neighbours, which is a decision `bad_mode` already
+    # owns -- and a channel somebody marked bad would come back looking like
+    # data because they turned a smoothing knob.
+    out[~good] = np.nan
+    return out
+
+
 def _decimate_cols(m, max_cols=2000, spec=None, span=None):
     """Cap raster width; a raster wider than the screen buys nothing.
 
@@ -420,7 +523,7 @@ def _full_rate_ceiling(n, fs, what):
 
 
 # --------------------------------------------------------------------------
-def describe_input(session, spec, used=None):
+def describe_input(session, spec, used=None, band_locked=None):
     """One line saying what this analysis actually ran on.
 
     Every panel and the spike detector work on the window, channels and
@@ -433,19 +536,24 @@ def describe_input(session, spec, used=None):
     t1 = float(spec.get("t1", 0) or 0)
     span = max(0.0, t1 - t0)
 
-    hp = float(spec.get("highpass", 0) or 0)
-    lp = float(spec.get("lowpass", 0) or 0)
-    notch = float(spec.get("notch", 0) or 0)
-    if hp and lp:
-        band = "%g-%g Hz" % (hp, lp)
-    elif hp:
-        band = ">%g Hz" % hp
-    elif lp:
-        band = "<%g Hz" % lp
+    # A panel that fixed its own band never read the strip, so quoting what
+    # the strip is set to would be naming a filter that did not run.
+    if band_locked:
+        band = "%g-%g Hz (this panel only)" % (band_locked[0], band_locked[1])
     else:
-        band = "unfiltered"
-    if notch:
-        band += " +%gHz notch" % notch
+        hp = float(spec.get("highpass", 0) or 0)
+        lp = float(spec.get("lowpass", 0) or 0)
+        notch = float(spec.get("notch", 0) or 0)
+        if hp and lp:
+            band = "%g-%g Hz" % (hp, lp)
+        elif hp:
+            band = ">%g Hz" % hp
+        elif lp:
+            band = "<%g Hz" % lp
+        else:
+            band = "unfiltered"
+        if notch:
+            band += " +%gHz notch" % notch
 
     if used is not None:
         n_ch = len(used)
@@ -503,7 +611,8 @@ def render_panel(session, spec):
 
     if isinstance(out, dict) and out.get("ok"):
         out["input"] = describe_input(session, spec,
-                                      used=out.get("channels_used"))
+                                      used=out.get("channels_used"),
+                                      band_locked=out.get("band_locked"))
         # The traces panel gets its facts from `get_window`, which reports
         # in its own payload; fold them in so there is one place to look.
         win = out.pop("sampling", None)
@@ -537,17 +646,34 @@ def _panel_traces(session, spec):
 
 
 def _panel_raster(session, spec, mode):
-    stack, sel, t0, fs = _stack(session, spec)
-    # CSD is a second spatial derivative, so one NaN channel wipes out its two
-    # neighbours as well. Interpolating a bad channel from its neighbours keeps
-    # the profile intact -- the same thing the pipeline's "Interpolated_For_Viz"
-    # channels do. Voltage rasters have no such coupling, so a bad channel is
-    # simply left blank there.
-    bad_mode = spec.get("bad_mode") or ("interpolate" if mode == "csd" else "nan")
+    # The theta CSD owns its band.
+    #
+    # Every other panel reads through the filters that are set on screen,
+    # which is right: they are views of the recording and the recording is
+    # what the corners describe. This one is not a view of the recording,
+    # it is a measurement of one rhythm -- and a panel called "theta" that
+    # silently shows 300-500 Hz because somebody went looking for spikes in
+    # another pane is a picture with the wrong name on it. Worse, the two
+    # filters compose: a 300 Hz high-pass and then a 4-12 Hz band-pass is an
+    # empty band, so the panel would come back blank and true.
+    #
+    # So the session's corners are dropped for the read and the band-pass
+    # below is the only shaping this panel does. `describe_input` is told,
+    # so the line under the picture says 4-12 Hz whatever the strip says.
+    stack, sel, t0, fs = _stack(
+        session, spec, band=(THETA_BAND if mode == "theta" else None))
+    # Both CSD modes are a second spatial derivative, so one NaN channel wipes
+    # out its two neighbours as well. Interpolating a bad channel from its
+    # neighbours keeps the profile intact -- the same thing the pipeline's
+    # "Interpolated_For_Viz" channels do. The voltage raster has no such
+    # coupling, so a bad channel is simply left blank there.
+    bad_mode = spec.get("bad_mode") or (
+        "interpolate" if mode in ("csd", "theta") else "nan")
     stack, sel, _bad = _drop_bad(stack, sel, spec.get("bad_channels"),
                                  bad_mode)
 
     upsample = 1
+    smooth = 0.0
     if mode == "csd":
         spacing = float(spec.get("spacing_um", 50) or 50)
         if stack.shape[0] < 3:
@@ -560,9 +686,38 @@ def _panel_raster(session, spec, mode):
         upsample = int(spec.get("upsample", 2) or 1)
         default_cmap = "jet"
     elif mode == "theta":
-        matrix = np.vstack([csc.apply_filters(r, fs, 4.0, 12.0, 0.0) for r in stack])
-        rows = sel
-        units = "uV (4-12 Hz)"
+        # A theta CSD, not a theta voltage raster.
+        #
+        # It used to be the voltage raster with a 4-12 Hz band-pass on it,
+        # which shows where theta is BIG -- and where theta is big is mostly
+        # where the electrode sits nearest the dipole, so the picture is the
+        # far field and the sinks and sources it is supposed to localise are
+        # smeared across every channel. Removing that far field is the whole
+        # reason the second spatial derivative exists, and xplorefinder's
+        # Csdview is the view this is modelled on: CSDPP2's second
+        # difference, interp2 to fill it in, a symmetric colour range and
+        # depth running down the page.
+        #
+        # The band-pass already happened, in `_stack` above: it is this
+        # panel's own band, not the strip's, and putting it there is what
+        # lets the read decimate first. What is left is the derivative.
+        # Filtering across time and differencing across channels are both
+        # linear, so the order of the two could not have changed the answer.
+        spacing = float(spec.get("spacing_um", 50) or 50)
+        if stack.shape[0] < 3:
+            raise PanelError(
+                "A theta CSD needs at least 3 channels (it is a second "
+                "spatial derivative); %d selected." % stack.shape[0])
+        lo, hi = THETA_BAND
+        matrix = csc.compute_csd(stack, spacing)[1:-1]
+        rows = sel[1:-1]
+        units = "uA/mm3 (%g-%g Hz)" % (lo, hi)
+        upsample = int(spec.get("upsample", 2) or 1)
+        # Default one channel: icsd's own default window, and the amount
+        # that takes the single-contact speckle off without moving a
+        # boundary. 0 turns it off entirely.
+        smooth = (1.0 if spec.get("smooth") is None
+                  else max(0.0, float(spec.get("smooth") or 0.0)))
         default_cmap = "jet"
     else:
         matrix = stack
@@ -577,6 +732,19 @@ def _panel_raster(session, spec, mode):
                             spec=spec,
                             span=float(spec.get("t1", 0) or 0)
                                  - float(spec.get("t0", 0) or 0))
+
+    # After the decimation, not before it. Smoothing down the channel axis
+    # and averaging along the time axis are both linear and commute exactly,
+    # so this is the same answer computed on 1800 columns instead of two
+    # million -- and it has to happen before the colour range is taken, or
+    # the scale would describe a picture nobody is looking at.
+    #
+    # Deliberately NOT one of the `_report` steps. Those describe what the
+    # read gave up to be affordable, and their switch is "draw at full
+    # rate" -- which would not touch this. Smoothing is a setting with its
+    # own control, and it is reported as one, in `smooth` below.
+    if smooth > 0:
+        matrix = _smooth_channels(matrix, smooth)
 
     clim = _explicit_clim(spec)
     if clim is None:
@@ -614,6 +782,14 @@ def _panel_raster(session, spec, mode):
         "clim_manual": _explicit_clim(spec) is not None,
         "shape": list(matrix.shape),
         "upsample": upsample,
+        # What the smoothing control ended up at, clamped. Sent for every
+        # raster so the client never has to work out which modes have one.
+        "smooth": float(min(smooth, SMOOTH_MAX_SIGMA)),
+        "smooth_max": SMOOTH_MAX_SIGMA,
+        # The band this panel fixed for itself, ignoring the strip. Absent
+        # on the panels that do read the strip, so the client can tell the
+        # two apart without knowing which mode is which.
+        "band_locked": list(THETA_BAND) if mode == "theta" else None,
         "t0": t0, "t1": t0 + n_samp / fs, "fs": fs,
     }
 

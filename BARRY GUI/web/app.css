@@ -76,6 +76,23 @@
 
   --rail: 190px;
   --log-h: 260px;
+
+  /* VACC Mode -- see the section after the themes.
+
+     Inert here, and deliberately so: these six are the whole surface of a
+     layer that rides on top of whichever theme is on, and every one of them
+     resolves to "changes nothing" until `data-vacc` says otherwise. They are
+     declared beside the rest rather than inside the mode's own block because
+     a token that only exists under an attribute is a token that computes to
+     the empty string everywhere else, and an empty string in a border
+     shorthand is not a border the browser ignores -- it is a declaration the
+     browser drops, taking the rest of the shorthand with it. */
+  --fire: 0;                  /* 0..1, the dial anything continuous reads */
+  --fire-edge: transparent;   /* borders and spines */
+  --fire-glow: transparent;   /* bloom -- dark families only, see below */
+  --fire-wash: transparent;   /* a tint under a chrome surface */
+  --fire-rule: 1px;           /* hairline weight */
+  --fire-beat: 0s;            /* pulse period, while a job is actually live */
 }
 
 :root[data-theme="light"] {
@@ -491,6 +508,372 @@
 :root[data-theme="slate"], :root[data-theme="phosphor"],
 :root[data-theme="horizon-night"], :root[data-theme="jirai"],
 :root[data-theme="jirai-yami"] { color-scheme: dark; }
+
+/* ==========================================================================
+   VACC Mode -- a layer, not a theme
+
+   `data-vacc` is a second attribute on the root, orthogonal to `data-theme`,
+   and this section may redefine ONLY the six `--fire-*` tokens declared at
+   the top of this file. It must never touch one of the thirty colour tokens
+   every theme defines, and the reason is not tidiness:
+
+   `--accent-soft`, `--accent-line` and `--on-accent` are hand-written in each
+   theme rather than derived from `--accent`, and `--on-accent` is *measured
+   ink* for that exact accent -- #14231b on the gold, #ffffff on the three
+   light themes, with the ratios recorded in the comments above. CSS has no
+   contrast function, so `color-mix`ing a hotter accent here would produce
+   text nobody has checked can be read on it. An additive layer cannot do
+   that, which is what makes the orthogonality provable rather than promised:
+   `web/_dev/vaccskin.html` reads all thirty tokens in all ten themes with
+   the mode off and on and asserts every one is byte-identical.
+
+   Ten themes, three blocks. Everything here is mixed FROM the theme's own
+   `--accent` and `--line`, so each palette gets its own fired-up version and
+   a theme added later is covered the day it is added.
+   ========================================================================== */
+:root[data-vacc="on"] {
+  --fire: 1;
+  --fire-edge: color-mix(in srgb, var(--accent) 55%, var(--line));
+  --fire-wash: color-mix(in srgb, var(--accent) 7%, transparent);
+  --fire-rule: 2px;
+  --fire-beat: 2.4s;
+}
+
+/* Dark family: light to spare, so spend it.
+
+   The selector list is copied from the `color-scheme` grouping above rather
+   than rederived, because there are now two places that need to know which
+   themes are dark and they must not drift. If you add a theme, it goes in
+   both. */
+:root[data-vacc="on"][data-theme="dark"],
+:root[data-vacc="on"][data-theme="slate"],
+:root[data-vacc="on"][data-theme="phosphor"],
+:root[data-vacc="on"][data-theme="horizon-night"],
+:root[data-vacc="on"][data-theme="jirai"],
+:root[data-vacc="on"][data-theme="jirai-yami"] {
+  --fire-glow: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+/* Light family: no headroom, so weight instead of light.
+
+   A bloom on parchment's #faf6ef is a coffee stain and on jirai-shiro it is
+   a greetings card; neither reads as a computer working hard. Intensity on a
+   pale ground comes from edge and density, so the glow stays off and the
+   rules get darker and heavier. `in oklab` here and `in srgb` above because
+   this is the one mix that moves lightness rather than alpha, and srgb
+   muddies the hue on the way down. */
+:root[data-vacc="on"][data-theme="light"],
+:root[data-vacc="on"][data-theme="parchment"],
+:root[data-vacc="on"][data-theme="horizon"],
+:root[data-vacc="on"][data-theme="jirai-shiro"] {
+  --fire-glow: transparent;
+  --fire-edge: color-mix(in oklab, var(--accent) 80%, black);
+  --fire-wash: color-mix(in srgb, var(--accent) 10%, transparent);
+  --fire-rule: 2.5px;
+}
+
+/* Phosphor is a CRT. A CRT that glows is the joke landing, so it gets more
+   rather than the same. */
+:root[data-vacc="on"][data-theme="phosphor"] {
+  --fire-glow: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ---- the six surfaces that opt in ----------------------------------------
+
+   Six, not sixty. Everything here is chrome: the frame around the work, not
+   the work. Nothing inside a view body and nothing xplore draws, because a
+   trace has to look the same at 2am as at 9am or two screenshots of it
+   cannot be compared -- and this app exports figures. */
+
+/* 1. The rail's edge, which frames the whole application. `background-image`
+      rather than `background`, so the wash composites OVER whichever ground
+      the theme set instead of replacing it. */
+:root[data-vacc="on"] #rail {
+  position: relative;                 /* for the pulse, below */
+  border-right-width: var(--fire-rule);
+  border-right-color: var(--fire-edge);
+  background-image: linear-gradient(var(--fire-wash), var(--fire-wash));
+}
+
+/* 2. The strongest horizontal line in the app, and it is in every view. */
+:root[data-vacc="on"] .view-head {
+  border-bottom-width: var(--fire-rule);
+  border-bottom-color: var(--fire-edge);
+}
+
+/* 3. A spine on the active rail item. `box-shadow` inset rather than a
+      border, so nothing reflows, and the text colour is left exactly alone
+      -- `--accent` on `--accent-soft` is a measured pair. */
+:root[data-vacc="on"] .nav-item.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* 4. Buttons get a ring, and a bloom only where there is room for one. On
+      the light family `--fire-glow` is transparent, so this degrades to the
+      ring by itself rather than needing its own rule. */
+:root[data-vacc="on"] .btn {
+  box-shadow: 0 0 0 1px var(--fire-edge), 0 0 14px var(--fire-glow);
+}
+:root[data-vacc="on"] .btn.ghost { box-shadow: 0 0 0 1px var(--fire-edge); }
+
+/* 5. The brand mark, which already carries a glow -- it just burns harder. */
+:root[data-vacc="on"] .brand-mark {
+  box-shadow: 0 2px 10px var(--accent-soft), 0 0 18px var(--fire-glow);
+}
+
+/* 6. The pulse, and it is the only animated thing the mode adds.
+
+      `opacity` on one absolutely-positioned pseudo-element, never
+      `box-shadow` or `filter` on a real one: xplore repaints its canvases on
+      every pan frame, and an animated shadow anywhere above them forces the
+      whole stack to repaint with it.
+
+      Gated on `data-vacc-busy`, which is set only while a VACC job is
+      actually being polled. A permanently pulsing interface is a permanently
+      ignored one, and it would also be a lie -- the cluster is not always
+      working. */
+:root[data-vacc="on"] #rail::after {
+  content: ''; position: absolute; top: 0; bottom: 0; right: 0;
+  width: var(--fire-rule); background: var(--fire-edge);
+  opacity: 0; pointer-events: none; will-change: opacity;
+}
+:root[data-vacc="on"][data-vacc-busy] #rail::after {
+  animation: fireBeat var(--fire-beat) var(--ease-out) infinite;
+}
+@keyframes fireBeat {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 1; }
+}
+
+/* ---- the status panel and the per-recording chip -------------------------
+
+   These are the `.vacc-*` family, and unlike the six surfaces above they are
+   lit whether or not the mode is on: they are about the cluster rather than
+   about the look, and hiding them behind a display preference would be the
+   switch taking a control away. */
+.vacc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 18px;
+             margin: 8px 0 14px; }
+.vacc-row { display: flex; gap: 10px; justify-content: space-between;
+            padding: 3px 0; border-bottom: 1px solid var(--line-soft);
+            font-size: 12px; min-width: 0; }
+.vacc-k { color: var(--text-3); white-space: nowrap; }
+.vacc-v { color: var(--text); font-family: var(--mono); font-size: 11px;
+          overflow: hidden; text-overflow: ellipsis; }
+.vacc-state { font-size: 12.5px; margin: 2px 0 10px; }
+
+/* ---- looking around the cluster ---- */
+.vacc-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+               margin: 6px 0; }
+.vacc-crumb {
+  border: 0; background: transparent; cursor: pointer; font: inherit;
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  padding: 2px 5px; border-radius: 4px;
+}
+.vacc-crumb:hover { background: var(--bg-3); color: var(--text); }
+.vacc-crumb + .vacc-crumb::before { content: '/'; color: var(--text-3);
+                                    margin-right: 6px; }
+.vacc-ls {
+  max-height: 260px; overflow: auto; margin: 4px 0 10px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.vacc-ls-row {
+  display: flex; gap: 10px; justify-content: space-between; width: 100%;
+  text-align: left; padding: 4px 10px; font-size: 12px; font: inherit;
+  border: 0; border-bottom: 1px solid var(--line-soft);
+  background: transparent; color: var(--text); font-family: var(--mono);
+}
+.vacc-ls-row:last-child { border-bottom: 0; }
+.vacc-ls-row.dir, .vacc-ls-row.up { cursor: pointer; }
+.vacc-ls-row.dir:hover, .vacc-ls-row.up:hover { background: var(--bg-3); }
+.vacc-ls-row.dir::before { content: '▸ '; color: var(--text-3); }
+.vacc-ls-row.up { color: var(--text-3); }
+/* A recording is a leaf, and is not clickable: there is nothing below it
+   to browse into, which is the same reason discovery.py stops here. */
+.vacc-ls-row.rec { color: var(--accent); }
+.vr-n { color: var(--text-3); font-size: 10.5px; }
+.vacc-scan { margin-top: 10px; border-top: 1px solid var(--line-soft);
+             padding-top: 10px; }
+.vacc-scan details { margin: 4px 0; font-size: 11.5px; }
+.vacc-scan summary { cursor: pointer; color: var(--text-2); }
+.vacc-state.up { color: var(--ok); }
+.vacc-state.down { color: var(--text-2); }
+/* A live cluster shows on the chip even with the mode off, because whether
+   the thing is reachable is a fact and not a preference. */
+.chip-btn.vacc-live .dot, .chip-btn.vacc-live svg { color: var(--ok); }
+
+/* Green is reserved for "reads it in place", which is the only one of the
+   states that is a guarantee. A staged copy lives in scratch, which the
+   cluster purges without notice, so it takes the warning colour -- the same
+   argument `.flagchip.concat.safe` already makes about green reading as
+   "nothing to see here". */
+.flagchip.vacc.native { color: var(--ok); border-color: var(--ok); }
+.flagchip.vacc.staged { color: var(--warn); border-color: var(--warn); }
+
+/* The mark on a ToolKit tool that has somewhere else to run. Small, and it
+   sits beside the name rather than under it: it is a property of the tool,
+   not a sentence about it. Dim when the cluster is configured but not
+   answering, so it says "there is a VACC and it is not there right now"
+   rather than disappearing and saying nothing. */
+/* On a bundle step the mark gets its own column at the end, rather than
+   landing in the one the name and blurb share and pushing the blurb onto a
+   third row. `.tk-step` is 15px / 1fr, so this adds the third. */
+.tk-step { grid-template-columns: 15px 1fr auto; }
+.tk-step .tk-vacc {
+  grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0;
+}
+
+.tk-vacc {
+  margin-left: auto; align-self: center;
+  font-size: 9px; font-weight: 700; letter-spacing: .07em;
+  padding: 2px 5px; border-radius: 4px;
+  border: 1px solid var(--line); color: var(--text-3);
+  font-family: var(--mono); line-height: 1;
+}
+.tk-vacc.up { border-color: var(--fire-edge, var(--accent-line));
+              color: var(--accent); background: var(--accent-soft); }
+
+/* Why a scan can or cannot go to the cluster, under the buttons it explains. */
+.vacc-why { margin: 6px 0 0; }
+
+/* ---- this computer, or the cluster ----
+
+   Two tabs rather than a switch inside one panel, because they answer two
+   different questions. The locked one stays visible and says why it is
+   locked: a tab that is simply absent teaches nobody that the cluster is
+   there at all. */
+.inc-tabs { display: flex; gap: 8px; margin: 0 0 14px; }
+.inc-tab {
+  flex: 1 1 0; min-width: 0; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 14px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--bg-2);
+  color: var(--text-2); font: inherit;
+}
+.inc-tab strong { font-size: 13px; color: var(--text); }
+.inc-tab span { font-size: 11px; color: var(--text-3); }
+.inc-tab:hover:not(.locked) { background: var(--bg-3); }
+.inc-tab.on {
+  border-color: var(--accent-line); background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.inc-tab.on strong { color: var(--accent); }
+.inc-tab.locked { opacity: .55; cursor: not-allowed; }
+
+/* ---- picking which recordings go ---- */
+.inc-pick-list {
+  margin: 10px 0; max-height: 320px; overflow: auto;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+}
+.inc-pick {
+  display: grid; grid-template-columns: auto minmax(0,1fr) auto auto;
+  gap: 10px; align-items: center; padding: 5px 10px;
+  font-size: 12px; cursor: pointer; border-bottom: 1px solid var(--line-soft);
+}
+.inc-pick:last-child { border-bottom: 0; }
+.inc-pick:hover { background: var(--bg-3); }
+.ip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-where { font-size: 9px; font-weight: 700; letter-spacing: .06em;
+            color: var(--accent); font-family: var(--mono); }
+.ip-done { font-size: 10.5px; color: var(--ok); white-space: nowrap; }
+.inc-blocked { margin: 8px 0; font-size: 11.5px; color: var(--text-3); }
+.inc-blocked summary { cursor: pointer; }
+
+/* The plots for the row above, not for the list. */
+.inc-drop {
+  margin: 2px 0 10px; padding: 10px 12px 2px;
+  border: 1px solid var(--accent-line); border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-2);
+}
+
+/* ---- a batch, and the queue it leaves behind ---- */
+.inc-batch { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+.inc-batch-row {
+  display: flex; gap: 12px; justify-content: space-between; align-items: baseline;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  font-size: 11.5px; background: var(--bg-2); min-width: 0;
+}
+.inc-batch-row.running { background: var(--accent-soft); }
+.inc-batch-row.failed .ib-state { color: var(--err); }
+.ib-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
+           white-space: nowrap; }
+.ib-state { color: var(--text-3); font-family: var(--mono); font-size: 10.5px;
+            white-space: nowrap; }
+
+.inc-reviews { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+.inc-review {
+  display: grid;
+  grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto auto auto;
+  gap: 12px; align-items: baseline; text-align: left;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft); background: var(--bg-2);
+  color: var(--text); cursor: pointer; font: inherit; font-size: 12px;
+}
+.inc-review:hover { background: var(--bg-3); }
+.inc-review.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.ir-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
+           white-space: nowrap; }
+.ir-pick { color: var(--text-2); font-family: var(--mono); font-size: 11px; }
+.ir-margin { color: var(--text-3); font-size: 10.5px; white-space: nowrap; }
+/* A near-tie is the row worth opening, so it is the row that is coloured. */
+.ir-margin.close { color: var(--warn); }
+.ir-where { font-size: 9px; font-weight: 700; letter-spacing: .06em;
+            color: var(--accent); font-family: var(--mono); white-space: nowrap; }
+/* Banked is stated, not hidden. Coming back to thirty of these, "which ones
+   have I already done" is the first question, and a row that vanishes when
+   it is banked answers it by making the list shorter -- which looks exactly
+   like a batch that did not finish. */
+.ir-banked { color: var(--text-3); font-size: 10.5px; white-space: nowrap; }
+.inc-review.banked .ir-banked { color: var(--ok); }
+
+/* The chip that turns it on. Lit when the mode is, so the control and what
+   it controls agree at a glance -- and readable when it is not, which is why
+   this is a border and a text colour rather than the button filling in. */
+.chip-btn.on {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* A single-purpose window is one thing on a screen. A glowing frame around
+   it is noise with nothing to frame, so the layer is nulled out rather than
+   inherited through `?vacc=`.
+
+   The `:root[data-vacc="on"]` prefix is not decoration. Without it these
+   read (1,1,1) against the layer's (1,2,0) and lose every one of them --
+   measured: the pop-out kept a 2px lit rail and its wash. An opt-out has to
+   outrank the thing it is opting out of.
+
+   The rail is `display: none !important` in a solo window anyway (see
+   further down), so its entries here are belt to that brace -- and worth
+   keeping only because `display:none` is a decision made somewhere else
+   that this section should not depend on. What actually matters on screen
+   are the header rule and the buttons, which are visible. */
+:root[data-vacc="on"] body.solo-window #rail,
+:root[data-vacc="on"] body.aid-window #rail,
+:root[data-vacc="on"] body.solo-window .view-head,
+:root[data-vacc="on"] body.aid-window .view-head,
+:root[data-vacc="on"] body.solo-window .btn,
+:root[data-vacc="on"] body.aid-window .btn,
+:root[data-vacc="on"] body.solo-window .brand-mark,
+:root[data-vacc="on"] body.aid-window .brand-mark {
+  box-shadow: none;
+  border-right-width: 1px; border-bottom-width: 1px;
+  background-image: none;
+}
+:root[data-vacc="on"] body.solo-window #rail::after,
+:root[data-vacc="on"] body.aid-window #rail::after { content: none; }
+
+/* The house pattern: name the component and stop its animation, rather than
+   zeroing the duration. A zero-length animation is still an animation, and
+   some engines paint its first frame before deciding that. The look stays --
+   reduced motion is a statement about movement, not about contrast. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-vacc="on"][data-vacc-busy] #rail::after {
+    animation: none;
+    opacity: 0.6;
+  }
+}
 
 /* ---- the picker ---- */
 .theme-pop {
@@ -1529,6 +1912,15 @@ code { font-family: var(--mono); }
   background: var(--ok-soft); color: var(--ok);
 }
 .flagchip.concat.fixed:hover { background: var(--ok); color: var(--bg); }
+/* Detected in house: the DS was never on the wrong clock, so there is
+   nothing to correct -- but the recording still HAS the gaps. Yellow rather
+   than green for exactly that reason: green reads as "nothing to see", and
+   Kilosort unit times for the same session are still in concatenated time.
+   What is safe is the dentate spikes, not the recording. */
+.flagchip.concat.safe {
+  background: var(--warn-soft); color: var(--warn);
+}
+.flagchip.concat.safe:hover { background: var(--warn); color: var(--bg); }
 
 /* ---------- history + errors ---------- */
 .hist-row { display: flex; align-items: center; gap: 8px; width: 100%;
@@ -3752,7 +4144,23 @@ button.tag:hover { filter: brightness(1.25); }
 }
 .tk-tool:hover { background: var(--bg-hover); }
 .tk-tool.on { border-color: var(--accent); background: var(--accent-soft); }
+/* The icon sits on the name's baseline row; the blurb stays full width
+   underneath it rather than indenting to clear the icon, because the blurb
+   is a paragraph and a paragraph with a hanging indent is harder to read
+   than one without. */
+.tk-tool-head { display: flex; align-items: center; gap: 7px; }
 .tk-tool strong { font-size: 12.5px; }
+.tk-ico {
+  width: 16px; height: 16px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  color: var(--text-3);
+  transition: color .15s ease;
+}
+.tk-tool:hover .tk-ico { color: var(--text-2); }
+/* Open: the mark takes the accent, so the row that is showing is obvious
+   from the shape as well as from the border. */
+.tk-tool.on .tk-ico { color: var(--accent); }
 .tk-tool span { font-size: 11px; color: var(--text-2); line-height: 1.5; }
 .tk-soon {
   font-size: 11px; color: var(--text-3); line-height: 1.55;
@@ -5885,6 +6293,23 @@ body.aid-window .xf-tabs { display: none !important; }
 /* A segmented chooser in a popover: three states of one setting, so they
    look like one control rather than three buttons. */
 .ctl-seg { display: inline-flex; gap: 0; }
+
+/* A channel on the overview strip: the colour its line is drawn in, the
+   channel's own name, and the x that takes it off again. Wrapping,
+   because ten of these do not fit a popover on one line, and the row
+   they sit in is the answer to "which channels is this reading" --
+   truncating it would hide the ones somebody is looking for. */
+.strip-chip { display: inline-flex; align-items: center; gap: 5px; }
+.strip-chip .hint { opacity: 0.7; }
+.strip-chip:hover .hint { opacity: 1; }
+.strip-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  display: inline-block; flex: none;
+  /* The strip's ground is dark whatever the theme, and these colours
+     are chosen against it; a hairline keeps the palest of them off a
+     pale popover. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
 .ctl-seg .mini { border-radius: 0; margin: 0; }
 .ctl-seg .mini:first-child {
   border-top-left-radius: 5px; border-bottom-left-radius: 5px;
@@ -7092,6 +7517,140 @@ body.aid-window .xf-tabs { display: none !important; }
   border-radius: 3px; padding: 0 4px;
 }
 
+/* ---------- Incisor ---------- */
+/* The three landmarks, each with its own colour and its own pick. A row
+   rather than a line: the dropdown, what the scan chose and why, and what
+   the recording's own notes say are three different facts and stacking them
+   is how they stay distinguishable. */
+.inc-role {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 0; border-top: 1px solid var(--bg-2);
+}
+.inc-role:first-of-type { border-top: 0; }
+.inc-role-main { flex: 1; min-width: 0; }
+.inc-role-head { display: flex; align-items: center; gap: 8px;
+                 flex-wrap: wrap; }
+/* A ghost button that is currently the answer. `.chip-btn.on` already means
+   this; a `.btn.ghost` had no such state, and "Most spikes: CSC41" needs to
+   say whether pressing it is what put the hilus there. */
+.inc-role-head .btn.ghost.on {
+  color: var(--accent); border-color: var(--accent-line);
+}
+.inc-role-head select {
+  font: inherit; font-size: 11.5px; padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); color: var(--text);
+}
+.inc-role p { margin: 4px 0 0; }
+/* The swatch ties the row to its line on the traces; same colour, same
+   meaning, and it sits on the name so the two are read together. */
+.inc-dot {
+  width: 11px; height: 11px; border-radius: 3px; flex: none;
+  margin-top: 4px;
+}
+
+/* What the scan will read, and what it will not. Boxed off from the rest
+   of the step because it is a statement about this recording rather than
+   another control: the channel count above it is meaningless without it. */
+.inc-selection {
+  margin-top: 12px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.inc-sel-head { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; }
+.inc-selection p { margin: 0 0 6px; }
+.inc-selection p:last-of-type { margin-bottom: 0; }
+
+.inc-chan-edit { margin-top: 10px; }
+.inc-chan-edit > summary {
+  cursor: pointer; font-size: 12px; color: var(--text-2); padding: 4px 0;
+}
+.inc-chan-edit > summary::marker { color: var(--text-3); }
+/* Dense on purpose: sixty-four channels have to be seen at once for the
+   pattern of which ones are out to be visible at all, and `auto-fill` on a
+   narrow column is what keeps that true in a side panel as well as a wide
+   one. */
+.inc-chan-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 2px 8px; margin: 8px 0 4px;
+}
+.inc-chan {
+  display: flex; align-items: center; gap: 5px;
+  font: 11px var(--mono); color: var(--text-2);
+  padding: 2px 4px; border-radius: 4px; cursor: pointer;
+}
+.inc-chan:hover { background: var(--bg-3); }
+.inc-chan input { margin: 0; cursor: pointer; }
+/* A channel that is out is dimmed and struck through rather than hidden.
+   You cannot put back what you cannot see. */
+.inc-chan.bad { color: var(--text-3); }
+.inc-chan.bad span { text-decoration: line-through; }
+
+/* The three per-channel plots, side by side the way Toothy draws them --
+   count, amplitude, height above surround read as one picture and separating
+   them costs the comparison. `auto-fit` with a floor rather than three fixed
+   columns: in a narrow tool pane three 120px plots are unreadable, and one
+   full-width plot per row is the right answer there. */
+.inc-plots {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px; margin: 8px 0 2px;
+}
+.inc-plot {
+  display: block; width: 100%;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+}
+.inc-plot:hover { border-color: var(--accent-line); }
+/* The readout under them. Given a fixed height so the block does not jump
+   by a line every time the pointer leaves a plot. */
+.inc-plot-read {
+  min-height: 1.5em; margin: 2px 0 0; font-variant-numeric: tabular-nums;
+}
+
+/* The detection parameters. Each is a number that decides what counts as a
+   dentate spike, so each gets a sentence and Toothy's own name for it. */
+.incisor-params { margin-top: 10px; }
+.incisor-params > summary {
+  cursor: pointer; font-size: 12px; color: var(--text-2);
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+}
+.incisor-params > summary::marker { color: var(--text-3); }
+.inc-param-tag {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+  padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--text-3);
+}
+.incisor-params[open] > summary { margin-bottom: 6px; }
+.inc-param-body > p { margin: 0 0 10px; max-width: 74ch; }
+.inc-params-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2px 18px;
+}
+.inc-param { padding: 8px 0; border-top: 1px solid var(--bg-2); }
+.inc-param-head {
+  display: flex; align-items: baseline; gap: 8px; justify-content: space-between;
+}
+.inc-param-name {
+  display: inline-flex; align-items: baseline; gap: 6px; font-size: 12px;
+}
+.inc-param-name input {
+  width: 72px; font: inherit; font-size: 12px; padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); text-align: right;
+}
+.inc-param-unit { font-size: 10.5px; color: var(--text-3); }
+/* The name it has in Toothy, because that is what somebody would grep for
+   and a panel that renames it quietly makes that harder. */
+.inc-param-src {
+  font: 10px var(--mono); color: var(--text-3);
+  background: var(--bg-2); padding: 1px 5px; border-radius: 4px;
+}
+.inc-param-why {
+  margin: 5px 0 0; font-size: 11px; color: var(--text-2);
+  line-height: 1.5; max-width: 52ch;
+}
+
 /* A window opened for one thing: no rail, because there is nowhere else in
    it to go. Same idea as `aid-window` on the panel pop-outs. */
 body.solo-window #rail { display: none !important; }
@@ -7366,3 +7925,967 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-left: 2px solid var(--line); background: var(--bg-2);
   border-radius: 0 5px 5px 0;
 }
+
+/* ==========================================================================
+   Panorama -- the whole recording at once.
+
+   Three steps stacked, and nothing is replaced as the next arrives: the
+   picture you were looking at is still there when the one after it lands.
+
+   `.hint.quiet/.ok/.warn` are scoped to this tool rather than defined
+   globally. They are used in several places in the JS and have never had
+   any CSS, so defining them at the top level would quietly restyle panels
+   nobody asked me to touch.
+   ========================================================================== */
+.pn-setup .hint.quiet, .pn-step .hint.quiet, .pn-running .hint.quiet,
+.pn-pane .hint.quiet { color: var(--text-3); }
+.pn-step .hint.ok { color: var(--ok); }
+.pn-step .hint.warn, .pn-pane .hint.warn { color: var(--warn); }
+
+.pn-row {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin: 8px 0;
+}
+.pn-lab { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+/* A <select> is as wide as its widest option, and a flex item will not
+   shrink below its content unless told to. Between them that is how one
+   dropdown made the whole pane scroll sideways. */
+.pn-row .inp { min-width: 0; max-width: 100%; }
+.pn-pick { max-width: 220px; }
+.pn-cmap-note { flex: 1 1 120px; min-width: 0; }
+.pn-field { display: inline-flex; align-items: center; gap: 6px; }
+.pn-num { width: 82px; }
+.pn-suffix { font-size: 11px; color: var(--text-3); }
+.pn-gap { flex: 0 0 18px; }
+.pn-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-2); cursor: pointer;
+}
+
+/* The cost, and the sentences that say what is about to happen. Stated
+   before anything is read, because a minute of silence with no bar is the
+   thing that makes people kill the tab. */
+.pn-cost { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 9px; }
+.pn-notes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pn-note {
+  font-size: 11px; color: var(--text-3);
+  background: var(--bg-2); border-radius: var(--radius-sm);
+  padding: 2px 7px;
+}
+.pn-cost-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pn-cost-line strong { font-size: 13px; }
+.pn-cost-line .btn { margin-left: auto; }
+
+/* The waiting screen. The spectrogram builds up in place. */
+.pn-preview { margin: 6px 0 12px; }
+.pn-preview-img {
+  display: block; width: 100%; height: 190px;
+  object-fit: fill; image-rendering: auto;
+  background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.pn-preview-cap { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+.pn-run-foot {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+}
+.pn-run-foot .btn { margin-left: auto; }
+
+/* The steps. */
+.pn-step { margin-top: 12px; }
+.pn-step-head {
+  display: flex; align-items: baseline; gap: 9px;
+  flex-wrap: wrap; margin-bottom: 10px;
+}
+.pn-step-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: var(--bg);
+  font-size: 11px; font-weight: 700;
+}
+.pn-step-head strong { font-size: 14px; }
+
+.pn-grid {
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px; align-items: start;
+}
+.pn-pane { min-width: 0; }
+.pn-pane-head {
+  display: flex; align-items: baseline; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 6px;
+}
+
+/* The spectrogram is a picture from the server; its axes are drawn over it
+   here, so re-colouring never means re-rendering text. */
+/* The border is on the CONTAINER, not the image.
+
+   With it on the image, the image's border box was two pixels bigger than
+   the absolutely-positioned canvas over it, so every frequency rule and
+   time label was drawn a pixel off the pixels it was labelling. One box,
+   one set of coordinates. */
+.pn-sg {
+  position: relative; line-height: 0;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pn-sg-img {
+  display: block; width: 100%; height: 260px;
+  object-fit: fill;
+  /* The checkerboard shows through where the recording has holes, because
+     a gap is drawn transparent rather than as a colour that could be
+     mistaken for data. */
+  background-color: var(--bg-2);
+  background-image:
+    linear-gradient(45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--line) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--line) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+.pn-sg-axes {
+  position: absolute; inset: 0; pointer-events: none;
+}
+
+.pn-canvas { display: block; width: 100%; }
+.pn-opts {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin-top: 7px;
+}
+.pn-pager { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.pn-saved { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; }
+.pn-saved code { font-size: 11px; color: var(--text-3); }
+
+@media (max-width: 1000px) {
+  .pn-grid { grid-template-columns: minmax(0, 1fr); }
+  .pn-cost-line .btn, .pn-run-foot .btn { margin-left: 0; }
+}
+
+/* ===== Panorama: many recordings at once =====================================
+   The tree is a grid rather than a table so a row can carry a sparkline and a
+   warning without either of them setting the column widths for everybody
+   else. Every selector here stays inside .pn-*, for the reason given in the
+   Panorama block above.
+   ========================================================================== */
+.pn-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+
+.pn-sets { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.pn-set {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px; align-items: baseline;
+  text-align: left; padding: 8px 10px; cursor: pointer;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); color: var(--text);
+}
+.pn-set:hover { background: var(--bg-hover); }
+.pn-set strong { font-size: 13px; }
+.pn-set .hint { grid-column: 1; }
+.pn-set-when { grid-row: 1 / span 2; font-size: 11px; color: var(--text-3); }
+
+/* Choosing the recordings. A list, not a picker: the point is to see a
+   cohort at once and tick the ones that belong in it. */
+.pn-picklist { margin: 10px 0; }
+.pn-picks {
+  max-height: 260px; overflow: auto; margin-top: 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.pn-pick-row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px; align-items: center; width: 100%;
+  text-align: left; padding: 4px 8px; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  color: var(--text); font-size: 12px;
+}
+.pn-pick-row:last-child { border-bottom: 0; }
+.pn-pick-row:hover { background: var(--bg-hover); }
+.pn-pick-row.on { background: var(--bg-hover); }
+.pn-pick-row.on .pn-tick { color: var(--ok); }
+.pn-tick { text-align: center; font-size: 11px; }
+
+/* The tree. */
+.pn-tree-head, .pn-tree-row {
+  display: grid;
+  grid-template-columns:
+    14px minmax(0, 2.2fr) 84px 76px 68px 56px 58px 88px minmax(0, 1fr);
+  gap: 8px; align-items: center;
+  padding: 4px 6px; font-size: 12px;
+}
+.pn-tree-head {
+  color: var(--text-3); font-size: 11px;
+  border-bottom: 1px solid var(--line); margin-top: 6px;
+}
+.pn-tree-group {
+  font-size: 11px; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 10px 0 2px 6px;
+}
+.pn-tree-row {
+  cursor: pointer; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.pn-tree-row:hover { background: var(--bg-hover); }
+.pn-tree-name { display: flex; flex-direction: column; min-width: 0; }
+.pn-tree-step { font-size: 10px; color: var(--text-3); }
+.pn-tree-ch { display: flex; flex-direction: column; }
+.pn-from { font-size: 10px; color: var(--text-3); }
+.pn-spark { display: block; }
+.pn-warn { font-size: 10px; color: var(--warn); }
+
+/* What each state looks like. The dot carries it, so the row itself does not
+   have to be coloured -- a whole row in red reads as "this is broken" when
+   most of what it is saying is "this has not started". */
+.pn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--line);
+}
+.pn-tree-row.running .pn-dot { background: var(--accent); }
+.pn-tree-row.done .pn-dot { background: var(--ok); }
+.pn-tree-row.failed .pn-dot { background: var(--err); }
+.pn-tree-row.interrupted .pn-dot { background: var(--warn); }
+.pn-tree-row.skipped .pn-dot { background: transparent;
+                               border: 1px solid var(--line); }
+.pn-tree-row.running { background: var(--bg-hover); }
+.pn-tree-row.failed .pn-tree-step { color: var(--err); }
+
+@media (max-width: 1100px) {
+  /* Drop the middle numbers before the name and the shape: which recording
+     it is and what it found are the two things worth the width. */
+  .pn-tree-head, .pn-tree-row {
+    grid-template-columns: 14px minmax(0, 2fr) 74px 76px 88px minmax(0, 1fr);
+  }
+  .pn-tree-head > :nth-child(5),
+  .pn-tree-head > :nth-child(6),
+  .pn-tree-head > :nth-child(7),
+  .pn-tree-row > :nth-child(5),
+  .pn-tree-row > :nth-child(6),
+  .pn-tree-row > :nth-child(7) { display: none; }
+}
+
+/* ===== Panorama: converged ===================================================
+   The pooled curves beside the two strip plots, because the curve is the
+   exploratory object and the strips are the claim - putting them in one row
+   is what stops a group difference being read off a curve whose n is six
+   without the six being visible.
+   ========================================================================== */
+.pn-conv {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 14px; align-items: start; margin-top: 10px;
+}
+.pn-conv-strips { display: flex; flex-direction: column; gap: 10px; }
+.pn-conv-key {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-top: 8px; font-size: 11px; color: var(--text-2);
+}
+.pn-key { display: inline-flex; align-items: center; gap: 6px; }
+.pn-key i {
+  width: 14px; height: 3px; border-radius: 2px; display: inline-block;
+}
+
+@media (max-width: 1100px) {
+  /* Stack rather than squeeze: a strip plot narrower than its labels is
+     not a smaller strip plot, it is an unreadable one. */
+  .pn-conv { grid-template-columns: minmax(0, 1fr); }
+  .pn-conv-strips { flex-direction: row; }
+  .pn-conv-strips > * { flex: 1 1 0; min-width: 0; }
+}
+@media (max-width: 700px) {
+  .pn-conv-strips { flex-direction: column; }
+}
+
+/* ===== Panorama: what each control does =====================================
+   An explanation that opens UNDER its own control rather than a tooltip, so
+   it can be read without holding the mouse still - and so it is there for
+   anybody driving this with a keyboard.
+   ========================================================================== */
+.pn-i {
+  flex: 0 0 auto;
+  width: 15px; height: 15px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line);
+  background: none; color: var(--text-3);
+  font: italic 600 10px/13px Georgia, serif;
+  cursor: pointer;
+}
+.pn-i:hover { color: var(--text); border-color: var(--text-3); }
+.pn-i.on {
+  background: var(--accent); border-color: var(--accent); color: var(--bg);
+}
+.pn-with-info { display: block; }
+.pn-info {
+  margin: 2px 0 8px; padding: 7px 10px;
+  font-size: 11.5px; line-height: 1.55; color: var(--text-2);
+  background: var(--bg-2);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  max-width: 78ch;
+}
+
+/* ==========================================================================
+   Something is happening
+   ========================================================================== */
+
+/* The one indicator that covers every request, because api() is the one place
+   they all pass through. Deliberately a hairline at the very top rather than
+   anything that moves the page: it has to be able to appear during a mutation
+   without shifting the list the person is looking at.
+   
+   It is only added to the DOM once anything has actually been slow -- see
+   BUSY in core.js -- so the usual case is that it never renders at all. */
+.net-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  /* Was a 2px hairline, which was doing its job and being missed. Four
+     pixels with a faint wash under it is still nothing to look at when the
+     app is idle, and is catchable out of the corner of an eye -- which is
+     the only way this is ever seen, because nobody is watching the top of
+     the window while they wait.
+
+     Still fixed, still a fixed height, so it cannot shift the list
+     underneath it during a mutation. That was the constraint, not the
+     thinness. */
+  height: 4px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s ease;
+  /* Two layers, not a pseudo-element: a `::before` track is painted AFTER
+     its parent's background and would have covered the sweep it is
+     supposed to sit behind. The travelling highlight is the first layer,
+     the track is the second, and only the first one's position is
+     animated. */
+  background:
+    linear-gradient(90deg,
+      transparent 0%, var(--accent) 50%, transparent 100%),
+    linear-gradient(var(--accent-soft), var(--accent-soft));
+  background-size: 46% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: -46% 0, 0 0;
+}
+.net-bar.on {
+  opacity: 1;
+  animation: netSweep 1.25s linear infinite;
+  /* Lifts it off a pale header on the light themes, where a 4px gold line
+     on white is otherwise about as loud as the 2px one was. */
+  box-shadow: 0 1px 6px var(--accent-soft);
+}
+
+@keyframes netSweep {
+  from { background-position: -46% 0, 0 0; }
+  to   { background-position: 146% 0, 0 0; }
+}
+
+
+/* Why the confirm dialog is still open. Sits under the question, where the
+   person is already looking, rather than in a toast behind a closed box. */
+.confirm-err {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--err);
+  border-left: 2px solid var(--err);
+  padding-left: 9px;
+}
+
+/* Somebody who does not want the movement still gets the indicator: it
+   stays, and stops sweeping. An indicator that vanishes under a motion
+   preference is the one case where the setting costs information.
+
+   The whole background is replaced rather than only its position: the bar
+   paints in two layers now, and parking a 46%-wide highlight at 50% leaves
+   the ends of the track bare, which reads as a bar that failed to load. */
+@media (prefers-reduced-motion: reduce) {
+  .net-bar.on {
+    animation: none;
+    background: linear-gradient(var(--accent), var(--accent));
+    opacity: .9;
+  }
+}
+
+/* A list that is on screen and being re-read, because somebody just changed
+   something in it. Not a skeleton: the rows stay, so you keep your place and
+   can still read them -- they just stop pretending to be current, and stop
+   taking clicks that would queue up behind the read already in flight. */
+.is-stale {
+  opacity: .55;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+
+/* ==========================================================================
+   Results: rooms
+   ==========================================================================
+   A heading per group, so a catalogue of four hundred reads as somewhere you
+   can walk through rather than a pile ordered by when it happened. */
+.res-rooms { display: flex; flex-direction: column; gap: 4px; }
+
+.room-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 2px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  /* Sticky, because the point of a heading is knowing which room you are in
+     while you are looking at the things in it. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+}
+.room-head h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--text);
+}
+.room-head .room-n { font-size: 11.5px; color: var(--text-3); }
+.room-head .btn { opacity: 0; transition: opacity .12s ease; }
+.room-head:hover .btn, .room-head .btn:focus-visible { opacity: 1; }
+
+/* The room for things the grouping does not apply to -- a lab-wide export
+   belongs to no animal. Set back, so it reads as the end of the list rather
+   than as another peer. */
+.room-head.aside h3 { color: var(--text-3); font-weight: 500; }
+
+.res-table .room-row td {
+  padding: 14px 8px 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 12.5px;
+}
+.res-table .room-row .room-n {
+  margin-left: 8px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+.res-table .room-row.aside td { color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .room-head .btn { transition: none; }
+}
+
+/* ==========================================================================
+   Results: the placard
+   ==========================================================================
+   What a result is of, who made it, with which code, and with what settings.
+   The settings used to arrive as one unbroken line of JSON, which is the
+   shape of an answer without being one -- and they are the part somebody is
+   here for six months later. */
+.prov .kv dd a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-line);
+}
+.prov .kv dd a:hover { border-bottom-color: var(--accent); }
+
+.prov-kin { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+
+.prov-params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 2px 0 4px;
+}
+.prov-params td {
+  padding: 3px 8px 3px 0;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+.prov-params td:first-child {
+  color: var(--text-3);
+  white-space: nowrap;
+  width: 1%;
+  padding-right: 14px;
+}
+.prov-params td:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  word-break: break-word;
+}
+.prov-params tr:last-child td { border-bottom: 0; }
+/* ==========================================================================
+   Overview strip: the band-power control
+
+   The strip can draw average magnitude or power in a band you set, and the
+   band edges are two number boxes with a word between them. Only the word
+   needed styling -- `.hint` had rules inside `.band-ctl` and `.field` but
+   none in a control popover, so "to" came out at body size next to two
+   11 px inputs.
+   ========================================================================== */
+.ctl-pop-row .hint {
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-family: var(--sans);
+}
+
+/* ==========================================================================
+   Choosing which version to work from
+
+   Asked in three places now -- the "New curation set" wizard, picking a set
+   up off the shelf, and switching while it is on the bench -- so it is one
+   object, not three. The wizard's .bm-row / .ver-n was here first and the
+   other two adopted it rather than inventing a second way to draw the same
+   question.
+   ========================================================================== */
+
+/* A version with no candidate-by-candidate snapshot cannot be a starting
+   point: there is nothing to put on the bench. The wizard has marked those
+   rows ' off' since it was written and nothing here ever drew it, so they
+   looked identical to the usable ones and only the dead radio said
+   otherwise. Cursor as well as opacity, because a row that does not respond
+   to a click has to look like one before the click. */
+.bm-row.off { opacity: .45; cursor: not-allowed; }
+.bm-row.off:hover { background: none; color: var(--text-2); }
+
+/* The list is taller than the bookmark list it inherits from: each row
+   carries a second line saying what picking it would do, and the worst real
+   history here (entry 7d5fa32206b4) has seven of them. 180px showed two. */
+.bm-list.ver-pick-list {
+  max-height: min(48vh, 420px);
+  gap: 2px;
+}
+.bm-list.ver-pick-list .bm-row {
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 1px solid transparent; border-radius: 6px;
+  /* Wraps rather than squeezes. The dialog is 96vw of whatever window it is
+     in, and in a 432 px one (the harness frame, and a laptop with the
+     browser at half width) the seven fixed parts of a row left the middle
+     column 41 px wide -- which turned "undecided 162" into "undecende…".
+     Given somewhere to go, who-and-when drops to its own line instead. */
+  flex-wrap: wrap;
+}
+.bm-list.ver-pick-list .bm-row.on {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.bm-list.ver-pick-list .bm-row > input { flex: none; margin-top: 2px; }
+.bm-list.ver-pick-list .ver-n { flex: none; margin-top: 1px; }
+.bm-list.ver-pick-list .flagchip { flex: none; margin-top: 2px; }
+.bm-list.ver-pick-list .person-what {
+  flex: 0 1 auto; min-width: 0; margin-left: auto; text-align: right;
+}
+
+/* 220 px of basis, not `flex: 1`. What the row is for is the middle column
+   -- what is in this version and what picking it would do -- so it is the
+   part that keeps its width and the rest of the row gives way. */
+.ver-pick-mid { flex: 1 1 220px; min-width: 0; display: flex;
+                flex-direction: column; gap: 2px; }
+/* The bookmark list's .mk-name ends in an ellipsis by design. Here it holds
+   a tally of categories, and a tally that stops halfway is not a tally. */
+.ver-pick-mid .mk-name {
+  white-space: normal; overflow: visible; text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+/* What the click would do, on every row rather than on the chosen one.
+   Which version you are about to make is the thing being decided; it cannot
+   be the thing you find out afterwards. Branching is the case people are
+   afraid of -- "will this overwrite what came after" -- so it is the one
+   that gets a colour, and the answer it gives is no. */
+.ver-does {
+  font-size: 10.5px; color: var(--text-3); font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.ver-does.branch { color: var(--warn); }
+.bm-row.off .ver-does { color: var(--text-3); font-style: italic; }
+
+/* Said again in full under the list, for the chosen one, because this is
+   where the second half of the answer lives: what happens to the decisions
+   that are already on the bench. */
+.ver-said { margin-top: 12px; }
+.ver-said .hint { margin-top: 6px; overflow-wrap: anywhere; }
+
+/* The big modal is 1240px wide for the figure builder. A list of seven
+   versions in it reads as a spreadsheet; held to a column it reads as a
+   question. */
+.ver-pick-wrap { max-width: 760px; }
+.ver-pick-wrap .confirm-msg { margin: 0 0 14px; }
+
+.flagchip.on-bench { background: var(--accent-soft); color: var(--accent); }
+
+/* The version on the curation bar. A button because it is the way to change
+   it, and quiet because it is a fact about the set rather than an action
+   competing with Bank and Leave. */
+.cur-ver {
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 1px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg-3); color: var(--text-2);
+}
+.cur-ver:hover { border-color: var(--accent-line); color: var(--accent); }
+/* A set nobody picked up from a named version banks onto whatever is
+   newest, which is a guess. Dashed, so it does not read as a stated fact. */
+.cur-ver.none { border-style: dashed; color: var(--text-3); }
+
+/* ==========================================================================
+   The layer legend, in More > Layers.
+
+   The bands in ordinary XploreFinder are read-only and have no rail beside
+   them, so the colours are the only thing on screen saying which band is
+   which -- and a wash at 10% is not a colour anybody names from memory. The
+   key is therefore part of the switch rather than an extra panel: it lists
+   only the regions this sheet actually uses, which on a hippocampal probe
+   is four or five of the vocabulary's dozen.
+
+   Swatches are squares with a border, not bare fills. At 10% alpha over a
+   dark raster a band and its unwashed neighbour differ by a few RGB values,
+   and a borderless chip of the same colour on the popover's background was
+   unreadable at 9px. The chip is drawn at full strength -- it names the
+   region, it does not have to look like the wash.
+   ========================================================================== */
+.layer-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+  /* Empty whenever the bands are off, and an empty flex row still takes the
+     popover's 5px group gap -- which reads as a stray blank line under the
+     note. */
+  margin: 0;
+}
+.layer-legend:empty { display: none; }
+.layer-key {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--text-2);
+}
+.layer-key i {
+  width: 9px; height: 9px; border-radius: 2px;
+  border: 1px solid var(--line); display: inline-block;
+}
+
+/* ==========================================================================
+   The Dentist -- the bundle in the ToolKit rail
+   ========================================================================== */
+/* A bundle is not a tool, and must not read as one. It is a group with an
+   order, so it gets an edge the flat buttons do not have and its steps are
+   numbered -- the numbering is the information, because each step has
+   nothing to show until the one before it has run. */
+.tk-bundle {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 70%);
+  border-radius: 6px;
+  padding: 10px 11px 11px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.tk-bundle.on { border-color: var(--accent); }
+.tk-bundle-hd { display: flex; align-items: center; gap: 7px; }
+.tk-bundle-hd strong { font-size: 12.5px; }
+.tk-bundle-hd .tk-ico { color: var(--accent); }
+.tk-bundle-c {
+  margin-left: auto; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-steps { display: flex; flex-direction: column; gap: 4px; }
+.tk-step {
+  display: grid; grid-template-columns: 15px 1fr; gap: 3px 8px;
+  align-items: center; text-align: left;
+  padding: 6px 8px; border-radius: 4px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer;
+}
+.tk-step:hover { background: var(--bg-hover); }
+.tk-step.now { background: var(--bg-3); border-color: var(--accent-line); }
+/* It is a `strong` so that a tool's name has one shape wherever it is
+   drawn; the weight is decided here rather than by the tag. */
+.tk-step-n { font-weight: 400; }
+.tk-step.now .tk-step-n { color: var(--text); font-weight: 600; }
+.tk-step-i {
+  font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.done .tk-step-n { color: var(--text); }
+.tk-step-s {
+  grid-column: 2; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.tk-step.now .tk-step-s { color: var(--accent); }
+
+/* ==========================================================================
+   Braces
+   ========================================================================== */
+.br-wrap { display: flex; flex-direction: column; gap: 12px; }
+.br-intro p { margin: 6px 0 0; }
+.br-empty strong { display: block; margin-bottom: 6px; }
+.br-set { width: 100%; }
+.br-warn { color: var(--warn); }
+.br-err { color: var(--err); }
+.br-note { border-left: 2px solid var(--accent); padding-left: 10px; }
+
+.br-fields { display: flex; flex-wrap: wrap; gap: 14px; }
+.br-field { display: flex; flex-direction: column; gap: 4px; }
+.br-field > label {
+  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.br-field input { width: 110px; }
+.br-hint { font-size: 10.5px; color: var(--text-3); }
+
+.br-dl { margin: 0; display: grid; gap: 4px; }
+.br-dl > div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 10px; }
+.br-dl dt { font-size: 11px; color: var(--text-3); margin: 0; }
+.br-dl dd { margin: 0; font-size: 12.5px; }
+
+.br-go { display: flex; align-items: center; gap: 12px; }
+.br-job {
+  flex: 1; display: flex; flex-direction: column; gap: 5px;
+  font-size: 12px; color: var(--text-2);
+}
+.br-bar {
+  height: 4px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-bar i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .2s linear;
+}
+
+.br-recent-list { display: flex; flex-direction: column; gap: 5px; }
+.br-recent-row {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 4px; padding: 7px 10px; font: inherit; cursor: pointer;
+  color: var(--text);
+}
+.br-recent-row:hover { background: var(--bg-hover); }
+.br-recent-row span { font-size: 11px; color: var(--text-3); }
+.br-recent-row.done { opacity: .72; }
+
+.br-head { display: flex; align-items: center; gap: 12px; }
+.br-head strong { display: block; font-size: 14px; }
+.br-sub {
+  font-size: 11.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.br-done { border-left: 3px solid var(--ok); font-size: 12.5px; }
+
+.br-counts {
+  display: flex; flex-wrap: wrap; gap: 0;
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.br-count {
+  padding: 11px 15px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px;
+  flex: 1 1 auto; min-width: 106px;
+}
+.br-count:last-child { border-right: 0; }
+.br-count b {
+  font-size: 19px; font-weight: 500; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.br-count span { font-size: 10.5px; color: var(--text-3); }
+.br-count.ok b { color: var(--ok); }
+.br-count.warn b { color: var(--warn); }
+
+/* The histogram answers "is this the right channel" before the table
+   answers "is this stamp right". */
+.br-hist { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
+.br-hist i {
+  flex: 1; display: block; background: var(--accent); opacity: .78;
+  border-radius: 1px 1px 0 0; min-height: 0;
+}
+.br-hist i.edge { background: var(--warn); }
+.br-axis {
+  display: flex; justify-content: space-between;
+  border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px;
+  font-size: 10px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.br-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.br-scroll {
+  overflow-x: auto; border: 1px solid var(--line); border-radius: 5px;
+}
+table.br-tbl {
+  border-collapse: collapse; width: 100%; font-size: 11.5px; min-width: 520px;
+}
+table.br-tbl th {
+  text-align: left; font-size: 10px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-3); font-weight: 600;
+  padding: 8px 11px; border-bottom: 1px solid var(--line);
+  background: var(--bg-2); white-space: nowrap; position: sticky; top: 0;
+}
+table.br-tbl td {
+  padding: 7px 11px; border-bottom: 1px solid var(--line-soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  color: var(--text-2);
+}
+table.br-tbl tr { cursor: pointer; }
+table.br-tbl tr:hover td { background: var(--bg-hover); }
+table.br-tbl tr:last-child td { border-bottom: 0; }
+table.br-tbl tr.flagged td { background: var(--warn-soft); color: var(--text); }
+table.br-tbl tr.said td { opacity: .78; }
+table.br-tbl td.st { width: 1%; }
+table.br-tbl td.why {
+  white-space: normal; min-width: 140px; color: var(--warn);
+}
+table.br-tbl tr.said td.why { color: var(--text-3); }
+.br-tbl .tick { color: var(--ok); }
+.br-tbl .flagmark, .br-bench-head .flagmark { color: var(--warn); }
+.br-tbl .dim { color: var(--text-3); }
+
+.br-accept { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.br-accept .hint { flex: 1 1 260px; }
+
+/* The bench: one channel, six hundred milliseconds, and the two lines the
+   decision is actually between. */
+.br-bench { position: sticky; bottom: 0; }
+.br-bench-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.br-canvas {
+  width: 100%; height: 190px; display: block;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--bg); touch-action: none; cursor: ew-resize;
+}
+.br-bench-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.br-key {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; color: var(--text-3);
+}
+.br-key kbd {
+  font-family: ui-monospace, Consolas, monospace; font-size: 10.5px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 3px; padding: 2px 6px; color: var(--text-2);
+  background: var(--bg);
+}
+
+.br-modal { max-width: 620px; }
+.br-confirm ul { margin: 8px 0; padding-left: 18px; }
+.br-confirm li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
+
+@media (max-width: 720px) {
+  .br-fields { gap: 10px; }
+  .br-field input { width: 92px; }
+}
+
+
+/* ==========================================================================
+   Naming a banked set
+   ========================================================================== */
+/* The name and the button that fills it in, on one line: the suggestion is
+   about the field it sits beside, and underneath it would read as an action
+   on the whole dialog. */
+.bank-name-row { display: flex; gap: 8px; align-items: stretch; }
+.bank-name-row input { flex: 1 1 auto; min-width: 0; }
+.bank-name-row .btn { flex: none; white-space: nowrap; }
+
+/* A ghost button that has something to say. Used where the current name
+   carries nothing about which recording it belongs to -- the press is still
+   optional, it is just worth noticing. */
+.btn.ghost.hot {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.btn.ghost.hot:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.inc-name { width: 100%; }
+
+@media (max-width: 560px) {
+  .bank-name-row { flex-direction: column; align-items: stretch; }
+}
+
+
+/* ==========================================================================
+   Braces -- which channels the sweep reads, and how they scored
+   ========================================================================== */
+.br-chans { display: flex; flex-direction: column; gap: 8px; }
+.br-chans-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.br-chans-head > label {
+  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+
+/* A grid rather than a list: sixty-four numbers read as a probe when they
+   are laid out in rows, and as a wall of text when they are not. */
+.br-chan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 4px;
+}
+.br-chan {
+  display: flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 4px 6px; cursor: pointer;
+  font-size: 11px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-2);
+}
+.br-chan input { margin: 0; flex: none; }
+.br-chan.on { color: var(--text); border-color: var(--accent-line); }
+.br-chan:hover { background: var(--bg-hover); }
+/* Marked bad: shown, unticked, and saying so. Hiding it would make a
+   ranking look complete when eight channels were never read. */
+.br-chan.bad { border-style: dashed; opacity: .72; }
+.br-chan.bad span { text-decoration: line-through; }
+.br-chan.bad.on { opacity: 1; text-decoration: none; }
+.br-chan.bad.on span { text-decoration: none; color: var(--warn); }
+
+.br-sweep { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.br-sweep.hidden { display: none; }
+.br-sweep-row {
+  display: grid; grid-template-columns: 4.2rem 1fr 4.5rem;
+  gap: 8px; align-items: center;
+  font-size: 11px; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.br-sweep-row .bar {
+  height: 8px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-sweep-row .bar i {
+  display: block; height: 100%; background: var(--text-3);
+}
+.br-sweep-row .v { text-align: right; }
+.br-sweep-row.won { color: var(--text); font-weight: 600; }
+.br-sweep-row.won .bar i { background: var(--accent); }
+
+
+/* Braces asks the same "which version" question the curation chooser does,
+   and draws it with the same .bm-row / .ver-n / .ver-pick-mid parts rather
+   than inventing a fourth way to draw one question. All this adds is the
+   room it needs inside a settings card -- the list itself is already
+   styled, including the disabled rows and the wrap at narrow widths. */
+.br-vers-field { gap: 6px; }
+.br-vers-field > label { margin-bottom: 2px; }
+.br-vers {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+  background: var(--bg);
+}
+/* A version nobody has to scroll for. Eight is the worst real history in
+   this archive and they fit; past that it scrolls rather than pushing the
+   button that runs the thing off the bottom of the card. */
+.br-vers.bm-list.ver-pick-list { max-height: min(38vh, 330px); }
+.br-vers .ver-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.br-vers .bm-row.off .ver-n { color: var(--text-3); }
+
+
+/* ==========================================================================
+   Braces -- waiting, and what a proposal would do
+   ========================================================================== */
+/* A read of sixty-four channels is minutes, so the line above the bar has to
+   say which channel and how much longer. "Reading the channelâ€¦" for three
+   minutes is indistinguishable from a hang. */
+.br-job-line {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.br-job-what { font-size: 12.5px; color: var(--text); }
+.br-job-sub {
+  font-size: 11px; color: var(--text-3); margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one sentence before the statistics: is this worth banking. */
+.br-verdict {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 80%);
+  border-radius: 6px;
+  padding: 13px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.br-verdict strong { font-size: 15px; letter-spacing: -.01em; }
+.br-verdict > span { font-size: 13px; color: var(--text-2); }
+.br-verdict .br-verdict-sub { font-size: 11.5px; color: var(--text-3); }
+

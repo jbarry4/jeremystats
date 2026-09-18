@@ -29,6 +29,9 @@ BARRY.strata = (function () {
   let brush = null;      // the region a drag paints, when one is armed
   let hover = -1;
   let saving = 0;
+  /* Bumped by every paint. A reply is only allowed to replace the sheet
+     if it is still the newest one outstanding -- see paint(). */
+  let paintSeq = 0;
 
   /* Which channels are picked out, by CSC number.
 
@@ -395,14 +398,53 @@ BARRY.strata = (function () {
 
   /* Give every selected channel a layer. This is what a tag click and a
      number key both end up calling. */
+  /* One request, not one per channel.
+
+     This was `for (const n of nums) await paint(n, regionId)`, so labelling a
+     selection of thirty-two channels was thirty-two POSTs in series, each
+     waiting on the last, each rewriting and re-fingerprinting the whole sheet
+     server-side. The route has taken a `labels` map the whole time -- and
+     layers.set_many is `@shards.atomic`, so the batch is also one write
+     instead of thirty-two chances to interleave with somebody else's. */
   async function labelPicked(regionId) {
     if (!picked.size) return false;
     const nums = Array.from(picked);
-    for (const n of nums) await paint(n, regionId);
+    const was = {};
+    const labels = {};
+    for (const n of nums) {
+      const key = String(n);
+      was[key] = sheet && sheet.labels[key] ? sheet.labels[key] : null;
+      labels[key] = regionId || null;
+      if (!sheet) continue;
+      if (regionId) sheet.labels[key] = regionId; else delete sheet.labels[key];
+    }
+    recount();
     /* The selection stays. Labelling a run and then finding one channel
        wrong is the common case, and clearing it would mean picking the
        whole run again to fix one. */
-    render();
+    patchRows(nums);
+
+    const mine = ++paintSeq;
+    saving += 1;
+    updateSaving();
+    try {
+      const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
+                                + '/set', { labels });
+      if (mine === paintSeq) sheet = res.sheet;
+    } catch (e) {
+      if (sheet) {
+        for (const key of Object.keys(was)) {
+          if (was[key]) sheet.labels[key] = was[key];
+          else delete sheet.labels[key];
+        }
+      }
+      recount();
+      toast('That did not save: ' + e.message, 'err', 8000);
+      patchRows(nums);
+    } finally {
+      saving -= 1;
+      updateSaving();
+    }
     return true;
   }
 
@@ -591,22 +633,77 @@ BARRY.strata = (function () {
     if (was === region) return;
     if (region) sheet.labels[key] = region; else delete sheet.labels[key];
     recount();
-    render();
+    patchRows([channel]);
 
+    /* Dragging across a rail fires one of these per channel, and they come
+       back in whatever order the server finishes them. `sheet = res.sheet`
+       replaced the entire sheet with the server's copy, so a slow answer
+       from the first channel of a drag would land after the last and undo
+       everything painted in between -- the channel count going backwards
+       mid-drag, which is exactly what stratacheck catches intermittently.
+
+       So: take the server's copy only if nothing has been painted since.
+       Same guard the bank and toolkit views already use for late replies. */
+    const mine = ++paintSeq;
     saving += 1;
     updateSaving();
     try {
       const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
                                 + '/set', { channel, region });
-      sheet = res.sheet;
+      if (mine === paintSeq) sheet = res.sheet;
     } catch (e) {
       if (was) sheet.labels[key] = was; else delete sheet.labels[key];
+      recount();
       toast('That did not save: ' + e.message, 'err', 8000);
-      render();
+      patchRows([channel]);
     } finally {
       saving -= 1;
       updateSaving();
     }
+  }
+
+  /* Update the rows a change actually touched, instead of rebuilding the rail.
+   *
+   * paint() used to call render(), and render() rebuilds every row element
+   * from scratch. During a drag that means destroying the element the cursor
+   * is currently over, sixty-four times, once per channel painted -- so a
+   * stroke can land on a node that is already detached and simply not
+   * register. That is why "dragging paints the channels it passes over"
+   * fails about half the time: the drag paints the first channel and then
+   * pulls the floor out from under itself.
+   *
+   * The rows are stable now and only their appearance changes. The run
+   * labels still get rebuilt, because a label change genuinely reshapes them,
+   * but they sit after the rows and nothing is dragging across them.
+   */
+  function patchRows(nums) {
+    const list = $('#strataRail') && $('#strataRail').querySelector('.strata-rows');
+    if (!list) { render(); return; }
+    const want = new Set((nums || []).map(Number));
+    channels().forEach((c, i) => {
+      if (want.size && !want.has(c.number)) return;
+      const row = list.children[i];
+      if (!row || !row.classList || !row.classList.contains('strata-row')) return;
+      const id = labelOf(c.number);
+      const reg = regionOf(id);
+      row.className = 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : '')
+                    + (picked.has(c.number) ? ' picked' : '');
+      if (reg) row.style.setProperty('--cat', reg.color);
+      else row.style.removeProperty('--cat');
+      row.title = c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled')
+                + '\nClick to select · shift-click for a range · then a '
+                + 'layer below, or its number';
+      const name = row.querySelector('.strata-name');
+      if (name) name.textContent = reg ? reg.name : '—';
+    });
+    // The runs are derived from every label, so they are rebuilt whole --
+    // but they are appended after the rows, so replacing them cannot pull a
+    // row out from under a drag.
+    const old = list.querySelector('.strata-spans');
+    const fresh = runLabels();
+    if (old) list.replaceChild(fresh, old);
+    else list.appendChild(fresh);
+    alignRail();
   }
 
   function recount() {
@@ -680,8 +777,28 @@ BARRY.strata = (function () {
   /* ==================================================================
      The overlay on the rasters
      ================================================================== */
-  function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes) {
-    if (!s || !sheet) return;
+  function draw(ctx, s, win, x0, plotW, y0, plotH, P, panelRes, opts) {
+    if (!s) return;
+
+    /* Module state while the labelling mode is open; the payload on the
+       session when it is not.
+
+       The guard here used to be `!sheet`, which is set only by enter()
+       and cleared by exit(), so every window that was not doing the labelling
+       -- the pop-out, and anything asking for a read-only look -- returned
+       immediately however much the payload below it held. The comment that
+       follows has described the intended behaviour since it was written;
+       this is the line that makes it true.
+
+       With the mode open these all resolve to the module's own, so the
+       labelling window is unaffected. */
+    const pay = s.strata || null;
+    const labels = (sheet && sheet.labels) || (pay && pay.labels) || null;
+    const regs = (regions && regions.length)
+      ? regions : ((pay && pay.regions) || []);
+    if (!labels) return;
+    const labelAt = (num) => labels[String(num)] || null;
+    const regAt = (id) => regs.find((r) => r.id === id) || null;
     /* `s.strata` is how the aid window knows there is a sheet to draw: it is
        a separate page with its own session objects and no module state.
 
@@ -693,8 +810,27 @@ BARRY.strata = (function () {
        the recording being the one under the sheet. */
     const mine = s.identity && s.identity.gid === gid;
     if (!s.strata && !mine) return;
-    let chans = channels();
+    /* Off the session being drawn, not the module's: in a pop-out the module
+       has no session at all, and channels() would answer with an empty
+       list. They are the same object in the labelling window. */
+    let chans = (s.info && s.info.channels) || channels();
     if (!chans.length) return;
+
+    /* ...but only where a lane is a channel.
+
+       A raster whose y axis is frequency -- a single-channel spectrogram
+       or scalogram, or the band-power map -- has no channel rows to report
+       and so reports none. Falling through to the every-channel default
+       below painted the layer colours evenly down a frequency axis: the
+       hilus band sitting across 40-60 Hz as though it meant something.
+       That is worse than drawing nothing, because it looks deliberate.
+
+       Tested as "was a panel passed, and did it decline to name rows"
+       rather than "are there rows": the traces pass no panel object at
+       all (xplore.js:7701) and they are channel lanes, so requiring rows
+       outright would turn the overlay off where it started. */
+    if (panelRes && !(Array.isArray(panelRes.rows)
+                      && panelRes.rows.length)) return;
 
     /* An image panel says which rows it actually drew.
 
@@ -715,12 +851,18 @@ BARRY.strata = (function () {
     }
     const lane = plotH / chans.length;
 
-    const alpha = washAlpha();
+    /* The reader's setting, unless the caller has one of its own.
+       XploreFinder's read-only look has its own strength control, kept
+       per session rather than per module: two panes of the same recording
+       can want different things, and neither of them is the labelling
+       mode's setting. */
+    const alpha = (opts && typeof opts.alpha === 'number')
+      ? opts.alpha : washAlpha();
     ctx.save();
     if (alpha > 0) {
       ctx.globalAlpha = alpha;
       for (let i = 0; i < chans.length; i++) {
-        const reg = regionOf(labelOf(chans[i].number));
+        const reg = regAt(labelAt(chans[i].number));
         if (!reg) continue;
         ctx.fillStyle = reg.color;
         ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
@@ -733,8 +875,14 @@ BARRY.strata = (function () {
        can answer and the rail cannot: the rail says "rows 30 to 41", the
        raster says whether those rows are the ones where the signal
        changes. Drawn whatever the wash is set to -- turning the layers down
-       is not a reason to stop showing what you are pointing at. */
-    if (picked.size) {
+       is not a reason to stop showing what you are pointing at.
+
+       Only while the mode is open. exit() does not empty `picked` -- it
+       has never had to, because nothing else could reach this function
+       -- so a selection left behind on the way out would otherwise come
+       back as an accent wash in a view whose whole promise is that it
+       changes nothing. */
+    if (sheet && picked.size) {
       ctx.globalAlpha = 1;
       ctx.strokeStyle = P.accent || '#4bc7f0';
       ctx.lineWidth = 1;
@@ -759,9 +907,9 @@ BARRY.strata = (function () {
     ctx.lineWidth = 1;
     let prev = null;
     for (let i = 0; i < chans.length; i++) {
-      const id = labelOf(chans[i].number);
+      const id = labelAt(chans[i].number);
       if (prev !== null && id !== prev) {
-        const reg = regionOf(id) || regionOf(prev);
+        const reg = regAt(id) || regAt(prev);
         ctx.strokeStyle = reg ? reg.color : P.accent;
         ctx.beginPath();
         ctx.moveTo(x0, Math.round(y0 + i * lane) + 0.5);
@@ -775,6 +923,14 @@ BARRY.strata = (function () {
 
   return {
     enter, exit, draw, alignRail,
+    /* The four strengths, and which one is chosen. Read-only viewers offer
+       the same vocabulary and come on at whatever this is set to; having
+       them keep a copy meant the same recording could look different
+       depending on which way you came into it, which is precisely what a
+       wash setting exists to stop. */
+    washes: WASHES.map((w) => ({ id: w.id, name: w.name, alpha: w.alpha,
+                                 why: w.why })),
+    washId: () => wash,
     // Same reason as curate.js: a reopen replaces the session object.
     rebind: (next) => {
       if (!next || !sheet) return;

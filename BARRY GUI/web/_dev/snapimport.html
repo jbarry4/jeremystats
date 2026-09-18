@@ -58,8 +58,8 @@ const byText = (D, sel, re) => Array.from(D.querySelectorAll(sel))
   await untilN(() => W.eval('BARRY'));
 
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  const tools = () => Array.from(D.querySelectorAll('.tk-tool'));
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 200);
+  const tools = () => Array.from(D.querySelectorAll('.tk-tool, .tk-step'));
   const pick = async (re) => {
     const b = tools().find((t) => re.test(t.textContent));
     if (b) { b.click(); await sleep(900); }
