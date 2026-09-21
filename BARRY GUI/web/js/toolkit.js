@@ -2974,6 +2974,19 @@ BARRY.views.toolkit = (function () {
        session picker. Through here rather than each tool fetching, so one
        sixty-second cache serves them all. */
     registryRows: registryRowsInternal,
+    /* And the read that fills it, for a tool that needs the rows rather than
+       merely preferring them.
+
+       `registryRows` is a getter over a cache nothing here is obliged to
+       have filled: Curation, StrataScope and Braid each warm it on their way
+       in, but a tool opened before any of those reads an empty list and
+       cannot tell that apart from a registry with nothing in it. Braces read
+       it that way for its bad-channel column and its reachability, and so
+       said "none bad" against forty-six recordings that have channels marked
+       and "can be read here" about every one of them. A tool that needs the
+       answer awaits this first; the cache is shared, so warming it twice
+       costs one request. */
+    loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
     /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
        to the tool row, and turning it on has to show up in the panel it is

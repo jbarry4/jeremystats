@@ -79,7 +79,50 @@ BARRY.braces = (function () {
      ================================================================== */
   async function paint() {
     render();
+    warmRegistry();
     if (!cands) await loadCandidates();
+  }
+
+  /* The registry, read rather than hoped for.
+
+     Three things on this panel are answered out of it and none of them can
+     be answered without it: which contacts a recording has marked bad, which
+     recordings this machine can open, and what to call them in the picker.
+     ToolKit holds one sixty-second cache of it for every tool, and
+     `registryRows` is a getter over that cache -- not a read. Whoever gets
+     there first pays for it, and until somebody does, the getter returns an
+     empty list.
+
+     Which is indistinguishable, from here, from a registry that knows
+     nothing. Braces was reached straight from the bundle, so usually nobody
+     had been there first: the bulk table said "none bad" against every set
+     -- including forty-six whose recordings have channels marked, which is
+     the whole cohort -- and "46 can be read here" about a list where 368 of
+     588 are actually mounted. Both read as facts. Neither was one.
+
+     Not awaited: the read takes seconds on a network share and nothing on
+     the first paint needs it, so the panel draws now and the columns that
+     depend on it fill in when it lands. */
+  async function warmRegistry() {
+    const tk = BARRY.views.toolkit;
+    if (!tk || !tk.loadRegistry || !tk.registryRows) return;
+    if (tk.registryRows().length) return;        // somebody already paid
+    try {
+      await tk.loadRegistry();
+    } catch (e) {
+      // Left alone deliberately. Every reader of these rows already copes
+      // with not having them -- a bad-channel chip that says "none bad" is
+      // wrong but harmless, and a toast about a background read nobody asked
+      // for is a worse answer than a column that fills in late or not at all.
+      return;
+    }
+    /* Not while something is moving: a full render rebuilds the bulk table,
+       which is what `paintBulkRow` exists to avoid during a run. Nor over an
+       open proposal -- none of what just arrived is on that screen, so
+       rebuilding it would cost a scroll position and buy nothing. This lands
+       during the same load as `loadCandidates`'s own render, which is the
+       one moment on this panel when a repaint disturbs nothing. */
+    if (!bulk.running && !job && !set_) render();
   }
 
   async function loadCandidates() {
@@ -1077,8 +1120,17 @@ BARRY.braces = (function () {
               path: where,
               bad_channels: want.sort((a, b) => a - b),
             });
-            if (BARRY.views.toolkit && BARRY.views.toolkit.refresh) {
-              await BARRY.views.toolkit.refresh();
+            /* Re-read the registry, forced.
+
+               `refresh` re-runs whichever ToolKit tool is on screen, which
+               is this one -- so it repainted the table out of the same
+               sixty-second cache the edit had just made wrong, and the chip
+               went on saying what it said before for up to a minute. The
+               cache has a force flag for exactly this: something changed
+               underneath it. */
+            const tk = BARRY.views.toolkit;
+            if (tk && tk.loadRegistry) {
+              try { await tk.loadRegistry(true); } catch (e2) {}
             }
             toast(want.length
               ? 'CSC' + want.join(', CSC') + ' will be interpolated on '

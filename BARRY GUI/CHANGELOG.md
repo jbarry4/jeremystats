@@ -15,6 +15,73 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.5 - The bad contacts were always there; the table was reading an empty cache
+
+### Fixed
+
+- **"none bad", against the whole cohort.** The bulk table in Braces showed
+  `none bad` on every row — all 46 sets whose recordings have contacts
+  marked, including m33 s8 at CSC8/41/59 and M13_HF4s2aug1 at CSC55/59. The
+  channels were in the store the whole time. The column was reading an empty
+  list and drawing it as an answer.
+
+  `registryRows` is a getter over ToolKit's sixty-second registry cache, not
+  a read of the registry. Curation, StrataScope and Braid each warm that
+  cache on their way in, so Braces worked whenever somebody had been through
+  one of those first — and only then. Reached the way the bundle reaches it,
+  ToolKit then step 3, nobody had, so the getter returned `[]` and every
+  consumer of it answered from nothing.
+
+  Two columns were wrong in the same direction, and both read as facts about
+  the recordings rather than about the cache. The other one is the count on
+  the bar: with no rows to judge against, `reachable` says yes to everything,
+  so a list where 368 of 588 are mounted reported every set as readable.
+
+  Braces now reads the registry itself when nobody has yet, and the columns
+  that depend on it fill in when it lands. Not awaited — the read takes
+  seconds on a network share and nothing on the first paint needs it, so the
+  panel draws at once, as before.
+
+- **A contact marked from the bulk table went on saying what it said
+  before.** The save wrote to the store and then called ToolKit's `refresh`,
+  which re-runs whichever tool is on screen — this one — so the table was
+  repainted out of the same cache the edit had just made wrong, and the chip
+  kept the old count for up to a minute. It forces a re-read now, which is
+  what the cache's force flag is for.
+
+- **Four rows of the bad-channel workbook had never landed correctly.** m5 s2
+  and m5 s7 held each other's lists — s2 carried the CSC8 that belongs to s7.
+  m21 s2 was missing CSC8. And m24 s4 listed CSC24, which is not a contact
+  anybody marked: it is the mouse number, read out of the wrong column by
+  whatever imported it. All four now match the sheet; the other 58 already
+  did.
+
+### Added
+
+- **`tools/import_bad_channels.py`**, so the sheet can be applied again
+  without anybody doing it by hand. Dry run by default, `--apply` to write,
+  and it reports each change as a difference — `+CSC8`, `-CSC24` — rather
+  than as two lists to compare by eye.
+
+  It resolves a row to a recording rather than to a mouse and session pair.
+  The numbering restarts per project here, so PTEN m13 s2 and KCNT1 m13 s2
+  are two recordings with one loose key and nine of the 62 rows collide that
+  way; matching on the pair alone writes a PTEN workbook into a KCNT1
+  record. Retired records are not candidates, the PTEN cohort wins a tie, and
+  anything still ambiguous is skipped and named.
+
+  It writes nothing for a session the sheet does not mention. Sixty-two rows
+  are not a statement about the other 526 recordings Jarvis knows, and
+  reading them as one would clear every channel anybody has marked by hand in
+  the trace view.
+
+- **`web/_dev/bracesbad.html`**, which goes straight to Braces from a cold
+  start — the route is the test, because entering through any other tool
+  warms the cache and hides the bug. It computes what each chip should say
+  from the registry and the bank rather than hardcoding counts, so it means
+  something on a machine other than the one it was written on. Seven checks;
+  three of them fail on the code as it was.
+
 ## 2026.09.21.4 - The read says what it is counting, and the list is the one you already know
 
 ### Fixed
