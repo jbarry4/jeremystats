@@ -320,9 +320,19 @@ class WarmCache(object):
         `before` is what the cache held, when the caller has already looked
         -- the whole answer is a megabyte and reading it twice to ask one
         question about it is a megabyte of parsing for nothing.
+
+        A process the launcher never armed skips the comparison entirely.
+        It cannot write and nobody was shown a cached answer, so reading a
+        1.2 MB file back and hashing it twice answers a question no one
+        asked -- 0.35 s added to the first `/api/registry` of every harness
+        run, for nothing. Unarmed, this is `build()` and a bookkeeping
+        entry, which is what the route did before this module existed.
         """
         with self._lock_for(name):
             first = name not in self._live
+            if not self._ever_armed:
+                self._live[name] = None
+                return build()
             # Read before writing, or the comparison is against itself.
             if before is _UNREAD:
                 before = self.read(name) if first else None
@@ -367,7 +377,7 @@ class WarmCache(object):
     # ------------------------------------------------------------------
     # The prime
     # ------------------------------------------------------------------
-    def prime(self, jobs, delay=2.5):
+    def prime(self, jobs, delay=5.0):
         """Recompute every warmed answer in the background, then shut the
         window.
 
@@ -376,10 +386,28 @@ class WarmCache(object):
         and finish later than one -- and the point of this is to be out of
         the way of the page that is loading, not to be quick about it.
 
-        `delay` is the same reasoning. The browser makes about fifteen
-        requests in its first two seconds; starting a heavy read into the
-        middle of that makes the cheap ones slow, which is the annoyance
-        this module exists to remove. It waits for that burst to land.
+        `delay` IS THE INTERESTING NUMBER, and it is five seconds because
+        of a lock rather than because of the disk.
+
+        `STORE.rebuild_index()` holds the store's write lock for the whole
+        of its eight seconds, and `set_prefs` wants that lock. The page
+        writes preferences on its way up -- the theme and VACC settings
+        being reconciled against this machine's own -- and at 2.5 s that
+        write landed in the middle of the rebuild and waited 7.5 s for it.
+        Measured both ways.
+
+        Nothing was waiting on that write, so nobody saw it. But the same
+        lock is the one a real click would want, and a page that is
+        interactive while a background thread holds the store shut for
+        eight seconds is the complaint this module exists to remove,
+        arriving by a different route. Five seconds puts the whole of the
+        boot's chatter in front of it.
+
+        It does not REMOVE the wait -- a write fifteen seconds in can still
+        queue behind the rebuild, exactly as it could before any of this,
+        when the same eight seconds ran on the `/api/sync/status` request
+        thread instead. Shortening it means holding that lock for less
+        time, which is a change to the store and not to this.
         """
         if self._priming:
             return

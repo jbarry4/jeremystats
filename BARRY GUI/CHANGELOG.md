@@ -45,6 +45,20 @@ This file is the only place the version is written. The app reads it.
   `tools/test_warmcache.py` checks each of those rules, and
   `web/_dev/warmboot.html` checks a real page load against a real store.
 
+  **The first boot after a pull is slow again**, on purpose. The cache is
+  stamped with the changelog version and the commit, and an update that
+  changes the shape of a payload must never hand the new interface last
+  week's shape. It costs exactly one boot.
+
+  One thing it does not fix: `rebuild_index` holds the store's write lock
+  for the whole of its eight seconds, so a write can still queue behind it.
+  That was always true — it used to happen on the `/api/sync/status`
+  request thread, where it was hidden behind the boot overlay. Now that the
+  page is live while it runs, the recompute waits five seconds before
+  starting so that the boot's own preference write is not caught by it;
+  measured, that write went from 7.5 s to 0.02 s. Actually shortening the
+  hold means changing how the store locks, which is a separate job.
+
 - **Nothing loading at startup moves you any more.** Reopening the
   recording you last had open finished with `setView('xplore')`: a quarter
   of a second after the interface appeared, whatever you were looking at
@@ -357,6 +371,85 @@ This file is the only place the version is written. The app reads it.
 - **The depth bars were labelled in microvolts** and have not been microvolts
   since they started being scored on the event-triggered template. Shown as a
   percentage of the strongest contact, which is what they are.
+
+## 2026.09.21.2 - What kind of recording this is, on the row; and the sync stops shouting
+
+### Fixed
+
+- **A dual-array recording now opens IN the dual layout.** The control said
+  "Dual array" from the moment it opened and the panes were a single array
+  until somebody switched to something else and back. The label was right,
+  the layout was wrong, and the two disagreed with no way to tell which one
+  the CSD had actually used — which is the worst available failure, because
+  everything still looks fine. The layout is applied on open, and again when
+  the probe table arrives, since it is fetched after the page is and a
+  recording reopened at startup can be on screen before it.
+
+- **The cluster catalogue's count described the wrong thing.** It said "587
+  registered" beside a tree of 109, which is the whole catalogue's number in
+  a panel that only ever shows what VACC can read. It now says "109 on VACC,
+  of 587", and says in the tooltip that the rest are not hidden by a filter
+  you can turn off — they are not there.
+
+### Added
+
+- **A chip on every row saying what kind of recording it is** — H3, H10,
+  HIP/M2 — on the drive scan, in Everything Jarvis knows and in Everything
+  VACC knows. Three states that are not degrees of confidence, so they are
+  not three shades of one colour:
+
+  **confirmed** (green, filled) somebody said so. **detected** (hollow,
+  warning-coloured) the channel count supports a guess and nobody has
+  agreed — the guess is *used*, because a dual implant drawn as one array is
+  worse than one drawn as two and marked unconfirmed, but it never draws as
+  a fact. **unknown** (a question mark) no count, or a count that supports
+  nothing.
+
+  Seventy of the seventy-one dual implants here are currently detected and
+  unconfirmed. Clicking a chip offers "Confirm — HIP/M2" as a single button,
+  because agreeing is the common case by a wide margin and making somebody
+  pick from a list seventy times is how a queue stops getting worked.
+
+  Drawn from `probes.state_of` and nowhere else. Three surfaces working the
+  state out themselves from `probe` and `n_channels` would eventually
+  disagree about what green means.
+
+- **Supabase carries the probe.** Migration 17 adds `probe`, `probe_source`
+  and `channel_banks` to `sessions`, and they sync both ways — confirming a
+  dual implant on the rig has to reach the desktop, or two machines compute
+  different CSDs from the same recording and neither looks wrong.
+  `probe_source` is only ever `manual` or absent: a guess is never written,
+  because once filed it is indistinguishable from an answer.
+
+### Changed
+
+- **The sync was spending 6.5 GB of egress a month on the word "nothing".**
+  Measured rather than guessed, with `tools/cloud_egress.py`: a pull asked
+  each of twenty-one tables "anything newer than X", and on a quiet cycle
+  every single answer was an empty list. The rows came to **7 KB** a cycle.
+  The **requests** came to 21 a cycle, at a cycle every 20 seconds —
+  **90,720 a day per machine**, and their HTTP overhead is essentially all
+  of the 6.5 GB. The bytes were never the problem.
+
+  Two changes, and either one helps on its own:
+
+  *One question instead of twenty-one.* Migration 17 adds a
+  `barry_watermarks` view — one row per table carrying its newest
+  `updated_at` — so a quiet cycle is a single small request and a busy one
+  fetches only the tables that actually moved. It falls back to asking
+  everything when the view is not there, which is what every clone looks
+  like until somebody runs the migration: a sync that refuses to work until
+  a migration has been applied everywhere is a sync that stops working for
+  whoever did not apply it.
+
+  *Backing off while idle.* A pull every 20 seconds is right when two people
+  are editing the same set. It is not right for the eight hours the rig sits
+  on the Sessions view with nobody in the room, and it was doing it anyway.
+  The interval now doubles each time a pull brings back nothing, up to about
+  five minutes, and drops straight back to 20 seconds the moment anything
+  arrives or anybody writes.
+
+  Together, an idle machine goes from 90,720 requests a day to about 270.
 
 ## 2026.09.21.1 - Two probes in two places, the cluster gets the catalogue, and signing in
 

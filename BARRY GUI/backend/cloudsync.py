@@ -32,6 +32,15 @@ BUCKET = "results"
 # Two-way tables, in dependency order: a child row whose parent is not there
 # yet is a foreign key violation, so sessions go before everything that
 # references them.
+#: Tables whose rows carry a `gid` and are refused by the database when no
+#: session has it. Kept beside ORDER so adding a table to one and forgetting
+#: the other is visible.
+GID_TABLES = (
+    "session_paths", "session_sightings", "bank_entries", "curation_sets",
+    "layer_sheets", "layer_labels", "results", "health_checks",
+    "tool_results",
+)
+
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
     "bank_entries",
@@ -1010,6 +1019,18 @@ class Sync:
     NO_INCREMENTAL = {"bank_snapshots"}
 
     ON_CONFLICT = {
+        # Keyed on the permanent id, and stated rather than left to the
+        # fallback: `_one_per_key` guesses `id` when nothing is named, and
+        # a session row has no `id` -- so a batch carrying one gid twice
+        # went up untouched and Postgres refused the whole thing with "ON
+        # CONFLICT DO UPDATE command cannot affect row a second time".
+        #
+        # It only takes one such record to stop every session syncing, and
+        # there is one here: a harness fixture whose timestamps collided
+        # with a real recording, leaving two local records under one gid.
+        # Repairing that record is worth doing and is a separate job; a
+        # push must not be the thing that notices.
+        "sessions": "gid",
         "session_paths": "gid,path",
         "session_sightings": "gid,machine",
         "mice": "project,mouse",
@@ -1038,6 +1059,37 @@ class Sync:
         rows = self.collect(include_history=include_history)
         started = cloud.now()
         sent, report = 0, {}
+
+        # Rows pointing at a recording that no longer exists anywhere.
+        #
+        # Half the tables here carry a foreign key to `sessions`, and a row
+        # whose gid has no session is refused by the database -- correctly,
+        # and with a 409 that takes the whole batch down and everything
+        # after it in the order with it. One orphaned layer sheet stopped
+        # layer_sheets, storyboards, results, presets, prefs, feedback,
+        # people, health_checks and tool_results from syncing, for
+        # everybody, and it did it silently because a push that fails is
+        # retried rather than reported.
+        #
+        # They are dropped rather than repaired: an orphan is a record of
+        # work on a recording that has been forgotten, and deciding what to
+        # do about it is a person's job. What is not a person's job is
+        # having every other table stop because of it. Counted, so the
+        # number is visible rather than a silence.
+        known = {r.get("gid") for r in (rows.get("sessions") or [])
+                 if r.get("gid")}
+        orphans = {}
+        if known:
+            for table in GID_TABLES:
+                have = rows.get(table)
+                if not have:
+                    continue
+                keep = [r for r in have
+                        if not r.get("gid") or r["gid"] in known]
+                if len(keep) != len(have):
+                    orphans[table] = len(have) - len(keep)
+                    rows[table] = keep
+
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
             if since and table not in self.NO_INCREMENTAL:
@@ -1052,8 +1104,11 @@ class Sync:
             # The time the push *started*: anything written while it ran must
             # be caught next time rather than skipped.
             self.cloud.save_state({"last_push": started})
-        return {"sent": sent, "tables": report, "dry_run": dry_run,
-                "since": since, "full": bool(full)}
+        out = {"sent": sent, "tables": report, "dry_run": dry_run,
+               "since": since, "full": bool(full)}
+        if orphans:
+            out["orphans"] = orphans
+        return out
 
     # ==================================================================
     # Files

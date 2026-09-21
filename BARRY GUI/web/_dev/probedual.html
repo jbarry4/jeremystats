@@ -212,6 +212,57 @@ async function until(fn, ms) {
   }
 
   say('');
+  say('=== opening one lays it out, without being asked twice ===');
+  /* The bug this is here for: the control said "Dual array" the moment the
+     recording opened and the panes were a single array until somebody
+     switched to something else and back. The label was right, the layout
+     was wrong, and the two disagreed with no way to tell which one the CSD
+     had used -- which is the worst available failure, because everything
+     still looks fine. */
+  const openable = big.filter((r) => r.can_open && (r.loadable || []).length);
+  say('    ' + openable.length + ' of the 128-channel recordings open here',
+      'note');
+  if (!openable.length) {
+    say('    none of them are on a drive this machine has mounted, so there '
+        + 'is nothing to open', 'note');
+  } else {
+    const gid2 = openable[0].gid;
+    const was2 = openable[0].probe || '';
+    await post('/api/registry/' + gid2 + '/probe', { probe: 'dual' });
+    try {
+      const path = (openable[0].loadable || openable[0].here || [])[0];
+      ev("setView('xplore')");
+      await sleep(400);
+      const opened = await ev('BARRY.views.xplore.open('
+                              + JSON.stringify(path) + ').then(function(s){'
+                              + 'return s ? s.id : null; })');
+      check('the recording opens', !!opened, String(opened));
+      await sleep(2500);
+      const st2 = JSON.parse(await ev(
+        'JSON.stringify({probe:(BARRY.views.xplore.state.sessions['
+        + JSON.stringify(opened) + ']||{}).probe,'
+        + ' panes: BARRY.views.xplore.state.panes.length,'
+        + ' tags: BARRY.views.xplore.state.panes.map(function(p){'
+        + '   return p && p.colTag; })})'));
+      say('    ' + JSON.stringify(st2), 'note');
+      check('it knows which probe it is without being told',
+            st2.probe === 'dual', String(st2.probe));
+      /* The assertion. Two panes, one per implant, from the open alone. */
+      check('and it is IN that layout already — two panes, not one',
+            st2.panes === 2, st2.panes + ' pane(s)');
+      check('each pane is one implant',
+            (st2.tags || []).filter(Boolean).length === 2,
+            JSON.stringify(st2.tags));
+      check('named for the regions rather than for shanks',
+            (st2.tags || []).join(',').indexOf('HPC') >= 0
+            && (st2.tags || []).join(',').indexOf('M2') >= 0,
+            JSON.stringify(st2.tags));
+    } finally {
+      await post('/api/registry/' + gid2 + '/probe', { probe: was2 });
+    }
+  }
+
+  say('');
   say('ran ' + checks + ' checks');
   say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
   document.title = fails ? 'probedual: ' + fails + ' FAILED'
