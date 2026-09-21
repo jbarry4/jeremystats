@@ -1,0 +1,64 @@
+{
+  "_at": {
+    "created": "2026-09-18T15:45:59.472245+00:00",
+    "gid": "2026-09-18T15:45:59.472245+00:00",
+    "group": "2026-09-18T15:45:59.472245+00:00",
+    "key": "2026-09-18T15:45:59.472245+00:00",
+    "label": "2026-09-18T15:45:59.472245+00:00",
+    "loose_key": "2026-09-18T15:45:59.472245+00:00",
+    "mouse": "2026-09-18T15:45:59.472245+00:00",
+    "project": "2026-09-18T16:08:04.730912+00:00",
+    "project_source": "2026-09-18T15:45:59.472245+00:00",
+    "retired": "2026-09-18T15:45:59.472245+00:00",
+    "schema": "2026-09-18T15:45:59.472245+00:00",
+    "session": "2026-09-18T15:45:59.472245+00:00",
+    "start": "2026-09-18T15:45:59.472245+00:00",
+    "updated": "2026-09-18T16:08:04.730912+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\wt\\KCNTM11_wt\\kcnt1m11s6aug3\\2022-08-03_16-45-57": [
+        "set",
+        "2026-09-18T15:49:03.028519+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T16:08:04.730912+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T11:45:59-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s176f61a3c372",
+  "group": null,
+  "key": "m011_s006_2022-08-03_16-45-57",
+  "label": "KCNT1 m11 s6 2022-08-03",
+  "loose_key": "m011_s006",
+  "mouse": 11,
+  "paths": [
+    "D:\\KCNT1\\urethane\\wt\\KCNTM11_wt\\kcnt1m11s6aug3\\2022-08-03_16-45-57"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 6,
+  "start": "2022-08-03T20:45:57+00:00",
+  "updated": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T12:08:04-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
