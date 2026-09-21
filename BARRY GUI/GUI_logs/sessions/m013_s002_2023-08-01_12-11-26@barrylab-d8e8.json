@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.661821+00:00",
     "session": "2026-09-04T15:57:01.661821+00:00",
     "start": "2026-09-04T15:57:01.661821+00:00",
-    "updated": "2026-09-10T18:15:43.573173+00:00",
-    "view_state": "2026-09-10T18:15:31.346177+00:00"
+    "updated": "2026-09-21T19:37:26.128421+00:00",
+    "view_state": "2026-09-21T19:37:26.128421+00:00"
   },
   "_keys": {
     "paths": {
@@ -68,12 +68,20 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-10T17:51:59.121094+00:00"
+        "2026-09-21T19:25:07.952800+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T17:25:06.470953+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-14T14:10:04.157321+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T18:15:43.573173+00:00",
+    "at": "2026-09-21T19:37:26.128421+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -143,21 +151,38 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-10T13:51:59-04:00",
+      "at": "2026-09-21T15:25:07-04:00",
       "by": "Rain Younger",
-      "machine": "Homebarry",
+      "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26",
       "root": null,
       "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T13:25:06-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M13_pten\\HF4s2aug1\\2023-08-01_12-11-26",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_97cbe5659e"
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-14T10:10:04-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M13_s2\\2023-08-01_12-11-26",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 2,
   "start": "2023-08-01T12:11:26",
   "updated": {
-    "at": "2026-09-10T14:15:43-04:00",
+    "app_version": "2026.09.21.7",
+    "at": "2026-09-21T15:37:26-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "Homebarry",
+    "machine": "Strawbarry",
     "os": "Windows",
     "user": "Rain Younger"
   },
@@ -200,18 +225,18 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
+    "gain": 2.25,
     "hp": 5,
     "invert": true,
     "lp": 100,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 1854.576,
+    "t0": 1811.558182,
     "ylim": null
   }
 }
