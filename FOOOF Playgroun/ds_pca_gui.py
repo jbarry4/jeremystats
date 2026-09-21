@@ -82,7 +82,7 @@ sys.path.insert(0, _HERE)
 import ds_pca                                                    # noqa: E402
 from ds_pca import (T_COND, T_DS_FREQ, T_F_ORDER, T_F_SIGMA, T_LFP_FS,
                     SURROUND_MS, WINDOW_MS, PAD_S, braces, csc, probes,
-                    toothy_csd, sink_channel, class_marker)                    # noqa: E402
+                    toothy_csd, sink_channel, class_marker, tort_order)                    # noqa: E402
 from dentate_spike_aligner import (BANK, FOLDER, LINE_Q,         # noqa: E402
                                    parse_channels, read_bank)
 
@@ -186,15 +186,17 @@ def flip_path(args):
 def load_flip(args):
     try:
         with open(flip_path(args), encoding="utf-8") as fh:
-            return bool(json.load(fh).get("flip"))
+            got = json.load(fh)
+        return bool(got.get("flip")), str(got.get("rule") or "tort")
     except Exception:
-        return False
+        return False, "tort"
 
 
 def save_flip(state):
     try:
         with open(flip_path(state["args"]), "w", encoding="utf-8") as fh:
-            json.dump({"flip": bool(state.get("flip"))}, fh)
+            json.dump({"flip": bool(state.get("flip")),
+                       "rule": state.get("rule", "tort")}, fh)
     except Exception as err:
         print("could not save the flip: %s" % err)
 
@@ -401,8 +403,9 @@ def recompute(state):
     # among sixty-four moves a mean over depth by almost nothing, so this is
     # a real limitation rather than a serious one; `--bad 59` at the command
     # line puts it in before the read if it ever matters.
-    bad = {**state["bad0"], **state["manual_bad"]}
-    if state["manual_bad"]:
+    manual = state.setdefault("manual_bad", {})
+    bad = {**state["bad0"], **manual}
+    if manual:
         sur = np.array([braces.repair(s, chans, bad) for s in sur])
         sur_band = np.array([braces.repair(s, chans, bad) for s in sur_band])
     if state["screen"]:
@@ -450,10 +453,18 @@ def recompute(state):
     # broadband features instead, and on this rig the two can disagree
     # because the mains moves the argmin. A label is a naming convention;
     # one you can check against the picture is the better convention.
-    rule = state.get("rule", "sources")
-    order = sorted(range(k), key=lambda c: (
-        class_marker(np.nanmean(prof[km.labels_ == c], axis=0), rule)[0]
-        if (km.labels_ == c).any() else 10 ** 6))
+    rule = state.get("rule", "tort")
+    mus = {c: np.nanmean(prof[km.labels_ == c], axis=0)
+           for c in range(k) if (km.labels_ == c).any()}
+    if rule == "tort":
+        live = sorted(mus)
+        rows_, upside = tort_order([mus[c] for c in live])
+        marker = dict(zip(live, rows_))
+        state["tort_upside"] = upside
+    else:
+        marker = {c: class_marker(mu, rule)[0] for c, mu in mus.items()}
+        state["tort_upside"] = False
+    order = sorted(range(k), key=lambda c: marker.get(c, 10 ** 6))
     if state.get("flip"):
         order = order[::-1]          # DS1 <-> DSk, by hand
     remap = {c: i + 1 for i, c in enumerate(order)}
@@ -472,11 +483,14 @@ def recompute(state):
             continue
         mu = np.nanmean(prof[rr], axis=0)
         j, peaks = class_marker(mu, rule)
+        if rule == "tort":
+            j = marker.get(int(km.labels_[rr[0]]), j)
         lows = [i for i in range(1, len(mu) - 1)
                 if mu[i] < mu[i - 1] and mu[i] < mu[i + 1] and mu[i] < 0]
         decide.append(dict(c=c, n=int(rr.size), row=j, csc=ns[j],
                            value=float(mu[j]), rule=rule,
-                           peaks=[(ns[r], v, pr) for r, v, pr in peaks],
+                           peaks=(peaks if isinstance(peaks, int) else
+                                  [(ns[r], v, pr) for r, v, pr in peaks]),
                            sink=ns[int(np.argmin(mu))],
                            lows=[ns[i] for i in lows], mu=mu))
 
@@ -590,6 +604,8 @@ def draw(state, res):
     # and quiet, which is a badly placed box sorting events by amplitude.
     ax = state["axes"]["profile"]
     ns = res["nums_sel"]
+    by_class = {d["c"]: d for d in res["decide"]}
+    src_rule = state.get("rule", "tort") == "sources"
     for c, rr in groups:
         if rr.size == 0:
             continue
@@ -597,14 +613,15 @@ def draw(state, res):
         sem = np.nanstd(res["prof"][rr], axis=0) / np.sqrt(rr.size)
         ax.fill_betweenx(ns, mu - sem, mu + sem, color=colors[c], alpha=.20,
                          lw=0)
+        d = by_class.get(c, {})
         ax.plot(mu, ns, color=colors[c], lw=1.9,
-                label="DS%d  sink CSC%s"
-                      % (c, sink_channel(res["prof"].T, ns, rr)))
-        # The point the rule actually used, marked. Without it the legend
-        # asserts a sink and the curve beside it has three.
-        j = int(np.argmin(mu))
-        ax.plot([mu[j]], [ns[j]], "o", ms=8, color=colors[c], mec="white",
-                mew=1.4, zorder=6)
+                label="DS%d  %s CSC%s" % (c, "source" if src_rule else "sink",
+                                          d.get("csc", "?")))
+        # The point the ACTIVE rule used, marked. Without it the legend
+        # asserts a landmark and the curve beside it has three.
+        if "row" in d:
+            ax.plot([mu[d["row"]]], [ns[d["row"]]], "o", ms=8,
+                    color=colors[c], mec="white", mew=1.4, zorder=6)
     ax.axvline(0, color="#444444", lw=.9, ls="--")
     draw_guides(state, ax)
     ax.set_ylim(max(ns) + .5, min(ns) - .5)
@@ -676,9 +693,18 @@ def draw(state, res):
     ax.set_yticks([])
     for sp in ax.spines.values():
         sp.set_visible(False)
-    src = state.get("rule", "sources") == "sources"
+    the_rule = state.get("rule", "tort")
+    src = the_rule == "sources"
     lines = [("HOW DS1/DS2 WAS DECIDED", INK, 9.5, "bold")]
-    if src:
+    if the_rule == "tort":
+        lines += [("rule: tortlab CSDbC -- the main", INK, 8.2, "normal"),
+                  ("SINK above the main SOURCE;", GREY, 8.0, "normal"),
+                  ("the shallower one is DS1.", GREY, 8.0, "normal")]
+        if state.get("tort_upside"):
+            lines.append(("(classes tied; re-read upside down,",
+                          "#a4531c", 7.8, "normal"))
+            lines.append((" as CSDbC does)", "#a4531c", 7.8, "normal"))
+    elif src:
         lines += [("rule: most prominent SOURCE peak", INK, 8.2, "normal"),
                   ("of each class's mean CSD profile;", GREY, 8.0, "normal"),
                   ("the shallower one is DS1.", GREY, 8.0, "normal")]
@@ -695,6 +721,9 @@ def draw(state, res):
                       % (d["c"], d["n"], "source" if src else "sink",
                          d["csc"], d["row"]),
                       colors.get(d["c"], INK), 8.4, "normal"))
+        if the_rule == "tort" and isinstance(d.get("peaks"), int):
+            lines.append(("     anchored to the source at CSC%d"
+                          % ns[d["peaks"]], GREY, 7.8, "normal"))
         if src and d.get("peaks"):
             lines.append(("     peaks " + ", ".join(
                 "CSC%d p=%.2f" % (c_, pr) for c_, _v, pr in d["peaks"]),
@@ -710,8 +739,11 @@ def draw(state, res):
     lines.append(("flipped by hand: %s"
                   % ("YES" if state.get("flip") else "no"),
                   "#a4531c" if state.get("flip") else GREY, 8.4, "normal"))
+    # Only the plain-argmin rule is ambiguous this way. tort anchors its sink
+    # to a source and the source rule is not looking at sinks at all, so the
+    # warning would be describing a rule that is not running.
     multi = ([d for d in res["decide"] if len(d.get("lows", [])) > 1]
-             if not src else [])
+             if the_rule == "sink" else [])
     if multi:
         lines.append(("", GREY, 3, "normal"))
         lines.append(("CAREFUL — more than one sink", "#a4531c", 8.4, "bold"))
@@ -759,7 +791,7 @@ def build(state):
     # which is text and needs less width than a raster.
     gs = gridspec.GridSpec(2, 4, figure=fig, hspace=.34, wspace=.27,
                            width_ratios=[1, 1, 1, .72],
-                           left=.048, right=.988, top=.905, bottom=.155)
+                           left=.048, right=.988, top=.905, bottom=.215)
     state["axes"] = {
         "volt": fig.add_subplot(gs[0, 0]),
         "csd": fig.add_subplot(gs[0, 1]),
@@ -803,23 +835,36 @@ def build(state):
         props=dict(facecolor="none", edgecolor="white", lw=1.6, alpha=.9))
 
     # --- controls -----------------------------------------------------
-    s_k = Slider(fig.add_axes([.072, .076, .155, .020]), "classes", 2, 5,
+    s_k = Slider(fig.add_axes([.068, .132, .140, .018]), "classes", 2, 5,
                  valinit=state["nclasses"], valstep=1)
     s_k.label.set_fontsize(9)
     s_k.valtext.set_fontsize(9)
 
-    note = fig.text(.040, .046,
+    note = fig.text(.035, .100,
                     "mains %.0f µV rms of %.0f µV (%.0f%%)"
                     % (state["mains_uv"], state["wideband_uv"],
                        100 * state["mains_uv"] / max(state["wideband_uv"], 1e-9)),
                     fontsize=8.5, color=GREY, va="center")
-    fig.text(.040, .020,
-             "drag = box  ·  right-click a depth panel = guide  ·  "
-             "← → = step spikes  ·  Esc = average",
+    fig.text(.035, .070,
+             "drag = box  ·  right-click a depth panel = guide",
+             fontsize=8.5, color=GREY, va="center")
+    fig.text(.035, .044,
+             "← → = step spikes  ·  Esc = back to the average",
              fontsize=8.5, color=GREY, va="center")
     state["note"] = note
 
-    ax_chk = fig.add_axes([.275, .012, .12, .088])
+    fig.text(.243, .152, "DS1/DS2 rule", fontsize=8.5, color=INK,
+             va="center", fontweight="bold")
+    ax_rad = fig.add_axes([.243, .048, .115, .100])
+    ax_rad.set_frame_on(False)
+    _rules = ["tort (sink < source)", "sink (Toothy)", "source peaks"]
+    rad = RadioButtons(ax_rad, _rules, active=_rules.index(
+        {"tort": _rules[0], "sink": _rules[1]}.get(
+            state.get("rule", "tort"), _rules[2])))
+    for t in rad.labels:
+        t.set_fontsize(8.5)
+
+    ax_chk = fig.add_axes([.243, .002, .105, .058])
     ax_chk.set_frame_on(False)
     chk = CheckButtons(ax_chk, ["60 Hz notch", "CSD screen"],
                        [state["notch"], state["screen"]])
@@ -832,31 +877,31 @@ def build(state):
     for t in chk.labels:
         t.set_fontsize(9)
 
-    b_auto = Button(fig.add_axes([.392, .058, .078, .040]), "auto box")
-    b_one = Button(fig.add_axes([.392, .012, .078, .040]), "1 sample")
-    b_prev = Button(fig.add_axes([.478, .058, .078, .040]), "◀ prev")
-    b_next = Button(fig.add_axes([.478, .012, .078, .040]), "next ▶")
-    b_mean = Button(fig.add_axes([.564, .058, .078, .040]), "show average")
-    b_save = Button(fig.add_axes([.564, .012, .078, .040]), "save fig + csv")
-    b_clear = Button(fig.add_axes([.650, .058, .078, .040]), "clear guides")
-    b_unbad = Button(fig.add_axes([.650, .012, .078, .040]), "clear bad")
-    b_flip = Button(fig.add_axes([.736, .058, .078, .040]), "flip DS1/DS2")
+    b_auto = Button(fig.add_axes([.372, .090, .072, .042]), "auto box")
+    b_one = Button(fig.add_axes([.372, .032, .072, .042]), "1 sample")
+    b_prev = Button(fig.add_axes([.452, .090, .072, .042]), "◀ prev")
+    b_next = Button(fig.add_axes([.452, .032, .072, .042]), "next ▶")
+    b_mean = Button(fig.add_axes([.532, .090, .072, .042]), "show average")
+    b_save = Button(fig.add_axes([.532, .032, .072, .042]), "save fig + csv")
+    b_clear = Button(fig.add_axes([.612, .090, .072, .042]), "clear guides")
+    b_unbad = Button(fig.add_axes([.612, .032, .072, .042]), "clear bad")
+    b_flip = Button(fig.add_axes([.692, .090, .072, .042]), "flip DS1/DS2")
     for b in (b_auto, b_one, b_prev, b_next, b_mean, b_save, b_clear, b_unbad,
               b_flip):
         b.label.set_fontsize(8.5)
 
-    tb = TextBox(fig.add_axes([.855, .058, .068, .038]), "guide ",
+    tb = TextBox(fig.add_axes([.820, .090, .065, .040]), "guide ",
                  initial="", textalignment="left")
-    tb_bad = TextBox(fig.add_axes([.855, .012, .068, .038]), "bad ",
+    tb_bad = TextBox(fig.add_axes([.820, .032, .065, .040]), "bad ",
                      initial="", textalignment="left")
     for t in (tb, tb_bad):
         t.label.set_fontsize(8.5)
         t.text_disp.set_fontsize(8.5)
 
-    state["where"] = fig.text(.736, .030, "", fontsize=8.5, va="center",
+    state["where"] = fig.text(.692, .055, "", fontsize=8.5, va="center",
                               color=INK)
     state["guide_note"] = fig.text(
-        .932, .020, "", fontsize=8.5, va="center", color=GREY)
+        .900, .012, "", fontsize=8.5, va="center", color=GREY)
     state["repaired_note"] = fig.text(
         .5, .958, "", fontsize=8.5, va="center", ha="center", color=GREY)
 
@@ -981,6 +1026,15 @@ def build(state):
         save_bad(state)
         refresh()
 
+    def pick_rule(label):
+        """Which landmark orders the classes. Kept with the flip."""
+        state["rule"] = ("tort" if label.startswith("tort")
+                         else "sink" if label.startswith("sink")
+                         else "sources")
+        save_flip(state)
+        say("ordering by " + label)
+        refresh()
+
     def flip_types(_):
         """Swap DS1 and DS2 -- the last word on the labels is anatomy's."""
         state["flip"] = not state.get("flip")
@@ -1032,6 +1086,7 @@ def build(state):
     b_clear.on_clicked(clear_guides)
     b_unbad.on_clicked(clear_bad)
     b_flip.on_clicked(flip_types)
+    rad.on_clicked(pick_rule)
     tb.on_submit(on_submit)
     tb_bad.on_submit(on_bad)
     fig.canvas.mpl_connect("pick_event", on_pick)
@@ -1046,8 +1101,9 @@ def build(state):
     state["on_bad"] = on_bad
     state["clear_bad"] = clear_bad
     state["flip_types"] = flip_types
+    state["pick_rule"] = pick_rule
     state["_widgets"] = (s_k, chk, b_auto, b_one, b_prev, b_next, b_mean,
-                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip)
+                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad)
     state["refresh"] = refresh
     refresh()
     return fig
@@ -1110,7 +1166,7 @@ def main():
         "wideband_uv": got["wideband_uv"],
         "notch": True, "screen": False, "nclasses": 2, "picked": None,
         "gain": 4.0, "guides": load_guides(args), "guide_artists": [],
-        "manual_bad": load_bad(args), "flip": load_flip(args),
+        "manual_bad": load_bad(args),
         "tw": np.linspace(-args.surround_ms, args.surround_ms, n_t),
         "centre_i": n_t // 2,
     }
@@ -1119,6 +1175,8 @@ def main():
     # faithful answer and every widening of it is a visible departure.
     state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
     state["sel"] = ds_pca.depth_band(got["sur"]["notch"], a, chans, got["bad"])
+
+    state["flip"], state["rule"] = load_flip(args)
 
     fig = build(state)
     print("opening box: CSC%d-%d, 1 sample at the stamp  (drag to change)"

@@ -586,20 +586,75 @@ def source_peaks(mu, want=2):
     return [(int(idx[i]), float(mu[idx[i]]), float(proms[i])) for i in order]
 
 
-def class_marker(mu, rule="sources"):
+def tort_main_sink(mu):
+    """tortlab's landmark: the main sink BEFORE the main source.
+
+    `dentatespike.classification.CSDbC`, in the tortlab reference:
+
+        mainsink[ci] = np.argmin(meancsd[:np.argmax(meancsd)])
+
+    Find the largest SOURCE on the profile, then take the deepest sink from
+    the contacts ABOVE it only. That one restriction is the whole idea, and
+    it is better than either of the other two rules here.
+
+    Toothy's plain `argmin` asks "where is the deepest dip anywhere on the
+    shank", which on a probe crossing both blades of the dentate finds
+    whichever blade happened to be louder -- a fact about electrode
+    placement, not about the event. Anchoring the sink to its own source
+    picks the dipole out of the profile first and then measures inside it,
+    so the answer is a property of the current, not of the window.
+
+    Returns (row, why) -- `why` names the source it anchored to, so the
+    summary panel can show the pair rather than one number.
+    """
+    mu = np.asarray(mu, dtype=np.float64)
+    if mu.size < 2:
+        return 0, None
+    src = int(np.argmax(mu))
+    if src < 1:
+        return int(np.argmin(mu)), None     # no contact above the source
+    return int(np.argmin(mu[:src])), src
+
+
+def class_marker(mu, rule="tort"):
     """The depth that stands for a class when DS1/DS2 are ordered.
 
-    `sources` -- the most prominent source peak. `sink` -- Toothy's rule,
-    the most negative point. Returns (row, peaks) where `peaks` is whatever
-    the rule looked at, so a caller can show its working.
+    `tort`    -- the main sink above the main source (tortlab CSDbC).
+    `sink`    -- Toothy's rule, the most negative point anywhere.
+    `sources` -- the most prominent source peak.
+
+    Returns (row, extra) where `extra` is whatever the rule looked at, so a
+    caller can show its working instead of asserting a verdict.
     """
     mu = np.asarray(mu, dtype=np.float64)
     if rule == "sink":
         return int(np.argmin(mu)), []
-    peaks = source_peaks(mu, want=2)
-    if not peaks:
-        return int(np.argmin(mu)), []       # no peak at all; fall back
-    return peaks[0][0], peaks
+    if rule == "sources":
+        peaks = source_peaks(mu, want=2)
+        if not peaks:
+            return int(np.argmin(mu)), []   # no peak at all; fall back
+        return peaks[0][0], peaks
+    row, src = tort_main_sink(mu)
+    return row, src
+
+
+def tort_order(profiles):
+    """tortlab's class ordering, collision fallback included.
+
+    `np.argsort(mainsink)` puts the shallower main sink first -- DS1. And if
+    every class lands on the SAME contact, CSDbC redoes the whole thing on
+    the upside-down profile, because a probe inserted the other way round
+    makes "before the main source" point the wrong way. Reproduced, because
+    on a probe crossing both blades it is not a rare case.
+
+    Returns (rows, flipped).
+    """
+    rows = [tort_main_sink(mu)[0] for mu in profiles]
+    if len(rows) > 1 and len(set(rows)) == 1:
+        n = len(profiles[0])
+        rows = [n - 1 - tort_main_sink(mu[::-1])[0] for mu in profiles]
+        return rows, True
+    return rows, False
 
 
 def sink_channel(filt_csd, nums, rows):
