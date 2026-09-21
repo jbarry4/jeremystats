@@ -412,7 +412,8 @@ def classify(norm_filt_csd, filt_csd, args):
     return fit, pca, k_types, d_types, types
 
 
-def csd_screen(surrounds, channels, args, ratio=4.0, known=()):
+def csd_screen(surrounds, channels, args, ratio=4.0, known=(), half=4,
+               excess_frac=0.5):
     """Contacts a CSD cannot be run over, judged on the CSD and not the LFP.
 
     THIS EXISTS BECAUSE THE FIRST VERSION OF THIS SCRIPT CLASSIFIED ONE BAD
@@ -434,36 +435,73 @@ def csd_screen(surrounds, channels, args, ratio=4.0, known=()):
     The screen is on the BASELINE CSD: how big each contact's CSD is at the
     edges of the event window, where by construction there is no spike.
 
-    A plain multiple of the probe's median, not a MAD count, because on this
-    recording the two do not agree and the multiple is the one that reads
-    true. Measured here, the probe's baseline CSD runs from 0.2x the median
-    to 2.6x on sixty of the sixty-four contacts, and then 5.8x, 6.4x, 6.9x,
-    8.5x and 11.4x on CSC48, 49, 53, 50 and 51. That is a gap, not a tail. A
-    MAD count computed over a sample that includes five such contacts has its
-    own scale inflated by them and flagged exactly one; the ratio flags the
-    block, which is what a person looking at the numbers would do.
+    AGAINST ITS NEIGHBOURS, NOT AGAINST THE PROBE. This is the second thing
+    the screen got wrong and the fix matters more than the first.
 
-    `known` contacts are left out of the median so that a bad block cannot
+    The rule used to be "more than 4x the median baseline CSD of the whole
+    shank". That works when a probe is uniform and a few wires are bad, which
+    is what M1ptens2oct2 looks like: sixty contacts between 0.2x and 2.6x,
+    then 5.8x to 11.4x on CSC48-51 and 53.
+
+    On M2ctls3jan23 it destroys the data. That recording has genuinely large
+    signals over CSC25-42 -- 300 to 600 uV rms against 130 uV at the bottom
+    of the shank -- so the whole-probe median is set by the quiet half and
+    fifteen contacts come out above 4x. The screen flagged CSC25-42 and
+    interpolated away the dentate spike itself: the event was the anomaly.
+
+    Neither a global nor a local comparison settles it on its own. A whole-
+    probe median is dragged under by a quiet half of the shank. A local
+    median fails the opposite way: the M1ptens2oct2 block is five contacts
+    wide, so four neighbours either side are mostly inside it and CSC50 comes
+    out at only 2.2x its own neighbourhood.
+
+    What separates the two cases is not how big the baseline is -- it is
+    whether the contact carries an EVENT. A bad wire is loud all the time:
+    CSC48-51 on M1ptens2oct2 peak at +41 ms, nowhere near a stamp. A real
+    hilar contact is quiet between events and large at them. So the gate on
+    every rule below is the event-triggered excess -- how much bigger the
+    CSD is at the stamp than at the window's edges. A contact carrying real
+    event-locked signal is never screened out, however loud it is, which is
+    what stops the screen deleting the thing it was pointed at.
+
+    Above that gate, both comparisons are allowed to fire: `ratio` times the
+    whole probe's median catches a wide bad block, and `ratio` times the
+    local median catches one bad wire sitting in an otherwise active region.
+
+    `known` contacts are left out of every median so that a bad block cannot
     raise the bar that would have caught it.
     """
     filt = toothy_csd(surrounds.mean(axis=0), args.spacing, args)[1]
     t = np.linspace(-args.surround_ms, args.surround_ms, filt.shape[1])
+    i0 = int(np.argmin(np.abs(t)))
     edge = np.abs(t) > args.surround_ms * 0.7
     base = np.abs(filt[:, edge]).mean(axis=1)
+    excess = np.clip(np.abs(filt[:, i0]) - base, 0.0, None)
     skip = {int(n) for n in known}
-    live = np.array([b for b, c in zip(base, channels)
-                     if b > 0 and int(c["number"]) not in skip])
-    if live.size < 4:
-        return {}, base
-    med = float(np.median(live))
+    n = len(channels)
+    live = [base[j] for j in range(n)
+            if base[j] > 0 and int(channels[j]["number"]) not in skip]
+    world = float(np.median(live)) if len(live) >= 4 else 0.0
+
     out = {}
     for i, c in enumerate(channels):
         if base[i] <= 0 or int(c["number"]) in skip:
             continue
-        if base[i] > ratio * med:
+        if excess[i] >= excess_frac * base[i]:
+            continue                 # it carries an event; leave it alone
+        near = [base[j] for j in range(max(0, i - half), min(n, i + half + 1))
+                if j != i and base[j] > 0
+                and int(channels[j]["number"]) not in skip]
+        local = float(np.median(near)) if len(near) >= 3 else 0.0
+        why = None
+        if world > 0 and base[i] > ratio * world:
+            why = "%.1fx the probe median" % (base[i] / world)
+        elif local > 0 and base[i] > ratio * local:
+            why = "%.1fx its neighbours" % (base[i] / local)
+        if why:
             out[int(c["number"])] = (
-                "baseline CSD %.3g, %.1fx the probe median -- a second "
-                "difference amplifies it" % (base[i], base[i] / med))
+                "baseline CSD %.3g, %s, and almost nothing at the stamp -- "
+                "a second difference amplifies it" % (base[i], why))
     return out, base
 
 
@@ -661,9 +699,12 @@ def main():
     ap.add_argument("--csd-bad-x", type=float, default=4.0,
                     help="how many times the probe's median baseline CSD a "
                          "contact may reach before it is interpolated over")
-    ap.add_argument("--no-csd-screen", action="store_true",
-                    help="skip that second screen -- Toothy has no equivalent, "
-                         "so this is what a faithful run does")
+    ap.add_argument("--csd-screen", action="store_true",
+                    help="also interpolate over contacts whose baseline CSD "
+                         "towers over the probe while carrying no event. OFF "
+                         "by default: it is a heuristic, Toothy has no "
+                         "equivalent, and on these probes the amplitude "
+                         "screen already finds the one dead wire")
     ap.add_argument("--spacing", type=float, default=probes.CONTACT_PITCH_UM)
     ap.add_argument("--lfp-fs", type=float, default=T_LFP_FS)
     ap.add_argument("--line", type=float, default=0.0,
@@ -749,7 +790,7 @@ def main():
     # rather than during the read because it needs the event-triggered
     # average, which does not exist until every event has been read -- and
     # repairing afterwards costs nothing, since the rows are already in hand.
-    if not args.no_csd_screen:
+    if args.csd_screen:
         # Iterated, because interpolating a contact rewrites the second
         # difference at its NEIGHBOURS too -- one pass can leave a contact
         # that only looked acceptable next to a worse one.

@@ -70,7 +70,20 @@ SET_SPEC = {
 # A row nobody has touched has no entry at all, which is how "still to do"
 # is counted. There is deliberately no "reject": a stamp is never deleted
 # here, only left alone.
-CALLS = ("confirm", "keep", "move")
+# `garbage` is the odd one out and deliberately so.
+#
+# Braces reads labels and does not write them: which candidates are real is
+# curation's question, answered a step earlier, and a tool that quietly
+# re-decides it would make the curation set stop being the record of what
+# anybody decided. But somebody looking at a stamp on the recording, with
+# the CSD under it, sometimes sees what they missed -- and making them go
+# back to Checkup for one obvious mistake is how obvious mistakes stay in.
+#
+# So it exists, it asks twice, and it says out loud that it should have
+# happened earlier. A stamp marked here is not moved and not written: the
+# aligned version holds the spikes, so a rejected one simply is not in it,
+# and the version's note says how many went that way.
+CALLS = ("confirm", "keep", "move", "garbage")
 
 
 def _now():
@@ -237,8 +250,9 @@ class BracesSets:
 def resolve(rec):
     """What this set would write, given the review so far.
 
-    Returns (moves, flags, counts) where `moves` is
-    `{event_index: new_time}` -- exactly what `EventBank.align` takes.
+    Returns (moves, flags, counts, rejects) where `moves` is
+    `{event_index: new_time}` -- exactly what `EventBank.align` takes --
+    and `rejects` is the indices somebody marked as not an event after all.
 
     THE RULE FOR A FLAG NOBODY RESOLVED: it stays where it was. Not moved
     quietly on the grounds that the proposal was probably right; the flag
@@ -252,7 +266,8 @@ def resolve(rec):
     calls = rec.get("calls") or {}
     moves, flags = {}, {}
     counts = {"confirmed": 0, "kept": 0, "moved": 0, "waiting": 0,
-              "auto": 0, "no_peak": 0}
+              "auto": 0, "no_peak": 0, "garbage": 0}
+    rejects = []
     for n, row in enumerate(rec.get("rows") or []):
         i = row.get("i")
         said = calls.get(str(n)) or {}
@@ -263,6 +278,14 @@ def resolve(rec):
         if call == "move":
             moves[i] = said["t"]
             counts["moved"] += 1
+            continue
+        if call == "garbage":
+            # Not an event after all. It does not move, it is not written,
+            # and it is counted on its own -- lumping it in with "kept"
+            # would hide the one decision here that changes what the set
+            # contains rather than where something in it sits.
+            rejects.append(i)
+            counts["garbage"] += 1
             continue
         if call == "keep":
             counts["kept"] += 1
@@ -282,4 +305,4 @@ def resolve(rec):
         if row.get("now") is not None and not row.get("same"):
             moves[i] = row["now"]
         counts["auto"] += 1
-    return moves, flags, counts
+    return moves, flags, counts, rejects

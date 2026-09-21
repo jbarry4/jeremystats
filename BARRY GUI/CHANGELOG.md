@@ -15,6 +15,46 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.8 - Braces can call one garbage, reluctantly
+
+### Added
+
+- **A garbage button, which asks twice and is not pleased about it.** `g`, or
+  the red button beside "Leave it". A stamp marked this way is not moved and
+  not written: an aligned version holds the spikes and nothing else, so a
+  rejected one simply is not in it, and every earlier version still has it
+  exactly as it was.
+
+  Braces reads labels and does not write them — which candidates are real is
+  curation's question, answered a step earlier, and a tool that quietly
+  re-decides it makes the curation set stop being the record of what anybody
+  decided. That reasoning is why this asks rather than just doing it. But
+  somebody looking at a stamp on the recording, with the CSD under it, sees
+  what they missed at a smaller size, and sending them back to Checkup for
+  one obvious mistake is how obvious mistakes stay in.
+
+  So it asks, by name, and then agrees to it grudgingly:
+
+      "A curated set, Jeremy. Curated. By a person. Recently. And yet.
+       Are you quite sure? Quite quite sure?"
+
+      "I shall add it to the list of things that were definitely going to
+       be handled in Checkup. It is out."
+
+  Five openings and six replies, picked at random, because one fixed
+  sentence read four hundred times stops being read at all — which is the
+  failure mode of every confirmation dialog ever written.
+
+  It is red on BOTH halves of the mark, because drawing its new position in
+  the colour of an accepted move would be a lie: it is not going there. It
+  has its own chip in the list of stamps, and pressing `g` again takes it
+  back without arguing, since putting something back needs no persuading.
+
+  Counted apart from the candidates curation had already rejected, in the
+  preview and in the version's record. "I threw this one out just now" and
+  "this was thrown out last week" are different facts and the history should
+  keep them that way.
+
 ## 2026.09.21.7 - A push no longer loses what changed while it was reading
 
 ### Fixed

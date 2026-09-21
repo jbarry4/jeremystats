@@ -2022,7 +2022,8 @@ BARRY.braces = (function () {
       const said = callFor(i);
       // What the dashed half says: answered, still being asked about, or
       // nobody has looked.
-      const st = (said === 'confirm' || said === 'move') ? 'confirmed'
+      const st = said === 'garbage' ? 'garbage'
+        : (said === 'confirm' || said === 'move') ? 'confirmed'
         : (said === 'keep' ? 'kept'
            : (r.flag ? 'flagged' : 'open'));
       const to = vNow(r);
@@ -2346,6 +2347,7 @@ BARRY.braces = (function () {
     const saidOf = (x) => callFor(x.i);
     const stateOf = (x) => {
       const said = saidOf(x);
+      if (said === 'garbage') return 'garbage';
       if (said === 'move') return 'moved';
       if (said === 'confirm') return 'confirmed';
       if (said === 'keep') return 'kept';
@@ -2354,10 +2356,11 @@ BARRY.braces = (function () {
     const STATE_NAME = {
       moved: 'moved by hand', confirmed: 'confirmed', kept: 'left alone',
       flagged: 'needs a decision', auto: 'moving, unflagged',
+      garbage: 'not an event',
     };
     const STATE_COLOUR = {
       moved: '#5cc98d', confirmed: '#5cc98d', kept: '#ED8B33',
-      flagged: '#ED8B33', auto: 'var(--line)',
+      flagged: '#ED8B33', auto: 'var(--line)', garbage: '#d9534f',
     };
 
     const tally = {};
@@ -2413,7 +2416,8 @@ BARRY.braces = (function () {
       },
     });
     chips.appendChild(chip('all', 'All', rows.length));
-    for (const id of ['flagged', 'auto', 'confirmed', 'moved', 'kept']) {
+    for (const id of ['flagged', 'auto', 'confirmed', 'moved', 'kept',
+                      'garbage']) {
       chips.appendChild(chip(id, STATE_NAME[id], tally[id] || 0));
     }
 
@@ -2506,6 +2510,91 @@ BARRY.braces = (function () {
     showModal(wrap, { replace: true });
   }
 
+  /* Asking twice, in words that change.
+
+     One fixed sentence read four hundred times stops being read at all --
+     which is the failure mode of every confirmation dialog ever written.
+     These vary, they all say the same thing, and the thing they say is
+     "this was curation's job and you are doing it here". */
+  const GARBAGE_ASK = [
+    'You already had a chance to mark this as garbage, %s. Are you really '
+      + 'sure about this? Really really sure?',
+    '%s. You saw this one in Checkup. You looked right at it. And now, '
+      + 'here, at this hour, it is garbage? Are you certain? Genuinely '
+      + 'certain?',
+    'This went past you once already, %s. Nobody is counting. Are you '
+      + 'sure? Are you sure you are sure?',
+    'Right, %s \u2014 so the plan is to reject it NOW, is it? After it was '
+      + 'offered to you, with a keyboard shortcut, in a tool built for '
+      + 'exactly this. Really? Really really?',
+    'A curated set, %s. Curated. By a person. Recently. And yet. Are you '
+      + 'quite sure? Quite quite sure?',
+  ];
+
+  const GARBAGE_YES = [
+    'Huh. I guess. Really should have been taken care of in the last step, '
+      + 'but I suppose we can make an exception.',
+    'Fine. Fine! It is not as though there is a whole tool for this. It is '
+      + 'gone from the aligned version.',
+    'Noted, with feeling. Out it goes \u2014 and the earlier versions still '
+      + 'have it, so nobody has to take my word for any of this.',
+    'Well. Nobody is perfect. Certainly not at the hour most of this gets '
+      + 'done. Consider it rejected.',
+    'I shall add it to the list of things that were definitely going to be '
+      + 'handled in Checkup. It is out.',
+    'Against my better judgement, which is not saying much at this point. '
+      + 'Done.',
+  ];
+
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+  /* Who is being asked. The person, by the name their work is filed
+     under, because "you already had your chance" needs somebody to be
+     about. */
+  function whoAmI() {
+    try {
+      const me = (BARRY.state && BARRY.state.me) || {};
+      return me.name || me.user || BARRY.who || 'you';
+    } catch (e) { return 'you'; }
+  }
+
+  /* Marking one as not an event after all. Two dialogs: the first asks,
+     the second agrees to it and then does it. */
+  function vGarbage() {
+    if (!view) return;
+    const r = vAt();
+    if (!r) return;
+    const n = view.at;
+    if (callFor(n) === 'garbage') {
+      // Already rejected: the button takes it back, and putting something
+      // back needs no persuading. `decide(null)` rather than `vSay`,
+      // because vSay steps on to the next one and undoing is a thing you
+      // do to the stamp in front of you.
+      decide(n, null).then(() => { vPublish(); vBar(); });
+      return;
+    }
+    ask('Mark this stamp as garbage?',
+        el('div', {}, [
+          el('p', { text: pick(GARBAGE_ASK).replace('%s', whoAmI()) }),
+          el('p', { class: 'hint', text:
+            'It is the stamp at ' + clock(r.was) + '. It will not be moved '
+            + 'and it will not be in the banked version \u2014 an aligned '
+            + 'version holds the spikes and nothing else. Every earlier '
+            + 'version still has it exactly as it was.' }),
+        ]),
+        'Yes, it is garbage',
+        () => {
+          ask('If you insist.',
+              el('div', {}, [
+                el('p', { text: pick(GARBAGE_YES) }),
+              ]),
+              'Okay',
+              async () => { await vSay('garbage'); },
+              false);
+        },
+        true);
+  }
+
   function vBar() {
     if (!view) return;
     let bar = document.getElementById('brViewBar');
@@ -2571,6 +2660,27 @@ BARRY.braces = (function () {
         el('i', { text: 'stays at ' + clock(r.was) }),
       ]),
     ]));
+    /* Not an event after all.
+
+       Last, and in the colour of a thing that removes something, because
+       it is the only control here that changes WHAT the set contains
+       rather than where something in it sits. */
+    acts.appendChild(el('button', {
+      class: 'cur-cat' + (said === 'garbage' ? ' on' : ''),
+      style: '--cat:#d9534f',
+      title: said === 'garbage'
+        ? 'Take that back \u2014 it goes back to being a spike   (g)'
+        : 'Not a dentate spike at all. Asks first.   (g)',
+      onclick: vGarbage,
+    }, [
+      el('kbd', { text: 'g' }),
+      el('span', {}, [
+        el('b', { text: said === 'garbage' ? 'Not garbage' : 'Garbage' }),
+        el('i', { text: said === 'garbage' ? 'put it back'
+                                           : 'not an event' }),
+      ]),
+    ]));
+
     /* Undo. A decision made with one key has to be undoable with one key,
        or people stop pressing the key. */
     acts.appendChild(el('button', {
@@ -2696,6 +2806,7 @@ BARRY.braces = (function () {
     else if (k === 'k') vSay('keep');
     else if (k === '[') vMove(-1);
     else if (k === ']') vMove(1);
+    else if (k === 'g') vGarbage();
     else if (k === 'l') { view.list = !view.list; vList(); vBar(); }
     else if (k === 'u' || k === '0') vUndo();
     else if (k === 'escape') exitView();
@@ -2731,6 +2842,7 @@ BARRY.braces = (function () {
     was: '#6f8c7d',        // where it was, undecided
     ok: '#5cc98d',         // where it was, confirmed
     ask: '#ED8B33',        // where it was, flagged and unanswered
+    bin: '#d9534f',        // not an event after all
   };
 
   /* The same set, a whole recording wide.
@@ -2760,7 +2872,11 @@ BARRY.braces = (function () {
       const x = Math.round((e.start / dur) * w) + 0.5;
       if (x < 0 || x > w) continue;
       const focus = !!e.f;
-      const colour = e.k === 'now' ? DRAW.now
+      /* A rejected stamp is red on BOTH halves -- it is not going
+         anywhere and it is not being written, so drawing its new
+         position in the colour of an accepted move would be a lie. */
+      const colour = e.st === 'garbage' ? DRAW.bin
+        : e.k === 'now' ? DRAW.now
         : (e.st === 'confirmed' ? DRAW.ok
            : (e.st === 'flagged' ? DRAW.ask : DRAW.was));
       if (focus) {
@@ -2938,7 +3054,11 @@ BARRY.braces = (function () {
       const small = plotH < 150;
       const top = focus ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
       const bottom = y0 + plotH;
-      const colour = e.k === 'now' ? DRAW.now
+      /* A rejected stamp is red on BOTH halves -- it is not going
+         anywhere and it is not being written, so drawing its new
+         position in the colour of an accepted move would be a lie. */
+      const colour = e.st === 'garbage' ? DRAW.bin
+        : e.k === 'now' ? DRAW.now
         : (e.st === 'confirmed' ? DRAW.ok
            : (e.st === 'flagged' ? DRAW.ask : DRAW.was));
       const dashed = e.k !== 'now';

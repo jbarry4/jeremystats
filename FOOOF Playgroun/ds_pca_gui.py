@@ -64,13 +64,15 @@ Run:
 import argparse
 import csv as csvmod
 import hashlib
+import json
 import os
 import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
-from matplotlib.widgets import Button, CheckButtons, RectangleSelector, Slider
+from matplotlib import gridspec, patheffects
+from matplotlib.widgets import (Button, CheckButtons, RectangleSelector,
+                                Slider, TextBox)
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
@@ -92,6 +94,186 @@ CACHE_VERSION = 2          # bumped when the cached arrays change shape
 CLASS_COLORS = ["#1a7f37", "#7b3fa0", "#b8620a", "#1f6feb", "#a3155f"]
 GREY = "#8c9994"
 INK = "#1b2220"
+GUIDE = "#101010"          # depth guides: neutral, so no class owns them
+MAX_GUIDES = 10
+
+# A white stroke under every guide. They are drawn over a jet colormap that
+# runs from dark blue to dark red, and no single ink reads over all of it.
+_HALO = [patheffects.withStroke(linewidth=2.8, foreground="white")]
+
+
+# --------------------------------------------------------------------------
+# Depth guides -- laminar boundaries, named
+# --------------------------------------------------------------------------
+def guides_path(args):
+    """Guides live beside the bank, not in the cache.
+
+    The cache is keyed on read settings and is thrown away whenever those
+    change; where the hilus is does not change because somebody widened a
+    filter. Anatomy outlives a parameter sweep, so it gets its own file.
+    """
+    stem = os.path.splitext(os.path.basename(args.bank))[0]
+    return os.path.join(_HERE, "%s_guides.json" % stem)
+
+
+def load_guides(args):
+    try:
+        with open(guides_path(args), encoding="utf-8") as fh:
+            got = json.load(fh)
+        return [{"csc": int(g["csc"]), "label": str(g.get("label", ""))}
+                for g in got][:MAX_GUIDES]
+    except Exception:
+        return []
+
+
+def save_guides(state):
+    try:
+        with open(guides_path(state["args"]), "w", encoding="utf-8") as fh:
+            json.dump(state["guides"], fh, indent=1)
+    except Exception as err:
+        print("could not save guides: %s" % err)
+
+
+def draw_guides(state, ax, labels=True, side="left"):
+    """One guide set, on any panel whose y axis is the contact number.
+
+    Drawn on the individual-spike raster and on the class averages alike --
+    a laminar boundary is a fact about the probe, not about which view is
+    open, so it does not come and go with the toggle.
+    """
+    # Clipped, both the line and its label. A guide at CSC49 is a fact about
+    # the probe whatever the box is set to, but a panel showing CSC26-36 has
+    # no business growing to reach it -- and an unclipped label writes itself
+    # over whatever sits below the axes, which on this figure is the
+    # controls.
+    arts = state.setdefault("guide_artists", [])
+    for g in state.setdefault("guides", []):
+        arts.append(ax.axhline(g["csc"], color=GUIDE, lw=1.1,
+                               ls=(0, (6, 3)), alpha=.95, zorder=8,
+                               clip_on=True, path_effects=_HALO))
+        if labels and g["label"]:
+            x = .012 if side == "left" else .988
+            arts.append(ax.text(
+                x, g["csc"] - .4, g["label"],
+                transform=ax.get_yaxis_transform(),
+                ha="left" if side == "left" else "right", va="bottom",
+                fontsize=8, color=GUIDE, zorder=9, clip_on=True,
+                path_effects=_HALO))
+
+
+def forget_guide_artists(state):
+    """Drop last draw's guides.
+
+    The CSD raster's axes are never cleared -- a RectangleSelector lives on
+    them -- so its guides have to be taken off by hand or they pile up one
+    layer per redraw. The cleared panels have already destroyed theirs,
+    which is why the removal is allowed to fail.
+    """
+    for art in state.get("guide_artists", []):
+        try:
+            art.remove()
+        except Exception:
+            pass
+    state["guide_artists"] = []
+
+
+def flip_path(args):
+    """Whether DS1/DS2 were swapped by hand -- a per-session decision."""
+    stem = os.path.splitext(os.path.basename(args.bank))[0]
+    return os.path.join(_HERE, "%s_flip.json" % stem)
+
+
+def load_flip(args):
+    try:
+        with open(flip_path(args), encoding="utf-8") as fh:
+            return bool(json.load(fh).get("flip"))
+    except Exception:
+        return False
+
+
+def save_flip(state):
+    try:
+        with open(flip_path(state["args"]), "w", encoding="utf-8") as fh:
+            json.dump({"flip": bool(state.get("flip"))}, fh)
+    except Exception as err:
+        print("could not save the flip: %s" % err)
+
+
+def bad_path(args):
+    """Manually-marked bad contacts, beside the bank like the guides.
+
+    Which wire is dead is a fact about the probe and the session, and it
+    outlives every parameter sweep, so it is not kept in the cache.
+    """
+    stem = os.path.splitext(os.path.basename(args.bank))[0]
+    return os.path.join(_HERE, "%s_bad.json" % stem)
+
+
+def load_bad(args):
+    try:
+        with open(bad_path(args), encoding="utf-8") as fh:
+            return {int(k): str(v) for k, v in json.load(fh).items()}
+    except Exception:
+        return {}
+
+
+def save_bad(state):
+    try:
+        with open(bad_path(state["args"]), "w", encoding="utf-8") as fh:
+            json.dump({str(k): v for k, v in state["manual_bad"].items()},
+                      fh, indent=1)
+    except Exception as err:
+        print("could not save bad channels: %s" % err)
+
+
+def toggle_bad(state, nums_text):
+    """'59' or '59 61' -- mark contacts bad, or unmark ones already marked."""
+    said = []
+    for tok in str(nums_text).replace(",", " ").split():
+        try:
+            num = int(round(float(tok)))
+        except ValueError:
+            said.append("%r is not a contact number" % tok)
+            continue
+        if num not in state["nums"]:
+            said.append("CSC%d is not in this recording" % num)
+            continue
+        if num in state["manual_bad"]:
+            del state["manual_bad"][num]
+            said.append("CSC%d back in" % num)
+        else:
+            state["manual_bad"][num] = "marked bad by hand"
+            said.append("CSC%d out" % num)
+    return ", ".join(said) or "type a contact number, e.g. 59"
+
+
+def parse_guide(text, default_label=""):
+    """'30 hilus' -> (30, 'hilus').  '30' -> (30, default).  else None."""
+    parts = str(text).strip().split(None, 1)
+    if not parts:
+        return None
+    try:
+        csc = int(round(float(parts[0])))
+    except ValueError:
+        return None
+    return csc, (parts[1].strip() if len(parts) > 1 else default_label)
+
+
+def toggle_guide(state, csc, label="", tol=0.6):
+    """Add a guide, or remove the one already at that depth.
+
+    Same gesture both ways, because the alternative is a delete mode and a
+    mode you can forget you are in is worse than one you cannot.
+    """
+    for g in list(state["guides"]):
+        if abs(g["csc"] - csc) <= tol:
+            state["guides"].remove(g)
+            return "removed the guide at CSC%d" % g["csc"]
+    if len(state["guides"]) >= MAX_GUIDES:
+        return "%d guides is the limit — clear one first" % MAX_GUIDES
+    state["guides"].append({"csc": int(csc), "label": label})
+    state["guides"].sort(key=lambda g: g["csc"])
+    return "guide at CSC%d%s" % (csc, (" — " + label) if label else "")
 
 
 class Opts:
@@ -211,7 +393,18 @@ def recompute(state):
     sur_band = state["sur"]["band"]
     chans = state["chans"]
 
-    bad = dict(state["bad0"])
+    # Three sources, all repaired the same way: the amplitude screen that ran
+    # at read time, whatever was marked by hand, and the CSD screen below.
+    #
+    # Marking by hand does NOT change the refinement -- those stamps were
+    # timed during the read, against the read-time bad list. One dead wire
+    # among sixty-four moves a mean over depth by almost nothing, so this is
+    # a real limitation rather than a serious one; `--bad 59` at the command
+    # line puts it in before the read if it ever matters.
+    bad = {**state["bad0"], **state["manual_bad"]}
+    if state["manual_bad"]:
+        sur = np.array([braces.repair(s, chans, bad) for s in sur])
+        sur_band = np.array([braces.repair(s, chans, bad) for s in sur_band])
     if state["screen"]:
         for _ in range(5):
             cbad, _b = ds_pca.csd_screen(sur, chans, a, a.csd_bad_x, known=bad)
@@ -260,13 +453,33 @@ def recompute(state):
     order = sorted(range(k), key=lambda c: (
         int(np.argmin(np.nanmean(prof[km.labels_ == c], axis=0)))
         if (km.labels_ == c).any() else 10 ** 6))
+    if state.get("flip"):
+        order = order[::-1]          # DS1 <-> DSk, by hand
     remap = {c: i + 1 for i, c in enumerate(order)}
     types = np.array([remap[x] for x in km.labels_])
 
+    # WHAT THE RULE ACTUALLY LOOKED AT, kept so the summary panel can show
+    # its working rather than asserting a verdict. `argmin` is one number off
+    # a curve that often has three or four excursions -- the local minima are
+    # counted here so the panel can say when the single number is thin.
+    ns = [state["nums"][i] for i in sel]
+    decide = []
+    for c in range(1, k + 1):
+        rr = np.where(types == c)[0]
+        if rr.size == 0:
+            decide.append(dict(c=c, n=0))
+            continue
+        mu = np.nanmean(prof[rr], axis=0)
+        j = int(np.argmin(mu))
+        lows = [i for i in range(1, len(mu) - 1)
+                if mu[i] < mu[i - 1] and mu[i] < mu[i + 1] and mu[i] < 0]
+        decide.append(dict(c=c, n=int(rr.size), row=j, csc=ns[j],
+                           value=float(mu[j]),
+                           lows=[ns[i] for i in lows], mu=mu))
+
     return dict(disp=disp, feat=feat_csd, norm=norm, fit=fit, pca=pca,
-                types=types, k=k, bad=bad, prof=prof,
-                nums_sel=[state["nums"][i] for i in sel],
-                n_features=X.shape[1])
+                types=types, k=k, bad=bad, prof=prof, decide=decide,
+                nums_sel=ns, n_features=X.shape[1])
 
 
 # --------------------------------------------------------------------------
@@ -282,7 +495,8 @@ def draw(state, res):
     sel, t0, t1 = state["sel"], state["t0"], state["t1"]
     lo_n, hi_n = nums[sel[0]], nums[sel[-1]]
 
-    for key in ("volt", "pca", "profile", "csd1", "csd2"):
+    forget_guide_artists(state)
+    for key in ("volt", "pca", "profile", "csd1", "csd2", "why"):
         state["axes"][key].clear()
 
     # --- 1. voltage traces --------------------------------------------
@@ -305,16 +519,29 @@ def draw(state, res):
                 alpha=1.0 if inside else .40, zorder=3 if inside else 2)
     ax.axvspan(tw[t0], tw[max(t0, t1 - 1)], color="#1f6feb", alpha=.12, lw=0)
     ax.axvline(0, color="#b03030", ls="--", lw=1.0, alpha=.8)
+    draw_guides(state, ax)
     ax.set_ylim(nums[-1] + gain + 1, nums[0] - gain - 1)
     ax.set_xlim(tw[0], tw[-1])
     ax.set_xlabel("ms from the refined stamp", fontsize=9)
     ax.set_ylabel("CSC number", fontsize=9)
-    ax.set_title("voltage  %g–%g Hz, %s"
-                 % (a.band[0], a.band[1],
-                    "event #%d" % state["rows"][pick]["n"] if pick is not None
-                    else "mean of %d" % len(state["rows"])),
-                 fontsize=10)
+    if pick is None:
+        what = "mean of %d" % len(state["rows"])
+    else:
+        r = state["rows"][pick]
+        what = ("spike #%d  ·  %.3f s  ·  DS%d"
+                % (r["n"], r["refined_s"], types[pick]))
+    ax.set_title("voltage  %g–%g Hz, 60 Hz out  —  %s"
+                 % (a.band[0], a.band[1], what), fontsize=10)
     ax.tick_params(labelsize=8)
+    if state.get("where") is not None:
+        if pick is None:
+            state["where"].set_text("showing the average")
+            state["where"].set_color(GREY)
+        else:
+            state["where"].set_text("spike %d of %d   (DS%d)"
+                                    % (pick + 1, len(state["rows"]),
+                                       types[pick]))
+            state["where"].set_color(colors.get(int(types[pick]), INK))
 
     # --- 2. the CSD raster, which is what you drag on ------------------
     # Its axes are never cleared: a RectangleSelector lives on the axes and
@@ -323,6 +550,7 @@ def draw(state, res):
     lim = float(np.percentile(np.abs(mat), 99.5)) or 1.0
     state["raster_im"].set_data(mat)
     state["raster_im"].set_clim(-lim, lim)
+    draw_guides(state, state["axes"]["csd"], side="right")
     state["axes"]["csd"].set_title(
         "CSD  %g–%g Hz, 60 Hz out   —   drag a box: depth × time"
         % (a.band[0], a.band[1]), fontsize=10)
@@ -369,11 +597,18 @@ def draw(state, res):
         ax.plot(mu, ns, color=colors[c], lw=1.9,
                 label="DS%d  sink CSC%s"
                       % (c, sink_channel(res["prof"].T, ns, rr)))
+        # The point the rule actually used, marked. Without it the legend
+        # asserts a sink and the curve beside it has three.
+        j = int(np.argmin(mu))
+        ax.plot([mu[j]], [ns[j]], "o", ms=8, color=colors[c], mec="white",
+                mew=1.4, zorder=6)
     ax.axvline(0, color="#444444", lw=.9, ls="--")
+    draw_guides(state, ax)
     ax.set_ylim(max(ns) + .5, min(ns) - .5)
     ax.set_xlabel(r"mean CSD over the window ($\mu V/mm^2$)", fontsize=9)
     ax.set_ylabel("CSC number", fontsize=9)
-    ax.set_title("class-average depth profile ± SEM", fontsize=10)
+    ax.set_title("class-average depth profile ± SEM  (%g–%g Hz, 60 Hz out)"
+                 % (a.band[0], a.band[1]), fontsize=10)
     ax.legend(fontsize=8, frameon=False)
     ax.grid(alpha=.15, lw=.6)
     ax.tick_params(labelsize=8)
@@ -396,39 +631,127 @@ def draw(state, res):
         ax.axvspan(tw[t0], tw[max(t0, t1 - 1)], color="white", alpha=.0, lw=0)
         for x in (tw[t0], tw[max(t0, t1 - 1)]):
             ax.axvline(x, color="white", lw=1.2, alpha=.9)
+        draw_guides(state, ax, labels=(j == 0))
+        # After the guides, not before: axhline expands the data limits, so
+        # a guide outside the box would otherwise stretch these panels past
+        # the contacts they are showing.
+        ax.set_ylim(hi_n + .5, lo_n - .5)
+        ax.set_xlim(tw[0], tw[-1])
         ax.set_xlabel("ms", fontsize=9)
         if j == 0:
             ax.set_ylabel("CSC number", fontsize=9)
-        ax.set_title("mean CSD, DS%d (n=%d)" % (c, rr.size), fontsize=10,
+        ax.set_title("mean CSD, DS%d (n=%d)  %g–%g Hz, 60 Hz out"
+                     % (c, rr.size, a.band[0], a.band[1]), fontsize=10,
                      color=colors[c])
         ax.tick_params(labelsize=8)
 
-    repaired = sorted(set(res["bad"]) - set(state["bad0"]))
+    # --- the feature matrix, events sorted by class --------------------
+    # Not decoration: this is the panel a bad contact shows up on as a solid
+    # stripe running the width of the sheet, which is how the first version
+    # of this analysis was caught classifying one wire.
+    ax = state["axes"]["feat"]
+    order = np.concatenate([rr for _c, rr in groups if rr.size]
+                           or [np.arange(types.size)]).astype(int)
+    ax.imshow(res["norm"].reshape(res["norm"].shape[0], -1).T[:, order],
+              aspect="auto", origin="upper", cmap="jet", vmin=0, vmax=1)
+    at = 0
+    for _c, rr in groups[:-1]:
+        at += rr.size
+        if 0 < at < order.size:
+            ax.axvline(at, color="white", lw=1.4)
+    ax.set_xlabel("event, sorted by class", fontsize=9)
+    ax.set_ylabel("feature (depth × time)", fontsize=9)
+    ax.set_title("normalized CSD — the features", fontsize=10)
+    ax.tick_params(labelsize=8)
+
+    # --- 7. how the labels were decided -------------------------------
+    # A panel whose whole job is to show its working. The rule is one argmin
+    # per class and a comparison of two row numbers; stated in a legend it
+    # reads as a fact about anatomy, which it is not.
+    ax = state["axes"]["why"]
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    lines = [("HOW DS1/DS2 WAS DECIDED", INK, 9.5, "bold"),
+             ("mean CSD profile per class over the", GREY, 8.0, "normal"),
+             ("selected block; the sink is where it", GREY, 8.0, "normal"),
+             ("is most negative.", GREY, 8.0, "normal"),
+             ("", GREY, 3, "normal")]
+    for d in res["decide"]:
+        if not d.get("n"):
+            lines.append(("DS%d   no events" % d["c"], GREY, 8.4, "normal"))
+            continue
+        lines.append(("DS%d  n=%-3d sink CSC%-3d row %-2d %+.2f"
+                      % (d["c"], d["n"], d["csc"], d["row"], d["value"]),
+                      colors.get(d["c"], INK), 8.4, "normal"))
+    rows_ = [d["row"] for d in res["decide"] if d.get("n")]
+    lines.append(("", GREY, 3, "normal"))
+    if len(rows_) >= 2:
+        lines.append(("rule: DS1 = smallest sink row", INK, 8.4, "normal"))
+        lines.append(("      " + "  <  ".join(str(r) for r in rows_),
+                      INK, 8.4, "normal"))
+    lines.append(("flipped by hand: %s"
+                  % ("YES" if state.get("flip") else "no"),
+                  "#a4531c" if state.get("flip") else GREY, 8.4, "normal"))
+    multi = [d for d in res["decide"] if len(d.get("lows", [])) > 1]
+    if multi:
+        lines.append(("", GREY, 3, "normal"))
+        lines.append(("CAREFUL — more than one sink", "#a4531c", 8.4, "bold"))
+        for d in multi:
+            lines.append(("  DS%d dips at CSC%s"
+                          % (d["c"], ",".join(str(x) for x in d["lows"])),
+                          "#a4531c", 8.0, "normal"))
+        lines.append(("  argmin takes the DEEPEST dip,", GREY, 7.8, "normal"))
+        lines.append(("  not the shallowest one. Narrow", GREY, 7.8, "normal"))
+        lines.append(("  the box, or use flip DS1/DS2.", GREY, 7.8, "normal"))
+    y = .99
+    for txt, col, size, weight in lines:
+        if txt:
+            ax.text(.0, y, txt, transform=ax.transAxes, va="top", ha="left",
+                    fontsize=size, color=col, fontweight=weight)
+        y -= (size + 5.0) / 235.0
+
+    # Every repaired contact, named, and which of the three found it. The
+    # amplitude screen's finding used to go unreported, so a dead wire was
+    # being interpolated with nothing on screen to say so.
+    def _lst(src):
+        return ",".join("CSC%d" % n for n in sorted(src)) or "none"
+
+    auto_csd = sorted(set(res["bad"]) - set(state["bad0"])
+                      - set(state["manual_bad"]))
     state["fig"].suptitle(
         "%s   ·   %d events   ·   depth CSC%d–%d (%d)   ·   time %+.0f to "
-        "%+.0f ms (%d sample%s)   ·   %d classes   ·   features %s   ·   %s"
+        "%+.0f ms (%d sample%s)   ·   %d classes   ·   features %s"
         % (state["session_label"], types.size, lo_n, hi_n, len(sel),
            tw[t0], tw[max(t0, t1 - 1)], t1 - t0, "" if t1 - t0 == 1 else "s",
-           res["k"], "60 Hz notched" if state["notch"] else "no notch (Toothy)",
-           ("screen: CSC" + ",".join(str(n) for n in repaired))
-           if repaired else "screen: nothing flagged"),
+           res["k"], "60 Hz notched" if state["notch"] else "no notch (Toothy)"),
         fontsize=10.5, y=.988)
+    state["fig"].texts[0].set_text(state["fig"].texts[0].get_text())
+    state["repaired_note"].set_text(
+        "repaired — amplitude: %s   ·   CSD: %s   ·   by hand: %s"
+        % (_lst(state["bad0"]), _lst(auto_csd), _lst(state["manual_bad"])))
     state["fig"].canvas.draw_idle()
 
 
 # --------------------------------------------------------------------------
 def build(state):
-    fig = plt.figure(figsize=(16.2, 9.6))
+    fig = plt.figure(figsize=(17.6, 9.6))
     state["fig"] = fig
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=.34, wspace=.26,
-                           left=.055, right=.985, top=.905, bottom=.155)
+    # Four columns, the last one narrower: it carries the decision panel,
+    # which is text and needs less width than a raster.
+    gs = gridspec.GridSpec(2, 4, figure=fig, hspace=.34, wspace=.27,
+                           width_ratios=[1, 1, 1, .72],
+                           left=.048, right=.988, top=.905, bottom=.155)
     state["axes"] = {
         "volt": fig.add_subplot(gs[0, 0]),
         "csd": fig.add_subplot(gs[0, 1]),
         "pca": fig.add_subplot(gs[0, 2]),
+        "why": fig.add_subplot(gs[0, 3]),
         "profile": fig.add_subplot(gs[1, 0]),
         "csd1": fig.add_subplot(gs[1, 1]),
         "csd2": fig.add_subplot(gs[1, 2]),
+        "feat": fig.add_subplot(gs[1, 3]),
     }
 
     nums, tw = state["nums"], state["tw"]
@@ -463,34 +786,62 @@ def build(state):
         props=dict(facecolor="none", edgecolor="white", lw=1.6, alpha=.9))
 
     # --- controls -----------------------------------------------------
-    ax_k = fig.add_axes([.10, .055, .22, .022])
-    s_k = Slider(ax_k, "classes", 2, 5, valinit=state["nclasses"], valstep=1)
+    s_k = Slider(fig.add_axes([.072, .076, .155, .020]), "classes", 2, 5,
+                 valinit=state["nclasses"], valstep=1)
     s_k.label.set_fontsize(9)
     s_k.valtext.set_fontsize(9)
 
-    ax_chk = fig.add_axes([.40, .022, .13, .085])
-    ax_chk.set_frame_on(False)
-    chk = CheckButtons(ax_chk, ["60 Hz notch", "CSD screen"],
-                       [state["notch"], state["screen"]])
-    for t in chk.labels:
-        t.set_fontsize(9)
-
-    b_auto = Button(fig.add_axes([.565, .058, .085, .040]), "auto box")
-    b_one = Button(fig.add_axes([.565, .014, .085, .040]), "1 sample")
-    b_mean = Button(fig.add_axes([.665, .058, .085, .040]), "show average")
-    b_save = Button(fig.add_axes([.665, .014, .085, .040]), "save fig + csv")
-    for b in (b_auto, b_one, b_mean, b_save):
-        b.label.set_fontsize(8.5)
-
-    note = fig.text(.775, .058,
+    note = fig.text(.040, .046,
                     "mains %.0f µV rms of %.0f µV (%.0f%%)"
                     % (state["mains_uv"], state["wideband_uv"],
                        100 * state["mains_uv"] / max(state["wideband_uv"], 1e-9)),
                     fontsize=8.5, color=GREY, va="center")
-    hint = fig.text(.775, .022,
-                    "drag on the CSD raster to move the box", fontsize=8.5,
-                    color=GREY, va="center")
+    fig.text(.040, .020,
+             "drag = box  ·  right-click a depth panel = guide  ·  "
+             "← → = step spikes  ·  Esc = average",
+             fontsize=8.5, color=GREY, va="center")
     state["note"] = note
+
+    ax_chk = fig.add_axes([.275, .012, .12, .088])
+    ax_chk.set_frame_on(False)
+    chk = CheckButtons(ax_chk, ["60 Hz notch", "CSD screen"],
+                       [state["notch"], state["screen"]])
+    # The CSD screen is OFF by default. It is a heuristic for finding wires
+    # that misbehave, and on these probes it finds contacts that are simply
+    # carrying signal -- CSC59 is the only bad one, and the amplitude screen
+    # already has it. Left as a checkbox because the heuristic is still worth
+    # a look when a new probe misbehaves, but nothing is repaired on its say
+    # so unless somebody asks.
+    for t in chk.labels:
+        t.set_fontsize(9)
+
+    b_auto = Button(fig.add_axes([.392, .058, .078, .040]), "auto box")
+    b_one = Button(fig.add_axes([.392, .012, .078, .040]), "1 sample")
+    b_prev = Button(fig.add_axes([.478, .058, .078, .040]), "◀ prev")
+    b_next = Button(fig.add_axes([.478, .012, .078, .040]), "next ▶")
+    b_mean = Button(fig.add_axes([.564, .058, .078, .040]), "show average")
+    b_save = Button(fig.add_axes([.564, .012, .078, .040]), "save fig + csv")
+    b_clear = Button(fig.add_axes([.650, .058, .078, .040]), "clear guides")
+    b_unbad = Button(fig.add_axes([.650, .012, .078, .040]), "clear bad")
+    b_flip = Button(fig.add_axes([.736, .058, .078, .040]), "flip DS1/DS2")
+    for b in (b_auto, b_one, b_prev, b_next, b_mean, b_save, b_clear, b_unbad,
+              b_flip):
+        b.label.set_fontsize(8.5)
+
+    tb = TextBox(fig.add_axes([.855, .058, .068, .038]), "guide ",
+                 initial="", textalignment="left")
+    tb_bad = TextBox(fig.add_axes([.855, .012, .068, .038]), "bad ",
+                     initial="", textalignment="left")
+    for t in (tb, tb_bad):
+        t.label.set_fontsize(8.5)
+        t.text_disp.set_fontsize(8.5)
+
+    state["where"] = fig.text(.736, .030, "", fontsize=8.5, va="center",
+                              color=INK)
+    state["guide_note"] = fig.text(
+        .932, .020, "", fontsize=8.5, va="center", color=GREY)
+    state["repaired_note"] = fig.text(
+        .5, .958, "", fontsize=8.5, va="center", ha="center", color=GREY)
 
     def sync_box():
         """Put the selector's own rectangle where the state says it is."""
@@ -531,6 +882,21 @@ def build(state):
         draw(state, state["res"])
         sync_box()
 
+    def step(delta):
+        """Walk the spikes in time order, wrapping at both ends.
+
+        Deliberately independent of the box: stepping through events while
+        dragging is the whole point -- you widen the time window, walk a
+        dozen spikes to see whether the extra samples are carrying anything,
+        and widen again. Nothing is recomputed, only redrawn, so it is
+        instant however many events there are.
+        """
+        n = len(state["rows"])
+        cur = state["picked"]
+        state["picked"] = 0 if cur is None else int((cur + delta) % n)
+        draw(state, state["res"])
+        sync_box()
+
     def on_pick(event):
         art = event.artist
         rows = getattr(art, "_event_rows", None)
@@ -539,6 +905,78 @@ def build(state):
         state["picked"] = int(rows[event.ind[0]])
         draw(state, state["res"])
         sync_box()
+
+    def on_key(event):
+        # Nothing here may fire while the guide box has the keyboard, or
+        # typing "next" in a label would step four spikes.
+        if (getattr(tb, "capturekeystrokes", False)
+                or getattr(tb_bad, "capturekeystrokes", False)):
+            return
+        if event.key in ("right", "n"):
+            step(+1)
+        elif event.key in ("left", "p"):
+            step(-1)
+        elif event.key in ("escape", "0"):
+            show_mean(None)
+
+    def say(msg):
+        state["guide_note"].set_text(msg)
+        state["guide_note"].set_color(GREY if "limit" not in msg else "#a4531c")
+        state["fig"].canvas.draw_idle()
+
+    def redraw_guides():
+        save_guides(state)
+        draw(state, state["res"])
+        sync_box()
+
+    def on_submit(text):
+        """'30 hilus' in the box, Enter -- position first, then the name."""
+        got = parse_guide(text)
+        if got is None:
+            say("type a contact then a name, e.g. 30 hilus")
+            return
+        say(toggle_guide(state, got[0], got[1]))
+        tb.set_val("")
+        redraw_guides()
+
+    def on_click(event):
+        """Right-click on any depth panel: add a guide there, or take it off."""
+        if event.button != 3 or event.inaxes is None or event.ydata is None:
+            return
+        depth_axes = [state["axes"][k]
+                      for k in ("volt", "csd", "profile", "csd1", "csd2")]
+        if event.inaxes not in depth_axes:
+            return
+        label = parse_guide("0 " + tb.text)
+        say(toggle_guide(state, int(round(event.ydata)),
+                         label[1] if label else tb.text.strip()))
+        redraw_guides()
+
+    def clear_guides(_):
+        state["guides"] = []
+        say("guides cleared")
+        redraw_guides()
+
+    def on_bad(text):
+        """Mark contacts bad by hand, or put ones already marked back in."""
+        say(toggle_bad(state, text))
+        tb_bad.set_val("")
+        save_bad(state)
+        refresh()
+
+    def flip_types(_):
+        """Swap DS1 and DS2 -- the last word on the labels is anatomy's."""
+        state["flip"] = not state.get("flip")
+        save_flip(state)
+        say("DS1/DS2 flipped by hand" if state["flip"]
+            else "DS1/DS2 back to the computed order")
+        refresh()
+
+    def clear_bad(_):
+        state["manual_bad"] = {}
+        save_bad(state)
+        say("hand-marked contacts cleared (the automatic screens still run)")
+        refresh()
 
     def save(_):
         res, sel = state["res"], state["sel"]
@@ -553,6 +991,10 @@ def build(state):
         cols = ["n", "stamp_s", "refined_s", "offset_ms", "idx",
                 "peak_uv_mm2", "pc1", "pc2", "type", "by"]
         with open(csvp, "w", newline="", encoding="utf-8") as fh:
+            if state["guides"]:
+                fh.write("# guides: %s\n" % "; ".join(
+                    "CSC%d %s" % (g["csc"], g["label"] or "-")
+                    for g in state["guides"]))
             w = csvmod.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
             w.writeheader()
             for r, p, ty in zip(state["rows"], res["fit"], res["types"]):
@@ -566,13 +1008,31 @@ def build(state):
     chk.on_clicked(toggled)
     b_auto.on_clicked(auto_box)
     b_one.on_clicked(one_sample)
+    b_prev.on_clicked(lambda _: step(-1))
+    b_next.on_clicked(lambda _: step(+1))
     b_mean.on_clicked(show_mean)
     b_save.on_clicked(save)
+    b_clear.on_clicked(clear_guides)
+    b_unbad.on_clicked(clear_bad)
+    b_flip.on_clicked(flip_types)
+    tb.on_submit(on_submit)
+    tb_bad.on_submit(on_bad)
     fig.canvas.mpl_connect("pick_event", on_pick)
-    state["_widgets"] = (s_k, chk, b_auto, b_one, b_mean, b_save)
+    fig.canvas.mpl_connect("key_press_event", on_key)
+    fig.canvas.mpl_connect("button_press_event", on_click)
+    state["step"] = step
+    # Exposed so the headless probe can drive the paths a render cannot reach.
+    state["on_key"] = on_key
+    state["on_click"] = on_click
+    state["on_submit"] = on_submit
+    state["clear_guides"] = clear_guides
+    state["on_bad"] = on_bad
+    state["clear_bad"] = clear_bad
+    state["flip_types"] = flip_types
+    state["_widgets"] = (s_k, chk, b_auto, b_one, b_prev, b_next, b_mean,
+                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip)
     state["refresh"] = refresh
     refresh()
-    _ = hint
     return fig
 
 
@@ -631,8 +1091,9 @@ def main():
         "bad0": got["bad"], "sur": got["sur"],
         "session_label": got["session_label"], "mains_uv": got["mains_uv"],
         "wideband_uv": got["wideband_uv"],
-        "notch": True, "screen": True, "nclasses": 2, "picked": None,
-        "gain": 4.0,
+        "notch": True, "screen": False, "nclasses": 2, "picked": None,
+        "gain": 4.0, "guides": load_guides(args), "guide_artists": [],
+        "manual_bad": load_bad(args), "flip": load_flip(args),
         "tw": np.linspace(-args.surround_ms, args.surround_ms, n_t),
         "centre_i": n_t // 2,
     }
