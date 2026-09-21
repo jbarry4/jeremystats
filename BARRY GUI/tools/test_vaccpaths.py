@@ -25,7 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend import vacc  # noqa: E402
+from backend import ids, sessreg, vacc  # noqa: E402
 
 FAILED = []
 
@@ -106,6 +106,36 @@ def main():
     check("one it cannot, but has a copy of, is staged",
           vacc.resolve_gid("s6", ["D:\\x"], CFG, drives={},
                            staged=staged)["state"] == vacc.STAGED)
+
+    print("\ntwo projects whose names contain one another")
+    # The urethane work is a separate body of work from KCNT1, and its mouse
+    # and session numbers restart from one -- so m13 s3 exists in both, and
+    # filing them together would put two animals under one name.
+    cases = [
+        ("/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M13s3/"
+         "2022-08-15_16-28-20", "KCNT1 Urethane"),
+        ("/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M2s2/"
+         "2022-03-18_15-38-40", "KCNT1 Urethane"),
+        (r"Y:\Jeremy3\KCNT1\Summer26\KCNT1_m0520\m0520_s01\2026-07-29_12-00-00",
+         "KCNT1"),
+        (r"D:\PTEN\CTL\M13_s3\2023-08-01_12-11-00", "PTEN"),
+        (r"D:\PTEN\PTEN_DKO\m46s1\2025-01-15_14-32-19", "PTEN"),
+    ]
+    for path, want in cases:
+        got = sessreg.guess_project(ids.identify(path), [path])
+        check("%-14s from %s" % (want, path.split("/")[-2][:26]
+                                 if "/" in path else path.split("\\")[-2][:26]),
+              got == want, "got %r" % got)
+    # Order is what makes it work, and it is easy to undo by sorting the list.
+    ks = list(sessreg.KNOWN_PROJECTS)
+    check("the longer name is tried before the one it contains",
+          ks.index("KCNT1 Urethane") < ks.index("KCNT1"), str(ks))
+    # And the needle is upper-cased like the haystack. This was the actual
+    # bug: every name was capitals until one had a lower-case letter in it,
+    # and that one silently never matched.
+    check("a project name with lower case in it still matches",
+          sessreg.guess_project({}, ["/x/KCNT1 Urethane/y"]) == "KCNT1 Urethane",
+          sessreg.guess_project({}, ["/x/KCNT1 Urethane/y"]))
 
     print("\nthe path map cannot climb out of its root")
     try:

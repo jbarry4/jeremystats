@@ -122,6 +122,87 @@ async function until(fn, ms) {
                     chipFor(native) === 'native', chipFor(native));
 
   say('');
+  say('=== a third view of the same catalogue, in Sessions ===');
+  await ev('setView("sessions")');
+  await sleep(700);
+  const seg = () => Array.from(frame.contentDocument.querySelectorAll('#sessModeSeg button'));
+  check('there are three sources now', seg().length === 3,
+        seg().map((b) => b.textContent).join(' | '));
+  const vBtn = seg().find((b) => b.dataset.mode === 'vacc');
+  check('the third one is VACC', !!vBtn,
+        seg().map((b) => b.dataset.mode).join(' '));
+  // Shown only when there is a cluster configured -- a source you have no
+  // account on is not a view of anything.
+  const cfgd = !!(st || {}).configured;
+  check('it is shown exactly when a cluster is configured',
+        !!vBtn && (vBtn.hidden !== cfgd), 'configured=' + cfgd
+        + ' hidden=' + (vBtn ? vBtn.hidden : '?'));
+
+  /* Opening it must not draw itself to death.
+
+     The first version did: the paint asked the browser to fetch a listing,
+     the fetch cleared the listing and repainted before awaiting anything,
+     and the repaint asked again -- synchronously, without bound. It stacked
+     several hundred copies of the same card into the view and took the
+     interface down with "Maximum call stack size exceeded".
+
+     So this counts the cards. One card per section is right; a dozen of the
+     same one is the bug, and it is visible long before the stack runs out. */
+  if (vBtn && !vBtn.hidden) {
+    vBtn.click();
+    await sleep(2500);
+    const pad0 = frame.contentDocument.getElementById('vaccBody');
+    const cards = pad0 ? pad0.querySelectorAll('.card').length : 0;
+    check('opening it draws a couple of cards, not hundreds',
+          cards > 0 && cards <= 4, cards + ' cards');
+    const scans = (pad0 ? (pad0.textContent || '') : '')
+      .split('Look around it').length - 1;
+    check('and the browse section appears exactly once', scans === 1,
+          scans + ' copies');
+    check('no uncaught error came out of it',
+          !/Maximum call stack/.test(
+            frame.contentDocument.body.textContent || ''),
+          'the interface reported a stack overflow');
+    await until(() => {
+      const p = frame.contentDocument.getElementById('vaccBody');
+      return p && !p.classList.contains('hidden') && p.textContent.length > 40;
+    }, 20000);
+    const pad = frame.contentDocument.getElementById('vaccBody');
+    check('choosing it opens the cluster pad', !!pad
+          && !pad.classList.contains('hidden'));
+    check('and it offers somewhere to browse',
+          /Look around it/.test((pad || {}).textContent || ''),
+          ((pad || {}).textContent || '').slice(0, 60));
+    check('the other two pads are put away',
+          frame.contentDocument.getElementById('sessScanPad').classList.contains('hidden')
+          && frame.contentDocument.getElementById('hkBody').classList.contains('hidden'));
+    // Back, so the rest of the suite finds Sessions as it expects it.
+    const back = seg().find((b) => b.dataset.mode === 'scan');
+    if (back) { back.click(); await sleep(400); }
+  }
+
+  say('');
+  say('=== and a filter for what the cluster can run ===');
+  // The filters live in a popover behind the Filter button, not in the bar,
+  // so they have to be opened to be read.
+  const fbtn = frame.contentDocument.querySelector('#sessFilterBar .filter-open');
+  check('the filter bar offers a Filter button', !!fbtn);
+  if (fbtn) {
+    fbtn.click();
+    await sleep(500);
+    const txt = frame.contentDocument.body.textContent || '';
+    check('there is a "VACC can read it" filter',
+          /VACC can read it/.test(txt), txt.slice(0, 0) || 'not in the popover');
+    check('and a "cannot reach it" one',
+          /VACC cannot reach it/.test(txt), 'not in the popover');
+    // Shut it again so the rest of the suite finds the view as it expects.
+    frame.contentDocument.body.click();
+    await sleep(250);
+  } else {
+    check('there is a "VACC can read it" filter', false, 'no Filter button');
+    check('and a "cannot reach it" one', false, 'no Filter button');
+  }
+
   say('=== the colours say what they mean ===');
   const D = frame.contentDocument;
   const probe = D.createElement('span');

@@ -37,6 +37,10 @@ BARRY.braces = (function () {
     entry: null,        // the chosen bank entry id
     from_version: null, // null means "the stamps as they are now"
     channels: null,     // which go into the profile; null = whatever is good
+    measure: 'csd',     // 'csd' or 'voltage'
+    gid: null,          // the chosen recording
+    find: '',           // kept so the harness can still drive the old box
+    finding: false,
     window_ms: 100,
     estimator: 'sd',
   };
@@ -105,6 +109,7 @@ BARRY.braces = (function () {
       started = await apiPost('/api/braces/run', {
         entry_id: q.entry,
         channels: q.channels,
+        measure: q.measure,
         from_version: q.from_version,
         window_ms: q.window_ms,
         estimator: q.estimator,
@@ -158,6 +163,8 @@ BARRY.braces = (function () {
      moved and the line said "reading the channel" for three minutes while
      sixty-four of them went past. */
   const STAGE_NAMES = {
+    'ds depth': 'Averaging the events — window',
+    'ds windows': 'Reading window',
     'ds profile': 'Reading channel',
     'ds detect': 'Finding the peaks',
     'ds read': 'Reading',
@@ -237,9 +244,16 @@ BARRY.braces = (function () {
   async function decide(n, call, t) {
     if (!set_) return;
     try {
+      /* A null call means "forget what was said about this row", and the
+         route only reads `call` when it is not null -- so undoing has to go
+         through `calls`, where an explicit null is the documented way to
+         drop one. Sent as a single-row map rather than a second route. */
+      const body = (call == null)
+        ? { calls: { [String(n)]: null } }
+        : { row: n, call: call, t: t };
       const got = await apiPost(
         '/api/braces/set/' + encodeURIComponent(set_.set.set_id) + '/decide',
-        { row: n, call: call, t: t });
+        body);
       set_.counts = got.counts;
       set_.would_move = got.would_move;
       set_.set.calls = got.calls;
@@ -273,7 +287,7 @@ BARRY.braces = (function () {
     const h = host();
     if (!h) return;
     h.innerHTML = '';
-    if (set_) { h.appendChild(setView()); return; }
+    if (set_) { h.appendChild(proposalView()); return; }
     h.appendChild(pickView());
   }
 
@@ -307,30 +321,106 @@ BARRY.braces = (function () {
       return box;
     }
 
-    /* Which set. */
+    /* Which recording, then which of its banked entries.
+
+       Two questions in that order, because the first narrows the second
+       and because it is the order somebody already thinks in: you arrive
+       with a recording in mind, not with the name of a banked entry. The
+       same two controls the curation wizard uses -- one picker, one radio
+       list -- so somebody who has started a curation set already knows how
+       to start an alignment.
+
+       Only recordings something is banked against. The registry holds
+       every recording this machine has ever opened and Braces can do
+       nothing with the ones that have no curated dentate spikes, so
+       offering all of them means most picks land on "nothing here", which
+       reads as the tool being broken rather than as the recording being
+       the wrong one. The registry row is used where there is one, because
+       it knows the date and whether the recording can be read from here;
+       where there is not -- an entry banked from a recording this machine
+       has never opened -- the entry itself supplies enough to pick by. */
     const card = el('div', { class: 'card' });
+    const regRows = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    const byGid = new Map();
+    for (const r of regRows) byGid.set(r.gid, r);
+    const rows = [];
+    const seen = new Set();
+    for (const c of cands) {
+      if (!c.gid || seen.has(c.gid)) continue;
+      seen.add(c.gid);
+      rows.push(byGid.get(c.gid) || {
+        gid: c.gid,
+        label: c.session_label || c.name,
+        project: c.project, mouse: c.mouse, session: c.session,
+        reachable: true,
+      });
+    }
+    rows.sort((x, y) => String(x.label || '').localeCompare(
+      String(y.label || '')));
+
+    // Opened on something workable rather than on nothing: the recording
+    // of whatever is already chosen, else the first one that has entries.
+    if (!q.gid || !seen.has(q.gid)) {
+      const on = cands.find((c) => c.id === q.entry);
+      q.gid = (on && on.gid) || (rows[0] || {}).gid || null;
+    }
+
     card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
-                                 text: 'Which set' }));
-    const sel = el('select', {
-      class: 'br-set',
-      onchange: (e) => {
-        q.entry = e.target.value;
-        // A different set is a different recording, so the channels ticked
-        // for the last one mean nothing here.
+                                 text: 'Recording' }));
+    card.appendChild(BARRY.pickSession({
+      rows,
+      value: q.gid,
+      placeholder: 'Which recording? Type a mouse, session or date\u2026',
+      onpick: (r) => {
+        if (r.gid === q.gid) return;
+        q.gid = r.gid;
+        // A different recording means a different entry. Keeping the old
+        // one would leave the panel below describing a set that is no
+        // longer among the ones on offer.
+        q.entry = null;
         q.channels = null;
         q.from_version = null;
-        refreshPlan();
+        plan = null;
+        render();
       },
-    });
-    for (const c of cands) {
-      const done = c.aligned ? '  · aligned' : '';
-      sel.appendChild(el('option', {
-        value: c.id, selected: c.id === q.entry ? 'selected' : null,
-        text: (c.name || c.id) + '  · ' + c.n + ' stamps  · v'
-              + c.current_version + done,
-      }));
+    }));
+
+    const mine = cands.filter((c) => c.gid === q.gid);
+    if (!mine.length) {
+      card.appendChild(el('p', { class: 'confirm-msg', text:
+        'Nothing curated is banked against this recording, so there are no '
+        + 'stamps to align. Run Incisor to find the candidates and go '
+        + 'through them in Checkup first \u2014 moving stamps nobody has '
+        + 'vetted is work done twice, because the flags would be about '
+        + 'events that get thrown away an hour later.' }));
+    } else {
+      card.appendChild(el('div', { class: 'section-label',
+                                   text: 'Which banked entry' }));
+      const list = el('div', { class: 'bm-list' });
+      for (const c of mine) {
+        list.appendChild(el('label', {
+          class: 'bm-row' + (c.id === q.entry ? ' on' : ''),
+        }, [
+          el('input', {
+            type: 'radio', name: 'brEntry',
+            checked: c.id === q.entry ? 'checked' : null,
+            onchange: () => {
+              q.entry = c.id;
+              q.channels = null;
+              q.from_version = null;
+              refreshPlan();
+            },
+          }),
+          el('span', { class: 'mk-name', text: c.name || c.id }),
+          el('span', { class: 'flagchip', text: c.n + ' stamps' }),
+          el('span', { class: 'person-what',
+                       text: vName(c)
+                             + (c.aligned ? '  \u00b7 aligned before' : '') }),
+        ]));
+      }
+      card.appendChild(list);
     }
-    card.appendChild(sel);
 
     const cur = cands.find((c) => c.id === q.entry);
     if (cur && cur.aligned) {
@@ -350,6 +440,24 @@ BARRY.braces = (function () {
     set.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
                                 text: 'Settings' }));
     set.appendChild(el('div', { class: 'br-fields' }, [
+      el('div', { class: 'br-field' }, [
+        el('label', { text: 'Measured on' }),
+        el('div', { class: 'seg sm' }, [
+          ['csd', 'CSD'],
+          ['voltage', 'Voltage'],
+        ].map(([id, label]) => el('button', {
+          class: q.measure === id ? 'active' : '',
+          title: id === 'csd'
+            ? 'The current source density across depth — the part of '
+              + 'the signal that cannot be volume-conducted'
+            : 'The magnitude of the filtered voltage, which is what the '
+              + 'detectors these stamps came from were run on',
+          onclick: () => { if (q.measure === id) return;
+                           q.measure = id; render(); },
+          text: label,
+        }))),
+        el('span', { class: 'br-hint', text: '5–100 Hz either way' }),
+      ]),
       field('Window ±ms', el('input', {
         type: 'number', step: '10', min: '5', value: String(q.window_ms),
         onchange: (e) => {
@@ -360,7 +468,16 @@ BARRY.braces = (function () {
     ]));
     if (plan && plan.ok) set.appendChild(channelPicker());
     set.appendChild(el('p', { class: 'hint', text:
-      'There is no channel to pick. A dentate spike appears across most of '
+      (q.measure === 'csd'
+        ? 'The CSD is the second derivative across depth, so it is the part '
+          + 'of the signal that cannot have come from somewhere else on the '
+          + 'probe — a dentate spike is a current sink, and this is '
+          + 'where the current went. Smoothed across depth first, or one '
+          + 'noisy contact dominates a derivative. '
+        : 'The filtered voltage is what Incisor and Toothy were themselves '
+          + 'run on, so aligning to it reproduces the detector’s own '
+          + 'criterion. ')
+      + 'There is no channel to pick. A dentate spike appears across most of '
       + 'the shank at the same instant, so the magnitudes are averaged over '
       + 'every ticked channel into one trace, and the stamp goes to the '
       + 'highest point of THAT inside the window. One noisy wire cannot '
@@ -493,7 +610,7 @@ BARRY.braces = (function () {
                         + ' channels, averaged into one trace'),
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
-      dt('Stamps', plan.entry.n + ' in v' + plan.current_version),
+      dt('Stamps', plan.entry.n + ' in ' + vName(plan)),
     ].filter(Boolean)));
 
 
@@ -551,10 +668,15 @@ BARRY.braces = (function () {
       const tip = usable[usable.length - 1];
       list.appendChild(row({
         ref: null, on: q.from_version == null,
-        v: 'v' + plan.current_version,
+        // The tip's NAME. This row is the entry's current events, which
+        // is the newest state there is -- labelling it with the maximum
+        // stored NUMBER put "v4" at the top of a list ending in v6 and
+        // read as the chooser having defaulted two versions back.
+        v: vName(plan),
         chip: 'now',
         what: plan.entry.n + ' stamps, as they stand',
-        does: 'the next version continues the line',
+        does: 'the newest there is \u2014 '
+              + vName(plan, 'next_name') + ' continues the line',
         who: '',
       }));
       for (const v of usable) {
@@ -598,6 +720,18 @@ BARRY.braces = (function () {
   const dt = (k, v) => el('div', {}, [el('dt', { text: k }),
                                       el('dd', { text: String(v) })]);
 
+  /* What a version is CALLED. Never the stored number: two machines
+     curating one entry both mint the next one and the union keeps both,
+     so a history can run 0,1,2,3,4,3,4 and the maximum of it is 4 while
+     the newest is the seventh. The lineage name is what the list itself
+     shows, and it is what every other mention of a version has to show
+     or they disagree on screen. The number is the fallback for a payload
+     from a server that has not been restarted yet. */
+  const vName = (o, key) => 'v' + ((o && o[key || 'current_name'])
+                                   != null
+                                   ? o[key || 'current_name']
+                                   : ((o || {}).current_version));
+
   function recentSets() {
     const box = el('div', { class: 'card br-recent' });
     box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
@@ -634,7 +768,12 @@ BARRY.braces = (function () {
   }
 
   /* ---------- 2. the proposal ---------- */
-  function setView() {
+  /* NOT `setView`. That is core.js's function for changing which view the
+     app is showing, and a local one of the same name shadows it for this
+     whole module -- so `setView('xplore')` built a proposal panel, threw
+     the argument away, and left the app on the ToolKit page. Which is
+     exactly what "the main window never changes" looked like. */
+  function proposalView() {
     const s = set_.set;
     const sum = s.summary || {};
     const c = set_.counts || {};
@@ -685,8 +824,8 @@ BARRY.braces = (function () {
                 : 'Look them over below, then bank it.')
           : 'These stamps are already where the recording puts them.' }),
         el('span', { class: 'br-verdict-sub', text:
-          'Nothing has been written. The set is still on v'
-          + ((set_.entry || {}).current_version) + '.' }),
+          'Nothing has been written. The set is still on '
+          + vName(set_.entry) + '.' }),
       ]));
     }
 
@@ -717,6 +856,8 @@ BARRY.braces = (function () {
 
     /* The histogram, before the table. */
     box.appendChild(histCard(sum));
+
+    if (sum.depth) box.appendChild(depthCard(sum.depth, sum));
 
     /* What it was measured on. Only worth a line, now that there is no
        channel to second-guess -- but which channels went in, and which were
@@ -754,6 +895,59 @@ BARRY.braces = (function () {
 
     if (bench) box.appendChild(benchCard());
     return box;
+  }
+
+  /* Where on the shank these events are.
+
+     The one picture that says whether the measurement is being made in the
+     right place. A dentate spike is depth-specific: the profile should rise
+     to a peak across the hilus and fall away either side, and a flat one
+     means the set is being measured against something that is not a dentate
+     spike. No count says that; the shape does. */
+  function depthCard(d, sum) {
+    const prof = d.profile || [];
+    if (!prof.length) return el('span');
+    const card = el('div', { class: 'card' });
+    const inBand = new Set(d.channels || []);
+    const top = Math.max(...prof.map((r) => r.score || 0)) || 1;
+    card.appendChild(el('div', { class: 'br-chans-head' }, [
+      el('label', { text: 'Where these events are on the shank' }),
+      el('span', { class: 'br-hint',
+        text: 'averaged over CSC' + (d.channels || [])[0] + '–CSC'
+              + (d.channels || [])[(d.channels || []).length - 1]
+              + '  ·  ' + (d.channels || []).length + ' of ' + d.of }),
+    ]));
+    const list = el('div', { class: 'br-depth' });
+    for (const r of prof) {
+      list.appendChild(el('div', {
+        class: 'br-depth-row' + (inBand.has(r.number) ? ' on' : ''),
+      }, [
+        el('span', { class: 'n', text: 'CSC' + r.number }),
+        el('span', { class: 'bar' },
+           [el('i', { style: 'width:' + ((r.score / top) * 100) + '%' })]),
+        el('span', { class: 'v',
+                     text: (100 * (r.score / top)).toFixed(0) + '%' }),
+      ]));
+    }
+    card.appendChild(list);
+    const scr = d.screened || {};
+    const names = Object.keys(scr);
+    if (names.length) {
+      card.appendChild(el('p', { class: 'hint', text:
+        'Interpolated from their neighbours, not believed: '
+        + names.map((n) => 'CSC' + n + ' (' + scr[n] + ')').join(', ')
+        + '. A current source density is a second difference across depth, '
+        + 'so a dead contact is not merely included in it — it is the '
+        + 'largest thing on the shank.' }));
+    }
+    card.appendChild(el('p', { class: 'hint', text:
+      'The CSD averaged over a sample of these stamps at their curated '
+      + 'times. A dentate spike is time-locked to them so it adds; the '
+      + 'noise and anything a bad wire is doing are not, so they fall away '
+      + 'as one over the root of the count. Each bar is how much of that '
+      + 'average sits on that contact. A profile that does not rise to a '
+      + 'peak and fall away means this set is not what it says it is.' }));
+    return card;
   }
 
   function count(v, label, tone) {
@@ -840,7 +1034,7 @@ BARRY.braces = (function () {
         el('td', { text: ms(r.shift_ms) }),
         el('td', { text: r.peak_uv == null ? '—'
                          : String(Math.round(r.peak_uv)) }),
-        el('td', { class: 'why', text: said
+        el('td', { class: 'br-why', text: said
           ? (said === 'keep' ? 'left where it was'
              : said === 'move' ? 'moved by hand' : 'confirmed')
           : (REASONS[r.flag] || '') }),
@@ -865,10 +1059,10 @@ BARRY.braces = (function () {
     const bar = el('div', { class: 'br-accept' });
     if (s.committed) return bar;
     const waiting = c.waiting || 0;
-    const nextV = ((set_.entry || {}).current_version || 0) + 1;
+    const nextV = vName(set_.entry, 'next_name');
     bar.appendChild(el('button', {
       class: 'btn primary',
-      text: 'Bank it as v' + nextV + '…',
+      text: 'Bank it as ' + nextV + '…',
       title: 'Shows exactly what would be written before writing it',
       onclick: () => commit(false),
     }));
@@ -877,12 +1071,1180 @@ BARRY.braces = (function () {
         + 'Those stamps stay exactly where they are — a flag nobody '
         + 'resolved is never moved on the assumption it was probably right.'
       : 'Every flag has been answered.' }));
+    bar.appendChild(el('button', {
+      class: 'btn sm', text: 'Open on the recording\u2026',
+      title: 'The trace view, with every stamp drawn where it was and where '
+           + 'it is going \u2014 step through them, move them, decide them',
+      onclick: enter,
+    }));
     bar.appendChild(el('div', { style: 'flex:1' }));
     bar.appendChild(el('button', {
       class: 'btn ghost sm', text: 'Discard this proposal',
       onclick: discard,
     }));
     return bar;
+  }
+
+  /* ==================================================================
+     The Braces view
+
+     A mode, the way Checkup is a mode -- not a panel with a trace behind
+     it. `setMode` is what makes that true: it puts the app into the mode,
+     puts a banner on it, and gives the app one way out that runs `exit`
+     however somebody leaves. The first version of this set some marks and
+     appended a bar, which is why nothing about it worked like the view it
+     was supposed to resemble.
+
+     What it shows that Checkup does not: every stamp TWICE. Where it was,
+     muted, and where it is going, in the accent -- so a whole run of them
+     reads at a glance, and the one being decided is the one the window is
+     centred on.
+     ================================================================== */
+  let view = null;      // { sess, at, only } while the mode is open
+
+  /* The three marks, in the vocabulary every pane already speaks. */
+  const VIEW_LABELS = [
+    { id: 'was', name: 'was here', color: '#6f8c7d' },
+    { id: 'now', name: 'goes here', color: '#FFB81C' },
+    { id: 'ask', name: 'needs you', color: '#ED8B33' },
+    { id: 'here', name: 'the one you are on', color: '#7FE3B0' },
+  ];
+
+  const vRows = () => (view && set_ && set_.set.rows) || [];
+  const vWanted = (r) => (!view || view.only === 'all') ? true : !!r.flag;
+  const vAt = () => vRows()[view.at] || null;
+
+  async function enter() {
+    const s = set_ && set_.set;
+    if (!s) return false;
+    const path = set_.session_path;
+    if (!path) {
+      toast('The recording this set came from is not reachable from this '
+            + 'machine, so there is nothing to look at.', 'err', 9000);
+      return false;
+    }
+    // One mode at a time, or two toolbars and two key handlers stack on
+    // top of each other. Same note as the top of `curate.enter`.
+    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
+
+    /* Every step, recorded. This mode has failed in four different places
+       now -- a blocked pop-up, a missing registry entry, a sync that
+       deleted its marks, and the layout -- and each time the report was
+       that nothing happened, which is the one report nothing can be done
+       with. The trail is in the activity log either way. */
+    const step = (what, extra) => {
+      BARRY.activity.log('braces.enter', Object.assign(
+        { set: s.set_id, step: what }, extra || {}));
+    };
+    step('opening', { path: path });
+
+    /* Dim the workspace for the duration of the arrival. Everything between
+       here and `settled` moves the page -- the view swap, the open, the
+       banner, the pane rebuild, the jump to the first stamp -- and dimming
+       through all of it turns five snaps into one fade. */
+    const app = document.getElementById('app');
+    if (app) app.classList.add('mode-settling');
+    const settled = () => {
+      if (!app) return;
+      // Two frames: one for the new layout to be in the DOM, one for the
+      // browser to have laid it out. Removing the class in the same frame
+      // as the last change means the transition has nothing to run from.
+      requestAnimationFrame(() => requestAnimationFrame(
+        () => app.classList.remove('mode-settling')));
+    };
+
+    setView('xplore');
+    const sess = await BARRY.views.xplore.open(path);
+    if (!sess) {
+      step('failed', { why: 'the recording would not open' });
+      toast('That recording could not be opened here.', 'err', 8000);
+      settled();
+      return false;
+    }
+    step('opened', { view: BARRY.state.view });
+    view = { sess: sess, at: 0, rev: 0, curve: curvePref(),
+             only: (set_.counts || {}).waiting ? 'flag' : 'all' };
+    /* THIS WINDOW OWNS THE MARKS.
+       `xplore`'s live loop skips the window that is running a curation and
+       calls `adoptCuration` on every other one -- and `adoptCuration` with
+       nothing on the channel DELETES `curationMarks`. Without this flag the
+       marks were published and then wiped a second later by the sync,
+       which is why the trace view never changed. */
+    sess.curation = { kind: 'braces', index: 0, set: set_.set };
+    setMode('braces', exitView);
+    vLayout();
+    vGrab();
+    step('laid out', { view: BARRY.state.view });
+
+    // Land on something the pass actually contains. Guarded: a throw here
+    // used to take the bar and the marks with it and leave the mode half
+    // open with no sign of why.
+    try {
+      const first = vRows().findIndex(vWanted);
+      vGoTo(first >= 0 ? first : 0);
+    } catch (err) {
+      step('failed', { why: String((err && err.message) || err) });
+      toast('Braces could not draw on this recording: '
+            + ((err && err.message) || err), 'err', 10000);
+      settled();
+      exitView();
+      return false;
+    }
+
+    /* The last word on which view is showing.
+
+       `setView` is called at the top, before the recording is opened --
+       and something between there and here has been putting the workspace
+       back on the ToolKit panel, so the mode ended up running underneath a
+       page that was still showing its own summary. Said again, after
+       everything else is in place: whatever else happened, this is the view
+       the mode is in. */
+    if (BARRY.state.view !== 'xplore') {
+      step('view bounced', { was: BARRY.state.view });
+      setView('xplore');
+    }
+    settled();
+    step('ready', { n: vRows().length, view: BARRY.state.view });
+    return true;
+  }
+
+  /* The traces get the window, the aids get their own.
+
+     The same arrangement Checkup uses, and for a stronger reason: deciding
+     whether a stamp is on the right deflection means looking at the CSD and
+     the theta beside it, because a dentate spike has a shape across depth
+     and a single trace does not show it. The aid window reads the same
+     `sess.curationMarks` this mode publishes, so the old and new positions
+     are drawn on all four panels too, not only on the traces.
+
+     Its own window NAME, so it does not fight Checkup for the same one --
+     `window.open` reuses a window by name, and two modes sharing a name
+     means entering one steals the other's panels. */
+  let aidWin = null;
+
+  function vLayout() {
+    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    if (!vAids()) {
+      /* The second window was blocked, and a blocked pop-up is how this
+         mode ends up looking like it did nothing at all: the traces open,
+         four panels do not, and there is no way to tell that from broken.
+         So the aids come into THIS window instead. Cramped, and it says so
+         -- but cramped is a thing somebody can work with and absent is
+         not. */
+      BARRY.views.xplore.setPanes([
+        { panel: 'traces' },
+        { panel: 'csd' },
+        { panel: 'theta' },
+        { panel: 'voltage' },
+      ], { col: 0.5, row: 0.5 });
+      toast('The second window was blocked, so the aid panels are in this '
+            + 'one. Allow pop-ups for 127.0.0.1 and re-enter for the '
+            + 'roomier layout.', 'warn', 11000);
+    }
+  }
+
+  /* True when the four aids are up in their own window. False means the
+     pop-up was blocked, which the caller turns into an in-window layout
+     rather than leaving the mode looking like it did nothing. */
+  function vAids() {
+    /* Whatever happens below, the next publish sends the marks in full.
+       A window that has just been opened, or raised, holds nothing or
+       holds something old, and the thinning cannot know which. */
+    if (view) { view.sig = null; view.sentAt = 0; }
+    if (aidWin && !aidWin.closed) {
+      try { aidWin.focus(); } catch (e) { /* not important */ }
+      return true;
+    }
+    const chans = ((view.sess.info || {}).channels || []);
+    const every8 = chans.filter((c, i) => i % 8 === 0).map((c) => c.index);
+    aidWin = BARRY.views.xplore.popOutPanes(view.sess, [
+      { panel: 'csd' },
+      { panel: 'theta' },
+      { panel: 'voltage' },
+      { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
+        fmin: 1, fmax: 250 },
+    ], { role: 'aids', name: 'barry-braces-aids', width: 720, height: 1000,
+         // Folded on arrival, as Checkup's are: these four are for glancing
+         // at, and the headers and control strips cost more of a short pane
+         // than they are worth.
+         chrome: 'notabs,noheads,nostrip,nochannels' });
+    return !!aidWin;
+  }
+
+  function exitView() {
+    if (!view) return;
+    if (aidWin && !aidWin.closed) {
+      try { aidWin.close(); } catch (e) { /* it may already be gone */ }
+    }
+    aidWin = null;
+    if (BARRY.views.xplore.grabTime) BARRY.views.xplore.grabTime(null);
+    if (view.sess) {
+      delete view.sess.curation;
+      delete view.sess.curationMarks;
+      // Tell the other window the mode is over, or it keeps drawing marks
+      // for a proposal nobody is looking at any more.
+      if (BARRY.views.xplore.publishCuration) {
+        BARRY.views.xplore.publishCuration(view.sess, null);
+      }
+    }
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    view = null;
+    const app = document.getElementById('app');
+    if (app) app.classList.remove('mode-settling');
+    const bar = document.getElementById('brViewBar');
+    if (bar) bar.remove();
+    // The list is a sibling of the bar and outlives it otherwise, which
+    // leaves a panel of somebody else's stamps over the next view.
+    const lst = document.getElementById('brList');
+    if (lst) lst.remove();
+    document.removeEventListener('keydown', vKeys, true);
+    setMode(null);
+    setView('toolkit');
+  }
+
+  /* Every stamp, twice.
+
+     `curationMarks` is the shape every pane, the overview strip and the
+     pop-out aid window read, so this draws everywhere without a second
+     drawing path. The one being decided gets its own colour rather than
+     only being centred: centred is a fact about the window, and panning
+     away should not lose which one you were on. */
+  /* The curve, for the stamp in focus.
+
+     Fetched once per stamp and carried on the marks, so every pane and
+     every pop-out draws the same samples -- and so that a window with no
+     proposal in it can draw it at all. Three windows wide, which is what
+     the bench asks for: enough either side to see that the maximum picked
+     is the maximum there is.
+
+     `seq` guards the order. Stepping faster than the reads come back
+     otherwise leaves whichever request finished last on screen, which is
+     not necessarily the stamp anybody is looking at. */
+  let curveSeq = 0;
+
+  /* Whether the curve is drawn, remembered between sessions.
+
+     It is a way of working rather than a property of a set: somebody who
+     wants to see what the rule looked at wants that on every stamp of
+     every alignment, and somebody who finds it busy wants it gone for
+     good. On by default, because it is the only thing on screen that says
+     why the green line is where it is. */
+  const CURVE_KEY = 'braces_curve';
+
+  function curvePref() {
+    try {
+      return BARRY.prefs.get(CURVE_KEY, true) !== false;
+    } catch (e) { return true; }
+  }
+
+  function setCurvePref(on) {
+    try { BARRY.prefs.set(CURVE_KEY, !!on); } catch (e) { /* ignore */ }
+  }
+
+  async function loadCurve() {
+    if (!view || !view.curve) return;
+    const s = set_.set;
+    const r = vAt();
+    if (!r) return;
+    /* The reach exactly. A stamp may move within the window and nowhere
+       else, so a sample outside it is not a candidate and cannot be the
+       answer -- drawing three windows of curve put two thirds of a
+       picture on screen that no decision could ever be taken from, and
+       read as though the rule had considered it. */
+    const span = ((s.params || {}).window_ms || 100) / 1000;
+    const mine = ++curveSeq;
+    try {
+      const got = await apiPost(
+        '/api/braces/set/' + encodeURIComponent(s.set_id) + '/profile',
+        { t0: r.was - span, t1: r.was + span });
+      if (!view || !view.curve || mine !== curveSeq) return;
+      view.trace = got;
+      vPublish();
+    } catch (e) {
+      if (view && mine === curveSeq) { view.trace = null; vPublish(); }
+    }
+  }
+
+  /* Weights for the signature, one per state a dashed mark can be in.
+     Small, distinct, and not multiples of one another, so no combination
+     of them adds up to another -- a signature that collides is a change
+     that never leaves this window. */
+  const ST_W = { open: 0, flagged: 0.0031, confirmed: 0.0057, kept: 0.0083 };
+
+  function vPublish(opts) {
+    if (!view) return;
+    // `local` draws here and tells nobody: dragging repaints far
+    // faster than anything should be published at.
+    const quiet = !!(opts && opts.local);
+    const s = set_.set;
+    const cur = vAt();
+    const evs = [];
+    vRows().forEach((r, i) => {
+      if (view.only === 'flag' && !r.flag && r !== cur) return;
+      const mine = r === cur;
+      const said = callFor(i);
+      // What the dashed half says: answered, still being asked about, or
+      // nobody has looked.
+      const st = (said === 'confirm' || said === 'move') ? 'confirmed'
+        : (said === 'keep' ? 'kept'
+           : (r.flag ? 'flagged' : 'open'));
+      const to = vNow(r);
+      // `r` is the row this mark belongs to. Carried so that a window
+      // holding these marks can be told "the focus is now row 412" and
+      // work out its own `f` flags, instead of being sent every mark
+      // again to learn one number.
+      if (Math.abs(to - r.was) < 1e-9) {
+        // It is not going anywhere, so one mark, not two on top of
+        // each other.
+        evs.push({ start: r.was, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+        return;
+      }
+      evs.push({ start: r.was, k: 'was', st: st, f: mine ? 1 : 0, r: i });
+      evs.push({ start: to, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+    });
+    evs.sort((a, b) => a.start - b.start);
+    view.sess.curationMarks = {
+      kind: 'braces',
+      // How far a stamp was allowed to move. Carried, because the painter
+      // runs in the aid window too and there is no proposal loaded there.
+      window_ms: (s.params || {}).window_ms || 100,
+      index: view.at,
+      at: cur ? vNow(cur) : null,
+      labels: VIEW_LABELS,
+      events: evs,
+      // Where the window is centred, as a time.
+      //
+      // Not "find the mark with the focus flag on it". That worked until a
+      // pointer went astray, and then the reach silently stopped being
+      // drawn -- which is a thing nobody can report as a bug because the
+      // absence of a shaded region looks like a view with no region in it.
+      home_t: cur ? cur.was : null,
+      // What the rule looked at, if it has been asked for. One window's
+      // worth of samples, which is small enough to travel with the marks
+      // and is the only way the aid windows can draw it.
+      curve: (view.curve && view.trace) ? view.trace : null,
+      gid: s.gid,
+    };
+    if (view.sess.curation) view.sess.curation.index = view.at;
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+
+    /* And to the aid window, which is a separate page with no braces module
+       in it. The marks travel WITH the pointer rather than being fetched,
+       because there is no route that serves them -- see the note beside
+       `adoptCuration`. */
+    view.rev = (view.rev || 0) + 1;
+    if (!quiet && BARRY.views.xplore.publishCuration) {
+      /* The marks themselves only when they have actually changed.
+         Stepping through a set of twelve hundred publishes twenty-four
+         hundred marks on every arrow key otherwise -- and the receiving
+         side already knows how to follow a pointer without them, as long
+         as the count still matches what it holds. A float sum of the times
+         is enough to tell a move from a step: it changes when any mark
+         moves and not when only the cursor does. */
+      /* Everything about the marks EXCEPT which one is in focus.
+
+         The focus changes on every step and the marks do not, so folding
+         it in here would send twenty-four hundred objects through the
+         live slot on every arrow key -- which is the thing this exists to
+         prevent. It travels as a number instead, below, and the flags are
+         recomputed where they are drawn.
+
+         The sum has to move when a stamp moves AND when a decision is
+         made, because both change what is drawn: `k` says whether a mark
+         is the old position or the new one, and `st` says what colour the
+         dashed half is. Two offsets too small to collide with a time in
+         seconds, added per mark, do that without building a string per
+         publish. */
+      let sum = 0;
+      for (const e of evs) {
+        sum += e.start + (e.k === 'now' ? 0.017 : 0) + (ST_W[e.st] || 0);
+      }
+      /* Thinned, but never for long.
+
+         A window that opens between two marks-carrying pointers would
+         otherwise wait for somebody to MOVE something before it had any
+         marks to draw -- there is no route it can ask, which is the whole
+         reason these travel on the pointer. So the full set goes out
+         again if it has not for a second and a half, whatever the
+         signature says. On a set of twelve hundred that is one extra send
+         per second and a half of continuous stepping, which is nothing
+         beside being the only thing that can fill a new window. */
+      const now = Date.now();
+      const stale = !view.sentAt || (now - view.sentAt) > 1500;
+      const sig = evs.length + ':' + view.only + ':' + sum.toFixed(4);
+      const same = sig === view.sig && !stale;
+      view.sig = sig;
+      if (!same) view.sentAt = now;
+      BARRY.views.xplore.publishCuration(view.sess, Object.assign({
+        gid: s.gid, kind: 'braces', index: view.at,
+        at: view.sess.curationMarks.at,
+        // Which row is in focus, and how far it was allowed to move.
+        // Both are read by the painter and neither is on the marks, so
+        // both have to travel with every pointer -- a window that adopted
+        // its marks an hour ago still has to draw the right reach around
+        // the right stamp.
+        focus: view.at,
+        window_ms: view.sess.curationMarks.window_ms,
+        n: evs.length, rev: view.rev,
+        // Sent whenever it changes, which is once per stamp rather than
+        // once per keystroke: `curveAt` is the stamp it was read for.
+        curve: (view.curve && view.trace) ? view.trace : null,
+        curveAt: view.curve ? view.at : null,
+        home_t: cur ? cur.was : null,
+      }, same ? {} : { labels: VIEW_LABELS, events: evs }));
+    }
+  }
+
+  /* Where a row is going, including anywhere somebody has moved it by
+     hand -- the decision outranks the proposal. */
+  function vNow(r) {
+    const n = vRows().indexOf(r);
+    // A drag in flight outranks both: the line has to follow the pointer
+    // now, not after a round trip.
+    if (view && view.drag && view.drag.row === n) return view.drag.t;
+    const said = ((set_.set.calls || {})[String(n)] || {});
+    if (said.call === 'move' && said.t != null) return said.t;
+    if (said.call === 'keep') return r.was;
+    return r.now == null ? r.was : r.now;
+  }
+
+  function vGoTo(n) {
+    const all = vRows();
+    if (!all.length || !view) return;
+    view.at = Math.max(0, Math.min(all.length - 1, n));
+    /* THEN the curve, not before: `loadCurve` reads `view.at`, and asking
+       for it up here fetched the stamp we were leaving. The samples came
+       back for the wrong window, were clipped to the reach around the new
+       one, and drew nothing -- which is why the curve appeared only after
+       being toggled off and on, the one path that asked again from a
+       settled `view.at`. Cleared first so a stale one is never drawn under
+       a different stamp's marks even for a frame. */
+    if (view.curve) { view.trace = null; loadCurve(); }
+    if (view.list) setTimeout(vList, 0);
+    const r = all[view.at];
+    // Eight windows across, so the neighbours that made a run contested
+    // are on screen beside it rather than just off the edge.
+    const span = Math.max(0.4,
+                          ((set_.set.params || {}).window_ms || 100) / 1000 * 8);
+    BARRY.views.xplore.setWindow(0, Math.max(0, vNow(r) - span / 2), span);
+    vPublish();
+    vBar();
+  }
+
+  function vStep(d) {
+    const all = vRows();
+    let i = view.at + d;
+    while (i >= 0 && i < all.length) {
+      if (vWanted(all[i])) { vGoTo(i); return; }
+      i += d;
+    }
+    toast(d > 0 ? 'That is the last one in this pass.'
+                : 'That is the first one in this pass.', null, 3500);
+  }
+
+  /* Moving one by hand. The marks repaint as it goes, so the line you are
+     dragging is the line you are looking at. */
+  async function vMove(deltaMs) {
+    const r = vAt();
+    if (!r) return;
+    const t = Math.round((vNow(r) + deltaMs / 1000) * 1e6) / 1e6;
+    await decide(view.at, 'move', t);
+    vPublish();
+    vBar();
+  }
+
+  async function vSay(call) {
+    const r = vAt();
+    if (!r) return;
+    await decide(view.at, call);
+    vPublish();
+    // Straight on to the next one that still wants an answer, which is what
+    // makes a pass a pass rather than a list.
+    const all = vRows();
+    for (let i = view.at + 1; i < all.length; i++) {
+      if (all[i].flag && !callFor(i)) { vGoTo(i); return; }
+    }
+    vBar();
+  }
+
+  /* Dragging a stamp onto its peak.
+
+     `xplore` hands the time under the pointer; everything else is this
+     module's. Three rules:
+
+       the line follows the pointer immediately, locally, because a line
+       that lags the mouse is worse than no line;
+
+       the other windows follow on a throttle, because the marks are the
+       payload and twelve hundred stamps is twenty-four hundred of them --
+       at sixty moves a second that is a megabyte of publishing for a
+       gesture that lasts half of one;
+
+       nothing is decided until the button comes up. A drag that is still
+       happening is not an answer.
+
+     Only the stamp being looked at can be dragged. Grabbing whichever mark
+     is nearest the pointer would let a twitch move a stamp three screens
+     from the one being decided, and there would be nothing on screen to say
+     which. */
+  const DRAG_PUBLISH_MS = 120;
+
+  function vGrab() {
+    if (!BARRY.views.xplore.grabTime) return;
+    BARRY.views.xplore.grabTime({
+      onStart: (t) => {
+        const r = vAt();
+        if (!r) return false;
+        // Within a window of the one being decided, or it is somebody
+        // panning rather than aiming.
+        const reach = ((set_.set.params || {}).window_ms || 100) / 1000;
+        if (Math.abs(t - vNow(r)) > reach) return false;
+        view.drag = { row: view.at, t: vNow(r), last: 0 };
+        return true;
+      },
+      onMove: (t) => {
+        if (!view || !view.drag) return;
+        view.drag.t = Math.round(t * 1e6) / 1e6;
+        vPublish({ local: true });
+        vBarTimes();
+        const now = Date.now();
+        if (now - view.drag.last > DRAG_PUBLISH_MS) {
+          view.drag.last = now;
+          vPublish();
+        }
+      },
+      onEnd: async (t) => {
+        if (!view || !view.drag) return;
+        const row = view.drag.row;
+        const at = Math.round(t * 1e6) / 1e6;
+        view.drag = null;
+        await decide(row, 'move', at);
+        vPublish();
+        vBar();
+      },
+    });
+  }
+
+  /* The two numbers in the bar, without rebuilding it. Dragging repaints
+     these forty times a second and a full rebuild would take the focus off
+     whatever has it. */
+  function vBarTimes() {
+    const r = vAt();
+    if (!r) return;
+    const sub = document.querySelector('#brViewBar .cur-sub');
+    if (sub) {
+      sub.textContent = clock(r.was) + '  \u2192  ' + clock(vNow(r))
+        + '   ' + ms((vNow(r) - r.was) * 1000) + ' ms'
+        + (r.flag ? '   \u00b7   ' + (REASONS[r.flag] || r.flag) : '');
+    }
+  }
+
+  /* Forget what was decided about the one in view. Through the same route
+     as every other decision -- an explicit null on that row -- so the
+     server, this window and the aid window all learn about it the way they
+     learned about the decision. */
+  async function vUndo() {
+    if (!view || !callFor(view.at)) return;
+    await decide(view.at, null);
+    vPublish();
+    vBar();
+  }
+
+  async function vUndoAll() {
+    if (!view || !set_) return;
+    const keys = Object.keys(set_.set.calls || {});
+    if (!keys.length) {
+      toast('Nothing has been decided yet.', null, 3500);
+      return;
+    }
+    const ok = await BARRY.confirm(
+      'Forget all ' + keys.length + ' decision'
+      + (keys.length === 1 ? '' : 's') + ' on this proposal?',
+      'The proposal itself is untouched \u2014 this clears only what has '
+      + 'been said about it, so the pass starts again. Nothing has been '
+      + 'written to the set either way.',
+      'Forget them');
+    if (!ok) return;
+    const patch = {};
+    for (const k of keys) patch[k] = null;
+    try {
+      const got = await apiPost(
+        '/api/braces/set/' + encodeURIComponent(set_.set.set_id) + '/decide',
+        { calls: patch });
+      set_.counts = got.counts;
+      set_.would_move = got.would_move;
+      set_.set.calls = got.calls;
+    } catch (e) {
+      toast(e.message, 'err', 8000);
+      return;
+    }
+    vPublish();
+    vBar();
+  }
+
+  /* The set as a list. Rendered whole rather than windowed: twelve
+     hundred rows of four spans is well inside what a browser draws
+     without complaint, and virtualising it would mean the scroll position
+     and the focus have to be kept in step by hand, which is a bug waiting
+     to be written. */
+  function vList() {
+    if (!view) return;
+    let box = document.getElementById('brList');
+    if (!view.list) {
+      if (box) box.remove();
+      return;
+    }
+    if (!box) {
+      box = el('div', { class: 'br-list', id: 'brList' });
+      const body = document.getElementById('xfBody');
+      (body || document.body).appendChild(box);
+    }
+    box.innerHTML = '';
+    const all = vRows();
+    box.appendChild(el('div', { class: 'br-list-head' }, [
+      el('strong', { text: 'Every stamp' }),
+      el('span', { class: 'br-hint',
+                   text: all.filter(vWanted).length + ' shown' }),
+      el('button', { class: 'mini', text: '\u00d7', title: 'Close  (l)',
+                     onclick: () => { view.list = false; vList(); vBar(); } }),
+    ]));
+    const rows = el('div', { class: 'br-list-rows' });
+    all.forEach((r, i) => {
+      if (!vWanted(r)) return;
+      const said = callFor(i);
+      const to = vNow(r);
+      const d = (to - r.was) * 1000;
+      const st = (said === 'confirm' || said === 'move') ? 'ok'
+        : (said === 'keep' ? 'kept' : (r.flag ? 'ask' : ''));
+      const row = el('button', {
+        class: 'br-list-row' + (i === view.at ? ' on' : '')
+               + (st ? ' ' + st : ''),
+        onclick: () => { vGoTo(i); },
+      }, [
+        el('span', { class: 'n', text: '#' + (i + 1) }),
+        el('span', { class: 't', text: clock(r.was) }),
+        el('span', { class: 'd', text: ms(d) + ' ms' }),
+        el('span', { class: 'w',
+                     text: r.flag ? (REASONS[r.flag] || r.flag) : '' }),
+        el('span', { class: 's', text:
+          said === 'move' ? 'moved by hand'
+            : (said === 'confirm' ? 'moved'
+               : (said === 'keep' ? 'left alone' : '')) }),
+      ]);
+      if (i === view.at) row.dataset.on = '1';
+      rows.appendChild(row);
+    });
+    box.appendChild(rows);
+    /* Scrolled to, not searched for. `block: 'nearest'` so stepping one
+       row does not jump the list to centre every time. */
+    const on = rows.querySelector('[data-on]');
+    if (on && on.scrollIntoView) {
+      on.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function vBar() {
+    if (!view) return;
+    if (view.list && document.getElementById('brList')) setTimeout(vList, 0);
+    let bar = document.getElementById('brViewBar');
+    if (!bar) {
+      bar = el('div', { class: 'cur-bar br-view-bar', id: 'brViewBar' });
+      const body = document.getElementById('xfBody');
+      (body || document.body).appendChild(bar);
+      document.addEventListener('keydown', vKeys, true);
+    }
+    bar.innerHTML = '';
+    const s = set_.set;
+    const all = vRows();
+    const r = vAt() || {};
+    const said = callFor(view.at);
+    const n = all.filter(vWanted).length;
+    const seen = all.slice(0, view.at + 1).filter(vWanted).length;
+    const left = (set_.counts || {}).waiting || 0;
+
+    bar.appendChild(el('div', { class: 'cur-where' }, [
+      el('strong', { text: s.name || 'Braces' }),
+      el('span', { class: 'cur-sub', text:
+        clock(r.was) + '  →  ' + clock(vNow(r))
+        + '   ' + ms((vNow(r) - r.was) * 1000) + ' ms'
+        + (r.flag ? '   ·   ' + (REASONS[r.flag] || r.flag) : '') }),
+      el('span', { class: 'cur-count', text: seen + ' / ' + n }),
+    ]));
+
+    bar.appendChild(el('div', { class: 'cur-prog' }, [
+      el('i', { style: 'width:' + (n ? (seen / n * 100) : 0) + '%' }),
+      el('span', { text: left + ' still to decide' }),
+    ]));
+
+    /* Two answers to one question: does this stamp move, or not.
+
+       They were "Confirm" and "Keep it", which say what the BUTTON does and
+       not what happens to the stamp -- and "keep it" reads as "keep the new
+       one" at least as readily as "keep the old one". Each now names the
+       time it lands on, so there is nothing left to infer. */
+    const moves = Math.abs(vNow(r) - r.was) > 1e-9;
+    const acts = el('div', { class: 'cur-cats br-acts' });
+    acts.appendChild(el('button', {
+      class: 'cur-cat' + (said === 'confirm' || said === 'move' ? ' on' : ''),
+      style: '--cat:#5cc98d',
+      title: 'Move the stamp to ' + clock(vNow(r)) + '   (Enter)',
+      onclick: () => vSay('confirm'),
+    }, [
+      el('kbd', { text: '\u21b5' }),
+      el('span', {}, [
+        el('b', { text: moves ? 'Move it' : 'It is right' }),
+        el('i', { text: moves ? '\u2192 ' + clock(vNow(r))
+                              : 'already on the peak' }),
+      ]),
+    ]));
+    acts.appendChild(el('button', {
+      class: 'cur-cat' + (said === 'keep' ? ' on' : ''),
+      style: '--cat:#ED8B33',
+      title: 'Leave the stamp at ' + clock(r.was) + '   (k)',
+      onclick: () => vSay('keep'),
+    }, [
+      el('kbd', { text: 'k' }),
+      el('span', {}, [
+        el('b', { text: 'Leave it' }),
+        el('i', { text: 'stays at ' + clock(r.was) }),
+      ]),
+    ]));
+    /* Undo. A decision made with one key has to be undoable with one key,
+       or people stop pressing the key. */
+    acts.appendChild(el('button', {
+      class: 'cur-cat br-undo',
+      disabled: said ? null : 'disabled',
+      title: said ? 'Forget what was decided about this one   (u)'
+                  : 'Nothing has been decided about this one',
+      onclick: () => vUndo(),
+    }, [
+      el('kbd', { text: 'u' }),
+      el('span', {}, [
+        el('b', { text: 'Undo' }),
+        el('i', { text: said ? 'this one' : '\u2014' }),
+      ]),
+    ]));
+    bar.appendChild(acts);
+
+    bar.appendChild(el('div', { class: 'cur-nav' }, [
+      el('button', { class: 'mini', text: '◀', title: 'Previous  (p)',
+                     onclick: () => vStep(-1) }),
+      el('button', { class: 'mini', text: '▶', title: 'Next  (n)',
+                     onclick: () => vStep(1) }),
+      /* Moving it. Millisecond steps, because that is the grid everything
+         here is measured on -- one sample at the rate the traces are
+         decimated to. */
+      el('div', { class: 'ctl' }, [
+        el('label', { text: 'Move' }),
+        el('div', { class: 'br-nudge' }, [
+          el('button', { class: 'mini', text: '− 5',
+                         title: 'Five milliseconds earlier',
+                         onclick: () => vMove(-5) }),
+          el('button', { class: 'mini', text: '− 1',
+                         title: 'One millisecond earlier   ([)',
+                         onclick: () => vMove(-1) }),
+          el('button', { class: 'mini', text: '+ 1',
+                         title: 'One millisecond later   (])',
+                         onclick: () => vMove(1) }),
+          el('button', { class: 'mini', text: '+ 5',
+                         title: 'Five milliseconds later',
+                         onclick: () => vMove(5) }),
+        ]),
+      ]),
+      el('div', { class: 'ctl' }, [
+        el('label', { text: 'Curve' }),
+        el('div', { class: 'seg sm' }, [
+          el('button', {
+            class: view.curve ? 'active' : '',
+            title: 'Draw the trace the rule took its maximum from \u2014 '
+                 + 'mean |CSD| over the band, mains out. The green line is '
+                 + 'this curve\u2019s largest peak in the window.',
+            text: view.curve ? 'On' : 'Off',
+            onclick: () => {
+              view.curve = !view.curve;
+              setCurvePref(view.curve);
+              if (view.curve) loadCurve();
+              else { view.trace = null; vPublish(); }
+              vBar();
+            },
+          }),
+        ]),
+      ]),
+      el('div', { class: 'ctl' }, [
+        el('label', { text: 'List' }),
+        el('div', { class: 'seg sm' }, [
+          el('button', {
+            class: view.list ? 'active' : '',
+            title: 'Every stamp in the set, with what was decided \u2014 '
+                 + 'click one to go to it   (l)',
+            text: view.list ? 'On' : 'Off',
+            onclick: () => { view.list = !view.list; vList(); vBar(); },
+          }),
+        ]),
+      ]),
+      el('div', { class: 'ctl' }, [
+        el('label', { text: 'Show' }),
+        el('div', { class: 'seg sm' }, [
+          ['flag', 'Needing a decision'],
+          ['all', 'All of them'],
+        ].map(([id, label]) => el('button', {
+          class: view.only === id ? 'active' : '',
+          onclick: () => {
+            if (view.only === id) return;
+            const was = view.only;
+            view.only = id;
+            if (!vRows().filter(vWanted).length) {
+              view.only = was;
+              toast('Nothing is waiting for a decision.', null, 4000);
+              vBar();
+              return;
+            }
+            if (!vWanted(vAt())) {
+              const i = vRows().findIndex(vWanted);
+              if (i >= 0) { vGoTo(i); return; }
+            }
+            vPublish(); vBar();
+          },
+          text: label,
+        }))),
+      ]),
+      el('span', { class: 'br-view-key' },
+         VIEW_LABELS.map((l) => el('span', { class: 'br-browse-sw' }, [
+           el('i', { style: 'background:' + l.color }),
+           el('span', { text: l.name }),
+         ]))),
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost sm', text: 'Undo every decision',
+                     title: 'Clears the whole pass. The proposal itself is '
+                          + 'untouched.',
+                     onclick: vUndoAll }),
+      el('button', { class: 'btn ghost sm', text: 'Back to the proposal',
+                     onclick: exitView }),
+    ]));
+  }
+
+  function vKeys(e) {
+    if (!view) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+    const k = e.key.toLowerCase();
+    if (k === 'n' || k === 'arrowright') vStep(1);
+    else if (k === 'p' || k === 'arrowleft') vStep(-1);
+    else if (k === 'enter') vSay('confirm');
+    else if (k === 'k') vSay('keep');
+    else if (k === '[') vMove(-1);
+    else if (k === ']') vMove(1);
+    else if (k === 'l') { view.list = !view.list; vList(); vBar(); }
+    else if (k === 'u' || k === '0') vUndo();
+    else if (k === 'escape') exitView();
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  /* ==================================================================
+     Drawing the marks
+
+     Not the generic curation painter. That one draws every mark the same
+     way, which is right for curation -- one mark per candidate, coloured by
+     the decision -- and wrong here, where each stamp is TWO marks that mean
+     different things and the pair being decided has to stand out from the
+     forty others on screen.
+
+     The rules, which are the whole function:
+
+       the one in focus      full height
+       everything else       a short tick from the top
+       where it goes         solid, green
+       where it was          dashed, and the colour says what was decided:
+                             green once confirmed, amber while flagged,
+                             faint while nobody has said anything
+
+     Read entirely off `sess.curationMarks`, never off this module's state,
+     because the aid window runs this same file with no proposal loaded --
+     everything it needs has to have travelled with the marks.
+     ================================================================== */
+  const DRAW = {
+    now: '#5cc98d',        // where it goes
+    was: '#6f8c7d',        // where it was, undecided
+    ok: '#5cc98d',         // where it was, confirmed
+    ask: '#ED8B33',        // where it was, flagged and unanswered
+  };
+
+  /* The same set, a whole recording wide.
+
+     Not the same drawing. At forty pixels tall and an hour across there is
+     no room for a dash pattern or a label, and the question the strip
+     answers is different: not "where exactly does this stamp go" but
+     "where in the recording is the work, and how much of it is done". So
+     the two halves of each stamp are separated by HEIGHT rather than by
+     dash -- where it goes on the top half, where it was on the bottom --
+     and the one being decided runs the full height in the accent colour so
+     it can be found at a glance.
+
+     Read off `sess.curationMarks` like everything else, so the pop-out
+     windows get it without knowing what Braces is. */
+  function drawStrip(ctx, sess, w, h, dur) {
+    const marks = sess && sess.curationMarks;
+    if (!marks || marks.kind !== 'braces' || !dur) return false;
+    const evs = marks.events || [];
+    if (!evs.length) return true;
+
+    ctx.save();
+    const mid = Math.round(h * 0.52);
+    const topY = 4;
+    const botY = h - 9;
+    for (const e of evs) {
+      const x = Math.round((e.start / dur) * w) + 0.5;
+      if (x < 0 || x > w) continue;
+      const focus = !!e.f;
+      const colour = e.k === 'now' ? DRAW.now
+        : (e.st === 'confirmed' ? DRAW.ok
+           : (e.st === 'flagged' ? DRAW.ask : DRAW.was));
+      if (focus) {
+        // Full height, and drawn last would be better still -- but there
+        // are only two of them and forty of everything else, so a wider
+        // line is enough to find them.
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 2;
+        ctx.setLineDash(e.k === 'now' ? [] : [3, 2]);
+        ctx.strokeStyle = colour;
+        ctx.beginPath();
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x, botY);
+        ctx.stroke();
+        continue;
+      }
+      ctx.globalAlpha = 0.72;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = colour;
+      ctx.beginPath();
+      if (e.k === 'now') {
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x, mid - 1);
+      } else {
+        ctx.moveTo(x, mid + 1);
+        ctx.lineTo(x, botY);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    return true;
+  }
+
+  function draw(ctx, sess, win, x0, plotW, y0, plotH, P) {
+    const marks = sess && sess.curationMarks;
+    if (!marks || marks.kind !== 'braces') return;
+    const evs = marks.events || [];
+    if (!evs.length) return;
+    const t0 = win.t0, t1 = win.t1 != null ? win.t1 : win.t0 + win.span;
+    const span = t1 - t0;
+    if (!(span > 0)) return;
+
+    const X = (t) => x0 + ((t - t0) / span) * plotW;
+
+    ctx.save();
+    ctx.lineCap = 'butt';
+
+    /* The window the focused stamp was allowed to move in, shaded.
+
+       The rule made visible. Two lines ninety milliseconds apart mean
+       nothing without it -- there is no way to tell whether the far one was
+       even a candidate -- and it is the single thing somebody asked of this
+       view that a pair of lines cannot answer. */
+    /* The stamp the window is around, from the marks rather than from
+       whichever of them claims the focus -- see `vPublish`. The search
+       through the marks is still there as a fallback, for a window that
+       adopted its copy before this field existed. */
+    const homeT = marks.home_t != null ? marks.home_t
+      : ((evs.find((e) => e.f && e.k === 'was')
+          || evs.find((e) => e.f) || {}).start);
+    const home = homeT == null ? null : { start: homeT };
+    const reach = ((marks.window_ms || 100) / 1000);
+    if (home) {
+      const xa = X(home.start - reach), xb = X(home.start + reach);
+      const la = Math.max(x0, xa), lb = Math.min(x0 + plotW, xb);
+      ctx.globalAlpha = 1;
+      /* Strong enough to survive a raster.
+
+         At five per cent over a CSD image this read as a rendering
+         artefact rather than as a region -- and the raster panels are
+         exactly where somebody is deciding whether the new line sits on
+         the sink, so it is where knowing what was reachable matters most.
+         A visible wash, and both edges as solid rules with a bracket at
+         the top, which is what makes it a REGION rather than two lines
+         that happen to be there. */
+      if (lb > la) {
+        ctx.fillStyle = 'rgba(255, 184, 28, 0.20)';
+        ctx.fillRect(la, y0, lb - la, plotH);
+      }
+      ctx.strokeStyle = 'rgba(255, 196, 60, 0.92)';
+      ctx.lineWidth = 1.5;
+      for (const xe of [xa, xb]) {
+        if (xe < x0 || xe > x0 + plotW) continue;
+        ctx.beginPath();
+        ctx.moveTo(xe + 0.5, y0); ctx.lineTo(xe + 0.5, y0 + plotH);
+        ctx.stroke();
+      }
+      if (lb > la) {
+        ctx.beginPath();
+        ctx.moveTo(la, y0 + 0.5); ctx.lineTo(lb, y0 + 0.5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(la, y0 + plotH - 0.5);
+        ctx.lineTo(lb, y0 + plotH - 0.5);
+        ctx.stroke();
+      }
+    }
+
+    /* The curve, under the marks.
+
+       Drawn into the bottom third and scaled to its own maximum, because
+       the units are current density and nothing else on this panel is --
+       the shape and where it peaks are the whole content. Behind the
+       marks on purpose: the green line is the answer and the curve is the
+       working. */
+    const cv = marks.curve;
+    if (cv && cv.values && cv.values.length && cv.fs) {
+      const vals = cv.values;
+      let top = 0;
+      for (const v of vals) if (v > top) top = v;
+      if (top > 0) {
+        const bandH = Math.max(18, plotH * 0.3);
+        const baseY = y0 + plotH;
+        /* Never outside the reach, whatever was read. The window is what
+           the rule searched; a curve running past its edge invites the
+           reading that the peak out there was passed over, when it was
+           never a candidate. */
+        const lo = home ? home.start - reach : -Infinity;
+        const hi = home ? home.start + reach : Infinity;
+        ctx.save();
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < vals.length; i++) {
+          const t = cv.t0 + i / cv.fs;
+          if (t < lo || t > hi) continue;
+          if (t < t0 - 0.001 || t > t1 + 0.001) continue;
+          const x = X(t);
+          const y = baseY - (vals[i] / top) * bandH;
+          if (started) ctx.lineTo(x, y); else { ctx.moveTo(x, y);
+                                                started = true; }
+        }
+        if (started) {
+          /* Three strokes, because this has to read over white, over
+             saturated blue and over saturated red in the same panel and
+             no single colour does. A wide dark stroke underneath is the
+             outline; the bright line goes inside it. The same trick the
+             marks and the gridlines use, one step heavier because a
+             curve is thinner than a rule and crosses more of the image.  */
+          ctx.globalAlpha = 1;
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 3.4;
+          ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+          ctx.stroke();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffe08a';
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    for (const e of evs) {
+      if (e.start < t0 || e.start > t1) continue;
+      const x = X(e.start);
+      const focus = !!e.f;
+      /* EVERY mark is full height.
+
+         Short ticks for the ones not being decided were the wrong trade.
+         They made the focused pair easy to find and everything else easy
+         to miss -- and worse, they made a mark's VISIBILITY depend on a
+         flag that travels between windows, so any pointer that went
+         astray left a panel that looked empty rather than a panel that
+         looked slightly wrong. Emphasis can carry the focus instead:
+         wider, opaque, and haloed against whatever is underneath. */
+      const top = y0;
+      const bottom = y0 + plotH;
+      const colour = e.k === 'now' ? DRAW.now
+        : (e.st === 'confirmed' ? DRAW.ok
+           : (e.st === 'flagged' ? DRAW.ask : DRAW.was));
+      const dashed = e.k !== 'now';
+
+      /* A line that survives whatever is under it: a dark and a light
+         hairline either side, the same trick the curation marks and the
+         time gridlines use. Only on the focused pair, which is now the
+         only thing telling it apart from its neighbours -- so it is worth
+         the three strokes. */
+      if (focus) {
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.beginPath(); ctx.moveTo(x - 1.5, top); ctx.lineTo(x - 1.5, bottom);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.lineTo(x + 1.5, bottom);
+        ctx.stroke();
+      }
+
+      /* Forty full-height lines could be a fence, so the ones not being
+         decided are thin and quiet -- present, readable, and clearly not
+         the thing being asked about. The focused pair is twice the width,
+         fully opaque and haloed, which is a bigger difference than height
+         ever was. */
+      ctx.globalAlpha = focus ? 1 : 0.34;
+      ctx.setLineDash(dashed ? (focus ? [6, 4] : [3, 4]) : []);
+      ctx.lineWidth = focus ? 2.2 : 1;
+      ctx.strokeStyle = colour;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+    }
+
+    /* Which way the focused pair moved, drawn once: a hairline between the
+       two with the number on it. The distance is the decision, and reading
+       it off two lines and a time axis is arithmetic somebody should not
+       have to do. */
+    const a = evs.find((e) => e.f && e.k === 'was');
+    const b = evs.find((e) => e.f && e.k === 'now');
+    if (a && b && Math.abs(a.start - b.start) > 1e-9) {
+      const xa = X(a.start), xb = X(b.start);
+      const y = y0 + Math.min(plotH - 6, 16);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = DRAW.now;
+      ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
+      // A head on the end it is going to.
+      const dir = xb >= xa ? -1 : 1;
+      ctx.beginPath();
+      ctx.moveTo(xb, y);
+      ctx.lineTo(xb + dir * 5, y - 3.5);
+      ctx.lineTo(xb + dir * 5, y + 3.5);
+      ctx.closePath();
+      ctx.fillStyle = DRAW.now;
+      ctx.fill();
+      const ms_ = (b.start - a.start) * 1000;
+      const txt = (ms_ > 0 ? '+' : '') + ms_.toFixed(1) + ' ms';
+      ctx.font = '10px ui-monospace, Consolas, monospace';
+      const w = ctx.measureText(txt).width;
+      const mx = (xa + xb) / 2;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(mx - w / 2 - 3, y - 14, w + 6, 11);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = DRAW.now;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(txt, mx - w / 2, y - 5);
+    }
+    ctx.restore();
   }
 
   /* ---------- 3. the bench ---------- */
@@ -1054,14 +2416,19 @@ BARRY.braces = (function () {
       g.stroke();
       g.fillStyle = tone('--text-3', '#6f8c7d');
       g.font = '10px ui-monospace, monospace';
-      g.fillText('mean |5–100 Hz| over ' + pf.n_channels + ' channels',
+      g.fillText('mean |CSD| over ' + pf.n_channels + ' contacts · '
+                 + '5–100 Hz, mains out'
+                 + (pf.smooth_ms ? ' · smoothed ' + pf.smooth_ms + ' ms'
+                                 : ''),
                  4, 12);
 
-      /* What the detector would have called an event on this channel.
-         Not a threshold any more -- nothing is gated on it -- but a peak
-         under this line is why a row reads "weak peak", and the line is
-         how that stops being an assertion. */
-      const thr = (s.summary || {}).thr_uv;
+      /* What a candidate had to clear HERE.
+         Measured on this window's own quiet rather than pooled over the
+         set, which is why it comes back with the trace instead of off the
+         summary: two windows in different parts of a recording do not
+         share a baseline, and one number drawn across both would be a
+         line neither of them was judged against. */
+      const thr = pf.floor || (s.summary || {}).thr_uv;
       if (thr && thr < top) {
         const y = base - (thr / top) * (base - 14);
         g.save();
@@ -1072,7 +2439,8 @@ BARRY.braces = (function () {
         g.restore();
         g.fillStyle = tone('--text-3', '#6f8c7d');
         g.font = '10px ui-monospace, monospace';
-        g.fillText('detection threshold ' + Math.round(thr) + ' µV',
+        g.fillText('4.5 SD over the background · '
+                   + Math.round(thr) + ' (nothing is gated on it)',
                    4, y - 3);
       }
     }
@@ -1214,9 +2582,12 @@ BARRY.braces = (function () {
   function confirmDialog(rep) {
     const body = el('div', { class: 'br-confirm' }, [
       el('p', { text:
-        'This becomes version ' + rep.next_version + ' of the set, '
+        'This becomes version ' + (rep.next_name != null ? rep.next_name
+                                    : rep.next_version) + ' of the set, '
         + (rep.from_version == null
-           ? 'continuing from version ' + rep.current_version + '.'
+           ? 'continuing from version ' + (rep.current_name != null
+                                            ? rep.current_name
+                                            : rep.current_version) + '.'
            : 'branching off version ' + rep.from_version
              + ' and leaving everything after it alone.') }),
       el('ul', {}, [
@@ -1248,7 +2619,9 @@ BARRY.braces = (function () {
         ]),
       ]));
     }
-    ask('Bank this alignment as v' + rep.next_version + '?', body, 'Bank it',
+    ask('Bank this alignment as v' + (rep.next_name != null ? rep.next_name
+                                      : rep.next_version) + '?',
+        body, 'Bank it',
         () => commit(true));
   }
 
@@ -1302,6 +2675,10 @@ BARRY.braces = (function () {
     _answer: answer,
     _commit: commit,
     _rows: rows,
+    draw,
+    drawStrip,
+    _enter: enter,
+    _view: () => view,
     _reset: () => { set_ = null; bench = null; cands = null; },
   };
 }());

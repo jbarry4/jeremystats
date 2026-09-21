@@ -71,9 +71,20 @@ const post = (u, b) => fetch(u, { method: 'POST',
         new Set(rows.map((s) => s.gid)).size === rows.length);
   check('projects were guessed', (reg.projects || []).length > 0,
         JSON.stringify(reg.projects));
-  check('KCNT1 and PTEN are the known ones',
-        JSON.stringify(reg.known_projects) === '["KCNT1","PTEN"]',
-        JSON.stringify(reg.known_projects));
+  const known = reg.known_projects || [];
+  check('the known projects are the three the lab runs',
+        JSON.stringify(known) === '["KCNT1 Urethane","KCNT1","PTEN"]',
+        JSON.stringify(known));
+  /* The ORDER is load-bearing, which is why it is asserted rather than
+     just the membership. `guess_project` returns the first name that
+     matches, and every `KCNT1 Urethane` path also contains `KCNT1` -- so
+     with the two the other way round, the urethane project can never be
+     guessed at all and every one of its recordings files itself under
+     KCNT1. That is exactly what happened, and it is what
+     `projflag.html` now watches for after the fact. */
+  check('and the more specific one is asked first, or it can never match',
+        known.indexOf('KCNT1 Urethane') < known.indexOf('KCNT1'),
+        known.indexOf('KCNT1 Urethane') + ' vs ' + known.indexOf('KCNT1'));
   say('  ' + rows.map((s) => s.gid + ' ' + (s.label || s.key)).join('\n  '),
       'note');
 
@@ -131,7 +142,26 @@ const post = (u, b) => fetch(u, { method: 'POST',
   });
   check('there is a real recording to organise', realRows.length > 0,
         realRows.length + ' of ' + $$('.hk-row').length + ' are not demos');
-  (realRows[0] || $$('.hk-row')[0]).click();
+  /* Chosen on what this section needs, not on tree order.
+
+     Everything below reads the path list and then splits a path off, so it
+     needs a record known at more than one path. Taking whichever row the
+     tree happened to list first meant the section tested something
+     different every time the catalogue changed shape -- adding a project
+     moved it to a one-path record, and re-filing fourteen recordings moved
+     it again to one with no paths at all, which failed four checks that
+     had nothing wrong with them. */
+  const pathsOf = {};
+  for (const s of rows) pathsOf[s.gid] = (s.paths || []).length;
+  const score = (r) => {
+    const id = ((r.querySelector('.hk-gid') || {}).textContent || '').trim();
+    return pathsOf[id] || 0;
+  };
+  const pick = realRows.slice().sort((a, b) => score(b) - score(a))[0];
+  check('and one of them is known at more than one path, which is what the '
+        + 'rest of this section needs', pick && score(pick) > 1,
+        pick ? score(pick) + ' paths' : 'no real rows');
+  (pick || realRows[0] || $$('.hk-row')[0]).click();
   await sleep(600);
   const det = $('#hkDetail');
   check('picking a row opens the detail', !!det.querySelector('.hk-dhead'));
@@ -154,7 +184,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const gid = det.querySelector('.hk-gid.big').textContent;
   const sel = det.querySelector('.hk-proj select');
   const was = sel.value;
-  say('  ' + gid + ' is in ' + was, 'note');
+  /* How it was filed, not just what it was filed as.
+
+     This section drives the picker, which marks the record "set by hand" --
+     correctly, for a person. Putting only the VALUE back left a real
+     recording reading as manually filed with nobody having filed it, and
+     that is not cosmetic: a manual project is immune to the re-filer and
+     raises no filing flag, so every run of this page quietly immunised
+     whichever recording happened to be first in the tree. */
+  const asFiled = await (await fetch('/api/registry/' + gid)).json();
+  const wasSource = (asFiled.session || {}).project_source || 'guessed';
+  say('  ' + gid + ' is in ' + was + ' (' + wasSource + ')', 'note');
 
   const other = Array.from(sel.options).map((o) => o.value)
     .find((v) => v !== was) || 'Unfiled';
@@ -167,8 +207,15 @@ const post = (u, b) => fetch(u, { method: 'POST',
   check('and it is recorded as a manual choice',
         after.session.project_source === 'manual',
         after.session.project_source);
-  // Put it back.
-  await post('/api/registry/' + gid + '/patch', { project: was });
+  // Put it back, source and all.
+  await post('/api/registry/' + gid + '/patch',
+             { project: was, project_source: wasSource });
+  const back = await (await fetch('/api/registry/' + gid)).json();
+  check('and putting it back restores how it was filed, not just where',
+        back.session.project === was
+        && back.session.project_source === wasSource,
+        back.session.project + ' / ' + back.session.project_source
+        + '  wanted ' + was + ' / ' + wasSource);
 
   const noteRes = await post('/api/registry/' + gid + '/patch',
                              { note: 'harness note' });
@@ -190,11 +237,27 @@ const post = (u, b) => fetch(u, { method: 'POST',
      re-identifies to the same key, so the "new" record matched the old one
      and overwrote it, permanent id and all. So check that first, and check
      it against a path that is genuinely part of the recording. */
+  /* That refusal only exists for a record with more than one path -- a
+     record with one path is refused earlier, for a different and duller
+     reason. The row this section works on is whichever the tree lists
+     first, which moves whenever the catalogue changes shape (adding a
+     project did it), so the record is chosen here on the property the
+     check actually needs rather than left to luck. */
+  const multi = rows.filter((s) => (s.paths || []).length > 1);
+  check('there is a recording known at more than one path to try it on',
+        multi.length > 0, multi.length + ' of ' + rows.length);
+  if (multi.length) {
+    const mg = multi[0].gid;
+    const sameRec = await post('/api/registry/split',
+      { gid: mg, path: multi[0].paths[0] });
+    check('splitting a recording from itself is refused',
+          sameRec.ok === false && /same recording/.test(sameRec.error || ''),
+          sameRec.error);
+  }
   const sameRec = await post('/api/registry/split',
     { gid, path: after.session.paths[0] });
-  check('splitting a recording from itself is refused',
-        sameRec.ok === false && /same recording/.test(sameRec.error || ''),
-        sameRec.error);
+  check('and splitting off the only path it has is refused too',
+        sameRec.ok === false, sameRec.error);
   const stillThere = await (await fetch('/api/registry/' + gid)).json();
   check('...and the record survives being asked', stillThere.ok === true,
         stillThere.error);

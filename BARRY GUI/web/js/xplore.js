@@ -137,7 +137,13 @@ BARRY.views.xplore = (function () {
                      'ylim', 'clim', 't0', 'span']) {
       if (vs[k] !== undefined && vs[k] !== null) sess[k] = vs[k];
     }
-    if (vs.probe) sess.probe = vs.probe;
+    /* The probe belongs to the recording, so the server decides it -- from
+       the registry first, then from where the choice used to live in this
+       window's own view state, then from the channel count. Reading
+       `vs.probe` here as well would let a stale window state win over what
+       somebody actually recorded about the animal. */
+    sess.probe = info.probe || vs.probe || 'h3';
+    sess.probeSource = info.probe_source || null;
     if (vs.fdefault) sess.fdefault = vs.fdefault;
     if (vs.flock !== undefined && vs.flock !== null) sess.flock = !!vs.flock;
     if (vs.stft_mode) sess.stftMode = vs.stft_mode;
@@ -176,8 +182,33 @@ BARRY.views.xplore = (function () {
 
     render();
     refreshAll();
+    /* If the recording says which probe it is, lay it out that way now.
+
+       The control said "Dual array" the moment the recording opened and the
+       panes were a single array until somebody changed it to something else
+       and back -- so the label was right, the layout was wrong, and the two
+       disagreed with no way to tell which one the CSD had used. It is the
+       layout that carries the meaning: a pane per line of contacts is the
+       whole reason these templates exist.
+
+       Only for a probe that actually divides the array, and only when the
+       panes are still the default one. Somebody who opened a second
+       recording into a two-up they arranged themselves should keep it. */
+    if (probeSplits(sess) && XF.order.length === 1) {
+      layoutProbe(sess, DEFAULT_PANEL);
+    }
+    syncProbeControl();
     autoImportNev(sess);
     return sess;
+  }
+
+  /* Does this recording's probe divide the array into separate lines of
+     contacts. `h3` does not, and neither does a template the server has not
+     sent us -- `XF.probes` arrives asynchronously, so this is asked again
+     once it does rather than assumed at boot. */
+  function probeSplits(sess) {
+    const def = probeDef(sess && sess.probe);
+    return !!(def && def.columns && def.columns.length > 1);
   }
 
   /* Session tab colors come from BARRY.hues, which reads the theme, so a
@@ -377,29 +408,34 @@ BARRY.views.xplore = (function () {
 
   function layoutProbe(sess, panel) {
     const want = panel || panelNow(sess);
-    /* One camera is one pane. The six-up exists because an H10-D is six
-       probe columns, which is a fact about channels -- and video and
-       tracking have none. Six video panes is one that plays and five that
-       sit empty. */
+    /* One camera is one pane. A pane per column exists because a probe's
+       columns are a fact about CHANNELS -- and video and tracking have
+       none. Six video panes is one that plays and five that sit empty. */
     if (!isChannelPanel(want)) {
       BARRY.views.xplore.setPanes([{ panel: want }], { col: 0.5, row: 0.5 });
-      toast('One pane: there is a single camera, so an H10 layout has '
+      toast('One pane: there is a single camera, so a probe layout has '
             + 'nothing to spread it across. Switch back to traces or CSD '
-            + 'for the six columns.', null, 6000);
+            + 'for the columns.', null, 6000);
       BARRY.activity.log('probe.layout',
                          { probe: sess.probe, panel: want, columns: 1,
                            why: 'not a channel panel' }, sess);
       return true;
     }
+    /* However many columns the template has, not six.
+       An H10-D has six and a dual implant has two, and the reason for one
+       pane each is the same in both cases: a CSD is only meaningful down a
+       line of contacts, and these templates exist precisely because the
+       channel order is not one. */
     const cols = probeColumns(sess);
-    if (!cols || cols.length !== 6) {
+    const def = probeDef(sess.probe);
+    if (!cols || !cols.length) {
       toast('That probe has no column map to lay out.', 'err');
       return false;
     }
     const short = cols.filter((c) => !c.indices.length);
     if (short.length === cols.length) {
-      toast('None of the H10 channel numbers are in this recording. Is it '
-            + 'really an H10-D?', 'err', 8000);
+      toast('None of the ' + ((def && def.name) || sess.probe) + ' channel '
+            + 'numbers are in this recording. Is it really one?', 'err', 8000);
       return false;
     }
     BARRY.views.xplore.setPanes(cols.map((c) => ({
@@ -410,8 +446,8 @@ BARRY.views.xplore = (function () {
       colLabel: c.label,
     })), { col: 0.5, row: 0.5 });
     if (short.length) {
-      toast(short.length + ' of the six columns have no channels in this '
-            + 'recording.', null, 6000);
+      toast(short.length + ' of the ' + cols.length + ' columns have no '
+            + 'channels in this recording.', null, 6000);
     }
     BARRY.activity.log('probe.layout', {
       probe: sess.probe, panel: want,
@@ -739,6 +775,13 @@ BARRY.views.xplore = (function () {
                              opts) {
     const marks = curationMarks(sess);
     if (!marks || !(marks.events || []).length) return;
+    /* Braces draws its own. Each of its stamps is TWO marks that mean
+       different things, and the pair being decided has to stand out from
+       the forty others on screen -- none of which this painter can express,
+       because it is built for one mark per candidate coloured by its
+       decision. `BARRY.braces.draw` is called from the same three places
+       this is. */
+    if (marks.kind === 'braces') return;
     const span = t1 - t0;
     if (!(span > 0)) return;
     const small = (opts && opts.small) || false;
@@ -4416,6 +4459,58 @@ BARRY.views.xplore = (function () {
     if (pane && pane._ghost) { pane._ghost.remove(); pane._ghost = null; }
   }
 
+  /* Dragging a time, for a mode that owns one.
+
+     `XF.grabTime` is a mode's hook: it is handed the time under the pointer
+     on press, on every move while held, and on release. Braces uses it to
+     drag a stamp onto its peak. Wired on the same host and torn down with
+     the same list as bookmark placement -- the geometry question is
+     identical, and a mode working it out for itself would be a second copy
+     of `timeAtPointer` to drift from this one.
+
+     Bookmark placement wins where both are armed: it is a deliberate,
+     one-shot thing somebody has just asked for. */
+  function wireTimeGrab(index, pane, sess, host) {
+    let held = false;
+    const at = (e) => timeAtPointer(pane, sess, host, e.clientX);
+    const down = (e) => {
+      const g = XF.grabTime;
+      if (!g || XF.placing || e.button !== 0) return;
+      const spot = at(e);
+      if (!spot.inside) return;
+      // A hook may refuse -- Braces does, for a press nowhere near the
+      // stamp being decided -- and a refusal has to leave the pane's own
+      // panning alone rather than swallowing the gesture.
+      if (g.onStart && g.onStart(spot.t, index) === false) return;
+      held = true;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const move = (e) => {
+      if (!held) return;
+      const g = XF.grabTime;
+      if (!g) { held = false; return; }
+      e.preventDefault();
+      if (g.onMove) g.onMove(at(e).t, index);
+    };
+    const up = (e) => {
+      if (!held) return;
+      held = false;
+      const g = XF.grabTime;
+      if (g && g.onEnd) g.onEnd(at(e).t, index);
+    };
+    // Move and up on the window, not the host: a drag that leaves the pane
+    // is still the same drag, and one that ends outside it still ends.
+    host.addEventListener('mousedown', down, true);
+    window.addEventListener('mousemove', move, true);
+    window.addEventListener('mouseup', up, true);
+    (pane._teardown = pane._teardown || []).push(() => {
+      host.removeEventListener('mousedown', down, true);
+      window.removeEventListener('mousemove', move, true);
+      window.removeEventListener('mouseup', up, true);
+    });
+  }
+
   /* Wired for both pane types; `host` is whichever element holds the plot. */
   function wirePlacement(index, pane, sess, host) {
     const move = (e) => {
@@ -6106,6 +6201,7 @@ BARRY.views.xplore = (function () {
       watchResize(cHost, index);
       wireTraceCanvas(index, pane, sess, canvas, readout);
       wirePlacement(index, pane, sess, cHost);
+      wireTimeGrab(index, pane, sess, cHost);
     } else {
       // No alt text and hidden until loaded: an <img> with no src renders the
       // browser's broken-image glyph, which reads as an error, not a wait.
@@ -6150,11 +6246,26 @@ BARRY.views.xplore = (function () {
       }
       wireImagePane(index, pane, sess, iHost);
       wirePlacement(index, pane, sess, iHost);
+      wireTimeGrab(index, pane, sess, iHost);
       watchResize(iHost, index);
     }
 
     const mini = el('canvas');
-    host.appendChild(el('div', { class: 'pane-timebar' }, [mini]));
+    /* The overview, and a grip to make it taller.
+
+       Forty pixels is enough to see where you are in the recording and not
+       enough to read anything in it -- which matters the moment something
+       is drawing marks down there, because a whole recording of them in
+       forty pixels is a smear. Dragged from the line above it, remembered
+       for next time, and double-clicked back to where it started. */
+    const bar = el('div', { class: 'pane-timebar' }, [
+      el('div', { class: 'pane-timebar-grip', title:
+        'Drag to make the overview taller \u00b7 double-click to reset' }),
+      mini,
+    ]);
+    bar.style.height = stripHeight() + 'px';
+    wireStripResize(bar, index);
+    host.appendChild(bar);
     pane._mini = mini;
     wireMini(index, pane, sess, mini);
     return host;
@@ -6920,6 +7031,13 @@ BARRY.views.xplore = (function () {
     const mAlpha = marksAlpha(sess);
     drawCurationMarks(ctx, sess, t0, t0 + span, 0, w, 0, h, P,
                       { alpha: mAlpha });
+    /* And the Braces pair, which the generic painter steps aside for.
+       On a strip this short the "focus full height, everything else a tick"
+       rule still reads: it is the only thing that says which of forty
+       alignments you are looking at. */
+    if (BARRY.braces && BARRY.braces.draw) {
+      BARRY.braces.draw(ctx, sess, { t0: t0, t1: t0 + span }, 0, w, 0, h, P);
+    }
     if (mAlpha <= 0) return;
 
     ctx.save();
@@ -7481,17 +7599,115 @@ BARRY.views.xplore = (function () {
         have.at = pointer.at;
         return true;
       }
-      if (revJump > 1 || revJump < 0) {
-        // More changed than we were told about: the live slot only holds the
-        // latest value, so a fast burst coalesces. Re-read rather than drift.
+      /* A jump of more than one is NORMAL, not a reason to re-read.
+
+         `publishCuration` keeps only the latest pointer while one is in
+         flight, so any burst -- stepping, dragging, a decision and the
+         repaint after it -- arrives as one pointer several revisions on.
+         Treating that as "we have missed something, go and fetch" sent
+         Braces into `/api/curation/<gid>/braces`, which is not a curation
+         set and has no route, so the fetch failed and the pointer was
+         dropped in silence. Every field a pointer carries is absolute --
+         the focus, the time, the reach, the curve -- so a jump loses
+         nothing, and where the MARKS changed the publisher sends them.
+
+         Only a pointer that brought marks needs the branch below, and a
+         set we already hold plus a pointer without them is complete
+         information either way. */
+      if (revJump < 0 && pointer.events) {
+        // Older than what we hold, and it brought its own marks: adopt
+        // them rather than keeping a newer copy of a different set.
       } else {
-        if (have.index === pointer.index && have.at === pointer.at) return false;
+        /* WHICH ONE IS IN FOCUS is part of what gets drawn, not a
+           pointer beside it: Braces paints the pair being decided at full
+           height and everything else as a short tick, and the painter
+           reads that off each mark. This branch used to update the index
+           and the time and return, so a window that already held the
+           marks never learnt the focus had moved -- everything in it drew
+           short, permanently, until a drag happened to coalesce enough
+           publishes to jump the revision and fall through to the branch
+           below. The flags are recomputed here from one number instead,
+           which is what makes stepping cheap. */
+        /* Every field this branch applies, and the early return is
+           built from the same list.
+
+           They do not arrive together. Stepping publishes at once -- new
+           focus, new index, no curve, because the read has not come back
+           -- and the curve follows on a pointer whose index, time and
+           focus are all identical to the one before it. A guard that
+           asked only about those three answered "nothing has changed" and
+           threw the curve away, on every step, for ever. The rule is that
+           a guard has to answer for everything below it. */
+        const moveFocus = pointer.focus != null
+                       && pointer.focus !== have.focus;
+        /* Whether the curve changed, without comparing the samples.
+
+           The pointer is parsed fresh from the slot on every poll, so an
+           identity test is true every time and would repaint the panes on
+           a timer. Two cheap facts settle it instead: which stamp the
+           curve was read for, and whether there is one at all. A step
+           publishes `curveAt` for the new stamp with no curve yet, and the
+           curve follows for that same stamp -- which is why both halves
+           are needed and neither is enough. */
+        const newCurve = pointer.curveAt !== have.curveAt
+                      || (!!pointer.curve) !== (!!have.curve);
+        const newHome = ('home_t' in pointer)
+                     && pointer.home_t !== have.home_t;
+        const newReach = !!pointer.window_ms
+                      && pointer.window_ms !== have.window_ms;
+        if (have.index === pointer.index && have.at === pointer.at
+            && !moveFocus && !newCurve && !newHome && !newReach) {
+          return false;
+        }
         have.index = pointer.index;
         have.at = pointer.at;
         have.rev = pointer.rev;
+        if (newReach) have.window_ms = pointer.window_ms;
+        if (moveFocus) {
+          have.focus = pointer.focus;
+          for (const e of (have.events || [])) {
+            e.f = e.r === pointer.focus ? 1 : 0;
+          }
+        }
+        if ('curve' in pointer) have.curve = pointer.curve;
+        have.curveAt = pointer.curveAt;
+        if ('home_t' in pointer) have.home_t = pointer.home_t;
         return true;
       }
     }
+    /* A pointer that brought its own marks. Adopted as it stands: there is
+       nothing to fetch, and the mode that published it is the only thing
+       that knows what they are. This is how Braces gets its before/after
+       lines onto the aid window, which is a separate page with no module of
+       its own in it. */
+    if (pointer.events) {
+      sess.curationMarks = {
+        kind: pointer.kind, index: pointer.index, at: pointer.at,
+        rev: pointer.rev || 0,
+        labels: pointer.labels || [],
+        events: pointer.events,
+        // Carried alongside the marks because the painter needs both and
+        // neither is a property of any one mark: which row is being
+        // decided, and how far it was allowed to move.
+        focus: pointer.focus,
+        window_ms: pointer.window_ms,
+        curve: pointer.curve || null,
+        curveAt: pointer.curveAt,
+        home_t: pointer.home_t,
+        gid: pointer.gid,
+      };
+      return true;
+    }
+
+    /* Nothing to fetch for an alignment.
+
+       The curation route serves curation sets; a Braces pointer that got
+       this far is one whose marks have not arrived yet, and asking that
+       route for them returns an error that used to be swallowed. Waiting
+       for the next pointer -- which carries the marks whenever they change
+       -- is the honest answer. */
+    if (pointer.kind === 'braces') return false;
+
     if (sess._curFetching) return false;
     sess._curFetching = true;
     try {
@@ -8091,6 +8307,9 @@ BARRY.views.xplore = (function () {
     drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
+    if (BARRY.braces && BARRY.braces.draw) {
+      BARRY.braces.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
     if (BARRY.curate && BARRY.curate.draw) {
       BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
@@ -8458,6 +8677,69 @@ BARRY.views.xplore = (function () {
   }
 
   /* ---------- minimap ---------- */
+  /* How tall the overview is. One number for every pane, remembered in
+     the preferences the rest of the interface uses -- a strip that is tall
+     in one pane and short in the next is two answers to one question. */
+  const STRIP_DEFAULT = 40;
+  const STRIP_MIN = 28;
+  const STRIP_MAX = 320;
+
+  function stripHeight() {
+    let n = STRIP_DEFAULT;
+    try {
+      n = parseFloat(BARRY.prefs.get('xf_strip_h', STRIP_DEFAULT));
+    } catch (e) { n = STRIP_DEFAULT; }
+    if (!(n > 0)) n = STRIP_DEFAULT;
+    return Math.max(STRIP_MIN, Math.min(STRIP_MAX, n));
+  }
+
+  function setStripHeight(px) {
+    const n = Math.max(STRIP_MIN, Math.min(STRIP_MAX, Math.round(px)));
+    for (const bar of $$('.pane-timebar')) bar.style.height = n + 'px';
+    try { BARRY.prefs.set('xf_strip_h', n); } catch (e) { /* ignore */ }
+    // Every overview is a canvas sized from its box, so they all have to be
+    // redrawn -- and the panes above them just changed height too.
+    for (let i = 0; i < XF.nPanes; i++) {
+      const p2 = XF.panes[i];
+      if (!p2) continue;
+      const sess = sessionOf(p2);
+      if (p2._mini && sess) drawMini(i, p2, sess);
+    }
+    window.dispatchEvent(new Event('resize'));
+    return n;
+  }
+
+  function wireStripResize(bar, index) {
+    const grip = bar.querySelector('.pane-timebar-grip');
+    if (!grip) return;
+    let from = 0, start = 0;
+    const move = (e) => {
+      // Up is taller: the strip grows into the pane above it.
+      setStripHeight(start + (from - e.clientY));
+      e.preventDefault();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move, true);
+      window.removeEventListener('mouseup', up, true);
+      document.body.classList.remove('strip-resizing');
+    };
+    grip.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      from = e.clientY;
+      start = bar.getBoundingClientRect().height;
+      document.body.classList.add('strip-resizing');
+      window.addEventListener('mousemove', move, true);
+      window.addEventListener('mouseup', up, true);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    grip.addEventListener('dblclick', (e) => {
+      setStripHeight(STRIP_DEFAULT);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
+
   function drawMini(index, pane, sess) {
     const c = pane._mini;
     if (!c) return;
@@ -8543,7 +8825,14 @@ BARRY.views.xplore = (function () {
        because at this size the point is the distribution rather than any
        one of them. */
     const cm = curationMarks(sess);
-    if (cm && (cm.events || []).length) {
+    /* An alignment has its own scheme and its own idea of which mark is
+       the one you are on, so it draws itself -- the same reason the panes
+       hand it the canvas. Everything below is the curation scheme: one
+       mark per candidate, coloured by its label. */
+    if (cm && cm.kind === 'braces' && BARRY.braces
+        && BARRY.braces.drawStrip) {
+      BARRY.braces.drawStrip(ctx, sess, w, h, dur);
+    } else if (cm && (cm.events || []).length) {
       ctx.save();
       const bw2 = Math.max(1, w / Math.max(1, cm.events.length));
       for (let i = 0; i < cm.events.length; i++) {
@@ -9471,6 +9760,26 @@ BARRY.views.xplore = (function () {
       const keep = panelNow(sess);
       sess.probe = e.target.value;
       queueSaveState(sess);
+      /* Written to the RECORDING, not only to this window.
+
+         Which probe went into the animal is a fact about the recording, and
+         it decides how a CSD is computed -- so leaving it in view state
+         meant Incisor, a colleague's machine and this window's own next
+         open could each believe something different about the same animal.
+         Best effort: the layout has already changed either way, and a
+         registry that is briefly behind is better than a control that
+         refuses to move because the write failed. */
+      /* `sess.identity.gid`, not `sess.gid` -- there is no such property,
+         and reading it would have made this whole write a silent no-op
+         that looked exactly like a working one. */
+      const pgid = (sess.identity || {}).gid;
+      if (pgid) {
+        apiPost('/api/registry/' + pgid + '/probe', { probe: sess.probe })
+          .then(() => { sess.probeSource = 'manual'; })
+          .catch(() => toast('The layout changed here, but this recording '
+                             + 'could not be updated — other views will '
+                             + 'still read the old probe.', 'err', 7000));
+      }
       BARRY.activity.log('probe.change', { probe: sess.probe,
                                            panel: keep }, sess);
       if (sess.probe === 'h3') {
@@ -9489,7 +9798,13 @@ BARRY.views.xplore = (function () {
         // column overrides would otherwise survive into a layout that has
         // nowhere to show them.
         const s0 = active();
-        if (s0 && s0.probe === 'h10d') {
+        /* Any template with columns, not just the H10-D. A dual implant
+           lays out two panes for the same reason, and leaving that layout
+           by hand has to drop the overrides just the same or a pane keeps
+           showing one implant's channels in a layout that no longer means
+           anything. */
+        const d0 = s0 && probeDef(s0.probe);
+        if (s0 && d0 && d0.columns && d0.columns.length) {
           s0.probe = 'h3';
           if (probeSel) probeSel.value = 'h3';
           XF.panes.forEach((pp) => { if (pp) { delete pp.channels;
@@ -9608,8 +9923,39 @@ BARRY.views.xplore = (function () {
     }
 
     loadPresets();
-    api('/api/probes').then((d) => { XF.probes = d.probes || []; })
-      .catch(() => {});
+    api('/api/probes').then((d) => {
+      XF.probes = d.probes || [];
+      /* Built from the server, not written out in index.html.
+
+         The list used to be two hard-coded `<option>` tags, so adding a
+         template to backend/probes.py gave every part of the app the new
+         geometry except the one control anybody uses to pick it. */
+      const sel = document.getElementById('xfProbe');
+      if (sel && XF.probes.length) {
+        const keep = sel.value;
+        sel.innerHTML = '';
+        for (const p of XF.probes) {
+          const n = p.n_columns || 1;
+          sel.appendChild(el('option', {
+            value: p.id, title: p.note || '',
+            text: p.name + (n > 1 ? '  ·  ' + n + ' columns' : ''),
+          }));
+        }
+        sel.value = XF.probes.some((p) => p.id === keep) ? keep : 'h3';
+        syncProbeControl();
+      }
+      /* The table arrives after the page does, and a recording reopened at
+         startup can be on screen before it. Without this the first thing
+         you see after a restart is a dual implant drawn as one array --
+         the same disagreement between the label and the layout, arrived at
+         by a different route. Asked again here, once there is something to
+         ask. */
+      const s0 = active();
+      if (s0 && probeSplits(s0) && XF.order.length === 1
+          && XF.panes.length <= 1) {
+        layoutProbe(s0, panelNow(s0));
+      }
+    }).catch(() => {});
     api('/api/panels').then((d) => {
       XF.panelDefs = d.panels || [];
       XF.colormaps = d.colormaps || [];
@@ -9716,6 +10062,9 @@ BARRY.views.xplore = (function () {
     _drawCuration: (ctx, sess, t0, t1, x0, plotW, y0, plotH) =>
       drawCurationMarks(ctx, sess, t0, t1, x0, plotW, y0, plotH, palette(),
                         { alpha: marksAlpha(sess) }),
+    /* A mode taking over pointer drags on a pane, to be told the time
+       under the pointer. `null` hands it back. */
+    grabTime: (hooks) => { XF.grabTime = hooks || null; },
     fillPanes,
     state: XF,
     refreshAll,
@@ -9737,10 +10086,23 @@ BARRY.views.xplore = (function () {
     // Repaint what is already loaded. Curation redraws its overlay on every
     // keystroke; going back to the server for the same samples would make
     // the fastest part of the job the slowest.
+    /* A pane AND the strip under it.
+
+       The overview draws the whole set, so anything that changes which
+       marks exist changes it -- and it was not being repainted here at
+       all, which left it showing the previous answer until something else
+       happened to repaint it. Redrawing a pane without its strip is a half
+       redraw with a name that does not say so. */
     redraw: (index) => {
+      const one = (i) => {
+        drawPane(i);
+        const pane = XF.panes[i];
+        const sess = pane && sessionOf(pane);
+        if (pane && pane._mini && sess) drawMini(i, pane, sess);
+      };
       if (index === undefined) {
-        for (let i = 0; i < XF.nPanes; i++) drawPane(i);
-      } else drawPane(index);
+        for (let i = 0; i < XF.nPanes; i++) one(i);
+      } else one(index);
     },
     /* Curation knows which candidates are coming next; this view knows what
        a panel request looks like. Neither can prewarm without the other. */

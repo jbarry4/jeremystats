@@ -62,7 +62,14 @@ async function until(fn, ms = 60000) {
   outer: for (const p of (reg.tree || [])) {
     for (const m of p.mice) {
       for (const s of m.sessions) {
-        if (s.n_channels >= 64 && (s.here || []).length) {
+        /* Exactly 64, not "64 or more".
+           The KCNT1 recordings are 128 -- two banks, hippocampus 1-64 and
+           cortex 65-128 -- and `>= 64` started picking one of those as
+           soon as they were scanned. Every assertion below then measured a
+           128-channel pane against a page whose whole subject is that
+           sixty-four fit, and the failure read as a layout regression
+           rather than as the wrong recording. */
+        if (s.n_channels === 64 && (s.here || []).length) {
           path = s.here[0]; say('note', '  using ' + s.label
             + ' (' + s.n_channels + ' channels)'); break outer;
         }

@@ -15,6 +15,1121 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.2 - Jarvis opens in a second, and stops putting you where you did not ask to be
+
+### Changed
+
+- **Opening Jarvis no longer waits for the catalogue.** Measured on this
+  machine, a boot spent four and a half seconds on `/api/sync/status` and
+  another four and a half on `/api/vacc/knows`, both at once, before the
+  interface could be used for anything. Both now answer in hundredths of a
+  second, out of a small local cache of what they said last time, and the
+  real answers are recomputed behind the page.
+
+  Last boot's answer is almost always this boot's answer — the catalogue
+  does not change while the computer is off — so the recompute usually
+  finds nothing and the page does nothing. When it does find a difference
+  the page is told, and only then does it re-read.
+
+  The cache is per machine and local. It sits in `GUI_logs/.cache/warm`
+  beside `index.json`, git ignores it, nothing uploads it, and deleting it
+  costs exactly one slow boot. It cannot be anything else: two computers
+  have different recordings on different drives, so one machine's answer is
+  not merely useless on another, it is wrong there.
+
+  **It is switched on by "Wake up Jarvis" and by nothing else**, and it
+  stops answering the moment there is a real answer to give — or the moment
+  somebody clicks anything, because a person who has started working is a
+  person owed the truth. A server started by the harness suite, by
+  `vacc_run`, or by a script reads the store live exactly as it always has.
+  `tools/test_warmcache.py` checks each of those rules, and
+  `web/_dev/warmboot.html` checks a real page load against a real store.
+
+- **Nothing loading at startup moves you any more.** Reopening the
+  recording you last had open finished with `setView('xplore')`: a quarter
+  of a second after the interface appeared, whatever you were looking at
+  was replaced by a voltage trace that then took several seconds to draw —
+  and a click you had already started landed there instead of where you
+  aimed it.
+
+  The recording still reopens. It reopens **underneath** whatever is on
+  screen, which is what `?csc=` has done for months, and says so once,
+  quietly, so finding it in XploreFinder later is not a surprise. If you
+  have walked over to XploreFinder yourself in the meantime, it draws
+  there, because then it is what you are waiting for.
+
+  It also waits two seconds rather than 250 ms. Nothing is waiting on it,
+  and reading a whole recording's headers into the middle of the page
+  fetching its own catalogue made both slower.
+
+- **Three views that read the catalogue once per row now read it once.**
+  Found while measuring the first minute rather than the first paint,
+  because "it takes a minute" is about walking into views and not about the
+  splash screen. All three are the same mistake in three places: work that
+  costs the same whether you do it once or seven hundred times, done inside
+  the loop.
+
+  | | before | after |
+  |---|---|---|
+  | `/api/layers` (ToolKit list) | 9.9 s | 0.5 s |
+  | `/api/toolkit/bad-channels` | 6.8 s | 0.15 s |
+  | `/api/toolkit/scopes` | 4.5 s | 0.15 s |
+  | `/api/sessions` | 4.1 s | 0.1 s |
+
+  `/api/layers` asked the registry for the recording behind each of
+  seventy-two sheets, and `REG.by_gid` re-stats all 1510 session shards on
+  every call to check nothing has moved — so it did that seventy-two times
+  for one list. It builds the index once now, which is what `/api/registry`
+  already does and says so in a comment.
+
+  The other three went through `STORE.all_sessions()`, which re-reads and
+  re-merges every shard on every call; `REG.all()` is the identical read
+  cached against the shard directory's signature. Checked rather than
+  assumed: both return the same 687 records byte for byte, and the three
+  routes' output is identical either way.
+
+  These were slow on **every** call, not only the first, so this is a fix
+  rather than something the warm start was hiding.
+
+- **A background refresh cannot scroll a list you are reading.** The rule
+  for anything arriving after the interface is up: if the view is not on
+  screen, mark it stale and let the next visit re-read it; if it is, redraw
+  in place and put the scroll back. `BARRY.keepScroll` finds the element
+  that is actually scrolling rather than being told which one it is — the
+  Sessions list does not scroll, the pad two levels above it does, and code
+  that saved `#sessTree.scrollTop` was saving a number that is always zero
+  while reading exactly as though it worked.
+
+## 2026.09.21.1 - The curve Braces measured, the whole set at a glance, and a version number that was not one
+
+### Added
+
+- **The curve the rule took its maximum from, drawn on the recording.** On
+  by default, with a toggle in the Braces bar. Mean |CSD| over the band with
+  the mains out — the actual trace the decision was made on — drawn into
+  the bottom of every pane, behind the marks, scaled to its own peak. The
+  green line is that curve's largest peak inside the window, so the answer
+  and the working are on the same picture. It travels with the marks rather
+  than being fetched per pane, which is what lets the pop-out aid windows
+  draw it: they are separate pages with no proposal in them, and it is why
+  it appears on the raster panels as well as the traces.
+
+  **Remembered between sessions**, because it is a way of working rather
+  than a property of a set: somebody who wants to see what the rule looked
+  at wants it on every stamp of every alignment.
+
+  **Read and drawn over the reach exactly.** A stamp may move within the
+  window and nowhere else, so a sample outside it is not a candidate and
+  cannot be the answer — three windows' worth of curve was two thirds of a
+  picture no decision could be taken from, and read as though the rule had
+  considered it and passed it over.
+
+- **The window a stamp may move in is shaded on every pane.** It was drawn
+  at five per cent, which over a CSD raster reads as a rendering artefact
+  rather than as a region — and the raster panels are exactly where somebody
+  is deciding whether the new line sits on the sink, so it is where knowing
+  what was within reach matters most. A visible wash now, with both edges as
+  solid rules and a bracket top and bottom, which is what makes it one region
+  rather than two lines that happen to be there.
+
+- **The whole set as a list, on the recording.** `l`, or the toggle in the
+  bar. One row per stamp — where it was, how far it moves, why it was
+  flagged, what you decided — docked to the right of the traces rather than
+  over them, because the point is to read it while looking at the recording.
+  Click a row to go to that stamp; the one you are on scrolls itself into
+  view.
+
+  Stepping is fine for going through a set once. It cannot answer "which are
+  still flagged", "what did I decide forty stamps ago", or "take me back to
+  the one that moved eighty milliseconds" — those are questions about the
+  set, and a pair of arrow keys is the wrong instrument for all three.
+
+- **Alignments on the overview strip, in their own scheme.** The strip was
+  drawing them with the CURATION scheme: one mark per candidate, coloured by
+  its label, and "the one you are on" found by position in the list. None of
+  that is true of an alignment — there are two marks per stamp that mean
+  different things, the colour comes from the decision, and the index is a
+  row number, so the strip was lighting up whichever mark happened to sit at
+  that position in a list twice as long. It hands the canvas to Braces now,
+  the way the panes do. At forty pixels there is no room for a dash pattern,
+  so the halves separate by height instead: where it goes on the top half,
+  where it was on the bottom, and the one being decided full height.
+
+- **Braces asks which recording first, then which banked entry.** The same
+  two questions the curation wizard asks, in the same order, with the same
+  two controls — the recording picker and a radio list. It had a search box
+  of its own that matched set names and session names at once, which works
+  but asks somebody to hold both in their head and hands back a flat list of
+  forty-six where the useful grouping is obvious.
+
+  Only recordings something is curated against are offered. The registry
+  holds every recording this machine has ever opened and Braces can do
+  nothing with the ones that have no curated dentate spikes, so offering all
+  of them means most picks land on "nothing here" — which reads as the tool
+  being broken rather than as the recording being the wrong one. Picking a
+  recording with nothing banked against it now gets a sentence saying what to
+  run first, instead of an empty list.
+
+### Fixed
+
+- **The version chooser looked like it was defaulting two versions back.**
+  Its first row — the selected one — read "v4 · 73 stamps, as they stand"
+  above a list ending in v6.
+
+  It was not choosing an old version: "as they stand" is the entry's current
+  events, which is the newest state there is. The NUMBER on it was wrong.
+  `current_version` was the maximum of the stored version numbers, and those
+  are not unique — this entry's history is numbered 0, 1, 2, 3, 4, 3, 4,
+  because two machines each minted a 3 and a 4 and the union kept both, which
+  is correct and is what the per-version id exists for. The lineage walks
+  them to 0…6, so the tip is 6 and the maximum is 4.
+
+  Every mention of a version outside the list itself was showing that number:
+  the chooser's first row, the search results, the "still on v4" line, the
+  "Bank it as v5" button and the confirmation. All of them show the lineage
+  name now, and the first row says which name a commit would write —
+  checked against what a commit actually produces rather than assumed.
+
+- **The support panels stopped keeping up after the first stamp.** The
+  marks were drawn at tick size, the window a stamp may move in was not
+  shaded, and the curve did not appear — until you moved something, at
+  which point all three came good at once.
+
+  One cause for all of it. `publishCuration` keeps only the latest pointer
+  while one is in flight, because only the latest is the truth — so any
+  burst, which is every step, arrives at the other window several revisions
+  on. The receiving side treated a jump of more than one as "more changed
+  than we were told about" and fell through to re-reading the set from
+  `/api/curation/<gid>/braces`: not a curation set, no route that serves
+  one, a request that fails and a catch that returns false. The pointer was
+  dropped in silence. A drag changes the marks, so the publisher sends them,
+  and a pointer carrying marks takes a different branch — which is exactly
+  why moving something fixed it and nothing else did.
+
+  A pointer for a set already held is now applied whatever the revision
+  jump: everything it carries is absolute, so a jump loses nothing. An
+  alignment never falls through to the fetch, because there is nothing there
+  to fetch. And the marks are re-sent in full if they have not been for a
+  second and a half, so a window opened between two of them fills within
+  that rather than waiting for somebody to move a stamp.
+
+- **The curve did not appear until it was toggled off and on.** It was
+  asked for before the view moved to the stamp it was going to, so the
+  samples that came back were the previous stamp's — and they are clipped
+  to the reach around the new one, which they do not overlap, so nothing was
+  drawn. Entering the view is the worst case: the curve is fetched at row 0
+  and the view then lands on the first flagged row, which is rarely row 0.
+  Toggling asked again from a settled position, which is why that was the
+  one thing that worked.
+
+- **The curve stopped appearing in the support panels after the first
+  stamp.** It arrives on a pointer of its own: stepping publishes
+  immediately — new focus, new index, no curve, because the read has not
+  come back yet — and the curve follows a moment later on a pointer whose
+  index, time and focus are all identical to the one before it. The guard
+  that stops a window repainting when nothing has changed asked about those
+  three fields and threw the curve away. Every early return there is now
+  built from the same list of fields the code below it applies, which is the
+  only arrangement where adding a field cannot quietly reintroduce this.
+
+- **The overview strip was not repainted by a redraw at all.** It draws the
+  whole set, so anything that changes which marks exist changes it —
+  switching between "all of them" and "needing a decision" being the obvious
+  one — and it kept showing the previous answer until something else
+  happened to repaint it, which in practice meant moving to another stamp.
+  Redrawing a pane without the strip under it is a half redraw with a name
+  that does not say so.
+
+- **The window and the curve were too faint to see on a CSD raster.** A wash
+  at eleven per cent and a one-pixel line do not survive a red-and-blue
+  image at full saturation — and the raster panels are exactly where
+  somebody is deciding whether the new line sits on the sink, so they are
+  the panels both of these exist for. The reach is close to twice as opaque
+  with solid edges; the curve is a heavier bright line inside a wide dark
+  outline, the same trick the marks and the gridlines use, because it has to
+  read over white, over saturated blue and over saturated red in one panel.
+
+- **No mark is drawn small any more.** Short ticks for the stamps not being
+  decided made the focused pair easy to find and everything else easy to
+  miss — and worse, they made a mark's visibility depend on a flag that
+  travels between windows, so a pointer going astray left a panel that
+  looked empty rather than one that looked slightly wrong. Every stamp is
+  full height; the focused pair is twice the width, fully opaque and haloed,
+  which tells them apart more clearly than height did. The window a stamp
+  may move in also travels as a time of its own now, rather than being
+  looked up from whichever mark claims the focus.
+
+## 2026.09.18.4 - Braces takes the mains out, screens the probe, and aligns to the peak of the curve
+
+### Changed
+
+- **The mains comes out before anything else.** The dentate-spike band is
+  5–100 Hz and sixty hertz is inside it. A current source density is a second
+  spatial *difference*, which does nothing whatever to reject a signal common
+  to every contact but not quite equal on them — so the mains was surviving
+  into exactly the measure this tool aligns on. Measured on M1ptens2oct2 over
+  a clean thirty seconds: the 60 Hz line in the CSD sits **5,950 times** above
+  the power either side of it. The trace peaks were being picked from was, to
+  a first approximation, a sine wave with a dentate spike riding on it.
+
+  And one mains period is 16.7 ms while the candidate spacing was 12 — just
+  under it — so the peak finder was resolving individual **mains cycles** as
+  candidates and snapping stamps onto them. The corrections were quantised to
+  the mains period and were not about the event.
+
+  Notched at 60 Hz, two hertz wide, zero-phase — zero-phase because the whole
+  output of this tool is a *time*, and a filter with phase would shift the
+  thing being timed by an amount that varies with frequency, which is
+  indistinguishable from the jitter it exists to remove. Taken out per
+  channel, before the bandpass and long before the derivative: notching after
+  the difference is too late, because by then a line that was everywhere has
+  been turned into something that looks local.
+
+- **The probe is screened, and a bad contact is interpolated rather than
+  dropped.** A CSD does not merely include a dead wire, it *amplifies* it: a
+  dead contact between two live ones is the largest deflection anywhere on the
+  shank, and anything choosing a depth or a peak by magnitude chooses that.
+  **CSC59 is dead in all three recordings tested** — M1ptens2oct2, m26s2jun28
+  and M8s9feb8, three different mice — at around half a microvolt against
+  medians of 43 to 68. It had never been screened, and the depth pass had duly
+  been returning bands centred on it.
+
+  Interpolated from its neighbours rather than removed, and the difference is
+  not cosmetic: taking a contact out of the middle does not leave a shorter
+  probe, it leaves an unevenly spaced one, and a second difference over an
+  uneven grid has a step in it exactly where the missing wire was. That now
+  applies to contacts *you* untick as well. Whatever was repaired is named on
+  the panel and kept on the set.
+
+- **The trace is the mean of |CSD| across the contacts, and a stamp goes to
+  the largest peak of it in the window.** Not the nearest. With no floor a
+  window holds every local maximum of the curve, so "nearest" means the
+  nearest wiggle — measured on M1ptens2oct2, that moved nothing further than
+  10 ms and scored 0.628 where the same candidates taken largest-first scored
+  0.718. There is no height floor at all: a candidate is a local maximum
+  whatever its size, so nothing is left unplaced for being small.
+
+  **The assignment stays**, and only its objective changed: the same dynamic
+  program over the same runs, minimising unmatched stamps first and then total
+  *height given up* instead of total distance moved. Two stamps in a burst
+  still cannot be handed the same instant. The edge case is untouched, because
+  it comes from the first term — a stamp between two peaks and another after
+  it that can only reach the later one means the first must take the earlier,
+  or one of them goes unmatched and the count is worse.
+
+- **How it scores.** The test is the event-triggered average of the signed CSD
+  on the sink contact: the deflections add where the stamps agree and cancel
+  where they do not, so the peak of the average over the mean single-trial
+  peak is a direct read-out of alignment. On M1ptens2oct2's 64 curated spikes,
+  one denominator and one contact for every condition:
+
+      as curated                        0.599
+      the reference implementation      0.712   (41 of 64 placed)
+      this                              0.718   (64 of 64 placed)
+
+  And on a second recording, m26s2jun28's 28 spikes, where the stamps were
+  further out to begin with: **0.380 as curated, 0.690 after**. The median
+  move there is −11.5 ms, which is large enough to be worth distrusting
+  — the coherence is what says it is the rule finding the event rather
+  than dragging the set off it.
+
+  The average also narrows from 11.0 ms to 10.0 ms, and carries 0.4% of its
+  power at 60 Hz — which is what says the number is an event getting sharper
+  rather than the mains failure mode, where an ensemble slides between cycles
+  and produces a beautiful 60 Hz average that measures nothing.
+
+- **Both the mains frequency and the smoothing are settings.** Rectifying per
+  contact and pooling after makes each half-cycle of a biphasic deflection its
+  own positive lobe, so one event can arrive as two or three humps — |sin| has
+  twice the frequency of sin, which is arithmetic rather than a property of
+  the recording. A moving average about as long as one half-cycle merges them
+  into a single hump whose maximum is a usable time. It is off by default,
+  because broadening a peak makes it easier to find and harder to place.
+
+### Fixed
+
+- **The record said a floor applied when none does.** An alignment set carried
+  `cand_height_sd: 4.5` whatever rule it was made under, and the parameters
+  are the only record of how its numbers were made. Zero now means no floor,
+  which is the rule — a set made with one and a set made without are not
+  comparable, and nothing else on the set would show the difference.
+
+- **The depth bars were labelled in microvolts** and have not been microvolts
+  since they started being scored on the event-triggered template. Shown as a
+  percentage of the strongest contact, which is what they are.
+
+## 2026.09.21.1 - Two probes in two places, the cluster gets the catalogue, and signing in
+
+### Added
+
+- **A dual-array probe template: hippocampus on CSC 1-64, M2 on 65-128.**
+  The KCNT1 recordings are 128 channels because there are two implants in
+  the animal, not one probe with twice as many contacts. That distinction
+  is arithmetic, not bookkeeping: a CSD down the channel order steps across
+  the gap at channel 64 and computes a second spatial derivative between
+  two contacts that are millimetres and one brain region apart. It produces
+  a number, the number is meaningless, and nothing about it looks wrong.
+
+  So the dual implant is described the way the H10-D already is — as
+  independent lines of contacts, one pane each, a CSD down each on its own.
+  The split is the same 64/64 `sessreg.banks_for` writes down, and it has
+  to stay that way: the banks are where a person records which region is
+  which, and a template that disagreed with them would put the M2 label on
+  the hippocampal trace.
+
+- **Which probe a recording was made with is now a fact about the
+  recording.** It lived in the Xplorefinder session's view state, so it
+  lasted as long as that window and travelled to nobody — Incisor, a
+  colleague's machine and the next open could each believe something
+  different about the same animal. It is assigned in Housekeeping, beside
+  the project, and everything reads it from one place.
+
+  "Nobody has said" is kept distinct from "somebody said H3", and a
+  128-channel recording is *read as* a dual implant without that being
+  written down as a decision. A blank that is visibly blank can be filled
+  in; a guess that looks like a fact cannot be found again — the same
+  argument `banks_for` makes about leaving a region blank.
+
+  Choosing a template with named regions fills in any blank channel bank,
+  because picking "hippocampus + M2" **is** saying which bank is which, and
+  making somebody enter the same fact twice is how the two come to
+  disagree. It only ever fills a blank.
+
+- **"Everything VACC knows" has the catalogue, not just the directories.**
+  The same project → mouse → session tree as "Everything Jarvis knows",
+  narrowed to the recordings the cluster can read — 109 of them here.
+  Finding a recording by which animal it came from is how anybody thinks
+  about it; recognising a folder name on a cluster is not.
+
+  One renderer, not two, because a second copy of that tree is a second
+  copy to keep in step. The directory walk is still there beside it, under
+  its own tab, because it is how a recording gets connected to its copy on
+  the cluster in the first place.
+
+- **Filter by project, and by channel count.** In Everything Jarvis knows,
+  where grouping by project already existed and is a different thing:
+  grouping decides what the branches mean and every recording is still in
+  the tree. Project is a set rather than one at a time — "PTEN and KCNT1
+  but not the urethane work" is ordinary when the urethane project shares
+  mouse numbers with KCNT1.
+
+  Channels is a comparison rather than a value, because the question people
+  have is "which of these are the dual implants", and that is **more than
+  64**. Asking for exactly 128 gets the ordinary ones and misses the six
+  whose `CSCn_0001.ncs` continuation files put the count at 190 or 192 —
+  precisely the ones worth looking at. A recording nobody has read a header
+  for has no channel count and is in **neither** side: 164 of them here,
+  and a missing number landing in "fewer than 64" would be absence read as
+  zero.
+
+- **A guided VACC sign-in, from a NetID and one password.** The NetID is
+  the whole question — `<netid>@login.vacc.uvm.edu` is the account and the
+  home and scratch directories follow from it. Turn VACC Mode on with
+  nothing set up and it offers to sign in.
+
+  The password is needed exactly once, to install an SSH key, and then the
+  key logs in. That is not only convenience: the status chip polls, and
+  password login at UVM means Duo, so a second factor every ten seconds for
+  six hours is not a thing anybody would leave on. Duo is answered with a
+  push during the install; the person approves it on their phone.
+
+  Somebody who already uses the cluster from a terminal has a key that
+  works, and is offered it instead of being asked for a password to make a
+  second one.
+
+  **What happens to the password:** it goes over localhost into the
+  environment of exactly one `ssh` process and is dropped when that process
+  exits. It is never written to disk, never on a command line, never
+  logged, and `_scrub` removes it from anything ssh echoes back. The
+  askpass helper answers a password prompt with the password, a Duo prompt
+  with a push, and **any prompt it does not recognise with nothing** —
+  sending a credential to an unrecognised question is how a credential ends
+  up somewhere it was not meant to go.
+
+  The config is written only after the key has been proved by connecting
+  again with the key **alone**. Writing it after the install would record
+  "signed in" on the strength of a password that is now gone.
+
+- **`start.py` asks for a NetID on a new machine**, beside the sync key and
+  for the same reason. Deliberately no password there: a console that may
+  be a double-clicked window is the wrong place for one, and the Duo push
+  that follows needs somebody watching.
+
+### Changed
+
+- **A probe layout is however many columns the template has**, not six. An
+  H10-D has six and a dual implant has two, and the reason for one pane
+  each is identical in both cases.
+
+- **The probe picker is built from the server.** It was two hand-written
+  `<option>` tags, so adding a template gave every part of the app the new
+  geometry except the one control anybody uses to pick it.
+
+- **Each probe reports its own contact pitch** — 30 µm within an H10-D
+  column, 50 µm on the linear arrays. The listing said 30 for all of them,
+  which was right for exactly one. Nothing read it, so nothing was wrong;
+  it would have been the moment anything did.
+
+### Fixed
+
+- **`tools/check_js.py` caught two shadowed `const` bindings** that would
+  have shipped: one took the whole Sessions module down, the other made a
+  harness page run none of its checks. There is no build step here, so
+  neither produced an error anywhere.
+
+- **The housekeeping harness restores `project_source`, not just the
+  project.** Driving the picker and putting only the value back left a real
+  recording reading "set by hand" with nobody having set it by hand — and a
+  manual project is immune to the re-filer and raises no filing flag, so
+  every run quietly immunised whichever recording was first in the tree.
+
+## 2026.09.18.3 - A running scan says what it is finding
+
+### Changed
+
+- **The scan line was a spinner, two counters and a path.** The counters are
+  the least informative part of it: "31 sessions · 75 folders" reads exactly
+  the same whether the scan is walking the tree you meant or one directory
+  too high, and a scan of a lab drive runs for minutes before anything else
+  tells you. It now answers the three questions somebody watching it
+  actually has.
+
+  *Is it moving* — the rate, in folders a second, beside the elapsed time.
+
+  *Is this the data I meant* — what it has found so far, broken down: the
+  projects with counts, the number of distinct animals, and the channel
+  counts. The channel count is the one that earns its place, because PTEN is
+  64 and KCNT1 is 128, so the number alone says which drive is being walked.
+
+  *Where has it got to* — the path, but relative to the folder you chose,
+  because the first thirty characters of the absolute one are repeating your
+  own answer back at you. Plus the last recording it found, so the line has
+  something that visibly moves and is not a counter.
+
+- **Two ways a channel count can be wrong are now told apart**, because they
+  mean opposite things. Below a multiple of 32: files are missing, since the
+  rig records in banks of 32. Above 128: files are *doubled* — a
+  `CSCn_0001.ncs` beside every `CSCn.ncs`, which is what Cheetah writes when
+  acquisition restarts mid-session, and the loader reads only the first of
+  each pair. A real scan of `D:\KCNT1\urethane` finds 55 recordings at 128
+  channels and then one at 53, three at 192, one at 190 and one at 256 —
+  which is a sentence worth reading while the scan is still running.
+
+- **A finished scan says how much of it was news.** The server already
+  counted how many of the recordings it registered had never been seen on
+  any machine; it was in the payload and only ever used to decide whether to
+  re-render.
+
+- **Progress is reported on the clock, not every 25 folders.** A folder
+  count is a different interval on every drive — seconds apart on a network
+  share, hundreds of times a second on a local one. A quarter of a second is
+  the same interval everywhere, and finding a recording gets a shorter leash
+  than walking past a folder, because it is the event somebody is watching
+  for.
+
+### Fixed
+
+- **The path is no longer clipped.** It was one `nowrap` line with an
+  ellipsis, which cut off the *end* — and the end is the recording folder,
+  the only part of it worth reading. It wraps now.
+
+- **`project_source` could be set to "manual" by a test.**
+  `web/_dev/housekeeping.html` drives the project picker and put the value
+  back afterwards but not the source, so a real recording was left reading
+  "set by hand" with nobody having set it by hand. That is not cosmetic: a
+  manual project is immune to the re-filer and raises no filing flag, so
+  every run of that page quietly immunised whichever recording happened to
+  be first in the tree. `set_project` takes a source now, and only a restore
+  passes one.
+
+- **Two scan harnesses were sharing one fixture.** Both register what they
+  find and both forget it afterwards, and forgetting is permanent by design
+  — so whichever ran first tombstoned the three recordings and the second
+  could never register them. Each gets its own fixture, with its own animals
+  as well as its own folder, since a recording is identified by mouse and
+  start time rather than by the folder above it.
+
+- **A harness whose own script does not parse is now a failure.** There is
+  no build step here, so a syntax error is not a red line in a terminal — it
+  is one module quietly never assigning itself, or one page running none of
+  its checks and reporting "0 ok, 0 fail", which reads exactly like a page
+  that has no checks by design. Both happened today. `tools/check_js.py`
+  parses every module and every inline harness script in about a second, and
+  the runner now fails a page whose title never moved off "running".
+
+## 2026.09.18.2 - A path that disagrees with its project now says so
+
+### Added
+
+- **A recording whose own path names a different project raises a flag.**
+  Not a re-file — a question, put where somebody can answer it.
+
+  The word this exists for is "urethane", and it is worth writing down why
+  it cannot be a rule. It appears in this lab's data in two different
+  roles. In `D:\KCNT1\urethane\wt\...` it names a project: KCNT1 Urethane
+  is a separate body of work from KCNT1, with its own mice and its own
+  session numbers that happen to collide. In
+  `...\CTL\rejects\M15_s3_baseline_urethane` it names the anaesthetic, and
+  that recording is PTEN. A pass that reads the word and re-files on it
+  moves the second pair out of the project they belong to, and does it
+  silently.
+
+  So the chip says what the path says and what the record says, and leaves
+  the decision. Setting the project by hand is what clears it, because
+  `project_source = manual` is already how this codebase records that
+  somebody decided — including deciding to leave it exactly where it is.
+
+  Eighteen of 571 recordings raise it today: sixteen filed KCNT1 whose
+  paths read KCNT1 Urethane, and the two PTEN recordings where the word is
+  the drug.
+
+- **Clicking the chip opens the project picker on that recording.** The
+  picker lives in Housekeeping and nowhere else, so a flag raised on a
+  Sessions card now has somewhere to point; the flag is restated in full
+  beside it. A `Project worth a look` filter finds them all at once.
+
+### Fixed
+
+- **`fromRegistry` was dropping the field on the way to the card**, which
+  is precisely the failure its own comment warns about: a translation that
+  quietly loses a field makes a filter that matches nothing, and that reads
+  as "none of them qualify" rather than as a bug. The flag is also copied
+  onto rows a scan already placed — otherwise the chip appeared on the
+  recordings nobody had scanned and vanished from the ones somebody just
+  had.
+
+- **A fixture path glued onto a real recording is now detached, not
+  ignored.** `scanreg.html` tidies up after itself by forgetting records
+  whose paths are all under its temp folder, guarded additionally on the
+  `m9xx` keys it mints. But a fixture whose timestamps collide with a real
+  recording re-identifies to *that* recording, and the fake path is
+  unioned onto it — so one sat in the registry as `m001_s002`, attached to
+  a real PTEN recording with seven genuine paths, failing the tidy check
+  every run. Forgetting the record would have taken the PTEN recording
+  with it. It now detaches the fixture paths and leaves the recording.
+
+- **`chan64.html` was picking a 128-channel recording.** Its filter said
+  `>= 64`, which was the same thing until the KCNT1 recordings were
+  scanned. Every assertion then measured 128 channels against a page whose
+  whole subject is that sixty-four fit, and the failure read as a layout
+  regression rather than as the wrong recording.
+
+- **`toolicons.html` demanded an icon from a bundle step.** Steps inside
+  The Dentist are numbered, not marked — the bundle carries the mark, and
+  numbering them is the point because they are meant to be done in order.
+  The page was widened to `.tk-tool, .tk-step` when Incisor and Checkup
+  moved into the bundle; it now asks each shape for what that shape has.
+
+- **The audit's verdicts are no longer assumed to be `empty`.**
+  `scancheck.html` held that every flagged recording was an empty folder,
+  which was true while the only flagged things were fixture leftovers. The
+  128-channel KCNT1 recordings are flagged `suspect` — their channels are
+  split across `CSCn.ncs` and `CSCn_0001.ncs` because acquisition
+  restarted, and only the first part loads. That is a real recording with a
+  real problem, and calling it empty would be the audit lying.
+
+## 2026.09.18.1 - Braces aligns to the event's own peak, not the biggest one nearby
+
+### Fixed
+
+- **A stamp could be taken off its own spike by a bigger one beside it.** The
+  candidate peaks were found with the detector's `dist_ms`, which is 100 ms,
+  and the window a stamp may move in is also 100 ms. Two consequences, and
+  the second is the one that showed on the screen. The list could hold only
+  one peak per hundred milliseconds, so two events closer than that were one
+  candidate between them. And with a single candidate in reach, "the nearest
+  peak" and "the biggest deflection in the window" became the same choice —
+  so a stamp whose neighbour was bigger was moved onto the neighbour, tens of
+  milliseconds from the sink anybody could see under it.
+
+  Measured on M8s9feb8's 1213 curated spikes: for 27% of stamps the biggest
+  thing in the window is not that stamp's own peak. The old rule landed on
+  the window maximum 97% of the time, and on the stamp's own peak 76%.
+
+  **A candidate is now a local maximum that clears the detector's own
+  floor** — the same 4.5 SD threshold that decided the stamp existed — with
+  12 ms between candidates rather than 100. The floor is the substantive
+  half. Finer spacing alone was measured first and is worse than what it
+  replaced: with every wiggle in the list, "nearest" means the nearest
+  wiggle, and a tenth of the stamps landed on something under half the height
+  of the real deflection beside them. A floor with no spacing to speak of is
+  a list of events; that is what the assignment was built to choose between.
+
+  Lands within 5 ms of the stamp's own peak for 96% of stamps, against 76%.
+  Largest move 97 ms against 89, which is the rule reaching further when it
+  has a reason to rather than being forced. Flags fall from 99 to 56, and 39
+  of those are `no peak in reach` — stamps with nothing over the floor within
+  a hundred milliseconds, now left alone and asked about instead of moved
+  somewhere confident and wrong.
+
+  The reading needs one correction to the entry below this one. The CSD was
+  recorded there as scattering wider than the voltage — a p95 of 27 ms
+  against 17. That was the coarse candidate list, not the measure: with a
+  proper one the two agree closely, and CSD stays the default on the
+  rationale it was chosen for rather than on that number.
+
+- **The marks stopped moving in the support panels.** Stepping from one stamp
+  to the next redrew the main view and left the aid windows showing the set
+  as it was when they opened. Which stamp is in focus lives on the marks
+  themselves — the painter reads it off each one — and the signature deciding
+  whether to send them again summed only the times, which do not change when
+  the focus does. So the other windows kept the first copy they were given,
+  in which nothing was focused: every mark there drew short and faint, for
+  ever.
+
+- **Short marks hung from the top of the panel.** On an image panel the top
+  row is the shallowest channel, so a tick dangling from it read as belonging
+  to that channel rather than to the time under it. They rise from the bottom
+  axis now, and are a little taller.
+
+- **The end-to-end check could not fail.** It gated everything it does on
+  the plan naming a channel, which was right when somebody picked one by
+  hand and has been dead since the sweep replaced that. With the gate
+  permanently shut it skipped the run, the proposal, the flag review and the
+  commit preview — four fifths of the suite — and printed "all checks
+  passed" underneath. It runs the whole thing now, on the smallest curated
+  set that holds at least twenty spikes: small enough to be worth running,
+  real enough that the sections have something to check. It still never
+  writes to the bank.
+
+- **A voltage run was filed as a CSD one.** The measure was written into an
+  alignment set's parameters as the literal `csd` rather than the one asked
+  for, so a set made with the voltage said otherwise afterwards — and those
+  parameters are the only record of how its numbers were made. It records
+  what it was asked for now, along with both peak spacings and the candidate
+  floor, which are what the numbers actually turn on.
+
+## 2026.09.17.18 - Braces measures the CSD, and the overview can be dragged taller
+
+### Changed
+
+- **The magnitude is taken of the CSD, not of the voltage.** A voltage
+  raster at any one site is mostly what is happening somewhere else: the
+  field spreads, so a sink two hundred microns away shows up almost as
+  strongly as one on the contact. The current source density is the second
+  spatial derivative across depth, which is exactly the part that cannot be
+  volume-conducted — a dentate spike is a current sink, and this is where the
+  current actually went.
+
+  Each channel is filtered 5–100 Hz first, then the derivative is taken
+  across depth, then rectified, then averaged over the band. `csc.compute_csd`
+  is the same function the CSD panel draws from: one derivative in this
+  codebase, not two that could disagree about a sign.
+
+  **Smoothed across depth before differencing**, which is not optional. A
+  second difference amplifies whatever differs most between neighbours, and
+  on a real probe that is usually one noisy contact rather than any current.
+  Measured on M8s9feb8: the bare derivative put CSC27 at 46,000 between
+  neighbours at 14,000 — a spike one contact wide, which no current sink can
+  be, and which would have dragged the depth band onto a bad wire.
+
+  **And it is a setting, because the data does not yet say it is better.** On
+  M8s9feb8's 1213 curated spikes both measures find the same systematic
+  offset — a median of −4.5 ms against the voltage's −5.9 — and the CSD
+  scatters wider around it: a p95 of 27 ms against 17, a largest move of 89
+  against 43, and 99 stamps unlike their neighbours against 1. Whether that
+  spread is the CSD seeing variation the voltage smears over, or a derivative
+  amplifying noise as derivatives do, is a question about this lab's
+  recordings and not about the code. CSD is the default; the voltage is one
+  button away, on the same set, so the comparison can be made rather than
+  argued.
+
+- **The overview strip can be dragged taller.** Forty pixels is enough to see
+  where you are in a recording and not enough to read anything in it — which
+  matters the moment something is drawing marks down there, because a whole
+  recording of them in forty pixels is a smear. Drag the line above it,
+  double-click to put it back. Remembered in the preferences, and it is the
+  same strip in every pane of every view, so DS curation and StrataScope get
+  it too.
+
+- **Braces draws the window a stamp was allowed to move in.** The rule made
+  visible. Two lines ninety milliseconds apart mean nothing without it —
+  there is no way to tell whether the far one was even a candidate.
+
+### Fixed
+
+- **A `?csc=` in the address no longer takes over the view.** It sent the app
+  straight to XploreFinder, so reopening a window that still carried one — a
+  restored tab, a shortcut, yesterday's pop-out link — put somebody in a
+  trace view they had not asked for while a recording they had not asked for
+  loaded underneath them. The recording still opens; it opens in the
+  background, and says so once. The view is whatever the address actually
+  says: the hash where there is one, which is how the aid windows ask for the
+  trace view, and the pipeline where there is not.
+
+- **Two rows highlighted at once in the version chooser.** It matched the
+  selected version by NUMBER, and the number is not unique — two machines
+  curating one entry both mint the next one and the union keeps both, which
+  is what the per-version id exists for. On an entry holding two v1s that is
+  two rows lit and one radio filled, which reads as the dialog having lost
+  track of what you picked. Matched on the version itself now, which needs no
+  id to be present — and the histories that predate ids are exactly the ones
+  most likely to collide.
+
+## 2026.09.17.17 - The boot screen waits for the app to stop moving
+
+### Fixed
+
+- **Clicking during start-up got you taken somewhere you had not asked to
+  go.** The overlay came down one frame after the first view was shown —
+  while the recording open, the job list and the sync check were all still in
+  flight. So the interface was live and clickable with three things still to
+  land on it, and a click during that window was overruled a moment later by
+  whichever of them finished. That is the "it keeps snapping me all over the
+  place and back to XploreFinder after I have already clicked".
+
+  It now waits for the things that MOVE THE PAGE — which on a normal start
+  is the recording open — and comes down when they land.
+
+  Capped at a second and a half, and the cap is the point. An overlay that
+  waits on a slow drive is one somebody sits behind wondering whether the
+  app has hung, and the thing being prevented is a click landing in the
+  wrong place, which stops being likely the moment somebody has had time to
+  read the screen. A registry read that fills a list behind a skeleton is
+  not held for at all: that is a wait belonging to the view that wants it.
+
+### Changed
+
+- **The boot screen is a recording.** It was a pulsing rounded square, which
+  is the boot screen of anything. It is now a scope: a trace across the
+  window with dentate spikes going past, a recording head sweeping left to
+  right, and the line drawn bright behind it. The waveform is real path data
+  in the same shape as the mark in the rail and on the favicon, not a spinner
+  wearing a costume.
+
+  Two things it does that the first attempt did not. The trace is already on
+  the screen, dim, before the head reaches it — otherwise the scope is empty
+  for the first third of every sweep, and on a boot that takes half a second
+  that is all anybody ever sees. And the drawing uses `pathLength="1000"` on
+  the path, so the dash lengths are thousandths of the path rather than user
+  units somebody has to measure by hand and keep in step with the `d`.
+
+  Still says which step it is on, still says so out loud when a step has
+  genuinely been slow, and still holds completely still for anybody who has
+  asked for less motion.
+
+## 2026.09.17.16 - The set list is a list, and entering a mode is one movement
+
+### Fixed
+
+- **`wireTimeGrab is not defined`, on every pane.** The drag hook went in as
+  two call sites and a function, in a script that checked its last assertion
+  *after* replacing the text and *before* writing the file — so the assertion
+  failed, the function was never written, and a follow-up added only the
+  calls. `node --check` cannot see that: an undefined identifier is perfectly
+  good syntax and only fails when the line runs, which for a handler wired
+  inside a pane is minutes after the page loads.
+
+  The function exists now. Its `mousemove` and `mouseup` are on the window
+  rather than the pane, because a drag that leaves the plot is still the same
+  drag and one that ends outside it still ends.
+
+- **The set list was a stack of grey slabs with the names floating in the
+  middle.** It borrowed `.bm-row`, which was written for a `<label>` wrapping
+  a radio button. On a `<button>` that inherits the browser's own grey face
+  and centred text, and neither is anything the class says. Its own row now:
+  the name, the session under it, the size and version on the right, all left
+  aligned, on a quiet ground that only lifts under the pointer.
+
+### Changed
+
+- **Entering a mode is one movement instead of five.** Opening Braces swaps
+  the view, opens the recording, drops a banner in at the top, rebuilds the
+  panes into a new layout and jumps the window to the first stamp — five
+  reflows in a row, which reads as the interface being thrown at you.
+
+  The workspace now dims and lifts a few pixels while all five happen and
+  settles once, and the banner slides down rather than appearing. At the
+  interface's own `--ease-dur`, which the rail, the log dock and the radio
+  already move at: a mode arriving at a speed nothing else uses would be its
+  own kind of jarring. StrataScope and Checkup get the banner and the settle
+  too, being the same arrival.
+
+  It undims on every way out of the arrival, including the two that fail —
+  a workspace left invisible because the recording would not open is a worse
+  bug than the one this fixes.
+
+  Nothing moves for anybody who has asked for less motion.
+
+## 2026.09.17.15 - Braces marks say which one you are on, and stamps can be dragged
+
+### Changed
+
+- **The marks are drawn by Braces, not by the curation painter.** That one
+  draws every mark the same way, which is right for curation — one mark per
+  candidate, coloured by the decision — and wrong here, where each stamp is
+  TWO marks meaning different things and the pair being decided has to stand
+  out from the forty others on screen.
+
+  The rules, which are the whole of it:
+
+  | | |
+  |---|---|
+  | the one in focus | full height |
+  | everything else | a short tick from the top |
+  | where it goes | solid, green |
+  | where it was | dashed, and the colour says what was decided |
+
+  A dashed line is faint while nobody has said anything, amber while it is
+  flagged and waiting, and green once it has been confirmed. So a screen of
+  them reads as a pass in progress rather than as a field of identical
+  ticks.
+
+  The focused pair also gets a hairline between the two ends with the
+  distance on it. That number is the decision, and reading it off two lines
+  and a time axis is arithmetic nobody should have to do.
+
+  The same painter draws on the overview strip, so the one being decided is
+  findable in the whole recording and not only in the window.
+
+- **"Confirm" and "Keep it" now say what happens to the stamp.** They named
+  what the button did rather than where the stamp ended up — and "keep it"
+  reads as *keep the new one* at least as readily as *keep the old one*.
+  They are **Move it → 27.800** and **Leave it · stays at 27.894**, with the
+  first reading **It is right · already on the peak** where there is nothing
+  to move.
+
+### Added
+
+- **Undo, on the row and on the pass.** A decision made by pressing one key
+  has to be undoable by pressing one key, or people stop pressing the key.
+  `u` forgets the one in view; *Undo every decision* clears the pass after
+  asking. Both go through the same route as a decision — an explicit null on
+  the row — so this window, the aid window and the server all learn about it
+  the way they learned about the decision.
+
+- **A stamp can be dragged onto its peak.** `xplore` gained a hook for a
+  mode to claim pointer drags on a pane and be told the time under the
+  pointer — wired on the same host, and torn down with the same list, as
+  bookmark placement, because it is the same geometry question and a mode
+  answering it itself would be a second copy of `timeAtPointer` to drift
+  from the first.
+
+  Three rules. The line follows the pointer immediately and locally, because
+  a line that lags the mouse is worse than no line. The other windows follow
+  on a throttle, because the marks are the payload and twelve hundred stamps
+  is twenty-four hundred of them — at sixty moves a second that is a
+  megabyte of publishing for a gesture lasting half of one. And nothing is
+  decided until the button comes up: a drag still happening is not an
+  answer.
+
+  Only the stamp being decided can be grabbed, and only from within a window
+  of it. Taking whichever mark is nearest the pointer would let a twitch
+  move a stamp three screens away with nothing on screen to say which.
+
+## 2026.09.17.14 - Braces stops shadowing the function that changes the view
+
+### Fixed
+
+- **The main window never left the ToolKit panel, because Braces had its own
+  `setView`.** The function that draws the proposal was called `setView`, and
+  a local function of that name shadows core's `setView(name)` for the whole
+  module. So every `setView('xplore')` in this file called the proposal
+  renderer, got a DOM node back, threw the argument away, and left the app
+  exactly where it was.
+
+  Everything downstream ran perfectly — the recording opened, the aid window
+  popped out with its four panels, the marks were published and kept — all
+  of it underneath a page that was still showing the summary. Which is
+  precisely what "it opens the support panels but the main window does not
+  change" looks like from the outside.
+
+  Renamed to `proposalView`, for what it draws.
+
+- **The reason column was drawn as ovals.** `.why` is already a class: the
+  little round help button, fifteen pixels square with a 50% radius and
+  italic text. A 50% radius on a wide table cell is an oval, and the italics
+  came along with it. The column is `.br-why` now — renamed rather than
+  fought, because the round one was there first and belongs to somebody
+  else.
+
+### Changed
+
+- **The set is chosen by typing.** It was a dropdown of forty-six, whose
+  names are "Incisor CSC42", "m33s8" and "DS candidates (ETS)" — a list you
+  read three times to find the one you meant. The box matches on the set's
+  name and on the session it belongs to, which are the two things somebody
+  actually knows when they come looking, word by word and in any order: both
+  `pten m22` and `m22 pten` find it.
+
+- **Entering the view records every step.** This mode has now failed in five
+  different places, and each time the report was that nothing happened —
+  which is the one report nothing can be done with. Opening, opened, laid
+  out, ready, and any failure with its reason, all go to the activity log,
+  and a throw while drawing says so on screen and leaves the mode cleanly
+  instead of half-open.
+
+## 2026.09.17.13 - The Braces view keeps the marks it publishes
+
+### Fixed
+
+- **The trace view never changed, because the live sync deleted the marks a
+  second after they were drawn.** `xplore` keeps every window in step by
+  reading the curation channel and calling `adoptCuration` on each session —
+  and `adoptCuration`, handed nothing, DELETES `curationMarks`. The window
+  running a curation is skipped, and it is identified by `sess.curation`.
+
+  Braces set the marks and never claimed them. So the marks went up, the
+  next sync came round, found nothing on the channel for this recording, and
+  took them straight back down. Everything about the mode was working except
+  that it was arguing with the sync and losing.
+
+  It claims the session now, the same way Checkup has since it was written,
+  and hands it back on the way out.
+
+- **The aid window had no way to receive them.** `adoptCuration` re-reads the
+  set from `/api/curation/<gid>/<kind>` — right for curation, impossible for
+  anything else, because Braces marks are not a curation set and no route
+  would serve them.
+
+  A pointer may now carry its own marks, and one that does is adopted as it
+  stands. That costs the fetch nothing, and it means the overlay is usable
+  by any mode with something to show rather than only by the one with a set
+  behind it. So the before-and-after lines are on the CSD, the theta, the
+  voltage and the spectrogram too, not only on the traces.
+
+  The marks travel only when they have actually changed. Stepping through
+  twelve hundred stamps would otherwise publish twenty-four hundred marks on
+  every arrow key; the receiving side already knows how to follow a pointer
+  without them so long as the count still matches, and a float sum of the
+  times tells a stamp moving from a cursor moving.
+
+## 2026.09.17.12 - The Braces view opens its aid panels
+
+### Fixed
+
+- **The Braces view opened the traces and nothing else.** Checkup puts the
+  traces in the window and the CSD, theta, voltage and stacked spectrogram
+  in a second one; this mode set the traces pane and stopped there, so the
+  four panels that make an alignment decidable never appeared.
+
+  They open now, and for a stronger reason than in Checkup: deciding whether
+  a stamp is on the right deflection means seeing the CSD and the theta
+  beside it, because a dentate spike has a shape across depth and one trace
+  does not show it. The aid window reads the same `sess.curationMarks` this
+  mode publishes, so the old and new positions are drawn on all four panels
+  too.
+
+  Its own window NAME, not Checkup's. `window.open` reuses a window by name,
+  so two modes sharing one means entering either steals the other's panels.
+
+- **A blocked pop-up left the mode looking like it had done nothing.** The
+  traces opened, four panels did not, and there was no way to tell that from
+  broken. The aids now fall back into the main window as a four-pane layout,
+  with a line saying why and how to get the roomier one back. Cramped is
+  something somebody can work with; absent is not.
+
+## 2026.09.17.11 - The Braces view
+
+### Added
+
+- **Braces opens on the recording, as a mode.** The last version set some
+  marks and appended a bar, which is why nothing about it behaved like the
+  view it was meant to resemble. It is a mode now, the way Checkup and
+  StrataScope are: `setMode` frames the workspace in the mode's colour,
+  names it across the top, and gives the app one way out that runs the same
+  teardown however somebody leaves — and a mode with no entry in that
+  registry gets no banner and no Leave button, which is most of what was
+  wrong.
+
+  What it shows that Checkup does not is **every stamp twice**: where it
+  was, muted, and where it is going, in the accent. A whole run of them
+  reads at a glance, and the one being decided has its own colour rather
+  than only being the one in the middle — panning away should not lose your
+  place. Said in the banner too, because a viewer who does not know each
+  stamp is drawn twice is looking at twice as many dentate spikes as the
+  recording has.
+
+  It publishes into `sess.curationMarks`, which every pane, the overview
+  strip and the pop-out aid window already read, so the marks appear
+  everywhere without a second drawing path.
+
+- **Two passes, and the one that matters is the default.** *Needing a
+  decision* shows only the stamps Braces would not vouch for; *All of them*
+  shows the set. It opens on the first, because that is the pass with work
+  in it, and falls back to the second when there is nothing waiting — the
+  same rule Checkup uses for the same reason, that opening on an empty
+  screen reads as broken.
+
+- **Stamps can be moved from the trace.** `[` and `]` move the one you are
+  on by a millisecond — one sample at the rate everything here is measured
+  at — with five-millisecond steps on the bar beside them. The marks
+  repaint as it goes, so the line being moved is the line being watched, and
+  `0` puts it back to the proposal. Confirm with Enter, keep it where it was
+  with `k`, and either sends you on to the next one still waiting.
+
+### Fixed
+
+- **Undoing a decision never reached the server.** The route reads `call`
+  only when it is not null, so a null was dropped and the row kept whatever
+  it had. Clearing one now goes through `calls`, where an explicit null is
+  the documented way to drop a row — which `bracesset.decide` has honoured
+  since it was written and nothing was using.
+
+## 2026.09.17.10 - Braces reads where the spikes are, not the whole recording
+
+### Changed
+
+- **It reads the windows, not the hour.** Alignment asks, of each stamp,
+  where the event is within a hundred milliseconds of it. Reading every
+  channel end to end to answer that is reading an hour to use four minutes
+  of it. The windows are worked out from the stamps, merged where they
+  overlap so a burst is one read rather than five, and only those are read.
+
+- **It reads the channels that can see the event.** A dentate spike is
+  depth-specific: large across the hilus, small or absent at the top of the
+  shank. Averaging all sixty-four buries it under channels that never saw
+  it, and costs four times the reading to do so.
+
+  So a short pass over a sample of the stamps measures the depth profile,
+  and the average is then taken over the sixteen contiguous channels with
+  the most signal. Contiguous on purpose — the channels a dentate spike is
+  big on are the ones at that depth, and taking the top sixteen by score
+  would be free to pick a scatter of electrodes from three depths that
+  happened to be noisy, which is not a measurement of anything.
+
+  On M8s9feb8 the profile runs from 134 µV at CSC1 up to 1481 µV at CSC41
+  and back down to 112 µV at CSC62, and the band it picks is CSC33–48. That
+  shape is now drawn in the panel, because it is the one picture that says
+  whether the measurement is being made in the right place: a profile that
+  does not rise to a peak and fall away means the set is not what it says it
+  is, and no count in that panel says so.
+
+  Together: **160 seconds to 70**, and the answer barely moves — median
+  −5.9 ms against −5.6, p95 16.9 against 16.5. The largest move comes DOWN,
+  59.7 ms to 42.9, which is what a cleaner measurement should do.
+
+- **The progress says which pass and how far through.** Two stages now, both
+  counted: *Finding the depth — channel 23 of 63*, then *Reading window 137
+  of 206*, with an ETA that is right to a few seconds.
+
+### Added
+
+- **Browse them on the recording.** The bench is a magnifier on one
+  alignment; this is the other thing somebody wants — the recording itself,
+  with every stamp drawn where it was and where it is going, so a run of
+  them can be read in context rather than one at a time through a keyhole.
+
+  It publishes into `sess.curationMarks`, the shape every pane, the overview
+  strip and the pop-out aid window already read, so the marks appear
+  everywhere without a second drawing path. Each moved stamp goes in twice,
+  muted where it was and in the accent where it goes. `n` and `p` step, `f`
+  jumps to the next one needing a decision, and the two decisions can be
+  made from the bar without leaving the trace.
+
+### Fixed
+
+- **Thirty-six stamps were flagged as weak peaks that were nothing of the
+  kind.** The noise floor was `np.std` over the samples that had been read —
+  and every one of those windows is there BECAUSE it contains an event, so
+  the events were most of the variance and the floor came out high. The
+  whole-recording read raised that flag on none of them.
+
+  It is a median absolute deviation now, scaled the way
+  `incisor.threshold_for(estimator="mad")` scales it: a statistic about the
+  middle of a distribution rather than its tails, which is what a floor
+  wants to be and is why that function offers the option at all.
+
 ## 2026.09.17.9 - Braces knows which channels are bad, and says how far along it is
 
 ### Fixed

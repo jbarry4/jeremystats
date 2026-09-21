@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:23:55.703792+00:00",
+    "gid": "2026-09-18T19:23:55.703792+00:00",
+    "group": "2026-09-18T19:23:55.703792+00:00",
+    "key": "2026-09-18T19:23:55.703792+00:00",
+    "label": "2026-09-18T19:23:55.703792+00:00",
+    "loose_key": "2026-09-18T19:23:55.703792+00:00",
+    "mouse": "2026-09-18T19:23:55.703792+00:00",
+    "project": "2026-09-18T19:23:55.703792+00:00",
+    "project_source": "2026-09-18T19:23:55.703792+00:00",
+    "retired": "2026-09-18T19:25:10.108364+00:00",
+    "schema": "2026-09-18T19:23:55.703792+00:00",
+    "session": "2026-09-18T19:23:55.703792+00:00",
+    "start": "2026-09-18T19:23:55.703792+00:00",
+    "updated": "2026-09-18T19:25:14.739761+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260918_152258\\FAKEPROJ\\fake_m942\\m942s1_2026-09-18\\2026-09-18_15-22-58": [
+        "set",
+        "2026-09-18T19:24:14.667364+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:25:14.739761+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.18.2",
+    "at": "2026-09-18T15:23:55-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s7f5663bd54b5",
+  "group": null,
+  "key": "m942_s001_2026-09-18_15-22-58",
+  "label": "m942 s1 2026-09-18",
+  "loose_key": "m942_s001",
+  "mouse": 942,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260918_152258\\FAKEPROJ\\fake_m942\\m942s1_2026-09-18\\2026-09-18_15-22-58"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-18T19:22:58+00:00",
+  "updated": {
+    "app_version": "2026.09.18.2",
+    "at": "2026-09-18T15:25:14-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

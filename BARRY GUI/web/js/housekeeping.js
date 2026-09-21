@@ -26,10 +26,51 @@ BARRY.views.housekeeping = (function () {
   let query = '';
   let onlyHere = false;      // hide recordings this machine cannot reach
 
+  /* Two filters that are not yes-or-no, and are not groupings either.
+
+     Grouping by project already existed and is a different thing: it
+     decides what the branches MEAN, and every recording is still in the
+     tree somewhere. Filtering decides which are in it at all, and "PTEN
+     and KCNT1 but not the urethane work" is an ordinary thing to want when
+     the urethane project shares mouse numbers with KCNT1.
+
+     Channels is a comparison rather than a value, because the question
+     people actually have is "which of these are the dual implants", and
+     that is `more than 64`. Asking for exactly 128 gets the ordinary ones
+     and silently misses the six whose CSCn_0001.ncs continuation files put
+     the count at 190 or 192 -- which are precisely the ones worth looking
+     at. */
+  const projOnly = new Set();
+  let chanFilter = { op: '', n: 64 };
+  const CHAN_OPS = [['gt', 'more than'], ['lt', 'fewer than'],
+                    ['eq', 'exactly']];
+
   /* Two views over the same records, and one control that changes what the
      branches mean. Grouping is by project until you say otherwise; every
      label anyone has put on a mouse is also a grouping, which is what makes
      "show me the DKO animals" a dropdown rather than a feature request. */
+  /* Which catalogue this is drawing.
+
+     There are two places that want the same tree: "Everything Jarvis
+     knows", and "Everything VACC knows" -- which is the same catalogue
+     narrowed to the recordings the cluster can actually read. Narrowed, not
+     a different list: the whole point of the VACC view is to find a
+     recording the way you find any other, by project and mouse, rather than
+     by walking the cluster's directories and recognising a folder name.
+
+     One module rather than two, because a second copy of a project/mouse/
+     session tree is a second copy to keep in step. The expansion state and
+     the selection are deliberately shared: it is one catalogue, and a
+     recording you opened in one view is the one you were looking at.
+
+     Only one scope is ever on screen -- the mode switch hides the other --
+     so the ids below cannot collide. */
+  const SCOPES = {
+    jarvis: { host: '#hkBody', detail: 'hkDetail' },
+    vacc: { host: '#vaccCatalogue', detail: 'vaccDetail' },
+  };
+  let scope = 'jarvis';
+
   let view = 'branches';     // 'branches' | 'table'
   let groupBy = 'project';
   let tableOf = 'sessions';  // 'sessions' | 'mice'
@@ -102,6 +143,10 @@ BARRY.views.housekeeping = (function () {
   }
 
   async function onShow() {
+    // "Everything Jarvis knows" is this view's own scope. Reset it, or
+    // coming back from the cluster view shows the catalogue still narrowed
+    // to what VACC can read, in the panel that promises everything.
+    scope = 'jarvis';
     render();
     // Backfill on the first look, so records written before the registry
     // existed arrive with a gid rather than appearing over weeks.
@@ -111,7 +156,41 @@ BARRY.views.housekeeping = (function () {
   /* ==================================================================
      The tree
      ================================================================== */
+  /* Can the cluster read this one.
+
+     Two states draw and two do not, and the two that do not are different
+     from each other: `local-only` is an established no, `unknown` is that
+     nobody has asked. Both are excluded here, because this view's whole
+     claim is "VACC can reach these" and a recording nobody has established
+     an answer for is not one of them. That is the same rule the VACC chip
+     on a session card follows -- absent is not negative, and it is not
+     affirmative either. */
+  function onVacc(s) {
+    if (!BARRY.vacc || !s.gid) return false;
+    const got = BARRY.vacc.of(s);
+    const st = got && got.state;
+    return st === 'native' || st === 'staged';
+  }
+
+  function chanOk(s) {
+    if (!chanFilter.op) return true;
+    const n = Number(s.n_channels);
+    /* A recording nobody has read a header for has no channel count, and a
+       missing number is not a small number -- it is in NEITHER side of the
+       comparison. Reading absence as zero is the mistake `canOpen` in
+       sessions.js carries a comment about, and here it would quietly file
+       164 unread recordings under "fewer than 64". */
+    if (!Number.isFinite(n) || n <= 0) return false;
+    const want = Number(chanFilter.n) || 0;
+    if (chanFilter.op === 'gt') return n > want;
+    if (chanFilter.op === 'lt') return n < want;
+    return n === want;
+  }
+
   function matches(s) {
+    if (scope === 'vacc' && !onVacc(s)) return false;
+    if (projOnly.size && !projOnly.has(s.project || 'Unfiled')) return false;
+    if (!chanOk(s)) return false;
     if (onlyFound && !confirmed.has(s.gid)) return false;
     if (onlyHere && !s.reachable) return false;
     if (!query) return true;
@@ -122,7 +201,7 @@ BARRY.views.housekeeping = (function () {
   }
 
   function render() {
-    const host = $('#hkBody');
+    const host = $(SCOPES[scope].host);
     if (!host) return;
     host.innerHTML = '';
 
@@ -157,7 +236,7 @@ BARRY.views.housekeeping = (function () {
       class: 'hk-layout' + (view === 'table' ? ' wide' : ''),
     }, [
       left,
-      el('div', { class: 'hk-detail', id: 'hkDetail' }),
+      el('div', { class: 'hk-detail', id: SCOPES[scope].detail }),
     ]));
     renderDetail();
   }
@@ -281,6 +360,116 @@ BARRY.views.housekeeping = (function () {
     return wrap;
   }
 
+  /* Which projects are in the list, plus the lab's own whether or not any
+     are on screen -- so the choice does not appear and disappear as the
+     list is narrowed by something else, which makes a control look broken
+     at exactly the moment somebody is using it. */
+  function projectsAvailable() {
+    const seen = new Set(BARRY.hk.flatten(data).map((s) => s.project
+                                                       || 'Unfiled'));
+    for (const p of (data.known_projects || [])) seen.add(p);
+    for (const p of projOnly) seen.add(p);
+    return Array.from(seen).sort((a, b) => {
+      if (a === 'Unfiled') return 1;
+      if (b === 'Unfiled') return -1;
+      return a.localeCompare(b);
+    });
+  }
+
+  /* A set, not a radio. Grouping already answers "one project at a time";
+     this answers "these two and not that one", which grouping cannot. */
+  function projectPicker() {
+    const names = projectsAvailable();
+    const on = projOnly.size;
+    const btn = el('button', {
+      class: 'btn ghost sm' + (on ? ' on' : ''),
+      /* A stable handle. The LABEL changes to say what is on -- "PTEN"
+         rather than "Project" -- which is the right thing for a person and
+         useless for anything looking the control up by its name. */
+      'data-filter': 'project',
+      title: 'Show only certain projects. Nothing ticked means all of them.',
+      text: on
+        ? (on === 1 ? Array.from(projOnly)[0] : on + ' projects')
+        : 'Project',
+      onclick: (e) => openPopover(e.currentTarget, () => {
+        const box = el('div', { class: 'ctl-pop-body' });
+        const g = el('div', { class: 'ctl-pop-group' }, [
+          el('div', { class: 'ctl-pop-title', text: 'Project' }),
+        ]);
+        const all = BARRY.hk.flatten(data);
+        for (const p of names) {
+          const n = all.filter((s) => (s.project || 'Unfiled') === p).length;
+          g.appendChild(el('label', {
+            class: 'ctl-pop-opt' + (projOnly.has(p) ? ' on' : ''),
+            'data-project': p,
+          }, [
+            el('input', { type: 'checkbox',
+              checked: projOnly.has(p) ? 'checked' : null,
+              onchange: () => {
+                if (projOnly.has(p)) projOnly.delete(p);
+                else projOnly.add(p);
+                render();
+              } }),
+            el('span', { text: p }),
+            el('span', { class: 'ctl-pop-n', text: String(n) }),
+          ]));
+        }
+        box.appendChild(g);
+        if (projOnly.size) {
+          box.appendChild(el('button', {
+            class: 'linkish fb-clear', text: 'All projects',
+            onclick: () => { projOnly.clear(); render(); },
+          }));
+        }
+        return box;
+      }),
+    });
+    return btn;
+  }
+
+  function channelPicker() {
+    const word = (CHAN_OPS.find((o) => o[0] === chanFilter.op) || [])[1];
+    return el('button', {
+      class: 'btn ghost sm' + (chanFilter.op ? ' on' : ''),
+      'data-filter': 'channels',
+      title: 'Narrow by how many channels a recording has. "More than 64" '
+           + 'is the dual-implant recordings.',
+      text: word ? word + ' ' + chanFilter.n + ' ch' : 'Channels',
+      onclick: (e) => openPopover(e.currentTarget, () => {
+        const box = el('div', { class: 'ctl-pop-body' });
+        const g = el('div', { class: 'ctl-pop-group' }, [
+          el('div', { class: 'ctl-pop-title', text: 'Channels' }),
+        ]);
+        const row = el('div', { class: 'ctl-pop-row' });
+        const sel = el('select', {
+          onchange: (e2) => { chanFilter.op = e2.target.value; render(); },
+        }, [el('option', { value: '', text: 'any number of' })].concat(
+          CHAN_OPS.map(([id, w]) => el('option', {
+            value: id, text: w,
+            selected: chanFilter.op === id ? 'selected' : null,
+          }))));
+        row.appendChild(sel);
+        row.appendChild(el('input', {
+          type: 'number', min: '1', max: '1024', step: '1',
+          class: 'ctl-pop-num', value: String(chanFilter.n),
+          disabled: chanFilter.op ? null : 'disabled',
+          onchange: (e2) => {
+            chanFilter.n = Math.max(1, parseInt(e2.target.value, 10) || 1);
+            render();
+          },
+        }));
+        row.appendChild(el('span', { class: 'ctl-pop-unit', text: 'channels' }));
+        g.appendChild(row);
+        g.appendChild(el('p', { class: 'hint',
+          text: 'A recording nobody has read a header for has no channel '
+              + 'count, and a missing number is not a small one — '
+              + 'those are in neither side of the comparison.' }));
+        box.appendChild(g);
+        return box;
+      }),
+    });
+  }
+
   function resort(col) {
     sort = (sort.col === col)
       ? { col, dir: sort.dir === 'asc' ? 'desc' : 'asc' }
@@ -367,6 +556,9 @@ BARRY.views.housekeeping = (function () {
       }));
     }
 
+    bar.appendChild(projectPicker());
+    bar.appendChild(channelPicker());
+
     bar.appendChild(el('input', {
       type: 'search', class: 'hk-search',
       placeholder: 'Filter by mouse, project, date, id or path…',
@@ -392,8 +584,27 @@ BARRY.views.housekeeping = (function () {
       el('span', { text: 'Only found this session' }),
     ]));
     bar.appendChild(el('div', { class: 'spacer' }));
-    bar.appendChild(el('span', { class: 'stat-chip',
-      text: (data.total || 0) + ' registered' }));
+    /* The count has to describe what this view is showing.
+
+       In the cluster scope it said "587 registered" beside a tree of 109,
+       which is the whole catalogue's number in a panel that promises only
+       what VACC can read -- and reads as "this is showing everything",
+       which was the complaint. */
+    if (scope === 'vacc') {
+      const all = BARRY.hk.flatten(data);
+      const reach = all.filter(onVacc).length;
+      bar.appendChild(el('span', {
+        class: 'stat-chip',
+        title: 'Of ' + all.length + ' recordings Jarvis knows about, this '
+             + 'many are on a share the cluster mounts or already copied '
+             + 'to its scratch. The rest are not hidden by a filter you '
+             + 'can turn off — they are not there.',
+        text: reach + ' on VACC, of ' + all.length,
+      }));
+    } else {
+      bar.appendChild(el('span', { class: 'stat-chip',
+        text: (data.total || 0) + ' registered' }));
+    }
     bar.appendChild(el('span', {
       class: 'stat-chip' + (confirmed.size ? ' good' : ''),
       title: scanned
@@ -601,6 +812,15 @@ BARRY.views.housekeeping = (function () {
       el('span', { class: 'hk-paths',
                    text: s.n_paths + ' path' + (s.n_paths === 1 ? '' : 's'),
                    title: (s.paths || []).join('\n') }),
+      /* What kind of recording this is, and whether anybody has agreed.
+         On the row rather than behind a click, because it decides how a
+         CSD is computed -- and because a queue of seventy unconfirmed dual
+         implants is only workable if you can see which they are. */
+      BARRY.hk.probeChip(s, {
+        small: true,
+        onclick: (row, _st, ev) => BARRY.hk.setProbeMenu(
+          ev.currentTarget, row, () => load()),
+      }),
       el('div', { class: 'hk-chips' }, chips),
     ]);
   }
@@ -618,7 +838,7 @@ BARRY.views.housekeeping = (function () {
   }
 
   function renderDetail() {
-    const host = $('#hkDetail');
+    const host = document.getElementById(SCOPES[scope].detail);
     if (!host) return;
     host.innerHTML = '';
     if (mouseSel) { renderMouse(host); return; }
@@ -699,7 +919,30 @@ BARRY.views.housekeeping = (function () {
           ? 'Set by hand — a later guess will not override it.'
           : 'Guessed from the path. Changing it here makes it permanent.' }),
     ]));
+    /* The flag, spelled out, at the one place it can be answered.
+
+       Both readings get stated because both are true somewhere in this
+       lab's data: `D:\KCNT1\urethane\...` is the project, and
+       `M15_s3_baseline_urethane` is the drug and that recording is PTEN.
+       Whichever way you set it, setting it is the answer -- the picker
+       above writes `manual` and the flag stops asking. */
+    for (const f of (s.project_flags || [])) {
+      host.appendChild(el('div', { class: 'hk-proj-flag' }, [
+        el('span', { class: 'flagchip bad', text: 'worth a look' }),
+        el('div', { style: 'min-width:0' }, [
+          el('span', { class: 'hint',
+            text: 'A path says “' + f.word + '”. That usually means '
+                + f.suggests + ', and this is filed under ' + f.filed
+                + ' — but the same word names an anaesthetic in some PTEN '
+                + 'folders, so it is a hint and not a verdict.' }),
+          el('code', { text: f.path }),
+        ]),
+      ]));
     }
+    }
+
+    // ---- probe ----------------------------------------------------------
+    if (!isDemo) host.appendChild(probeSection(s));
 
     // ---- paths ----------------------------------------------------------
     host.appendChild(el('div', { class: 'section-label',
@@ -1059,6 +1302,149 @@ BARRY.views.housekeeping = (function () {
   /* ==================================================================
      Changes
      ================================================================== */
+  /* ==================================================================
+     Which probe went into the animal
+     ==================================================================
+     Here rather than in Xplorefinder, because it is a fact about the
+     recording and not about whoever has it open. It used to live in the
+     Xplorefinder session's view state, which meant it lasted as long as
+     that window and travelled to nobody -- so Incisor, a colleague's
+     machine and the next open could each believe something different about
+     the same animal.
+
+     It is load-bearing. The template decides how the array is divided into
+     lines of contacts, and a CSD is only meaningful down one line. On a
+     dual implant the wrong template runs the second spatial derivative
+     across the gap at channel 64, subtracting cortex from hippocampus. The
+     number that comes out is not a current sink, and nothing about it looks
+     wrong.
+
+     "Nobody has said" is kept distinct from "somebody said H3" -- the same
+     distinction `banks_for` draws by leaving a region blank. A blank that
+     is visibly blank can be filled in; a guess that looks like a fact
+     cannot be found again. */
+  let PROBES = null;
+
+  function probeSection(s) {
+    const box = el('div', {});
+    box.appendChild(el('div', { class: 'section-label', text: 'Probe' }));
+    if (!PROBES) {
+      api('/api/probes').then((d) => {
+        PROBES = d.probes || [];
+        renderDetail();
+      }).catch(() => { PROBES = []; });
+      box.appendChild(el('p', { class: 'hint quiet', text: 'Reading the '
+                                + 'probe templates…' }));
+      return box;
+    }
+    if (!PROBES.length) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: 'No probe templates are available from this server.' }));
+      return box;
+    }
+
+    const now = s.probe || '';
+    const guess = s.probe_suggested || 'h3';
+    const nch = s.n_channels || null;
+    const sel = el('select', {
+      onchange: (e) => setProbe(s.gid, e.target.value),
+    });
+    sel.appendChild(el('option', {
+      value: '', selected: now ? null : 'selected',
+      text: 'Nobody has said'
+          + (guess ? '  ·  reads as ' + nameOf(guess) : ''),
+    }));
+    for (const p of PROBES) {
+      /* Every template is offered, including ones the channel count does
+         not support -- a recording whose continuation files inflate the
+         count to 192 is still a dual implant, and refusing the choice
+         because the arithmetic disagrees would make the only recordings
+         that need correcting the only ones that cannot be. The mismatch is
+         said out loud below instead. */
+      sel.appendChild(el('option', {
+        value: p.id, title: p.note || '',
+        selected: now === p.id ? 'selected' : null,
+        text: p.name + ((p.n_columns || 1) > 1
+          ? '  ·  ' + p.n_columns + ' columns' : ''),
+      }));
+    }
+
+    box.appendChild(el('div', { class: 'hk-proj' }, [
+      sel,
+      el('span', { class: 'hint',
+        text: now
+          ? (s.probe_source === 'manual'
+             ? 'Set by hand. Every view of this recording reads it — '
+               + 'Xplorefinder lays the panes out by it and Incisor scans '
+               + 'by it.'
+             : 'Carried over from a window where it was set.')
+          : 'Not set. Everything that needs a line of contacts will treat '
+            + 'this as a single array, which is right for most recordings '
+            + 'and wrong for a dual implant.' }),
+    ]));
+
+    const def = PROBES.find((p) => p.id === (now || guess));
+    if (def && (def.columns || []).length) {
+      const rows = el('div', { class: 'hk-probe-cols' });
+      for (const c of def.columns) {
+        const first = c.csc[0], lastN = c.csc[c.csc.length - 1];
+        rows.appendChild(el('div', { class: 'hk-probe-col' }, [
+          el('span', { class: 'pane-col-tag shank-' + (c.shank || 'back'),
+                       text: c.id }),
+          el('span', { text: c.label || c.id }),
+          el('code', { text: 'CSC ' + first + '–' + lastN
+                           + '  ·  ' + c.n + ' contacts' }),
+        ]));
+      }
+      box.appendChild(rows);
+      box.appendChild(el('p', { class: 'hint',
+        text: (now ? 'These are' : 'If that were set it would be')
+            + ' ' + def.columns.length + ' separate lines of contacts, one '
+            + 'pane each in Xplorefinder, and a CSD is computed down each '
+            + 'one on its own.' }));
+    }
+
+    /* The channel count and the template disagreeing is worth saying, and
+       worth saying as a question rather than as an error: the recordings
+       whose CSC files are doubled by a restarted acquisition report 192 or
+       256 and really are dual implants. */
+    const want = def && def.expects_channels;
+    if (now && want && nch && want !== nch) {
+      box.appendChild(el('p', { class: 'warn-line',
+        text: 'This template expects ' + want + ' channels and the '
+            + 'recording reports ' + nch + '. That is worth a look — though '
+            + 'a recording whose channels are split across CSCn.ncs and '
+            + 'CSCn_0001.ncs counts every file, so the number can be high '
+            + 'for a reason that has nothing to do with the probe.' }));
+    }
+    return box;
+  }
+
+  function nameOf(id) {
+    const p = (PROBES || []).find((x) => x.id === id);
+    return p ? p.name : id;
+  }
+
+  async function setProbe(gid, probe) {
+    try {
+      const res = await apiPost(
+        '/api/registry/' + encodeURIComponent(gid) + '/probe', { probe });
+      /* Setting a template with named regions fills in any blank channel
+         bank, because picking "hippocampus + M2" IS saying which bank is
+         which -- and making somebody enter the same fact twice is how the
+         two come to disagree. Said out loud, since it changed something the
+         person did not click on. */
+      const named = (res.channel_banks || [])
+        .filter((b) => (b.said_via || '').indexOf('probe:') === 0);
+      if (named.length) {
+        toast('Also labelled ' + named.map((b) => b.region).join(' and ')
+              + ' from that template.', 'ok', 6000);
+      }
+      await load();
+      BARRY.refreshSync();
+    } catch (e) { toast(e.message, 'err', 7000); }
+  }
+
   async function patch(gid, body) {
     try {
       await apiPost('/api/registry/' + encodeURIComponent(gid) + '/patch', body);
@@ -1133,6 +1519,34 @@ BARRY.views.housekeeping = (function () {
     if (b) b.addEventListener('click', () => load(true));
   }
 
-  return { init, onShow, confirm, reload: () => load(true),
+  /* Open one recording's detail from somewhere else in the app.
+
+     The project picker lives here and nowhere else, so a flag raised on a
+     Sessions card has to be able to point at it. Loads first if this view
+     has never been shown -- `selected` means nothing against no data, and
+     rendering it would show an empty panel for a recording that exists. */
+  async function inspect(gid) {
+    if (!gid) return;
+    if (!data) await load(false);
+    selected = gid;
+    render();
+    const det = document.getElementById(SCOPES[scope].detail);
+    if (det && det.scrollIntoView) det.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* Draw one of the two catalogues.
+
+     Called by the Sessions view when the mode switch moves, because that is
+     what owns the panels. Loads on first use rather than at startup: a
+     cluster view nobody opens should not cost a registry read. */
+  async function catalogue(which) {
+    scope = SCOPES[which] ? which : 'jarvis';
+    if (!data) { await load(false); return; }
+    render();
+  }
+
+  return { init, onShow, confirm, inspect, catalogue,
+           get scope() { return scope; },
+           reload: () => load(true),
            get confirmed() { return Array.from(confirmed); } };
 })();

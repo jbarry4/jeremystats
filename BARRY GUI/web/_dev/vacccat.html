@@ -1,0 +1,168 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vacccat: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The cluster gets the catalogue too.
+
+   "Everything VACC knows" used to be a directory walk and nothing else, so
+   the only way to find a recording on the cluster was to recognise a folder
+   name. This page is about the other half: the same project/mouse/session
+   tree as Everything Jarvis knows, narrowed to what VACC can read.
+
+   Narrowed is the word that carries the assertions. A tree that shows
+   everything is not a cluster view, and a tree that shows nothing is not
+   one either -- so the checks below are that the two scopes render from ONE
+   renderer, that the VACC one is a subset, and that the recordings it drops
+   are exactly the ones the cluster has no answer for. `unknown` is excluded
+   as firmly as `local-only`: this view claims "VACC can reach these", and
+   nobody having asked is not a yes. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  say('=== what the cluster says it can reach ===');
+  const kn = JSON.parse(await ev('fetch("/api/vacc/knows").then(r=>r.text())'));
+  check('/api/vacc/knows answers', kn.ok === true);
+  const reach = Object.entries(kn.knows || {})
+    .filter(([, v]) => v.state === 'native' || v.state === 'staged')
+    .map(([g]) => g);
+  const counts = kn.counts || {};
+  say('    ' + JSON.stringify(counts), 'note');
+  say('    ' + reach.length + ' recording(s) the cluster can read', 'note');
+
+  say('');
+  say('=== the Jarvis catalogue ===');
+  ev("setView('sessions')");
+  await until(() => D().querySelector('#sessModeSeg'), 30000);
+  ev("BARRY.views.sessions.setMode('housekeeping')");
+  await until(() => D().querySelector('#hkBody .hk-tree, #hkBody .hk-table'),
+              40000);
+  await sleep(700);
+  check('it draws a tree', !!D().querySelector('#hkBody .hk-tree'));
+  check('with its own detail panel', !!D().querySelector('#hkDetail'));
+  const jarvisRows = $$('#hkBody .hk-row').length;
+  check('and has recordings in it', jarvisRows > 0, jarvisRows + ' rows');
+  check('the scope says so', ev('BARRY.views.housekeeping.scope') === 'jarvis',
+        String(ev('BARRY.views.housekeeping.scope')));
+
+  say('');
+  say('=== the cluster catalogue is the same renderer ===');
+  const vaccBtn = $$('#sessModeSeg button')
+    .find((b) => b.dataset.mode === 'vacc');
+  check('there is a cluster mode to switch to', !!vaccBtn,
+        vaccBtn ? (vaccBtn.hidden ? 'present but hidden' : 'shown')
+                : 'no button');
+  if (!vaccBtn) {
+    say('');
+    say('ran ' + checks + ' checks');
+    document.title = fails ? 'vacccat: ' + fails + ' FAILED' : 'vacccat: passed';
+    return;
+  }
+
+  ev("BARRY.views.sessions.setMode('vacc')");
+  await until(() => D().querySelector('#vaccBody .vacc-seg'), 40000);
+  check('the cluster view offers both halves',
+        $$('#vaccBody .vacc-seg button').length === 2,
+        $$('#vaccBody .vacc-seg button').map((b) => b.textContent).join(' | '));
+  const tabs = $$('#vaccBody .vacc-seg button').map((b) => b.textContent);
+  check('the catalogue is one of them', tabs.indexOf('Catalogue') >= 0,
+        tabs.join(' | '));
+  check('and the directory walk is still there',
+        tabs.indexOf('Directories') >= 0, tabs.join(' | '));
+  check('the catalogue is what opens first',
+        (D().querySelector('#vaccBody .vacc-seg button.active') || {})
+          .textContent === 'Catalogue');
+
+  const host = await until(() => D().querySelector('#vaccCatalogue'), 20000);
+  check('it has a host to draw into', !!host);
+  await until(() => D().querySelector('#vaccCatalogue .hk-tree'), 40000);
+  await sleep(700);
+  check('the same tree renders inside the cluster view',
+        !!D().querySelector('#vaccCatalogue .hk-tree'));
+  check('with its own detail panel, not a second copy of the other one',
+        !!D().querySelector('#vaccDetail')
+        && D().querySelectorAll('#hkDetail').length <= 1);
+  check('the scope moved with it',
+        ev('BARRY.views.housekeeping.scope') === 'vacc',
+        String(ev('BARRY.views.housekeeping.scope')));
+
+  say('');
+  say('=== narrowed, and narrowed to the right thing ===');
+  const vaccRows = $$('#vaccCatalogue .hk-row');
+  say('    ' + vaccRows.length + ' row(s) in the cluster catalogue, '
+      + jarvisRows + ' in the full one', 'note');
+  check('it is a subset, not the whole catalogue',
+        vaccRows.length <= jarvisRows,
+        vaccRows.length + ' vs ' + jarvisRows);
+
+  /* The assertion that matters: every row it shows is a recording the
+     cluster actually answered yes for. A tree that showed everything would
+     pass "it rendered" and be useless. */
+  const shown = vaccRows
+    .map((r) => ((r.querySelector('.hk-gid') || {}).textContent || '').trim())
+    .filter(Boolean);
+  const reachSet = new Set(reach);
+  const wrong = shown.filter((g) => !reachSet.has(g));
+  check('every recording it shows is one the cluster said yes to',
+        wrong.length === 0, wrong.slice(0, 4).join(', '));
+
+  if (!reach.length) {
+    say('    the cluster has no reachable recordings on record, so there is '
+        + 'nothing for the tree to show and an empty one is correct', 'note');
+    check('an empty answer draws an empty tree rather than everything',
+          shown.length === 0, shown.length + ' shown');
+  } else {
+    check('and it is not empty when the cluster can reach things',
+          shown.length > 0, shown.length + ' shown of ' + reach.length);
+  }
+
+  say('');
+  say('=== and going back shows everything again ===');
+  /* The bug this is here for: scope is module state, so leaving it set
+     would make "Everything Jarvis knows" quietly keep the cluster filter
+     while still promising everything. */
+  ev("BARRY.views.sessions.setMode('housekeeping')");
+  await until(() => D().querySelector('#hkBody .hk-tree'), 40000);
+  await sleep(900);
+  check('the scope is reset', ev('BARRY.views.housekeeping.scope') === 'jarvis',
+        String(ev('BARRY.views.housekeeping.scope')));
+  const backRows = $$('#hkBody .hk-row').length;
+  check('and the full catalogue is full again',
+        backRows === jarvisRows, backRows + ' vs ' + jarvisRows);
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vacccat: ' + fails + ' FAILED' : 'vacccat: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vacccat CRASH'; });
+</script></body></html>

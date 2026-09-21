@@ -408,6 +408,10 @@ const QUIET_PATHS = [
   '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
   '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
   '/api/discover/', '/api/toolfeed', '/api/errors/client',
+  // The warm-start watch, which ticks for the first fifteen seconds of a
+  // session. It is waiting on work that is deliberately out of the way, and
+  // a progress bar over it would put the wait back on screen.
+  '/api/warm/state',
 ];
 
 const BUSY = (function () {
@@ -515,6 +519,11 @@ async function apiCall(path, opts) {
     throw new Error(msg);
   }
   record(res.status);
+  /* A payload that says it came out of the warm cache. Noticed here, in the
+     one place every request already passes through, so nothing has to
+     remember to check: a view that asks for a warmed endpoint gets the
+     watch for free, and one that does not is unaffected. */
+  if (data && data.warm && BARRY.warm) BARRY.warm.saw(data.warm);
   return data;
 }
 
@@ -1612,6 +1621,14 @@ const MODES = {
        and it is the only reason this mode has a `what` worth the room. */
     what: 'Looking only · nothing here is saved · C for a '
         + 'comodulogram of the window',
+  },
+  braces: {
+    name: 'Braces',
+    /* Worth a `what` where curation's is not: this mode draws each stamp
+       TWICE, and a viewer who does not know that is looking at twice as
+       many dentate spikes as the recording has. */
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 n / p to step \u00b7 [ and ] to move it a millisecond',
   },
   curate: {
     name: 'DS curation',
@@ -2893,6 +2910,97 @@ BARRY.boot = (function () {
 })();
 
 /* ==========================================================================
+   The warm start, from this side
+   ==========================================================================
+   Three roll-ups take about five seconds each from cold, and the server now
+   answers the first request for each out of last boot's cache so the
+   interface is usable immediately. This is the half that keeps that honest:
+   it waits for the real answer and puts it on screen.
+
+   TWO RULES, AND THEY ARE THE WHOLE POINT
+
+   **Nothing moves.** A refresh that lands eight seconds in must not change
+   the view, scroll anything, open anything, take focus, or blank a list
+   somebody has started reading. That is the complaint this work came from:
+   things loading at startup used to snap you somewhere. A background
+   refresh that does the same thing is the same bug wearing a hat.
+
+   **Most of the time it does nothing at all.** The catalogue does not change
+   while the computer is off, so on an ordinary boot all three recomputed
+   answers are identical to the cached ones. The server compares them and
+   says so, and then there is no refetch, no re-render, and no reason for
+   anybody to know any of this happened. The only boots that repaint are the
+   ones where the page really was showing something out of date.
+   ========================================================================== */
+BARRY.warm = (function () {
+  const handlers = new Map();   // name -> what to do when it really changed
+  const shown = new Set();      // names this page was handed off the cache
+  let timer = null;
+  let stopped = false;
+
+  /* What to do when this endpoint's real answer turns out to differ.
+     Registered by whoever draws it; a name nobody is watching simply goes
+     unrefreshed, which is the right answer for a payload that nothing on
+     screen is currently made of. */
+  function onFresh(name, fn) { handlers.set(name, fn); }
+
+  function saw(mark) {
+    if (!mark || !mark.name || stopped) return;
+    if (mark.served !== 'cache') { shown.delete(mark.name); return; }
+    shown.add(mark.name);
+    schedule(700);
+  }
+
+  function schedule(ms) {
+    if (timer || stopped || !shown.size) return;
+    timer = setTimeout(tick, ms);
+  }
+
+  async function tick() {
+    timer = null;
+    if (stopped || !shown.size) return;
+    let st;
+    try {
+      st = await api('/api/warm/state');
+    } catch (e) {
+      /* An older server that has no such route, or one that has gone away.
+         Either way there is nothing to wait for, and a poller that keeps
+         trying for ever is worse than a page showing the cached answer. */
+      stopped = true;
+      return;
+    }
+    const fresh = st.fresh || {};
+    for (const name of Array.from(shown)) {
+      if (!(name in fresh)) continue;      // not recomputed yet; keep waiting
+      shown.delete(name);
+      if (!fresh[name]) continue;          // recomputed, and identical
+      const fn = handlers.get(name);
+      if (!fn) continue;
+      try {
+        await fn();
+      } catch (err) {
+        reportClientError('warm:' + name, err.message, err.stack);
+      }
+    }
+    if (!shown.size) return;
+    if (st.warming) { schedule(900); return; }
+    /* The prime is over and these names never appeared, which means their
+       rebuild threw. The next request that wants one will compute it live
+       and say so; there is nothing useful to do here, and polling a
+       finished prime is just noise. */
+    stopped = true;
+  }
+
+  /* Whether what is on screen for this name is still the cached answer.
+     Lets a view choose between re-reading now and simply marking itself
+     stale for the next time somebody opens it. */
+  function pending(name) { return shown.has(name); }
+
+  return { saw, onFresh, pending,
+           get watching() { return Array.from(shown); } };
+})();
+
+/* ==========================================================================
    Skeletons
    ==========================================================================
    A skeleton is a promise about the shape of what is arriving. Through one
@@ -2979,6 +3087,35 @@ BARRY.skeleton = (function () {
 
   return { block, into, stale };
 })();
+
+/* Hold the scroll where it is across a redraw.
+
+   Written because getting this wrong is invisible. A background refresh in
+   the Sessions view saved and restored `#sessTree.scrollTop`, which is
+   always 0 -- the element that actually scrolls is `#sessScanPad`, two
+   levels up. The code read as though it preserved the scroll, the list
+   still jumped to the top, and only a harness that scrolled for real and
+   checked the number afterwards showed it: `tree.scrollTop = 120` left it
+   at 0, because that element has never scrolled in its life.
+
+   So nobody names the element. Hand it the thing being redrawn and it
+   walks up to whatever is doing the scrolling, remembers that, and hands
+   back the way to put it back. Also takes the page in case the layout
+   changes and the window becomes the scroller. */
+BARRY.keepScroll = function keepScroll(node) {
+  const marks = [];
+  let n = node;
+  for (let i = 0; n && i < 8; i++) {
+    if (n.scrollHeight > n.clientHeight + 2) marks.push([n, n.scrollTop]);
+    n = n.parentElement;
+  }
+  const page = document.scrollingElement;
+  const pageTop = page ? page.scrollTop : 0;
+  return function restore() {
+    for (const [el, top] of marks) el.scrollTop = top;
+    if (page) page.scrollTop = pageTop;
+  };
+};
 
 BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
@@ -3138,30 +3275,55 @@ BARRY.init = async function init() {
   const cscPath = params.get('csc');
   const pipeFolder = params.get('folder');
 
+  /* If the first of these came out of the warm cache and the real answer
+     turns out to differ, run it again. `refreshSync` writes a chip, a
+     tooltip and the error badge and nothing else, so doing it twice is
+     invisible unless something actually changed -- which is the whole
+     contract the warm start is asking every refresher to keep. */
+  BARRY.warm.onFresh('sync_status', () => BARRY.refreshSync());
+
   // One call gives both the sync state and the error count for the badge.
   BARRY.refreshSync().then(() => {
     const n = ((BARRY.sync.index || {}).counts || {}).errors || 0;
     BARRY.setErrorCount(n);
   });
 
-  BARRY.boot.say('opening the workspace');
   /* A window opened for one thing should not offer to navigate away from
      it. Same idea as `aid-window` for the panel pop-outs: the app is the
      whole app, it just has no rail here. */
   if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
     document.body.classList.add('solo-window');
   }
-  setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
+  /* Where to land.
+
+     NOT "wherever a recording is being opened". A `?csc=` in the address
+     used to send the app straight to XploreFinder, so reopening a window
+     that still carried one -- a restored tab, a shortcut, yesterday's
+     pop-out link -- put somebody in the trace view they had not asked for
+     while a recording they had not asked for loaded underneath them.
+
+     The recording still opens. It opens in the BACKGROUND, and the view is
+     whatever the address actually says: the hash where there is one, which
+     is how the aid windows and Incisor's traces window say they want the
+     trace view, and the pipeline where there is not. */
+  setView(location.hash.slice(1) || 'pipeline');
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
 
-  /* The view is up, so the overlay has done its job.
+  /* Everything still in flight that MOVES THE PAGE. The overlay stays up
+     until these land.
 
-     After a frame, so the fade begins over a painted interface rather than
-     over the last of the empty one -- and whatever else is still in flight
-     (the registry, the sync status) is now behind a skeleton in the view
-     that wants it, which is where a wait belongs. */
-  requestAnimationFrame(() => BARRY.boot.clear());
+     It used to come down a frame after the first view was shown, while the
+     recording open, the job list and the sync check were all still running
+     -- so the interface was live and clickable with three things still to
+     land on it. Clicking during that got you taken somewhere you had not
+     asked to go, which is what "it snaps me back to XploreFinder after I
+     have already clicked" was.
+
+     Only the page-moving ones. A registry read that fills a list behind a
+     skeleton is a wait that belongs in the view that wants it, and holding
+     the whole app for it would trade one annoyance for a slower one. */
+  const settling = [];
 
   if (cscPath && BARRY.views.xplore) {
     /* `?even=1` forces the even-channel read, `?even=0` forces the whole
@@ -3173,7 +3335,7 @@ BARRY.init = async function init() {
     const evenArg = params.get('even');
     const openOpts = evenArg == null ? undefined
       : { evenOnly: evenArg !== '0' && evenArg !== 'false' };
-    BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
+    settling.push(BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));
@@ -3190,13 +3352,36 @@ BARRY.init = async function init() {
         BARRY.views.xplore.state.panes[0].panel = panel;
       }
       BARRY.views.xplore.onShow();
+      /* Loaded behind whatever is on screen. Said once, quietly: a
+         recording that appeared in a view nobody was looking at is a
+         surprise the next time somebody goes there, and a line that names
+         it is cheaper than the surprise. */
+      if (BARRY.state.view !== 'xplore') {
+        toast('Opened ' + (sess.info && sess.info.name ? sess.info.name
+                                                       : 'a recording')
+              + ' in XploreFinder, in the background.', null, 6000);
+      }
       // ?figure=1 opens the builder straight onto this session.
       if (params.get('figure')) {
         setTimeout(() => BARRY.figure.open(BARRY.views.xplore.state, sess), 400);
       }
-    });
+    }));
   }
   if (pipeFolder && BARRY.views.pipeline.setFolder) {
     BARRY.views.pipeline.setFolder(pipeFolder);
   }
+
+  /* Down when the last of them lands, or after a second and a half,
+     whichever comes first.
+
+     The cap is the point. An overlay that waits for a slow drive is an
+     overlay somebody sits behind wondering whether the app has hung -- and
+     the thing being prevented is a click landing in the wrong place, which
+     stops being likely the moment somebody has had time to read the screen.
+     `boot.clear` is idempotent, so both paths racing is fine. */
+  BARRY.boot.say('opening the workspace');
+  Promise.race([
+    Promise.allSettled(settling),
+    new Promise((r) => setTimeout(r, 1500)),
+  ]).then(() => requestAnimationFrame(() => BARRY.boot.clear()));
 };

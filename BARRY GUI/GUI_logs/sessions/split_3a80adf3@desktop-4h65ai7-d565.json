@@ -1,0 +1,70 @@
+{
+  "_at": {
+    "created": "2026-09-21T13:22:34.903904+00:00",
+    "gid": "2026-09-21T13:22:34.903904+00:00",
+    "group": "2026-09-21T13:22:34.903904+00:00",
+    "key": "2026-09-21T13:22:34.903904+00:00",
+    "label": "2026-09-21T13:22:34.903904+00:00",
+    "loose_key": "2026-09-21T13:22:34.903904+00:00",
+    "merged_into": "2026-09-21T13:22:41.582135+00:00",
+    "mouse": "2026-09-21T13:22:34.903904+00:00",
+    "project": "2026-09-21T13:22:34.903904+00:00",
+    "project_source": "2026-09-21T13:22:34.903904+00:00",
+    "retired": "2026-09-21T13:22:41.582135+00:00",
+    "schema": "2026-09-21T13:22:34.903904+00:00",
+    "session": "2026-09-21T13:22:34.903904+00:00",
+    "split_from": "2026-09-21T13:22:34.903904+00:00",
+    "start": "2026-09-21T13:22:34.903904+00:00",
+    "updated": "2026-09-21T13:22:41.582135+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Z:\\harness\\split-me": [
+        "set",
+        "2026-09-21T13:22:34.903904+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-21T13:22:41.582135+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.21.1",
+    "at": "2026-09-21T09:22:34-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "sb1153cc77b07",
+  "group": null,
+  "key": "split_3a80adf3",
+  "label": "unidentified",
+  "loose_key": null,
+  "merged_into": "s238f423d3548",
+  "mouse": null,
+  "paths": [
+    "Z:\\harness\\split-me"
+  ],
+  "project": "KCNT1",
+  "project_source": "inherited",
+  "retired": true,
+  "schema": 2,
+  "session": null,
+  "split_from": "s238f423d3548",
+  "start": null,
+  "updated": {
+    "app_version": "2026.09.21.1",
+    "at": "2026-09-21T09:22:41-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

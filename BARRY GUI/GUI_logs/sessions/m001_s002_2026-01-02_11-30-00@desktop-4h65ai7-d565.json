@@ -1,30 +1,66 @@
 {
   "_at": {
-    "created": "2026-09-09T22:11:08.437727+00:00",
-    "gid": "2026-09-09T22:11:08.437727+00:00",
+    "created": "2026-09-09T21:54:53.149067+00:00",
+    "gid": "2026-09-09T21:54:53.149067+00:00",
     "group": "2026-09-09T22:11:08.437727+00:00",
     "key": "2026-09-09T22:11:08.437727+00:00",
     "label": "2026-09-09T22:11:08.437727+00:00",
     "loose_key": "2026-09-09T22:11:08.437727+00:00",
     "mouse": "2026-09-09T22:11:08.437727+00:00",
-    "project": "2026-09-09T22:11:08.437727+00:00",
+    "project": "2026-09-18T15:50:55.743393+00:00",
     "project_source": "2026-09-09T22:11:08.437727+00:00",
-    "retired": "2026-09-09T22:11:08.437727+00:00",
+    "retired": "2026-09-09T22:11:36.896298+00:00",
     "schema": "2026-09-09T22:11:08.437727+00:00",
     "session": "2026-09-09T22:11:08.437727+00:00",
     "start": "2026-09-09T22:11:08.437727+00:00",
-    "updated": "2026-09-09T22:11:10.619588+00:00"
+    "updated": "2026-09-18T15:50:55.743393+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
+        "set",
+        "2026-09-09T21:57:31.834731+00:00"
+      ],
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "G:\\PTEN\\M1_s2": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "G:\\PTEN\\M1_s2\\timestamps.mat": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline": [
+        "set",
+        "2026-09-09T21:58:08.458982+00:00"
+      ]
+    }
   },
   "_shard": {
-    "at": "2026-09-09T22:11:10.619588+00:00",
+    "at": "2026-09-18T15:50:55.743393+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-09T18:11:08-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-09-09T17:54:53-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
     "user": "Shahriar Tafti"
   },
@@ -34,19 +70,28 @@
   "label": "m1 s2 2026-01-02",
   "loose_key": "m001_s002",
   "mouse": 1,
-  "paths": [],
-  "project": "Unfiled",
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00",
+    "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+    "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+    "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
+    "G:\\PTEN\\M1_s2",
+    "G:\\PTEN\\M1_s2\\timestamps.mat"
+  ],
+  "project": "PTEN",
   "project_source": "guessed",
   "retired": true,
   "schema": 1,
   "session": 2,
   "start": "2026-01-02T16:30:00+00:00",
   "updated": {
-    "at": "2026-09-09T18:11:10-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "app_version": "2026.09.17.17",
+    "at": "2026-09-18T11:50:55-04:00",
+    "commit": "f693752",
+    "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "theexaminedexistence@gmail.com"
   }
 }

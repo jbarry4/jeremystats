@@ -97,8 +97,16 @@ BARRY.vacc = (function () {
   let here = null;           // the listing of wherever we are
   let scanning = false;
   let lastScan = null;       // what the last dry run said it would do
+  /* In flight. `browseBox` draws, sees no listing, asks `go` to fetch one,
+     and `go` clears the listing and redraws before awaiting anything -- so
+     the draw re-entered the fetch, which redrew, without bound. It took the
+     whole interface down with "Maximum call stack size exceeded". A draw
+     must never be able to start work that draws again. */
+  let loading = false;
 
   async function go(path) {
+    if (loading) return;
+    loading = true;
     here = null;
     reopen();
     try {
@@ -106,6 +114,8 @@ BARRY.vacc = (function () {
              + encodeURIComponent(path)) : ''));
     } catch (e) {
       here = { error: e.message, dirs: [], recordings: [] };
+    } finally {
+      loading = false;
     }
     lastScan = null;
     reopen();
@@ -147,7 +157,7 @@ BARRY.vacc = (function () {
     const box = el('div', { class: 'vacc-browse' });
     if (!here) {
       box.appendChild(el('p', { class: 'hint quiet', text: 'Looking…' }));
-      go(null);
+      if (!loading) go(null);
       return box;
     }
     if (here.error) {
@@ -252,6 +262,234 @@ BARRY.vacc = (function () {
   }
 
   /* ---- the panel -------------------------------------------------------- */
+  /* ==================================================================
+     Getting onto the cluster the first time
+     ==================================================================
+     A netid is all anybody should have to know. The account is
+     `<netid>@login.vacc.uvm.edu`, and the home and scratch directories are
+     derived from it -- so this asks for the netid, asks for a password
+     once, and never asks for a password again.
+
+     Once, because what it does with the password is install an SSH key.
+     After that the key logs in, which is also what removes the Duo prompt
+     from every subsequent connection -- and that matters more than
+     convenience: the status chip polls, and a second factor every ten
+     seconds for six hours is not a thing anybody would leave on.
+
+     The password is typed here, sent over localhost, held in the
+     environment of exactly one ssh process, and dropped when it exits. It
+     is not stored, not logged, and not kept in this module after the
+     request returns -- which is why the field is cleared in a `finally`
+     rather than on success. */
+  let signState = null;
+  let signBusy = false;
+
+  async function showSignIn() {
+    signState = null;
+    showModal(signInBody());
+    try {
+      signState = await api('/api/vacc/signin/state');
+    } catch (e) {
+      signState = { error: e.message };
+    }
+    repaintSignIn();
+  }
+
+  /* Redrawn in place, never closed and reopened.
+
+     `showModal` keeps a stack so a dialog can sit over the VACC panel and
+     hand it back afterwards -- so closing to redraw would pop whatever was
+     underneath, and somebody who opened this from the panel would find the
+     panel gone. `{replace: true}` is the option that exists for exactly
+     this, and `reopen()` above uses it for the same reason.
+
+     Only while it is actually open: a state read that finishes after
+     somebody shut the window must not reopen it. */
+  function repaintSignIn() {
+    const shell = document.getElementById('bigModal');
+    if (!shell || shell.classList.contains('hidden')) return;
+    showModal(signInBody(), { replace: true });
+  }
+
+  function signInBody() {
+    const st = signState || {};
+    const box = el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Sign in to VACC' }),
+        el('span', { class: 'sub', text: st.host || 'login.vacc.uvm.edu' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x',
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+          onclick: closeModal }),
+      ]),
+    ]);
+    const b = el('div', { class: 'mb' });
+    box.appendChild(b);
+
+    if (!signState) {
+      b.appendChild(el('p', { class: 'hint quiet',
+                              text: 'Looking at this machine…' }));
+      return box;
+    }
+    if (st.error) {
+      b.appendChild(el('p', { class: 'warn-line', text: st.error }));
+      return box;
+    }
+    if (!st.have_ssh) {
+      /* Nothing else on this panel can work, so nothing else is shown.
+         The same rule `runner.MATLAB_EXE` follows: a capability that is
+         missing is said once, plainly, instead of being discovered by
+         every button failing differently. */
+      b.appendChild(el('p', { class: 'warn-line',
+        text: 'There is no ssh client on this computer, so Jarvis cannot '
+            + 'reach the cluster from here at all. On Windows it comes with '
+            + '"OpenSSH Client" under Settings › Optional features.' }));
+      return box;
+    }
+
+    if (st.configured) {
+      b.appendChild(el('p', { class: 'vacc-state up',
+        text: 'This machine is already signed in as ' + st.netid + '.' }));
+    }
+
+    b.appendChild(el('p', { class: 'hint', style: 'max-width:70ch',
+      text: 'Your NetID is the part of your UVM email in front of the @. '
+          + 'Everything else — which machine to connect to, where your '
+          + 'home and scratch directories are — follows from it.' }));
+
+    const netid = el('input', {
+      type: 'text', id: 'vaccNetid', spellcheck: 'false',
+      autocomplete: 'username', placeholder: 'netid',
+      value: st.netid || '',
+    });
+    b.appendChild(el('label', { class: 'vacc-field' }, [
+      el('span', { text: 'NetID' }), netid,
+    ]));
+
+    /* A key that already works is the best outcome: no password, nothing
+       installed, and it is the same key their terminal uses. Offered
+       first, because somebody who has been using the cluster by hand has
+       one and should not be asked for a password to make a second. */
+    if ((st.other_keys || []).length && !st.have_key) {
+      const pick = el('select', { id: 'vaccUseKey' },
+        [el('option', { value: '', text: 'Make a new key for Jarvis' })]
+          .concat(st.other_keys.map((k) => el('option', {
+            value: k.path, text: 'Use ' + k.name + ' (already on this machine)',
+          }))));
+      b.appendChild(el('label', { class: 'vacc-field' }, [
+        el('span', { text: 'Key' }), pick,
+      ]));
+      b.appendChild(el('p', { class: 'hint',
+        text: 'If one of those keys already works on the cluster, Jarvis '
+            + 'can use it and never needs your password. Otherwise it '
+            + 'makes its own key and installs it — which is the one '
+            + 'time a password is needed.' }));
+      pick.addEventListener('change', () => {
+        const wrap = document.getElementById('vaccPwWrap');
+        if (wrap) wrap.classList.toggle('hidden', !!pick.value);
+      });
+    }
+
+    const pw = el('input', {
+      type: 'password', id: 'vaccPassword',
+      autocomplete: 'current-password', placeholder: 'UVM password',
+    });
+    b.appendChild(el('div', { id: 'vaccPwWrap' }, [
+      el('label', { class: 'vacc-field' }, [
+        el('span', { text: 'Password' }), pw,
+      ]),
+      el('p', { class: 'hint', style: 'max-width:70ch',
+        text: 'Used once, to put an SSH key on the cluster, and then '
+            + 'dropped — it is not written to disk and not kept. From '
+            + 'then on the key signs in, which is also what stops Duo '
+            + 'asking every time.' }),
+      el('p', { class: 'hint', style: 'max-width:70ch',
+        text: 'Duo will send a push to your phone while this runs. Approve '
+            + 'it when it arrives; nothing here can approve it for you.' }),
+    ]));
+
+    const msg = el('p', { class: 'hint quiet', id: 'vaccSignMsg' });
+    const go = el('button', {
+      class: 'btn', id: 'vaccSignGo',
+      text: st.configured ? 'Sign in again' : 'Sign in',
+      onclick: () => doSignIn(),
+    });
+    b.appendChild(el('div', { class: 'vacc-actions' }, [
+      go,
+      el('button', { class: 'btn ghost', text: 'Cancel',
+                     onclick: closeModal }),
+    ]));
+    b.appendChild(msg);
+
+    netid.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') pw.focus();
+    });
+    pw.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSignIn();
+    });
+    setTimeout(() => (st.netid ? pw : netid).focus(), 40);
+    return box;
+  }
+
+  async function doSignIn() {
+    if (signBusy) return;
+    const netidEl = document.getElementById('vaccNetid');
+    const pwEl = document.getElementById('vaccPassword');
+    const keyEl = document.getElementById('vaccUseKey');
+    const msg = document.getElementById('vaccSignMsg');
+    const go = document.getElementById('vaccSignGo');
+    const netid = (netidEl && netidEl.value || '').trim();
+    const useKey = (keyEl && keyEl.value) || '';
+    const password = (pwEl && pwEl.value) || '';
+
+    if (!netid) {
+      if (msg) { msg.className = 'warn-line'; msg.textContent =
+        'A NetID is needed — it is the part of your UVM email before '
+        + 'the @.'; }
+      return;
+    }
+    if (!useKey && !password) {
+      if (msg) { msg.className = 'warn-line'; msg.textContent =
+        'A password is needed once, to install the key.'; }
+      return;
+    }
+
+    signBusy = true;
+    if (go) { go.disabled = true; go.textContent = 'Signing in…'; }
+    if (msg) {
+      msg.className = 'hint quiet';
+      msg.textContent = useKey
+        ? 'Checking that key against the cluster…'
+        : 'Installing a key. Duo will push to your phone — approve it '
+          + 'when it arrives.';
+    }
+    try {
+      const res = await apiPost('/api/vacc/signin',
+                                { netid, password, use_key: useKey });
+      toast(res.already_installed && !res.made_key
+        ? 'Signed in as ' + res.netid + '. That key was already on the '
+          + 'cluster.'
+        : 'Signed in as ' + res.netid + '. A key is installed, so this will '
+          + 'not ask again.', 'ok', 8000);
+      closeModal();
+      await status(true);
+      BARRY.activity.log('vacc.signin', { netid: res.netid,
+                                          made_key: !!res.made_key });
+    } catch (e) {
+      if (msg) {
+        msg.className = 'warn-line';
+        msg.textContent = e.message;
+      }
+    } finally {
+      /* Cleared here rather than on success, because a failed attempt is
+         exactly when a password is most likely to be left sitting in a
+         field on somebody's screen. */
+      if (pwEl) pwEl.value = '';
+      signBusy = false;
+      if (go) { go.disabled = false; go.textContent = 'Sign in'; }
+    }
+  }
+
   function showVacc() {
     const d = last || {};
     const c = BARRY.vacc.counts || {};
@@ -275,11 +513,12 @@ BARRY.vacc = (function () {
                     ? 'Connected as ' + (d.netid || '?')
                     : (d.why || 'Not connected.') }),
 
-        !d.configured ? el('p', { class: 'hint',
-          text: 'Nobody has set up a VACC account on this computer. Jarvis '
-              + 'needs a NetID and an SSH key that already works — run '
-              + '"ssh <netid>@login.vacc.uvm.edu" in a terminal once; if it '
-              + 'asks for a password, the key is not installed there yet.' }) : null,
+        !d.configured ? el('div', {}, [
+          el('p', { class: 'hint',
+            text: 'Nobody has set up a VACC account on this computer.' }),
+          el('button', { class: 'btn', text: 'Sign in to VACC…',
+                         onclick: () => showSignIn() }),
+        ]) : null,
 
         d.key_in_repo ? el('p', { class: 'warn-line',
           text: 'The SSH key is inside this repository. Move it to ~/.ssh — '
@@ -345,9 +584,27 @@ BARRY.vacc = (function () {
   /* ---- boot ------------------------------------------------------------- */
   async function init() {
     await status();
-    // The reachability answer is local arithmetic and cheap, so it is worth
-    // having before anything asks for it. It is also useful with the cluster
-    // down, which is why it does not wait on the status above succeeding.
+    /* The reachability answer is local arithmetic and cheap -- 0.05 s for
+       687 recordings -- but the registry read underneath it is four to
+       eight seconds the first time a process asks, and this runs before
+       anybody has clicked anything. The server hands back last boot's
+       answer for it; this is what happens if the real one turns out to
+       differ.
+
+       Nothing here moves anything. The rail chip's tooltip is rewritten and
+       the Sessions rows get their VACC marks redrawn, and only if that view
+       is the one on screen -- a list somebody is not looking at is re-read
+       the next time they open it, which costs nothing and cannot scroll
+       under them. */
+    if (BARRY.warm) {
+      BARRY.warm.onFresh('vacc_knows', async () => {
+        await loadKnows(true);
+        const v = BARRY.views[BARRY.state.view];
+        if (BARRY.state.view === 'sessions' && v && v.repaintQuietly) {
+          v.repaintQuietly();
+        }
+      });
+    }
     loadKnows();
   }
 
