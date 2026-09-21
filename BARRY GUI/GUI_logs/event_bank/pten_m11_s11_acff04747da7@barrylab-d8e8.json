@@ -1,15 +1,16 @@
 {
   "_at": {
-    "added": "2026-09-10T17:47:35.475871+00:00",
-    "by_label": "2026-09-10T17:47:35.475871+00:00",
+    "added": "2026-09-09T02:03:39.189055+00:00",
+    "aligned": "2026-09-21T18:16:19.914363+00:00",
+    "by_label": "2026-09-21T18:16:19.914363+00:00",
     "curation_label": "2026-09-10T17:47:35.475871+00:00",
     "duration_s": "2026-09-10T17:47:35.475871+00:00",
-    "events": "2026-09-10T17:47:35.475871+00:00",
+    "events": "2026-09-21T18:16:19.914363+00:00",
     "gid": "2026-09-10T17:47:35.475871+00:00",
     "id": "2026-09-10T17:47:35.475871+00:00",
     "label_names": "2026-09-10T17:47:35.475871+00:00",
     "mouse": "2026-09-10T17:47:35.475871+00:00",
-    "n": "2026-09-10T17:47:35.475871+00:00",
+    "n": "2026-09-21T18:16:19.914363+00:00",
     "name": "2026-09-10T17:47:35.475871+00:00",
     "note": "2026-09-10T17:47:35.475871+00:00",
     "project": "2026-09-10T17:47:35.475871+00:00",
@@ -25,7 +26,7 @@
     "type": "2026-09-10T17:47:35.475871+00:00",
     "type_name": "2026-09-10T17:47:35.475871+00:00",
     "units": "2026-09-10T17:47:35.475871+00:00",
-    "version": "2026-09-10T17:47:35.475871+00:00"
+    "version": "2026-09-10T17:48:49.827877+00:00"
   },
   "_keys": {
     "history": {
@@ -47,6 +48,10 @@
         "set",
         "2026-09-10T17:47:35.475871+00:00"
       ],
+      "br-a9f89c3f56": [
+        "set",
+        "2026-09-21T18:16:19.914363+00:00"
+      ],
       "v0-a02277cf": [
         "set",
         "2026-09-10T17:47:35.475871+00:00"
@@ -54,11 +59,15 @@
       "v1-5a6dc82a": [
         "set",
         "2026-09-10T17:47:35.475871+00:00"
+      ],
+      "{\"at\": \"2026-09-10T13:47:35-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 4, \"spike\": 5}, \"machine\": \"BarryLab\", \"n\": 9, \"note\": \"GUI final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-10T17:48:49.827877+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T17:47:35.475871+00:00",
+    "at": "2026-09-21T18:16:19.914363+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -67,57 +76,111 @@
     "by": "Shahriar Tafti",
     "machine": "DESKTOP-4H65AI7"
   },
+  "aligned": {
+    "at": "2026-09-21T14:16:19-04:00",
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by": "Rain Younger",
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58
+    ],
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "profile": {
+      "42": -0.015292,
+      "43": 0.081087,
+      "44": 0.075849,
+      "45": -0.071248,
+      "46": -0.091828,
+      "47": -0.003679,
+      "48": 0.044886,
+      "49": 0.045078,
+      "50": 0.040776,
+      "51": 0.026887,
+      "52": 0.236078,
+      "53": 0.339093,
+      "54": -0.445428,
+      "55": -0.662106,
+      "56": 0.228882,
+      "57": 0.328007
+    },
+    "screened": {
+      "59": "dead (0.5 uV against a median of 49)"
+    },
+    "smooth_ms": 0.0,
+    "source_version": 2,
+    "source_version_id": "60f26ca5e2de",
+    "spacing_um": 30.0,
+    "tool": "jarvis.braces/1",
+    "version": 3,
+    "window_ms": 100.0
+  },
   "by_label": {
-    "garbage": 4,
-    "spike": 5
+    "Dentate Spike": 5
   },
   "curation_label": "*",
   "duration_s": null,
   "events": [
     {
+      "from_t": 193.924,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 193.924
+      "start": 193.9274
     },
     {
+      "from_t": 431.096,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 431.096
+      "start": 431.098729
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1026.128
-    },
-    {
+      "from_t": 1030.473,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1030.473
+      "start": 1030.467387
     },
     {
+      "from_t": 1761.085,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1761.085
+      "start": 1761.093826
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1911.941
-    },
-    {
+      "from_t": 2189.143,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 2189.143
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2425.46
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2517.264
+      "start": 2189.144753
     }
   ],
   "gid": "s9a24ec997705",
@@ -155,7 +218,7 @@
     "spike": "Dentate Spike"
   },
   "mouse": 11,
-  "n": 9,
+  "n": 5,
   "name": "M11_HF2_s11jul25",
   "note": "",
   "project": "PTEN",
@@ -358,6 +421,134 @@
         ]
       ],
       "v": 2
+    },
+    {
+      "at": "2026-09-10T13:47:35-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 4,
+        "spike": 5
+      },
+      "machine": "BarryLab",
+      "n": 9,
+      "note": "GUI final curation\n-RY",
+      "snap_elsewhere": true,
+      "v": 2
+    },
+    {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58
+        ],
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {},
+        "invert": true,
+        "left_out": [
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 5,
+        "n_unmoved": 4,
+        "order": 3,
+        "order_held": true,
+        "profile": {
+          "42": -0.015292,
+          "43": 0.081087,
+          "44": 0.075849,
+          "45": -0.071248,
+          "46": -0.091828,
+          "47": -0.003679,
+          "48": 0.044886,
+          "49": 0.045078,
+          "50": 0.040776,
+          "51": 0.026887,
+          "52": 0.236078,
+          "53": 0.339093,
+          "54": -0.445428,
+          "55": -0.662106,
+          "56": 0.228882,
+          "57": 0.328007
+        },
+        "screened": {
+          "59": "dead (0.5 uV against a median of 49)"
+        },
+        "shift_max_ms": 8.826,
+        "shift_median_ms": 3.4,
+        "shift_min_ms": -5.613,
+        "smooth_ms": 0.0,
+        "source_version": 2,
+        "source_version_id": "60f26ca5e2de",
+        "spacing_um": 30.0,
+        "tool": "jarvis.braces/1",
+        "window_ms": 100.0
+      },
+      "at": "2026-09-21T14:16:19-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 5
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "br-a9f89c3f56",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 5,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 5 stamp(s) moved by -5.6 to 8.8 ms; 4 left where they were. No labels changed.",
+      "shifted": 5,
+      "snap": [
+        [
+          193.9274,
+          "spike"
+        ],
+        [
+          431.098729,
+          "spike"
+        ],
+        [
+          1030.467387,
+          "spike"
+        ],
+        [
+          1761.093826,
+          "spike"
+        ],
+        [
+          2189.144753,
+          "spike"
+        ]
+      ],
+      "v": 3
     }
   ]
 }
