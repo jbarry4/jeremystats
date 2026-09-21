@@ -155,7 +155,22 @@ async function until(fn, ms) {
     const cards = pad0 ? pad0.querySelectorAll('.card').length : 0;
     check('opening it draws a couple of cards, not hundreds',
           cards > 0 && cards <= 4, cards + ' cards');
-    const scans = (pad0 ? (pad0.textContent || '') : '')
+    /* The directory walk lives behind its own tab now, beside the
+       catalogue -- so it is reached rather than always on screen. The
+       check that matters is unchanged and is why this page exists: ONCE,
+       not hundreds. `paintVacc` asked `vaccBrowse` to draw, which asked
+       `vaccGo` to fetch, which repainted, and the interface went down with
+       "Maximum call stack size exceeded" after several hundred copies of
+       the same card. */
+    const dirTab = Array.from(
+      frame.contentDocument.querySelectorAll('#vaccBody .vacc-seg button'))
+      .find((b) => /director/i.test(b.textContent));
+    check('the directory walk is offered', !!dirTab,
+          Array.from(frame.contentDocument.querySelectorAll(
+            '#vaccBody .vacc-seg button')).map((b) => b.textContent).join(' | '));
+    if (dirTab) { dirTab.click(); await sleep(900); }
+    const pad0b = frame.contentDocument.getElementById('vaccBody');
+    const scans = (pad0b ? (pad0b.textContent || '') : '')
       .split('Look around it').length - 1;
     check('and the browse section appears exactly once', scans === 1,
           scans + ' copies');
@@ -170,9 +185,35 @@ async function until(fn, ms) {
     const pad = frame.contentDocument.getElementById('vaccBody');
     check('choosing it opens the cluster pad', !!pad
           && !pad.classList.contains('hidden'));
-    check('and it offers somewhere to browse',
-          /Look around it/.test((pad || {}).textContent || ''),
-          ((pad || {}).textContent || '').slice(0, 60));
+    /* Both halves reachable. The catalogue is what opens -- finding a
+       recording by which animal it came from is how anybody thinks about
+       it -- and the directory walk is a click away, because it is how a
+       recording gets connected to its copy on the cluster in the first
+       place. */
+    const tabs = Array.from(
+      (pad || document).querySelectorAll('.vacc-seg button'))
+      .map((b) => b.textContent);
+    check('it offers the catalogue and the directories',
+          tabs.some((t) => /catalogue/i.test(t))
+          && tabs.some((t) => /director/i.test(t)), tabs.join(' | '));
+    /* Put it back on the catalogue before asserting which one is active.
+
+       The tab is module state, and the section above deliberately clicked
+       Directories to count the browse box -- so asserting the default here
+       was asserting against this page's own side effect. A harness that
+       leaves state behind and then measures it is measuring itself. */
+    const catTab = Array.from(
+      (pad || document).querySelectorAll('.vacc-seg button'))
+      .find((b) => /catalogue/i.test(b.textContent));
+    if (catTab) { catTab.click(); await sleep(900); }
+    check('the catalogue can be come back to',
+          /catalogue/i.test(((pad || document)
+            .querySelector('.vacc-seg button.active') || {}).textContent || ''),
+          Array.from((pad || document).querySelectorAll('.vacc-seg button'))
+            .map((b) => b.textContent + (b.classList.contains('active')
+                                         ? '*' : '')).join(' | '));
+    check('and it draws the tree rather than the directory walk',
+          !!(pad || document).querySelector('#vaccCatalogue'));
     check('the other two pads are put away',
           frame.contentDocument.getElementById('sessScanPad').classList.contains('hidden')
           && frame.contentDocument.getElementById('hkBody').classList.contains('hidden'));

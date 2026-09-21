@@ -1,0 +1,160 @@
+{
+  "_at": {
+    "added": "2026-09-21T15:16:34.150380+00:00",
+    "by_label": "2026-09-21T15:16:34.150380+00:00",
+    "curation_label": "2026-09-21T15:16:34.150380+00:00",
+    "duration_s": "2026-09-21T15:16:34.150380+00:00",
+    "events": "2026-09-21T15:16:34.150380+00:00",
+    "gid": "2026-09-21T15:16:34.150380+00:00",
+    "id": "2026-09-21T15:16:34.150380+00:00",
+    "label_names": "2026-09-21T15:16:34.150380+00:00",
+    "mouse": "2026-09-21T15:16:34.150380+00:00",
+    "n": "2026-09-21T15:16:34.150380+00:00",
+    "name": "2026-09-21T15:16:34.150380+00:00",
+    "note": "2026-09-21T15:16:34.150380+00:00",
+    "project": "2026-09-21T15:16:34.150380+00:00",
+    "recording_start": "2026-09-21T15:16:34.150380+00:00",
+    "schema": "2026-09-21T15:16:34.150380+00:00",
+    "session": "2026-09-21T15:16:34.150380+00:00",
+    "session_key": "2026-09-21T15:16:34.150380+00:00",
+    "session_label": "2026-09-21T15:16:34.150380+00:00",
+    "session_loose_key": "2026-09-21T15:16:34.150380+00:00",
+    "session_path": "2026-09-21T15:16:34.150380+00:00",
+    "source": "2026-09-21T15:16:34.150380+00:00",
+    "specified": "2026-09-21T15:16:34.150380+00:00",
+    "type": "2026-09-21T15:16:34.150380+00:00",
+    "type_name": "2026-09-21T15:16:34.150380+00:00",
+    "units": "2026-09-21T15:16:34.150380+00:00",
+    "version": "2026-09-21T15:16:34.150380+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "b11ded007a8e": [
+        "set",
+        "2026-09-21T15:16:34.150380+00:00"
+      ],
+      "v0-4a0a5796": [
+        "set",
+        "2026-09-21T15:16:34.150380+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-21T15:16:34.150380+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-21T11:16:34-04:00",
+    "by": "curate@harness",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "Solid": 1,
+    "Sputter": 1
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "channel": 8,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 19.2
+    },
+    {
+      "channel": 8,
+      "label": "Sputter",
+      "label_id": "sputter",
+      "start": 20.1
+    }
+  ],
+  "gid": "s6b2088ae883b",
+  "id": "5e4745558029",
+  "label_names": {},
+  "mouse": 2,
+  "n": 2,
+  "name": "curate harness",
+  "note": "",
+  "project": "KCNT1 Urethane",
+  "recording_start": "2022-03-18T19:22:43+00:00",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m002_s001_2022-03-18_15-22-43",
+  "session_label": "KCNT1 m2 s1 2022-03-18",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "Jarvis curation (ied)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ied",
+  "type_name": "ied",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-21T11:16:34-04:00",
+      "by": "curate@harness",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-4a0a5796",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from Jarvis curation (ied). 2 candidates, none decided yet.",
+      "snap": [
+        [
+          19.2,
+          null
+        ],
+        [
+          20.1,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-21T11:16:34-04:00",
+      "by": "curate@harness",
+      "by_label": {
+        "Solid": 1,
+        "Sputter": 1
+      },
+      "changed": 2,
+      "from_v": 0,
+      "gained": 0,
+      "id": "b11ded007a8e",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 solid": 1,
+        "undecided \u2192 sputter": 1
+      },
+      "n": 2,
+      "note": "",
+      "snap": [
+        [
+          19.2,
+          "solid"
+        ],
+        [
+          20.1,
+          "sputter"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

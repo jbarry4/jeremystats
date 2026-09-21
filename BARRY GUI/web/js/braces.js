@@ -46,6 +46,18 @@ BARRY.braces = (function () {
   };
 
   let cands = null;     // sets that could be aligned
+
+  /* The bulk queue.
+
+     `pick` is entry id -> the version ref to read from, so changing one
+     before the run starts is one assignment. `state` is entry id ->
+     {state, msg, set_id} and is the only thing the table's right-hand
+     column reads, so a row that failed says why for as long as the panel
+     is open. */
+  const bulk = {
+    on: false, pick: {}, want: {}, state: {},
+    running: false, stop: false, now: null,
+  };
   let plan = null;      // what a run would read
   let job = null;       // the read, while it is happening
   let set_ = null;      // the proposal being looked at
@@ -163,11 +175,28 @@ BARRY.braces = (function () {
      moved and the line said "reading the channel" for three minutes while
      sixty-four of them went past. */
   const STAGE_NAMES = {
-    'ds depth': 'Averaging the events — window',
-    'ds windows': 'Reading window',
+    'ds depth': 'Finding the depth — stretch',
+    'ds windows': 'Reading stretch',
     'ds profile': 'Reading channel',
     'ds detect': 'Finding the peaks',
     'ds read': 'Reading',
+  };
+
+  /* What each stage is doing, and why its count is not the number of
+     spikes. The second half is the point: a bar counting stretches, on a
+     set somebody knows holds twelve hundred spikes, reads as the tool
+     having lost most of them. */
+  const STAGE_NOTES = {
+    'ds depth':
+      'The CSD averaged over a sample of these stamps at their curated '
+      + 'times, to find the depth the spike sits at. A sample, not all of '
+      + 'them — where the sink is is a fact about the probe rather than '
+      + 'about any one spike.',
+    'ds windows':
+      'One read per STRETCH of recording the stamps can reach, not one per '
+      + 'spike. Stamps closer together than a second are read as one '
+      + 'stretch, which is why this is minutes of an hour rather than the '
+      + 'whole hour.',
   };
 
   function jobSays(j) {
@@ -189,8 +218,15 @@ BARRY.braces = (function () {
       spent += Math.min(st.done || 0, n);
     }
     const eta = (j && j.eta_s) ? spellLeft(j.eta_s) : '';
+    /* And the number it is NOT. Named beside the count rather than left to
+       be inferred, because the two differ by a factor nobody can guess. */
+    let note = STAGE_NOTES[now.name] || '';
+    const n = (plan && plan.entry) ? plan.entry.n : null;
+    if (note && n) {
+      note += '  This set holds ' + n + ' stamp' + (n === 1 ? '' : 's') + '.';
+    }
     return { what: what, frac: total ? spent / total : 0, eta: eta,
-             elapsed: (j && j.elapsed) || 0 };
+             note: note, elapsed: (j && j.elapsed) || 0 };
   }
 
   function spellLeft(sec) {
@@ -211,6 +247,10 @@ BARRY.braces = (function () {
     const bar = host.querySelector('i');
     const step = host.querySelector('.br-job-what');
     const sub = host.querySelector('.br-job-sub');
+    // The note changes when the stage does, so it is repainted with
+    // everything else rather than written once at the start.
+    const note = host.querySelector('.br-job-note');
+    if (note) note.textContent = say.note;
     if (bar) bar.style.width = Math.round(say.frac * 100) + '%';
     if (step) step.textContent = say.what;
     if (sub) {
@@ -318,6 +358,36 @@ BARRY.braces = (function () {
           + 'stamps nobody has vetted is work done twice, because the flags '
           + 'would be about events that get thrown away an hour later.' }),
       ]));
+      return box;
+    }
+
+    /* One set, or many.
+
+       Two genuinely different jobs rather than two views of one. Choosing
+       a set, checking what it would read and running it is a thing you do
+       while thinking; aligning everything curated is a thing you set off
+       and come back to. The switch is here rather than being a separate
+       tool because the sets, the versions and the settings are the same
+       in both. */
+    box.appendChild(el('div', { class: 'card br-mode' }, [
+      el('div', { class: 'seg' }, [
+        ['one', 'One set at a time'],
+        ['many', 'Many sets at once'],
+      ].map(([id, label]) => el('button', {
+        class: (bulk.on ? 'many' : 'one') === id ? 'active' : '',
+        onclick: () => { if ((bulk.on ? 'many' : 'one') === id) return;
+                         bulk.on = id === 'many'; render(); },
+        text: label,
+      }))),
+      el('span', { class: 'br-hint', text: bulk.on
+        ? 'Reads them one after another and leaves a proposal for each. '
+          + 'Nothing is banked — every set still has to be reviewed.'
+        : 'Pick a recording, check what it would read, then run it.' }),
+    ]));
+
+    if (bulk.on) {
+      box.appendChild(bulkCard());
+      box.appendChild(recentSets());
       return box;
     }
 
@@ -497,10 +567,7 @@ BARRY.braces = (function () {
         ]),
         el('div', { class: 'br-bar' },
            [el('i', { style: 'width:' + Math.round(say.frac * 100) + '%' })]),
-        el('span', { class: 'br-hint', text:
-          'Every ticked channel is read once, filtered and added into the '
-          + 'average. It is the whole recording, so it takes about as long '
-          + 'as an Incisor scan.' }),
+        el('span', { class: 'br-hint br-job-note', text: say.note }),
       ]));
       go.appendChild(el('button', { class: 'btn ghost', text: 'Stop',
                                     onclick: cancel }));
@@ -732,6 +799,413 @@ BARRY.braces = (function () {
                                    ? o[key || 'current_name']
                                    : ((o || {}).current_version));
 
+  /* Which version a bulk run should read, for one entry: the newest there
+     is. The lineage's newest -- `versions` arrives in lineage order, so
+     the last usable one is it -- and NOT the largest stored number, which
+     is a different version on any entry two machines have both curated.
+     An entry numbered 0,1,2,3,4,3,4 has a maximum of 4 and a newest of 6. */
+  function newestOf(c) {
+    const vs = (c.versions || []).filter((v) => v.usable);
+    if (!vs.length) return null;
+    /* The newest version that can actually be READ here, which the server
+       works out and flags.
+
+       Three things it is not. Not the largest stored number: that is not
+       unique, so a history running 0,1,2,3,4,3,4 has a largest of 4 and a
+       newest of 6. Not the last in the list: the list is in creation
+       order, which is lineage order only until something branches. And
+       not simply the newest, because a version can arrive as a row
+       without its snapshot -- a name, a count and no times -- which is 14
+       of the 49 sets in this bank. Falling back through those in the same
+       order, for a payload from a server that has not been restarted. */
+    return vs.find((v) => v.newest)
+        || vs.find((v) => v.name === c.newest_usable_name)
+        || vs.find((v) => v.name === c.current_name)
+        || vs[vs.length - 1];
+  }
+
+  function newestRef(c) {
+    const v = newestOf(c);
+    return v ? v.ref : null;
+  }
+
+  /* Whether this machine could actually read the recording.
+
+     From the registry, joined on the gid. A bulk run of things that cannot
+     be opened is forty-eight failures in a row, so "select everything
+     ready" means everything reachable -- and a row that is not says so
+     rather than being hidden, because the answer to "why is that one not
+     ticked" has to be on the screen. */
+  function reachable(c) {
+    const reg = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    if (!reg.length) return true;      // nothing to judge against
+    const row = reg.find((r) => r.gid === c.gid);
+    return row ? !!row.reachable : false;
+  }
+
+  function bulkReady(c) {
+    return reachable(c) && !!newestRef(c);
+  }
+
+  /* The counts on the bar, which change as rows are ticked and as a run
+     goes. Written in place for the same reason the status cells are: the
+     table under them must not move. */
+  function paintBulkBar() {
+    const host = document.querySelector('.br-bulk-count');
+    if (!host) return;
+    const n = cands.filter((c) => bulk.want[c.id]).length;
+    const ready = cands.filter(bulkReady).length;
+    const done = Object.keys(bulk.state)
+      .filter((k) => (bulk.state[k] || {}).state === 'done').length;
+    host.textContent = n + ' of ' + cands.length + ' ticked \u00b7 ' + ready
+      + ' can be read here' + (done ? ' \u00b7 ' + done + ' done' : '');
+  }
+
+  function bulkCard() {
+    const card = el('div', { class: 'card br-bulk' });
+    card.appendChild(el('div', { class: 'br-chans-head' }, [
+      el('label', { text: 'Align many sets' }),
+      el('span', { class: 'br-hint', text:
+        'One read after another, leaving a proposal per entry. Nothing is '
+        + 'banked \u2014 every set still has to be reviewed.' }),
+    ]));
+
+    const ready = cands.filter(bulkReady);
+    const bar = el('div', { class: 'br-bulk-bar' });
+    bar.appendChild(el('button', {
+      class: 'btn sm', disabled: bulk.running ? 'disabled' : null,
+      text: 'Every ready session, newest version',
+      title: 'Ticks every set whose recording can be read from this '
+           + 'machine, each at the newest version of its stamps',
+      onclick: () => {
+        for (const c of ready) {
+          bulk.want[c.id] = true;
+          bulk.pick[c.id] = newestRef(c);
+        }
+        render();
+      },
+    }));
+    bar.appendChild(el('button', {
+      class: 'btn ghost sm', disabled: bulk.running ? 'disabled' : null,
+      text: 'Clear',
+      onclick: () => { bulk.want = {}; render(); },
+    }));
+    /* And one that leaves alone anything already done.
+
+       "Everything ready" ticks a set that has been aligned as readily as
+       one that has not, so a second pass over a bank re-reads the lot.
+       This is the button somebody wants on the second run: the ones that
+       have never been through. */
+    const fresh = ready.filter((c) => !c.aligned);
+    bar.appendChild(el('button', {
+      class: 'btn sm', disabled: (bulk.running || !fresh.length)
+                                 ? 'disabled' : null,
+      text: 'Only the ' + fresh.length + ' never aligned',
+      title: 'Every ready set that has no alignment banked against it yet, '
+           + 'each at its newest version',
+      onclick: () => {
+        for (const c of fresh) {
+          bulk.want[c.id] = true;
+          bulk.pick[c.id] = newestRef(c);
+        }
+        render();
+      },
+    }));
+    const n = cands.filter((c) => bulk.want[c.id]).length;
+    bar.appendChild(el('span', { class: 'br-hint br-bulk-count', text:
+      n + ' of ' + cands.length + ' ticked \u00b7 ' + ready.length
+      + ' can be read here' }));
+    bar.appendChild(el('div', { style: 'flex:1' }));
+    if (bulk.running) {
+      bar.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Stop after this one',
+        onclick: () => { bulk.stop = true; render(); },
+      }));
+    } else {
+      bar.appendChild(el('button', {
+        class: 'btn primary', disabled: n ? null : 'disabled',
+        text: 'Align ' + n + ' set' + (n === 1 ? '' : 's'),
+        onclick: runBulk,
+      }));
+    }
+    card.appendChild(bar);
+
+    const tbl = el('div', { class: 'br-bulk-rows' });
+    for (const c of cands) {
+      const st = bulk.state[c.id] || {};
+      const ok = bulkReady(c);
+      if (bulk.pick[c.id] === undefined) bulk.pick[c.id] = newestRef(c);
+      const vs = (c.versions || []).filter((v) => v.usable);
+      tbl.appendChild(el('div', {
+        class: 'br-bulk-row' + (bulk.want[c.id] ? ' on' : '')
+               + (ok ? '' : ' away') + (st.state ? ' ' + st.state : ''),
+        // So a tick can find one row without rebuilding the table.
+        'data-id': c.id,
+      }, [
+        el('input', {
+          type: 'checkbox', disabled: (bulk.running || !ok) ? 'disabled' : null,
+          checked: bulk.want[c.id] ? 'checked' : null,
+          onchange: (e) => {
+            if (e.target.checked) bulk.want[c.id] = true;
+            else delete bulk.want[c.id];
+            render();
+          },
+        }),
+        el('span', { class: 'nm', text: c.name || c.id }),
+        el('span', { class: 'ss', text: c.session_label || '\u2014' }),
+        el('span', { class: 'ct', text: c.n + ' stamps' }),
+        /* The contacts this recording has marked bad, which a bulk run
+           uses and could not previously be seen, let alone changed, from
+           here. They are interpolated rather than dropped -- a second
+           difference over an uneven grid is not a CSD -- so this is
+           "which wires are not believed", not "which are missing". */
+        el('button', {
+          class: 'mini br-bulk-bad' + (badOf(c).length ? ' some' : ''),
+          disabled: bulk.running ? 'disabled' : null,
+          title: badOf(c).length
+            ? 'Interpolated on this recording: CSC'
+              + badOf(c).join(', CSC') + '. Click to change.'
+            : 'No contact is marked bad on this recording. Click to mark '
+              + 'one.',
+          text: badOf(c).length ? badOf(c).length + ' bad' : 'none bad',
+          onclick: () => editBad(c),
+        }),
+        /* The version, changeable before anything runs. A short ordered
+           list per entry, so a select is the right control here -- unlike
+           a list of every recording, which is why that one is typed. */
+        vs.length ? el('select', {
+          class: 'br-bulk-v',
+          disabled: bulk.running ? 'disabled' : null,
+          onchange: (e) => { bulk.pick[c.id] = e.target.value || null; },
+        }, vs.map((v) => el('option', {
+          value: v.ref,
+          selected: bulk.pick[c.id] === v.ref ? 'selected' : null,
+          text: 'v' + v.name + (v === newestOf(c) ? '  (newest)' : '')
+                + (v.n != null ? '  \u00b7 ' + v.n + ' stamps' : ''),
+        }))) : el('span', { class: 'br-hint', text: 'no readable version' }),
+        /* What it is doing, or why it cannot. The "newest is not
+           readable" case is said out loud rather than left as a version
+           number somebody would have to notice was one behind. */
+        el('span', { class: 'st', text: st.msg
+          || (!ok ? 'the recording is not on a drive this machine can reach'
+              : (c.newest_usable_name
+                 && c.newest_name !== c.newest_usable_name
+                 ? 'v' + c.newest_name + ' never reached this machine — '
+                   + 'v' + c.newest_usable_name + ' is the newest readable'
+                 : '')) }),
+        st.set_id ? el('button', {
+          class: 'mini', text: 'Open',
+          onclick: () => openSet(st.set_id),
+        }) : null,
+      ].filter(Boolean)));
+    }
+    card.appendChild(tbl);
+    return card;
+  }
+
+  /* Which contacts a recording has marked bad.
+
+     Read from the registry rather than from the bank: it is a fact about
+     the recording, and the same list every other tool in Jarvis reads. */
+  function regRowOf(c) {
+    const reg = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    return reg.find((r) => r.gid === c.gid) || null;
+  }
+
+  function badOf(c) {
+    const row = regRowOf(c) || {};
+    const got = row.bad_channels || row.bad || [];
+    return got.map(Number).sort((a, b) => a - b);
+  }
+
+  /* Where the recording is, on this machine.
+
+     `here` and not `path`: a registry row lists every place it has been
+     seen and which of them can be reached from here, and asking for
+     `path` returns nothing at all. */
+  function pathOf(c) {
+    const row = regRowOf(c) || {};
+    const here = row.here || [];
+    return here.length ? here[0] : null;
+  }
+
+  /* Editing them from the bulk table.
+
+     A text field rather than sixty-four tick boxes: the answer is almost
+     always one or two numbers somebody already knows, and a grid of
+     sixty-four here would be a second channel picker with a different
+     shape from the one in the single-set view. */
+  function editBad(c) {
+    const now = badOf(c).join(', ');
+    const input = el('input', {
+      type: 'text', value: now, placeholder: 'e.g. 59, 12',
+      style: 'width:100%',
+    });
+    ask('Contacts not to believe on ' + (c.session_label || c.name),
+        el('div', {}, [
+          el('p', { text:
+            'These are interpolated from their neighbours rather than '
+            + 'dropped \u2014 a current source density is a difference '
+            + 'across depth, and taking a contact out of the middle leaves '
+            + 'the rest unevenly spaced, which is not a CSD. A dead wire '
+            + 'left in is worse still: a second difference amplifies it, so '
+            + 'it becomes the largest thing on the shank.' }),
+          el('p', { class: 'hint', text:
+            'Braces also screens for dead and railing contacts on every run '
+            + 'and reports what it found, so this is for the ones you know '
+            + 'about rather than a list you have to keep complete.' }),
+          input,
+        ]),
+        'Save', async () => {
+          const want = String(input.value || '')
+            .split(/[^0-9]+/).filter(Boolean).map(Number);
+          const where = pathOf(c);
+          if (!where) {
+            toast('That recording is not on a drive this machine can '
+                  + 'reach, so its bad contacts cannot be changed here.',
+                  'err', 8000);
+            return;
+          }
+          try {
+            /* The same route Incisor uses, which takes a PATH: it works
+               the mouse and session out from the folder the way the scan
+               does, so a contact marked here and one marked in the trace
+               view land on one record rather than two. */
+            await apiPost('/api/session/bad-for-path', {
+              path: where,
+              bad_channels: want.sort((a, b) => a - b),
+            });
+            if (BARRY.views.toolkit && BARRY.views.toolkit.refresh) {
+              await BARRY.views.toolkit.refresh();
+            }
+            toast(want.length
+              ? 'CSC' + want.join(', CSC') + ' will be interpolated on '
+                + (c.session_label || c.name) + '.'
+              : 'Nothing is marked bad on ' + (c.session_label || c.name)
+                + ' any more.', null, 6000);
+          } catch (e) {
+            toast('Could not save that: ' + e.message, 'err', 8000);
+          }
+          render();
+        });
+  }
+
+  /* One read after another. */
+  async function runBulk() {
+    const queue = cands.filter((c) => bulk.want[c.id] && bulkReady(c));
+    if (!queue.length || bulk.running) return;
+    bulk.running = true;
+    bulk.stop = false;
+    for (const c of queue) bulk.state[c.id] = { state: 'queued',
+                                                msg: 'waiting' };
+    render();
+
+    for (const c of queue) {
+      if (bulk.stop) {
+        bulk.state[c.id] = { state: '', msg: 'stopped before this one' };
+        continue;
+      }
+      bulk.now = c.id;
+      bulk.state[c.id] = { state: 'going', msg: 'reading\u2026' };
+      paintBulkRow(c.id);
+      try {
+        const started = await apiPost('/api/braces/run', {
+          entry_id: c.id,
+          from_version: bulk.pick[c.id] || null,
+          measure: q.measure,
+          window_ms: q.window_ms,
+        });
+        const id = (started.job || {}).id;
+        if (!id) throw new Error('the read did not start');
+        const res = await waitForJob(id, (j) => {
+          const st = (j.stages || []).find((x) => x.status === 'running')
+                  || (j.stages || [])[0] || {};
+          // The same words the single-set bar uses. The raw stage name
+          // is `ds windows`, which is the code's name for it and not a
+          // thing to put in front of somebody.
+          const lbl = STAGE_NAMES[st.name] || st.name || 'Reading';
+          bulk.state[c.id] = { state: 'going', msg:
+            lbl + ' ' + Math.min((st.done || 0) + 1, st.of || 0)
+            + ' of ' + (st.of || 0) };
+          paintBulkRow(c.id);
+        });
+        const summ = res.summary || {};
+        bulk.state[c.id] = {
+          state: 'done', set_id: res.set_id,
+          msg: summ.n + ' aligned, ' + (summ.n_flagged || 0) + ' flagged, '
+               + 'median ' + ms(summ.shift_median_ms || 0) + ' ms',
+        };
+      } catch (e) {
+        // Named and kept. A bulk run that swallows one failure is a bulk
+        // run somebody has to check by hand afterwards anyway.
+        bulk.state[c.id] = { state: 'failed', msg: e.message || String(e) };
+      }
+      // The row, not the panel: see `paintBulkRow`. The whole thing is
+      // rendered once at the end, when nothing is moving.
+      paintBulkRow(c.id);
+      paintBulkBar();
+    }
+    bulk.now = null;
+    bulk.running = false;
+    bulk.stop = false;
+    render();
+    const done = queue.filter((c) => (bulk.state[c.id] || {}).state === 'done');
+    toast(done.length + ' of ' + queue.length + ' aligned. Each is a '
+          + 'proposal waiting to be reviewed \u2014 nothing has been banked.',
+          done.length === queue.length ? null : 'warn', 9000);
+  }
+
+  /* Poll one job to the end. Separate from `run`'s own loop because that
+     one repaints the single-set panel as it goes and this one repaints a
+     table row. */
+  function waitForJob(id, onTick) {
+    return new Promise((resolve, reject) => {
+      const poll = setInterval(async () => {
+        let got;
+        try { got = await api('/api/cfc/job/' + id); } catch (e) { return; }
+        const j = got.job || {};
+        if (j.status === 'running') { if (onTick) onTick(j); return; }
+        clearInterval(poll);
+        if (j.status !== 'done') {
+          reject(new Error(j.error || 'the read did not finish'));
+          return;
+        }
+        try {
+          const r = await api('/api/cfc/result/' + id);
+          resolve(r.result || {});
+        } catch (e) { reject(e); }
+      }, 400);
+    });
+  }
+
+  /* ONE ROW'S STATUS, and nothing else.
+
+     Replacing the card on every tick threw away the scroll position, the
+     focus, and any version list somebody had open -- four times a second,
+     for the whole minute a read takes, which is exactly when somebody is
+     trying to read the table. The status column is the only thing that
+     changes while a run is going, so it is the only thing written. */
+  function paintBulkRow(id) {
+    const row = document.querySelector('.br-bulk-row[data-id="'
+                                       + cssEsc(id) + '"]');
+    if (!row) return;
+    const st = bulk.state[id] || {};
+    const cell = row.querySelector('.st');
+    if (cell) cell.textContent = st.msg || '';
+    for (const k of ['queued', 'going', 'done', 'failed']) {
+      row.classList.toggle(k, st.state === k);
+    }
+  }
+
+  /* Attribute selectors take a quoted value, and a bank id is hex -- but
+     it is somebody else's string, so it is escaped rather than trusted. */
+  function cssEsc(v) {
+    return (window.CSS && CSS.escape) ? CSS.escape(String(v))
+                                      : String(v).replace(/["\\]/g, '\\$&');
+  }
+
   function recentSets() {
     const box = el('div', { class: 'card br-recent' });
     box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
@@ -864,13 +1338,37 @@ BARRY.braces = (function () {
        left out, is still the difference between a number and a number you
        can act on. */
     if (sum.n_channels) {
-      const out = sum.left_out || [];
+      /* DEPTHS, not channels, and the difference is the whole sentence.
+
+         A current source density is a difference ACROSS depth, so a depth
+         sits between contacts and the two at the ends of what was read
+         have none. Sixteen depths come from eighteen contacts. Calling
+         the sixteen "channels" invited the reasonable question of which
+         sixteen, and there is no answer because they are not contacts.
+
+         And a screened contact is INTERPOLATED, not left out -- dropping
+         one would leave the rest unevenly spaced, which is not a CSD at
+         all. It used to say "leaving out CSC59" about a contact that was
+         interpolated, at the depth pass, and that is not even in the band
+         this was measured on. */
+      const band = ((sum.depth || {}).channels) || [];
+      const scr = (sum.screened && Object.keys(sum.screened)) || [];
       box.appendChild(el('p', { class: 'hint br-note', text:
-        'Averaged over ' + sum.n_channels + ' channel'
+        'Averaged over ' + sum.n_channels + ' depth'
         + (sum.n_channels === 1 ? '' : 's')
-        + (out.length ? ', leaving out CSC' + out.join(', CSC') : '')
-        + '. Each stamp went to the highest point of that average inside its '
-        + '±' + (s.params || {}).window_ms + ' ms window.'
+        + (band.length ? ' across CSC' + band[0] + '–CSC'
+                         + band[band.length - 1] : '')
+        + ', read from ' + (sum.n_channels + 2) + ' contacts — a depth '
+        + 'is a difference between contacts, so the two at each end have '
+        + 'none. Each stamp went to the highest point of that average '
+        + 'inside its ±' + (s.params || {}).window_ms + ' ms window.'
+        + (scr.length
+            ? '  CSC' + scr.join(', CSC') + ' '
+              + (scr.length === 1 ? 'was' : 'were')
+              + ' replaced by the interpolation of '
+              + (scr.length === 1 ? 'its' : 'their') + ' neighbours: '
+              + scr.map((k) => sum.screened[k]).join('; ') + '.'
+            : '')
         + ((sum.skipped_channels || []).length
             ? '  ' + sum.skipped_channels.length + ' could not be read: '
               + sum.skipped_channels.map((x) => 'CSC' + x.number).join(', ')
@@ -1294,10 +1792,9 @@ BARRY.braces = (function () {
     if (app) app.classList.remove('mode-settling');
     const bar = document.getElementById('brViewBar');
     if (bar) bar.remove();
-    // The list is a sibling of the bar and outlives it otherwise, which
-    // leaves a panel of somebody else's stamps over the next view.
-    const lst = document.getElementById('brList');
-    if (lst) lst.remove();
+    // And the list, which is a modal and outlives the mode otherwise --
+    // a dialog of somebody else's stamps over the next view.
+    if (view.list) { view.list = false; closeModal(); }
     document.removeEventListener('keydown', vKeys, true);
     setMode(null);
     setView('toolkit');
@@ -1521,7 +2018,6 @@ BARRY.braces = (function () {
        settled `view.at`. Cleared first so a stale one is never drawn under
        a different stamp's marks even for a frame. */
     if (view.curve) { view.trace = null; loadCurve(); }
-    if (view.list) setTimeout(vList, 0);
     const r = all[view.at];
     // Eight windows across, so the neighbours that made a run contested
     // are on screen beside it rather than just off the edge.
@@ -1683,70 +2179,196 @@ BARRY.braces = (function () {
     vBar();
   }
 
-  /* The set as a list. Rendered whole rather than windowed: twelve
-     hundred rows of four spans is well inside what a browser draws
-     without complaint, and virtualising it would mean the scroll position
-     and the focus have to be kept in step by hand, which is a bug waiting
-     to be written. */
+  /* The set as a list, in the dialog Checkup uses.
+
+     Not a panel of its own. The classes are shared rather than copied, so
+     the two look identical because they are the same markup -- and
+     somebody who has been through a curation set already knows how to
+     read this one. What differs is what a row can be sorted and filtered
+     by, because an alignment's categories are not a curation's: not which
+     label, but whether it moves, whether it was flagged, and whether
+     anybody has answered.
+
+     Rendered whole rather than windowed: twelve hundred rows of five
+     spans is well inside what a browser draws without complaint, and
+     virtualising it would mean keeping the scroll position and the focus
+     in step by hand. */
+  const listQ = { by: 'time', text: '', only: 'all' };
+
   function vList() {
-    if (!view) return;
-    let box = document.getElementById('brList');
-    if (!view.list) {
-      if (box) box.remove();
-      return;
-    }
-    if (!box) {
-      box = el('div', { class: 'br-list', id: 'brList' });
-      const body = document.getElementById('xfBody');
-      (body || document.body).appendChild(box);
-    }
-    box.innerHTML = '';
+    if (!view || !set_) return;
+    // The toggle turns it off by calling this, which is the one place that
+    // knows the dialog is a modal rather than a panel to remove.
+    if (!view.list) { closeModal(); return; }
     const all = vRows();
-    box.appendChild(el('div', { class: 'br-list-head' }, [
-      el('strong', { text: 'Every stamp' }),
-      el('span', { class: 'br-hint',
-                   text: all.filter(vWanted).length + ' shown' }),
-      el('button', { class: 'mini', text: '\u00d7', title: 'Close  (l)',
-                     onclick: () => { view.list = false; vList(); vBar(); } }),
-    ]));
-    const rows = el('div', { class: 'br-list-rows' });
-    all.forEach((r, i) => {
-      if (!vWanted(r)) return;
-      const said = callFor(i);
-      const to = vNow(r);
-      const d = (to - r.was) * 1000;
-      const st = (said === 'confirm' || said === 'move') ? 'ok'
-        : (said === 'keep' ? 'kept' : (r.flag ? 'ask' : ''));
-      const row = el('button', {
-        class: 'br-list-row' + (i === view.at ? ' on' : '')
-               + (st ? ' ' + st : ''),
-        onclick: () => { vGoTo(i); },
-      }, [
-        el('span', { class: 'n', text: '#' + (i + 1) }),
-        el('span', { class: 't', text: clock(r.was) }),
-        el('span', { class: 'd', text: ms(d) + ' ms' }),
-        el('span', { class: 'w',
-                     text: r.flag ? (REASONS[r.flag] || r.flag) : '' }),
-        el('span', { class: 's', text:
-          said === 'move' ? 'moved by hand'
-            : (said === 'confirm' ? 'moved'
-               : (said === 'keep' ? 'left alone' : '')) }),
-      ]);
-      if (i === view.at) row.dataset.on = '1';
-      rows.appendChild(row);
-    });
-    box.appendChild(rows);
-    /* Scrolled to, not searched for. `block: 'nearest'` so stepping one
-       row does not jump the list to centre every time. */
-    const on = rows.querySelector('[data-on]');
-    if (on && on.scrollIntoView) {
-      on.scrollIntoView({ block: 'nearest' });
+    const rows = all.map((r, i) => ({ r: r, i: i }));
+
+    const shiftOf = (x) => (vNow(x.r) - x.r.was) * 1000;
+    const saidOf = (x) => callFor(x.i);
+    const stateOf = (x) => {
+      const said = saidOf(x);
+      if (said === 'move') return 'moved';
+      if (said === 'confirm') return 'confirmed';
+      if (said === 'keep') return 'kept';
+      return x.r.flag ? 'flagged' : 'auto';
+    };
+    const STATE_NAME = {
+      moved: 'moved by hand', confirmed: 'confirmed', kept: 'left alone',
+      flagged: 'needs a decision', auto: 'moving, unflagged',
+    };
+    const STATE_COLOUR = {
+      moved: '#5cc98d', confirmed: '#5cc98d', kept: '#ED8B33',
+      flagged: '#ED8B33', auto: 'var(--line)',
+    };
+
+    const tally = {};
+    for (const x of rows) {
+      const k = stateOf(x);
+      tally[k] = (tally[k] || 0) + 1;
     }
+
+    const wrap = el('div', { class: 'modal cur-list-modal' });
+    wrap.appendChild(el('div', { class: 'modal-head' }, [
+      el('h2', { text: 'Every stamp in this alignment' }),
+      el('p', { class: 'sub',
+                text: rows.length + ' stamps  \u00b7  '
+                    + ((set_.counts || {}).waiting || 0)
+                    + ' still to answer  \u00b7  '
+                    + (set_.set.name || '') }),
+    ]));
+
+    const rowsHost = el('div', { class: 'cur-list' });
+
+    const controls = el('div', { class: 'cur-list-bar' }, [
+      el('div', { class: 'seg sm' }, [
+        ['time', 'By time'],
+        ['move', 'By how far it moves'],
+      ].map(([id, label]) => el('button', {
+        class: listQ.by === id ? 'active' : '', text: label,
+        onclick: (ev) => {
+          listQ.by = id;
+          Array.from(ev.target.parentNode.children).forEach(
+            (b) => b.classList.toggle('active', b === ev.target));
+          paint();
+        },
+      }))),
+      el('input', {
+        type: 'search', class: 'cur-list-search', value: listQ.text,
+        placeholder: 'Find a time, a distance, a reason\u2026',
+        oninput: (e) => { listQ.text = e.target.value; paint(); },
+      }),
+      el('span', { class: 'hint', id: 'brListCount' }),
+    ]);
+
+    const chips = el('div', { class: 'res-toolbar cur-list-chips' });
+    const chip = (id, label, n) => el('button', {
+      class: 'pill' + (listQ.only === id ? ' active' : ''),
+      disabled: (!n && id !== 'all') ? 'disabled' : null,
+      text: label + ' (' + n + ')',
+      onclick: () => {
+        listQ.only = id;
+        Array.from(chips.children).forEach(
+          (b) => b.classList && b.classList.toggle(
+            'active', b.textContent.indexOf(label + ' (') === 0));
+        paint();
+      },
+    });
+    chips.appendChild(chip('all', 'All', rows.length));
+    for (const id of ['flagged', 'auto', 'confirmed', 'moved', 'kept']) {
+      chips.appendChild(chip(id, STATE_NAME[id], tally[id] || 0));
+    }
+
+    function matching() {
+      const q = listQ.text.trim().toLowerCase();
+      const out = [];
+      for (const x of rows) {
+        const st = stateOf(x);
+        if (listQ.only !== 'all' && st !== listQ.only) continue;
+        if (q) {
+          const hay = [clock(x.r.was), x.r.was.toFixed(3),
+                       ms(shiftOf(x)) + ' ms', STATE_NAME[st],
+                       x.r.flag ? (REASONS[x.r.flag] || x.r.flag) : '']
+            .filter(Boolean).join(' ').toLowerCase();
+          if (hay.indexOf(q) < 0) continue;
+        }
+        out.push(x);
+      }
+      if (listQ.by === 'move') {
+        // Furthest first: the ones worth a second look are the ones that
+        // moved most, and reading down from the top is the review.
+        out.sort((a, b) => Math.abs(shiftOf(b)) - Math.abs(shiftOf(a)));
+      }
+      return out;
+    }
+
+    function rowFor(x) {
+      const st = stateOf(x);
+      const d = shiftOf(x);
+      return el('div', {
+        class: 'cur-list-row' + (x.i === view.at ? ' here' : '')
+             + (st === 'flagged' ? ' undecided' : ''),
+        style: '--cat:' + STATE_COLOUR[st],
+        title: x.r.flag ? (REASONS[x.r.flag] || x.r.flag)
+                        : 'Nothing was flagged about this one',
+        onclick: () => { closeModal(); view.list = false; vGoTo(x.i); },
+      }, [
+        el('span', { class: 'cl-n', text: '#' + (x.i + 1) }),
+        el('span', { class: 'cl-t', text: clock(x.r.was) }),
+        el('span', { class: 'cl-move', text: ms(d) + ' ms' }),
+        el('span', { class: 'cl-lab', text: STATE_NAME[st] }),
+        el('span', { class: 'cl-who',
+                     text: x.r.flag ? (REASONS[x.r.flag] || x.r.flag) : '' }),
+        x.i === view.at ? el('span', { class: 'pill sm', text: 'here' })
+                        : null,
+      ].filter(Boolean));
+    }
+
+    function paint() {
+      rowsHost.innerHTML = '';
+      const got = matching();
+      const count = document.getElementById('brListCount');
+      if (count) {
+        count.textContent = got.length === rows.length
+          ? got.length + ' stamps'
+          : got.length + ' of ' + rows.length;
+      }
+      if (!got.length) {
+        rowsHost.appendChild(el('div', { class: 'hint',
+          text: 'Nothing matches that.' }));
+        return;
+      }
+      /* By time, with a marker wherever the stamps thin out -- a gap of a
+         minute is a fact about the recording, and the same marker Checkup
+         puts in for the same reason. */
+      let last = null;
+      for (const x of got) {
+        if (listQ.by === 'time' && last !== null && x.r.was - last > 30) {
+          rowsHost.appendChild(el('div', { class: 'cl-gap',
+            text: '\u2026 ' + Math.round(x.r.was - last)
+                + 's with no stamps \u2026' }));
+        }
+        rowsHost.appendChild(rowFor(x));
+        last = x.r.was;
+      }
+      const on = rowsHost.querySelector('.cur-list-row.here');
+      if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+    }
+
+    wrap.appendChild(controls);
+    wrap.appendChild(chips);
+    wrap.appendChild(rowsHost);
+    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn', text: 'Close',
+                     onclick: () => { view.list = false; closeModal();
+                                      vBar(); } }),
+    ]));
+    paint();
+    showModal(wrap, { replace: true });
   }
 
   function vBar() {
     if (!view) return;
-    if (view.list && document.getElementById('brList')) setTimeout(vList, 0);
     let bar = document.getElementById('brViewBar');
     if (!bar) {
       bar = el('div', { class: 'cur-bar br-view-bar', id: 'brViewBar' });
@@ -2582,14 +3204,20 @@ BARRY.braces = (function () {
   function confirmDialog(rep) {
     const body = el('div', { class: 'br-confirm' }, [
       el('p', { text:
-        'This becomes version ' + (rep.next_name != null ? rep.next_name
-                                    : rep.next_version) + ' of the set, '
-        + (rep.from_version == null
-           ? 'continuing from version ' + (rep.current_name != null
-                                            ? rep.current_name
-                                            : rep.current_version) + '.'
-           : 'branching off version ' + rep.from_version
-             + ' and leaving everything after it alone.') }),
+        /* Continuing or branching, as the server worked it out.
+           It used to say "branching off" whenever a version had been
+           picked, which produced "becomes version 4, branching off
+           version 3" -- two different writes in one sentence, since
+           branching off v3 is v3.1 and v4 is what continuing it looks
+           like. And the version it named was the REF it had been sent,
+           not a name anybody would recognise. */
+        'This becomes v' + (rep.next_name != null ? rep.next_name
+                            : rep.next_version) + ' of the set, '
+        + (rep.branching
+           ? 'branching off v' + rep.from_name
+             + ' and leaving everything already built on it alone.'
+           : 'continuing from v' + (rep.from_name != null ? rep.from_name
+                                    : rep.current_name) + '.') }),
       el('ul', {}, [
         el('li', { text: rep.moved + ' stamp'
                          + (rep.moved === 1 ? '' : 's') + ' move, by '
@@ -2599,10 +3227,22 @@ BARRY.braces = (function () {
                          + (rep.left_alone
                             ? ', including ' + rep.left_alone
                               + ' flagged and unanswered' : '') }),
-        el('li', { text: 'No label is read or changed. Nothing is deleted.' }),
+        /* What is being left out, said before it happens. "Nothing is
+           deleted" stopped being true when an aligned version started
+           holding the spikes and not the candidates somebody rejected. */
+        rep.n_dropped
+          ? el('li', { text: rep.n_dropped + ' left out for not being an '
+                             + 'event ('
+                             + Object.keys(rep.dropped || {})
+                                 .map((k) => (rep.dropped[k]) + ' ' + k)
+                                 .join(', ')
+                             + '). Every earlier version still holds them.' })
+          : null,
+        el('li', { text: 'No label is read or changed, and nothing is '
+                         + 'removed from any version that already exists.' }),
         el('li', { text: 'Every moved stamp keeps the time it came from, so '
                          + 'this can be read back and undone.' }),
-      ]),
+      ].filter(Boolean)),
     ]);
     const sample = (rep.moves || []).slice(0, 6);
     if (sample.length) {
@@ -2628,22 +3268,37 @@ BARRY.braces = (function () {
   /* The app's own modal, not a second one. `showModal` stacks, so the
      confirmation can open over the proposal without the proposal being
      rebuilt underneath it and losing the scroll position. */
+  /* A confirmation, in the shape every other dialog in this app uses.
+
+     It used to build its own `.modal` and hand that to `showModal`, which
+     puts whatever it is given INSIDE `#bigModalBox` -- and that box is
+     already a `.modal.big`. So the result was a modal inside a modal: a
+     620px bordered panel sitting at the left edge of a 1240px one, with
+     the header, the body and the footer laid out against the wrong box.
+     That is the "weird" of it.
+
+     `mh` / `mb` / `mf` are what the big box is built to hold: the header
+     and footer pinned, the body the only thing that scrolls. The reading
+     width is capped inside the body instead, which is a thing to do to a
+     column of text rather than to a dialog. */
   function ask(title, body, okText, onOk, danger) {
-    const wrap = el('div', { class: 'modal br-modal' });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
-      el('strong', { text: title }),
-    ]));
-    wrap.appendChild(el('div', { class: 'modal-body' }, [body]));
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
-      el('div', { style: 'flex:1' }),
-      el('button', { class: 'btn ghost', text: 'Cancel',
-                     onclick: closeModal }),
-      el('button', {
-        class: 'btn' + (danger ? ' danger' : ''), text: okText,
-        onclick: () => { closeModal(); onOk(); },
-      }),
-    ]));
-    showModal(wrap);
+    const wrap = el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: title }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb br-ask' }, [body]),
+      el('div', { class: 'mf' }, [
+        el('div', { style: 'flex:1' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        el('button', {
+          class: 'btn' + (danger ? ' danger' : ''), text: okText,
+          onclick: () => { closeModal(); onOk(); },
+        }),
+      ]),
+    ]);
+    showModal(wrap, { replace: true });
   }
 
   async function discard() {

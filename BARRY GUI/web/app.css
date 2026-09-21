@@ -639,7 +639,6 @@
 .vacc-v { color: var(--text); font-family: var(--mono); font-size: 11px;
           overflow: hidden; text-overflow: ellipsis; }
 .vacc-state { font-size: 12.5px; margin: 2px 0 10px; }
-
 /* The sign-in form. A label above its field rather than beside it, because
    "NetID" and "Password" are short and the fields are not, and a two-column
    form of two rows is more furniture than it is worth. */
@@ -4493,7 +4492,6 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: 9.5px; }
                              box-shadow: inset 0 0 0 1.5px currentColor; }
 .probechip:hover { filter: brightness(1.15); }
 .probechip.sm { font-size: 9px; padding: 0 5px 0 3px; }
-
 /* Setting it. The agree-with-the-guess button first and on its own, because
    agreeing is the common case by a wide margin. */
 .probe-pop { min-width: 30ch; }
@@ -4505,7 +4503,6 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: 9.5px; }
   color: var(--text-2);
 }
 .probe-opt.on .pc-name { color: var(--ok); }
-
 /* What a probe template divides the array into, spelled out under the
    picker. The point is that "2 columns" is not an answer -- which channels
    are in which region is, and that is what a person is checking. */
@@ -8436,7 +8433,12 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   border-radius: 3px; padding: 2px 6px; color: var(--text-2);
   background: var(--bg);
 }
-.br-modal { max-width: 620px; }
+/* The confirmation body. A column of text wants a reading width; the
+   dialog around it does not -- see `ask`. The table below it is free to
+   use the whole width, which is why the cap is on the prose rather than
+   on the box. */
+.br-ask { padding: 16px 18px; }
+.br-ask > p, .br-ask > ul { max-width: 78ch; }
 .br-confirm ul { margin: 8px 0; padding-left: 18px; }
 .br-confirm li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
 @media (max-width: 720px) {
@@ -8678,50 +8680,53 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   #app.mode-braces .mode-banner,
   #app.mode-curate .mode-banner { animation: none; }
 }
-/* ---- Braces: the set as a list -------------------------------------- */
-/* Docked to the right of the traces rather than over them: the whole
-   point is to read it WHILE looking at the recording, and a panel that
-   covers the thing it refers to is a dialog with extra steps. */
-.br-list {
-  position: absolute; top: 0; right: 0; bottom: 0; width: 320px;
-  max-width: 42vw; z-index: 40;
-  display: flex; flex-direction: column;
-  background: var(--bg-1); border-left: 1px solid var(--line);
-  box-shadow: -10px 0 26px rgba(0, 0, 0, .28);
+/* ---- Braces: many sets at once -------------------------------------- */
+.br-mode { display: flex; align-items: center; gap: 12px; }
+.br-mode .br-hint { color: var(--text-3); font-size: 11.5px; }
+.br-bulk-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0 10px;
 }
-.br-list-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-bottom: 1px solid var(--line-soft);
-  background: var(--bg-2); flex: none;
+.br-bulk-bar .br-hint { color: var(--text-3); font-size: 11.5px; }
+.br-bulk-rows {
+  max-height: 52vh; overflow-y: auto;
+  border-top: 1px solid var(--line-soft);
 }
-.br-list-head strong { font-size: 12px; }
-.br-list-head .br-hint { flex: 1; font-size: 11px; color: var(--text-3); }
-.br-list-rows { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
-.br-list-row {
-  display: grid; width: 100%;
-  grid-template-columns: 40px 78px 66px 1fr; grid-auto-rows: auto;
-  gap: 2px 8px; align-items: baseline; text-align: left;
-  padding: 5px 10px; border: 0; border-bottom: 1px solid var(--line-soft);
-  border-left: 3px solid transparent;
-  background: transparent; color: var(--text-1); cursor: pointer;
-  font: inherit; font-size: 11.5px;
+/* Checkbox, name, session, count, version, status, open. The status
+   column takes the slack, because that is the one whose length varies. */
+.br-bulk-row {
+  display: grid;
+  grid-template-columns: 22px minmax(120px, 1.4fr) minmax(90px, 1fr)
+                         84px 150px minmax(120px, 1.6fr) auto;
+  gap: 8px; align-items: center;
+  padding: 5px 4px; border-bottom: 1px solid var(--line-soft);
+  font-size: 11.5px;
 }
-.br-list-row:hover { background: var(--bg-2); }
-.br-list-row.on {
-  background: var(--accent-soft); border-left-color: var(--accent);
+.br-bulk-row.on { background: var(--accent-soft); }
+.br-bulk-row.away { opacity: .55; }
+.br-bulk-row .nm { font-weight: 600; }
+.br-bulk-row .ss, .br-bulk-row .ct { color: var(--text-2); }
+.br-bulk-row .ct { font-variant-numeric: tabular-nums; text-align: right; }
+.br-bulk-row .st { color: var(--text-3); }
+.br-bulk-row.going .st { color: var(--accent); }
+.br-bulk-row.done .st { color: #5cc98d; }
+.br-bulk-row.failed .st { color: #ED8B33; }
+/* A row mid-read is worth finding without reading the column. */
+.br-bulk-row.going { background: var(--accent-soft); }
+.br-bulk-v { font: inherit; font-size: 11px; max-width: 100%; }
+@media (max-width: 900px) {
+  .br-bulk-row {
+    grid-template-columns: 22px 1fr 84px;
+    grid-auto-rows: auto; row-gap: 2px;
+  }
+  .br-bulk-row .ss { grid-column: 2 / -1; }
+  .br-bulk-row .br-bulk-v, .br-bulk-row .st { grid-column: 2 / -1; }
 }
-.br-list-row .n { color: var(--text-3); font-variant-numeric: tabular-nums; }
-.br-list-row .t { font-variant-numeric: tabular-nums; }
-.br-list-row .d {
-  font-variant-numeric: tabular-nums; text-align: right; color: var(--text-2);
+
+
+/* How far a stamp moves, in the shared candidate-list row. The rest of
+   this row is Checkup's; only the distance column is Braces'. */
+.cur-list-row .cl-move {
+  font-variant-numeric: tabular-nums; text-align: right;
+  color: var(--text-2); min-width: 72px;
 }
-.br-list-row .w { color: #ED8B33; font-size: 11px; }
-/* The verdict under the time, so the four columns above it stay aligned
-   whatever it says. */
-.br-list-row .s {
-  grid-column: 2 / -1; font-size: 10.5px; color: var(--text-3);
-}
-.br-list-row .s:empty { display: none; }
-.br-list-row.ok .d { color: #5cc98d; }
-.br-list-row.kept .d { color: var(--text-3); }
-.br-list-row.ask .n { color: #ED8B33; }

@@ -219,7 +219,7 @@ def read_window(session, channels, t0, t1, args, report=None):
     lands on, and reading the file twice for that would double the slowest
     part of the run.
     """
-    wide, band, anchor, fs_out = [], [], None, None
+    wide, wide_n, band, anchor, fs_out = [], [], [], None, None
     raw_rms, line_rms = [], []
     for ch in channels:
         raw, got_t0, ch_fs = csc._read_channel_window(session, ch, t0, t1)
@@ -249,12 +249,18 @@ def read_window(session, channels, t0, t1, args, report=None):
         # Toothy's "no notch" is a statement about its FEATURES, and it is
         # honoured below; it is not a reason to time events badly.
         band.append(incisor._filtered(clean, fs_out, args.band))
-        wide.append(clean if args.line else dec)
+        # BOTH kept, always. The notch is a one-line switch but re-reading a
+        # recording to flip it is minutes, and the micro GUI has to be able
+        # to toggle it while somebody watches. Two copies of a window is a
+        # few megabytes; a second pass over the .ncs is not.
+        wide.append(dec)
+        wide_n.append(clean)
     keep = min(min(w.size for w in wide), min(b.size for b in band))
     if report is not None:
         report["wideband_uv"] = float(np.median(raw_rms))
         report["mains_uv"] = float(np.median(line_rms))
     return (np.vstack([w[:keep] for w in wide]),
+            np.vstack([w[:keep] for w in wide_n]),
             np.vstack([b[:keep] for b in band]), anchor, fs_out)
 
 
@@ -286,13 +292,18 @@ def pick_peak(trace, t_ms, mode="nearest", frac=0.25):
 def refine_and_read(session, channels, stamps, args, bad):
     """Stage 2 and stage 3's raw material, in one pass over the recording.
 
-    Returns (rows, csd_lfp, surrounds, fs) where `csd_lfp` is [nCh x nEvents]
-    -- the broadband sample at each REFINED time, which is exactly the matrix
-    Toothy builds as `lfp_interp[channels][:, idx]`.
+    Returns (rows, data, fs). `data` holds, for the plain and the notched
+    trace alike, `col` -- [nCh x nEvents], the broadband sample at each
+    REFINED time, exactly the matrix Toothy builds as
+    `lfp_interp[channels][:, idx]` -- and `sur`, the window around it.
+
+    Both variants come back from one pass so that the mains can be switched
+    on and off afterwards without touching the disk again.
     """
     half = args.window_ms / 1000.0
     sur = args.surround_ms / 1000.0
-    rows, cols, surrounds, report = [], [], [], {}
+    rows, report = [], {}
+    cols, surrounds = {"raw": [], "notch": []}, {"raw": [], "notch": []}
     fs_out = None
     step = max(1, len(stamps) // 10)
 
@@ -306,9 +317,10 @@ def refine_and_read(session, channels, stamps, args, bad):
             print("  #%d at %.3f s: nothing readable there (a gap?)"
                   % (k + 1, t))
             continue
-        wide, band, anchor, fs = got
+        wide, wide_n, band, anchor, fs = got
         fs_out = fs
         wide = braces.repair(wide, channels, bad)
+        wide_n = braces.repair(wide_n, channels, bad)
         band = braces.repair(band, channels, bad)
 
         # --- the refinement, on the band-limited CSD ---------------------
@@ -333,8 +345,9 @@ def refine_and_read(session, channels, stamps, args, bad):
         if i_ref - n_sur < 0 or i_ref + n_sur + 1 > wide.shape[1]:
             print("  #%d: refined stamp too close to the window edge" % (k + 1))
             continue
-        cols.append(wide[:, i_ref].copy())
-        surrounds.append(wide[:, i_ref - n_sur:i_ref + n_sur + 1].copy())
+        for key, w in (("raw", wide), ("notch", wide_n)):
+            cols[key].append(w[:, i_ref].copy())
+            surrounds[key].append(w[:, i_ref - n_sur:i_ref + n_sur + 1].copy())
         rows.append({
             "n": k + 1, "stamp_s": t, "refined_s": t_ref, "offset_ms": off_ms,
             "idx": int(round(t_ref * args.lfp_fs)),
@@ -351,7 +364,11 @@ def refine_and_read(session, channels, stamps, args, bad):
              "notched out before the CSD" if args.line
              else "measured but LEFT IN, which is what Toothy does "
                   "(--line 60 removes it)"))
-    return rows, np.array(cols).T, np.array(surrounds), fs_out
+    data = {k: {"col": np.array(cols[k]).T, "sur": np.array(surrounds[k])}
+            for k in ("raw", "notch")}
+    data["mains_uv"] = report.get("mains_uv", 0.0)
+    data["wideband_uv"] = report.get("wideband_uv", 0.0)
+    return rows, data, fs_out
 
 
 # --------------------------------------------------------------------------
@@ -716,8 +733,9 @@ def main():
         args.refine = "argmax"
         print("note: --refine none is not offered; the stamps are curated to "
               "the nearest sample already, so 'nearest' is the no-op.")
-    rows, csd_lfp, surrounds, fs = refine_and_read(
-        session, read_chans, events, args, bad)
+    rows, data, fs = refine_and_read(session, read_chans, events, args, bad)
+    which = "notch" if args.line else "raw"
+    csd_lfp, surrounds = data[which]["col"], data[which]["sur"]
     nums_all = [int(c["number"]) for c in read_chans]
 
     # The second screen, on the CSD rather than the amplitude. Done here

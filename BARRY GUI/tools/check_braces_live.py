@@ -90,6 +90,38 @@ bad = [e for e in entries
 check("nothing uncurated is offered", len(bad), 0,
       "these are still lists of candidates: %s"
       % [e.get("name") for e in bad[:3]])
+# ---------------------------------------------------------------- bulk --
+# What a bulk run reads off the listing, checked here because a bulk table
+# built on a missing field draws forty-eight blank rows and says nothing.
+sets_all = cands.get("sets") or []
+have_v = [c for c in sets_all if c.get("versions")]
+check("every candidate carries its version history",
+      len(have_v), len(sets_all))
+truthy("...with a ref for each, which is what a run is given back",
+       all(v.get("ref") for c in sets_all for v in (c.get("versions") or [])))
+
+# The newest READABLE version, which is not the newest and not the largest
+# number. A run started from a version whose snapshot never arrived fails,
+# so the one flagged has to be one that can actually be read.
+flagged = [c for c in sets_all
+           if any(v.get("newest") for v in (c.get("versions") or []))]
+check("every candidate names a newest readable version",
+      len(flagged), len([c for c in sets_all
+                         if any(v.get("usable")
+                                for v in (c.get("versions") or []))]))
+truthy("...and it is one that can be read",
+       all(v.get("usable") for c in sets_all
+           for v in (c.get("versions") or []) if v.get("newest")))
+truthy("...and it is the one the listing names",
+       all(v.get("name") == c.get("newest_usable_name")
+           for c in sets_all for v in (c.get("versions") or [])
+           if v.get("newest")))
+behind = [c for c in sets_all
+          if c.get("newest_usable_name")
+          and c.get("newest_name") != c.get("newest_usable_name")]
+print("       %d of %d set(s) have a newest version that never reached "
+      "this machine" % (len(behind), len(sets_all)))
+
 n_bank_before = len(entries)
 
 print("\nA PLAN IS NOT A WRITE")
@@ -303,9 +335,22 @@ else:
                 check("...which is one past the current one",
                       rep["next_version"], rep["current_version"] + 1)
                 truthy("...and how many stamps would move", rep.get("moved"))
-                print("       v%s: %d move, %d stay, %d left alone unanswered"
-                      % (rep.get("next_version"), rep.get("moved", 0),
+                print("       v%s: %d event(s) — %d move, %d stay, "
+                      "%d left alone unanswered"
+                      % (rep.get("next_name") or rep.get("next_version"),
+                         rep.get("n_events", 0), rep.get("moved", 0),
                          rep.get("unmoved", 0), rep.get("left_alone", 0)))
+                # Only the events. A banked alignment holds the curated
+                # spikes and not the candidates somebody threw out, so the
+                # preview has to say what it is leaving behind.
+                truthy("...and what it leaves out for not being an event",
+                       "dropped" in rep)
+                if rep.get("n_dropped"):
+                    print("       dropping %d: %s"
+                          % (rep["n_dropped"], rep.get("dropped")))
+                check("nothing rejected is written",
+                      rep.get("n_events", 0) + rep.get("n_dropped", 0),
+                      cand.get("n"))
                 check("the preview wrote nothing",
                       max([v.get("v") or 0 for v in
                            ((call("/api/bank/" + cand["id"]).get("entry")

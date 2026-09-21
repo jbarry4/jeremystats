@@ -918,6 +918,101 @@ class EventBank:
         return "vk-" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
 
     @staticmethod
+    def from_name(rec, src_v=None):
+        """The NAME of the version a write would read from."""
+        vers = list(rec.get("versions") or [])
+        named = versionsmod.label_rows(vers)
+        if not named:
+            return None
+        par = EventBank.parent_of(rec, src_v)
+        for row, name in named:
+            if row is par:
+                return name
+        return versionsmod.newest([n for _r, n in named])
+
+    @staticmethod
+    def is_branch(rec, src_v=None):
+        """Whether a write would BRANCH rather than continue the line.
+
+        It branches when something is already built on what it is reading:
+        reading v3 while v4 exists writes v3.1 and leaves v4 alone, while
+        reading the newest writes the next whole number. The two are
+        different enough that saying the wrong one is worse than saying
+        nothing, and the panel has no way to tell them apart from a number.
+        """
+        nxt = EventBank.next_name(rec, src_v)
+        frm = EventBank.from_name(rec, src_v)
+        if not nxt or not frm:
+            return False
+        return len(versionsmod.key(nxt)) > len(versionsmod.key(frm))
+
+    @staticmethod
+    def next_name(rec, src_v=None):
+        """What a version written now would be CALLED, given what it reads.
+
+        Not "the one after the tip". Picking up an older version branches
+        off it -- that is the whole rule this module's names exist to
+        express -- so reading v4 while v5 and v6 exist writes v4.1, not v7.
+        Naming it off the tip is how the panel came to promise one number
+        and the history then showed another.
+        """
+        vers = list(rec.get("versions") or [])
+        named = versionsmod.label_rows(vers)
+        names = [n for _r, n in named]
+        if not names:
+            return "1"
+        par = EventBank.parent_of(rec, src_v)
+        from_name = None
+        if par is not None:
+            for row, name in named:
+                if row is par:
+                    from_name = name
+                    break
+        if from_name is None:
+            from_name = versionsmod.newest(names)
+        return versionsmod.next_after(from_name, names)
+
+    @staticmethod
+    def parent_of(rec, want):
+        """The version a new one should say it came from.
+
+        `want` is whatever the caller asked to read: an id, a content key,
+        or a number. Resolved to the actual row here so the new version can
+        record its parent's ID rather than the string it happened to be
+        addressed by -- which is the difference between a history that
+        labels correctly and one where every aligned version looks like the
+        start of a new line.
+
+        `None` means "whatever is newest", which is what a run that was not
+        told otherwise reads.
+        """
+        vers = list(rec.get("versions") or [])
+        if not vers:
+            return None
+        if want is None:
+            # The newest BY LINEAGE, resolved to the row itself.
+            #
+            # Not by number: `based_on_default` answers with a number, and
+            # on a history where two versions share one, the first row
+            # carrying it is not necessarily the newest -- which made a
+            # write that read the newest claim it had branched off
+            # something in the middle.
+            named = versionsmod.label_rows(vers)
+            tip = versionsmod.newest([n for _r, n in named])
+            for row, name in named:
+                if name == tip:
+                    return row
+            return None
+        try:
+            return EventBank.version_at(rec, want)
+        except Exception:                                # noqa: BLE001
+            # An unresolvable ref is not a reason to refuse the write --
+            # the events were read from somewhere and the caller has
+            # already been told if that failed. It is a reason to record no
+            # parentage rather than a wrong one.
+            return None
+
+    @staticmethod
     def version_at(rec, want):
         """One version, by its id, by its content key, or by its number.
 
@@ -1169,7 +1264,16 @@ class EventBank:
             # confirmation that says "this becomes v5" can be naming a
             # version that already exists -- see `versions.tip_next`.
             "current_name": versionsmod.tip_next(rec.get("versions") or [])[0],
-            "next_name": versionsmod.tip_next(rec.get("versions") or [])[1],
+            # What THIS write would be called, which depends on what it is
+            # reading: picking up an older version branches off it.
+            "next_name": EventBank.next_name(rec, src_v),
+            # And WHAT IT IS READING, by name, plus whether that makes this
+            # a branch. Both, because a confirmation that says "becomes v4,
+            # branching off v3" is describing two different writes: v4
+            # continues v3, and branching off v3 would be v3.1. The panel
+            # cannot work out which from a version number.
+            "from_name": EventBank.from_name(rec, src_v),
+            "branching": EventBank.is_branch(rec, src_v),
             "next_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])]
                 or [0]) + 1,
@@ -1219,6 +1323,9 @@ class EventBank:
         prov = self.store.provenance() if self.store else {}
         who = (by or prov.get("user") or "unknown").strip()
         versions = list(rec.get("versions") or [])
+        # The version this one is built on, as a row rather than as
+        # the string it was addressed by -- see `parent_of`.
+        _par = EventBank.parent_of(rec, src_v)
         counts = {}
         for ev in moved:
             key = ev.get("label") or "unspecified"
@@ -1236,8 +1343,15 @@ class EventBank:
             # version, not a continuation of whatever happened to be newest.
             # Without this, re-timing v1 while v2 and v3 existed produced a
             # v4 whose history claimed it came after them.
-            "from_v": (src_v if src_v is not None
+            #
+            # BY ID as well as by number. What the caller sends is a ref,
+            # and a ref written into `from_v` matches no version number at
+            # all -- so the labeller called the result a root and named it
+            # as though it began a new line.
+            "from_v": ((_par.get("v") if _par else None)
+                       if src_v is not None
                        else versionsmod.based_on_default(versions)),
+            "from_id": (_par or {}).get("id"),
             "at": _now(),
             "by": who,
             "note": note or (
@@ -1303,7 +1417,7 @@ class EventBank:
     # ------------------------------------------------------------------
     @shards.atomic
     def align(self, entry_id, moves, params, note=None, by=None,
-              dry_run=True, from_version=None, flags=None):
+              dry_run=True, from_version=None, flags=None, keep_ids=None):
         """Mint a version of `entry_id` with every stamp on its own peak.
 
         `moves` is `{index_into_the_source_events: new_start}`. Indices
@@ -1341,8 +1455,29 @@ class EventBank:
             events, dropped = self.events_at(rec, from_version)
 
         flags = flags or {}
-        out, shifts = [], []
+        out, shifts, dropped_lbl = [], [], {}
+        # ONLY THE EVENTS.
+        #
+        # A curated set is a detector's candidate list plus a verdict on
+        # each one, and Braces only ever moves the ones somebody kept --
+        # moving a rejected stamp would assert a position for something
+        # that is not an event. So the rejected ones were being carried
+        # into the aligned version unchanged, which makes the version an
+        # analysis reads a mixture of events and things that were thrown
+        # out.
+        #
+        # Nothing is lost: a version is a new row in a history, and every
+        # earlier one still holds the whole candidate list with its
+        # verdicts. That is where "what did the detector find, and what did
+        # we reject" is answered. What THIS version is for is the spikes.
+        want = set(keep_ids) if keep_ids else None
         for i, ev in enumerate(events):
+            if want is not None:
+                lab = ev.get("label_id") or ev.get("label")
+                if lab not in want:
+                    k = lab or "undecided"
+                    dropped_lbl[k] = dropped_lbl.get(k, 0) + 1
+                    continue
             item = dict(ev)
             # `from_t` never accumulates: a stamp aligned twice records the
             # place it started this round from, not two rounds ago. The
@@ -1395,7 +1530,12 @@ class EventBank:
             "session_label": rec.get("session_label"),
             "was": len(events),
             "moved": len(shifts),
-            "unmoved": len(events) - len(shifts),
+            # Of what is being WRITTEN, not of what was read. The rejected
+            # candidates are not being written, so counting them as
+            # "staying where they are" would promise sixteen stamps in a
+            # version that will not contain them.
+            "unmoved": len(out) - len(shifts),
+            "n_events": len(out),
             "order_held": order_held,
             "collisions": collided[:10],
             "shift_min_ms": min(shifts) if shifts else 0.0,
@@ -1416,13 +1556,27 @@ class EventBank:
             # confirmation that says "this becomes v5" can be naming a
             # version that already exists -- see `versions.tip_next`.
             "current_name": versionsmod.tip_next(rec.get("versions") or [])[0],
-            "next_name": versionsmod.tip_next(rec.get("versions") or [])[1],
+            # What THIS write would be called, which depends on what it is
+            # reading: picking up an older version branches off it.
+            "next_name": EventBank.next_name(rec, src_v),
+            # And WHAT IT IS READING, by name, plus whether that makes this
+            # a branch. Both, because a confirmation that says "becomes v4,
+            # branching off v3" is describing two different writes: v4
+            # continues v3, and branching off v3 would be v3.1. The panel
+            # cannot work out which from a version number.
+            "from_name": EventBank.from_name(rec, src_v),
+            "branching": EventBank.is_branch(rec, src_v),
             "next_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])]
                 or [0]) + 1,
             "n_versions": len(rec.get("versions") or []),
             "from_version": src_v,
             "drops_fields": dropped,
+            # What was left out for not being an event, by label. Said
+            # before the write, because "where did my 16 garbage stamps
+            # go" has to have an answer on the screen that asked.
+            "dropped": dict(dropped_lbl),
+            "n_dropped": sum(dropped_lbl.values()),
         }
         if dropped:
             report["warning"] = (
@@ -1467,6 +1621,9 @@ class EventBank:
         prov = self.store.provenance() if self.store else {}
         who = (by or prov.get("user") or "unknown").strip()
         versions = list(rec.get("versions") or [])
+        # The version this one is built on, as a row rather than as
+        # the string it was addressed by -- see `parent_of`.
+        _par = EventBank.parent_of(rec, src_v)
         counts = {}
         for ev in out:
             key = ev.get("label") or "unspecified"
@@ -1480,10 +1637,15 @@ class EventBank:
         fresh = {
             "id": twin,
             "v": max([v.get("v") or 0 for v in versions] or [0]) + 1,
-            # An alignment applied to a chosen version is a branch off that
-            # version, not a continuation of whatever happened to be newest.
-            "from_v": (src_v if src_v is not None
+            # An alignment applied to a chosen version is a branch off
+            # that version, not a continuation of whatever happened to be
+            # newest -- and recorded by ID, because what the panel sends is
+            # a ref and a ref matches no version NUMBER, which made every
+            # aligned version look like the start of a fresh line.
+            "from_v": ((_par.get("v") if _par else None)
+                       if src_v is not None
                        else versionsmod.based_on_default(versions)),
+            "from_id": (_par or {}).get("id"),
             "at": _now(),
             "by": who,
             "n": len(out),

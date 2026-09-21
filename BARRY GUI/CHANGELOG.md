@@ -15,6 +15,120 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.4 - The read says what it is counting, and the list is the one you already know
+
+### Fixed
+
+- **The progress bar counted something, and did not say what.** "Reading
+  window 43 of 62", under a sentence reading "Every ticked channel is read
+  once — it is the whole recording, so it takes about as long as an Incisor
+  scan."
+
+  Both halves were wrong. The sentence was from the design before the
+  windowed pass: Braces has not read a whole recording in weeks, it reads the
+  stretches the stamps can reach, which is minutes of an hour. And 62 counts
+  STRETCHES, not spikes — stamps closer together than a second are read as
+  one, which is the whole reason this is fast — so somebody watching a set
+  they know holds 1213 sees 62 and reasonably concludes the tool has lost
+  most of them.
+
+  The unit is named now, each stage says what it is doing rather than sharing
+  one stale sentence, and the count it is NOT is written beside it: the
+  number of stamps in the set. The depth pass says out loud that it works
+  from a sample, because where the sink is is a fact about the probe rather
+  than about any one spike. The bulk rows use the same words as the bar
+  instead of the code's own stage names.
+
+### Changed
+
+- **The list of stamps is Checkup's list.** Same dialog, same bar, same
+  chips, same rows — the classes are shared rather than copied, so the two
+  look identical because they are the same markup, and a person who has been
+  through a curation set already knows how to read this one. It replaces a
+  panel of Braces' own with its own layout, which was one more thing to learn
+  for no reason.
+
+  What differs is only what a row can be sorted and filtered by, because an
+  alignment's categories are not a curation's: not which label, but whether
+  it moves, whether it was flagged, and whether anybody has answered. Sort by
+  time or by how far a stamp moves — furthest first, which is the order a
+  second look wants to happen in — and the same gap markers where the stamps
+  thin out.
+
+## 2026.09.21.3 - A version says which version it came from, and a restore puts every decision back
+
+### Fixed
+
+- **"I read v4, saved, and it says v7."** A version recorded where it came
+  from in `from_v`, and what the panels send is a **ref** — a per-version id,
+  because the number is not unique and a ref is the only thing that names one
+  version and only one. The labeller then looked that ref up among the
+  version *numbers*, found nothing, and treated the new version as a **root**.
+  A root gets the next trunk number, so a version branched off v4 was named
+  as though it had begun a fresh line. That is the jump.
+
+  Versions now record `from_id` — the parent's id, exact — alongside the
+  number, and the labeller prefers it. A history gains precision as new
+  versions are written into it, with nothing rewritten. On an entry whose
+  history runs v0 to v6:
+
+      reading the newest  ->  writes v7
+      reading v4          ->  writes v4.1, leaving v5 and v6 alone
+      reading v6          ->  writes v7
+
+  **And the name the panel promises is the name you get.** It was predicting
+  the successor of the newest version whatever you had picked up, so reading
+  an older one promised a number that branching would never produce. It now
+  branches from what is actually being read.
+
+  Two smaller things fell out of the same work. The default parent — what a
+  run reads when nobody said otherwise — resolved by number, so on a history
+  where two versions share one it could name a version in the middle as the
+  thing it had continued from; it resolves by lineage now. And children were
+  counted per parent *number* rather than per parent, so one parent's
+  branches were counted against another's and a line branched where it should
+  have continued.
+
+- **A restored version put back fewer decisions than it held.** This is the
+  "64 good spikes, and then the set says 63".
+
+  Putting a banked version back onto the bench matches its stamps to the
+  bench's candidates by time, rounded to a tenth of a millisecond, through a
+  **dict** — which holds one value per key. Where two candidates share a
+  rounded time the second replaced the first, one of them could never be
+  matched, and its banked decision was dropped without a word. The comment
+  beside it said a tenth of a millisecond is "tight enough that two real
+  candidates are never confused". The data disagrees: one curation set on
+  this machine holds **324 events across 167 distinct instants**, so a dict
+  keyed on time could match at most 167 of them and 157 decisions had nowhere
+  to land.
+
+  Matched to a list per instant now, consumed in order, so N candidates at
+  one instant take the N decisions banked at that instant. How many landed on
+  a shared instant is reported rather than absorbed — a set with these in it
+  is worth deduping, and the bank already has a `dedupe` for exactly that.
+
+### Changed
+
+- **A banked alignment holds the spikes and nothing else.** A curated set is
+  a detector's candidate list plus a verdict on each one, and Braces only
+  ever moves the ones somebody kept — moving a rejected stamp would assert a
+  position for something that is not an event. So the rejected ones were
+  being carried into the aligned version unchanged, which makes the version
+  an analysis reads a mixture of events and things that were thrown out.
+
+  They are left out now, counted by label, and named in the preview before
+  anything is written. Nothing is lost: a version is a new row in a history
+  and every earlier one still holds the whole candidate list with its
+  verdicts, which is where "what did the detector find, and what did we
+  reject" is answered.
+
+  The preview's own arithmetic was wrong with them gone, and said so out
+  loud: "28 move, 16 stay" counted the sixteen rejected stamps as staying
+  where they are, in a version that will not contain them. It counts what it
+  will write, and the end-to-end check now asserts that what is written plus
+  what is dropped is what the set started with.
+
 ## 2026.09.21.2 - Jarvis opens in a second, and stops putting you where you did not ask to be
 
 ### Changed
@@ -168,6 +282,51 @@ This file is the only place the version is written. The app reads it.
   the way the panes do. At forty pixels there is no room for a dash pattern,
   so the halves separate by height instead: where it goes on the top half,
   where it was on the bottom, and the one being decided full height.
+
+- **Braces can align many sets in one go.** A switch at the top of the
+  panel: one set at a time, or many at once. The many-at-once table lists
+  every curated set with its recording, its stamp count and which version it
+  would read from, and one button ticks every set whose recording can be
+  read from this machine, each at its newest version. Any version can be
+  changed before it starts.
+
+  It runs them one after another and leaves a proposal for each. **Nothing
+  is banked** — every set still has to be reviewed, which is the whole
+  point of the flags; bulk is for the part a computer should do unattended.
+  Sequential deliberately: each read is most of a minute of disk on a
+  network share, and four at once on one spindle is slower than four in a
+  row as well as being four times the memory. The queue says which one it is
+  on, can be stopped between entries, and a failure is named on its row and
+  kept rather than swallowed.
+
+  **"Newest" means the newest version that can actually be read here**, and
+  that is three different things from what it looks like. Not the largest
+  stored number, which is not unique — a history running 0,1,2,3,4,3,4 has
+  a largest of 4 and a newest of 6, and picking the largest is the "slightly
+  earlier version for some reason" that started this. Not the last row in
+  the list, because creation order is lineage order only until something
+  branches. And not simply the newest, because a version can arrive as a row
+  without its snapshot — a name, a count and no times — which is **14 of
+  the 49 sets in this bank**, where the newest is v3 and the newest readable
+  is v2. Those rows say so on the table rather than quietly running one
+  version back.
+
+- **The toolkit's session scope is typed, not scrolled.** The last
+  `<select>` of recordings in the toolkit. It is the same control every
+  other recording pick uses now — type a mouse, a session, a project or a
+  date — and each row carries the dot that says whether the recording is on
+  a drive this machine can reach, lit or dark. A dropdown of every session
+  anybody has ever marked a channel on is a list you read three times to
+  find the one you meant, and it could not say which of them you could
+  actually open.
+
+  The scope list and the registry are two different lists: one is "sessions
+  something has been recorded about", the other is "sessions this machine
+  has opened". They are joined on the session key, so a scope row the
+  registry knows gains its date, its project and its reachability — and one
+  it does not still appears, with a dark dot, because it is a real session
+  with real marks against it and hiding it would hide the answer to the
+  question being asked.
 
 - **Braces asks which recording first, then which banked entry.** The same
   two questions the curation wizard asks, in the same order, with the same

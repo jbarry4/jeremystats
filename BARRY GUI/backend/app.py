@@ -3617,6 +3617,11 @@ def api_braces_run():
         # tomorrow, and somebody opening this proposal then still has to be
         # able to ask which channels it was measured from.
         out["left_out"] = left_out
+        # Which contacts were interpolated rather than believed, on the
+        # summary as well as in the params: the panel says so in the line
+        # that explains what the measurement was made on, and a set read
+        # back tomorrow has to be able to say it too.
+        out["screened"] = peaks.get("screened") or {}
         out["depth"] = peaks.get("depth")
         out["n_windows"] = peaks.get("n_windows")
         out["read_s"] = peaks.get("read_s")
@@ -3750,11 +3755,26 @@ def api_braces_commit(set_id):
     moves, flags, counts = brsetmod.resolve(rec)
     dry = body.get("apply") is not True
     try:
+        # The labels that name a real event, worked out the same way the
+        # run worked them out: from the curation vocabulary for this
+        # entry's kind, by id AND by display name, plus whatever this
+        # entry itself calls them. Everything else is a candidate somebody
+        # REJECTED, and an aligned version has no business carrying it.
+        entry = BANK.get(rec.get("entry_id")) or {}
+        goods = [lab for lab
+                 in (curation.KINDS.get(entry.get("type") or "ds")
+                     or curation.KINDS["ds"])["labels"]
+                 if lab.get("good")]
+        keep_ids = ({lab["id"] for lab in goods}
+                    | {lab["name"] for lab in goods})
+        for lid, name in (entry.get("label_names") or {}).items():
+            if lid in keep_ids:
+                keep_ids.add(name)
         report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
-                            flags=flags)
+                            flags=flags, keep_ids=keep_ids)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -3836,6 +3856,151 @@ def api_braces_delete(set_id):
         return fail("braces/delete", exc, 400, {"set_id": set_id})
 
 
+def _tip_usable(vers):
+    """The newest version whose stamps can be read back on this machine.
+
+    `versions.tip_next` names the newest there is, which is the right
+    answer to "what is this entry on" and the wrong one to "what can a run
+    start from": a version that arrived as a row without its snapshot has
+    a name and a count and no times. Newest by LINEAGE rather than last in
+    the list, because creation order and lineage order are the same thing
+    only until something branches.
+    """
+    named = versionsmod.label_rows(vers or [])
+    ok = [name for ver, name in named if ver.get("snap")]
+    return versionsmod.newest(ok) if ok else None
+
+
+@app.route("/api/bank/sync")
+def api_bank_sync():
+    """Which entries and versions have reached the database, and which have
+    not.
+
+    `?verify=1` asks the database; without it the answer comes from the
+    local push cursor, which is instant and works with the network down.
+    `?id=` narrows it to one entry.
+    """
+    want_id = request.args.get("id")
+    verify = request.args.get("verify") in ("1", "true", "yes")
+    state = {}
+    try:
+        state = CLOUD.cloud.state() or {}
+    except Exception:                                    # noqa: BLE001
+        state = {}
+    last_push = state.get("last_push")
+
+    entries = [e for e in BANK.all()
+               if not want_id or e.get("id") == want_id]
+
+    # What the database holds, asked once for all of them rather than once
+    # each: forty-eight round trips to answer one panel is a panel nobody
+    # opens twice.
+    up_entry, up_snap, err = {}, {}, None
+    if verify:
+        try:
+            # `query=` is the whole query string, and `select_all` does
+            # not add one of its own -- so the column list goes here, and
+            # the snapshot table's column is `v`, the same name the push
+            # writes. Asked for by name rather than `*`: the entries table
+            # carries every event of every set, which is megabytes nobody
+            # needs to answer "is it up there".
+            for row in CLOUD.cloud.select_all(
+                    "bank_entries", query="select=id,n,versions,updated_at"):
+                up_entry[row.get("id")] = row
+            for row in CLOUD.cloud.select_all(
+                    "bank_snapshots", query="select=entry_id,v"):
+                up_snap.setdefault(str(row.get("entry_id")), set()).add(
+                    str(row.get("v")))
+        except Exception as exc:                         # noqa: BLE001
+            err = str(exc)
+
+    out = []
+    for rec in entries:
+        vers = list(rec.get("versions") or [])
+        named = versionsmod.label_rows(vers)
+        touched = cloudsync._bank_touched(rec)
+        # "Waiting" means changed since the last push finished. A machine
+        # that has never pushed has everything waiting, which is true.
+        waiting = True
+        if last_push and touched:
+            waiting = cloudsync._after(touched, last_push)
+        elif last_push and not touched:
+            waiting = False
+
+        # Demo recordings never go up, by design -- so reporting one as
+        # "not in the database" is crying wolf about the one thing here
+        # that is working exactly as intended.
+        demo = CLOUD._is_demo(rec)
+        row = {
+            "id": rec.get("id"), "name": rec.get("name"),
+            "gid": rec.get("gid"), "local_only": bool(demo),
+            "session_label": rec.get("session_label"),
+            "n": rec.get("n"),
+            "touched": touched,
+            "waiting": bool(waiting),
+            "n_versions": len(vers),
+            "newest": (named[-1][1] if named else None),
+            "versions": [],
+        }
+        cloud_row = up_entry.get(rec.get("id")) if verify else None
+        there = up_snap.get(str(rec.get("id"))) or set()
+        their_v = set()
+        if cloud_row:
+            for v in (cloud_row.get("versions") or []):
+                if isinstance(v, dict) and v.get("v") is not None:
+                    their_v.add(str(v.get("v")))
+        for ver, name in named:
+            vn = str(ver.get("v"))
+            row["versions"].append({
+                "v": ver.get("v"), "name": name,
+                "id": ver.get("id"),
+                "at": ver.get("at"), "by": ver.get("by"),
+                "n": ver.get("n"),
+                # A version with no snapshot HERE cannot have sent one, and
+                # is the reason somebody else may not be able to read it
+                # back. Said plainly rather than left to be inferred from a
+                # missing row at the other end.
+                "snap_here": bool(ver.get("snap")),
+                "in_cloud": (vn in their_v) if verify and cloud_row else None,
+                "snap_in_cloud": (vn in there) if verify else None,
+            })
+        if verify:
+            row["in_cloud"] = bool(cloud_row)
+            row["cloud_n"] = (cloud_row or {}).get("n")
+            row["cloud_updated"] = (cloud_row or {}).get("updated_at")
+            row["cloud_versions"] = len(their_v)
+            # The three ways of being out of step, named so the panel does
+            # not have to work them out from four numbers.
+            missing = [v["name"] for v in row["versions"]
+                       if v["in_cloud"] is False]
+            no_snap = [v["name"] for v in row["versions"]
+                       if v["snap_here"] and v["snap_in_cloud"] is False]
+            row["missing_versions"] = missing
+            row["missing_snapshots"] = no_snap
+            row["state"] = ("local only" if demo
+                            else "absent" if not cloud_row
+                            else "versions" if missing
+                            else "snapshots" if no_snap
+                            else "behind" if row["waiting"]
+                            else "synced")
+        else:
+            row["state"] = ("local only" if demo
+                            else "waiting" if row["waiting"] else "sent")
+        out.append(row)
+
+    out.sort(key=lambda r: (r.get("touched") or ""), reverse=True)
+    return jsonify({
+        "ok": True,
+        # A property, not a call.
+        "configured": bool(CLOUD.cloud.configured),
+        "verified": bool(verify and not err),
+        "error": err,
+        "last_push": last_push,
+        "n": len(out),
+        "entries": out,
+    })
+
+
 @app.route("/api/braces/candidates")
 def api_braces_candidates():
     """Dentate spike sets that could be aligned, newest first.
@@ -3864,6 +4029,38 @@ def api_braces_candidates():
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
+            # The whole history, named and in lineage order, so a bulk
+            # table can show which version each entry would be read from
+            # and let any of them be changed before anything runs. `ref` is
+            # what a run must be given back: the per-version id where there
+            # is one, because it is the only thing that names one version
+            # and only one, and the number where there is not.
+            "versions": [
+                {"v": ver.get("v") or 0,
+                 "name": name,
+                 "ref": BANK.version_key(ver),
+                 "n": ver.get("n"),
+                 "at": ver.get("at"),
+                 "by": ver.get("by"),
+                 "note": ver.get("note"),
+                 "aligned": bool(ver.get("aligned")),
+                 # A version with no snapshot on this machine cannot
+                 # supply stamps, so it cannot be a starting point.
+                 "usable": bool(ver.get("snap")),
+                 # The newest one that can actually be read HERE.
+                 #
+                 # Not the same as the newest, and the difference is not
+                 # rare: measured on this bank, 14 of 49 sets have a tip
+                 # whose snapshot never reached this machine, so the
+                 # newest READABLE version is one or more behind. A bulk
+                 # run defaulting to a version it cannot open is a queue
+                 # of failures, and one silently defaulting to an older
+                 # version without saying so is worse.
+                 "newest": name == _tip_usable(vers)}
+                for ver, name in versionsmod.label_rows(vers)
+            ],
+            "newest_name": versionsmod.tip_next(vers)[0],
+            "newest_usable_name": _tip_usable(vers),
             "aligned": rec.get("aligned"),
             "added": rec.get("added"),
         })
@@ -6965,20 +7162,40 @@ def api_curation_restore(gid, kind):
     for lab in rec.get("labels") or []:
         to_id[lab["name"]] = lab["id"]
         to_id[lab["id"]] = lab["id"]
+    # A LIST per instant, not one candidate.
+    #
+    # Two candidates can share a rounded time -- one set on this machine
+    # holds 41 such pairs -- and a dict keyed on the time holds one of
+    # them, so the other could never be matched and its banked decision was
+    # dropped without a word. That is where a version holding 64 decisions
+    # put 63 of them back. Consumed in order, so N stamps at one instant
+    # take the N decisions banked at that instant.
     by_t = {}
     for e in rec.get("events") or []:
         try:
-            by_t[round(float(e["start"]), 4)] = e
+            by_t.setdefault(round(float(e["start"]), 4), []).append(e)
         except (TypeError, ValueError, KeyError):
             continue
+    used = {}
 
-    pairs, missing, unchanged = {}, 0, 0
+    pairs, missing, unchanged, shared = {}, 0, 0, 0
     for pair in snap:
         try:
             when, lab = float(pair[0]), pair[1]
         except (TypeError, ValueError, IndexError):
             continue
-        hit = by_t.get(round(when, 4))
+        key = round(when, 4)
+        here = by_t.get(key) or []
+        seen = used.get(key, 0)
+        if seen >= len(here):
+            # More decisions banked at this instant than there are
+            # candidates on the bench to put them on.
+            missing += 1
+            continue
+        hit = here[seen]
+        used[key] = seen + 1
+        if len(here) > 1:
+            shared += 1
         if hit is None:
             missing += 1
             continue
@@ -6990,7 +7207,8 @@ def api_curation_restore(gid, kind):
 
     if not pairs:
         return jsonify({"ok": True, "changed": 0, "unchanged": unchanged,
-                        "missing": missing, "version": want_v,
+                        "missing": missing, "shared": shared,
+                        "version": want_v,
                         "progress": CURATE.progress(rec)})
     try:
         # Credited to whoever banked that version, at the time they
@@ -7016,7 +7234,14 @@ def api_curation_restore(gid, kind):
                    "missing": missing},
     }])
     return jsonify({"ok": True, "changed": n, "unchanged": unchanged,
-                    "missing": missing, "version": want_v, "progress": prog})
+                    "missing": missing,
+                    # How many of those decisions landed on a candidate
+                    # that shares its instant with another. Reported
+                    # because a set with these in it is worth deduping,
+                    # and because silence here is what made 64 decisions
+                    # look like 63.
+                    "shared": shared,
+                    "version": want_v, "progress": prog})
 
 
 @app.route("/api/curation/restamp", methods=["POST"])

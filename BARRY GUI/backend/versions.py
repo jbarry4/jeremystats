@@ -192,7 +192,9 @@ def describe(vid, existing):
 # already is, so you branch.
 def label_rows(rows, id_of=lambda r: r.get("v"),
                from_of=lambda r: r.get("from_v"),
-               at_of=lambda r: r.get("at") or ""):
+               at_of=lambda r: r.get("at") or "",
+               uid_of=lambda r: r.get("id"),
+               from_uid_of=lambda r: r.get("from_id")):
     """[(row, name)] in creation order, for one entry's whole history.
 
     Rows rather than a lookup keyed on the version number, because that
@@ -209,6 +211,9 @@ def label_rows(rows, id_of=lambda r: r.get("v"),
     """
     got = sorted(rows or [], key=lambda r: (_num(id_of(r)), at_of(r)))
     name, kids, used = {}, {}, set()
+    # The same map keyed on the per-version id, which is exact where the
+    # number is not.
+    by_uid = {}
 
     def take(want):
         """The name, or the next one along if something already has it.
@@ -228,10 +233,35 @@ def label_rows(rows, id_of=lambda r: r.get("v"),
 
     trunk = 0
     out = []
+
+    def child_of(par_name):
+        """The name for something built on `par_name`.
+
+        Counted per PARENT NAME rather than per parent number, which is the
+        only version of this that survives two parents sharing a number:
+        keyed on the number, one parent's children were counted against the
+        other's and the second line branched when it should have continued.
+        """
+        seen = kids.get(par_name, 0)
+        kids[par_name] = seen + 1
+        base = key(par_name)
+        if seen == 0:
+            # Nothing was built on the parent yet: continue its line.
+            return take(fmt(base[:-1] + (base[-1] + 1,)))
+        # Something already was: branch off it.
+        return take(fmt(base + (seen,)))
+
     for r in got:
         vid = id_of(r)
+        uid = uid_of(r)
+        par_uid = from_uid_of(r)
         par = from_of(r)
-        if par is None or par not in name:
+        if par_uid is not None and par_uid in by_uid:
+            # EXACT PARENTAGE. `from_id` names one version and only one, so
+            # a history that records it cannot be mislabelled however its
+            # numbers collide. Everything written from now on records it.
+            got_name = child_of(by_uid[par_uid])
+        elif par is None or par not in name:
             # A root. The detector's import is 0 and the first pass is 1, so
             # roots are numbered as they come -- and a version whose parent
             # this machine has never seen is treated as one rather than
@@ -240,19 +270,13 @@ def label_rows(rows, id_of=lambda r: r.get("v"),
             got_name = take(str(trunk))
             trunk = key(got_name)[-1] + 1
         else:
-            seen = kids.get(par, 0)
-            kids[par] = seen + 1
-            base = key(name[par])
-            if seen == 0:
-                # Nothing was built on the parent yet: continue its line.
-                got_name = take(fmt(base[:-1] + (base[-1] + 1,)))
-            else:
-                # Something already was: branch off it.
-                got_name = take(fmt(base + (seen,)))
-        # The LAST row with a given number wins the lookup a later row's
-        # `from_v` resolves against -- a branch made today off "v3" means
-        # the v3 that was there when it was made.
+            # The LAST row with a given number wins the lookup a later row's
+            # `from_v` resolves against -- a branch made today off "v3"
+            # means the v3 that was there when it was made.
+            got_name = child_of(name[par])
         name[vid] = got_name
+        if uid is not None:
+            by_uid[uid] = got_name
         out.append((r, got_name))
     return out
 

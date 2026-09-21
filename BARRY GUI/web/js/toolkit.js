@@ -462,14 +462,57 @@ BARRY.views.toolkit = (function () {
 
   function sessionPicker() {
     const list = (scopes && scopes.sessions) || [];
-    return field('Session', el('select', {
-      onchange: (e) => { q.key = e.target.value; refresh(); },
-    }, list.map((s) => el('option', {
-      value: s.key,
-      selected: q.key === s.key ? 'selected' : null,
-      // The bad count in the label answers the question before it is asked.
-      text: (s.label || s.key) + (s.n_bad ? '   (' + s.n_bad + ' bad)' : ''),
-    }))));
+    if (!list.length) {
+      return el('p', { class: 'hint',
+        text: 'No session has anything recorded against it yet.' });
+    }
+
+    /* The registry, for what the scope list cannot know: the date, the
+       project, and whether the recording is on a drive this machine can
+       reach. Joined on the session key. A scope row the registry has never
+       seen still appears -- it is a real session with real marks against
+       it -- and its dot stays dark, which is the truth: nothing here can
+       open it. */
+    const reg = registryRowsInternal();
+    const byKey = new Map();
+    for (const r of reg) if (r.key) byKey.set(r.key, r);
+    const known = reg.length > 0;
+
+    const rows = list.map((s) => {
+      const r = byKey.get(s.key) || {};
+      return {
+        // pickSession identifies a row by `gid`; here the identity IS the
+        // session key, which is what the scope filter is keyed on.
+        gid: s.key,
+        key: s.key,
+        // The bad count in the label answers the question before it is
+        // asked, and it is searchable along with everything else.
+        label: (s.label || s.key)
+               + (s.n_bad ? '   (' + s.n_bad + ' bad)' : ''),
+        project: r.project, cohort: r.cohort,
+        mouse: r.mouse, session: r.session, date: r.date,
+        // Unknown to the registry is not reachable. Where there is no
+        // registry at all, nothing is claimed either way rather than
+        // every dot going dark on a cold cache.
+        reachable: known ? !!r.reachable : true,
+      };
+    });
+
+    return field('Session', BARRY.pickSession({
+      rows,
+      value: q.key,
+      placeholder: 'Which session? Type a mouse, a date, a project\u2026',
+      onpick: (r) => { q.key = r.gid; refresh(); },
+    }));
+  }
+
+  /* The registry rows as this module holds them. The exported
+     `registryRows` is the same thing; this is here so the picker above
+     does not have to reach out through `BARRY.views` to read its own
+     module's cache. */
+  function registryRowsInternal() {
+    return (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
   }
 
   function listPicker(label, values, current, onchange, fmt) {
@@ -2930,8 +2973,7 @@ BARRY.views.toolkit = (function () {
     /* The cached registry rows, flattened, for a tool that wants its own
        session picker. Through here rather than each tool fetching, so one
        sixty-second cache serves them all. */
-    registryRows: () => (((regCache.data) || {}).tree || [])
-      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    registryRows: registryRowsInternal,
     tool: () => q.tool, onShow, refresh,
     /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
        to the tool row, and turning it on has to show up in the panel it is
