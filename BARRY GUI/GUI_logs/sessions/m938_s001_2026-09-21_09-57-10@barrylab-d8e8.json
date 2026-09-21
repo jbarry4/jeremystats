@@ -1,7 +1,7 @@
 {
   "_at": {
-    "created": "2026-09-21T14:16:35.398931+00:00",
-    "gid": "2026-09-21T14:16:35.398931+00:00",
+    "created": "2026-09-21T13:58:47.793452+00:00",
+    "gid": "2026-09-21T13:58:47.793452+00:00",
     "group": "2026-09-21T14:16:35.398931+00:00",
     "key": "2026-09-21T14:16:35.398931+00:00",
     "label": "2026-09-21T14:16:35.398931+00:00",
@@ -13,29 +13,34 @@
     "schema": "2026-09-21T14:16:35.398931+00:00",
     "session": "2026-09-21T14:16:35.398931+00:00",
     "start": "2026-09-21T14:16:35.398931+00:00",
-    "updated": "2026-09-21T14:17:55.561281+00:00"
+    "updated": "2026-09-21T14:50:17.209440+00:00"
   },
   "_keys": {
     "paths": {
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260921_095710\\FAKEPROJ\\fake_m938\\m938s1_2026-09-21\\2026-09-21_09-57-10": [
         "set",
         "2026-09-21T14:17:55.561281+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260921_104630\\FAKEPROJ\\fake_m938\\m938s1_2026-09-21\\2026-09-21_10-46-58": [
+        "set",
+        "2026-09-21T14:50:17.209440+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-21T14:17:55.561281+00:00",
+    "at": "2026-09-21T14:50:17.209440+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "created": {
-    "app_version": "2026.09.17.9",
-    "at": "2026-09-21T10:16:35-04:00",
-    "email": "rain.younger@uvm.edu",
-    "host": "BarryLab",
-    "machine": "Strawbarry",
+    "app_version": "2026.09.21.1",
+    "at": "2026-09-21T09:58:47-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
   "gid": "sa6369b9b6452",
   "group": null,
@@ -44,7 +49,8 @@
   "loose_key": "m938_s001",
   "mouse": 938,
   "paths": [
-    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260921_095710\\FAKEPROJ\\fake_m938\\m938s1_2026-09-21\\2026-09-21_09-57-10"
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260921_095710\\FAKEPROJ\\fake_m938\\m938s1_2026-09-21\\2026-09-21_09-57-10",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_scanlive_20260921_104630\\FAKEPROJ\\fake_m938\\m938s1_2026-09-21\\2026-09-21_10-46-58"
   ],
   "project": "Unfiled",
   "project_source": "guessed",
@@ -53,8 +59,8 @@
   "session": 1,
   "start": "2026-09-21T13:57:10+00:00",
   "updated": {
-    "app_version": "2026.09.17.9",
-    "at": "2026-09-21T10:17:55-04:00",
+    "app_version": "2026.09.21.2",
+    "at": "2026-09-21T10:50:17-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
