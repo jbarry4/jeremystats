@@ -1911,32 +1911,59 @@ BARRY.braces = (function () {
 
   function exitView() {
     if (!view) return;
-    if (aidWin && !aidWin.closed) {
-      try { aidWin.close(); } catch (e) { /* it may already be gone */ }
-    }
-    aidWin = null;
-    if (BARRY.views.xplore.grabTime) BARRY.views.xplore.grabTime(null);
-    if (view.sess) {
-      delete view.sess.curation;
-      delete view.sess.curationMarks;
-      // Tell the other window the mode is over, or it keeps drawing marks
-      // for a proposal nobody is looking at any more.
-      if (BARRY.views.xplore.publishCuration) {
-        BARRY.views.xplore.publishCuration(view.sess, null);
+    /* THE WAY OUT ALWAYS HAPPENS.
+
+       Everything in the `try` is tidying: shut the aid window, hand back
+       the pointer, drop the marks, take the bar off the screen. Everything
+       in the `finally` is the way back to the proposal -- the key handler,
+       the mode, the view -- and it runs whether or not the tidying did.
+
+       This is not defensive programming for its own sake. `view` was set
+       to null and then read four lines later, which threw, and the three
+       lines after the throw were exactly the ones that bring the panel
+       back: somebody pressing "Back to the proposal" stayed in the trace
+       view with no way to reach the button that banks it. A half-tidied
+       view is untidy; a panel nobody can get back to is somebody's
+       afternoon. */
+    try {
+      if (aidWin && !aidWin.closed) {
+        try { aidWin.close(); } catch (e) { /* it may already be gone */ }
       }
+      aidWin = null;
+      if (BARRY.views.xplore.grabTime) BARRY.views.xplore.grabTime(null);
+      // The list is a modal, and it outlives the mode otherwise -- a
+      // dialog of somebody else's stamps over the next view. Closed while
+      // `view` still exists, which is the whole of the bug above.
+      if (view.list) { view.list = false; closeModal(); }
+      if (view.sess) {
+        delete view.sess.curation;
+        delete view.sess.curationMarks;
+        // Tell the other window the mode is over, or it keeps drawing
+        // marks for a proposal nobody is looking at any more.
+        if (BARRY.views.xplore.publishCuration) {
+          BARRY.views.xplore.publishCuration(view.sess, null);
+        }
+      }
+      if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+      const app = document.getElementById('app');
+      if (app) app.classList.remove('mode-settling');
+      const bar = document.getElementById('brViewBar');
+      if (bar) bar.remove();
+    } catch (e) {
+      // Said, not swallowed: this should not happen, and if it does the
+      // next person to see it should have something to go on.
+      try {
+        BARRY.activity.log('braces.exit', {
+          step: 'tidying failed',
+          why: String((e && e.message) || e),
+        });
+      } catch (e2) { /* the log is not worth a second failure */ }
+    } finally {
+      view = null;
+      document.removeEventListener('keydown', vKeys, true);
+      setMode(null);
+      setView('toolkit');
     }
-    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
-    view = null;
-    const app = document.getElementById('app');
-    if (app) app.classList.remove('mode-settling');
-    const bar = document.getElementById('brViewBar');
-    if (bar) bar.remove();
-    // And the list, which is a modal and outlives the mode otherwise --
-    // a dialog of somebody else's stamps over the next view.
-    if (view.list) { view.list = false; closeModal(); }
-    document.removeEventListener('keydown', vKeys, true);
-    setMode(null);
-    setView('toolkit');
   }
 
   /* Every stamp, twice.

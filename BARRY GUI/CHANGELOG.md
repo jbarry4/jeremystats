@@ -15,6 +15,41 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.9 - Leaving the trace view cannot strand you in it
+
+### Fixed
+
+- **"Back to the proposal" did nothing, and the proposal could not be
+  banked.** `exitView` set `view` to null and then read `view.list` four
+  lines later. That throws, and everything after the throw never ran —
+  including the line that brings the panel back. So the button appeared to
+  do nothing, the trace view kept the keyboard, and the proposal, with the
+  button that banks it, was unreachable. From a colleague's log:
+
+      client.error  detail=exitView@...  message=TypeError: can't access
+      braces.enter  set=br52367e4cc2 step=opening   (15:42)
+      braces.enter  set=br52367e4cc2 step=opening   (15:45)
+      braces.enter  set=br52367e4cc2 step=opening   (15:46)
+
+  Somebody entering, failing to leave, reloading, entering again.
+
+  It arrived when the list of stamps became a modal: the line used to
+  remove a docked element by id, which is safe after `view` is gone, and
+  became a read of `view`, which is not. The list is closed while `view`
+  still exists now — and the parts that MUST happen, the key handler, the
+  mode and the view, are in a `finally`, so a throw anywhere in the
+  teardown can never again leave somebody in a mode with no way out. A
+  half-tidied view is untidy; a panel nobody can get back to is somebody's
+  afternoon.
+
+- **A refused commit came back as "Request failed (200)".** The reason a
+  write is refused — "this exact alignment is already version 4 of this
+  set", "two stamps would land on a time another stamp already holds" —
+  lives in the report, and the response carried `ok: false` with nothing at
+  the top level. The client reads `data.error` and falls back to the status
+  code, so a carefully written sentence arrived as a number. Both places
+  now: the panel reads the report, the transport reads the top.
+
 ## 2026.09.21.8 - Braces can call one garbage, reluctantly
 
 ### Added
@@ -51,7 +86,27 @@ This file is the only place the version is written. The app reads it.
   back without arguing, since putting something back needs no persuading.
 
   Counted apart from the candidates curation had already rejected, in the
-  preview and in the version's record. "I threw this one out just now" and
+  preview and in the version's record.
+
+### Fixed
+
+- **Clearing a decision the obvious way answered "ok" and did nothing.**
+  `{"row": 3, "call": null}` — which is what anybody would write, and what
+  the route's own single-row shape invites — fell past the branch that
+  builds a decision, because that branch only ran when the call was NOT
+  null. Nothing was decided and the reply said it worked. The panel was
+  unaffected: it has always sent the map form, `{"calls": {"3": null}}`,
+  precisely because of this. Both work now, and the end-to-end check tries
+  both spellings, because a route that reports success for a request it
+  ignored is how a check of mine came to pass while testing nothing.
+
+- **The end-to-end suite failed whenever a colleague banked something.** Its
+  last check counted versions before and after and called any increase "the
+  suite wrote to your bank". This lab syncs every twenty seconds: two
+  versions banked on another machine arrived mid-run and were reported as
+  this one writing. It compares WHICH versions exist now, fails only if one
+  appeared stamped with this machine, and says plainly when the others
+  arrived from elsewhere — which is the sync working, not a fault. "I threw this one out just now" and
   "this was thrown out last week" are different facts and the history should
   keep them that way.
 

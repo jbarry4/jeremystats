@@ -3759,10 +3759,18 @@ def api_braces_decide(set_id):
     """Confirm a row, keep it where it was, or move it somewhere else."""
     body = request.get_json(force=True) or {}
     calls = body.get("calls")
-    if calls is None and body.get("call") is not None:
+    if calls is None and "row" in body:
         # One row, which is what the bench sends on every keystroke.
-        calls = {str(body.get("row")): {"call": body["call"],
-                                        "t": body.get("t")}}
+        #
+        # A null `call` with a row means "forget what was said about this
+        # one". It used to fall through to `calls or {}` and decide
+        # nothing, while answering ok -- so a caller doing the obvious
+        # thing got a success and no effect, which is how a check of mine
+        # passed while testing nothing. The panel had been sending the
+        # `calls` form for exactly this reason; now both work.
+        calls = {str(body.get("row")):
+                 (None if body.get("call") is None
+                  else {"call": body["call"], "t": body.get("t")})}
     try:
         rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
     except Exception as exc:                             # noqa: BLE001
@@ -3824,7 +3832,18 @@ def api_braces_commit(set_id):
     # does not move, and the number of them belongs beside the button.
     report["left_alone"] = counts.get("waiting", 0)
     if dry or report.get("error"):
-        return jsonify({"ok": not report.get("error"), "report": report})
+        # THE REASON GOES WHERE THE CLIENT LOOKS FOR IT.
+        #
+        # A refusal lives in `report.error`, and the response said
+        # `ok: false` with nothing at the top level -- so the client, which
+        # reads `data.error` and falls back to the status code, showed
+        # "Request failed (200)". A refusal with a carefully written
+        # sentence in it came out as a number. Both places now, because
+        # the panel reads the report and the transport reads the top.
+        out = {"ok": not report.get("error"), "report": report}
+        if report.get("error"):
+            out["error"] = report["error"]
+        return jsonify(out)
 
     BRACES.mark_committed(set_id, report.get("version"),
                           report.get("version_id"), by=_braces_who(body))

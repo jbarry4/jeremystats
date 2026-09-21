@@ -71,8 +71,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec, patheffects
-from matplotlib.widgets import (Button, CheckButtons, RectangleSelector,
-                                Slider, TextBox)
+from matplotlib.widgets import (Button, CheckButtons, RadioButtons,
+                                RectangleSelector, Slider, TextBox)
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
@@ -82,7 +82,7 @@ sys.path.insert(0, _HERE)
 import ds_pca                                                    # noqa: E402
 from ds_pca import (T_COND, T_DS_FREQ, T_F_ORDER, T_F_SIGMA, T_LFP_FS,
                     SURROUND_MS, WINDOW_MS, PAD_S, braces, csc, probes,
-                    toothy_csd, sink_channel)                    # noqa: E402
+                    toothy_csd, sink_channel, class_marker)                    # noqa: E402
 from dentate_spike_aligner import (BANK, FOLDER, LINE_Q,         # noqa: E402
                                    parse_channels, read_bank)
 
@@ -450,8 +450,9 @@ def recompute(state):
     # broadband features instead, and on this rig the two can disagree
     # because the mains moves the argmin. A label is a naming convention;
     # one you can check against the picture is the better convention.
+    rule = state.get("rule", "sources")
     order = sorted(range(k), key=lambda c: (
-        int(np.argmin(np.nanmean(prof[km.labels_ == c], axis=0)))
+        class_marker(np.nanmean(prof[km.labels_ == c], axis=0), rule)[0]
         if (km.labels_ == c).any() else 10 ** 6))
     if state.get("flip"):
         order = order[::-1]          # DS1 <-> DSk, by hand
@@ -470,11 +471,13 @@ def recompute(state):
             decide.append(dict(c=c, n=0))
             continue
         mu = np.nanmean(prof[rr], axis=0)
-        j = int(np.argmin(mu))
+        j, peaks = class_marker(mu, rule)
         lows = [i for i in range(1, len(mu) - 1)
                 if mu[i] < mu[i - 1] and mu[i] < mu[i + 1] and mu[i] < 0]
         decide.append(dict(c=c, n=int(rr.size), row=j, csc=ns[j],
-                           value=float(mu[j]),
+                           value=float(mu[j]), rule=rule,
+                           peaks=[(ns[r], v, pr) for r, v, pr in peaks],
+                           sink=ns[int(np.argmin(mu))],
                            lows=[ns[i] for i in lows], mu=mu))
 
     return dict(disp=disp, feat=feat_csd, norm=norm, fit=fit, pca=pca,
@@ -673,28 +676,42 @@ def draw(state, res):
     ax.set_yticks([])
     for sp in ax.spines.values():
         sp.set_visible(False)
-    lines = [("HOW DS1/DS2 WAS DECIDED", INK, 9.5, "bold"),
-             ("mean CSD profile per class over the", GREY, 8.0, "normal"),
-             ("selected block; the sink is where it", GREY, 8.0, "normal"),
-             ("is most negative.", GREY, 8.0, "normal"),
-             ("", GREY, 3, "normal")]
+    src = state.get("rule", "sources") == "sources"
+    lines = [("HOW DS1/DS2 WAS DECIDED", INK, 9.5, "bold")]
+    if src:
+        lines += [("rule: most prominent SOURCE peak", INK, 8.2, "normal"),
+                  ("of each class's mean CSD profile;", GREY, 8.0, "normal"),
+                  ("the shallower one is DS1.", GREY, 8.0, "normal")]
+    else:
+        lines += [("rule: Toothy's -- argmin of each", INK, 8.2, "normal"),
+                  ("class's mean CSD profile (the", GREY, 8.0, "normal"),
+                  ("deepest SINK); shallower is DS1.", GREY, 8.0, "normal")]
+    lines.append(("", GREY, 3, "normal"))
     for d in res["decide"]:
         if not d.get("n"):
             lines.append(("DS%d   no events" % d["c"], GREY, 8.4, "normal"))
             continue
-        lines.append(("DS%d  n=%-3d sink CSC%-3d row %-2d %+.2f"
-                      % (d["c"], d["n"], d["csc"], d["row"], d["value"]),
+        lines.append(("DS%d  n=%-3d  %s CSC%-3d  row %-2d"
+                      % (d["c"], d["n"], "source" if src else "sink",
+                         d["csc"], d["row"]),
                       colors.get(d["c"], INK), 8.4, "normal"))
+        if src and d.get("peaks"):
+            lines.append(("     peaks " + ", ".join(
+                "CSC%d p=%.2f" % (c_, pr) for c_, _v, pr in d["peaks"]),
+                GREY, 7.8, "normal"))
+            lines.append(("     (its deepest sink: CSC%d)" % d["sink"],
+                          GREY, 7.8, "normal"))
     rows_ = [d["row"] for d in res["decide"] if d.get("n")]
     lines.append(("", GREY, 3, "normal"))
     if len(rows_) >= 2:
-        lines.append(("rule: DS1 = smallest sink row", INK, 8.4, "normal"))
-        lines.append(("      " + "  <  ".join(str(r) for r in rows_),
+        lines.append(("DS1 = smallest row:  "
+                      + "  <  ".join(str(r) for r in rows_),
                       INK, 8.4, "normal"))
     lines.append(("flipped by hand: %s"
                   % ("YES" if state.get("flip") else "no"),
                   "#a4531c" if state.get("flip") else GREY, 8.4, "normal"))
-    multi = [d for d in res["decide"] if len(d.get("lows", [])) > 1]
+    multi = ([d for d in res["decide"] if len(d.get("lows", [])) > 1]
+             if not src else [])
     if multi:
         lines.append(("", GREY, 3, "normal"))
         lines.append(("CAREFUL — more than one sink", "#a4531c", 8.4, "bold"))

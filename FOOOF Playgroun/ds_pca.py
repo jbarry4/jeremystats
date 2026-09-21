@@ -544,6 +544,64 @@ def depth_band(surrounds, args, channels=None, bad=None):
     return list(range(start, start + span))
 
 
+def source_peaks(mu, want=2):
+    """The most prominent SOURCE peaks of one class's mean depth profile.
+
+    Returns [(row, value, prominence), ...], most prominent first, at most
+    `want` of them.
+
+    WHY SOURCES RATHER THAN THE SINK. Toothy orders DS1/DS2 by `argmin` of
+    the profile -- the deepest negative. That is one number off a curve that
+    on a wide band has three or four excursions, and it answers the wrong
+    question when two of them are close in size: the deepest dip is not
+    necessarily the dip that belongs to the event.
+
+    A dentate spike's sink is bracketed by sources, and a source peak is the
+    better landmark for two reasons. It is a peak, so PROMINENCE is defined
+    for it -- how far it stands above the surrounding profile, which is a
+    measure of how much of a feature it really is rather than just how large
+    the number got. And ranking by prominence rather than by height means a
+    broad shallow shoulder loses to a sharp local peak, which is what the
+    eye does when it picks a landmark off the same curve.
+
+    Prominence comes from `scipy.signal.find_peaks`, which is the same
+    measure Toothy's own detector uses on the time axis (`ds_prom_thr`); it
+    is applied down the depth axis here.
+    """
+    mu = np.asarray(mu, dtype=np.float64)
+    if mu.size < 3:
+        return []
+    idx, props = find_peaks(mu, prominence=0.0)
+    if idx.size == 0:
+        return []
+    proms = props["prominences"]
+    # Sources are positive CSD. If nothing is positive the profile has no
+    # source in this window at all, and every local maximum is a shoulder on
+    # the way out of a sink -- worth ranking anyway rather than returning
+    # nothing, so the caller still gets a landmark.
+    pos = mu[idx] > 0
+    if pos.any():
+        idx, proms = idx[pos], proms[pos]
+    order = np.argsort(proms)[::-1][:int(want)]
+    return [(int(idx[i]), float(mu[idx[i]]), float(proms[i])) for i in order]
+
+
+def class_marker(mu, rule="sources"):
+    """The depth that stands for a class when DS1/DS2 are ordered.
+
+    `sources` -- the most prominent source peak. `sink` -- Toothy's rule,
+    the most negative point. Returns (row, peaks) where `peaks` is whatever
+    the rule looked at, so a caller can show its working.
+    """
+    mu = np.asarray(mu, dtype=np.float64)
+    if rule == "sink":
+        return int(np.argmin(mu)), []
+    peaks = source_peaks(mu, want=2)
+    if not peaks:
+        return int(np.argmin(mu)), []       # no peak at all; fall back
+    return peaks[0][0], peaks
+
+
 def sink_channel(filt_csd, nums, rows):
     """Which contact the mean CSD of these events dips at."""
     if len(rows) == 0:
