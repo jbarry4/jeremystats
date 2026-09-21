@@ -1165,6 +1165,11 @@ class EventBank:
             # both -- which is what the confirmation is built from.
             "current_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            # And what those are CALLED. The number is not unique, so a
+            # confirmation that says "this becomes v5" can be naming a
+            # version that already exists -- see `versions.tip_next`.
+            "current_name": versionsmod.tip_next(rec.get("versions") or [])[0],
+            "next_name": versionsmod.tip_next(rec.get("versions") or [])[1],
             "next_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])]
                 or [0]) + 1,
@@ -1407,6 +1412,11 @@ class EventBank:
             "moves_capped": len(shifts) > self.PREVIEW_MAX,
             "current_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])] or [0]),
+            # And what those are CALLED. The number is not unique, so a
+            # confirmation that says "this becomes v5" can be naming a
+            # version that already exists -- see `versions.tip_next`.
+            "current_name": versionsmod.tip_next(rec.get("versions") or [])[0],
+            "next_name": versionsmod.tip_next(rec.get("versions") or [])[1],
             "next_version": max(
                 [v.get("v") or 0 for v in (rec.get("versions") or [])]
                 or [0]) + 1,

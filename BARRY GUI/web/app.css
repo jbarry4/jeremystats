@@ -94,7 +94,6 @@
   --fire-rule: 1px;           /* hairline weight */
   --fire-beat: 0s;            /* pulse period, while a job is actually live */
 }
-
 :root[data-theme="light"] {
   --bg:        #ffffff;
   --bg-2:      #f4f7f5;
@@ -134,7 +133,6 @@
   --event: #c0392b;
   --shadow: 0 8px 28px rgba(21, 71, 52, 0.14);
 }
-
 /* ==========================================================================
    Themes
 
@@ -183,7 +181,6 @@
   --event: #ff9a76;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
-
 /* ---- Parchment: warm and light, for a long day of reading ---- */
 :root[data-theme="parchment"] {
   --bg:        #faf6ef;
@@ -224,7 +221,6 @@
   --event: #a3342a;
   --shadow: 0 8px 28px rgba(80, 62, 33, 0.16);
 }
-
 /* ---- Phosphor: a dark screen with a green tube, which is what this data
         was first ever looked at on ---- */
 :root[data-theme="phosphor"] {
@@ -266,7 +262,6 @@
   --event: #ffd166;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
-
 /* ---- Horizon: sky, blush and white ---- */
 :root[data-theme="horizon"] {
   --bg:        #ffffff;
@@ -311,7 +306,6 @@
   --event: #c25070;
   --shadow: 0 8px 28px rgba(20, 48, 61, 0.13);
 }
-
 /* ---- Horizon Night: the same palette after dark ---- */
 :root[data-theme="horizon-night"] {
   --bg:        #0b1220;
@@ -353,7 +347,6 @@
   --event: #f5a9b8;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
-
 /* ---- Jirai Kei: black ground, baby pink, white ----
 
    The signal colours are the whole difficulty here. `--err` marks a failed
@@ -404,7 +397,6 @@
   --event: #d9b8ff;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.62);
 }
-
 /* ---- Jirai Shiro: the white one ----
 
    Same wardrobe, inverted. The pastel cannot carry text on white -- baby
@@ -454,7 +446,6 @@
   --event: #6b3fa0;
   --shadow: 0 8px 28px rgba(42, 22, 34, 0.14);
 }
-
 /* ---- Jirai Yami: plum, lavender and sick mint ----
 
    The yami-kawaii end of the same look. Lavender takes the accent, which
@@ -501,14 +492,12 @@
   --event: #ff9ec7;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
-
 /* Native controls and scrollbars follow whichever family the theme is in. */
 :root[data-theme="parchment"], :root[data-theme="horizon"],
 :root[data-theme="jirai-shiro"] { color-scheme: light; }
 :root[data-theme="slate"], :root[data-theme="phosphor"],
 :root[data-theme="horizon-night"], :root[data-theme="jirai"],
 :root[data-theme="jirai-yami"] { color-scheme: dark; }
-
 /* ==========================================================================
    VACC Mode -- a layer, not a theme
 
@@ -538,7 +527,6 @@
   --fire-rule: 2px;
   --fire-beat: 2.4s;
 }
-
 /* Dark family: light to spare, so spend it.
 
    The selector list is copied from the `color-scheme` grouping above rather
@@ -553,7 +541,6 @@
 :root[data-vacc="on"][data-theme="jirai-yami"] {
   --fire-glow: color-mix(in srgb, var(--accent) 38%, transparent);
 }
-
 /* Light family: no headroom, so weight instead of light.
 
    A bloom on parchment's #faf6ef is a coffee stain and on jirai-shiro it is
@@ -571,13 +558,11 @@
   --fire-wash: color-mix(in srgb, var(--accent) 10%, transparent);
   --fire-rule: 2.5px;
 }
-
 /* Phosphor is a CRT. A CRT that glows is the joke landing, so it gets more
    rather than the same. */
 :root[data-vacc="on"][data-theme="phosphor"] {
   --fire-glow: color-mix(in srgb, var(--accent) 60%, transparent);
 }
-
 /* ---- the six surfaces that opt in ----------------------------------------
 
    Six, not sixty. Everything here is chrome: the frame around the work, not
@@ -594,20 +579,17 @@
   border-right-color: var(--fire-edge);
   background-image: linear-gradient(var(--fire-wash), var(--fire-wash));
 }
-
 /* 2. The strongest horizontal line in the app, and it is in every view. */
 :root[data-vacc="on"] .view-head {
   border-bottom-width: var(--fire-rule);
   border-bottom-color: var(--fire-edge);
 }
-
 /* 3. A spine on the active rail item. `box-shadow` inset rather than a
       border, so nothing reflows, and the text colour is left exactly alone
       -- `--accent` on `--accent-soft` is a measured pair. */
 :root[data-vacc="on"] .nav-item.active {
   box-shadow: inset 2px 0 0 var(--accent);
 }
-
 /* 4. Buttons get a ring, and a bloom only where there is room for one. On
       the light family `--fire-glow` is transparent, so this degrades to the
       ring by itself rather than needing its own rule. */
@@ -615,12 +597,10 @@
   box-shadow: 0 0 0 1px var(--fire-edge), 0 0 14px var(--fire-glow);
 }
 :root[data-vacc="on"] .btn.ghost { box-shadow: 0 0 0 1px var(--fire-edge); }
-
 /* 5. The brand mark, which already carries a glow -- it just burns harder. */
 :root[data-vacc="on"] .brand-mark {
   box-shadow: 0 2px 10px var(--accent-soft), 0 0 18px var(--fire-glow);
 }
-
 /* 6. The pulse, and it is the only animated thing the mode adds.
 
       `opacity` on one absolutely-positioned pseudo-element, never
@@ -644,7 +624,6 @@
   0%, 100% { opacity: 0.15; }
   50%      { opacity: 1; }
 }
-
 /* ---- the status panel and the per-recording chip -------------------------
 
    These are the `.vacc-*` family, and unlike the six surfaces above they are
@@ -661,6 +640,22 @@
           overflow: hidden; text-overflow: ellipsis; }
 .vacc-state { font-size: 12.5px; margin: 2px 0 10px; }
 
+/* The sign-in form. A label above its field rather than beside it, because
+   "NetID" and "Password" are short and the fields are not, and a two-column
+   form of two rows is more furniture than it is worth. */
+.vacc-field {
+  display: flex; flex-direction: column; gap: 3px; margin: 10px 0 2px;
+  max-width: 34ch;
+}
+.vacc-field > span { font-size: 11px; color: var(--text-2); }
+.vacc-field input, .vacc-field select {
+  font-size: 13px; padding: 6px 9px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+.vacc-field input:focus, .vacc-field select:focus {
+  outline: none; border-color: var(--accent);
+}
+.vacc-actions { display: flex; gap: 8px; margin-top: 14px; }
 /* ---- looking around the cluster ---- */
 .vacc-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
                margin: 6px 0; }
@@ -700,7 +695,6 @@
 /* A live cluster shows on the chip even with the mode off, because whether
    the thing is reachable is a fact and not a preference. */
 .chip-btn.vacc-live .dot, .chip-btn.vacc-live svg { color: var(--ok); }
-
 /* Green is reserved for "reads it in place", which is the only one of the
    states that is a guarantee. A staged copy lives in scratch, which the
    cluster purges without notice, so it takes the warning colour -- the same
@@ -708,7 +702,6 @@
    "nothing to see here". */
 .flagchip.vacc.native { color: var(--ok); border-color: var(--ok); }
 .flagchip.vacc.staged { color: var(--warn); border-color: var(--warn); }
-
 /* The mark on a ToolKit tool that has somewhere else to run. Small, and it
    sits beside the name rather than under it: it is a property of the tool,
    not a sentence about it. Dim when the cluster is configured but not
@@ -721,7 +714,6 @@
 .tk-step .tk-vacc {
   grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0;
 }
-
 .tk-vacc {
   margin-left: auto; align-self: center;
   font-size: 9px; font-weight: 700; letter-spacing: .07em;
@@ -731,10 +723,8 @@
 }
 .tk-vacc.up { border-color: var(--fire-edge, var(--accent-line));
               color: var(--accent); background: var(--accent-soft); }
-
 /* Why a scan can or cannot go to the cluster, under the buttons it explains. */
 .vacc-why { margin: 6px 0 0; }
-
 /* ---- this computer, or the cluster ----
 
    Two tabs rather than a switch inside one panel, because they answer two
@@ -758,7 +748,6 @@
 }
 .inc-tab.on strong { color: var(--accent); }
 .inc-tab.locked { opacity: .55; cursor: not-allowed; }
-
 /* ---- picking which recordings go ---- */
 .inc-pick-list {
   margin: 10px 0; max-height: 320px; overflow: auto;
@@ -777,7 +766,6 @@
 .ip-done { font-size: 10.5px; color: var(--ok); white-space: nowrap; }
 .inc-blocked { margin: 8px 0; font-size: 11.5px; color: var(--text-3); }
 .inc-blocked summary { cursor: pointer; }
-
 /* The plots for the row above, not for the list. */
 .inc-drop {
   margin: 2px 0 10px; padding: 10px 12px 2px;
@@ -785,7 +773,6 @@
   border-radius: 0 0 var(--radius) var(--radius);
   background: var(--bg-2);
 }
-
 /* ---- a batch, and the queue it leaves behind ---- */
 .inc-batch { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
 .inc-batch-row {
@@ -799,7 +786,6 @@
            white-space: nowrap; }
 .ib-state { color: var(--text-3); font-family: var(--mono); font-size: 10.5px;
             white-space: nowrap; }
-
 .inc-reviews { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
 .inc-review {
   display: grid;
@@ -825,7 +811,6 @@
    like a batch that did not finish. */
 .ir-banked { color: var(--text-3); font-size: 10.5px; white-space: nowrap; }
 .inc-review.banked .ir-banked { color: var(--ok); }
-
 /* The chip that turns it on. Lit when the mode is, so the control and what
    it controls agree at a glance -- and readable when it is not, which is why
    this is a border and a text colour rather than the button filling in. */
@@ -834,7 +819,6 @@
   color: var(--accent);
   background: var(--accent-soft);
 }
-
 /* A single-purpose window is one thing on a screen. A glowing frame around
    it is noise with nothing to frame, so the layer is nulled out rather than
    inherited through `?vacc=`.
@@ -863,7 +847,6 @@
 }
 :root[data-vacc="on"] body.solo-window #rail::after,
 :root[data-vacc="on"] body.aid-window #rail::after { content: none; }
-
 /* The house pattern: name the component and stop its animation, rather than
    zeroing the duration. A zero-length animation is still an animation, and
    some engines paint its first frame before deciding that. The look stays --
@@ -874,7 +857,6 @@
     opacity: 0.6;
   }
 }
-
 /* ---- the picker ---- */
 .theme-pop {
   position: absolute; bottom: 46px; left: 10px; width: 178px; z-index: 200;
@@ -904,9 +886,7 @@
   padding: 5px 9px 3px; font-size: 10px; color: var(--text-3);
   border-top: 1px solid var(--line-soft); margin-top: 3px;
 }
-
 * { box-sizing: border-box; }
-
 html, body {
   height: 100%;
   margin: 0;
@@ -917,13 +897,11 @@ html, body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
-
 button, input, select, textarea { font: inherit; color: inherit; }
 svg { width: 100%; height: 100%; fill: none; stroke: currentColor;
       stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 code { font-family: var(--mono); }
 .hidden { display: none !important; }
-
 /* ---------- shell ---------- */
 /* The rail's width, registered so it has a type and can be animated.
 
@@ -935,7 +913,6 @@ code { font-family: var(--mono); }
   inherits: true;
   initial-value: 190px;
 }
-
 #app {
   display: grid;
   grid-template-columns: var(--rail) 1fr;
@@ -954,7 +931,6 @@ code { font-family: var(--mono); }
      worst case here is an instant collapse rather than no collapse. */
   transition: --rail var(--ease-dur) var(--ease-out);
 }
-
 #rail {
   /* Named explicitly, not left to auto-placement.
 
@@ -976,7 +952,6 @@ code { font-family: var(--mono); }
               transform var(--ease-dur, .28s) cubic-bezier(.22, .61, .36, 1),
               border-right-color .2s ease;
 }
-
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 0; }
 .brand-mark {
   /* The mark itself, at rail size. No gradient and no letter: the shape
@@ -1000,7 +975,6 @@ code { font-family: var(--mono); }
   font-size: 10.5px; color: var(--text-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
@@ -1012,13 +986,11 @@ code { font-family: var(--mono); }
 .nav-item svg { width: 17px; height: 17px; flex: none; }
 .nav-item:hover { background: var(--bg-3); color: var(--text); }
 .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 550; }
-
 .rail-spacer { flex: 1; }
 /* position:relative so the theme picker can sit above the chip that
    opens it. */
 .rail-foot { display: flex; flex-direction: column; gap: 8px;
              position: relative; flex: none; }
-
 /* ==========================================================================
    Short screens
    ==========================================================================
@@ -1035,7 +1007,6 @@ code { font-family: var(--mono); }
 #rail { overflow: hidden; }
 .rail-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
                display: flex; flex-direction: column; gap: 18px; }
-
 @media (max-height: 700px) {
   #rail { padding: 8px 10px; gap: 10px; }
   .rail-scroll { gap: 10px; }
@@ -1072,7 +1043,6 @@ code { font-family: var(--mono); }
             margin-right: 5px; vertical-align: middle; }
 .env .dot.on { background: var(--ok); }
 .env .dot.off { background: var(--err); }
-
 /* ---------- views ---------- */
 /* Column 2, said out loud.
 
@@ -1087,7 +1057,6 @@ code { font-family: var(--mono); }
 }
 .view { display: none; flex-direction: column; height: 100%; overflow: hidden; }
 .view.active { display: flex; }
-
 .view-head {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 10px 18px; padding: 13px 22px 11px;
@@ -1111,9 +1080,7 @@ code { font-family: var(--mono); }
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
   min-width: 0; justify-content: flex-end;
 }
-
 .pad { padding: 12px 20px 22px; overflow-y: auto; flex: 1; }
-
 /* ---------- buttons ---------- */
 .btn {
   padding: 7px 14px; border-radius: var(--radius-sm);
@@ -1129,14 +1096,12 @@ code { font-family: var(--mono); }
 .btn.ghost { background: transparent; border-color: var(--line); color: var(--text-2); }
 .btn.ghost:hover:not(:disabled) { background: var(--bg-3); color: var(--text); }
 .btn.sm { padding: 5px 10px; font-size: 11.5px; }
-
 .mini {
   padding: 3px 8px; font-size: 10.5px; border-radius: 5px;
   border: 1px solid var(--line); background: transparent;
   color: var(--text-2); cursor: pointer;
 }
 .mini:hover { background: var(--bg-3); color: var(--text); }
-
 .pill {
   padding: 4px 11px; border-radius: 999px; font-size: 11.5px;
   border: 1px solid var(--line); background: transparent;
@@ -1144,7 +1109,6 @@ code { font-family: var(--mono); }
 }
 .pill:hover { background: var(--bg-3); }
 .pill.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
-
 .track-switch { display: flex; background: var(--bg-3); border-radius: 8px; padding: 3px; gap: 2px; }
 .track-switch button {
   padding: 5px 16px; border: 0; border-radius: 6px; background: transparent;
@@ -1152,7 +1116,6 @@ code { font-family: var(--mono); }
 }
 .track-switch button.active { background: var(--bg); color: var(--text); font-weight: 550;
                               box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-
 /* ---------- dropzone ---------- */
 .dropzone {
   border: 1.5px dashed var(--line);
@@ -1170,7 +1133,6 @@ code { font-family: var(--mono); }
 .dz-text strong { font-size: 14px; font-weight: 550; }
 .dz-text span { font-size: 12px; color: var(--text-2); }
 .dz-actions { display: flex; gap: 8px; margin-left: auto; }
-
 /* ---------- folder bar ---------- */
 .folder-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
@@ -1184,23 +1146,19 @@ code { font-family: var(--mono); }
                 text-overflow: ellipsis; white-space: nowrap; }
 .fb-stats { display: flex; gap: 6px; flex-wrap: wrap; }
 .fb-actions { display: flex; gap: 6px; }
-
 .stat-chip {
   padding: 3px 9px; border-radius: 999px; font-size: 11px;
   background: var(--bg-3); color: var(--text-2); font-family: var(--mono);
 }
 .stat-chip.good { background: var(--ok-soft); color: var(--ok); }
 .stat-chip.warn { background: var(--warn-soft); color: var(--warn); }
-
 /* ---------- stage cards ---------- */
 .stage-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-
 .track-actions {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft);
 }
 .track-actions .hint { color: var(--text-3); font-size: 12px; margin-left: auto; }
-
 .stage {
   display: grid; grid-template-columns: 28px 1fr auto;
   gap: 10px; align-items: start;
@@ -1213,7 +1171,6 @@ code { font-family: var(--mono); }
 .stage.blocked { opacity: 0.62; }
 .stage.done { border-color: rgba(63, 185, 80, 0.32); }
 .stage.running { border-color: var(--accent-line); background: var(--accent-soft); }
-
 .stage-num {
   width: 22px; height: 22px; border-radius: 7px;
   display: grid; place-items: center;
@@ -1222,7 +1179,6 @@ code { font-family: var(--mono); }
 }
 .stage.done .stage-num { background: var(--ok-soft); color: var(--ok); }
 .stage.running .stage-num { background: var(--accent); color: var(--on-accent); }
-
 .stage-main { min-width: 0; }
 .stage-title { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .stage-title strong { font-size: 13.5px; font-weight: 600; }
@@ -1244,7 +1200,6 @@ code { font-family: var(--mono); }
                    justify-content: flex-end; max-width: 250px; }
   .stage-actions .btn.sm { align-self: auto; }
 }
-
 .tag {
   padding: 2px 8px; border-radius: 999px; font-size: 10px;
   text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
@@ -1255,7 +1210,6 @@ code { font-family: var(--mono); }
 .tag.opt { background: var(--bg-3); color: var(--text-3); }
 .tag.lang { background: var(--bg-3); color: var(--text-3); font-family: var(--mono);
             text-transform: none; letter-spacing: 0; }
-
 /* The parameters used to sit below a dashed rule with 10px of air above
    and below it, which is 30px of card for one text box. Now a row on the
    same block, with the label beside the box instead of stacked over it. */
@@ -1271,7 +1225,6 @@ code { font-family: var(--mono); }
   font-family: var(--mono); font-size: 11.5px;
 }
 .opt-field input:focus { outline: none; border-color: var(--accent-line); }
-
 /* ---------- split (explorer) ---------- */
 .split { display: grid; grid-template-columns: 330px 1fr; flex: 1; overflow: hidden; }
 .split-left {
@@ -1279,7 +1232,6 @@ code { font-family: var(--mono); }
   overflow: hidden; background: var(--bg-2);
 }
 .split-right { overflow-y: auto; padding: 20px 24px 32px; }
-
 .search-wrap { position: relative; padding: 12px 12px 8px; }
 .search-icon {
   position: absolute; left: 22px; top: 50%; transform: translateY(-30%);
@@ -1291,9 +1243,7 @@ code { font-family: var(--mono); }
   font-size: 12.5px;
 }
 #scriptSearch:focus { outline: none; border-color: var(--accent-line); }
-
 .filter-row { display: flex; gap: 5px; padding: 0 12px 10px; flex-wrap: wrap; }
-
 .tree { overflow-y: auto; flex: 1; padding: 0 6px 16px; }
 .tree-section { margin-bottom: 2px; }
 .tree-head {
@@ -1328,7 +1278,6 @@ code { font-family: var(--mono); }
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: none; }
 }
-
 .tree-item {
   display: flex; align-items: center; gap: 8px; width: 100%;
   padding: 5px 8px; border: 0; background: transparent; cursor: pointer;
@@ -1343,13 +1292,11 @@ code { font-family: var(--mono); }
 .lang-dot.notebook { background: #d9a441; }
 .tree-item .arch { margin-left: auto; font-size: 9px; color: var(--text-3); }
 .tree-empty { padding: 18px 12px; color: var(--text-3); font-size: 12px; text-align: center; }
-
 /* ---------- script detail ---------- */
 .detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .detail-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
 .detail-path { margin: 5px 0 0; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
 .detail-tags { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-
 .desc-box {
   margin: 18px 0; padding: 14px 16px; background: var(--bg-2);
   border: 1px solid var(--line-soft); border-radius: var(--radius);
@@ -1357,12 +1304,10 @@ code { font-family: var(--mono); }
   white-space: pre-wrap; max-height: 260px; overflow-y: auto;
 }
 .desc-box.none { color: var(--text-3); font-style: italic; }
-
 .section-label {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--text-3); margin: 22px 0 10px; font-weight: 600;
 }
-
 .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
 .param {
   padding: 10px 12px; background: var(--bg-2);
@@ -1386,10 +1331,8 @@ code { font-family: var(--mono); }
   border: 1px solid var(--line); background: var(--bg-3); color: var(--text-2); cursor: pointer;
 }
 .param .browse-mini:hover { color: var(--text); }
-
 .run-bar { display: flex; align-items: center; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
 .run-bar .note { color: var(--text-3); font-size: 11.5px; }
-
 .source-box {
   margin-top: 14px; background: var(--bg-2); border: 1px solid var(--line-soft);
   border-radius: var(--radius); max-height: 460px; overflow: auto;
@@ -1398,14 +1341,12 @@ code { font-family: var(--mono); }
   margin: 0; padding: 14px 16px; font-family: var(--mono);
   font-size: 11.5px; line-height: 1.6; color: var(--text-2);
 }
-
 .empty-state {
   height: 100%; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 14px; color: var(--text-3); text-align: center;
 }
 .empty-state svg { width: 38px; height: 38px; opacity: 0.5; }
 .empty-state p { margin: 0; font-size: 13px; max-width: 320px; line-height: 1.6; }
-
 .ctl { display: flex; flex-direction: column; gap: 3px; }
 .ctl > label {
   font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
@@ -1420,7 +1361,6 @@ code { font-family: var(--mono); }
 .ctl-group { display: flex; gap: 5px; align-items: center; }
 .ctl-sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 3px; }
 .ctl-spacer { flex: 1; }
-
 .toggle {
   display: flex; align-items: center; gap: 6px; cursor: pointer;
   font-size: 11.5px; color: var(--text-2); user-select: none;
@@ -1430,7 +1370,6 @@ code { font-family: var(--mono); }
 .toggle span { white-space: nowrap; }
 .toggle:hover { background: var(--bg-3); color: var(--text); }
 .toggle.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
-
 .ch-head {
   display: flex; align-items: baseline; gap: 8px; padding: 10px 12px 6px;
   font-size: 11.5px;
@@ -1447,7 +1386,6 @@ code { font-family: var(--mono); }
 .ch-row input { accent-color: var(--accent); margin: 0; }
 .ch-row.off { opacity: 0.42; }
 .ch-row .bad { color: var(--warn); font-size: 9px; margin-left: auto; }
-
 .canvas-host { position: relative; flex: 1; overflow: hidden; background: var(--bg); }
 #cscCanvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .cursor-readout {
@@ -1467,10 +1405,8 @@ code { font-family: var(--mono); }
   animation: spin 0.7s linear infinite; display: block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .timebar { height: 46px; border-top: 1px solid var(--line-soft); background: var(--bg-2); flex: none; }
 #miniCanvas { display: block; width: 100%; height: 100%; cursor: pointer; }
-
 /* ---------- misc view ---------- */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .card {
@@ -1480,7 +1416,6 @@ code { font-family: var(--mono); }
 .card h3 { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; }
 .card p { margin: 0 0 12px; color: var(--text-2); font-size: 12px; line-height: 1.55; }
 .card .card-actions { display: flex; gap: 7px; flex-wrap: wrap; }
-
 .list-rows { display: flex; flex-direction: column; gap: 1px; }
 .list-row {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
@@ -1492,7 +1427,6 @@ code { font-family: var(--mono); }
 .list-row .pth { font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
                  margin-left: auto; overflow: hidden; text-overflow: ellipsis;
                  white-space: nowrap; max-width: 46%; }
-
 /* ---------- log dock ---------- */
 #logDock {
   grid-column: 2; grid-row: 2;
@@ -1522,7 +1456,6 @@ code { font-family: var(--mono); }
 }
 #logDock.collapsed .log-toggle svg { transform: rotate(-90deg); }
 .log-toggle:hover { background: var(--bg-3); color: var(--text); }
-
 .job-pill {
   padding: 2px 9px; border-radius: 999px; font-size: 10.5px;
   font-family: var(--mono); background: var(--bg-3); color: var(--text-3);
@@ -1531,7 +1464,6 @@ code { font-family: var(--mono); }
 .job-pill.done { background: var(--ok-soft); color: var(--ok); }
 .job-pill.failed { background: var(--err-soft); color: var(--err); }
 .job-pill.canceled { background: var(--warn-soft); color: var(--warn); }
-
 #jobSelect {
   max-width: 260px; padding: 4px 8px; border-radius: 5px;
   border: 1px solid var(--line); background: var(--bg); color: var(--text-2);
@@ -1544,7 +1476,6 @@ code { font-family: var(--mono); }
 }
 .log-body .meta { color: var(--text-3); }
 .log-body .err { color: var(--err); }
-
 /* ---------- toasts + modal ---------- */
 #toasts {
   /* Clear of whatever action bar is up -- curation and StrataScope both put
@@ -1567,7 +1498,6 @@ code { font-family: var(--mono); }
 .toast.err { border-color: var(--err); color: var(--err); }
 .toast.ok { border-color: var(--ok); color: var(--ok); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
-
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 70; display: grid; place-items: center;
 }
@@ -1605,18 +1535,15 @@ code { font-family: var(--mono); }
 }
 .modal input:focus { outline: none; border-color: var(--accent-line); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
-
 /* ---------- scrollbars ---------- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px;
                             border: 2px solid var(--bg-2); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
-
 @media (max-width: 1100px) {
   .split { grid-template-columns: 270px 1fr; }
 }
-
 /* ==========================================================================
    Additions for Xplorefinder 2.0, Sessions, History and Errors
    ========================================================================== */
@@ -1635,7 +1562,6 @@ code { font-family: var(--mono); }
 }
 #syncLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip-btn.dirty { border-color: var(--accent-line); color: var(--accent); }
-
 /* ---------- segmented control ---------- */
 .seg { display: flex; background: var(--bg-3); border-radius: 7px; padding: 2px; gap: 2px; }
 .seg button {
@@ -1644,8 +1570,10 @@ code { font-family: var(--mono); }
   font-size: 11.5px; font-family: var(--mono);
 }
 .seg button.active { background: var(--bg); color: var(--text); font-weight: 600; }
+/* The cluster view's own two halves. Aligned left and given room above,
+   because it sits between two cards rather than inside a toolbar. */
+.vacc-seg { align-self: flex-start; margin: 14px 0 0; }
 .toggle.sm { padding: 4px 8px; font-size: 11px; }
-
 /* ---------- Xplorefinder shell ---------- */
 .xf-head { display: flex; align-items: center; gap: 16px; min-width: 0; flex: 1; }
 .xf-head h1 { flex: none; }
@@ -1666,7 +1594,6 @@ code { font-family: var(--mono); }
 .xf-tab .x { opacity: 0.5; font-size: 13px; line-height: 1; }
 .xf-tab .x:hover { opacity: 1; color: var(--err); }
 .xf-tab .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-
 .xf-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .pane-grid { flex: 1; display: grid; gap: 1px; background: var(--line-soft); overflow: hidden; }
 .pane-grid.panes-1 { grid-template-columns: 1fr; }
@@ -1695,7 +1622,12 @@ code { font-family: var(--mono); }
   background: var(--accent-soft); color: var(--accent);
 }
 .pane-col-tag.shank-front { background: var(--ok-soft); color: var(--ok); }
-
+/* A dual implant is two REGIONS rather than two shanks of one probe, so the
+   two panes are told apart by anatomy. Same two colours the H10-D already
+   uses for its two shanks -- there is no reason for a fourth accent, and
+   the tag says which it is in words. */
+.pane-col-tag.shank-hippocampus { background: var(--accent-soft); color: var(--accent); }
+.pane-col-tag.shank-M2 { background: var(--ok-soft); color: var(--ok); }
 /* ---------- one Xplorefinder pane ---------- */
 .pane { display: flex; flex-direction: column; background: var(--bg); overflow: hidden; min-width: 0; }
 .pane.empty { align-items: center; justify-content: center; color: var(--text-3); font-size: 12px; }
@@ -1714,7 +1646,6 @@ code { font-family: var(--mono); }
   background: var(--bg); color: var(--text-2); font-size: 10.5px;
 }
 .pane.focused { outline: 1.5px solid var(--accent-line); outline-offset: -1.5px; }
-
 .pane-ctl {
   display: flex; align-items: flex-end; gap: 7px; flex-wrap: wrap;
   padding: 6px 9px; border-bottom: 1px solid var(--line-soft);
@@ -1732,7 +1663,6 @@ code { font-family: var(--mono); }
 .pane-ctl .scale-slider { width: 64px; }
 .pane-ctl .scale-num { width: 52px; }
 .pane-ctl .ctl-group { gap: 4px; }
-
 .pane-main { flex: 1; display: grid; grid-template-columns: 132px 1fr; overflow: hidden; }
 .pane-main.no-channels { grid-template-columns: 1fr; }
 .pane-chans {
@@ -1756,7 +1686,6 @@ code { font-family: var(--mono); }
   left: 0; width: 100%;
   object-fit: fill;
 }
-
 /* The raster grid overlay.
 
    This canvas draws the time rules, the per-channel rules and the channel
@@ -1768,9 +1697,31 @@ code { font-family: var(--mono); }
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 2;
 }
-.pane-timebar { height: 40px; border-top: 1px solid var(--line-soft); background: var(--bg-2); flex: none; }
+/* Height set in script, because it is remembered and dragged. The border
+   is on the grip now, which is the thing you are reaching for. */
+.pane-timebar {
+  height: 40px; background: var(--bg-2); flex: none;
+  position: relative; display: flex; flex-direction: column;
+}
+/* The grip. Four pixels of target with a one-pixel line in it: a border you
+   can actually hit, without a handle sitting in the data. */
+.pane-timebar-grip {
+  height: 5px; flex: none; cursor: ns-resize;
+  border-top: 1px solid var(--line-soft);
+  transition: background .12s;
+}
+.pane-timebar-grip:hover { background: var(--accent-soft); }
+.pane-timebar-grip::after {
+  content: ""; display: block; margin: 1px auto 0;
+  width: 34px; height: 2px; border-radius: 1px;
+  background: var(--line);
+}
+.pane-timebar-grip:hover::after { background: var(--accent); }
+/* While dragging, nothing else takes the pointer or selects. */
+body.strip-resizing { cursor: ns-resize; user-select: none; }
+body.strip-resizing canvas { pointer-events: none; }
+.pane-timebar canvas { flex: 1 1 auto; min-height: 0; }
 .pane-timebar canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
-
 .ch-row.marked-bad { color: var(--warn); }
 .ch-row .badbtn {
   margin-left: auto; font-size: 9px; padding: 0 4px; border-radius: 4px;
@@ -1779,9 +1730,7 @@ code { font-family: var(--mono); }
 }
 .ch-row .badbtn:hover { border-color: var(--warn); color: var(--warn); }
 .ch-row.marked-bad .badbtn { background: var(--warn-soft); color: var(--warn); }
-
 .cursor-readout.pane-readout { top: 6px; right: 8px; font-size: 9.5px; }
-
 /* ---------- video pane ---------- */
 .video-box { display: flex; flex-direction: column; height: 100%; background: #000; }
 .video-box video { width: 100%; flex: 1; min-height: 0; background: #000; }
@@ -1792,7 +1741,6 @@ code { font-family: var(--mono); }
 .video-msg { padding: 20px; color: var(--text-2); font-size: 12px; line-height: 1.6;
              white-space: pre-wrap; }
 .track-canvas { width: 100%; height: 100%; display: block; background: var(--bg); }
-
 /* ---------- sessions view ---------- */
 .root-bar {
   display: flex; flex-direction: column; gap: 9px; padding: 13px 15px;
@@ -1824,21 +1772,47 @@ code { font-family: var(--mono); }
   text-align: left; line-height: 1.35;
 }
 .recent-list button:hover { background: var(--bg-3); color: var(--text); }
-
 .scan-status {
   margin-top: 12px; padding: 11px 14px; border-radius: var(--radius);
   background: var(--accent-soft); border: 1px solid var(--accent-line);
   display: flex; align-items: center; gap: 12px; font-size: 12px;
 }
-.scan-status .spin { width: 15px; height: 15px; }
-.scan-status code { font-size: 10.5px; color: var(--text-2); overflow: hidden;
-                    text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-
+/* The running scan says more than one line's worth now, so the row is
+   top-aligned: the spinner and the Stop button belong beside the first
+   line, not floating in the middle of three. */
+.scan-status { align-items: flex-start; }
+.scan-status .spin { width: 15px; height: 15px; margin-top: 2px; }
+.scan-status .stat-chip, .scan-status .btn { flex: none; }
+.scan-live { flex: 1; min-width: 0; display: flex; flex-direction: column;
+             gap: 4px; }
+.scan-line { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.scan-line strong { font-variant-numeric: tabular-nums; }
+/* Tabular figures, so a counter ticking up does not shove the words beside
+   it left and right on every poll. */
+.scan-line span { font-variant-numeric: tabular-nums; }
+.scan-sep { color: var(--text-3); }
+.scan-rate { color: var(--text-2); }
+.scan-line.facts { gap: 4px; }
+.scan-fact {
+  font-size: 10px; padding: 1px 7px; border-radius: 999px;
+  font-family: var(--mono); background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line-soft);
+}
+.scan-fact.quiet { color: var(--text-2); background: transparent; }
+.scan-fact.warn { color: var(--warn); background: var(--warn-soft);
+                  border-color: transparent; }
+/* Wrapped, never clipped. This used to be one nowrap line with an ellipsis,
+   which hid the end of the path -- and the end is the recording, which is
+   the only part of it worth reading. */
+.scan-line.where code {
+  font-size: 10.5px; color: var(--text-2); overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.scan-line.last { font-size: 11px; color: var(--text-2); }
 .sess-filters { display: flex; align-items: center; gap: 12px; margin: 16px 0 10px; flex-wrap: wrap; }
 .search-wrap.inline { padding: 0; flex: 1; min-width: 220px; }
 .search-wrap.inline .search-icon { left: 10px; transform: translateY(-50%); top: 50%; }
 .search-wrap.inline input { padding: 6px 10px 6px 30px; }
-
 .grp { margin-bottom: 20px; }
 .grp-head {
   display: flex; align-items: center; gap: 9px; padding: 7px 2px;
@@ -1890,7 +1864,15 @@ code { font-family: var(--mono); }
 .flagchip.video { background: var(--accent-soft); color: var(--accent); }
 .flagchip.bad { background: var(--warn-soft); color: var(--warn); }
 .flagchip.mat { background: var(--ok-soft); color: var(--ok); }
-
+/* A question about filing, not a fault. Same button reset as `.concat`
+   below, and `--warn` rather than `--bad` on purpose: the recording is
+   fine, it is only filed somewhere a path disagrees with. */
+.flagchip.warn.project-q {
+  border: 0; cursor: pointer; font-family: var(--mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--warn-soft); color: var(--warn);
+}
+.flagchip.warn.project-q:hover { filter: brightness(1.12); }
 /* Acquisition gaps. A button, because it opens the gap table -- reset to
    look like the chips beside it rather than like a control. */
 .flagchip.concat {
@@ -1921,7 +1903,6 @@ code { font-family: var(--mono); }
   background: var(--warn-soft); color: var(--warn);
 }
 .flagchip.concat.safe:hover { background: var(--warn); color: var(--bg); }
-
 /* ---------- history + errors ---------- */
 .hist-row { display: flex; align-items: center; gap: 8px; width: 100%;
             padding: 6px 8px; border: 0; background: transparent; cursor: pointer;
@@ -1934,13 +1915,11 @@ code { font-family: var(--mono); }
 .st.figure { background: var(--text-3); }
 .hist-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .hist-row .tm { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
-
 .kv { display: grid; grid-template-columns: 130px 1fr; gap: 5px 12px; font-size: 12px; }
 .kv dt { color: var(--text-3); font-size: 10.5px; text-transform: uppercase;
          letter-spacing: .05em; padding-top: 2px; }
 .kv dd { margin: 0; color: var(--text); font-family: var(--mono); font-size: 11.5px;
          word-break: break-word; }
-
 .err-card {
   padding: 12px 14px; margin-bottom: 8px; border-radius: var(--radius);
   background: var(--bg-2); border: 1px solid var(--line);
@@ -1958,7 +1937,6 @@ code { font-family: var(--mono); }
   font-family: var(--mono); font-size: 10.5px; color: var(--text-2);
   overflow-x: auto; white-space: pre-wrap; max-height: 260px; overflow-y: auto;
 }
-
 /* ---------- big modal (wizards, figure builder) ---------- */
 .modal.big {
   width: min(1240px, 96vw); max-height: 92vh; display: flex;
@@ -2001,7 +1979,6 @@ code { font-family: var(--mono); }
   background: transparent; color: var(--text-2); cursor: pointer;
 }
 .close-x:hover { background: var(--bg-3); color: var(--text); }
-
 /* ---------- event import wizard ---------- */
 /* Two columns while they both fit, one when they do not.
    A bare `1fr 1fr` keeps each column's min-content width as its floor, so the
@@ -2048,7 +2025,6 @@ code { font-family: var(--mono); }
 .preview-table td { color: var(--text-2); }
 .preview-wrap { max-height: 240px; overflow: auto; border: 1px solid var(--line-soft);
                 border-radius: 7px; background: var(--bg-2); }
-
 /* ---------- figure builder ---------- */
 .fig-layout {
   display: grid;
@@ -2077,7 +2053,6 @@ code { font-family: var(--mono); }
 .fig-col input, .fig-col select, .fig-col textarea { max-width: 100%; }
 .fig-col .kv { grid-template-columns: minmax(0, 96px) minmax(0, 1fr); }
 .fig-col .kv dd { overflow-wrap: anywhere; }
-
 .panel-item {
   padding: 9px 11px; border-radius: var(--radius-sm); background: var(--bg-2);
   border: 1px solid var(--line); cursor: pointer; margin-bottom: 6px;
@@ -2106,11 +2081,9 @@ code { font-family: var(--mono); }
   position: absolute; inset: 0; display: grid; place-items: center;
   font-size: 8px; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,.9); font-family: var(--mono);
 }
-
 @media (max-width: 1500px) {
   .fig-layout { grid-template-columns: 250px minmax(260px, 1fr) 220px; }
 }
-
 /* After the wider breakpoints, not before: media queries carry no extra
    specificity, so at 900 px both this and the 1500 px rule match and the
    later one wins. */
@@ -2120,7 +2093,6 @@ code { font-family: var(--mono); }
   .fig-layout { grid-template-columns: minmax(0, 1fr); }
   .fig-preview img { max-height: 46vh; }
 }
-
 /* ==========================================================================
    Round 2 fixes
    ========================================================================== */
@@ -2144,7 +2116,6 @@ select optgroup {
 :root { color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
 select { color-scheme: inherit; }
-
 /* ---------- pane: axis-scale controls ---------- */
 .scale-pop {
   position: absolute; z-index: 30; top: 30px; right: 8px;
@@ -2163,7 +2134,6 @@ select { color-scheme: inherit; }
 }
 .scale-pop .acts { display: flex; gap: 5px; margin-top: 4px; }
 .scale-pop .hint { font-size: 9.5px; color: var(--text-3); margin-top: 6px; line-height: 1.45; }
-
 /* ---------- bookmarks + spike drafts ---------- */
 .bm-list { display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow-y: auto; }
 .bm-row {
@@ -2173,7 +2143,6 @@ select { color-scheme: inherit; }
 .bm-row:hover { background: var(--bg-3); color: var(--text); }
 .bm-row .t { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
 .bm-row .x { margin-left: auto; opacity: .5; }
-
 /* The marks list: bookmarks, events and spikes in one table. A fixed column
    layout rather than a flex row, so the times line up down the list and a
    long detail cannot push the kind chip off the end. */
@@ -2215,13 +2184,11 @@ select { color-scheme: inherit; }
   white-space: normal; word-break: break-word; line-height: 1.3;
 }
 .bm-list.bank-targets .flagchip { flex: none; }
-
 /* The line under the list that says what will happen. */
 .confirm-sub { margin: 8px 0 0; font-size: 11.5px; color: var(--text-2);
                line-height: 1.45; }
 .confirm-sub:empty { display: none; }
 .confirm-sub.warn { color: var(--warn); }
-
 .mk-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .mk-name { color: var(--text); overflow: hidden; text-overflow: ellipsis;
            white-space: nowrap; }
@@ -2239,13 +2206,11 @@ select { color-scheme: inherit; }
 .badbtn.danger:hover, .mini.danger:hover {
   background: var(--err-soft); color: var(--err); border-color: var(--err);
 }
-
 .draft-chip {
   background: var(--warn-soft); color: var(--warn);
   border: 1px dashed var(--warn);
 }
 .committed-chip { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
-
 /* ---------- figure builder: drag-to-span grid ---------- */
 .grid-cell.span-preview { border-style: solid; border-color: var(--accent);
                           background: var(--accent-soft); opacity: .65; }
@@ -2253,7 +2218,6 @@ select { color-scheme: inherit; }
 .grid-help {
   font-size: 10px; color: var(--text-3); line-height: 1.5; margin: 4px 0 8px;
 }
-
 /* --------------------------------------------------------------------------
    Building the grid by hand.
 
@@ -2295,7 +2259,6 @@ select { color-scheme: inherit; }
   border-radius: 3px;
 }
 .gh-x:hover { color: var(--bad, #dc2626); background: var(--bg-3); }
-
 /* The map, then the row handles beside it, so an x lines up with its row
    however tall the cells end up. */
 .grid-wrap > .grid-map { grid-column: 1; grid-row: 2; margin: 0; }
@@ -2304,7 +2267,6 @@ select { color-scheme: inherit; }
   display: grid; gap: 3px;
 }
 .grid-rowh { display: flex; align-items: center; justify-content: center; }
-
 .grid-add {
   font: inherit; font-size: 13px; line-height: 1; cursor: pointer;
   border: 1px dashed var(--line); background: transparent; color: var(--text-3);
@@ -2325,7 +2287,6 @@ select { color-scheme: inherit; }
   grid-column: 1; grid-row: 3;
   height: 20px;
 }
-
 /* Where a drop would land, and which panel is selected. */
 .grid-cell.drop-over {
   border-style: solid; border-color: var(--accent);
@@ -2334,7 +2295,6 @@ select { color-scheme: inherit; }
 .grid-cell.filled.sel { box-shadow: 0 0 0 1px var(--accent) inset; }
 .grid-cell.filled { cursor: grab; }
 .grid-cell.filled:active { cursor: grabbing; }
-
 /* The palette. Chips, because the thing being dragged is a kind of panel
    and it should look like something you can pick up. */
 .fig-palette { display: flex; gap: 5px; flex-wrap: wrap; margin: 2px 0 4px; }
@@ -2348,7 +2308,6 @@ select { color-scheme: inherit; }
   background: var(--accent-soft);
 }
 .fig-chip:active { cursor: grabbing; }
-
 /* A number the builder decides.
 
    It had a border and a background, which made it identical to the inputs
@@ -2362,7 +2321,6 @@ select { color-scheme: inherit; }
   font-variant-numeric: tabular-nums; line-height: 1;
   border-bottom: 1px solid var(--line-soft);
 }
-
 /* ---------- outputs ---------- */
 .out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
 .out-card {
@@ -2378,11 +2336,9 @@ select { color-scheme: inherit; }
 .out-card .nm { font-size: 11.5px; font-weight: 600; word-break: break-word; }
 .out-card .sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); margin-top: 3px; }
 .out-card .acts { display: flex; gap: 5px; padding: 0 10px 9px; }
-
 /* Channel rows aligned to trace lanes (see alignChannelRows in xplore.js) */
 
 body.dragging-session .pane { transition: outline .1s; }
-
 /* ---------- session multi-select ---------- */
 .sess-card { position: relative; }
 .sess-card.picked { border-color: var(--accent); background: var(--accent-soft); }
@@ -2400,7 +2356,6 @@ body.dragging-session .pane { transition: outline .1s; }
   background: var(--accent-soft); border: 1px solid var(--accent-line);
   border-radius: var(--radius);
 }
-
 /* Uncaught front-end errors, surfaced rather than silent. */
 .boot-error {
   position: fixed; left: 50%; transform: translateX(-50%); top: 12px; z-index: 90;
@@ -2410,7 +2365,6 @@ body.dragging-session .pane { transition: outline .1s; }
   font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
   box-shadow: var(--shadow); white-space: pre-wrap;
 }
-
 /* The aligned channel list is pinned to the same y as the plot's top pad. */
 .pane-chans { position: relative; }
 /* Each row is exactly one trace lane tall, so the checkbox sits on its
@@ -2421,7 +2375,6 @@ body.dragging-session .pane { transition: outline .1s; }
   padding: 3px 10px 6px; font-size: 9.5px; line-height: 1.4;
   color: var(--warn); opacity: .85;
 }
-
 /* ---------- channel rows overlaid on the plot ----------
    Positioned from the canvas lane geometry (alignChannelRows), so each row
    sits on the trace it controls. */
@@ -2471,7 +2424,6 @@ body.dragging-session .pane { transition: outline .1s; }
 }
 .ch-overlay .ch-lane .badbtn:hover { border-color: var(--warn); color: var(--warn); }
 .ch-overlay .ch-lane.marked-bad .badbtn { background: var(--warn-soft); color: var(--warn); }
-
 /* The control strip has a fixed height and scrolls horizontally instead of
    wrapping. Re-wrapping changed the pane's height after the canvas had already
    been drawn, which stretched the traces away from everything positioned in
@@ -2502,13 +2454,11 @@ body.dragging-session .pane { transition: outline .1s; }
 }
 .pane-ctl .ctl { flex: none; }
 .pane-ctl::-webkit-scrollbar { height: 6px; }
-
 /* Pin the canvas to its host so canvas.clientHeight and the host's height are
    the same number -- height:100% inside a flex item can overflow. */
 .pane-canvas-host > canvas { position: absolute; inset: 0; }
 .pane-timebar { position: relative; }
 .pane-timebar > canvas { position: absolute; inset: 0; }
-
 /* ==========================================================================
    Round 3: on-theme form controls, scrollbars and loading states
    ========================================================================== */
@@ -2547,7 +2497,6 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none; margin: 0;
 }
 input[type="number"] { -moz-appearance: textfield; }
-
 /* Custom select arrow, since appearance:none removes the native one. */
 select {
   padding-right: 22px;
@@ -2557,10 +2506,8 @@ select {
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
-
 /* Scrollbars follow the theme everywhere, including Firefox. */
 * { scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
-
 /* The control strip wraps rather than showing a native horizontal scrollbar.
    Wrapping changes the pane height, which is why the canvas is redrawn after
    any layout change (see redrawGeometry in xplore.js). */
@@ -2586,10 +2533,8 @@ select {
 .loader-text { text-align: center; line-height: 1.4; }
 .loader-text strong { display: block; font-size: 12px; color: var(--text-2); font-weight: 600; }
 .loader-text span { font-size: 10.5px; color: var(--text-3); font-family: var(--mono); }
-
 .plot-loading { background: var(--bg); backdrop-filter: none; }
 .pane-img-host img.hidden { display: none; }
-
 /* The left padding that clears the magnifier was only ever applied to the
    Explorer's field by id, so History and Sessions ran their text underneath
    the icon. Scope it to the wrapper instead. */
@@ -2610,7 +2555,6 @@ select {
 .search-wrap.inline input { padding: 6px 10px 6px 32px; }
 .search-wrap.inline .search-icon { left: 10px; }
 .search-wrap input:focus { outline: none; border-color: var(--accent-line); }
-
 /* ---------- event classes ---------- */
 .ev-row {
   display: flex; align-items: center; gap: 8px;
@@ -2633,7 +2577,6 @@ select {
 .ev-swatch.on { border-color: var(--text); box-shadow: 0 0 0 1px var(--bg) inset; }
 .ev-row .toggle.sm { padding: 2px 4px; }
 .ev-row .toggle.sm span { display: none; }
-
 /* ==========================================================================
    Results catalog
    ========================================================================== */
@@ -2643,7 +2586,6 @@ select {
 }
 .res-toolbar .search-wrap.inline { flex: 1; min-width: 220px; }
 .res-toolbar select { font-size: 11.5px; padding: 5px 22px 5px 8px; }
-
 .res-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
   gap: 12px;
@@ -2673,7 +2615,6 @@ select {
 .res-tags .flagchip { cursor: pointer; }
 .res-tags .flagchip:hover { background: var(--accent-soft); color: var(--accent); }
 .res-acts { display: flex; gap: 4px; padding: 8px 11px 10px; flex-wrap: wrap; }
-
 .res-pick, .res-star {
   position: absolute; top: 6px; width: 20px; height: 20px; z-index: 2;
   border-radius: 5px; padding: 0; cursor: pointer; line-height: 1;
@@ -2685,7 +2626,6 @@ select {
 .res-pick:hover, .res-star:hover { color: var(--accent); border-color: var(--accent); }
 .res-pick.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .res-star.on { color: var(--accent); }
-
 .res-table-wrap { overflow-x: auto; border: 1px solid var(--line-soft);
                   border-radius: var(--radius); }
 .res-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
@@ -2699,12 +2639,10 @@ select {
 .res-table td.nm a { color: var(--text); text-decoration: none; }
 .res-table td.nm a:hover { color: var(--accent); }
 .res-table tbody tr:hover { background: var(--bg-3); }
-
 .res-preview { display: grid; place-items: center; background: var(--bg-3); }
 .res-full { max-width: 100%; max-height: 70vh; background: #fff;
             box-shadow: var(--shadow); }
 .res-frame { width: 100%; height: 70vh; border: 0; background: #fff; }
-
 /* ==========================================================================
    Storyboard
    ========================================================================== */
@@ -2726,7 +2664,6 @@ select {
   font-size: 13px; font-weight: 600; padding: 5px 9px;
 }
 .sb-slide-title { width: 210px; font-size: 11.5px; padding: 4px 8px; }
-
 /* ---- slide rail ---- */
 .sb-rail { background: var(--bg-2); display: flex; flex-direction: column; overflow: hidden; }
 .sb-rail-head {
@@ -2781,7 +2718,6 @@ select {
   display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
 }
 .sb-rail-foot .btn { padding: 6px 4px; font-size: 10.5px; }
-
 /* ---- stage ---- */
 .sb-stage { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 .sb-tools {
@@ -2801,7 +2737,6 @@ select {
 .sb-tool:hover { background: var(--bg-3); color: var(--text); }
 .sb-tool.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .mini.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-
 .sb-canvas-wrap {
   flex: 1; overflow: auto; padding: 16px; display: grid; place-items: center;
   background: var(--bg-3);
@@ -2835,7 +2770,6 @@ select {
 .sb-h-ne { right: -5px; top: -5px; cursor: nesw-resize; }
 .sb-h-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
 .sb-h-se { right: -5px; bottom: -5px; }
-
 /* A line's ends, rather than the corners of the box it fits in. Round, so
    they do not read as resize handles, and offset by half their own size so
    the dot sits on the endpoint instead of beside it. */
@@ -2843,7 +2777,6 @@ select {
   border-radius: 50%; cursor: crosshair;
   width: 11px; height: 11px; margin: -6px 0 0 -6px;
 }
-
 /* The rotate grip, above the top edge on a short stalk -- the same place
    PowerPoint puts it, because that is where people reach for it. */
 .sb-rot {
@@ -2858,7 +2791,6 @@ select {
   background: var(--accent);
 }
 .sb-rot:active { cursor: grabbing; }
-
 .sb-notes {
   flex: none; border-top: 1px solid var(--line-soft); background: var(--bg-2);
   padding: 8px 12px 10px;
@@ -2869,7 +2801,6 @@ select {
   width: 100%; height: 62px; resize: vertical; font-family: var(--sans);
   font-size: 12px; padding: 7px 9px; line-height: 1.5;
 }
-
 /* ---- inspector ---- */
 .sb-inspector {
   background: var(--bg-2); padding: 10px 12px 16px; overflow-y: auto;
@@ -2888,7 +2819,6 @@ select {
 }
 .btn.ghost.danger:active:not(:disabled) { filter: brightness(.92); }
 .btn.ghost.danger:disabled { opacity: .45; }
-
 @media (max-width: 1400px) {
   .sb-layout { grid-template-columns: 160px minmax(0, 1fr) 210px; }
 }
@@ -2903,7 +2833,6 @@ select {
   .sb-rail { grid-row: 1 / 3; }
   .sb-inspector { grid-column: 2; max-height: 190px; }
 }
-
 /* ==========================================================================
    Command palette
    ========================================================================== */
@@ -2978,7 +2907,6 @@ select {
   border-radius: 3px; padding: 1px 4px; margin-right: 3px;
   color: var(--text-2);
 }
-
 /* ==========================================================================
    Check lists (session health, pipeline preflight)
    ========================================================================== */
@@ -3007,10 +2935,8 @@ select {
   overflow-wrap: anywhere; line-height: 1.35;
 }
 .check-msg { color: var(--text-2); line-height: 1.5; word-break: break-word; }
-
 .btn.xs { padding: 2px 7px; font-size: 10.5px; line-height: 1.4; }
 .check-row .gap-details { align-self: center; white-space: nowrap; }
-
 /* ---- the gap table behind the continuity check ---- */
 .continuity-modal .mb { display: flex; flex-direction: column; gap: 18px; }
 .continuity-modal h4 {
@@ -3072,7 +2998,6 @@ select {
 }
 .gap-axis .mid { color: var(--accent); }
 .gap-bar .hint { margin: 6px 0 0; line-height: 1.5; }
-
 /* ---- the events on the recording, in the preview ---- */
 .ev-track { height: 34px; }
 /* A stretch that moves. Shaded behind the events sitting in it, so the step
@@ -3085,7 +3010,6 @@ select {
 /* The ones the correction moves. */
 .ev-mark.moved { background: var(--accent); opacity: .95; width: 2px;
                  margin-left: -0.5px; }
-
 /* ---- what the correction does ---- */
 .fix-box {
   margin-top: 12px; padding: 11px 13px; border-radius: 6px;
@@ -3126,7 +3050,6 @@ select {
 .move-row.moved { color: var(--text); background: var(--accent-soft, transparent); }
 .move-row.moved .mv-shift { color: var(--accent); }
 .move-row.moved .mv-now { color: var(--accent); }
-
 .fix-facts { margin: 12px 0; }
 .fix-facts p { margin: 0 0 6px; line-height: 1.55; color: var(--text-2);
                font-size: 11.5px; }
@@ -3134,13 +3057,11 @@ select {
 .continuity-modal .lead {
   margin: 0 0 14px; line-height: 1.6; color: var(--text-1); font-size: 12.5px;
 }
-
 /* A name some rows were filed under, not a computer we can identify. The
    same row, said more quietly. */
 .dev-mgr-other.name-only { opacity: 0.82; }
 .dev-mgr-other.name-only .dev-dot { background: var(--text-3); }
 .dev-mgr-other.name-only strong { font-weight: 500; }
-
 .basis-row {
   padding: 8px 10px; border-radius: 5px; background: var(--bg-2);
   margin-bottom: 6px;
@@ -3162,7 +3083,6 @@ select {
 .continuity-modal .prov p:last-child {
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
 }
-
 .health-pill {
   display: inline-flex; align-items: center; gap: 4px;
   font-family: var(--mono); font-size: 9px; padding: 1px 6px;
@@ -3172,7 +3092,6 @@ select {
 .health-pill.warn { color: var(--accent); border-color: var(--accent-line); }
 .health-pill.bad  { color: var(--err); border-color: var(--err); }
 .health-pill:hover { background: var(--bg-3); }
-
 /* ==========================================================================
    Shortcut sheet
    ========================================================================== */
@@ -3203,7 +3122,6 @@ select {
 .btn.danger:hover:not(:disabled) { filter: brightness(.93); }
 .btn.danger:active:not(:disabled) { filter: brightness(.86); }
 .sec-head { display: flex; align-items: center; gap: 10px; }
-
 /* ==========================================================================
    Pipeline: preflight + batch
    ========================================================================== */
@@ -3237,7 +3155,6 @@ select {
 }
 .batch-bar > i { display: block; height: 100%; background: var(--accent);
                  transition: width .3s; }
-
 /* ==========================================================================
    Explorer: favourites + recents
    ========================================================================== */
@@ -3247,7 +3164,6 @@ select {
 }
 .tree-fav:hover { color: var(--accent); }
 .tree-fav.on { color: var(--accent); }
-
 /* ==========================================================================
    Xplorefinder: measure readout + event navigator
    ========================================================================== */
@@ -3307,17 +3223,14 @@ select {
   color: var(--text-3); background: none;
 }
 .panel-input.hidden { display: none; }
-
 .ran-on {
   flex-basis: 100%; margin-top: 4px;
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
 }
-
 /* A stacked time-frequency panel has channels on its vertical axis, so there
    is no frequency axis to crop. */
 .freq-view.off { opacity: .4; }
 .freq-view.off input, .freq-view.off select { pointer-events: none; }
-
 /* ==========================================================================
    The scale control
    ========================================================================== */
@@ -3348,7 +3261,6 @@ select {
   background: var(--accent-soft); color: var(--accent);
   border-color: var(--accent-line);
 }
-
 /* A two-way chooser: import from the bank or a file, export to one or the
    other. Drawn the same both ways so the pair reads as a pair. */
 .choice-grid {
@@ -3372,7 +3284,6 @@ select {
   stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
 }
 .choice-note { font-size: 11.5px; line-height: 1.55; color: var(--text-2); }
-
 /* ==========================================================================
    The event tree: kind -> set -> event, with tri-state parents
    ========================================================================== */
@@ -3420,7 +3331,6 @@ select {
   text-align: right; white-space: nowrap;
 }
 .ev-node input[type=checkbox] { margin: 0; accent-color: var(--accent); }
-
 /* Banking several sets at once: shared filing above, one row per entry. */
 .bank-filing {
   display: grid; gap: 0 12px;
@@ -3441,7 +3351,6 @@ select {
 @media (max-width: 900px) {
   .bank-entry-row { grid-template-columns: minmax(0, 1fr); }
 }
-
 /* ==========================================================================
    Event bank
    ========================================================================== */
@@ -3631,7 +3540,6 @@ select {
   background: var(--bg); color: var(--text);
 }
 .ver-conf { margin-top: 5px; font-size: 10px; color: var(--text-3); }
-
 .bank-detail {
   border: 1px solid var(--line-soft); border-radius: var(--radius);
   padding: 14px 16px 18px; background: var(--bg-2);
@@ -3639,7 +3547,6 @@ select {
 }
 .bank-events { margin-top: 6px; }
 .bank-events .preview-wrap { max-height: 34vh; overflow: auto; }
-
 /* ---------- duplicate times ---------- */
 /* Warn-coloured rather than error: a set with doubles in it is not broken,
    it is a set somebody has to make a decision about. */
@@ -3656,14 +3563,12 @@ select {
 /* The rows the strip is talking about, findable in the list below it. */
 .preview-table tr.dup td { background: var(--warn-soft); }
 .preview-table tr.dup td:first-child { box-shadow: inset 2px 0 var(--warn); }
-
 /* The same chip, but it takes you to them. A button inherits none of the
    text styling a span gets for free. */
 button.tag {
   font-family: inherit; line-height: inherit; border: 0; cursor: pointer;
 }
 button.tag:hover { filter: brightness(1.25); }
-
 .dup-lede { margin: 0 0 6px; font-size: 12.5px; color: var(--text); }
 .dup-pick { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 .dup-opt {
@@ -3679,12 +3584,10 @@ button.tag:hover { filter: brightness(1.25); }
 .dup-kept { color: var(--text); font-weight: 600; }
 .dup-mixes { display: flex; flex-direction: column; gap: 5px; margin: 4px 0 2px; }
 .dup-mixes > div { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-
 @media (max-width: 1100px) {
   .bank-split { grid-template-columns: minmax(0, 1fr); }
   .bank-tree { max-height: 40vh; }
 }
-
 /* ==========================================================================
    Debug trace
    ========================================================================== */
@@ -3711,7 +3614,6 @@ button.tag:hover { filter: brightness(1.25); }
 .trace-row .td { text-align: right; color: var(--text-3); }
 .trace-row .tq { color: var(--text-3); overflow: hidden;
                  text-overflow: ellipsis; }
-
 .video-status {
   font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
   padding: 4px 10px; border-top: 1px solid var(--line-soft);
@@ -3721,7 +3623,6 @@ button.tag:hover { filter: brightness(1.25); }
 .video-status.hidden { display: none; }
 .video-msg p { margin: 6px 0 0; font-size: 12px; line-height: 1.6;
                color: var(--text-2); max-width: 460px; }
-
 .bm-ghost {
   position: absolute; top: 0; bottom: 0; width: 0; z-index: 6;
   border-left: 1px dashed var(--accent); opacity: .85; pointer-events: none;
@@ -3733,7 +3634,6 @@ button.tag:hover { filter: brightness(1.25); }
   border-radius: 3px; padding: 1px 5px;
 }
 .pane-canvas-host.placing, .pane-img-host.placing { cursor: copy; }
-
 .measure-hud {
   position: absolute; z-index: 30; pointer-events: none;
   font-family: var(--mono); font-size: 10px; line-height: 1.5;
@@ -3748,7 +3648,6 @@ button.tag:hover { filter: brightness(1.25); }
   font-family: var(--mono); font-size: 9.5px; color: var(--text-3);
   padding: 0 3px;
 }
-
 /* ==========================================================================
    Sessions: notes, flags, compare
    ========================================================================== */
@@ -3762,7 +3661,6 @@ button.tag:hover { filter: brightness(1.25); }
 .flag-btn.on.good    { background: var(--ok);     color: #06120c; border-color: var(--ok); }
 .flag-btn.on.review  { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .flag-btn.on.exclude { background: var(--err);    color: #fff; border-color: var(--err); }
-
 .cmp-table-wrap { overflow: auto; max-height: 62vh;
                   border: 1px solid var(--line-soft); border-radius: var(--radius); }
 .cmp-table { border-collapse: collapse; font-size: 11.5px; width: 100%; }
@@ -3780,7 +3678,6 @@ button.tag:hover { filter: brightness(1.25); }
   position: sticky; left: 0; background: var(--bg-2);
 }
 .cmp-table td.differ { color: var(--accent); }
-
 /* ==========================================================================
    History: timeline
    ========================================================================== */
@@ -3798,7 +3695,6 @@ button.tag:hover { filter: brightness(1.25); }
   display: inline-block; width: 8px; height: 8px; border-radius: 2px;
   margin-right: 4px; vertical-align: middle;
 }
-
 /* ==========================================================================
    Errors: groups
    ========================================================================== */
@@ -3836,7 +3732,6 @@ button.tag:hover { filter: brightness(1.25); }
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
   padding: 4px 0; border-bottom: 1px dashed var(--line-soft);
 }
-
 /* ==========================================================================
    Results: compare + bulk bar
    ========================================================================== */
@@ -3864,7 +3759,6 @@ button.tag:hover { filter: brightness(1.25); }
 .cmp-cell img { max-width: 100%; max-height: 58vh; display: block; }
 .cmp-cell .cap { padding: 7px 10px; font-size: 11.5px; color: var(--text-2); }
 .cmp-cell .cap b { color: var(--text); display: block; font-size: 12px; }
-
 .coll-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .coll-chip {
   display: inline-flex; align-items: center; gap: 5px;
@@ -3877,7 +3771,6 @@ button.tag:hover { filter: brightness(1.25); }
                 border-color: var(--accent); }
 .coll-chip .x { opacity: .55; font-size: 10px; }
 .coll-chip .x:hover { opacity: 1; }
-
 /* ==========================================================================
    Storyboard: layouts + presenter
    ========================================================================== */
@@ -3899,7 +3792,6 @@ button.tag:hover { filter: brightness(1.25); }
 }
 .layout-mini i.t { background: #154734; }
 .layout-name { font-size: 10.5px; color: var(--text-2); }
-
 #presenter {
   position: fixed; inset: 0; z-index: 500; background: #06100c;
   display: flex; flex-direction: column;
@@ -3930,7 +3822,6 @@ button.tag:hover { filter: brightness(1.25); }
 }
 .sb-guide.v { width: 1px; top: 0; bottom: 0; }
 .sb-guide.h { height: 1px; left: 0; right: 0; }
-
 /* ==========================================================================
    Misc: grep, scratch, housekeeping
    ========================================================================== */
@@ -3954,7 +3845,6 @@ button.tag:hover { filter: brightness(1.25); }
                 text-overflow: ellipsis; white-space: nowrap; }
 .grep-hit mark { background: var(--accent-soft); color: var(--accent);
                  border-radius: 2px; }
-
 .scratch-wrap { display: flex; flex-direction: column; gap: 7px; }
 .scratch-code {
   width: 100%; min-height: 190px; font-family: var(--mono); font-size: 12px;
@@ -3974,7 +3864,6 @@ button.tag:hover { filter: brightness(1.25); }
              direction: rtl; text-align: left; }
 .hk-row .b { font-family: var(--mono); font-size: 10.5px;
              color: var(--text-3); text-align: right; }
-
 /* ==========================================================================
    Explorer: searchable source
    ========================================================================== */
@@ -3982,7 +3871,6 @@ button.tag:hover { filter: brightness(1.25); }
 .src-lines { margin: 0; }
 .src-line { display: block; white-space: pre; }
 .src-line.hit { background: var(--accent-soft); color: var(--accent); }
-
 /* The favourites star sits in a row that is now a div, not a button. */
 .tree-item {
   cursor: pointer;
@@ -3990,16 +3878,12 @@ button.tag:hover { filter: brightness(1.25); }
 }
 .tree-item .nm { flex: 1; min-width: 0; overflow: hidden;
                  text-overflow: ellipsis; white-space: nowrap; }
-
 /* Quality flags need room under the card body. */
 .sess-card .flag-set { margin-top: 6px; }
-
 /* The health pill and note chip share the flag row. */
 .sc-flags { flex-wrap: wrap; }
-
 /* The timeline wrapper is hidden by the toggle, not removed. */
 .tl-wrap.hidden { display: none; }
-
 /* ==========================================================================
    Figure rebuild -- the audit, then the walk through performing it.
    ========================================================================== */
@@ -4021,7 +3905,6 @@ button.tag:hover { filter: brightness(1.25); }
   font-size: 12px; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .rb-verdict {
   display: flex; flex-direction: column; gap: 6px;
   padding: 10px 12px; border-radius: var(--radius-sm);
@@ -4042,7 +3925,6 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-verdict-top { display: flex; align-items: center; gap: 9px; }
 .rb-probs { margin: 0; padding-left: 26px; color: var(--text-2); }
 .rb-probs li { margin: 3px 0; }
-
 .rb-dot {
   width: 9px; height: 9px; border-radius: 50%; flex: none;
   background: var(--text-3);
@@ -4050,7 +3932,6 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-dot.ok { background: var(--ok); }
 .rb-dot.warn { background: var(--warn); }
 .rb-dot.missing { background: var(--err); }
-
 .rb-steps { display: flex; flex-direction: column; gap: 2px; }
 .rb-step {
   display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px;
@@ -4069,7 +3950,6 @@ button.tag:hover { filter: brightness(1.25); }
   background: var(--err-soft);
   border-color: color-mix(in srgb, var(--err) 42%, transparent);
 }
-
 .rb-mark { display: flex; align-items: center; gap: 6px; padding-top: 2px; }
 .rb-n {
   font-size: 10px; color: var(--text-3); width: 14px; text-align: right;
@@ -4087,7 +3967,6 @@ button.tag:hover { filter: brightness(1.25); }
 @media (prefers-reduced-motion: reduce) {
   .rb-step[data-state="running"] .rb-dot { animation: none; }
 }
-
 .rb-body { min-width: 0; }
 .rb-title {
   display: flex; align-items: baseline; gap: 8px;
@@ -4101,7 +3980,6 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-step[data-state="done"] .rb-state { color: var(--ok); }
 .rb-step[data-state="skipped"] .rb-state,
 .rb-step[data-state="failed"] .rb-state { color: var(--err); }
-
 .rb-what {
   font-size: 11.5px; color: var(--text-2); margin-top: 1px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -4117,13 +3995,11 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-step[data-state="skipped"] .rb-did,
 .rb-step[data-state="failed"] .rb-did { border-left-color: var(--err); }
 .rb-did.hidden { display: none; }
-
 .rb-live {
   margin-top: 12px; padding: 9px 12px; border-radius: var(--radius-sm);
   background: var(--bg-3); font-size: 12px; color: var(--text-2);
 }
 .rb-live.hidden { display: none; }
-
 /* ==========================================================================
    ToolKit -- a tool list on the left, the chosen tool on the right.
    ========================================================================== */
@@ -4166,10 +4042,8 @@ button.tag:hover { filter: brightness(1.25); }
   font-size: 11px; color: var(--text-3); line-height: 1.55;
   margin: 4px 2px 0;
 }
-
 .tk-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .tk-scope { padding: 14px 16px; }
-
 /* Each pill carries a name and a subtitle, so it stacks rather than sitting
    on one baseline like the plain pills elsewhere. */
 .tk-pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -4180,28 +4054,23 @@ button.tag:hover { filter: brightness(1.25); }
 .tk-pills.flat .pill { flex-direction: row; align-items: center; }
 .tk-pill-sub { font-size: 9.5px; color: var(--text-3); }
 .tk-pills .pill.active .tk-pill-sub { color: inherit; opacity: .8; }
-
 .tk-fields {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px; margin-top: 12px;
 }
 .tk-fields .hint { grid-column: 1 / -1; font-size: 11px; margin: 0; }
-
 .tk-result { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .tk-head { display: flex; align-items: flex-end; gap: 12px; }
 .tk-head h2 { margin: 0; font-size: 15px; }
 .tk-head .sub { margin: 2px 0 0; font-size: 11.5px; color: var(--text-2); }
 .tk-head .spacer { flex: 1; }
-
 .stat-row { display: flex; flex-wrap: wrap; gap: 5px; }
-
 .tk-repeat {
   padding: 9px 12px; border-radius: var(--radius-sm);
   background: var(--warn-soft);
   border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
   font-size: 11.5px; line-height: 1.55;
 }
-
 /* minmax(0, ...) on the grid column above is what lets this scroll instead of
    widening the page: a table full of Windows paths has no break opportunity,
    and a 1fr column would size itself to the longest one. */
@@ -4219,7 +4088,6 @@ button.tag:hover { filter: brightness(1.25); }
   border-top: 1px solid var(--line-soft);
 }
 .tk-empty { padding: 14px 2px; line-height: 1.6; max-width: 62ch; }
-
 /* ==========================================================================
    The pane strip's menu buttons.
 
@@ -4238,7 +4106,6 @@ button.tag:hover { filter: brightness(1.25); }
 }
 .ctl-menu.active .ctl-menu-value { color: inherit; }
 .ctl-menu-caret { flex: none; font-size: 8px; opacity: .6; margin-left: 1px; }
-
 .ctl-pop {
   position: fixed; z-index: 300;
   background: var(--bg-2); border: 1px solid var(--line);
@@ -4262,7 +4129,6 @@ button.tag:hover { filter: brightness(1.25); }
   margin: 0; font-size: 10.5px; line-height: 1.5; color: var(--text-3);
   max-width: 34ch;
 }
-
 /* ==========================================================================
    A color picker with the hex beside it.
 
@@ -4292,7 +4158,6 @@ button.tag:hover { filter: brightness(1.25); }
   flex: 1; min-width: 0; font-family: var(--mono);
   font-size: 11px; text-transform: lowercase;
 }
-
 /* ---- Presenter zoom ---------------------------------------------------
    The stage clips; the slide inside it is what moves and scales. */
 .pres-stage { cursor: default; }
@@ -4310,7 +4175,6 @@ button.tag:hover { filter: brightness(1.25); }
   font-family: var(--mono); font-size: 11px; min-width: 46px;
   font-variant-numeric: tabular-nums;
 }
-
 /* ==========================================================================
    Guided tours.
 
@@ -4320,7 +4184,6 @@ button.tag:hover { filter: brightness(1.25); }
    click reaches it because there is nothing in the way.
    ========================================================================== */
 .tour { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
-
 .tour-block {
   position: fixed; background: rgba(6, 14, 11, 0.62);
   pointer-events: auto;          /* swallow clicks outside the highlight */
@@ -4330,7 +4193,6 @@ button.tag:hover { filter: brightness(1.25); }
 :root[data-theme="light"] .tour-block,
 :root[data-theme="parchment"] .tour-block,
 :root[data-theme="horizon"] .tour-block { background: rgba(20, 32, 28, 0.48); }
-
 /* The ring around the highlight. No background, so whatever is underneath
    shows through untouched. */
 .tour-hole {
@@ -4354,7 +4216,6 @@ button.tag:hover { filter: brightness(1.25); }
   .tour-hole { transition: none; }
   .tour-hole.clickable { animation: none; }
 }
-
 .tour-box {
   position: fixed; pointer-events: auto; width: 330px; max-width: 92vw;
   background: var(--bg-2); border: 1px solid var(--line);
@@ -4381,7 +4242,6 @@ button.tag:hover { filter: brightness(1.25); }
   background: var(--warn-soft); color: var(--warn);
   font-size: 11px; line-height: 1.5;
 }
-
 .tour-head { display: flex; align-items: center; gap: 8px; }
 .tour-mod {
   font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
@@ -4392,7 +4252,6 @@ button.tag:hover { filter: brightness(1.25); }
   margin-left: auto;
 }
 .tour-head .close-x { flex: none; }
-
 .tour-bar {
   height: 2px; background: var(--line-soft); border-radius: 2px;
   margin-top: 7px; overflow: hidden;
@@ -4401,9 +4260,7 @@ button.tag:hover { filter: brightness(1.25); }
   display: block; height: 100%; background: var(--accent);
   transition: width .25s ease;
 }
-
 .tour-foot { display: flex; align-items: center; gap: 6px; margin-top: 11px; }
-
 /* A small pointer toward whatever is highlighted. */
 .tour-box::after {
   content: ''; position: absolute; width: 9px; height: 9px;
@@ -4423,7 +4280,6 @@ button.tag:hover { filter: brightness(1.25); }
 .tour-box[data-arrow="left"]::after {
   right: -5px; top: 50%; margin-top: -5px; transform: rotate(135deg);
 }
-
 /* ---- the module menu ---- */
 .tour-cards { display: flex; flex-direction: column; gap: 7px; }
 .tour-card {
@@ -4458,7 +4314,6 @@ button.tag:hover { filter: brightness(1.25); }
   border: 1px solid color-mix(in srgb, var(--ok) 34%, transparent);
 }
 .tour-menu-note { margin: 12px 0 0; font-size: 11px; line-height: 1.55; }
-
 /* ==========================================================================
    Resizable panes, chrome you can put away, and one pane filling the space.
    ========================================================================== */
@@ -4488,10 +4343,8 @@ button.tag:hover { filter: brightness(1.25); }
 body.splitting { cursor: col-resize; user-select: none; }
 body.splitting * { pointer-events: none !important; }
 body.splitting .pane-split { pointer-events: auto !important; }
-
 .pane-grid.zoomed { grid-template-columns: 1fr !important;
                     grid-template-rows: 1fr !important; }
-
 /* ---- what can be put away ---- */
 #view-xplore.hide-channels .pane-chans { display: none; }
 #view-xplore.hide-channels .pane-main { grid-template-columns: 1fr; }
@@ -4501,14 +4354,12 @@ body.splitting .pane-split { pointer-events: auto !important; }
 /* With the tabs gone the header is just a title, so give the row back too
    when everything else on it is hidden as well. */
 #view-xplore.hide-tabs.hide-heads .xf-head h1 { font-size: 13px; }
-
 /* Full screen: the section becomes the whole monitor, so the rail and the
    log dock are not there to take space and the body has to stretch. */
 #view-xplore:fullscreen { background: var(--bg); }
 #view-xplore:fullscreen .view-head { padding-top: 6px; }
 .pane:fullscreen { background: var(--bg); }
 .pane:fullscreen .pane-main { height: 100%; }
-
 /* ==========================================================================
    Housekeeping -- every recording Jarvis has met.
    ========================================================================== */
@@ -4523,7 +4374,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   font: inherit; font-size: 12px;
 }
 .hk-bar .spacer { flex: 1; }
-
 .hk-layout {
   display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px;
   align-items: start;
@@ -4531,7 +4381,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 @media (max-width: 1100px) {
   .hk-layout { grid-template-columns: minmax(0, 1fr); }
 }
-
 .hk-tree {
   border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
   overflow: hidden; min-width: 0;
@@ -4550,7 +4399,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .hk-caret.open { transform: rotate(90deg); }
 .hk-sub { color: var(--text-3); font-size: 10.5px; margin-left: auto; }
-
 .hk-row {
   display: flex; align-items: center; gap: 9px; cursor: pointer;
   padding: 7px 11px 7px 40px; border-bottom: 1px solid var(--line-soft);
@@ -4582,7 +4430,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   background: var(--bg-3); color: var(--text-2);
 }
 .hk-chip.warn { background: var(--warn-soft); color: var(--warn); }
-
 /* ---- the detail column ---- */
 .hk-detail {
   border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
@@ -4603,7 +4450,84 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .hk-proj { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .hk-proj .hint { flex-basis: 100%; margin: 0; font-size: 10.5px; }
+/* ==========================================================================
+   Which probe a recording was made with, as a chip
+   ==========================================================================
+   Three states that are not degrees of confidence, so they are not three
+   shades of one colour:
 
+     confirmed   somebody said so. The ok colour, filled.
+     detected    a guess from the channel count that nobody has agreed to.
+                 Outlined, in the warning colour -- it is being used, and
+                 that is exactly why it has to look unfinished.
+     unknown     a question mark in the quiet colour. Deliberately not a
+                 default: "H3" and "we do not know" are different answers
+                 and only one of them is safe to run a CSD on.
+
+   The dot carries the state and the name carries the probe, so the row
+   scans as a column of dots -- which is what makes a queue of seventy
+   unconfirmed ones workable. */
+.probechip {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .02em;
+  padding: 1px 6px 1px 4px; border-radius: 999px;
+  border: 1px solid transparent; background: var(--bg-3);
+  color: var(--text-2); cursor: pointer;
+}
+button.probechip { font: inherit; font-family: var(--mono); font-size: 9.5px; }
+.probechip .pc-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: currentColor;
+}
+.probechip.confirmed { background: var(--ok-soft); color: var(--ok); }
+.probechip.detected {
+  background: transparent; color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+/* Hollow, so "not agreed" reads at a glance and at a distance. */
+.probechip.detected .pc-dot { background: transparent;
+                              box-shadow: inset 0 0 0 1.5px currentColor; }
+.probechip.unknown { color: var(--text-3); background: transparent;
+                     border-color: var(--line-soft); }
+.probechip.unknown .pc-dot { background: transparent;
+                             box-shadow: inset 0 0 0 1.5px currentColor; }
+.probechip:hover { filter: brightness(1.15); }
+.probechip.sm { font-size: 9px; padding: 0 5px 0 3px; }
+
+/* Setting it. The agree-with-the-guess button first and on its own, because
+   agreeing is the common case by a wide margin. */
+.probe-pop { min-width: 30ch; }
+.probe-pop .probe-confirm { width: 100%; margin: 6px 0 4px; }
+.probe-opt { width: 100%; text-align: left; border: 0; background: none;
+             cursor: pointer; }
+.probe-opt .pc-name {
+  font-family: var(--mono); font-size: 9.5px; min-width: 5.5em;
+  color: var(--text-2);
+}
+.probe-opt.on .pc-name { color: var(--ok); }
+
+/* What a probe template divides the array into, spelled out under the
+   picker. The point is that "2 columns" is not an answer -- which channels
+   are in which region is, and that is what a person is checking. */
+.hk-probe-cols {
+  display: flex; flex-direction: column; gap: 3px; margin-top: 7px;
+}
+.hk-probe-col {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 11.5px;
+}
+.hk-probe-col code { font-size: 10.5px; color: var(--text-3); }
+.hk-proj-flag {
+  display: flex; gap: 8px; align-items: flex-start; margin-top: 6px;
+  padding: 7px 9px; border-radius: var(--radius);
+  background: var(--warn-soft);
+  border-left: 2px solid var(--warn);
+}
+.hk-proj-flag .hint { margin: 0; font-size: 10.5px; }
+.hk-proj-flag code {
+  display: block; margin-top: 3px; font-size: 10px; color: var(--text-3);
+  overflow-wrap: anywhere;
+}
 .hk-paths-list { display: flex; flex-direction: column; gap: 4px; }
 .hk-path {
   display: grid; grid-template-columns: 10px 1fr auto; gap: 7px;
@@ -4625,7 +4549,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .hk-path .hk-btns { display: flex; gap: 4px; align-items: center; }
 .hk-path.here { background: var(--ok-soft); }
-
 .hk-links { display: flex; flex-wrap: wrap; gap: 6px; }
 .hk-link {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -4639,7 +4562,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .hk-link strong { font-size: 15px; font-variant-numeric: tabular-nums; }
 .hk-link span { font-size: 9.5px; color: var(--text-3); }
 .hk-link.none { opacity: .45; cursor: default; }
-
 .hk-note {
   width: 100%; resize: vertical; font: inherit; font-size: 11.5px;
   padding: 6px 8px; border-radius: var(--radius-sm);
@@ -4648,7 +4570,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .hk-merge { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .hk-merge .hint { margin: 0; font-size: 10.5px; }
 .hk-empty { padding: 18px 12px; line-height: 1.6; }
-
 /* ==========================================================================
    Event curation.
 
@@ -4671,7 +4592,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   font-size: 10.5px; color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
-
 .cur-prog {
   position: relative; flex: 1; min-width: 160px; max-width: 320px;
   height: 16px; border-radius: 8px; background: var(--bg-3);
@@ -4688,7 +4608,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .cur-prog.small { height: 5px; max-width: none; margin: 5px 0; }
 .cur-prog.small i { border-right: 0; background: var(--accent); }
-
 /* One button per category, each showing its key. The key is the interface;
    the button is there so you can learn it. */
 .cur-cats { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -4710,14 +4629,12 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border-radius: 4px; background: var(--bg-3); color: var(--text-2);
   border: 1px solid var(--line);
 }
-
 .cur-nav { display: flex; align-items: center; gap: 7px; flex: 1; }
 .cur-nav .ctl { flex-direction: row; align-items: center; gap: 5px; }
 .cur-nav .ctl > label { font-size: 9px; }
 .cur-saving {
   font-size: 10px; color: var(--text-3); min-width: 46px;
 }
-
 /* ---- the ToolKit list of sets ---- */
 .cur-sets { display: flex; flex-direction: column; gap: 10px; }
 .cur-set {
@@ -4739,7 +4656,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   color: var(--text-2); border-left: 2px solid var(--cat);
 }
 .cur-set-acts { display: flex; gap: 6px; flex-wrap: wrap; }
-
 /* --------------------------------------------------------------------------
    The bench and the shelf.
 
@@ -4757,7 +4673,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .cur-bench-empty p { margin: 0 0 6px; }
 .cur-bench-empty p:first-child { font-size: 12.5px; color: var(--text-2); }
 .cur-bench-empty p:last-child { margin-bottom: 0; line-height: 1.6; }
-
 /* Whose set it is, and when it was last picked up. */
 .cur-set-who {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -4775,7 +4690,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border-style: dashed;
 }
 .cur-set-when { font-size: 10.5px; color: var(--text-3); }
-
 /* The administrative half of a card, folded away. A row that offers Delete
    at the same weight as "carry on" reads as a database row. */
 .cur-set-more {
@@ -4787,7 +4701,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
    so a class like the one above quietly un-hides anything it is put on.
    This is the only reason the fold worked in the markup and not on screen. */
 .cur-set-more[hidden] { display: none; }
-
 .cur-shelf-head { margin: 14px 0 0; }
 .cur-shelf-toggle {
   font: inherit; font-size: 11.5px; cursor: pointer;
@@ -4825,7 +4738,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border-bottom: 1px solid var(--line);
 }
 .cur-shelf-cols .csr-name { font-weight: 400; }
-
 /* Picking an owner. A roster row has to say why the name is on it -- "48
    decisions, 3 banked versions" is what tells two similar names apart. */
 .person-list .bm-row { align-items: baseline; }
@@ -4850,7 +4762,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .csr-acts { display: flex; gap: 4px; align-items: center; }
 /* The arrow is a shortcut, not a second primary action. */
 .csr-acts .icon-only { padding-left: 8px; padding-right: 8px; }
-
 @media (max-width: 900px) {
   /* The grid gives up before anything gets cut. */
   .cur-shelf-row, .cur-shelf-cols {
@@ -4859,7 +4770,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   .cur-shelf-cols { display: none; }
   .csr-sess, .csr-who, .csr-when { grid-column: 1; }
 }
-
 /* ==========================================================================
    StrataScope -- the layer rail beside the rasters.
 
@@ -4924,7 +4834,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   flex: 1; min-width: 0; overflow: hidden;
   white-space: nowrap; color: var(--text-2);
 }
-
 /* ==========================================================================
    The layer rail when the lanes get short
    ==========================================================================
@@ -4951,7 +4860,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border-top: 1px solid rgba(0, 0, 0, .10);
 }
 .strata-rows.tight .strata-num { width: 20px; }
-
 /* ---- One name per run ----------------------------------------------------
    A layer is a stretch of the shank, not a property of a single channel, so
    at six pixels a lane the run is what carries the name: written once, on
@@ -4984,7 +4892,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .strata-span.tiny > * { display: none; }
 .strata-span.none { border-left-color: var(--line); }
 .strata-span.none b { color: var(--text-3); font-weight: 400; }
-
 .strata-rows.packed .strata-row { font-size: 8.5px; padding: 0 3px; }
 .strata-rows.packed .strata-num { width: 18px; }
 /* Every other number, then every fourth. Hidden rather than removed, so the
@@ -5010,7 +4917,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line); border-radius: 4px;
   background: var(--bg); color: var(--text);
 }
-
 .strata-bar {
   flex: none; display: flex; flex-direction: column; align-items: stretch;
   gap: 7px;
@@ -5052,10 +4958,8 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line);
 }
 .strata-legend { display: flex; flex-wrap: wrap; gap: 5px; }
-
 #xfBody.strata-on { position: relative; }
 #xfBody.strata-on .pane-grid { margin-left: var(--rail-w, 122px); }
-
 /* ---- Remembered vs found -------------------------------------------------
    A recording Jarvis remembers and one it has just laid eyes on are different
    facts. The list opens showing everything faint -- what I remember -- and a
@@ -5076,7 +4980,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 /* `away` already dims; do not dim twice or it becomes unreadable. */
 .hk-row.away.remembered { opacity: .42; }
-
 /* An error that was marked resolved and has happened again. The most
    interesting row on the page, so it does not read as an ordinary open one. */
 .err-reopened {
@@ -5086,14 +4989,12 @@ body.splitting .pane-split { pointer-events: auto !important; }
   background: var(--warn-soft); color: var(--warn);
   border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
 }
-
 /* A recording Jarvis remembers but this scan has not found. Faint, so the
    drive you just scanned reads as "here is what is actually on it" and the
    rest is visibly a memory rather than a finding. */
 .sess-card.remembered { opacity: .5; }
 .sess-card.remembered:hover, .sess-card.remembered.picked { opacity: 1; }
 .sess-card.remembered .sc-name { font-weight: 400; }
-
 /* ==========================================================================
    The session search field.
 
@@ -5136,8 +5037,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .sp-proj { flex: none; font-size: 10px; color: var(--text-3); }
 .sp-none { padding: 8px 10px; font-size: 11px; color: var(--text-3); }
-
-
 /* ==========================================================================
    Housekeeping: grouping, the table, and the mouse book
    ========================================================================== */
@@ -5148,13 +5047,11 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
   font: inherit; font-size: 11.5px;
 }
-
 /* The table needs the width, so the detail panel steps aside for it. */
 .hk-layout.wide { grid-template-columns: minmax(0, 1fr) 330px; }
 @media (max-width: 1300px) {
   .hk-layout.wide { grid-template-columns: minmax(0, 1fr); }
 }
-
 .hk-tablecol { min-width: 0; }
 .hk-tablewrap {
   border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
@@ -5188,7 +5085,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line);
 }
 .hk-unset { color: var(--text-3); }
-
 /* Labels on a mouse branch: what the animal is, without opening anything. */
 .hk-mouse .hk-sub { margin-left: 0; }
 .hk-labels { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; }
@@ -5204,7 +5100,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .hk-tag:hover { color: var(--accent); border-color: var(--accent); }
 .hk-branch.sel { background: var(--accent-soft); }
-
 /* The mouse editor */
 .hk-attrs { display: grid; gap: 6px; margin: 10px 0; }
 .hk-attr { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px;
@@ -5227,13 +5122,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
   display: flex; flex-wrap: wrap; gap: 6px; max-height: 40vh;
   overflow: auto; margin: 10px 0;
 }
-
 .sync-ok { color: var(--ok); }
 .sync-warn { border: 1px solid var(--err); border-radius: var(--radius-sm);
              padding: 10px 12px; margin: 10px 0; }
 .sync-warn pre { font-size: 10.5px; color: var(--text-2); margin: 6px 0; }
-
-
 /* ==========================================================================
    Kilosort and Phy
    ========================================================================== */
@@ -5242,7 +5134,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-head h2 { margin: 0 0 2px; font-size: 15px; }
 .ks-head .hint { margin: 0; }
 .ks-head .seg { margin-left: auto; }
-
 .ks-verdict {
   border-radius: var(--radius-sm); padding: 11px 14px; margin: 12px 0;
   display: grid; gap: 3px;
@@ -5252,7 +5143,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-verdict span { font-size: 11.5px; color: var(--text-2); }
 .ks-bad { background: var(--err-soft); border: 1px solid var(--err);
           border-radius: var(--radius-sm); padding: 10px 12px; }
-
 .ks-reqs { display: grid; gap: 8px; }
 .ks-req {
   display: grid; grid-template-columns: 12px 1fr; gap: 10px;
@@ -5270,7 +5160,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-req-top code { font-size: 10.5px; color: var(--text-3); }
 .ks-req .hint { margin: 3px 0 0; }
 .ks-req-body { min-width: 0; }
-
 .ks-fix { display: flex; align-items: center; gap: 8px; margin-top: 8px;
           flex-wrap: wrap; }
 .ks-fix pre {
@@ -5285,7 +5174,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-note p { margin: 4px 0; font-size: 11.5px; color: var(--text-2); }
 .ks-note pre { font-size: 10.5px; background: var(--bg-3); padding: 7px 9px;
                border-radius: var(--radius-sm); margin: 6px 0 0; }
-
 .ks-choices { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
 .ks-choices label { display: grid; gap: 3px; font-size: 11px;
                     color: var(--text-3); min-width: 220px; flex: 1; }
@@ -5297,27 +5185,23 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-choices .ks-check { display: flex; align-items: center; gap: 7px;
                         flex: 0; min-width: 0; align-self: end;
                         padding-bottom: 6px; }
-
 .ks-problem {
   border-left: 3px solid var(--err); background: var(--bg-2);
   padding: 8px 12px; margin: 8px 0;
 }
 .ks-problem p { margin: 3px 0 0; font-size: 11.5px; color: var(--text-2); }
-
 .ks-facts { display: grid; gap: 4px; margin: 12px 0; }
 .ks-fact { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px;
            font-size: 11.5px; align-items: baseline; }
 .ks-fact .k { color: var(--text-3); }
 .ks-fact .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ks-fact .x { color: var(--text-3); font-size: 10.5px; }
-
 .ks-script {
   max-height: 340px; overflow: auto; background: var(--bg-3);
   border-radius: var(--radius-sm); padding: 10px 12px; font-size: 10.5px;
   margin: 8px 0;
 }
 .ks-actions { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
-
 .ks-runs { display: grid; gap: 6px; }
 .ks-run {
   display: flex; align-items: center; justify-content: space-between;
@@ -5327,13 +5211,11 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .ks-run.sel { border-color: var(--accent); }
 .ks-run.away { opacity: .6; }
 .ks-run .hint { display: block; margin: 2px 0 0; }
-
 .ks-views { display: grid; gap: 8px;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .ks-view { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
            padding: 10px 12px; background: var(--bg-2); }
 .ks-view p { margin: 4px 0 0; font-size: 11.5px; color: var(--text-2); }
-
 .ks-keys { display: grid; gap: 14px;
            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .ks-keygroup h4 { margin: 0 0 6px; font-size: 11px; color: var(--text-3);
@@ -5347,7 +5229,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line); border-bottom-width: 2px;
   border-radius: 4px; background: var(--bg-3);
 }
-
 .ks-job { margin-top: 16px; border: 1px solid var(--line);
           border-radius: var(--radius-sm); overflow: hidden; }
 .ks-job-head { display: flex; align-items: center; gap: 10px;
@@ -5359,8 +5240,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   margin: 0; padding: 10px 12px; max-height: 300px; overflow: auto;
   font-size: 10.5px; background: var(--bg); white-space: pre-wrap;
 }
-
-
 /* ==========================================================================
    Result folders
 
@@ -5396,7 +5275,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
   font: inherit; font-size: 11px;
 }
-
 .cloud-note { margin: 10px 0; }
 .cloud-line { display: flex; align-items: center; gap: 9px; }
 .cloud-line .dot { width: 8px; height: 8px; border-radius: 50%;
@@ -5407,7 +5285,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .cloud-err { font-size: 10.5px; color: var(--err); background: var(--err-soft);
              padding: 7px 9px; border-radius: var(--radius-sm);
              white-space: pre-wrap; margin: 6px 0; }
-
 .cloud-ask { border: 1px solid var(--accent); border-radius: var(--radius-sm);
              padding: 12px 14px; margin: 10px 0; background: var(--bg-2); }
 .cloud-ask .row { display: flex; gap: 8px; margin: 8px 0 4px; }
@@ -5417,7 +5294,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
              font-family: var(--mono); }
 .cloud-key:focus { border-color: var(--accent); outline: none; }
 .hint.bad { color: var(--err); }
-
 .ks-pypick { border: 1px solid var(--line); border-radius: var(--radius-sm);
              padding: 10px 12px; margin: 10px 0; background: var(--bg-2);
              display: grid; gap: 5px; }
@@ -5428,14 +5304,12 @@ body.splitting .pane-split { pointer-events: auto !important; }
   border: 1px solid var(--line); background: var(--bg); color: var(--text);
   font: inherit; font-size: 11.5px; max-width: 100%;
 }
-
 /* "Full values" on: read the path instead of guessing at it. */
 .hk-table.wrap td {
   white-space: normal; word-break: break-all; max-width: 460px;
   overflow: visible; text-overflow: clip;
 }
 .hk-table.wrap td.mono { font-size: 10px; }
-
 /* Folders a scan would not vouch for, and registered recordings that no
    longer look like recordings. */
 .held-list { display: grid; gap: 8px; max-height: 52vh; overflow: auto;
@@ -5452,8 +5326,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .stat-chip.warn { background: var(--warn-soft); color: var(--warn);
                   border-color: var(--warn); cursor: pointer; }
-
-
 /* ==========================================================================
    A rail that gets out of the way
    ==========================================================================
@@ -5473,7 +5345,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   stroke: currentColor; stroke-width: 1.7; stroke-linecap: round;
 }
 .rail-toggle:hover { background: var(--bg-3); color: var(--text); }
-
 /* The width, not the track list -- see the transition on #app. */
 #app.rail-icons { --rail: 54px; }
 #app.rail-icons #rail { padding: 14px 8px; align-items: center; }
@@ -5538,7 +5409,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 #app.rail-icons .nav-badge {
   position: absolute; transform: translate(12px, -8px);
 }
-
 /* One column, not a zero-width one followed by the real one.
 
    #rail carries no explicit grid-column, so it auto-places into the first
@@ -5578,7 +5448,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
    the first one shrinks to 0px -- so moving the dock there put it in a track
    with no width. */
 #app.rail-away #logDock { grid-column: 2; }
-
 /* The way back. Only present when the rail is, which is the point: it is a
    handle, not a permanent fixture. */
 #railPeek {
@@ -5591,7 +5460,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
   font-size: 10px; padding: 0;
 }
 #app.rail-away #railPeek { display: grid; }
-
 /* Out of the layout, once it has finished sliding out.
 
    This is what `display: none` was for, and it could not be animated -- so
@@ -5605,8 +5473,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
    over, and taken off before the movement back begins. */
 #app.rail-gone #rail { display: none; }
 #railPeek:hover { color: var(--accent); border-color: var(--accent); }
-
-
 /* ==========================================================================
    Folding a bar away
    ==========================================================================
@@ -5627,7 +5493,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
                 stroke-linecap: round; stroke-linejoin: round; }
 .fold-btn:hover { opacity: 1; color: var(--accent); background: var(--bg-3); }
 .fold-left svg { transform: rotate(-90deg); }
-
 /* The slivers, in a row at the top of the plot. */
 .unfold-row {
   display: flex; gap: 3px; padding: 2px 4px; flex: none;
@@ -5643,7 +5508,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
               stroke-width: 1.8; stroke-linecap: round; }
 .unfold:hover { color: var(--accent); border-color: var(--accent); }
 .unfold-channels svg { transform: rotate(-90deg); }
-
 /* In full screen the panes get the whole monitor and the chrome is cleared,
    so the slivers would be the only furniture left on it. They stay -- being
    unable to get the controls back without leaving full screen would be
@@ -5652,8 +5516,6 @@ body.splitting .pane-split { pointer-events: auto !important; }
 :fullscreen #view-xplore .unfold-row { opacity: 0.25; }
 #view-xplore:fullscreen .unfold-row:hover,
 :fullscreen #view-xplore .unfold-row:hover { opacity: 1; }
-
-
 /* ==========================================================================
    Being in a mode should look like being in a mode
    ==========================================================================
@@ -5669,17 +5531,21 @@ body.splitting .pane-split { pointer-events: auto !important; }
    ========================================================================== */
 #app.mode-strata { --mode: #ffb81c; --mode-soft: rgba(255, 184, 28, 0.13); }
 #app.mode-curate { --mode: #4bc7f0; --mode-soft: rgba(75, 199, 240, 0.13); }
-
+/* Braces is a step of the same job as curation and sits next to it in the
+   rail, so it takes the accent rather than a fourth colour nobody has a
+   meaning for. */
+#app.mode-braces { --mode: #7FE3B0; --mode-soft: rgba(127, 227, 176, 0.13); }
 #app.mode-strata #xfBody,
+#app.mode-braces #xfBody,
 #app.mode-curate #xfBody {
   box-shadow: inset 0 0 0 2px var(--mode);
   border-radius: var(--radius);
 }
-
 /* The banner. Ahead of the panes in the flow, so it is the first thing in
    the workspace rather than something floating over the data. */
 .mode-banner { display: none; }
 #app.mode-strata .mode-banner,
+#app.mode-braces .mode-banner,
 #app.mode-curate .mode-banner {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 10px; flex: none;
@@ -5698,13 +5564,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
   text-transform: none; letter-spacing: 0;
 }
 .mode-banner button:hover { background: var(--mode); color: #0b0e13; }
-
 /* The aid window. Framed the same way, and labelled, so it is never mistaken
    for the window you are supposed to be reading. */
 body.aid-window #xfBody { box-shadow: inset 0 0 0 2px var(--accent); }
 body.aid-window .xf-tabs { display: none !important; }
-
-
 /* The bad-channel control at 64 channels.
    ------------------------------------------------------------------------
    A lane under 15px has no room for a button with "ok" written on it, which
@@ -5729,8 +5592,6 @@ body.aid-window .xf-tabs { display: none !important; }
    different costume. */
 .ch-overlay .ch-lane .badbtn,
 .ch-row .badbtn { flex: none; }
-
-
 /* A checkbox that sits in a control row next to the number fields it
    qualifies -- the frequency lock, for one. Laid out like a .ctl so the row
    does not develop a step in it. */
@@ -5741,8 +5602,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .ctl-check input { accent-color: var(--accent); margin: 0; }
 .ctl-check:hover { color: var(--text); }
-
-
 /* ==========================================================================
    Feedback: bugs, features, suggestions
    ==========================================================================
@@ -5765,7 +5624,6 @@ body.aid-window .xf-tabs { display: none !important; }
   outline: none; border-color: var(--accent-line);
 }
 .fb-form .hint { font-size: 11px; color: var(--text-3); line-height: 1.45; }
-
 .fb-drop {
   display: flex; flex-direction: column; gap: 3px; align-items: center;
   padding: 14px; border: 1px dashed var(--line); border-radius: var(--radius);
@@ -5776,7 +5634,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .fb-drop.over { border-color: var(--accent); background: var(--accent-soft); }
 .fb-drop strong { font-size: 12px; }
 .fb-drop span { font-size: 11px; color: var(--text-3); }
-
 .fb-shots { display: flex; flex-wrap: wrap; gap: 10px; }
 .fb-shot {
   display: flex; flex-direction: column; gap: 4px; width: 190px;
@@ -5791,7 +5648,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .fb-shots.small { gap: 6px; margin-top: 6px; }
 .fb-shots.small img { width: 132px; height: 78px; object-fit: cover;
                       border: 1px solid var(--line); border-radius: 4px; }
-
 .fb-context summary { font-size: 11px; color: var(--text-3); cursor: pointer; }
 .fb-context pre {
   margin: 6px 0 0; padding: 8px 10px; border-radius: var(--radius-sm);
@@ -5800,7 +5656,6 @@ body.aid-window .xf-tabs { display: none !important; }
   max-height: 200px; overflow: auto; white-space: pre-wrap;
 }
 .fb-actions { display: flex; align-items: center; gap: 10px; }
-
 .fb-list { display: flex; flex-direction: column; gap: 8px; }
 .fb-item {
   padding: 9px 12px; border-radius: var(--radius);
@@ -5818,8 +5673,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .fb-detail { margin: 6px 0 0; font-size: 12px; color: var(--text-2);
              line-height: 1.5; white-space: pre-wrap; }
 .fb-item-actions { display: flex; gap: 4px; margin-top: 8px; }
-
-
 /* Converting a video to MP4, and how far along it is. Sits under the player
    because it is about the file, not about the moment you are looking at. */
 .vconv {
@@ -5835,10 +5688,8 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .vconv-fill { height: 100%; width: 0; background: var(--accent);
               transition: width .3s linear; }
-
 .warn-line { color: var(--warn); font-size: 11.5px; margin: 6px 0 0;
              line-height: 1.45; }
-
 /* Forty-odd recordings of scan results: scrolls in its own box rather than
    pushing the Import button off the bottom of the view. */
 .tk-table-wrap { max-height: 46vh; overflow: auto; margin-top: 10px;
@@ -5846,8 +5697,6 @@ body.aid-window .xf-tabs { display: none !important; }
                  border-radius: var(--radius-sm); }
 .tk-table-wrap .tk-table { margin: 0; }
 .tk-table tr.dim { opacity: .55; }
-
-
 /* ==========================================================================
    The step loader
    ==========================================================================
@@ -5893,19 +5742,15 @@ body.aid-window .xf-tabs { display: none !important; }
                  animation: sl-pulse 1.1s ease-in-out infinite; }
 .sl-dots i.done { background: var(--ok); }
 @keyframes sl-pulse { 50% { opacity: .35; } }
-
 /* Centred in whatever pane it is filling, rather than pinned to the top-left
    with the rest of the layout collapsed around it. */
 .tk-loading {
   display: grid; place-items: center; min-height: 220px;
 }
-
 @media (prefers-reduced-motion: reduce) {
   .sl-wave .sl-spike { animation: none; }
   .sl-dots i.now { animation: none; }
 }
-
-
 /* ==========================================================================
    Two bars under the video, in different units
    ==========================================================================
@@ -5948,7 +5793,6 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--bg-3); color: var(--text-3); font-family: var(--mono);
 }
 .vs-scope.partial { background: var(--warn-soft); color: var(--warn); }
-
 .vrec-label {
   flex: none; font-size: 9.5px; letter-spacing: .05em;
   text-transform: uppercase; color: var(--text-3);
@@ -5966,9 +5810,6 @@ body.aid-window .xf-tabs { display: none !important; }
   pointer-events: none;
 }
 .vrec-cursor { background: var(--accent); }
-
-
-
 /* A running server older than the files on disk.
    ------------------------------------------------------------------------
    Stays until Jarvis is restarted, because that is the only thing that fixes
@@ -5984,8 +5825,6 @@ body.aid-window .xf-tabs { display: none !important; }
   font-size: 12px; line-height: 1.4;
 }
 .stale-banner strong { color: var(--err); flex: none; }
-
-
 /* ==========================================================================
    Who the work is credited to
    ==========================================================================
@@ -6011,14 +5850,11 @@ body.aid-window .xf-tabs { display: none !important; }
 .who-chip.unset { border-color: var(--warn); color: var(--warn); }
 #app.rail-icons .who-chip { justify-content: center; padding: 5px 4px; }
 #app.rail-icons .who-chip .who-name { display: none; }
-
 .prof-form { display: flex; flex-direction: column; gap: 11px;
              max-width: 520px; }
 .prof-form .field { display: flex; flex-direction: column; gap: 4px; }
 .prof-form .field > label { font-size: 11px; color: var(--text-2); }
 .prof-form .hint { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
-
-
 /* The Guide's cursor.
    ------------------------------------------------------------------------
    Next performs the step rather than telling you to. Without a visible
@@ -6046,8 +5882,6 @@ body.aid-window .xf-tabs { display: none !important; }
   to   { transform: scale(1.25); opacity: 0; }
 }
 .tour-cursor.press svg { transform: scale(.86); }
-
-
 /* Finding one curation set among forty.
    ------------------------------------------------------------------------
    The snapshot import alone brought in forty-one, one tall card each, in
@@ -6106,10 +5940,8 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .cl-lab { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cl-who, .cl-revs { font-size: 10px; color: var(--text-3); flex: none; }
-
 /* An archived session is still legible, obviously set aside. */
 .cur-set.archived { opacity: .6; border-style: dashed; }
-
 .cur-filter {
   display: flex; align-items: center; gap: 8px; margin: 10px 0 8px;
 }
@@ -6123,7 +5955,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .cur-filter select { flex: none; }
 .cur-chips { margin-bottom: 10px; }
 .cur-chips .pill:disabled { opacity: .35; cursor: default; }
-
 /* The people already on record, in the Profile dialog. Two targets per
    chip: the name adopts them, the pencil edits them. */
 .prof-known { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 4px; }
@@ -6141,7 +5972,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .prof-chip-name:hover, .prof-chip-edit:hover { background: var(--bg-3); }
 .prof-chip.on .prof-chip-name { color: var(--accent); }
-
 /* Choosing a bookmark's colour. Swatches rather than a colour input: the
    point is a small set of colours that stay legible on both grounds, not
    any colour at all. */
@@ -6162,7 +5992,6 @@ body.aid-window .xf-tabs { display: none !important; }
   border-color: var(--text-1);
   box-shadow: 0 0 0 1px var(--bg-1) inset;
 }
-
 /* The app's version, beside the repo name in the rail. Not `.ver-chip` --
    that is the bank dialog's per-category count chip, and two unrelated
    things sharing a class name is how one of them acquires the other's
@@ -6193,7 +6022,6 @@ body.aid-window .xf-tabs { display: none !important; }
 /* Uncommitted local changes: what is running is not what the notes
    describe, which is worth a mark rather than a silence. */
 .app-ver.dirty { border-style: dashed; color: var(--warn, var(--accent)); }
-
 /* The notes themselves. */
 .notes-body { max-height: 66vh; overflow-y: auto; }
 .notes-pre { max-width: 72ch; line-height: 1.6; }
@@ -6215,7 +6043,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .notes-sec p { margin: 0 0 7px; line-height: 1.6; }
 .notes-sec ul { margin: 0 0 7px; padding-left: 18px; }
 .notes-sec li { margin: 0 0 5px; line-height: 1.6; }
-
 /* --------------------------------------------------------------------------
    A dialog docked out of the way.
 
@@ -6250,7 +6077,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .modal.big.docked .rb-head,
 .modal.big.docked .rb-verdict { display: none; }
 .modal.big.docked .rb-steps { font-size: 11px; }
-
 /* --------------------------------------------------------------------------
    One control strip for panes that are views of one thing.
 
@@ -6267,13 +6093,11 @@ body.aid-window .xf-tabs { display: none !important; }
 .pane-ctl.is-master {
   flex: 1; min-width: 0; border-bottom: 0; background: transparent;
 }
-
 /* With the strip lifted out, a pane head is the only furniture left, so it
    can have its space back -- these were squeezed to make room for six
    strips that are no longer there. */
 .pane-grid.panes-6 .pane-head { padding: 4px 8px; }
 .pane-grid.panes-6 .pane-head .pane-meta { display: inline; }
-
 /* A standing notice in a pane head: something is not being drawn the way it
    normally is. In the header rather than only in the menu that set it,
    because the menu is shut by the time it matters. */
@@ -6289,11 +6113,9 @@ body.aid-window .xf-tabs { display: none !important; }
   background: color-mix(in srgb, var(--warn, #E5A823) 16%, transparent);
   color: var(--warn, #E5A823);
 }
-
 /* A segmented chooser in a popover: three states of one setting, so they
    look like one control rather than three buttons. */
 .ctl-seg { display: inline-flex; gap: 0; }
-
 /* A channel on the overview strip: the colour its line is drawn in, the
    channel's own name, and the x that takes it off again. Wrapping,
    because ten of these do not fit a popover on one line, and the row
@@ -6324,7 +6146,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 /* A note that is a warning, not a footnote. */
 .ctl-pop-note.warn { color: var(--warn, #E5A823); }
-
 /* --------------------------------------------------------------------------
    The radio.
 
@@ -6362,7 +6183,6 @@ body.aid-window .xf-tabs { display: none !important; }
   padding: 2px 5px; border-radius: 4px; flex: none;
 }
 .radio-x:hover { color: var(--text-1); background: var(--bg-2); }
-
 /* The body's height is set from JavaScript, measured off the built dock --
    see `measure()` in radio.js for why nothing declarative worked here.
 
@@ -6402,12 +6222,9 @@ body.aid-window .xf-tabs { display: none !important; }
 .radio-link { color: var(--accent); text-decoration: underline; }
 /* The rail chip, lit while it is playing. */
 .chip-btn.on { color: var(--accent); border-color: var(--accent-line); }
-
 @media (max-width: 900px) {
   .radio-dock { width: calc(100vw - 28px); }
 }
-
-
 /* ==========================================================================
    Skeletons
    ==========================================================================
@@ -6420,7 +6237,6 @@ body.aid-window .xf-tabs { display: none !important; }
    independent spinners.
    ========================================================================== */
 .sk-wrap { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
-
 .sk-item {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -6429,12 +6245,10 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--bg-2);
   animation: skFade .5s ease both;
 }
-
 @keyframes skFade {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
-
 /* One bar. The gradient is wider than the bar and slides across it, which is
    why the size is 200%. */
 .sk-line, .sk-pill {
@@ -6444,15 +6258,12 @@ body.aid-window .xf-tabs { display: none !important; }
   background-size: 200% 100%;
   animation: skSlide 1.4s linear infinite;
 }
-
 .sk-pills { display: flex; gap: 6px; margin-top: 1px; }
 .sk-pill { width: 46px; height: 14px; border-radius: 999px; }
-
 @keyframes skSlide {
   from { background-position: 120% 0; }
   to   { background-position: -60% 0; }
 }
-
 /* A skeleton is a guess about how long something takes. Somebody who has
    asked for less motion has not asked for less information, so the bars
    stay -- they just stop moving. */
@@ -6462,8 +6273,6 @@ body.aid-window .xf-tabs { display: none !important; }
   #app, #rail, .nav-item span, .nav-item kbd, .rail-toggle > span:not(.rail-pips),
   .brand-text, .chip-btn span, .env { transition: none; }
 }
-
-
 /* ==========================================================================
    The Menu button's three positions
    ==========================================================================
@@ -6485,7 +6294,6 @@ body.aid-window .xf-tabs { display: none !important; }
   justify-content: center; margin: 0;
 }
 #app.rail-icons .rail-toggle { position: relative; padding-bottom: 11px; }
-
 .rail-pips i {
   width: 4px; height: 4px; border-radius: 50%;
   background: var(--line);
@@ -6499,7 +6307,6 @@ body.aid-window .xf-tabs { display: none !important; }
      relying on colour alone. */
   transform: scale(1.6);
 }
-
 .rail-hint {
   margin: -10px 6px 0; padding: 6px 8px;
   font-size: 10px; line-height: 1.45; color: var(--text-3);
@@ -6511,7 +6318,6 @@ body.aid-window .xf-tabs { display: none !important; }
   from { opacity: 0; transform: translateX(-6px); }
   to   { opacity: 1; transform: none; }
 }
-
 /* ==========================================================================
    Modals and popovers arrive rather than appear
    ========================================================================== */
@@ -6524,7 +6330,6 @@ body.aid-window .xf-tabs { display: none !important; }
   from { opacity: 0; transform: translateY(-6px) scale(.985); }
   to   { opacity: 1; transform: none; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   #bigModal:not(.hidden) > #bigModalBox,
   .modal-backdrop:not(.hidden) > .modal,
@@ -6532,8 +6337,6 @@ body.aid-window .xf-tabs { display: none !important; }
   #logDock, .radio-body, .rail-pips i, .tree-head .caret,
   .log-toggle svg { transition: none; }
 }
-
-
 /* ==========================================================================
    Who is curating what, right now
    ==========================================================================
@@ -6557,7 +6360,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .cur-live-who b { color: var(--text); font-weight: 600; }
 .cur-live-who.me b { color: var(--text-2); font-weight: 500; }
 .cur-live-n { color: var(--text-3); font-family: var(--mono); font-size: 10px; }
-
 /* Lit, and beating. A static dot says "there is a row here"; a beating one
    says the information is live -- which is the whole claim being made. */
 .cur-live-dot {
@@ -6573,7 +6375,6 @@ body.aid-window .xf-tabs { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .cur-live-dot { animation: none; }
 }
-
 /* Taking a name off the roster. Quiet until hovered: removing somebody is
    rarer than picking them, and a red × on every chip would read as the
    point of the list. */
@@ -6588,7 +6389,6 @@ body.aid-window .xf-tabs { display: none !important; }
    clicked rather than after. */
 .prof-chip-del.held { opacity: .3; cursor: help; }
 .prof-chip-del.held:hover { background: var(--bg-3); color: var(--text-3); }
-
 /* ==========================================================================
    StrataScope: selecting channels, then naming them
    ==========================================================================
@@ -6605,7 +6405,6 @@ body.aid-window .xf-tabs { display: none !important; }
 /* The rail is a column of hit targets now, so say so. */
 .strata-row { cursor: pointer; }
 .strata-rows { user-select: none; }
-
 /* What the layer buttons will do, in words, because it depends on whether
    anything is selected and guessing wrong costs a mislabelled channel. */
 .strata-mode {
@@ -6629,14 +6428,12 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .strata-brush.clearone { opacity: .8; }
 .strata-brush.clearone:disabled { opacity: .35; cursor: default; }
-
 /* How strong the layer wash is over the rasters. */
 .strata-wash { display: flex; align-items: center; gap: 6px; }
 .strata-wash-label {
   font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
   color: var(--text-3);
 }
-
 /* ==========================================================================
    Layer sheets in the Event Bank
    ==========================================================================
@@ -6645,7 +6442,6 @@ body.aid-window .xf-tabs { display: none !important; }
    worth reading and "CA1" eight times over is not.
    ========================================================================== */
 .bank-kind { margin-right: 4px; flex: none; }
-
 .layer-runs {
   display: flex; flex-direction: column; gap: 2px;
   margin: 4px 0 12px;
@@ -6668,7 +6464,6 @@ body.aid-window .xf-tabs { display: none !important; }
   margin-left: auto; font-family: var(--mono); font-size: 10px;
   color: var(--text-3);
 }
-
 /* ==========================================================================
    An error, opened onto what was happening
    ==========================================================================
@@ -6682,7 +6477,6 @@ body.aid-window .xf-tabs { display: none !important; }
   transition: color .12s;
 }
 .ec-top.open .ec-caret { color: var(--accent); }
-
 .ec-context {
   margin: 8px 0 2px; padding: 8px 10px;
   border-left: 2px solid var(--accent);
@@ -6713,7 +6507,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .ecx-row.here .ecx-detail { color: var(--err); }
 .ecx-row.other { color: var(--warn); }
 .ecx-row.other .ecx-action { color: var(--warn); }
-
 /* ==========================================================================
    Devices
    ==========================================================================
@@ -6741,7 +6534,6 @@ body.aid-window .xf-tabs { display: none !important; }
   min-width: 84px; text-align: right;
 }
 .dev-col.warn { color: var(--warn); }
-
 /* ==========================================================================
    History, lab-wide
    ==========================================================================
@@ -6762,7 +6554,6 @@ body.aid-window .xf-tabs { display: none !important; }
   font-family: var(--mono); font-size: 10px; color: var(--text-3);
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-
 /* ==========================================================================
    Which device
    ==========================================================================
@@ -6779,7 +6570,6 @@ body.aid-window .xf-tabs { display: none !important; }
 /* Unknown is not offline. A machine with errors on record but no row in the
    device table has never synced from here, which is a third state. */
 .dev-dot.unknown { background: var(--line); }
-
 .dev-feed { display: flex; flex-direction: column; gap: 1px; }
 .dev-feed-row {
   display: flex; align-items: baseline; gap: 8px;
@@ -6798,7 +6588,6 @@ body.aid-window .xf-tabs { display: none !important; }
   color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 /* --------------------------------------------------------------------------
    What changed since you last looked
    -------------------------------------------------------------------------- */
@@ -6837,7 +6626,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .digest-sess .ds-key { font-family: var(--mono); }
 .digest-sess .ds-who { color: var(--accent); }
 .digest-sess .ds-n { color: var(--text-3); }
-
 /* --------------------------------------------------------------------------
    Session receipt
 
@@ -6870,7 +6658,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .rcpt-lab i { width: 10px; height: 10px; border-radius: 2px; display: block; }
 .rcpt-lab .rl-n { font-family: var(--mono); }
 .rcpt-foot { color: var(--text-3); font-size: 12px; }
-
 /* --------------------------------------------------------------------------
    Hall of garbage
    -------------------------------------------------------------------------- */
@@ -6899,7 +6686,6 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--warn-soft);
   border-left: 3px solid var(--warn);
 }
-
 /* The digest's host: full width, above the split, and taking no room at all
    when there is nothing to say. */
 .hist-digest-host { padding-top: 8px; padding-bottom: 0; }
@@ -6907,7 +6693,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .hist-digest-host .digest { margin-bottom: 0; }
 .hist-digest-host .digest-sess { grid-template-columns: 320px auto 1fr; }
 .hist-digest-host .digest-sess .ds-n { text-align: right; }
-
 /* A schema a migration behind. Warn rather than error: the sync is working,
    one field is not travelling. */
 .mig-pending {
@@ -6922,13 +6707,11 @@ body.aid-window .xf-tabs { display: none !important; }
   margin-top: 6px; font-family: var(--mono); font-size: 11.5px;
   color: var(--text-3);
 }
-
 .digest-partial {
   font-size: 11.5px; color: var(--text-3);
   border-left: 2px solid var(--line);
   padding-left: 8px;
 }
-
 /* --------------------------------------------------------------------------
    Archived profiles
 
@@ -6950,7 +6733,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .prof-arch-toggle:hover { border-color: var(--accent-line); }
 .prof-arch-toggle.on { border-style: solid; color: var(--text-2); }
-
 /* Archived computers, and the names they used to answer to. */
 .dev-row.archived { opacity: 0.55; }
 .dev-aka { color: var(--text-3); font-size: 11px; font-style: italic; }
@@ -6963,7 +6745,6 @@ body.aid-window .xf-tabs { display: none !important; }
   margin-top: 6px; padding: 7px 10px; border-radius: 6px;
   background: var(--bg-2); border-left: 2px solid var(--line);
 }
-
 /* --------------------------------------------------------------------------
    One filter control
 
@@ -7006,7 +6787,24 @@ body.aid-window .xf-tabs { display: none !important; }
 .ctl-pop-opt:hover { background: var(--bg-hover); }
 .ctl-pop-opt.on { color: var(--text); }
 .ctl-pop-opt input { margin: 0; }
-
+/* How many recordings are in that project, pushed to the right so the
+   names still line up as a list rather than as ragged pairs. */
+.ctl-pop-n {
+  margin-left: auto; font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+/* A filter that is a comparison rather than a flag: a word, a number, and
+   the unit. Kept on one line because reading it back is the point --
+   "more than 64 channels" is a sentence. */
+.ctl-pop-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; }
+.ctl-pop-row select { font-size: 12px; padding: 3px 6px; }
+.ctl-pop-num {
+  width: 5.5em; font-size: 12px; padding: 3px 6px;
+  font-variant-numeric: tabular-nums;
+}
+.ctl-pop-num:disabled { opacity: 0.45; }
+.ctl-pop-unit { font-size: 12px; color: var(--text-2); }
+.ctl-pop-group > .hint { margin: 2px 4px 0; font-size: 10.5px; }
 /* The channel list, inside the Ch popover.
 
    Two columns, because sixty-four single-file rows is a lot of scrolling
@@ -7030,7 +6828,6 @@ body.aid-window .xf-tabs { display: none !important; }
   font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
   color: var(--err);
 }
-
 /* Which of three jobs the profile dialog's Save is doing. On screen because
    it used to be worked out from string comparison, and getting it wrong
    rewrote this computer's identity. */
@@ -7047,7 +6844,6 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--ok-soft); border-left-color: var(--ok);
   color: var(--text);
 }
-
 /* --------------------------------------------------------------------------
    Managing the computers
 
@@ -7085,7 +6881,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .dev-mgr-other.archived { opacity: 0.55; }
 .prof-device-note { line-height: 1.7; }
-
 /* Sync now, and the panel that explains it -- two acts, one row. */
 .rail-sync { display: flex; gap: 4px; align-items: stretch; }
 .rail-sync .sync-go { flex: 1; min-width: 0; }
@@ -7099,7 +6894,6 @@ body.aid-window .xf-tabs { display: none !important; }
 /* Collapsed to icons, the label goes and the two chips stack. */
 #app.rail-icons .rail-sync { flex-direction: column; }
 #app.rail-icons .rail-sync .sync-info { display: none; }
-
 /* --------------------------------------------------------------------------
    The JSON backup
 
@@ -7140,7 +6934,6 @@ body.aid-window .xf-tabs { display: none !important; }
   font-family: var(--mono); font-size: 11.5px; line-height: 1.5;
   color: var(--text-2); white-space: pre;
 }
-
 /* The role, as a list. Matched to the text inputs beside it so the form does
    not look like two different forms. */
 .prof-role {
@@ -7148,7 +6941,6 @@ body.aid-window .xf-tabs { display: none !important; }
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: var(--bg); color: var(--text); font: inherit;
 }
-
 /* ---- the figure grid: edges you can grab, and a bin -------------------- */
 
 /* A cell says which panel it is and what that panel draws. The channel note
@@ -7161,7 +6953,6 @@ body.aid-window .xf-tabs { display: none !important; }
   margin-top: 2px; word-break: break-word;
 }
 .grid-cell.filled .gc-ch { color: var(--text-2); }
-
 /* The handles. Wide enough to hit with a mouse without hunting, invisible
    until the cell is under the pointer so the grid stays a grid. */
 .gc-grip {
@@ -7176,7 +6967,6 @@ body.aid-window .xf-tabs { display: none !important; }
              cursor: ns-resize; }
 .gc-grip.se { right: -4px; bottom: -4px; width: 10px; height: 10px;
               cursor: nwse-resize; border-radius: 3px; }
-
 .grid-bin {
   margin: 8px 0 2px; padding: 8px 10px; text-align: center;
   border: 1px dashed var(--line); border-radius: var(--radius-sm);
@@ -7186,7 +6976,6 @@ body.aid-window .xf-tabs { display: none !important; }
   border-color: var(--err); color: var(--err);
   background: color-mix(in srgb, var(--err) 8%, transparent);
 }
-
 /* ---- the StrataScope workbench ---------------------------------------- */
 
 /* The work set's name, edited in place. It has to look editable without
@@ -7196,10 +6985,8 @@ body.aid-window .xf-tabs { display: none !important; }
   border-bottom-color: var(--line); outline: none;
 }
 .sheet-name-edit { max-width: 22ch; }
-
 /* A sheet on the bench, marked the way a curation set on the bench is. */
 .cur-set.on-bench { border-left: 3px solid var(--accent); }
-
 /* ---- which columns of the probe a panel draws ------------------------- */
 
 /* Laid out in the order they will be drawn, so the control reads like the
@@ -7221,7 +7008,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .pc-id { font-weight: 600; font-size: 11px; }
 .pc-what { font-size: 9px; color: var(--text-3); }
 .pc-csc { font-size: 9px; color: var(--text-2); }
-
 /* The channel list for a time-frequency panel. A real multi-select rather
    than a popover: it is a list of sixty-four things where several are
    picked, which is what the control is for, and it stays keyboard-navigable
@@ -7232,7 +7018,6 @@ body.aid-window .xf-tabs { display: none !important; }
   background: var(--bg); color: var(--text); font: inherit; font-size: 11px;
 }
 .tf-chans option { padding: 1px 5px; }
-
 /* The bad/ok toggle in the channel popover. Small, because the row is a
    checkbox, a number and this -- and it has to stay hittable, which is why
    there is a minimum size rather than padding alone. */
@@ -7246,7 +7031,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .ctl-chan .badbtn.on {
   border-color: var(--err); color: var(--err); font-weight: 600;
 }
-
 /* ==========================================================================
    Braid, and the comodulogram window
    ========================================================================== */
@@ -7267,7 +7051,6 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .cfc-note { margin: 0; font-size: 11px; }
 .cfc-go { font-weight: 600; }
-
 /* The band axis control, in a panel's own strip. */
 .band-ctl { display: flex; flex-direction: column; gap: 5px; min-width: 260px; }
 .band-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -7282,7 +7065,6 @@ body.aid-window .xf-tabs { display: none !important; }
    so it is a fact first and a caution only when the overlap is large. */
 .band-truth { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; }
 .band-truth.warn { color: var(--warn); }
-
 /* ---- the comodulogram window ---- */
 .comod-form .comod-row {
   display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
@@ -7300,7 +7082,6 @@ body.aid-window .xf-tabs { display: none !important; }
   width: 74px; font-size: 11px; color: var(--text-2); font-weight: 600;
 }
 .comod-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-
 /* The grid, stated rather than offered. The vector is set in monospace
    because it IS a MATLAB expression -- `2:2:50` reads as a range only in
    that face, and reading as a range is the whole point of printing it. */
@@ -7323,7 +7104,6 @@ body.aid-window .xf-tabs { display: none !important; }
   border-left: 2px solid var(--line); padding-left: 8px;
 }
 .comod-go { margin-top: 10px; align-items: center; }
-
 /* ---- the stage list ----
    The loading display. Rows are a fixed grid so the counts and the times line
    up down the column: a list whose numbers jog left and right as they fill in
@@ -7372,7 +7152,6 @@ body.aid-window .xf-tabs { display: none !important; }
   font: 11.5px ui-monospace, Consolas, monospace; color: var(--text-2);
   white-space: nowrap; min-width: 170px; text-align: right;
 }
-
 /* ---- the map ---- */
 .comod-map-head {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -7395,7 +7174,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .tk-what dd {
   margin: 3px 0 0; font-size: 12px; color: var(--text-2); line-height: 1.55;
 }
-
 /* ==========================================================================
    The power spectrum window
    ==========================================================================
@@ -7415,12 +7193,10 @@ body.aid-window .xf-tabs { display: none !important; }
 .psd-seg .btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
 .psd-seg .btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .psd-seg .btn + .btn { margin-left: -1px; }
-
 .psd-picks {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   margin: 10px 0 0;
 }
-
 /* Sixty-four rows folded away until asked for, and scrolling when they are:
    the quick picks are how this is used nine times in ten. */
 .psd-chanlist {
@@ -7436,11 +7212,9 @@ body.aid-window .xf-tabs { display: none !important; }
 }
 .psd-chan.bad { color: var(--text-3); font-style: italic; }
 .psd-chan input { margin: 0; }
-
 /* Why the wait is as long as it is. Constrained, because it is a paragraph
    to read rather than a status line to glance at. */
 .psd-why { margin: 10px 0 0; max-width: 78ch; line-height: 1.6; }
-
 .psd-canvas-wrap { display: flex; flex-direction: column; gap: 4px; }
 .psd-canvas { width: 100%; display: block; border-radius: var(--radius-sm); }
 .psd-readout {
@@ -7449,14 +7223,12 @@ body.aid-window .xf-tabs { display: none !important; }
   min-height: 17px;
 }
 .psd-read-ch { display: inline-flex; align-items: center; gap: 5px; }
-
 /* The dot is the only thing tying a name to a line, so it is the same
    swatch everywhere a channel is named: readout, legend and table. */
 .psd-dot {
   width: 9px; height: 9px; border-radius: 2px; display: inline-block;
   flex: 0 0 auto;
 }
-
 .psd-legend {
   display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px;
 }
@@ -7472,7 +7244,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .psd-leg.off { opacity: .42; text-decoration: line-through; }
 .psd-leg.bad { color: var(--warn); cursor: default; }
 .psd-leg-num { color: var(--text-3); }
-
 .psd-table-wrap { margin-top: 14px; }
 .psd-table-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; }
 .psd-table { border-collapse: collapse; font-size: 11.5px; width: 100%; }
@@ -7492,10 +7263,8 @@ body.aid-window .xf-tabs { display: none !important; }
   display: flex; align-items: center; gap: 6px; text-align: left;
 }
 .psd-table tr.off { opacity: .4; }
-
 .psd-note { margin-top: 14px; }
 .psd-note p { margin: 4px 0 0; max-width: 84ch; line-height: 1.6; }
-
 /* ---- choosing which version the correction reads ---- */
 /* Greyed, not hidden, where a version cannot be a source: a version missing
    from the row raises the question of why, and the reason is worth more than
@@ -7516,7 +7285,6 @@ body.aid-window .xf-tabs { display: none !important; }
   color: var(--text-3); border: 1px solid var(--line);
   border-radius: 3px; padding: 0 4px;
 }
-
 /* ---------- Incisor ---------- */
 /* The three landmarks, each with its own colour and its own pick. A row
    rather than a line: the dropdown, what the scan chose and why, and what
@@ -7548,7 +7316,6 @@ body.aid-window .xf-tabs { display: none !important; }
   width: 11px; height: 11px; border-radius: 3px; flex: none;
   margin-top: 4px;
 }
-
 /* What the scan will read, and what it will not. Boxed off from the rest
    of the step because it is a statement about this recording rather than
    another control: the channel count above it is meaningless without it. */
@@ -7560,7 +7327,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .inc-sel-head { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; }
 .inc-selection p { margin: 0 0 6px; }
 .inc-selection p:last-of-type { margin-bottom: 0; }
-
 .inc-chan-edit { margin-top: 10px; }
 .inc-chan-edit > summary {
   cursor: pointer; font-size: 12px; color: var(--text-2); padding: 4px 0;
@@ -7585,7 +7351,6 @@ body.aid-window .xf-tabs { display: none !important; }
    You cannot put back what you cannot see. */
 .inc-chan.bad { color: var(--text-3); }
 .inc-chan.bad span { text-decoration: line-through; }
-
 /* The three per-channel plots, side by side the way Toothy draws them --
    count, amplitude, height above surround read as one picture and separating
    them costs the comparison. `auto-fit` with a floor rather than three fixed
@@ -7607,7 +7372,6 @@ body.aid-window .xf-tabs { display: none !important; }
 .inc-plot-read {
   min-height: 1.5em; margin: 2px 0 0; font-variant-numeric: tabular-nums;
 }
-
 /* The detection parameters. Each is a number that decides what counts as a
    dentate spike, so each gets a sentence and Toothy's own name for it. */
 .incisor-params { margin-top: 10px; }
@@ -7650,20 +7414,16 @@ body.aid-window .xf-tabs { display: none !important; }
   margin: 5px 0 0; font-size: 11px; color: var(--text-2);
   line-height: 1.5; max-width: 52ch;
 }
-
 /* A window opened for one thing: no rail, because there is nowhere else in
    it to go. Same idea as `aid-window` on the panel pop-outs. */
 body.solo-window #rail { display: none !important; }
 body.solo-window #app { grid-template-columns: 1fr !important; }
-
 /* The Braid pane's action row. `tk-actions` was used before it existed,
    so the button and the sentence explaining it ran together with no space. */
 .tk-actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-top: 10px;
 }
-
-
 /* ---------- the (i) beside a line that needs a chapter ---------- */
 /* Quiet in the sentence, obvious on hover. `vertical-align` rather than a
    flex parent because it sits inside a paragraph of running text. */
@@ -7682,12 +7442,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   background: var(--accent-soft); outline: none;
 }
 .band-truth.warn .why { border-color: var(--warn-line, var(--line)); }
-
 /* ---------- the explainer ---------- */
 .cfcg { width: min(1080px, 96vw); }
 .cfcg .mh h3 { margin: 0; }
 .cfcg .mh .sub { margin-left: 10px; }
-
 /* The chapter list. Wraps rather than scrolls: twelve chapters is a table of
    contents, and a table of contents you have to scroll to read is a menu. */
 .cfcg-nav {
@@ -7696,7 +7454,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   background: var(--bg);
 }
 .cfcg-nav .mini { font-size: 11px; }
-
 .cfcg-body { padding: 14px 18px 20px; }
 .cfcg-h {
   margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text);
@@ -7709,7 +7466,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   margin: 8px 0 12px; max-width: 74ch;
   font-size: 11.5px; line-height: 1.6; color: var(--text-2);
 }
-
 /* Sliders. One row, wrapping, with the value in a fixed-width slot so the
    row does not jog sideways as a number changes width. */
 .cfcg-bar {
@@ -7728,7 +7484,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   color: var(--accent);
 }
 .cfcg-gap { flex: 1; }
-
 .cfcg-fig { margin: 12px 0 6px; }
 .cfcg-cv {
   display: block; width: 100%;
@@ -7739,7 +7494,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   margin: 6px 0 0; max-width: 78ch;
   font-size: 11px; line-height: 1.55; color: var(--text-3);
 }
-
 /* The measured numbers, given room. These are the point of chapter 6, so
    they are set larger than the prose rather than buried in it. */
 .cfcg-cost {
@@ -7755,7 +7509,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font: 600 15px/1.2 ui-monospace, Consolas, monospace;
   color: var(--accent); white-space: nowrap;
 }
-
 .cfcg-tbl {
   border-collapse: collapse; margin: 10px 0 4px; font-size: 11.5px;
 }
@@ -7770,7 +7523,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 }
 .cfcg-tbl td { font-family: ui-monospace, Consolas, monospace; }
 .cfcg-tbl td.strong { color: var(--accent); font-weight: 600; }
-
 .cfcg-dl { margin: 10px 0 4px; max-width: 78ch; }
 .cfcg-dl dt {
   margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--text);
@@ -7778,7 +7530,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .cfcg-dl dd {
   margin: 2px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--text-2);
 }
-
 /* Narrow: the sliders stack and the canvases keep their height, because a
    200px-tall plot squeezed to 90px is not a smaller plot, it is an
    unreadable one. */
@@ -7787,8 +7538,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   .cfcg-slider input[type="range"] { width: 104px; }
   .cfcg-body { padding: 12px 12px 18px; }
 }
-
-
 /* ---------- DOWNSAMPLED ---------- */
 /* Loud on purpose. A panel that did not run on every sample cannot be told
    from one that did by looking at it, and the difference decides what the
@@ -7809,7 +7558,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-color: var(--ok); background: var(--ok-soft); color: var(--ok);
   cursor: default;
 }
-
 /* Over the plot, under the caption that opened it -- and in the caption's
    own parent, whatever that is on this panel type, so the offset is
    measured from the same box the caption is. Scrollable because a panel can
@@ -7846,8 +7594,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-style: italic;
 }
 .ds-act { display: flex; align-items: center; gap: 10px; margin-top: 9px; flex-wrap: wrap; }
-
-
 /* ---------- the per-tool activity feed ---------- */
 /* Under whatever the tool drew. Quiet by default -- it is a record, not a
    notification -- and readable in one pass: when, who, what, and which
@@ -7872,7 +7618,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   background: var(--ok);
   box-shadow: 0 0 0 3px var(--ok-soft);
 }
-
 .tf-list { margin-top: 8px; max-height: 320px; overflow-y: auto; }
 .tf-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
 .tf-row {
@@ -7896,7 +7641,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-family: var(--mono); font-size: 9.5px; color: var(--text-3);
   opacity: .8;
 }
-
 .tf-who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
 .tf-what { color: var(--text); }
 .tf-on {
@@ -7912,12 +7656,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   0% { background: var(--accent-soft); }
   100% { background: transparent; }
 }
-
 @media (max-width: 900px) {
   .tf-row { grid-template-columns: 54px 1fr; }
   .tf-on, .tf-extra { grid-column: 2; }
 }
-
 /* The line that admits the error list is filtered. */
 .err-archived {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -7925,7 +7667,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-left: 2px solid var(--line); background: var(--bg-2);
   border-radius: 0 5px 5px 0;
 }
-
 /* ==========================================================================
    Panorama -- the whole recording at once.
 
@@ -7941,7 +7682,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-pane .hint.quiet { color: var(--text-3); }
 .pn-step .hint.ok { color: var(--ok); }
 .pn-step .hint.warn, .pn-pane .hint.warn { color: var(--warn); }
-
 .pn-row {
   display: flex; align-items: center; gap: 8px;
   flex-wrap: wrap; margin: 8px 0;
@@ -7961,7 +7701,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 12px; color: var(--text-2); cursor: pointer;
 }
-
 /* The cost, and the sentences that say what is about to happen. Stated
    before anything is read, because a minute of silence with no bar is the
    thing that makes people kill the tab. */
@@ -7975,7 +7714,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-cost-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pn-cost-line strong { font-size: 13px; }
 .pn-cost-line .btn { margin-left: auto; }
-
 /* The waiting screen. The spectrogram builds up in place. */
 .pn-preview { margin: 6px 0 12px; }
 .pn-preview-img {
@@ -7990,7 +7728,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
 }
 .pn-run-foot .btn { margin-left: auto; }
-
 /* The steps. */
 .pn-step { margin-top: 12px; }
 .pn-step-head {
@@ -8004,7 +7741,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-size: 11px; font-weight: 700;
 }
 .pn-step-head strong { font-size: 14px; }
-
 .pn-grid {
   display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 16px; align-items: start;
@@ -8014,7 +7750,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   display: flex; align-items: baseline; gap: 10px;
   flex-wrap: wrap; margin-bottom: 6px;
 }
-
 /* The spectrogram is a picture from the server; its axes are drawn over it
    here, so re-colouring never means re-rendering text. */
 /* The border is on the CONTAINER, not the image.
@@ -8046,7 +7781,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-sg-axes {
   position: absolute; inset: 0; pointer-events: none;
 }
-
 .pn-canvas { display: block; width: 100%; }
 .pn-opts {
   display: flex; align-items: center; gap: 8px;
@@ -8055,12 +7789,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-pager { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .pn-saved { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; }
 .pn-saved code { font-size: 11px; color: var(--text-3); }
-
 @media (max-width: 1000px) {
   .pn-grid { grid-template-columns: minmax(0, 1fr); }
   .pn-cost-line .btn, .pn-run-foot .btn { margin-left: 0; }
 }
-
 /* ===== Panorama: many recordings at once =====================================
    The tree is a grid rather than a table so a row can carry a sparkline and a
    warning without either of them setting the column widths for everybody
@@ -8068,7 +7800,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    Panorama block above.
    ========================================================================== */
 .pn-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-
 .pn-sets { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .pn-set {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
@@ -8081,7 +7812,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-set strong { font-size: 13px; }
 .pn-set .hint { grid-column: 1; }
 .pn-set-when { grid-row: 1 / span 2; font-size: 11px; color: var(--text-3); }
-
 /* Choosing the recordings. A list, not a picker: the point is to see a
    cohort at once and tick the ones that belong in it. */
 .pn-picklist { margin: 10px 0; }
@@ -8101,7 +7831,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-pick-row.on { background: var(--bg-hover); }
 .pn-pick-row.on .pn-tick { color: var(--ok); }
 .pn-tick { text-align: center; font-size: 11px; }
-
 /* The tree. */
 .pn-tree-head, .pn-tree-row {
   display: grid;
@@ -8129,7 +7858,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-from { font-size: 10px; color: var(--text-3); }
 .pn-spark { display: block; }
 .pn-warn { font-size: 10px; color: var(--warn); }
-
 /* What each state looks like. The dot carries it, so the row itself does not
    have to be coloured -- a whole row in red reads as "this is broken" when
    most of what it is saying is "this has not started". */
@@ -8145,7 +7873,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
                                border: 1px solid var(--line); }
 .pn-tree-row.running { background: var(--bg-hover); }
 .pn-tree-row.failed .pn-tree-step { color: var(--err); }
-
 @media (max-width: 1100px) {
   /* Drop the middle numbers before the name and the shape: which recording
      it is and what it found are the two things worth the width. */
@@ -8159,7 +7886,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   .pn-tree-row > :nth-child(6),
   .pn-tree-row > :nth-child(7) { display: none; }
 }
-
 /* ===== Panorama: converged ===================================================
    The pooled curves beside the two strip plots, because the curve is the
    exploratory object and the strips are the claim - putting them in one row
@@ -8179,7 +7905,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .pn-key i {
   width: 14px; height: 3px; border-radius: 2px; display: inline-block;
 }
-
 @media (max-width: 1100px) {
   /* Stack rather than squeeze: a strip plot narrower than its labels is
      not a smaller strip plot, it is an unreadable one. */
@@ -8190,7 +7915,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 @media (max-width: 700px) {
   .pn-conv-strips { flex-direction: column; }
 }
-
 /* ===== Panorama: what each control does =====================================
    An explanation that opens UNDER its own control rather than a tooltip, so
    it can be read without holding the mouse still - and so it is there for
@@ -8217,7 +7941,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   max-width: 78ch;
 }
-
 /* ==========================================================================
    Something is happening
    ========================================================================== */
@@ -8266,13 +7989,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
      on white is otherwise about as loud as the 2px one was. */
   box-shadow: 0 1px 6px var(--accent-soft);
 }
-
 @keyframes netSweep {
   from { background-position: -46% 0, 0 0; }
   to   { background-position: 146% 0, 0 0; }
 }
-
-
 /* Why the confirm dialog is still open. Sits under the question, where the
    person is already looking, rather than in a toast behind a closed box. */
 .confirm-err {
@@ -8283,7 +8003,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-left: 2px solid var(--err);
   padding-left: 9px;
 }
-
 /* Somebody who does not want the movement still gets the indicator: it
    stays, and stops sweeping. An indicator that vanishes under a motion
    preference is the one case where the setting costs information.
@@ -8298,7 +8017,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
     opacity: .9;
   }
 }
-
 /* A list that is on screen and being re-read, because somebody just changed
    something in it. Not a skeleton: the rows stay, so you keep your place and
    can still read them -- they just stop pretending to be current, and stop
@@ -8308,14 +8026,12 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   pointer-events: none;
   transition: opacity .12s ease;
 }
-
 /* ==========================================================================
    Results: rooms
    ==========================================================================
    A heading per group, so a catalogue of four hundred reads as somewhere you
    can walk through rather than a pile ordered by when it happened. */
 .res-rooms { display: flex; flex-direction: column; gap: 4px; }
-
 .room-head {
   display: flex;
   align-items: baseline;
@@ -8340,12 +8056,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .room-head .room-n { font-size: 11.5px; color: var(--text-3); }
 .room-head .btn { opacity: 0; transition: opacity .12s ease; }
 .room-head:hover .btn, .room-head .btn:focus-visible { opacity: 1; }
-
 /* The room for things the grouping does not apply to -- a lab-wide export
    belongs to no animal. Set back, so it reads as the end of the list rather
    than as another peer. */
 .room-head.aside h3 { color: var(--text-3); font-weight: 500; }
-
 .res-table .room-row td {
   padding: 14px 8px 6px;
   border-bottom: 1px solid var(--line);
@@ -8358,11 +8072,9 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-weight: 400;
 }
 .res-table .room-row.aside td { color: var(--text-3); }
-
 @media (prefers-reduced-motion: reduce) {
   .room-head .btn { transition: none; }
 }
-
 /* ==========================================================================
    Results: the placard
    ==========================================================================
@@ -8376,9 +8088,7 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border-bottom: 1px solid var(--accent-line);
 }
 .prov .kv dd a:hover { border-bottom-color: var(--accent); }
-
 .prov-kin { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
-
 .prov-params {
   width: 100%;
   border-collapse: collapse;
@@ -8416,7 +8126,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   color: var(--text-3);
   font-family: var(--sans);
 }
-
 /* ==========================================================================
    Choosing which version to work from
 
@@ -8435,7 +8144,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    to a click has to look like one before the click. */
 .bm-row.off { opacity: .45; cursor: not-allowed; }
 .bm-row.off:hover { background: none; color: var(--text-2); }
-
 /* The list is taller than the bookmark list it inherits from: each row
    carries a second line saying what picking it would do, and the worst real
    history here (entry 7d5fa32206b4) has seven of them. 180px showed two. */
@@ -8463,7 +8171,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .bm-list.ver-pick-list .person-what {
   flex: 0 1 auto; min-width: 0; margin-left: auto; text-align: right;
 }
-
 /* 220 px of basis, not `flex: 1`. What the row is for is the middle column
    -- what is in this version and what picking it would do -- so it is the
    part that keeps its width and the rest of the row gives way. */
@@ -8475,7 +8182,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   white-space: normal; overflow: visible; text-overflow: clip;
   overflow-wrap: anywhere;
 }
-
 /* What the click would do, on every row rather than on the chosen one.
    Which version you are about to make is the thing being decided; it cannot
    be the thing you find out afterwards. Branching is the case people are
@@ -8487,21 +8193,17 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 }
 .ver-does.branch { color: var(--warn); }
 .bm-row.off .ver-does { color: var(--text-3); font-style: italic; }
-
 /* Said again in full under the list, for the chosen one, because this is
    where the second half of the answer lives: what happens to the decisions
    that are already on the bench. */
 .ver-said { margin-top: 12px; }
 .ver-said .hint { margin-top: 6px; overflow-wrap: anywhere; }
-
 /* The big modal is 1240px wide for the figure builder. A list of seven
    versions in it reads as a spreadsheet; held to a column it reads as a
    question. */
 .ver-pick-wrap { max-width: 760px; }
 .ver-pick-wrap .confirm-msg { margin: 0 0 14px; }
-
 .flagchip.on-bench { background: var(--accent-soft); color: var(--accent); }
-
 /* The version on the curation bar. A button because it is the way to change
    it, and quiet because it is a fact about the set rather than an action
    competing with Bank and Leave. */
@@ -8514,7 +8216,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 /* A set nobody picked up from a named version banks onto whatever is
    newest, which is a guess. Dashed, so it does not read as a stated fact. */
 .cur-ver.none { border-style: dashed; color: var(--text-3); }
-
 /* ==========================================================================
    The layer legend, in More > Layers.
 
@@ -8547,7 +8248,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   width: 9px; height: 9px; border-radius: 2px;
   border: 1px solid var(--line); display: inline-block;
 }
-
 /* ==========================================================================
    The Dentist -- the bundle in the ToolKit rail
    ========================================================================== */
@@ -8594,7 +8294,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-variant-numeric: tabular-nums;
 }
 .tk-step.now .tk-step-s { color: var(--accent); }
-
 /* ==========================================================================
    Braces
    ========================================================================== */
@@ -8605,7 +8304,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .br-warn { color: var(--warn); }
 .br-err { color: var(--err); }
 .br-note { border-left: 2px solid var(--accent); padding-left: 10px; }
-
 .br-fields { display: flex; flex-wrap: wrap; gap: 14px; }
 .br-field { display: flex; flex-direction: column; gap: 4px; }
 .br-field > label {
@@ -8614,12 +8312,10 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 }
 .br-field input { width: 110px; }
 .br-hint { font-size: 10.5px; color: var(--text-3); }
-
 .br-dl { margin: 0; display: grid; gap: 4px; }
 .br-dl > div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 10px; }
 .br-dl dt { font-size: 11px; color: var(--text-3); margin: 0; }
 .br-dl dd { margin: 0; font-size: 12.5px; }
-
 .br-go { display: flex; align-items: center; gap: 12px; }
 .br-job {
   flex: 1; display: flex; flex-direction: column; gap: 5px;
@@ -8632,7 +8328,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   display: block; height: 100%; background: var(--accent);
   transition: width .2s linear;
 }
-
 .br-recent-list { display: flex; flex-direction: column; gap: 5px; }
 .br-recent-row {
   display: flex; flex-direction: column; gap: 2px; text-align: left;
@@ -8643,7 +8338,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .br-recent-row:hover { background: var(--bg-hover); }
 .br-recent-row span { font-size: 11px; color: var(--text-3); }
 .br-recent-row.done { opacity: .72; }
-
 .br-head { display: flex; align-items: center; gap: 12px; }
 .br-head strong { display: block; font-size: 14px; }
 .br-sub {
@@ -8651,7 +8345,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-variant-numeric: tabular-nums;
 }
 .br-done { border-left: 3px solid var(--ok); font-size: 12.5px; }
-
 .br-counts {
   display: flex; flex-wrap: wrap; gap: 0;
   border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
@@ -8669,7 +8362,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .br-count span { font-size: 10.5px; color: var(--text-3); }
 .br-count.ok b { color: var(--ok); }
 .br-count.warn b { color: var(--warn); }
-
 /* The histogram answers "is this the right channel" before the table
    answers "is this stamp right". */
 .br-hist { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
@@ -8684,7 +8376,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-size: 10px; color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
-
 .br-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .br-scroll {
   overflow-x: auto; border: 1px solid var(--line); border-radius: 5px;
@@ -8709,17 +8400,18 @@ table.br-tbl tr:last-child td { border-bottom: 0; }
 table.br-tbl tr.flagged td { background: var(--warn-soft); color: var(--text); }
 table.br-tbl tr.said td { opacity: .78; }
 table.br-tbl td.st { width: 1%; }
-table.br-tbl td.why {
+/* NOT `.why`: that class is the little round help button, 15x15 with a
+   50% radius, and a 50% radius on a wide cell is an oval. */
+table.br-tbl td.br-why {
   white-space: normal; min-width: 140px; color: var(--warn);
+  font-style: normal; text-align: left;
 }
-table.br-tbl tr.said td.why { color: var(--text-3); }
+table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .br-tbl .tick { color: var(--ok); }
 .br-tbl .flagmark, .br-bench-head .flagmark { color: var(--warn); }
 .br-tbl .dim { color: var(--text-3); }
-
 .br-accept { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .br-accept .hint { flex: 1 1 260px; }
-
 /* The bench: one channel, six hundred milliseconds, and the two lines the
    decision is actually between. */
 .br-bench { position: sticky; bottom: 0; }
@@ -8744,17 +8436,13 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   border-radius: 3px; padding: 2px 6px; color: var(--text-2);
   background: var(--bg);
 }
-
 .br-modal { max-width: 620px; }
 .br-confirm ul { margin: 8px 0; padding-left: 18px; }
 .br-confirm li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
-
 @media (max-width: 720px) {
   .br-fields { gap: 10px; }
   .br-field input { width: 92px; }
 }
-
-
 /* ==========================================================================
    Naming a banked set
    ========================================================================== */
@@ -8764,7 +8452,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 .bank-name-row { display: flex; gap: 8px; align-items: stretch; }
 .bank-name-row input { flex: 1 1 auto; min-width: 0; }
 .bank-name-row .btn { flex: none; white-space: nowrap; }
-
 /* A ghost button that has something to say. Used where the current name
    carries nothing about which recording it belongs to -- the press is still
    optional, it is just worth noticing. */
@@ -8774,14 +8461,10 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   background: var(--accent-soft);
 }
 .btn.ghost.hot:hover { background: var(--accent-soft); border-color: var(--accent); }
-
 .inc-name { width: 100%; }
-
 @media (max-width: 560px) {
   .bank-name-row { flex-direction: column; align-items: stretch; }
 }
-
-
 /* ==========================================================================
    Braces -- which channels the sweep reads, and how they scored
    ========================================================================== */
@@ -8793,7 +8476,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   font-size: 10.5px; color: var(--text-3); font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase;
 }
-
 /* A grid rather than a list: sixty-four numbers read as a probe when they
    are laid out in rows, and as a wall of text when they are not. */
 .br-chan-grid {
@@ -8818,7 +8500,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 .br-chan.bad span { text-decoration: line-through; }
 .br-chan.bad.on { opacity: 1; text-decoration: none; }
 .br-chan.bad.on span { text-decoration: none; color: var(--warn); }
-
 .br-sweep { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
 .br-sweep.hidden { display: none; }
 .br-sweep-row {
@@ -8836,8 +8517,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 .br-sweep-row .v { text-align: right; }
 .br-sweep-row.won { color: var(--text); font-weight: 600; }
 .br-sweep-row.won .bar i { background: var(--accent); }
-
-
 /* Braces asks the same "which version" question the curation chooser does,
    and draws it with the same .bm-row / .ver-n / .ver-pick-mid parts rather
    than inventing a fourth way to draw one question. All this adds is the
@@ -8860,8 +8539,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   color: var(--accent);
 }
 .br-vers .bm-row.off .ver-n { color: var(--text-3); }
-
-
 /* ==========================================================================
    Braces -- waiting, and what a proposal would do
    ========================================================================== */
@@ -8876,7 +8553,6 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
   font-size: 11px; color: var(--text-3); margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
-
 /* The one sentence before the statistics: is this worth banking. */
 .br-verdict {
   border: 1px solid var(--accent-line);
@@ -8888,4 +8564,164 @@ table.br-tbl tr.said td.why { color: var(--text-3); }
 .br-verdict strong { font-size: 15px; letter-spacing: -.01em; }
 .br-verdict > span { font-size: 13px; color: var(--text-2); }
 .br-verdict .br-verdict-sub { font-size: 11.5px; color: var(--text-3); }
+/* ==========================================================================
+   Braces -- the depth profile
+   ==========================================================================
+   Down the shank, in probe order, so the shape is the shank's shape. A
+   dentate spike should rise to a peak across the hilus and fall away either
+   side; a flat profile means the set is being measured against something
+   that is not one, and no count in this panel says that. */
+.br-depth {
+  display: flex; flex-direction: column; gap: 1px;
+  max-height: 260px; overflow-y: auto;
+  padding-right: 2px;
+}
+.br-depth-row {
+  display: grid; grid-template-columns: 4.2rem 1fr 4.5rem;
+  gap: 8px; align-items: center;
+  font-size: 10.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.br-depth-row .bar {
+  height: 7px; background: var(--bg-3); border-radius: 2px; overflow: hidden;
+}
+.br-depth-row .bar i { display: block; height: 100%; background: var(--line); }
+.br-depth-row .v { text-align: right; }
+/* The band the average was actually taken over. */
+.br-depth-row.on { color: var(--text); }
+.br-depth-row.on .bar i { background: var(--accent); }
+.br-depth-row.on .n { font-weight: 600; }
+/* ==========================================================================
+   The Braces view
+   ==========================================================================
+   The same bar Checkup uses -- it is the same job seen from the same place:
+   step, look, decide. What differs is that every stamp is drawn twice, so
+   the key has to be beside the controls rather than in a legend somewhere
+   else, and there is a nudge, because moving one is a thing you can do
+   here and cannot do in curation. */
+.br-view-key, .br-browse-key {
+  display: flex; flex-wrap: wrap; gap: 3px 11px; align-items: center;
+}
+.br-browse-sw {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; color: var(--text-3); white-space: nowrap;
+}
+.br-browse-sw i {
+  width: 11px; height: 3px; border-radius: 1px; display: inline-block;
+  flex: none;
+}
+.br-nudge { display: inline-flex; gap: 3px; }
+.br-nudge .mini {
+  min-width: 30px; font-variant-numeric: tabular-nums;
+}
+/* ==========================================================================
+   The Braces bar
+   ==========================================================================
+   The two answers name the time they land on, so each button is two lines:
+   what it does, and where the stamp ends up. */
+.br-acts .cur-cat span {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  line-height: 1.25;
+}
+.br-acts .cur-cat b { font-size: 12px; font-weight: 600; }
+.br-acts .cur-cat i {
+  font-style: normal; font-size: 10px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.br-acts .cur-cat.on i { color: var(--text-2); }
+.br-acts .cur-cat[disabled] { opacity: .4; cursor: default; }
+.br-acts .cur-cat[disabled]:hover { background: none; }
+/* Undo is not a third answer, so it does not take a colour of its own. */
+.br-undo { --cat: var(--line); }
+/* A stamp can be dragged onto its peak, so the plot says so. The cursor is
+   the only affordance a canvas has. */
+#app.mode-braces .pane-canvas-host { cursor: ew-resize; }
+/* ==========================================================================
+   Entering a mode without the snap
+   ==========================================================================
+   Entering Braces does five things that each move the page: the view swaps,
+   the recording opens, a banner appears at the top, the panes are rebuilt
+   into a new layout, and the window jumps to the first stamp. Done bare,
+   that is five reflows in a row and it reads as the interface being thrown
+   at you.
 
+   So the workspace is dimmed and lifted a few pixels while all five happen,
+   and settles once. One fade instead of five snaps. The duration is the
+   interface's own `--ease-dur`, which the rail, the log dock and the radio
+   already move at -- a mode arriving at a speed nothing else uses would be
+   its own kind of jarring. */
+#app.mode-settling #xfBody {
+  opacity: 0;
+  transform: translateY(6px);
+}
+#xfBody {
+  transition: opacity var(--ease-dur) var(--ease-out),
+              transform var(--ease-dur) var(--ease-out),
+              box-shadow var(--ease-dur) var(--ease-out);
+}
+/* The banner slides down rather than appearing. It is the thing that pushes
+   every canvas below it, so it is the single biggest jump of the five. */
+#app.mode-strata .mode-banner,
+#app.mode-braces .mode-banner,
+#app.mode-curate .mode-banner {
+  animation: modeBannerIn var(--ease-dur) var(--ease-out) both;
+}
+@keyframes modeBannerIn {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: none; }
+}
+/* Somebody who has asked for less motion gets the mode without the move. */
+@media (prefers-reduced-motion: reduce) {
+  #xfBody { transition: none; }
+  #app.mode-settling #xfBody { opacity: 1; transform: none; }
+  #app.mode-strata .mode-banner,
+  #app.mode-braces .mode-banner,
+  #app.mode-curate .mode-banner { animation: none; }
+}
+/* ---- Braces: the set as a list -------------------------------------- */
+/* Docked to the right of the traces rather than over them: the whole
+   point is to read it WHILE looking at the recording, and a panel that
+   covers the thing it refers to is a dialog with extra steps. */
+.br-list {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 320px;
+  max-width: 42vw; z-index: 40;
+  display: flex; flex-direction: column;
+  background: var(--bg-1); border-left: 1px solid var(--line);
+  box-shadow: -10px 0 26px rgba(0, 0, 0, .28);
+}
+.br-list-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-2); flex: none;
+}
+.br-list-head strong { font-size: 12px; }
+.br-list-head .br-hint { flex: 1; font-size: 11px; color: var(--text-3); }
+.br-list-rows { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+.br-list-row {
+  display: grid; width: 100%;
+  grid-template-columns: 40px 78px 66px 1fr; grid-auto-rows: auto;
+  gap: 2px 8px; align-items: baseline; text-align: left;
+  padding: 5px 10px; border: 0; border-bottom: 1px solid var(--line-soft);
+  border-left: 3px solid transparent;
+  background: transparent; color: var(--text-1); cursor: pointer;
+  font: inherit; font-size: 11.5px;
+}
+.br-list-row:hover { background: var(--bg-2); }
+.br-list-row.on {
+  background: var(--accent-soft); border-left-color: var(--accent);
+}
+.br-list-row .n { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.br-list-row .t { font-variant-numeric: tabular-nums; }
+.br-list-row .d {
+  font-variant-numeric: tabular-nums; text-align: right; color: var(--text-2);
+}
+.br-list-row .w { color: #ED8B33; font-size: 11px; }
+/* The verdict under the time, so the four columns above it stay aligned
+   whatever it says. */
+.br-list-row .s {
+  grid-column: 2 / -1; font-size: 10.5px; color: var(--text-3);
+}
+.br-list-row .s:empty { display: none; }
+.br-list-row.ok .d { color: #5cc98d; }
+.br-list-row.kept .d { color: var(--text-3); }
+.br-list-row.ask .n { color: #ED8B33; }

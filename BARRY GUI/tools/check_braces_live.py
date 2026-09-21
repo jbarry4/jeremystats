@@ -95,32 +95,62 @@ n_bank_before = len(entries)
 print("\nA PLAN IS NOT A WRITE")
 print("-" * 68)
 picked = None
-asked = 0
-for cand in (cands.get("sets") or []):
+shut = 0
+# The smallest set that is actually made of dentate spikes.
+#
+# Small, because the run reads a window per stamp and a suite nobody will
+# wait for is a suite nobody runs. But small ALONE picked a set of four
+# stamps all still under review: nothing to align, so nothing moved,
+# nothing was flagged, and the commit preview got as far as refusing --
+# three sections reporting ok on an empty set. A set has to contain enough
+# of the thing to exercise the thing.
+GOOD = ("spike", "Dentate Spike")
+
+
+def n_good(r):
+    lab = r.get("by_label") or {}
+    return sum(int(lab.get(k) or 0) for k in GOOD)
+
+
+usable = [r for r in (cands.get("sets") or []) if n_good(r) >= 20]
+by_size = sorted(usable, key=n_good)
+if not usable:
+    print("  ..   no set here holds twenty curated spikes")
+for cand in by_size:
     plan = call("/api/braces/plan", {"entry_id": cand["id"]})
     if not plan.get("ok"):
-        continue
-    # `ok` with no channel is the prompt state, not a runnable plan: most of
-    # this archive was banked before Incisor existed and records none.
-    if not plan.get("channel"):
-        asked += 1
+        # No recording on this machine, which is a state the route is
+        # supposed to report rather than a failure of it.
+        shut += 1
         continue
     picked = (cand, plan)
     break
 if not picked:
-    print("  ..   no set here both opens and names a channel, so the run "
-          "is skipped")
-    print("       (%d set(s) opened but would have to be told which "
-          "channel)" % asked)
+    print("  ..   no set here opens a recording on this machine, so the "
+          "run is skipped")
+    print("       (%d set(s) could not be opened)" % shut)
 else:
     cand, plan = picked
-    print("       %s" % cand["name"])
-    truthy("the plan names a channel", plan["channel"]["number"] is not None)
-    truthy("...and says how it was chosen", plan["channel"]["how"])
-    print("       CSC%s — %s" % (plan["channel"]["number"],
-                                      plan["channel"]["how"]))
-    check("...and never a bare default",
-          plan["channel"]["how"] not in ("", "default"), True)
+    print("       %s: %d stamp(s), %d of them spikes"
+          % (cand["name"], cand.get("n") or 0, n_good(cand)))
+    # NO CHANNEL IS PICKED ANY MORE. The plan offers every channel with
+    # whether it is marked bad, and the run sweeps them for the depth the
+    # event is actually at. A plan that named one channel would be the old
+    # design, and this check used to require it -- which is why everything
+    # below here quietly stopped running.
+    truthy("the plan offers the channels rather than choosing one",
+           len(plan.get("channels") or []) > 1)
+    truthy("...saying which are marked bad",
+           all("bad" in c for c in (plan.get("channels") or [])))
+    truthy("...and which versions can supply the stamps",
+           any(v.get("usable") for v in (plan.get("versions") or [])))
+    truthy("...each named uniquely, because the number is not",
+           len({v["name"] for v in (plan.get("versions") or [])})
+           == len(plan.get("versions") or []))
+    print("       %d channel(s), %d bad; %d version(s)"
+          % (len(plan.get("channels") or []),
+             sum(1 for c in (plan.get("channels") or []) if c.get("bad")),
+             len(plan.get("versions") or [])))
     after = call("/api/bank/" + cand["id"])
     rec = after.get("entry") or after
     check("planning wrote no version",
@@ -148,11 +178,50 @@ else:
             sid = res.get("set_id")
             truthy("...producing a proposal", sid)
             summ = res.get("summary") or {}
-            print("       %d spike(s) aligned on CSC%s, %d flagged, "
-                  "median %.1f ms"
-                  % (summ.get("n", 0), res.get("channel"),
+            depth = summ.get("depth") or {}
+            band = depth.get("channels") or []
+            truthy("...having swept the probe for the depth band", band)
+            check("...which is narrower than the probe",
+                  len(band) < (depth.get("of") or 10 ** 9), True)
+            print("       %d spike(s) aligned on CSC%s-CSC%s of %d swept, "
+                  "%d flagged, median %.1f ms"
+                  % (summ.get("n", 0), band[0] if band else "?",
+                     band[-1] if band else "?", depth.get("of") or 0,
                      summ.get("n_flagged", 0),
                      summ.get("shift_median_ms", 0.0)))
+            pars = res.get("params") or {}
+            print("       %s, candidates %.0f ms apart over %.1f sd"
+                  % (pars.get("measure"), pars.get("cand_dist_ms") or 0,
+                     pars.get("cand_height_sd") or 0))
+            truthy("the run records which measure it used",
+                   pars.get("measure") in ("csd", "voltage"))
+            truthy("...and how close two candidates could be",
+                   (pars.get("cand_dist_ms") or 0) > 0)
+            # Zero is the answer now and it is a real answer: a candidate
+            # is a local maximum of the curve whatever its height. What is
+            # checked is that the set SAYS which rule it was made under,
+            # because a set made with a floor and one made without are not
+            # comparable and nothing else records the difference.
+            truthy("...and whether a candidate had to clear anything",
+                   "cand_height_sd" in pars)
+            truthy("...and that the mains was taken out first",
+                   (pars.get("line_hz") or 0) > 0)
+            # Nothing is projected onto it any more, but it is still the
+            # one number that says the band sat on an event.
+            truthy("...and the depth signature of what it found",
+                   len(pars.get("profile") or {}) > 2)
+            prof = pars.get("profile") or {}
+            # A dentate spike is a SINK with sources either side of it, so
+            # the profile has both signs in it. One sign everywhere would
+            # mean the projection is a weighted magnitude, which is the
+            # thing this replaced.
+            vals = [float(v) for v in prof.values()]
+            truthy("...which has both signs in it, being a dipole",
+                   any(v > 0 for v in vals) and any(v < 0 for v in vals))
+            scr = pars.get("screened") or {}
+            print("       screened: %s"
+                  % (", ".join("CSC%s %s" % (k, v) for k, v in scr.items())
+                     or "every contact usable"))
             if summ.get("n_skipped"):
                 print("       left alone: %s" % summ.get("skipped"))
             check("the histogram has a bin per 10 ms of the window",
@@ -178,6 +247,23 @@ else:
             # alignment manufacturing duplicates.
             taken = [r["peak"] for r in rows if r.get("peak") is not None]
             check("no peak was taken twice", len(taken), len(set(taken)))
+            # Reported, not asserted. Nothing is gated on the background
+            # any more, so "how many landed on something barely above it"
+            # is an observation about this recording rather than a rule the
+            # code is keeping -- and a check that asserts a number nothing
+            # controls is a check that fails for reasons nobody can act on.
+            floor = (one.get("set") or {}).get("summary", {}).get(
+                "cand_floor_uv")
+            got_uv = [r["peak_uv"] for r in rows
+                      if r.get("peak_uv") is not None]
+            if floor and got_uv:
+                low = [v for v in got_uv if v < floor]
+                print("       %d of %d aligned onto something under the "
+                      "4.5 SD background (%.0f)"
+                      % (len(low), len(got_uv), floor))
+            check("no stamp moved further than the window allowed",
+                  all(abs(r.get("shift_ms") or 0) <= 100.0001 for r in rows),
+                  True)
 
             print("\nREVIEWING ONE")
             print("-" * 68)

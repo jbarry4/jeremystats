@@ -57,6 +57,11 @@ SESSION_SPEC = {
     # One key per machine, written only by that machine.
     "seen": shards.MAPLWW,
     "bookmarks": shards.BYID,
+    # Which probe each block of sixty-four channels is. Merged per bank, so
+    # somebody labelling the cortex bank on the rig and somebody labelling
+    # the hippocampus bank on a laptop both keep their work -- under LWW the
+    # second write would carry the first one's bank back to unlabelled.
+    "channel_banks": shards.BYID,
 }
 
 PRESET_SPEC = {"presets": shards.BYID}

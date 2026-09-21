@@ -243,6 +243,31 @@ def scan(root, max_depth=MAX_DEPTH, progress=None, should_stop=None,
 
     sessions = []
     scanned = [0]
+    last_report = [0.0]
+
+    def report(path, found=False):
+        """Throttled on the clock rather than on a folder count.
+
+        It used to fire every 25 folders, which is a different interval on
+        every drive -- seconds apart on a network share, hundreds of times a
+        second on a local one. A quarter of a second is the same interval
+        everywhere, and it is under the 400 ms the browser polls at, so the
+        page never reads a number that was already stale when it was
+        written. The summary is recomputed here rather than per find, so its
+        cost is bounded by the clock and not by how much it has found.
+        """
+        if not progress:
+            return
+        now = time.time()
+        # Finding a recording gets a shorter leash than walking past a
+        # folder: it is the event somebody is actually watching for, and on
+        # a dense tree several land inside one quarter-second. Not zero,
+        # because the summary is O(what it has found) and `MAX_SESSIONS` is
+        # 4000 -- an unthrottled find would make the walk quadratic.
+        if (now - last_report[0]) < (0.06 if found else 0.25):
+            return
+        last_report[0] = now
+        progress(scanned[0], len(sessions), path, sessions)
 
     def walk(path, depth):
         if len(sessions) >= MAX_SESSIONS:
@@ -257,8 +282,7 @@ def scan(root, max_depth=MAX_DEPTH, progress=None, should_stop=None,
             return
 
         scanned[0] += 1
-        if progress and scanned[0] % 25 == 0:
-            progress(scanned[0], len(sessions), path)
+        report(path)
 
         contents = classify_folder(path, names)
         if contents:
@@ -266,6 +290,10 @@ def scan(root, max_depth=MAX_DEPTH, progress=None, should_stop=None,
                 sessions.append(describe_session(path, contents, read_headers))
             except Exception:
                 pass
+            # Finding one is the interesting event, so it gets its own
+            # report -- otherwise a slow walk through a deep tree shows the
+            # same summary for a minute at a time and reads as stuck.
+            report(path, found=True)
             return                       # a recording is a leaf -- stop here
 
         for n in names:
@@ -340,6 +368,7 @@ class ScanJob:
         self.current = ""
         self.error = None
         self.sessions = []
+        self.live = {}
         self._stop = False
 
     def stop(self):
@@ -351,6 +380,12 @@ class ScanJob:
             "scanned": self.scanned, "found": self.found,
             "current": self.current, "error": self.error,
             "elapsed": round((self.ended or time.time()) - self.started, 1),
+            # What it is finding, not just how many. A scan of a lab drive
+            # runs for minutes and a bare count says nothing about whether
+            # it is walking the tree you meant -- a wrong root reads as a
+            # perfectly healthy scan that happens to find nothing, and the
+            # only way to tell used to be to wait for it to end.
+            "live": dict(self.live),
         }
         if include_sessions and self.status == "done":
             data["sessions"] = self.sessions
@@ -358,19 +393,63 @@ class ScanJob:
         return data
 
 
+def live_summary(sessions):
+    """What a scan has found so far, in the terms a person is watching for.
+
+    Counted rather than listed: the point is to be readable while it runs,
+    and a person watching a scan of a lab drive is asking three questions --
+    am I in the right tree, is this the data I meant, and is anything odd.
+    So: which projects, how many animals, which channel counts, and how many
+    folders looked like a recording but could not be named.
+
+    `channels` is the one that earns its place. The KCNT1 recordings are 128
+    and the PTEN ones are 64, so the number alone says which drive is being
+    walked -- and a 126 in there is a recording missing files, visible while
+    there is still time to stop rather than in an audit weeks later.
+    """
+    projects, mice, channels = {}, set(), {}
+    unnamed = 0
+    for s in sessions:
+        ident = s.get("identity") or {}
+        g = ident.get("group") or "Ungrouped"
+        projects[g] = projects.get(g, 0) + 1
+        if ident.get("mouse") is None or ident.get("session") is None:
+            unnamed += 1
+        else:
+            mice.add((g, ident.get("mouse")))
+        n = s.get("channels")
+        if n:
+            channels[str(n)] = channels.get(str(n), 0) + 1
+    last = sessions[-1] if sessions else None
+    return {
+        "projects": projects,
+        "mice": len(mice),
+        "channels": channels,
+        "unnamed": unnamed,
+        # The most recent one, so the line has something that visibly moves
+        # and is not a counter.
+        "last": ((last.get("identity") or {}).get("label")
+                 or last.get("name")) if last else None,
+    }
+
+
 def start_scan(root, max_depth=MAX_DEPTH, read_headers=True):
     job = ScanJob(root, max_depth, read_headers)
 
-    def progress(scanned, found, current):
+    def progress(scanned, found, current, sessions=()):
         job.scanned = scanned
         job.found = found
         job.current = current
+        job.live = live_summary(sessions)
 
     def run():
         try:
             job.sessions = scan(root, max_depth, progress,
                                 lambda: job._stop, read_headers)
             job.found = len(job.sessions)
+            # The last throttled report can be a quarter of a second short
+            # of the truth; a finished scan should not be.
+            job.live = live_summary(job.sessions)
             job.status = "canceled" if job._stop else "done"
         except Exception as exc:
             job.status = "failed"

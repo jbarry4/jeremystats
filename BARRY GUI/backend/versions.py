@@ -257,6 +257,28 @@ def label_rows(rows, id_of=lambda r: r.get("v"),
     return out
 
 
+def tip_next(rows, id_of=lambda r: r.get("v"),
+             from_of=lambda r: r.get("from_v"),
+             at_of=lambda r: r.get("at") or ""):
+    """(name of the newest version, name the next one would get).
+
+    For everything that shows a person which version they are on or what
+    the next one will be called. Not `max(v)`: the stored number is not
+    unique -- two machines curating one entry both mint the next one and
+    the union keeps both -- so on a history numbered 0,1,2,3,4,3,4 the
+    maximum is 4 while the newest is the seventh, named 6. A chooser
+    offering "v4, as they stand" above a list ending in v6 reads as having
+    defaulted to something two behind the tip.
+    """
+    named = label_rows(rows or [], id_of=id_of, from_of=from_of,
+                       at_of=at_of)
+    if not named:
+        return "0", "1"
+    names = [n for _r, n in named]
+    tip = newest(names)
+    return tip, next_after(tip, names)
+
+
 def labels(rows, id_of=lambda r: r.get("v"),
            from_of=lambda r: r.get("from_v")):
     """{version number -> name}. Only safe when the numbers are unique.

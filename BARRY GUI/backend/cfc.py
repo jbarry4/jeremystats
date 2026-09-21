@@ -556,6 +556,11 @@ STAGES = [
     # would rewrite Incisor's read rate by the length of the recording every
     # time somebody aligned a set.
     ("ds profile", "channels"),
+    # Braces as it actually runs: one unit per stretch of recording around a
+    # stamp, not per channel. Its own name again -- windows and channels are
+    # not the same unit, and `_learn` cannot tell them apart.
+    ("ds depth", "channels"),
+    ("ds windows", "windows"),
     ("ds read", "seconds"),
     ("ds detect", "channels"),
     ("slow bank", "bands"),

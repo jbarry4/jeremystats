@@ -4,22 +4,24 @@
     "mouse": "2026-09-09T02:56:07.457844+00:00",
     "project": "2026-09-09T02:56:07.457844+00:00",
     "schema": "2026-09-09T02:56:07.457844+00:00",
-    "updated": "2026-09-16T16:32:06.542378+00:00"
+    "updated": "2026-09-21T14:12:07.500240+00:00"
   },
   "_keys": {
     "attrs": {
       "genotype": [
-        "gone",
-        "2026-09-16T16:32:06.542378+00:00"
+        "set",
+        "2026-09-21T14:12:07.500240+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-16T16:32:06.542378+00:00",
+    "at": "2026-09-21T14:12:07.500240+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "attrs": {},
+  "attrs": {
+    "genotype": "HARNESS-TEST"
+  },
   "created": {
     "at": "2026-09-08T22:56:07-04:00",
     "email": "Shahriar.Akhavan-Tafti@uvm.edu",
@@ -32,9 +34,9 @@
   "project": "DEMO",
   "schema": 1,
   "updated": {
-    "app_version": "2026.09.16.2",
-    "at": "2026-09-16T12:32:06-04:00",
-    "commit": "eb25504",
+    "app_version": "2026.09.21.1",
+    "at": "2026-09-21T10:12:07-04:00",
+    "commit": "f693752",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

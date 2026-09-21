@@ -1,0 +1,114 @@
+{
+  "_at": {
+    "created": "2026-09-18T15:47:48.762108+00:00",
+    "duration_s": "2026-09-18T15:47:48.762108+00:00",
+    "first_seen_by": "2026-09-18T15:47:48.762108+00:00",
+    "fs": "2026-09-18T15:47:48.762108+00:00",
+    "gid": "2026-09-18T15:47:53.770045+00:00",
+    "group": "2026-09-18T15:47:48.762108+00:00",
+    "key": "2026-09-18T15:47:48.762108+00:00",
+    "label": "2026-09-18T15:47:48.762108+00:00",
+    "loose_key": "2026-09-18T15:47:48.762108+00:00",
+    "mouse": "2026-09-18T15:47:48.762108+00:00",
+    "n_channels": "2026-09-18T15:47:48.762108+00:00",
+    "project": "2026-09-18T15:47:48.762108+00:00",
+    "project_source": "2026-09-18T15:47:48.762108+00:00",
+    "retired": "2026-09-18T15:59:57.128072+00:00",
+    "schema": "2026-09-18T15:47:48.762108+00:00",
+    "session": "2026-09-18T15:47:48.762108+00:00",
+    "start": "2026-09-18T15:47:48.762108+00:00",
+    "updated": "2026-09-21T12:05:51.548461+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-09-18T15:47:48.762108+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-09-18T15:47:48.762108+00:00"
+      ]
+    },
+    "paths": {
+      "D:\\KCNT1\\urethane\\het\\KCNT1M21_opto2_het\\KCNT1M21s3apr19\\2023-04-19_16-21-24": [
+        "set",
+        "2026-09-18T15:47:48.762108+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T12:05:51.548461+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-21T12:05:51.548461+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.09.17.16",
+    "at": "2026-09-18T11:47:48-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 2118.843733333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s5064388bb92e",
+  "group": "KCNT1",
+  "key": "m021_s003_2023-04-19_16-21-24",
+  "label": "KCNT1 m21 s3 2023-04-19",
+  "loose_key": "m021_s003",
+  "mouse": 21,
+  "n_channels": 128,
+  "paths": [
+    "D:\\KCNT1\\urethane\\het\\KCNT1M21_opto2_het\\KCNT1M21s3apr19\\2023-04-19_16-21-24"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T08:05:51-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\KCNT1\\urethane\\het\\KCNT1M21_opto2_het\\KCNT1M21s3apr19\\2023-04-19_16-21-24",
+      "root": "D:/KCNT1/urethane",
+      "scan": "scan_8dc8f73525"
+    }
+  },
+  "session": 3,
+  "start": "2023-04-19T16:21:24",
+  "updated": {
+    "app_version": "2026.09.18.4",
+    "at": "2026-09-21T08:05:51-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

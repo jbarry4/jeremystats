@@ -32,6 +32,15 @@ BUCKET = "results"
 # Two-way tables, in dependency order: a child row whose parent is not there
 # yet is a foreign key violation, so sessions go before everything that
 # references them.
+#: Tables whose rows carry a `gid` and are refused by the database when no
+#: session has it. Kept beside ORDER so adding a table to one and forgetting
+#: the other is visible.
+GID_TABLES = (
+    "session_paths", "session_sightings", "bank_entries", "curation_sets",
+    "layer_sheets", "layer_labels", "results", "health_checks",
+    "tool_results",
+)
+
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
     "bank_entries",
@@ -317,6 +326,25 @@ class Sync:
                 "bad_channels": sorted({int(b) for b in
                                         (rec.get("bad_channels") or [])}),
                 "bad_channels_note": rec.get("bad_channels_note"),
+                # Which probe went into the animal, and what each block of
+                # sixty-four channels is. Both decide how a CSD is
+                # computed, so they belong to the recording and travel with
+                # it -- the probe used to live in one window's view state,
+                # which meant it lasted as long as that window and reached
+                # nobody.
+                #
+                # `probe_source` is deliberately only ever 'manual' or
+                # absent. A guess derived from the channel count is not
+                # written: once filed it would be indistinguishable from an
+                # answer, and seventy of the seventy-one dual implants here
+                # are currently guesses.
+                #
+                # Safe to send before migration 17 has been run anywhere:
+                # `missing_column` drops a column the schema has not got
+                # yet and retries, rather than failing the batch.
+                "probe": rec.get("probe"),
+                "probe_source": rec.get("probe_source"),
+                "channel_banks": rec.get("channel_banks"),
                 # Which hippocampus. Carried in the lab's feeder sheet all
                 # along, which meant it was true only for whoever had the
                 # spreadsheet open -- and a left and a right CA1 recording
@@ -991,6 +1019,18 @@ class Sync:
     NO_INCREMENTAL = {"bank_snapshots"}
 
     ON_CONFLICT = {
+        # Keyed on the permanent id, and stated rather than left to the
+        # fallback: `_one_per_key` guesses `id` when nothing is named, and
+        # a session row has no `id` -- so a batch carrying one gid twice
+        # went up untouched and Postgres refused the whole thing with "ON
+        # CONFLICT DO UPDATE command cannot affect row a second time".
+        #
+        # It only takes one such record to stop every session syncing, and
+        # there is one here: a harness fixture whose timestamps collided
+        # with a real recording, leaving two local records under one gid.
+        # Repairing that record is worth doing and is a separate job; a
+        # push must not be the thing that notices.
+        "sessions": "gid",
         "session_paths": "gid,path",
         "session_sightings": "gid,machine",
         "mice": "project,mouse",
@@ -1019,6 +1059,37 @@ class Sync:
         rows = self.collect(include_history=include_history)
         started = cloud.now()
         sent, report = 0, {}
+
+        # Rows pointing at a recording that no longer exists anywhere.
+        #
+        # Half the tables here carry a foreign key to `sessions`, and a row
+        # whose gid has no session is refused by the database -- correctly,
+        # and with a 409 that takes the whole batch down and everything
+        # after it in the order with it. One orphaned layer sheet stopped
+        # layer_sheets, storyboards, results, presets, prefs, feedback,
+        # people, health_checks and tool_results from syncing, for
+        # everybody, and it did it silently because a push that fails is
+        # retried rather than reported.
+        #
+        # They are dropped rather than repaired: an orphan is a record of
+        # work on a recording that has been forgotten, and deciding what to
+        # do about it is a person's job. What is not a person's job is
+        # having every other table stop because of it. Counted, so the
+        # number is visible rather than a silence.
+        known = {r.get("gid") for r in (rows.get("sessions") or [])
+                 if r.get("gid")}
+        orphans = {}
+        if known:
+            for table in GID_TABLES:
+                have = rows.get(table)
+                if not have:
+                    continue
+                keep = [r for r in have
+                        if not r.get("gid") or r["gid"] in known]
+                if len(keep) != len(have):
+                    orphans[table] = len(have) - len(keep)
+                    rows[table] = keep
+
         for table in ORDER + (PUSH_ONLY if include_history else []):
             batch = rows.get(table) or []
             if since and table not in self.NO_INCREMENTAL:
@@ -1033,8 +1104,11 @@ class Sync:
             # The time the push *started*: anything written while it ran must
             # be caught next time rather than skipped.
             self.cloud.save_state({"last_push": started})
-        return {"sent": sent, "tables": report, "dry_run": dry_run,
-                "since": since, "full": bool(full)}
+        out = {"sent": sent, "tables": report, "dry_run": dry_run,
+               "since": since, "full": bool(full)}
+        if orphans:
+            out["orphans"] = orphans
+        return out
 
     # ==================================================================
     # Files
@@ -1212,7 +1286,46 @@ class Sync:
 
         missing = []
 
+        # Which tables have anything to say, asked once.
+        #
+        # This used to ask all twenty-one, every cycle, and on a quiet one
+        # every single answer was an empty list. Measured: 7 KB of rows and
+        # 21 requests per cycle, at a cycle every 20 seconds -- 90,720
+        # requests a day per machine, and about 6.5 GB of egress a month
+        # against a 5 GB allowance. The bytes were never the problem; the
+        # requests were.
+        #
+        # `barry_watermarks` (migration 17) is one row per table carrying
+        # its newest `updated_at`, so one request answers all of them. A
+        # quiet cycle is then a single small request instead of a sweep.
+        #
+        # Falls back to asking everything when the view is not there, which
+        # is what a database that has not had migration 17 run on it looks
+        # like -- and what every clone looks like until somebody runs it.
+        # Never an error: a sync that refuses to work until a migration has
+        # been applied everywhere is a sync that stops working for the
+        # person who did not apply it.
+        fresh = None
+        if since:
+            try:
+                marks = self.cloud.select("barry_watermarks", "", limit=100)
+                fresh = set()
+                for row in (marks or []):
+                    at = row.get("updated_at")
+                    if at and at > since:
+                        fresh.add(row.get("table_name"))
+            except Exception as exc:                     # noqa: BLE001
+                if not _absent(exc):
+                    raise
+                fresh = None                 # no view here; ask each table
+
+
         def fetch(table):
+            # Skipped entirely when the watermark says this table has not
+            # moved. That is the whole saving: on a quiet cycle every one of
+            # these returns without a request being made at all.
+            if fresh is not None and table not in fresh:
+                return []
             # Said before the request, not after it: the point of announcing
             # a table is that it is the one currently taking the time. The
             # pull is the slow half of a sync -- fifteen round trips -- and
@@ -1627,6 +1740,19 @@ class Sync:
         ("extraction_note", "extraction_note"),
         ("needs_processing", "needs_processing"),
         ("reference_channels_source", "reference_channels_source"),
+        # Which probe, and which block of channels is which region. Two-way
+        # like the rest: confirming a dual implant on the rig has to reach
+        # the desktop, or the two machines compute different CSDs from the
+        # same recording and neither of them looks wrong.
+        #
+        # `channel_banks` merges by bank id locally (`shards.BYID`), so two
+        # people labelling two different banks both keep their work. It
+        # arrives here as whole-value LWW, which is the best a single column
+        # can do -- and is why the UI fills both banks from one template
+        # rather than asking twice.
+        ("probe", "probe"),
+        ("probe_source", "probe_source"),
+        ("channel_banks", "channel_banks"),
     )
 
     @staticmethod

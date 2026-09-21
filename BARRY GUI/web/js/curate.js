@@ -1869,8 +1869,18 @@ BARRY.vers = (function () {
 
     const announce = () => {
       for (const [node, ch] of marks) {
-        node.classList.toggle('on', !!pick && ch.v === pick.v
-                                     && ch.entry === pick.entry);
+        /* Matched on the version ITSELF, not on its number.
+           The stored number is not unique -- two machines curating one
+           entry both mint the next one and the union keeps both, which is
+           what the per-version id exists for -- so `ch.v === pick.v` lit up
+           every row sharing a number. On an entry holding two v1s that is
+           two rows highlighted and one radio filled, which reads as the
+           dialog having lost track of what you picked.
+
+           `ch.row` is the version object the row was built from, so
+           identity settles it and needs no id to be present: the histories
+           that predate ids are exactly the ones most likely to collide. */
+        node.classList.toggle('on', !!pick && ch.row === pick.row);
       }
       said.innerHTML = '';
       if (pick) {

@@ -46,7 +46,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccrun as vaccrunmod, video)
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccrun as vaccrunmod, video,
+               warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -57,6 +58,22 @@ LOGS_DIR = os.path.join(APP_DIR, "GUI_logs")
 app = Flask(__name__, static_folder=None)
 
 STORE = store.Store(LOGS_DIR, auto_stage=False)
+
+# Last boot's answers to the three slow roll-ups, so this boot can show
+# something in the time it takes to paint rather than in the time it takes to
+# merge fifteen hundred shards. See warmcache.py -- in particular the five
+# rules that bound when a cached byte can be seen at all.
+#
+# Stamped with the version and commit of the code that wrote it: an update
+# that changes the shape of a payload must never hand the new interface last
+# week's shape.
+#
+# Created here, armed nowhere. `arm()` is the launcher's call and only the
+# launcher's, so a server started by the harness suite or by a script reads
+# the store exactly as it always did.
+WARM = warmcache.WarmCache(
+    LOGS_DIR, stamp="|".join(str(x) for x in store._code_version()))
+
 # Reports live beside the logs, one file each, sharded by machine -- same
 # rule as everything else that gets edited, so two people never write the
 # same file.
@@ -639,10 +656,43 @@ def api_csc_open():
     out["media"] = video.find_media(folder)
     out["nev"] = _find_nev(folder)
     out["view_state"] = (stored or {}).get("view_state") or {}
+    out["probe"] = _probe_for(stored)
+    out["probe_source"] = (stored or {}).get("probe_source") or (
+        "view" if ((stored or {}).get("view_state") or {}).get("probe")
+        else ("guessed" if out["probe"] != "h3" else None))
     out["bookmarks"] = (stored or {}).get("bookmarks", [])
     out["spike_sets"] = ((stored or {}).get("spike_labels") or {}).get("sets", [])
     out["event_classes"] = (stored or {}).get("event_classes") or {}
     return jsonify(out)
+
+
+def _probe_for(stored):
+    """Which probe template a recording was made with, from one place.
+
+    Three answers in descending order of authority, and the order is the
+    point:
+
+      1. `probe` on the record -- somebody said so, and it travels between
+         machines with everything else about the recording.
+      2. `view_state.probe` -- where the choice used to live. Read so that
+         a recording somebody set up before this field existed does not
+         quietly revert to H3 on its next open.
+      3. `probes.suggest(n_channels)` -- a guess, and only ever one that a
+         number can support: 128 channels is two 64-contact implants far
+         more often than it is one 128-contact array in this lab.
+
+    Never guesses past a real answer, and never writes. Filing the guess
+    would turn it into a fact nobody could find again, which is the same
+    argument `banks_for` makes about leaving `region` blank.
+    """
+    stored = stored or {}
+    said = stored.get("probe")
+    if said and probebook.get(said):
+        return str(said).lower()
+    was = (stored.get("view_state") or {}).get("probe")
+    if was and probebook.get(was):
+        return str(was).lower()
+    return probebook.suggest(stored.get("n_channels"))
 
 
 def _find_nev(folder):
@@ -840,7 +890,12 @@ def api_session_events():
 
 @app.route("/api/sessions")
 def api_sessions():
-    return jsonify({"ok": True, "sessions": STORE.all_sessions()})
+    # REG.all() rather than STORE.all_sessions(): the same records, merged
+    # the same way, but cached against the shard directory's signature
+    # instead of re-read from 1510 files on every call. Measured: 4.1 s a
+    # call against 0.1 s. Safe here because nothing downstream edits what it
+    # is handed -- these go straight out as JSON.
+    return jsonify({"ok": True, "sessions": REG.all()})
 
 
 @app.route("/api/identify")
@@ -890,8 +945,28 @@ def api_errors_test():
     return jsonify({"ok": True, "error": rec})
 
 
-@app.route("/api/sync/status")
-def api_sync_status():
+def _sync_status_body():
+    """The EXPENSIVE half of the answer, and only that half.
+
+    Measured cold: 8.2 s, effectively all of it `STORE.index()` merging the
+    session shards for the first time in this process; warm it is 0.02 s.
+    That one number is the whole reason this route was worth warming, and
+    the rest of what the route returns is measured in tens of
+    milliseconds.
+
+    So the rest is deliberately NOT in here. Everything below costs
+    nothing, and two of them -- what this process started at, and what has
+    been edited since it did -- are facts about this process rather than
+    about the store. Yesterday's answers to those are not stale, they are
+    wrong: a cached `code_changed` from a session where somebody edited the
+    source would raise "restart Jarvis, it is running older code" on a
+    Jarvis that had started ten seconds ago.
+
+    Keeping them out also makes the fingerprint mean something. With
+    `started_at` in the body, every boot differs from every other boot by
+    construction, the comparison always says "changed", and the page always
+    refetches a quarter of a megabyte to be told what it already had.
+    """
     idx = None
     try:
         # index() rebuilds only when the store has actually changed; this
@@ -899,14 +974,26 @@ def api_sync_status():
         idx = STORE.index()
     except Exception:
         pass
-    return jsonify({"ok": True, "git": STORE.git_status(),
-                    "root": LOGS_DIR, "index": idx,
-                    "auto_stage": STORE.auto_stage,
-                    # Carried on a poll that already happens, so noticing
-                    # that Jarvis needs restarting costs no extra request.
-                    "code_changed": _code_changed(),
-                    "started_at": _STARTED_AT,
-                    "conflicts": conflict_audit()})
+    return {"ok": True, "root": LOGS_DIR, "index": idx,
+            "auto_stage": STORE.auto_stage}
+
+
+@app.route("/api/sync/status")
+def api_sync_status():
+    body, how = WARM.serve("sync_status", _sync_status_body,
+                           fresh=bool(request.args.get("fresh")))
+    body = dict(body)
+    # Always live, cache or no cache. 0.26 s between them, against the 8 s
+    # the index costs, and every one of them is either about this process or
+    # about the working tree as it is right now.
+    body["git"] = STORE.git_status()
+    # Carried on a poll that already happens, so noticing that Jarvis needs
+    # restarting costs no extra request.
+    body["code_changed"] = _code_changed()
+    body["started_at"] = _STARTED_AT
+    body["conflicts"] = conflict_audit()
+    body["warm"] = WARM.marker("sync_status", how)
+    return jsonify(body)
 
 
 def conflict_audit():
@@ -942,6 +1029,72 @@ def conflict_audit():
         "machines": sorted(machines),
         "mine": shards.machine_id(),
     }
+
+
+# ==========================================================================
+# The warm start
+# ==========================================================================
+# When the roll-up was built, which is not part of what it says.
+#
+# `STORE.index()` stamps itself, and a fresh process always rebuilds -- so
+# without this every boot differed from every other boot by construction,
+# every boot was reported as changed, and the page refetched a quarter of a
+# megabyte each time to be handed a different timestamp over identical
+# counts. Measured: with it declared, two consecutive boots compare equal.
+#
+# The counts themselves are emphatically NOT excluded. A change in what the
+# store holds is the one thing this whole mechanism exists to notice.
+WARM.volatile("sync_status", ["index.generated"])
+
+
+@app.before_request
+def _warm_watch_writes():
+    """The window closes the moment somebody does something.
+
+    Here rather than in each route, because the rule is about the person and
+    not about the endpoint: a route added next year inherits it without
+    anybody remembering to opt in. warmcache.BOOT_CHATTER lists the three
+    POSTs the interface makes on its own way up.
+    """
+    if request.method != "GET" and request.path.startswith("/api/"):
+        WARM.note_write(request.path)
+
+
+@app.route("/api/warm/state")
+def api_warm_state():
+    """Which warmed answers have been recomputed for real, and which of them
+    turned out to differ from what the page was shown.
+
+    Polled by the page for as long as `warming` is true, and it has to be
+    cheap enough to poll: no store reads, no disk, just what the prime
+    thread has recorded. A name appears here once its live value is in hand;
+    the value says whether refetching it would change anything, which on an
+    ordinary boot is false for all three and the page does nothing at all.
+    """
+    return jsonify(dict({"ok": True}, **WARM.state()))
+
+
+def warm_start(window_s=warmcache.WINDOW_S):
+    """Open the warm window and start recomputing behind it.
+
+    Called by start.py, which is to say by "Wake up Jarvis", and by nothing
+    else. A server brought up by the harness suite, by vacc_run or by a
+    script that imports this module never calls it, so those read the store
+    live exactly as they always have -- a test that measures the cache when
+    it means to measure the store is a test that has stopped testing.
+
+    The order is the order they are wanted in: the sync chip and the error
+    badge are on screen from the first frame, VACC decides whether the rail
+    chip appears, and the registry is wanted the moment somebody opens
+    Sessions. It also happens to be the cheapest order -- all three read the
+    session shards, and the first one to do it pays for the other two.
+    """
+    WARM.arm(window_s)
+    WARM.prime([
+        ("sync_status", _sync_status_body),
+        ("vacc_knows", _vacc_knows_body),
+        ("registry", _registry_body),
+    ])
 
 
 @app.route("/api/sync/reindex", methods=["POST"])
@@ -2468,7 +2621,10 @@ def _incisor_spec(body, sess):
             "Every channel in this recording is marked bad, so there is "
             "nothing to scan. Put at least one back and run it again.")
 
-    probe_id = (stored.get("view_state") or {}).get("probe") or "h3"
+    # The recording's probe, not the window's. It used to be read straight
+    # out of `view_state`, so a scan run from a machine that had never had
+    # the recording open scanned a dual implant as one linear array.
+    probe_id = _probe_for(stored)
     probe = probebook.get(probe_id) or {}
     spec = {
         "path": sess.get("path"),
@@ -3186,6 +3342,20 @@ def _braces_spec(body, sess):
     two numbers. Built from `_incisor_spec` so the band, the decimation and
     the threshold cannot drift from the detector's."""
     spec = _incisor_spec(dict(body, channels=None), sess)
+    # What the magnitude is taken of. CSD by default -- the part of the
+    # signal that cannot be volume-conducted -- with the voltage the
+    # detectors themselves ran on one setting away, so the two can be
+    # compared on the same set rather than argued about.
+    spec["measure"] = ("voltage" if body.get("measure") == "voltage"
+                       else "csd")
+    # The mains, and how long a moving average to run over the trace.
+    # Both are settings because both change the number: a notch that is not
+    # taken out leaves 60 Hz inside a 5-100 Hz band, and smoothing merges
+    # the twin lobes rectification makes at the cost of some timing.
+    if body.get("line_hz") is not None:
+        spec["line_hz"] = float(body.get("line_hz") or 0.0)
+    if body.get("smooth_ms") is not None:
+        spec["smooth_ms"] = float(body.get("smooth_ms") or 0.0)
     for key, default in (("window_ms", bracesmod.WINDOW_MS),
                          ("edge_frac", bracesmod.EDGE_FRAC),
                          ("same_ms", bracesmod.SAME_MS)):
@@ -3245,6 +3415,7 @@ def api_braces_plan():
             "usable": why is None, "why_not": why,
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
+    _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
     return jsonify({
         "ok": True,
         "entry": {"id": rec["id"], "name": rec.get("name"),
@@ -3265,6 +3436,12 @@ def api_braces_plan():
                       "bad": bool(c.get("bad"))}
                      for c in _braces_channels(sess)],
         "versions": versions,
+        # The NAME of the newest and of the one a commit would write. The
+        # number is not unique -- see `versions.tip_next` -- so anything
+        # shown to a person has to be the lineage name or it is a label
+        # that belongs to two versions at once.
+        "current_name": _cur_name,
+        "next_name": _next_name,
         "current_version": max([v["v"] for v in versions] or [0]),
         "spec": {k: spec.get(k) for k in
                  ("band", "lfp_fs", "height_sd", "abs_uv", "dist_ms",
@@ -3347,21 +3524,86 @@ def api_braces_run():
     all_ch = _braces_channels(sess)
     if want_ch:
         want = {int(x) for x in want_ch}
-        use_chans = [c for c in all_ch if int(c["number"]) in want]
     else:
-        use_chans = [c for c in all_ch if not c.get("bad")]
-    if not use_chans:
+        want = {int(c["number"]) for c in all_ch if not c.get("bad")}
+    if not want:
         return jsonify({"ok": False,
                         "error": "No channels are ticked, so there is "
                                  "nothing to build a profile from."}), 400
-    left_out = [int(c["number"]) for c in all_ch
-                if int(c["number"]) not in
-                {int(x["number"]) for x in use_chans}]
+
+    # A contact nobody wants is INTERPOLATED, not removed.
+    #
+    # A current source density is a second difference ACROSS DEPTH. Taking
+    # a contact out of the middle of the list does not leave a shorter
+    # probe, it leaves an unevenly spaced one -- and a second difference
+    # over an uneven grid has a step in it exactly where the missing wire
+    # was, which is then the largest thing on the shank. So the geometry is
+    # kept whole and the unwanted rows are replaced by the interpolation of
+    # their neighbours: they carry no information of their own, which is
+    # what "we do not trust this wire" means.
+    idx = [i for i, c in enumerate(all_ch) if int(c["number"]) in want]
+    use_chans = all_ch[idx[0]:idx[-1] + 1]
+    left_out = [int(c["number"]) for c in use_chans
+                if int(c["number"]) not in want]
+
+    stamp_times = [float(e["start"]) for e in events
+                   if e.get("start") is not None]
+    depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
 
     def work(job):
-        prof = bracesmod.profile(sess, use_chans, report, spec, job)
+        # The probe is screened FIRST, over one clean stretch.
+        #
+        # A CSD does not merely include a bad contact, it amplifies it: a
+        # dead wire between two live ones is the largest deflection
+        # anywhere on the shank. Every magnitude question after this --
+        # which depth, which peak -- would otherwise be answered with it.
+        # Screened contacts join the ones nobody ticked: interpolated, and
+        # reported rather than silently dropped.
+        screened = bracesmod.screen(sess, use_chans, spec, stamp_times)
+        bad_nums = dict(screened)
+        for n in left_out:
+            bad_nums.setdefault(int(n), "not ticked")
+
+        # Where on the shank these events actually are, worked out from the
+        # events themselves: the CSD averaged over a sample of the stamps
+        # at their curated times, so what is time-locked to them adds and
+        # what is not falls away. The band and the depth profile both come
+        # out of that average.
+        band_nums, depth_rows, at, prof = bracesmod.depth_band(
+            sess, use_chans, spec, stamp_times, want=depth_n, job=job,
+            bad=bad_nums)
+        # One more contact either side of the band.
+        #
+        # A CSD has no value at the ends of the list it is
+        # given, so reading exactly the band would lose its
+        # top and bottom rows -- the two the band was chosen
+        # for. The extra pair is read and then thrown away by
+        # `compute_csd` itself.
+        want_set = set(band_nums)
+        on = []
+        for i, c in enumerate(use_chans):
+            if int(c["number"]) in want_set:
+                on.append(c)
+            elif ((i + 1 < len(use_chans)
+                   and int(use_chans[i + 1]["number"]) in want_set)
+                  or (i and int(use_chans[i - 1]["number"]) in want_set)):
+                on.append(c)
         job.check()
-        peaks = bracesmod.profile_peaks(prof, report, spec, job)
+        # Then only the windows the stamps can reach, on only those
+        # channels. Neither half is a shortcut -- reading a channel that
+        # cannot see the event, or a stretch no stamp can reach, cannot
+        # change where a stamp goes.
+        peaks = bracesmod.windowed_peaks(sess, on, report, spec,
+                                         stamp_times, job, bad=bad_nums)
+        # Recorded, not used: see `params_of`. The profile says the band is
+        # sitting on a dipole, which is worth keeping even though nothing
+        # is projected onto it.
+        peaks["profile"] = {str(k): v for k, v in prof.items()}
+        peaks["depth"] = {"channels": band_nums, "profile": depth_rows,
+                          "from": at, "of": len(use_chans),
+                          "weights": {str(k): v for k, v in prof.items()},
+                          "screened": {str(k): v
+                                       for k, v in screened.items()}}
         job.check()
         out = bracesmod.propose(events, peaks,
                                window_ms=spec["window_ms"],
@@ -3375,6 +3617,9 @@ def api_braces_run():
         # tomorrow, and somebody opening this proposal then still has to be
         # able to ask which channels it was measured from.
         out["left_out"] = left_out
+        out["depth"] = peaks.get("depth")
+        out["n_windows"] = peaks.get("n_windows")
+        out["read_s"] = peaks.get("read_s")
         made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
                              out, name=rec.get("name"), by=who)
         # The summary travels with the job's result so the panel can draw
@@ -3384,7 +3629,9 @@ def api_braces_run():
                 "n_channels": peaks.get("n_channels"),
                 "from_version": src_v}
 
-    steps = [("ds profile", len(use_chans)), ("ds detect", 1)]
+    steps = [("ds depth", len(use_chans)),
+             ("ds windows", max(1, len(bracesmod.spans(
+                 stamp_times, spec["window_ms"]))))]
     job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
@@ -3429,7 +3676,18 @@ def api_braces_set(set_id):
                         "error": "No alignment set %s." % set_id}), 404
     moves, _flags, counts = brsetmod.resolve(rec)
     entry = BANK.get(rec.get("entry_id")) or {}
+    # Where the recording is, so the panel can open it in the trace view
+    # without a second round trip to work out something the set already
+    # implies. None when this machine cannot reach it, which the browse
+    # button reads as "not from here".
+    here = None
+    try:
+        sess, _row = _braces_session(entry)
+        here = sess.get("path")
+    except Exception:                                    # noqa: BLE001
+        here = None
     return jsonify({
+        "session_path": here,
         "ok": True,
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
@@ -3443,7 +3701,11 @@ def api_braces_set(set_id):
                   "label_names": entry.get("label_names") or {},
                   "current_version": max(
                       [v.get("v") or 0
-                       for v in (entry.get("versions") or [])] or [0])},
+                       for v in (entry.get("versions") or [])] or [0]),
+                  "current_name": versionsmod.tip_next(
+                      entry.get("versions") or [])[0],
+                  "next_name": versionsmod.tip_next(
+                      entry.get("versions") or [])[1]},
     })
 
 
@@ -3554,7 +3816,12 @@ def api_braces_profile(set_id):
         return jsonify({"ok": False, "error": "Empty window."}), 400
 
     try:
-        got = bracesmod.profile_window(sess, chans, report, spec, t0, t1)
+        # The set's own screening, so the bench draws the trace this
+        # proposal was made on rather than a fresh measurement over
+        # contacts the run did not believe.
+        got = bracesmod.profile_window(
+            sess, chans, report, spec, t0, t1,
+            bad=dict(pr.get("screened") or {}))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/profile", exc, 400, {"set_id": set_id})
     return jsonify({"ok": True, **got})
@@ -3596,6 +3863,7 @@ def api_braces_candidates():
             "session_label": rec.get("session_label"),
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
+            "current_name": versionsmod.tip_next(vers)[0],
             "aligned": rec.get("aligned"),
             "added": rec.get("added"),
         })
@@ -5105,11 +5373,24 @@ def api_layers_regions():
 
 @app.route("/api/layers")
 def api_layers_list():
-    """Every layer sheet, for the ToolKit list."""
+    """Every layer sheet, for the ToolKit list.
+
+    One index for the whole list rather than a lookup per sheet. `by_gid`
+    re-checks the shard directory's signature on every call -- a listing
+    plus a stat of all 1510 files, about 0.3 s -- so seventy-two sheets
+    meant seventy-two of those, and this route took ten seconds to return
+    423 KB. Measured: 0.16 s to read the sheets, 14.6 s to look up twenty
+    of their recordings.
+
+    Exactly the shape of fix `_attach_index(bulk=True)` is in
+    `/api/registry`, and for the same reason: the expensive part is per
+    STORE, not per row, so it belongs outside the loop.
+    """
+    by_gid = {r.get("gid"): r for r in REG.all() if r.get("gid")}
     out = []
     for rec in LAYERS.all():
         row = LAYERS.summary(rec)
-        sess = REG.by_gid(rec.get("gid"))
+        sess = by_gid.get(rec.get("gid"))
         row["session"] = REG.summary(sess) if sess else None
         out.append(row)
     out.sort(key=lambda r: -(r.get("progress", {}).get("labelled") or 0))
@@ -7124,8 +7405,36 @@ def _demo_project():
 
 @app.route("/api/registry")
 def api_registry():
-    """Every recording Jarvis has met, as a project / mouse / session tree."""
-    if request.args.get("backfill"):
+    """Every recording Jarvis has met, as a project / mouse / session tree.
+
+    Warmed, but only in its plain form. `?backfill=` writes to the registry
+    and `?no_demo=` changes the answer, so either one goes straight to the
+    builder -- a cache keyed on a name rather than on a query string must
+    never be handed a request whose query string matters.
+    """
+    backfill = bool(request.args.get("backfill"))
+    demo = not request.args.get("no_demo")
+    if backfill or not demo:
+        body, how = _registry_body(backfill=backfill, demo=demo), "live"
+    else:
+        body, how = WARM.serve("registry", _registry_body,
+                               fresh=bool(request.args.get("fresh")))
+    body = dict(body)
+    body["warm"] = WARM.marker("registry", how)
+    return jsonify(body)
+
+
+def _registry_body(backfill=False, demo=True):
+    """The tree, with nothing read off the request.
+
+    Measured at 6.0 s on 687 records, and the Sessions view cannot draw a
+    row until it lands -- which is why that view has had a skeleton in it
+    for as long as it has existed. Most of the six seconds is `REG.all()`
+    merging the shards, the same read `/api/vacc/knows` does; once either
+    one has done it the other is nearly free, which is why they are primed
+    in that order.
+    """
+    if backfill:
         REG.backfill()
     # One index for the whole tree: `_attachments` used to read the figure
     # catalogue and the deck list once per recording, which is 508 reads of
@@ -7156,11 +7465,11 @@ def api_registry():
 
     mark(tree)
 
-    if not request.args.get("no_demo"):
+    if demo:
         # Last, so real data is what you see first -- but always there, so
         # a machine with nothing mounted is not an empty application.
         tree = list(tree) + [_demo_project()]
-    return jsonify({
+    return {
         "ok": True,
         "projects": REG.projects(),
         "known_projects": list(sessreg.KNOWN_PROJECTS),
@@ -7175,7 +7484,7 @@ def api_registry():
         # So the tree can branch on any of them without a second round trip.
         "mice": MICE.index(),
         "attributes": MICE.attributes(),
-    })
+    }
 
 
 @app.route("/api/registry/<gid>")
@@ -7201,7 +7510,12 @@ def api_registry_patch(gid):
     try:
         rec = None
         if "project" in body:
-            rec = REG.set_project(gid, body["project"])
+            # `project_source` is only ever passed by something putting a
+            # record back as it found it -- see `set_project`. A person
+            # choosing from the picker sends no source and gets "manual",
+            # which is what choosing means.
+            rec = REG.set_project(gid, body["project"],
+                                  body.get("project_source") or "manual")
         if "label" in body:
             rec = REG.set_label(gid, body["label"])
         if "note" in body:
@@ -7438,8 +7752,14 @@ def api_toolkit_scopes():
 
     Offering the mice and projects that actually exist is the difference
     between a filter and a guessing game.
+
+    Through REG.all(), which is the same read cached against the shard
+    signature. Straight off the store this was 4.9 s EVERY time the ToolKit
+    was opened -- not merely the first -- because `STORE.all_sessions()`
+    re-reads and re-merges all 1510 shards on every call and the registry
+    does not. Nothing below edits a record, so the shared copies are fine.
     """
-    sessions = STORE.all_sessions()
+    sessions = REG.all()
     mice, groups, days = set(), set(), []
     for rec in sessions:
         if rec.get("mouse") is not None:
@@ -7474,7 +7794,9 @@ def api_toolkit_bad_channels():
     form = "wide" if request.args.get("form") == "wide" else "long"
     include_clean = request.args.get("clean") in ("1", "true", "yes")
     try:
-        picked = toolkit.select(STORE.all_sessions(), **args)
+        # REG.all(): the same records, cached against the shard
+        # signature. `toolkit.select` and `rows` only read.
+        picked = toolkit.select(REG.all(), **args)
     except toolkit.ToolkitError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -7500,7 +7822,9 @@ def api_toolkit_bad_channels_export():
     form = "wide" if request.args.get("form") == "wide" else "long"
     include_clean = request.args.get("clean") in ("1", "true", "yes")
     try:
-        picked = toolkit.select(STORE.all_sessions(), **args)
+        # REG.all(): the same records, cached against the shard
+        # signature. `toolkit.select` and `rows` only read.
+        picked = toolkit.select(REG.all(), **args)
     except toolkit.ToolkitError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -11051,6 +11375,22 @@ PUSH_EVERY = 60          # a floor; a write pushes sooner than this
 PUSH_AFTER_WRITE = 6     # quiet period after the last write before pushing
 FILES_EVERY = 300        # figures and screenshots, which are big and rare
 
+# How far a quiet machine backs off, and how fast.
+#
+# A pull every 20 seconds is right when somebody is working and two people
+# are editing the same set. It is not right for the eight hours the rig sits
+# on the Sessions view with nobody in the room -- and it was doing it
+# anyway: 4,320 cycles a day, each one asking twenty-one tables a question
+# whose answer was "nothing", which measured at about 6.5 GB of egress a
+# month against a 5 GB allowance.
+#
+# So the interval doubles each time a pull brings back nothing and drops
+# straight back to the floor the moment anything arrives or anybody writes.
+# A cycle that finds work is as quick as it ever was; a cycle that finds
+# none happens sixteen times less often.
+PULL_MAX = 320           # five and a bit minutes, the ceiling when idle
+PULL_GROWTH = 2.0        # doubling, so it reaches the ceiling in four
+
 # When a write happened, so a push can follow it promptly. Set by the
 # after_request hook rather than by each route: there are about ninety routes
 # that write and one place they all pass through.
@@ -11100,6 +11440,7 @@ def _cloud_loop():
     time.sleep(8)           # let the app finish starting
     next_pull = next_push = next_files = 0.0
     retry_at = 0.0
+    idle_pull = float(PULL_EVERY)   # grows while nothing is happening
     while True:
         try:
             cfg = CLOUD.cloud.reload()
@@ -11123,11 +11464,23 @@ def _cloud_loop():
             if due_pull or due_push or due_files:
                 if due_push:
                     _push_wanted[0] = 0.0
+                before = dict(_cloud_last.get("applied") or {})
                 cloud_sync_once(pull=due_pull, push=due_push,
                                 files=due_files)
                 base = max(5, int(cfg.get("interval") or PULL_EVERY))
                 if due_pull:
-                    next_pull = time.time() + base
+                    # Did that cycle find anything? A local write counts as
+                    # well: somebody typing here is the best available
+                    # evidence that somebody is also working elsewhere.
+                    got = _cloud_last.get("applied") or {}
+                    moved = any(v for k, v in got.items()
+                                if not str(k).startswith("_"))
+                    if moved or wrote or got != before:
+                        idle_pull = base
+                    else:
+                        idle_pull = min(PULL_MAX,
+                                        max(base, idle_pull * PULL_GROWTH))
+                    next_pull = time.time() + idle_pull
                 if due_push:
                     next_push = time.time() + max(base, PUSH_EVERY)
                 if due_files:
@@ -11252,6 +11605,56 @@ def api_vacc_check():
     return jsonify(vaccmod.status())
 
 
+def _cluster_match(path, by_key, by_loose):
+    """Which known recording a cluster folder is, or why it is nobody.
+
+    Returns `(rec, how, why)`. `rec` is None when nothing matched or when a
+    match was refused, and `why` then says which.
+
+    THE RULE, IN ONE PLACE
+
+    An exact key is mouse, session AND the recording's own start time, so two
+    different recordings sharing one is not a thing that happens. A loose key
+    is mouse and session only, and in this lab that is not an identity: the
+    numbering restarts per project, so m13 s3 is a PTEN recording from
+    2023-08-01, a KCNT1 one, and a KCNT1 Urethane one, and their loose keys
+    are character-for-character identical.
+
+    So a loose match has to agree about the day AND about the project, and
+    the project comes from the full path -- `KCNT1 Urethane/...` is a
+    different body of work from `KCNT1/...` even though one name contains
+    the other. Both are checked because either alone lets a pair through:
+    two projects can record on the same day, and one project can hold the
+    same mouse-and-session twice across years.
+    """
+    ident = ids.identify(path)
+    key = str(ident.get("key") or "").lower()
+    loose = str(ident.get("loose_key") or "").lower()
+
+    if key and key in by_key:
+        return by_key[key], "exact", None
+    if not (loose and loose in by_loose):
+        return None, None, None
+
+    cand = by_loose[loose]
+    mine_day = str(ident.get("start") or "")[:10]
+    their_day = str(cand.get("start") or "")[:10]
+    if mine_day and their_day and mine_day != their_day:
+        return (None, None,
+                "same mouse and session as %s, but recorded on %s rather "
+                "than %s" % (cand.get("gid"), mine_day, their_day))
+
+    mine_proj = sessreg.guess_project(ident, [path])
+    their_proj = (cand.get("project") or "").strip()
+    if (mine_proj and their_proj and mine_proj != sessreg.UNFILED
+            and their_proj != sessreg.UNFILED and mine_proj != their_proj):
+        return (None, None,
+                "same mouse and session as %s, but this path is %s work and "
+                "that recording is %s" % (cand.get("gid"), mine_proj,
+                                          their_proj))
+    return cand, "loose", None
+
+
 def _vacc_staged(force=False, wait=True):
     """What the cluster already holds, keyed by the gid it belongs to.
 
@@ -11294,46 +11697,17 @@ def _vacc_staged(force=False, wait=True):
 
     # Exact beats loose, and two exacts for one gid is a refusal.
     #
-    # The loose key is mouse-and-session, which is not an identity: this lab
-    # has an `m22 s3` in PTEN recorded 2024-07-15 and an `m22 s3` in KCNT1
-    # recorded 2023-06-02, and the first version of this took whichever came
-    # last out of the listing. It offered to run the PTEN recording's scan
-    # against the KCNT1 recording's data, said so in a correctly formatted
-    # sentence, and would have banked the answer under the PTEN gid.
-    #
-    # `mouse+session is not an identity` is a thing this codebase already
-    # knows -- numbering restarts per project. So a loose match is only ever
-    # a fallback, and an ambiguous one is dropped rather than guessed.
+    # The rule about WHICH recording a cluster folder is lives in
+    # `_cluster_match`, so this and `/api/vacc/scan` cannot drift about it.
+    # What is decided here is the other half: what to do when two folders
+    # both answer to one recording.
     staged, unknown, by_gid = {}, [], {}
     for row in found:
-        ident = ids.identify(row["path"])
-        key = str(ident.get("key") or "").lower()
-        loose = str(ident.get("loose_key") or "").lower()
-        if key and key in by_key:
-            gid, how = by_key[key], "exact"
-        elif loose and loose in by_loose:
-            # A loose key is mouse-and-session, and numbering restarts per
-            # project -- `m013_s003` is a KCNT1 recording from 2022-08-15
-            # AND a PTEN one from 2023-08-01, and the loose keys are
-            # character-for-character identical. So the day has to agree.
-            #
-            # Without this, the batch offered to run PTEN m13 s3's scan
-            # against KCNT1 data from a year earlier, and PTEN m2 s2's
-            # against a recording from two years earlier, and would have
-            # banked both answers under the PTEN gids. Nothing on screen
-            # would have looked wrong.
-            cand = by_loose[loose]
-            mine = str(ident.get("start") or "")[:10]
-            theirs = str(cand.get("start") or "")[:10]
-            if mine and theirs and mine != theirs:
-                unknown.append(dict(row, why="same mouse and session as %s, "
-                                             "but recorded on %s rather than %s"
-                                             % (cand.get("gid"), mine, theirs)))
-                continue
-            gid, how = cand.get("gid"), "loose"
-        else:
-            unknown.append(row)
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        if rec is None:
+            unknown.append(dict(row, why=why) if why else row)
             continue
+        gid = rec.get("gid")
         if not gid:
             unknown.append(row)
             continue
@@ -11479,6 +11853,115 @@ def _vacc_run_for(tool, sess, spec, plan, report, tool_steps):
     return run, where
 
 
+@app.route("/api/registry/<gid>/bank", methods=["POST"])
+def api_registry_bank(gid):
+    """Say which probe a block of channels is.
+
+    The only way a bank gets an anatomy. A scan records that a 128-channel
+    recording is two banks of sixty-four and stops there, because the number
+    of channels cannot tell you which one went into hippocampus -- so this
+    is a person answering, and it is recorded as one.
+    """
+    body = request.get_json(force=True) or {}
+    bank_id = str(body.get("bank") or "").strip()
+    region = body.get("region")
+    region = str(region).strip() if region not in (None, "") else None
+    try:
+        rec = REG.by_gid(gid)
+        if not rec:
+            return jsonify({"ok": False, "error": "No session " + gid}), 404
+        banks = [dict(b) for b in (rec.get("channel_banks") or [])]
+        if not banks:
+            return jsonify({"ok": False,
+                            "error": "That recording has one probe in it."}), 400
+        hit = [b for b in banks if b.get("id") == bank_id]
+        if not hit:
+            return jsonify({"ok": False,
+                            "error": "No bank %s here." % bank_id}), 400
+        hit[0]["region"] = region
+        hit[0]["said_by"] = (STORE.provenance() or {}).get("user")
+        rec = REG._patch(rec, {"channel_banks": banks})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("registry/bank", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "registry.bank",
+        "detail": {"gid": gid, "bank": bank_id, "region": region},
+    }])
+    return jsonify({"ok": True, "channel_banks": (rec or {}).get("channel_banks")})
+
+
+@app.route("/api/registry/<gid>/probe", methods=["POST"])
+def api_registry_probe(gid):
+    """Say which probe template a recording was made with.
+
+    A fact about the animal, so it belongs on the recording rather than on
+    whoever happens to have it open -- which is where it used to live, in
+    the Xplorefinder session's view state, and therefore only for as long as
+    that window stayed open and only for the person who set it.
+
+    It is load-bearing rather than descriptive. The template decides how the
+    array is divided into lines of contacts, and a CSD is only meaningful
+    down one line: get it wrong on a dual implant and the derivative steps
+    from hippocampus to M2 between two contacts and produces a number that
+    is not a current sink and does not look wrong.
+
+    `""` clears it, which is not the same as `h3` -- one says nobody has
+    said, the other says somebody said it is a single array. `banks_for`
+    already draws that distinction for regions and this follows it.
+    """
+    body = request.get_json(force=True) or {}
+    want = body.get("probe")
+    want = str(want).strip().lower() if want not in (None, "") else None
+    if want and not probebook.get(want):
+        return jsonify({"ok": False,
+                        "error": "No probe template called %r." % want}), 400
+    try:
+        rec = REG.by_gid(gid)
+        if not rec:
+            return jsonify({"ok": False, "error": "No session " + gid}), 404
+        patch = {"probe": want, "probe_source": "manual" if want else None}
+        # Choosing a template with named regions IS somebody saying which
+        # bank is which.
+        #
+        # `banks_for` refuses to guess a region, and it is right to: a
+        # number of channels cannot tell you which probe went into
+        # hippocampus. But picking "Dual array (hippocampus + M2)" is not a
+        # guess -- it is a person naming the implant, and leaving the banks
+        # blank afterwards would mean the same fact had to be entered twice
+        # and could disagree with itself.
+        #
+        # Only ever fills a blank. A region somebody already set stands,
+        # because this is the weaker statement of the two: the template says
+        # what the montage usually is, and the bank says what this animal
+        # was.
+        banks = [dict(b) for b in (rec.get("channel_banks") or [])]
+        if banks and want:
+            cols = probebook.get(want) or {}
+            named = [c for c in (cols.get("columns") or []) if c.get("region")]
+            if len(named) == len(banks):
+                touched = False
+                who = (STORE.provenance() or {}).get("user")
+                for bank, col in zip(banks, named):
+                    if bank.get("region"):
+                        continue
+                    bank["region"] = col["region"]
+                    bank["said_by"] = who
+                    bank["said_via"] = "probe:" + want
+                    touched = True
+                if touched:
+                    patch["channel_banks"] = banks
+        rec = REG._patch(rec, patch)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("registry/probe", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "registry.probe",
+        "detail": {"gid": gid, "probe": want},
+    }])
+    return jsonify({"ok": True, "probe": (rec or {}).get("probe"),
+                    "probe_source": (rec or {}).get("probe_source"),
+                    "channel_banks": (rec or {}).get("channel_banks")})
+
+
 @app.route("/api/vacc/browse")
 def api_vacc_browse():
     """One level of the cluster's filesystem. `?path=` to go deeper."""
@@ -11532,29 +12015,31 @@ def api_vacc_scan():
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
         ident = ids.identify(row["path"])
-        key = str(ident.get("key") or "").lower()
-        loose = str(ident.get("loose_key") or "").lower()
-        rec = by_key.get(key)
-        how = "exact"
-        if rec is None and loose in by_loose:
-            cand = by_loose[loose]
-            mine = str(ident.get("start") or "")[:10]
-            theirs = str(cand.get("start") or "")[:10]
-            # Same guard as the batch matcher: mouse+session is not an
-            # identity, and this lab has the same one in two projects.
-            if mine and theirs and mine != theirs:
-                ambiguous.append({"path": row["path"],
-                                  "why": "same mouse and session as %s but "
-                                         "recorded on %s rather than %s"
-                                         % (cand.get("gid"), mine, theirs)})
-                continue
-            rec, how = cand, "loose"
+        # One rule, shared with the batch matcher -- see `_cluster_match`.
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        if rec is None and why:
+            ambiguous.append({"path": row["path"], "why": why})
+            continue
         if rec is None:
+            # Nobody here knows this recording. Whether it can BECOME one
+            # depends on whether its folder names an animal and a session:
+            # a gid is permanent and everything hangs off it, and one minted
+            # for `ACTIVE_WHEEL_DATA/bw10` can never be matched to anything
+            # by identity, so it would be a record that exists and cannot be
+            # found. Measured: 84 of the 120 recordings on this cluster are
+            # that shape.
+            can_register = (ident.get("mouse") is not None
+                            and ident.get("session") is not None)
             unmatched.append({"path": row["path"],
                               "n_channels": row.get("n_channels"),
                               "mouse": ident.get("mouse"),
                               "session": ident.get("session"),
-                              "start": ident.get("start")})
+                              "project": sessreg.guess_project(ident,
+                                                               [row["path"]]),
+                              "start": ident.get("start"),
+                              "can_register": can_register,
+                              "why": None if can_register else
+                              "the folder does not name a mouse and a session"})
             continue
         entry = {"gid": rec["gid"], "label": rec.get("label") or rec.get("key"),
                  "path": row["path"], "how": how}
@@ -11568,6 +12053,39 @@ def api_vacc_scan():
                 entry["error"] = str(exc)[:160]
         added.append(entry)
 
+    # A recording whose first exposure is the cluster.
+    #
+    # Only the ones whose folder names an animal and a session. Registering
+    # goes through `REG.ingest` -- the same call the local drive scanner
+    # makes -- so a recording met on the cluster is registered by exactly the
+    # rules a recording met on a drive is, and the gid it gets is the one a
+    # local scan would later resolve to rather than a second record for the
+    # same thing.
+    registered = []
+    to_register = [u for u in unmatched if u.get("can_register")]
+    if body.get("register") and to_register and not dry:
+        found_by_path = {r["path"]: r for r in found}
+        rows = []
+        for u in to_register:
+            row = found_by_path.get(u["path"]) or {}
+            rows.append({
+                "path": u["path"],
+                "identity": ids.identify(u["path"]),
+                "channels": row.get("n_channels"),
+            })
+        try:
+            new, seen = REG.ingest(rows, scan_id=None, root=root)
+            registered = [{"path": r["path"],
+                           "label": (r["identity"] or {}).get("label"),
+                           "n_channels": r.get("channels")} for r in rows]
+            unmatched = [u for u in unmatched if not u.get("can_register")]
+            STORE.record_activity([{
+                "action": "vacc.register",
+                "detail": {"root": root, "new": new, "seen": seen},
+            }])
+        except Exception as exc:                         # noqa: BLE001
+            return fail("vacc/register", exc, 400, {"root": root})
+
     if not dry and added:
         STORE.record_activity([{
             "action": "vacc.scan",
@@ -11577,7 +12095,9 @@ def api_vacc_scan():
     return jsonify({"ok": True, "dry": dry, "root": root or cfg.get("scratch_root"),
                     "n_found": len(found),
                     "added": added, "already": already,
-                    "unmatched": unmatched, "ambiguous": ambiguous})
+                    "unmatched": unmatched, "ambiguous": ambiguous,
+                    "registered": registered,
+                    "can_register": len(to_register)})
 
 
 @app.route("/api/vacc/inventory")
@@ -11601,31 +12121,169 @@ def api_vacc_knows():
     plus a `net use` on this machine, and it answers even when the cluster is
     unreachable. Worth having on its own -- "nine of these are blocked here,
     and VACC can read all nine" is the sentence the whole feature is for.
+
+    The arithmetic is cheap -- 0.05 s for 687 recordings. What is not cheap
+    is `REG.all()` underneath it, which is four to eight seconds the first
+    time a process asks, and this is one of the two calls the interface
+    makes before anybody has clicked anything. Hence the warm path.
     """
     try:
-        cfg = vaccmod.load_config(LOGS_DIR)
-        rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
-                for r in REG.all() if r.get("gid")]
-        # What the cluster physically holds, so a recording it already has a
-        # copy of is not reported as something to upload.
-        #
-        # `wait=False`: this renders on the Sessions view, and the walk that
-        # answers it takes about ten seconds. Waiting for it made a page load
-        # take thirteen and a half. The first call starts the walk and says
-        # "not established" for the staged ones; the next call, a few seconds
-        # later, has the answer. A slightly late chip is worth far more than
-        # a view that does not appear.
-        try:
-            staged, _unknown = _vacc_staged(wait=False)
-        except Exception:                                # noqa: BLE001
-            staged = {}
-        got = vaccmod.resolve_many(rows, cfg, staged=staged)
+        body, how = WARM.serve("vacc_knows", _vacc_knows_body,
+                               fresh=bool(request.args.get("fresh")))
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/knows", exc, 400)
-    return jsonify({"ok": True, "knows": got,
-                    "counts": vaccmod.histogram(got),
-                    "n_rules": len(cfg.get("path_map") or []),
-                    "drives": vaccmod.drive_map()})
+    body = dict(body)
+    body["warm"] = WARM.marker("vacc_knows", how)
+    return jsonify(body)
+
+
+def _vacc_knows_body():
+    """Raises rather than returning a response.
+
+    A warmed builder hands back a plain dict, because the prime thread runs
+    it outside any request and `jsonify` needs an application context. The
+    route above turns a failure into the 400 this used to return directly.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
+            for r in REG.all() if r.get("gid")]
+    # What the cluster physically holds, so a recording it already has a
+    # copy of is not reported as something to upload.
+    #
+    # `wait=False`: this renders on the Sessions view, and the walk that
+    # answers it takes about ten seconds. Waiting for it made a page load
+    # take thirteen and a half. The first call starts the walk and says
+    # "not established" for the staged ones; the next call, a few seconds
+    # later, has the answer. A slightly late chip is worth far more than
+    # a view that does not appear.
+    try:
+        staged, _unknown = _vacc_staged(wait=False)
+    except Exception:                                    # noqa: BLE001
+        staged = {}
+    got = vaccmod.resolve_many(rows, cfg, staged=staged)
+    return {"ok": True, "knows": got,
+            "counts": vaccmod.histogram(got),
+            "n_rules": len(cfg.get("path_map") or []),
+            "drives": vaccmod.drive_map()}
+
+
+@app.route("/api/vacc/signin/state")
+def api_vacc_signin_state():
+    """What the guided sign-in needs to know before it asks anything.
+
+    Read-only and offline: no connection is attempted, because this is what
+    decides whether to OFFER to connect. A probe here would put a ten-second
+    stall in front of a panel whose whole job is to explain why there is
+    nothing to stall on yet.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    keys = vaccmod.existing_keys()
+    return jsonify({
+        "ok": True,
+        "configured": bool(cfg.get("configured")),
+        "netid": cfg.get("netid") or "",
+        "host": cfg.get("host") or vaccmod.DEFAULT_HOST,
+        "have_ssh": vaccmod.have_ssh(),
+        "have_key": vaccmod.have_key(),
+        "key_path": vaccmod.key_paths()[0],
+        # Somebody who already uses the cluster from a terminal has a key
+        # that works. Saying so lets setup offer to use it instead of
+        # asking for a password to install a second one.
+        "other_keys": [k for k in keys if not k["mine"]],
+        "public_key": vaccmod.read_pubkey(),
+    })
+
+
+@app.route("/api/vacc/signin", methods=["POST"])
+def api_vacc_signin():
+    """Get this machine onto the cluster, from a netid and one password.
+
+    The whole flow, in one request, because it is one thing from the
+    person's point of view and splitting it across three would mean holding
+    a password between them.
+
+      1. make a key if there is not one
+      2. log in with the password, answer Duo with a push, append the
+         public key to `authorized_keys`
+      3. throw the password away
+      4. prove the key works by connecting again with the key ALONE
+      5. only then write the config
+
+    Step 4 is the one that makes this honest. Writing the config after step
+    2 would record "signed in" on the strength of a password that is now
+    gone -- and if the key did not actually take, the next poll fails with
+    nothing left to retry with and no way to tell why.
+    """
+    body = request.get_json(force=True) or {}
+    netid = (body.get("netid") or "").strip()
+    password = body.get("password") or ""
+    use_existing = (body.get("use_key") or "").strip()
+
+    try:
+        if use_existing:
+            # An existing key the person nominated. Nothing to install and
+            # no password to ask for -- just prove it works and write it
+            # down. Refused if it is in the repository, same as `setup`.
+            repo = os.path.dirname(APP_DIR)
+            try:
+                inside = os.path.commonpath(
+                    [os.path.abspath(use_existing), repo]) == repo
+            except ValueError:
+                inside = False
+            if inside:
+                return jsonify({"ok": False,
+                                "error": "That key is inside the repository. "
+                                         "Move it to ~/.ssh first."}), 400
+            key_path = use_existing
+            made = {"created": False}
+            installed = {"already": True, "netid": netid}
+        else:
+            made = vaccmod.make_key()
+            key_path = vaccmod.key_paths()[0]
+            installed = vaccmod.install_key(netid, password,
+                                            duo=body.get("duo") or "1")
+            netid = installed.get("netid") or netid
+
+        # The proof. Key only, password auth off -- the ordinary `_ssh`
+        # options, which is exactly how every later call will connect.
+        check = dict(vaccmod.load_config(LOGS_DIR))
+        check["netid"] = netid
+        check["key_path"] = key_path
+        who = vaccmod._ssh(check, "whoami", timeout=30).strip()
+    except vaccmod.SSHError as exc:
+        # `kind` rather than the text, so the page can say something useful
+        # about a wrong password without parsing English.
+        return jsonify({"ok": False, "error": str(exc),
+                        "kind": getattr(exc, "kind", "failed")}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/signin", exc, 400, {"netid": netid})
+
+    if who and who != netid:
+        # The cluster says you are somebody else. Almost always a typo in
+        # the netid that happened to match another account's key, and not
+        # something to write into a config file.
+        return jsonify({
+            "ok": False, "kind": "mismatch",
+            "error": "The key works, but the cluster says that account is "
+                     "%r rather than %r. Check the netid." % (who, netid),
+        }), 400
+
+    vaccmod.save_config(LOGS_DIR, netid=netid, key_path=key_path,
+                        enabled=True)
+    vaccmod.refresh(force=True)
+    STORE.record_activity([{
+        "action": "vacc.signin",
+        "detail": {"netid": netid, "made_key": bool(made.get("created")),
+                   "key_was_there": bool(installed.get("already"))},
+    }])
+    return jsonify({
+        "ok": True,
+        "netid": netid,
+        "key_path": key_path,
+        "made_key": bool(made.get("created")),
+        "already_installed": bool(installed.get("already")),
+        "config": vaccmod.load_config(LOGS_DIR),
+    })
 
 
 @app.route("/api/vacc/setup", methods=["POST"])
