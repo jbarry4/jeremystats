@@ -168,7 +168,29 @@ def _trace_start():
 
 @app.after_request
 def no_cache(resp):
-    resp.headers["Cache-Control"] = "no-store"
+    # API answers are never cached; files are cached and revalidated.
+    #
+    # This set `no-store` on EVERYTHING, and `no-store` means the browser may
+    # not keep the response at all -- not even to ask whether it is still
+    # good. So all 2.5 MB of web/js and app.css came down again on every
+    # load, over the same six connections the pollers are already using.
+    #
+    # `no-cache` is the header that means what was wanted here: keep it, but
+    # ask before using it. The answer to the asking is a 304 with no body, so
+    # editing a module and hitting refresh still shows the edit -- which in a
+    # codebase with no build step is not negotiable, and is why this is not
+    # `max-age`.
+    #
+    # Setting it only when the view has not spoken also stops this hook
+    # overwriting a deliberate one. /api/results/file asks for a day of
+    # caching because its URL carries a hash of the file's size and mtime, so
+    # a changed figure is a different URL; that header was being replaced
+    # with `no-store` here, one line after it was set, and every thumbnail in
+    # the Results grid was fetched again on every render.
+    if request.endpoint in ("static_files", "index"):
+        resp.headers.setdefault("Cache-Control", "no-cache")
+    elif "Cache-Control" not in resp.headers:
+        resp.headers["Cache-Control"] = "no-store"
 
     # Record what was asked for and how it went. A request that returns 200
     # with nothing useful in it leaves no other trace anywhere, and that is
@@ -3514,6 +3536,24 @@ def api_braces_run():
         if lid in align_ids:
             align_ids.add(name)
 
+    # NOTHING TO ALIGN.
+    #
+    # A set can be fully curated and hold no events at all -- somebody went
+    # through it and rejected every candidate, which is a real answer and
+    # nine of the forty-eight sets in this bank are that. Running anyway
+    # reads the recording for a minute and files a proposal with no rows in
+    # it, which is a thing somebody then has to work out is empty on
+    # purpose. Refused here instead, with the reason.
+    n_good = sum(1 for ev in events
+                 if (ev.get("label_id") or ev.get("label")) in align_ids)
+    if not n_good:
+        return jsonify({
+            "ok": False,
+            "error": "Nothing in this set is a dentate spike: all %d "
+                     "candidate(s) were rejected or are still undecided. "
+                     "There is nothing to align, so nothing was read."
+                     % len(events)}), 400
+
     # Which channels go into the profile.
     #
     # Whatever the caller ticked, and where it said nothing, every channel
@@ -3856,6 +3896,29 @@ def api_braces_delete(set_id):
         return fail("braces/delete", exc, 400, {"set_id": set_id})
 
 
+def _n_good(rec):
+    """How many events in this entry are the thing Braces aligns.
+
+    The curation vocabulary decides, not a hard-coded word: a fifth
+    category added to the DS labels tomorrow is handled without anybody
+    remembering to come back here. Counted by id and by display name,
+    because entries banked before `label_id` existed carry only the name.
+    """
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    n = 0
+    for ev in (rec.get("events") or []):
+        if (ev.get("label_id") or ev.get("label")) in want:
+            n += 1
+    return n
+
+
 def _tip_usable(vers):
     """The newest version whose stamps can be read back on this machine.
 
@@ -4029,6 +4092,14 @@ def api_braces_candidates():
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
+            # How many of these are actually dentate spikes.
+            #
+            # Not `n`, which counts candidates: a set can be fully curated
+            # and hold nothing but rejections, and there is nothing to
+            # align in that. Worked out from the curation vocabulary the
+            # same way the run works it out -- by id AND by display name,
+            # because older entries carry only the name.
+            "n_good": _n_good(rec),
             # The whole history, named and in lineage order, so a bulk
             # table can show which version each entry would be read from
             # and let any of them be changed before anything runs. `ref` is
@@ -11830,6 +11901,37 @@ def api_vacc_check():
     return jsonify(vaccmod.status())
 
 
+def _match_index():
+    """The two lookups `_cluster_match` reads, built once.
+
+    Both maps hold the RECORD, never the bare id. That is not a detail: the
+    loose branch has to check the candidate's start date and project before
+    it will accept a match, and every caller asks the result for its `gid`.
+
+    This function exists because there were two copies of this loop and they
+    drifted. `/api/vacc/scan` filed the record in both maps; `_vacc_staged`
+    filed the record in `by_loose` and the bare **gid string** in `by_key`.
+    So the moment a cluster folder matched a known recording EXACTLY -- the
+    common case, and the one the whole feature is for -- `_cluster_match`
+    handed back a string and the caller's `rec.get("gid")` raised
+    `'str' object has no attribute 'get'`. The Incisor VACC list printed
+    that sentence where the recordings should have been.
+
+    `_cluster_match` was written to stop precisely this, by keeping the
+    matching rule in one place, and it did. What drifted was what the two
+    callers fed it -- so the builder lives here now as well.
+    """
+    by_key, by_loose = {}, {}
+    for rec in (REG.all() or []):
+        if not rec.get("gid"):
+            continue
+        if rec.get("key"):
+            by_key.setdefault(str(rec["key"]).lower(), rec)
+        if rec.get("loose_key"):
+            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    return by_key, by_loose
+
+
 def _cluster_match(path, by_key, by_loose):
     """Which known recording a cluster folder is, or why it is nobody.
 
@@ -11908,17 +12010,7 @@ def _vacc_staged(force=False, wait=True):
         return {}, []
     found = vaccmod.inventory_cached(cfg, root, force=force)
 
-    by_key, by_loose = {}, {}
-    for rec in REG.all():
-        gid = rec.get("gid")
-        if not gid:
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), gid)
-        if rec.get("loose_key"):
-            # The record, not just the id: a loose match has to be checked
-            # against something, and the date is the only thing left.
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     # Exact beats loose, and two exacts for one gid is a refusal.
     #
@@ -12228,14 +12320,7 @@ def api_vacc_scan():
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/scan", exc, 400, {"path": root})
 
-    by_key, by_loose = {}, {}
-    for rec in (REG.all() or []):
-        if not rec.get("gid"):
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), rec)
-        if rec.get("loose_key"):
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
@@ -12702,6 +12787,36 @@ _QUIET_PATHS = (
     "/api/video/clip", "/api/video/frame",
 )
 
+# The rest of the pollers -- but on GET only, which is the difference
+# between reading a thing and doing one.
+#
+# These cannot join the tuple above, because that one silences both verbs:
+# "/api/curation" there would take "POST /api/curation/decide" with it, and
+# a curation decision is exactly the kind of line worth keeping. Same for
+# "/api/registry", whose POSTs are somebody rescanning or forgetting a
+# recording.
+_QUIET_GETS = (
+    "/api/sync/status", "/api/sync/progress", "/api/warm/state",
+    "/api/presence", "/api/toolfeed", "/api/registry", "/api/curation",
+    "/api/video/convert/status", "/api/vacc/status",
+)
+
+# The interface itself: 34 files on a cold load, and the access line for
+# each one is noise by definition -- nobody debugs a 200 on app.css.
+#
+# They were not covered before because every rule above starts "/api/", and
+# these do not. A page load therefore printed 35+ lines, and Python's
+# logging holds one global handler lock, so request threads queue behind
+# each other to write them.
+#
+# That queueing has a sharp edge worth knowing about: if the Jarvis console
+# window is put into QuickEdit selection mode -- a stray click in it is
+# enough -- Windows blocks every write to it until the selection is
+# cleared, and the whole server stops with it. Fewer writes is a smaller
+# window for that, not a fix for it.
+_QUIET_SUFFIXES = (".js", ".css", ".map", ".svg", ".png", ".ico",
+                   ".woff", ".woff2", ".jpg", ".jpeg", ".gif", ".webp")
+
 
 class _QuietPolls(_logging.Filter):
     def filter(self, record):
@@ -12713,6 +12828,17 @@ class _QuietPolls(_logging.Filter):
             for p in _QUIET_PATHS:
                 if ('GET ' + p) in msg or ('POST ' + p) in msg:
                     return False
+            # Pulled apart rather than matched: this module has no `re`, and
+            # the one thing worse than a noisy log is a filter that throws
+            # into its own except and quietly stops filtering.
+            i = msg.find('"GET ')
+            if i >= 0:
+                path = msg[i + 5:].split(" ", 1)[0].split("?", 1)[0]
+                if path.lower().endswith(_QUIET_SUFFIXES):
+                    return False
+                for p in _QUIET_GETS:
+                    if path == p or path.startswith(p + "/"):
+                        return False
         except Exception:                        # noqa: BLE001
             return True
         return True

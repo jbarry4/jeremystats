@@ -2368,6 +2368,29 @@ BARRY.profile = (function () {
 
 function setView(name) {
   if (!VIEWS.includes(name)) name = 'pipeline';
+
+  /* Tell the view being left that it is being left.
+
+     Nothing did, so anything a view started ran for the rest of the
+     session: ToolKit's presence beat and its mounted tool feed were both
+     still polling from whatever other view you were looking at. Views that
+     hold something on purpose do NOT have one of these -- Xplorefinder's
+     link poll carries facts a popped-out window still needs, and curation's
+     heartbeat is a claim on a set that another machine takes the moment it
+     lapses.
+
+     Wrapped, because a view failing on its way out must not strand you on
+     the one you are leaving. */
+  const from = BARRY.state.view;
+  if (from && from !== name) {
+    const prev = BARRY.views[from];
+    if (prev && prev.onHide) {
+      try { prev.onHide(); } catch (err) {
+        reportClientError('onHide:' + from, err.message, err.stack);
+      }
+    }
+  }
+
   BARRY.state.view = name;
   $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
@@ -2810,16 +2833,32 @@ function themeForThisMachine() {
   return null;
 }
 
+/* Closing the theme picker, whichever way it is closed.
+
+   There are three ways out -- picking a theme, clicking away, and clicking
+   the button again -- and only the middle one used to unbind the document
+   listener that watches for the click-away. So opening the picker and
+   choosing a theme left a `mousedown` handler on `document` holding a
+   removed node, every time, for the life of the page. Ten visits to the
+   theme menu, ten handlers, all still running on every click anywhere.
+
+   Hoisted out of showThemePicker so the "already open, close it" path at
+   the top can reach the listener belonging to the popup it is removing. */
+let themePopShut = null;
+
+function closeThemePicker() {
+  if (themePopShut) { const f = themePopShut; themePopShut = null; f(); }
+}
+
 function showThemePicker() {
-  const existing = $('#themePop');
-  if (existing) { existing.remove(); return; }
+  if ($('#themePop')) { closeThemePicker(); return; }
 
   const pop = el('div', { class: 'theme-pop', id: 'themePop' },
     THEMES.map((t) => el('button', {
       class: 'theme-opt' + (BARRY.state.theme === t.id ? ' on' : ''),
       onclick: () => {
         applyTheme(t.id);
-        pop.remove();
+        closeThemePicker();
         BARRY.activity.log('theme.change', { theme: t.id });
       },
     }, [
@@ -2833,14 +2872,20 @@ function showThemePicker() {
 
   $('#themeToggle').parentNode.appendChild(pop);
   // Close on the next click anywhere else.
+  const away = (e) => {
+    if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
+      closeThemePicker();
+    }
+  };
+  themePopShut = () => {
+    pop.remove();
+    document.removeEventListener('mousedown', away);
+  };
+  // Still on the next tick: the click that opened this is the one that
+  // would otherwise close it again straight away.
   setTimeout(() => {
-    const away = (e) => {
-      if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
-        pop.remove();
-        document.removeEventListener('mousedown', away);
-      }
-    };
-    document.addEventListener('mousedown', away);
+    // Unless it has already been shut in the meantime.
+    if (themePopShut) document.addEventListener('mousedown', away);
   }, 0);
 }
 
@@ -3139,8 +3184,18 @@ BARRY.init = async function init() {
 
   BARRY.boot.say('wiring up the interface');
 
+  // Clicking the section you are already in is "where am I", not "do it
+  // again" -- but every view's onShow is an unconditional reload, so it was
+  // four requests on Errors and two on Results for a stray click.
+  //
+  // The guard belongs here and not inside setView: setView is called 171
+  // times across web/_dev, and several harnesses deliberately set the same
+  // view twice. This is the path a person actually takes.
   $$('.nav-item').forEach((b) =>
-    b.addEventListener('click', () => setView(b.dataset.view)));
+    b.addEventListener('click', () => {
+      if (BARRY.state.view === b.dataset.view) return;
+      setView(b.dataset.view);
+    }));
 
   // The rail's own collapse, and the handle that brings it back.
   wireRail();
@@ -3202,11 +3257,23 @@ BARRY.init = async function init() {
                   // that was added last rather than renumbering the ten that
                   // people have already learned.
                   't': 'toolkit', 'T': 'toolkit' };
-    if (map[e.key]) setView(map[e.key]);
+    // Same as the rail: pressing 6 while already on Errors should not
+    // reload it.
+    if (map[e.key] && BARRY.state.view !== map[e.key]) setView(map[e.key]);
   });
 
   // Load the catalog, then hand off to each view.
+  //
+  // Both at once. These two are independent -- the catalog is what is in the
+  // repo, preferences are what this person likes -- and they were awaited one
+  // after the other, so a five-second index read was five seconds during
+  // which the preferences request had not been sent yet. Started together,
+  // the boot costs the slower of the two rather than their sum.
+  //
+  // The reconciliation below still needs both, and still waits for both; what
+  // changes is only when the second one is asked for.
   BARRY.boot.say('reading the repository index', '/api/catalog');
+  const prefsReady = BARRY.prefs.load();
   try {
     const cat = await api('/api/catalog');
     BARRY.state.catalog = cat;
@@ -3230,9 +3297,10 @@ BARRY.init = async function init() {
   }
 
   // Preferences gate the views (favourites, smart collections, last
-  // session), so they must be in hand before any view renders.
+  // session), so they must be in hand before any view renders. Started
+  // above, alongside the catalog; this is where it is collected.
   BARRY.boot.say('loading your preferences', '/api/prefs');
-  await BARRY.prefs.load();
+  await prefsReady;
 
   // Preferences and the catalog are both in hand now, so the per-machine
   // choice can be honored -- it may differ from what localStorage had.
@@ -3254,8 +3322,10 @@ BARRY.init = async function init() {
   // exists to prevent. It also decides whether the rail chip appears.
   if (BARRY.vacc) BARRY.vacc.init();
   // Housekeeping lives inside the Sessions view rather than owning a rail
-  // slot, so it is wired here rather than by the view loop.
-  if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();
+  // slot -- but it is still registered as BARRY.views.housekeeping, so the
+  // loop below was already calling its init(). Calling it here as well bound
+  // #hkRefresh twice, and every click on Refresh then ran two registry reads
+  // and two full renders. The loop covers it.
   if (BARRY.tour) {
     BARRY.tour.init();
     offerTour();

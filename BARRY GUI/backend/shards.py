@@ -392,6 +392,12 @@ class Book:
         self.spec = dict(spec or {})
         self.store = store
         self.ext = ext
+        # The compiled-record cache and its stamp. See all(). Its own lock
+        # rather than the module's: two threads reading a store must not
+        # queue behind each other, and this guards nothing else.
+        self._all_sig = None
+        self._all_recs = None
+        self._all_lock = threading.Lock()
         os.makedirs(self.dir, exist_ok=True)
 
     # -- naming ---------------------------------------------------------
@@ -410,44 +416,80 @@ class Book:
         """
         return _read_json(self.mine(base)) or {}
 
+    def _scan(self):
+        """One directory pass: every shard grouped by base, and the stamp.
+
+        `shard_files` used to list the WHOLE directory once per base, and
+        `all()` asked it for every base -- so reading a store was
+        O(bases x files). Measured on this repo's own GUI_logs/sessions,
+        1,689 shards over 697 bases: 3.88 s and 1,177,233 split_name calls,
+        against 8.2 ms for the single pass below. `bases()` was quadratic on
+        top of that, testing `b not in seen` against a list.
+
+        The signature comes out of the same pass. On Windows scandir hands
+        back mtime and size from the directory read that yielded the name,
+        so covering every file costs nothing beyond the walk -- the trade
+        store.py:_runs_fingerprint already makes, and for the same reason:
+        folder mtimes do not move when a `git pull` overwrites a shard in
+        place, so the stamp has to be over the files themselves.
+
+        Two orderings are load-bearing and are preserved exactly:
+
+          - within a base, shards come in filename order. Sorting by machine
+            instead would move `~legacy` from the front to the back (`~` is
+            0x7E, past every letter), and a legacy shard is the one that must
+            be merged FIRST so a real edit beats it.
+          - `bases()` follows first appearance in filename order, which is
+            NOT sorted base order: `@` is 0x40, past the digits, so
+            "m12@x.json" sorts before "m1@x.json". Dicts keep insertion
+            order, so building the index in filename order gives `bases()`
+            back unchanged.
+        """
+        rows, sig = [], []
+        try:
+            with os.scandir(self.dir) as it:
+                for entry in it:
+                    name = entry.name
+                    if not name.endswith(self.ext):
+                        continue
+                    try:
+                        st = entry.stat()
+                    except OSError:
+                        continue
+                    base, machine = split_name(name, self.ext)
+                    if not base:
+                        continue
+                    rows.append((name, base, machine))
+                    sig.append((name, st.st_mtime_ns, st.st_size))
+        except OSError:
+            return {}, ()
+        rows.sort()
+        sig.sort()
+        idx = {}
+        for name, base, machine in rows:
+            idx.setdefault(base, []).append(
+                (machine, os.path.join(self.dir, name)))
+        return idx, tuple(sig)
+
     def shard_files(self, base):
-        out = []
-        for name in sorted(_listdir(self.dir)):
-            b, m = split_name(name, self.ext)
-            if b == base:
-                out.append((m, os.path.join(self.dir, name)))
-        return out
+        return self._scan()[0].get(base, [])
 
     def signature(self):
         """A cheap value that changes whenever any shard here does.
 
-        One directory listing and a stat per file. Enough to cache a derived
-        answer against, and correct across two Jarviss sharing one GUI_logs --
-        which a timer or an invalidate-on-my-own-writes flag would not be.
+        Enough to cache a derived answer against, and correct across two
+        Jarviss sharing one GUI_logs -- which a timer or an
+        invalidate-on-my-own-writes flag would not be.
         """
-        out = []
-        for name in sorted(_listdir(self.dir)):
-            if not name.endswith(self.ext):
-                continue
-            try:
-                st = os.stat(os.path.join(self.dir, name))
-            except OSError:
-                continue
-            out.append((name, st.st_mtime_ns, st.st_size))
-        return tuple(out)
+        return self._scan()[1]
 
     def bases(self):
-        seen = []
-        for name in sorted(_listdir(self.dir)):
-            b, _m = split_name(name, self.ext)
-            if b and b not in seen:
-                seen.append(b)
-        return seen
+        return list(self._scan()[0].keys())
 
     # -- reading --------------------------------------------------------
-    def read(self, base):
+    def _compile(self, files):
         shards = []
-        for machine, path in self.shard_files(base):
+        for machine, path in files:
             rec = _read_json(path)
             if rec:
                 if machine == LEGACY:
@@ -458,8 +500,37 @@ class Book:
                 shards.append((machine, rec))
         return merge(shards, self.spec)
 
+    def read(self, base):
+        return self._compile(self.shard_files(base))
+
     def all(self):
-        return [r for r in (self.read(b) for b in self.bases()) if r]
+        """Every record in the store, merged, read from disk at most once
+        per change.
+
+        One scan for the whole store, not one per base -- going through
+        read() here is what made this quadratic. What is left after that fix
+        is the JSON: 1,702 session shards still parse in ~350 ms, and
+        /api/registry asks three times. So the compiled list is kept and
+        re-used until the directory stamp moves.
+
+        The stamp is the safety, not a timer: it covers every file's mtime
+        and size, so it changes the moment any shard is written -- by this
+        machine or by a colleague's `git pull` overwriting one in place.
+        This is the same bargain sessreg.Registry.all() already strikes, and
+        for the same reason.
+
+        Shallow copies, because callers edit what they are handed and
+        editing this list would be editing the cache. Shallow is enough: the
+        write paths all go through read() on a single base, which compiles
+        fresh objects, so nothing mutates the nested values under here.
+        """
+        idx, sig = self._scan()
+        with self._all_lock:
+            if sig != self._all_sig or self._all_recs is None:
+                self._all_recs = [r for r in
+                                  (self._compile(f) for f in idx.values()) if r]
+                self._all_sig = sig
+            return [dict(r) for r in self._all_recs]
 
     def machines(self, base):
         return [m for m, _p in self.shard_files(base)]
@@ -531,6 +602,22 @@ class Book:
             if keys:
                 out["_keys"] = keys
             _write_json(path, out)
+            # Drop the compiled cache outright rather than trusting the
+            # directory stamp to have moved.
+            #
+            # The stamp is mtime and size, and Windows updates a file time
+            # from a system clock that ticks about every 15 ms -- the same
+            # tick `_now()` above works around. So a write that lands inside
+            # one tick AND happens to leave the file the same length is
+            # invisible to it, and a decision changed from one four-letter
+            # label to another does exactly that. Rare, and silent when it
+            # happens, which is the bad combination.
+            #
+            # Only this machine's writes go through here; a colleague's
+            # arrive by pull, where the stamp is reliable and this cannot
+            # help. So it closes the local window and leaves the remote one
+            # to the stamp, which is where it was already correct.
+            self._all_sig = None
             if self.store:
                 self.store._stage(path)
             merged = self.read(base)

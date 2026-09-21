@@ -122,6 +122,25 @@ behind = [c for c in sets_all
 print("       %d of %d set(s) have a newest version that never reached "
       "this machine" % (len(behind), len(sets_all)))
 
+# A set with nothing in it to align.
+#
+# Fully curated and every candidate rejected is a real state -- nine of the
+# forty-eight sets here are that, one of them 738 rejections -- and running
+# one reads the recording for a minute to file a proposal with no rows in
+# it. It has to be refused, and the refusal has to say why.
+none_good = [c for c in sets_all if not c.get("n_good")]
+truthy("the listing says how many of each set are actually spikes",
+       all("n_good" in c for c in sets_all))
+print("       %d of %d set(s) hold no dentate spikes at all"
+      % (len(none_good), len(sets_all)))
+if none_good:
+    bad = call("/api/braces/run", {"entry_id": none_good[0]["id"]})
+    check("a set with no spikes is refused rather than read",
+          bool(bad.get("ok")), False)
+    truthy("...and the refusal says why",
+           "dentate spike" in (bad.get("error") or ""),
+           bad.get("error"))
+
 n_bank_before = len(entries)
 
 print("\nA PLAN IS NOT A WRITE")

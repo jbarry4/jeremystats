@@ -512,11 +512,22 @@ BARRY.braces = (function () {
                                    text: 'Which banked entry' }));
       const list = el('div', { class: 'bm-list' });
       for (const c of mine) {
+        /* A set with nothing in it to align is SHOWN and cannot be
+           picked. Shown, because "this one is finished and every
+           candidate was rejected" is a real answer and a row that
+           silently is not there reads as a set that does not exist;
+           unpickable, because running it reads the recording for a
+           minute and files a proposal with no rows in it. */
         list.appendChild(el('label', {
-          class: 'bm-row' + (c.id === q.entry ? ' on' : ''),
+          class: 'bm-row' + (c.id === q.entry ? ' on' : '')
+                 + (goodOf(c) ? '' : ' off'),
+          title: goodOf(c) ? '' : 'All ' + c.n + ' candidates were rejected '
+                 + 'or left undecided, so there are no dentate spikes here '
+                 + 'to align.',
         }, [
           el('input', {
             type: 'radio', name: 'brEntry',
+            disabled: goodOf(c) ? null : 'disabled',
             checked: c.id === q.entry ? 'checked' : null,
             onchange: () => {
               q.entry = c.id;
@@ -526,10 +537,16 @@ BARRY.braces = (function () {
             },
           }),
           el('span', { class: 'mk-name', text: c.name || c.id }),
-          el('span', { class: 'flagchip', text: c.n + ' stamps' }),
+          el('span', { class: 'flagchip',
+                       text: goodOf(c)
+                         ? goodOf(c) + ' spike' + (goodOf(c) === 1 ? '' : 's')
+                           + ' of ' + c.n
+                         : c.n + ' stamps, none of them spikes' }),
           el('span', { class: 'person-what',
-                       text: vName(c)
-                             + (c.aligned ? '  \u00b7 aligned before' : '') }),
+                       text: goodOf(c)
+                         ? vName(c)
+                           + (c.aligned ? '  \u00b7 aligned before' : '')
+                         : 'nothing to align' }),
         ]));
       }
       card.appendChild(list);
@@ -887,8 +904,37 @@ BARRY.braces = (function () {
     return row ? !!row.reachable : false;
   }
 
+  /* How many of a set's candidates are the thing Braces moves.
+
+     `n` counts CANDIDATES. A set can be fully curated and hold no events
+     at all -- somebody went through it and rejected every one -- and nine
+     of the forty-eight sets in this bank are exactly that, one of them
+     738 rejections. The server works the count out from the curation
+     vocabulary rather than from a hard-coded word. */
+  const goodOf = (c) => (c.n_good == null ? c.n : c.n_good);
+
   function bulkReady(c) {
-    return reachable(c) && !!newestRef(c);
+    return reachable(c) && !!newestRef(c) && goodOf(c) > 0;
+  }
+
+  /* Why a row cannot be run, in a sentence, or '' when it can.
+
+     Ordered by what is most true: a set with nothing in it to align is
+     not going to run whether or not its recording is reachable. Said
+     rather than hidden -- "this set is finished and everything in it was
+     garbage" is a real answer somebody may be looking for, and a row that
+     silently is not there reads as a set that does not exist. */
+  function whyNot(c) {
+    if (!goodOf(c)) {
+      return 'no dentate spikes — all ' + c.n + ' candidate'
+           + (c.n === 1 ? ' was' : 's were')
+           + ' rejected or left undecided';
+    }
+    if (!reachable(c)) {
+      return 'the recording is not on a drive this machine can reach';
+    }
+    if (!newestRef(c)) return 'no version of its stamps can be read here';
+    return '';
   }
 
   /* The counts on the bar, which change as rows are ticked and as a run
@@ -975,12 +1021,27 @@ BARRY.braces = (function () {
     card.appendChild(bar);
 
     const tbl = el('div', { class: 'br-bulk-rows' });
-    for (const c of cands) {
+    for (const c of cands) tbl.appendChild(bulkRow(c));
+    card.appendChild(tbl);
+    return card;
+  }
+
+  /* One row.
+
+     Its own function so that a row which has just finished can be rebuilt
+     where it stands. A tick rewrites the status text and nothing else,
+     which is right while a read is going and wrong the moment it lands:
+     the Open button is part of the row, so it only appeared at the next
+     full render -- which is when the whole queue finishes. A set that had
+     been done for four minutes looked exactly like one still working. */
+  function bulkRow(c) {
+    {
       const st = bulk.state[c.id] || {};
       const ok = bulkReady(c);
+      const why = whyNot(c);
       if (bulk.pick[c.id] === undefined) bulk.pick[c.id] = newestRef(c);
       const vs = (c.versions || []).filter((v) => v.usable);
-      tbl.appendChild(el('div', {
+      return el('div', {
         class: 'br-bulk-row' + (bulk.want[c.id] ? ' on' : '')
                + (ok ? '' : ' away') + (st.state ? ' ' + st.state : ''),
         // So a tick can find one row without rebuilding the table.
@@ -1031,20 +1092,18 @@ BARRY.braces = (function () {
            readable" case is said out loud rather than left as a version
            number somebody would have to notice was one behind. */
         el('span', { class: 'st', text: st.msg
-          || (!ok ? 'the recording is not on a drive this machine can reach'
-              : (c.newest_usable_name
-                 && c.newest_name !== c.newest_usable_name
-                 ? 'v' + c.newest_name + ' never reached this machine — '
-                   + 'v' + c.newest_usable_name + ' is the newest readable'
-                 : '')) }),
+          || why
+          || (c.newest_usable_name
+              && c.newest_name !== c.newest_usable_name
+              ? 'v' + c.newest_name + ' never reached this machine — '
+                + 'v' + c.newest_usable_name + ' is the newest readable'
+              : '') }),
         st.set_id ? el('button', {
           class: 'mini', text: 'Open',
           onclick: () => openSet(st.set_id),
         }) : null,
-      ].filter(Boolean)));
+      ].filter(Boolean));
     }
-    card.appendChild(tbl);
-    return card;
   }
 
   /* Which contacts a recording has marked bad.
@@ -1194,9 +1253,11 @@ BARRY.braces = (function () {
         // run somebody has to check by hand afterwards anyway.
         bulk.state[c.id] = { state: 'failed', msg: e.message || String(e) };
       }
-      // The row, not the panel: see `paintBulkRow`. The whole thing is
-      // rendered once at the end, when nothing is moving.
-      paintBulkRow(c.id);
+      // The row REBUILT, not just its text: it has finished, so it has
+      // an Open button now, and waiting for the end of the queue to show
+      // it made a set that landed four minutes ago look like one still
+      // being read.
+      paintBulkRow(c.id, true);
       paintBulkBar();
     }
     bulk.now = null;
@@ -1239,11 +1300,19 @@ BARRY.braces = (function () {
      for the whole minute a read takes, which is exactly when somebody is
      trying to read the table. The status column is the only thing that
      changes while a run is going, so it is the only thing written. */
-  function paintBulkRow(id) {
+  function paintBulkRow(id, whole) {
     const row = document.querySelector('.br-bulk-row[data-id="'
                                        + cssEsc(id) + '"]');
-    if (!row) return;
+    if (!row || !row.parentNode) return;
     const st = bulk.state[id] || {};
+    /* A read that has LANDED changes more than its status text -- there
+       is an Open button now -- so the row is rebuilt. Only that row: the
+       table keeps its scroll position, which was the whole reason ticks
+       stopped rebuilding the card. */
+    if (whole) {
+      const c = (cands || []).find((x) => x.id === id);
+      if (c) { row.parentNode.replaceChild(bulkRow(c), row); return; }
+    }
     const cell = row.querySelector('.st');
     if (cell) cell.textContent = st.msg || '';
     for (const k of ['queued', 'going', 'done', 'failed']) {
