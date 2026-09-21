@@ -3536,6 +3536,24 @@ def api_braces_run():
         if lid in align_ids:
             align_ids.add(name)
 
+    # NOTHING TO ALIGN.
+    #
+    # A set can be fully curated and hold no events at all -- somebody went
+    # through it and rejected every candidate, which is a real answer and
+    # nine of the forty-eight sets in this bank are that. Running anyway
+    # reads the recording for a minute and files a proposal with no rows in
+    # it, which is a thing somebody then has to work out is empty on
+    # purpose. Refused here instead, with the reason.
+    n_good = sum(1 for ev in events
+                 if (ev.get("label_id") or ev.get("label")) in align_ids)
+    if not n_good:
+        return jsonify({
+            "ok": False,
+            "error": "Nothing in this set is a dentate spike: all %d "
+                     "candidate(s) were rejected or are still undecided. "
+                     "There is nothing to align, so nothing was read."
+                     % len(events)}), 400
+
     # Which channels go into the profile.
     #
     # Whatever the caller ticked, and where it said nothing, every channel
@@ -3878,6 +3896,29 @@ def api_braces_delete(set_id):
         return fail("braces/delete", exc, 400, {"set_id": set_id})
 
 
+def _n_good(rec):
+    """How many events in this entry are the thing Braces aligns.
+
+    The curation vocabulary decides, not a hard-coded word: a fifth
+    category added to the DS labels tomorrow is handled without anybody
+    remembering to come back here. Counted by id and by display name,
+    because entries banked before `label_id` existed carry only the name.
+    """
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    n = 0
+    for ev in (rec.get("events") or []):
+        if (ev.get("label_id") or ev.get("label")) in want:
+            n += 1
+    return n
+
+
 def _tip_usable(vers):
     """The newest version whose stamps can be read back on this machine.
 
@@ -4051,6 +4092,14 @@ def api_braces_candidates():
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
+            # How many of these are actually dentate spikes.
+            #
+            # Not `n`, which counts candidates: a set can be fully curated
+            # and hold nothing but rejections, and there is nothing to
+            # align in that. Worked out from the curation vocabulary the
+            # same way the run works it out -- by id AND by display name,
+            # because older entries carry only the name.
+            "n_good": _n_good(rec),
             # The whole history, named and in lineage order, so a bulk
             # table can show which version each entry would be read from
             # and let any of them be changed before anything runs. `ref` is
@@ -11852,6 +11901,37 @@ def api_vacc_check():
     return jsonify(vaccmod.status())
 
 
+def _match_index():
+    """The two lookups `_cluster_match` reads, built once.
+
+    Both maps hold the RECORD, never the bare id. That is not a detail: the
+    loose branch has to check the candidate's start date and project before
+    it will accept a match, and every caller asks the result for its `gid`.
+
+    This function exists because there were two copies of this loop and they
+    drifted. `/api/vacc/scan` filed the record in both maps; `_vacc_staged`
+    filed the record in `by_loose` and the bare **gid string** in `by_key`.
+    So the moment a cluster folder matched a known recording EXACTLY -- the
+    common case, and the one the whole feature is for -- `_cluster_match`
+    handed back a string and the caller's `rec.get("gid")` raised
+    `'str' object has no attribute 'get'`. The Incisor VACC list printed
+    that sentence where the recordings should have been.
+
+    `_cluster_match` was written to stop precisely this, by keeping the
+    matching rule in one place, and it did. What drifted was what the two
+    callers fed it -- so the builder lives here now as well.
+    """
+    by_key, by_loose = {}, {}
+    for rec in (REG.all() or []):
+        if not rec.get("gid"):
+            continue
+        if rec.get("key"):
+            by_key.setdefault(str(rec["key"]).lower(), rec)
+        if rec.get("loose_key"):
+            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    return by_key, by_loose
+
+
 def _cluster_match(path, by_key, by_loose):
     """Which known recording a cluster folder is, or why it is nobody.
 
@@ -11930,17 +12010,7 @@ def _vacc_staged(force=False, wait=True):
         return {}, []
     found = vaccmod.inventory_cached(cfg, root, force=force)
 
-    by_key, by_loose = {}, {}
-    for rec in REG.all():
-        gid = rec.get("gid")
-        if not gid:
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), gid)
-        if rec.get("loose_key"):
-            # The record, not just the id: a loose match has to be checked
-            # against something, and the date is the only thing left.
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     # Exact beats loose, and two exacts for one gid is a refusal.
     #
@@ -12250,14 +12320,7 @@ def api_vacc_scan():
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/scan", exc, 400, {"path": root})
 
-    by_key, by_loose = {}, {}
-    for rec in (REG.all() or []):
-        if not rec.get("gid"):
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), rec)
-        if rec.get("loose_key"):
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:

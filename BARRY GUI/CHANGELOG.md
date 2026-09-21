@@ -15,6 +15,99 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.6 - A set with nothing in it says so, and the batch keeps up
+
+### Added
+
+- **Every banked entry can say whether it has reached the database.**
+  `/api/bank/sync`, and it is three questions rather than one flag, because
+  an entry and its snapshots travel separately: an entry can be missing
+  entirely, present but missing a version this machine has, or holding a
+  version whose snapshot never went up — which is the case where somebody
+  else can see the version in the history and cannot read the stamps back.
+
+  Without asking the database it answers from the local push cursor, which
+  is instant and works offline: anything changed since the last successful
+  push is waiting. `?verify=1` asks what is actually up there, which is the
+  only way to catch a push that reported success and did not land. First run
+  on this bank: **90 synced, 10 missing a version, 1 absent, 1 local by
+  design** — the demo recording, which never syncs and is named rather than
+  flagged, because crying wolf about the one thing working as intended is
+  how a status page gets ignored.
+
+- **Bad contacts are visible and editable from the bulk table.** A bulk run
+  uses whatever each recording has marked, and there was no way to see that
+  from here, let alone change it. Each row says how many and which, and
+  saves through the same route Incisor uses so a contact marked here and one
+  marked in the trace view land on one record. They are interpolated rather
+  than dropped — a second difference over an uneven grid is not a CSD — so
+  the row says "not believed", not "missing".
+
+- **A second button for the sets that have never been aligned.** "Everything
+  ready" ticks a set that has been aligned as readily as one that has not,
+  so a second pass over a bank re-reads the lot.
+
+### Fixed
+
+- **A set with no dentate spikes in it was offered, run, and filed empty.**
+  `n` counts CANDIDATES. A set can be fully curated and hold no events at
+  all — somebody went through it and rejected every one — and **nine of the
+  forty-eight sets in this bank are exactly that**, one of them 738
+  candidates every one of which is garbage. Running one read the recording
+  for a minute and produced a proposal with no rows in it, which somebody
+  then has to work out is empty on purpose.
+
+  The run refuses it and says why. Both pickers grey it out, will not let it
+  be ticked, and leave it out of the select-all buttons and the "can be read
+  here" count. It is shown rather than hidden: "this one is finished and
+  every candidate was rejected" is a real answer, and a row that silently is
+  not there reads as a set that does not exist. Both views now show "N
+  spikes of M" rather than the candidate count alone, which is the number
+  that decides whether there is anything to do.
+
+- **A finished batch row did not show it had finished.** A tick rewrote the
+  status text and nothing else — right while a read is going, wrong the
+  moment it lands, because the Open button is part of the row and only
+  appeared at the next full render, which is when the whole queue ends. A
+  set that landed four minutes ago looked exactly like one still being read.
+  The finished row is rebuilt, and only that row, so the table keeps its
+  scroll position.
+
+- **The bulk table moved under the pointer while it worked.** Every tick
+  replaced the whole card, four times a second, for the minute each read
+  takes — throwing away the scroll position, the focus and any version list
+  somebody had open, which is exactly when they are trying to read it. A
+  tick writes one cell now.
+
+- **The progress bar counted something and did not say what.** "Reading
+  window 43 of 62" under a sentence that began "It is the whole recording".
+  Braces has not read a whole recording since the windowed pass landed, and
+  62 counts STRETCHES — stamps closer than a second are read as one, which
+  is why this is minutes of an hour. Each stage says what it is doing, names
+  its unit, and states the number it is not: how many stamps the set holds.
+
+- **"Averaged over 16 channels, leaving out CSC59."** Neither half was true.
+  The 16 are DEPTHS, not contacts: a CSD depth is a difference between
+  contacts, so 18 contacts give 16 depths and there is no answer to "which
+  16 channels" because they are not channels. And CSC59 was interpolated
+  from its neighbours, not left out — dropping it would leave the rest
+  unevenly spaced — and it is not even inside the band this was measured on.
+
+- **The bank dialog said two different things in one sentence.** "This
+  becomes version 4, branching off version 3": branching off v3 is v3.1, and
+  v4 is what continuing it looks like. It also named the version by the ref
+  it had been handed rather than by a name anybody would recognise, and
+  still claimed "Nothing is deleted" after an aligned version started
+  holding the spikes and not the rejected candidates. It says which version
+  it is reading, whether that continues or branches, and what it is leaving
+  out.
+
+- **The bank dialog was laid out against the wrong box.** It built a modal
+  and handed it to the thing that puts a dialog inside `#bigModalBox` —
+  which is already a modal — so a 620px bordered panel sat at the left edge
+  of a 1240px one. It uses the header/body/footer convention every other
+  dialog in the app uses.
+
 ## 2026.09.21.5 - The bad contacts were always there; the table was reading an empty cache
 
 ### Fixed
