@@ -3697,7 +3697,7 @@ def api_braces_sets():
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
-        _moves, _flags, counts = brsetmod.resolve(rec)
+        _moves, _flags, counts, _rej = brsetmod.resolve(rec)
         out.append({
             "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
             "gid": rec.get("gid"), "name": rec.get("name"),
@@ -3719,7 +3719,7 @@ def api_braces_set(set_id):
     if not rec:
         return jsonify({"ok": False,
                         "error": "No alignment set %s." % set_id}), 404
-    moves, _flags, counts = brsetmod.resolve(rec)
+    moves, _flags, counts, rejects = brsetmod.resolve(rec)
     entry = BANK.get(rec.get("entry_id")) or {}
     # Where the recording is, so the panel can open it in the trace view
     # without a second round trip to work out something the set already
@@ -3759,15 +3759,23 @@ def api_braces_decide(set_id):
     """Confirm a row, keep it where it was, or move it somewhere else."""
     body = request.get_json(force=True) or {}
     calls = body.get("calls")
-    if calls is None and body.get("call") is not None:
+    if calls is None and "row" in body:
         # One row, which is what the bench sends on every keystroke.
-        calls = {str(body.get("row")): {"call": body["call"],
-                                        "t": body.get("t")}}
+        #
+        # A null `call` with a row means "forget what was said about this
+        # one". It used to fall through to `calls or {}` and decide
+        # nothing, while answering ok -- so a caller doing the obvious
+        # thing got a success and no effect, which is how a check of mine
+        # passed while testing nothing. The panel had been sending the
+        # `calls` form for exactly this reason; now both work.
+        calls = {str(body.get("row")):
+                 (None if body.get("call") is None
+                  else {"call": body["call"], "t": body.get("t")})}
     try:
         rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/decide", exc, 400, {"set_id": set_id})
-    moves, _flags, counts = brsetmod.resolve(rec)
+    moves, _flags, counts, rejects = brsetmod.resolve(rec)
     return jsonify({"ok": True, "counts": counts, "would_move": len(moves),
                     "calls": rec.get("calls") or {}})
 
@@ -3792,7 +3800,7 @@ def api_braces_commit(set_id):
             "error": "This alignment is already version %s of the set."
                      % (rec["committed"] or {}).get("version")}), 400
 
-    moves, flags, counts = brsetmod.resolve(rec)
+    moves, flags, counts, rejects = brsetmod.resolve(rec)
     dry = body.get("apply") is not True
     try:
         # The labels that name a real event, worked out the same way the
@@ -3814,7 +3822,8 @@ def api_braces_commit(set_id):
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
-                            flags=flags, keep_ids=keep_ids)
+                            flags=flags, keep_ids=keep_ids,
+                            reject=rejects)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -3823,7 +3832,18 @@ def api_braces_commit(set_id):
     # does not move, and the number of them belongs beside the button.
     report["left_alone"] = counts.get("waiting", 0)
     if dry or report.get("error"):
-        return jsonify({"ok": not report.get("error"), "report": report})
+        # THE REASON GOES WHERE THE CLIENT LOOKS FOR IT.
+        #
+        # A refusal lives in `report.error`, and the response said
+        # `ok: false` with nothing at the top level -- so the client, which
+        # reads `data.error` and falls back to the status code, showed
+        # "Request failed (200)". A refusal with a carefully written
+        # sentence in it came out as a number. Both places now, because
+        # the panel reads the report and the transport reads the top.
+        out = {"ok": not report.get("error"), "report": report}
+        if report.get("error"):
+            out["error"] = report["error"]
+        return jsonify(out)
 
     BRACES.mark_committed(set_id, report.get("version"),
                           report.get("version_id"), by=_braces_who(body))

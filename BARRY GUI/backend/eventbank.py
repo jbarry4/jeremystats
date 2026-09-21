@@ -1417,7 +1417,8 @@ class EventBank:
     # ------------------------------------------------------------------
     @shards.atomic
     def align(self, entry_id, moves, params, note=None, by=None,
-              dry_run=True, from_version=None, flags=None, keep_ids=None):
+              dry_run=True, from_version=None, flags=None, keep_ids=None,
+              reject=None):
         """Mint a version of `entry_id` with every stamp on its own peak.
 
         `moves` is `{index_into_the_source_events: new_start}`. Indices
@@ -1471,7 +1472,17 @@ class EventBank:
         # verdicts. That is where "what did the detector find, and what did
         # we reject" is answered. What THIS version is for is the spikes.
         want = set(keep_ids) if keep_ids else None
+        # Stamps somebody looked at on the recording and said were not
+        # events after all. Not moved, not written, and counted apart from
+        # the ones that were already rejected in curation -- "I threw this
+        # one out just now" and "this was thrown out last week" are
+        # different facts and the record should keep them that way.
+        drop = {int(i) for i in (reject or [])}
         for i, ev in enumerate(events):
+            if i in drop:
+                dropped_lbl["rejected here"] = dropped_lbl.get(
+                    "rejected here", 0) + 1
+                continue
             if want is not None:
                 lab = ev.get("label_id") or ev.get("label")
                 if lab not in want:

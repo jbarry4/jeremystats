@@ -21,10 +21,16 @@ Run it against a server you started for it, not the one somebody is using:
 from __future__ import annotations
 
 import json
+import platform
 import sys
 import time
 import urllib.error
 import urllib.request
+
+# What the bank stamps on a version written here. `platform.node()`, which
+# is what `bank`, `retime` and `align` all write -- NOT the lab's name for
+# this computer, which is a different string and would match nothing.
+HOST = platform.node()
 
 BASE = (sys.argv[1] if len(sys.argv) > 1
         else "http://127.0.0.1:8899").rstrip("/")
@@ -341,6 +347,47 @@ else:
             else:
                 print("       nothing was flagged in this set")
 
+            # A fourth decision: not an event after all.
+            #
+            # The only one that changes WHAT the set contains rather than
+            # where something in it sits, so it is checked against the
+            # write: the stamp has to be absent from what would be
+            # banked, and counted apart from the candidates curation had
+            # already rejected.
+            print("\nNOT AN EVENT AFTER ALL")
+            print("-" * 68)
+            was = (call("/api/braces/set/" + sid + "/commit", {})
+                   .get("report") or {})
+            n_was = was.get("n_events", 0)
+            got = call("/api/braces/set/" + sid + "/decide",
+                       {"row": 0, "call": "garbage"})
+            truthy("a stamp can be called garbage", got.get("ok"))
+            now = (call("/api/braces/set/" + sid + "/commit", {})
+                   .get("report") or {})
+            check("...and the write then holds one fewer",
+                  now.get("n_events"), n_was - 1)
+            check("...counted apart from what curation rejected",
+                  (now.get("dropped") or {}).get("rejected here"), 1)
+            # Both spellings of "forget what was said": the map form the
+            # panel sends, and the row form somebody would write first.
+            back = call("/api/braces/set/" + sid + "/decide",
+                        {"calls": {"0": None}})
+            truthy("...and it can be taken back", back.get("ok"))
+            end = (call("/api/braces/set/" + sid + "/commit", {})
+                   .get("report") or {})
+            check("...leaving the write as it was",
+                  end.get("n_events"), n_was)
+            # And the other spelling, which used to answer ok and do
+            # nothing at all.
+            call("/api/braces/set/" + sid + "/decide",
+                 {"row": 0, "call": "garbage"})
+            call("/api/braces/set/" + sid + "/decide",
+                 {"row": 0, "call": None})
+            end2 = (call("/api/braces/set/" + sid + "/commit", {})
+                    .get("report") or {})
+            check("...however it is asked to forget it",
+                  end2.get("n_events"), n_was)
+
             print("\nTHE PREVIEW")
             print("-" * 68)
             prev = call("/api/braces/set/" + sid + "/commit", {})
@@ -390,9 +437,31 @@ bank2 = call("/api/bank")
 entries2 = (bank2.get("entries") if isinstance(bank2, dict) else bank2) or []
 check("the bank has as many entries as it started with",
       len(entries2), n_bank_before)
-check("and no entry gained a version",
-      sum(len(e.get("versions") or []) for e in entries2),
-      sum(len(e.get("versions") or []) for e in entries))
+# WHICH versions exist, not how many.
+#
+# A count fails whenever a colleague's work arrives mid-run -- this lab
+# syncs every twenty seconds, and two versions banked on another machine
+# came down while this was running and were reported as the suite writing
+# to the bank. What the suite promises is that IT wrote nothing, so a
+# version that appeared from somewhere else is named rather than failed.
+def _vkeys(rows):
+    out = set()
+    for e in rows or []:
+        for v in (e.get("versions") or []):
+            out.add((e.get("id"), str(v.get("id") or v.get("v"))))
+    return out
+
+
+gained = _vkeys(entries2) - _vkeys(entries)
+mine = [k for k in gained
+        if any(v.get("machine") == HOST
+               for e in entries2 if e.get("id") == k[0]
+               for v in (e.get("versions") or [])
+               if str(v.get("id") or v.get("v")) == k[1])]
+check("this machine wrote no version", len(mine), 0)
+if gained and not mine:
+    print("       %d version(s) arrived from elsewhere while this ran, "
+          "which is the sync working" % len(gained))
 
 print("\n" + "=" * 68)
 if FAIL:
