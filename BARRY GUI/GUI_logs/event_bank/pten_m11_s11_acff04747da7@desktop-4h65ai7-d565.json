@@ -1,58 +1,75 @@
 {
   "_at": {
     "added": "2026-09-09T02:03:39.189055+00:00",
-    "by_label": "2026-09-08T18:35:58.153428+00:00",
-    "events": "2026-09-02T23:21:29.321289+00:00",
-    "gid": "2026-09-02T23:21:29.321289+00:00",
-    "id": "2026-09-02T23:21:29.321289+00:00",
-    "label_names": "2026-09-08T18:35:58.153428+00:00",
-    "mouse": "2026-09-02T23:21:29.321289+00:00",
-    "n": "2026-09-02T23:21:29.321289+00:00",
-    "name": "2026-09-02T23:21:29.321289+00:00",
-    "note": "2026-09-02T23:21:29.321289+00:00",
-    "project": "2026-09-02T23:21:29.321289+00:00",
-    "recording_start": "2026-09-02T23:21:29.321289+00:00",
-    "schema": "2026-09-02T23:21:29.321289+00:00",
-    "session": "2026-09-02T23:21:29.321289+00:00",
-    "session_key": "2026-09-02T23:21:29.321289+00:00",
-    "session_label": "2026-09-02T23:21:29.321289+00:00",
-    "session_loose_key": "2026-09-02T23:21:29.321289+00:00",
+    "by_label": "2026-09-10T17:47:35.475871+00:00",
+    "curation_label": "2026-09-10T17:47:35.475871+00:00",
+    "events": "2026-09-10T17:47:35.475871+00:00",
+    "gid": "2026-09-10T17:47:35.475871+00:00",
+    "id": "2026-09-10T17:47:35.475871+00:00",
+    "label_names": "2026-09-10T17:47:35.475871+00:00",
+    "mouse": "2026-09-10T17:47:35.475871+00:00",
+    "n": "2026-09-10T17:47:35.475871+00:00",
+    "name": "2026-09-10T17:47:35.475871+00:00",
+    "note": "2026-09-10T17:47:35.475871+00:00",
+    "project": "2026-09-10T17:47:35.475871+00:00",
+    "recording_start": "2026-09-10T17:47:35.475871+00:00",
+    "schema": "2026-09-10T17:47:35.475871+00:00",
+    "session": "2026-09-10T17:47:35.475871+00:00",
+    "session_key": "2026-09-10T17:47:35.475871+00:00",
+    "session_label": "2026-09-10T17:47:35.475871+00:00",
+    "session_loose_key": "2026-09-10T17:47:35.475871+00:00",
     "session_path": "2026-09-02T23:21:29.321289+00:00",
-    "source": "2026-09-02T23:21:29.321289+00:00",
-    "specified": "2026-09-02T23:21:29.321289+00:00",
-    "type": "2026-09-02T23:21:29.321289+00:00",
-    "type_name": "2026-09-02T23:21:29.321289+00:00",
-    "units": "2026-09-02T23:21:29.321289+00:00",
-    "version": "2026-09-10T17:47:45.850953+00:00"
+    "source": "2026-09-10T17:47:35.475871+00:00",
+    "specified": "2026-09-10T17:47:35.475871+00:00",
+    "type": "2026-09-10T17:47:35.475871+00:00",
+    "type_name": "2026-09-10T17:47:35.475871+00:00",
+    "units": "2026-09-10T17:47:35.475871+00:00",
+    "version": "2026-09-21T18:16:36.675210+00:00"
   },
   "_keys": {
     "history": {
       "{\"at\": \"2026-09-08T22:02:26-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
         "set",
-        "2026-09-09T02:02:26.831251+00:00"
+        "2026-09-10T17:47:35.475871+00:00"
       ],
       "{\"at\": \"2026-09-08T22:03:39-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
         "set",
-        "2026-09-09T02:03:39.189055+00:00"
+        "2026-09-10T17:47:35.475871+00:00"
+      ],
+      "{\"at\": \"2026-09-10T13:47:35-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 9, \"was_n\": 9, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-10T17:47:35.475871+00:00"
       ]
     },
     "versions": {
+      "60f26ca5e2de": [
+        "gone",
+        "2026-09-21T18:16:36.675210+00:00"
+      ],
       "v0-a02277cf": [
         "set",
-        "2026-09-09T02:03:39.189055+00:00"
+        "2026-09-10T17:47:35.475871+00:00"
       ],
       "v1-5a6dc82a": [
         "set",
-        "2026-09-09T02:03:39.189055+00:00"
+        "2026-09-10T17:47:35.475871+00:00"
       ],
       "{\"at\": \"2026-09-10T13:47:35-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 4, \"spike\": 5}, \"machine\": \"BarryLab\", \"n\": 9, \"note\": \"GUI final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
         "set",
-        "2026-09-10T17:47:45.850953+00:00"
+        "2026-09-10T17:48:49.827877+00:00"
+      ],
+      "{\"at\": \"2026-09-21T14:16:19-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 5 stamp(s) moved by -5.6 to 8.8 ms; 4 left where they were. No labels changed.\", \"snap\": [[193.9274, \"spike\"], [431.098729, \"spike\"], [1030.467387, \"spike\"], [1761.093826, \"spike\"], [2189.144753, \"spike\"]], \"v\": 3}": [
+        "set",
+        "2026-09-21T18:16:37.240055+00:00"
+      ],
+      "{\"at\": \"2026-09-21T14:16:19-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 5 stamp(s) moved by -5.6 to 8.8 ms; 4 left where they were. No labels changed.\", \"snap_elsewhere\": true, \"v\": 3}": [
+        "gone",
+        "2026-09-21T18:16:37.240055+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T17:47:45.850953+00:00",
+    "at": "2026-09-21T18:16:37.240055+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -62,36 +79,54 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
-    "flag": 1,
-    "garbage": 5,
-    "spike": 3
+    "garbage": 4,
+    "spike": 5
   },
+  "curation_label": "*",
   "events": [
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 193.924
     },
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 431.096
     },
     {
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1026.128
     },
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 1030.473
     },
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 1761.085
     },
     {
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1911.941
     },
     {
+      "label": "Dentate Spike",
+      "label_id": "spike",
       "start": 2189.143
     },
     {
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 2425.46
     },
     {
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 2517.264
     }
   ],
@@ -110,6 +145,16 @@
         "from": "theexaminedexistence@gmail.com",
         "to": "Shahriar Tafti"
       }
+    },
+    {
+      "at": "2026-09-10T13:47:35-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 9,
+      "was_n": 9,
+      "why": "re-banked from the curation set"
     }
   ],
   "id": "acff04747da7",
@@ -121,8 +166,8 @@
   },
   "mouse": 11,
   "n": 9,
-  "name": "DS candidates (ETS)",
-  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "name": "M11_HF2_s11jul25",
+  "note": "",
   "project": "PTEN",
   "recording_start": "2023-07-25T16:10:46",
   "schema": 1,
@@ -141,11 +186,11 @@
     "pipeline": "ETS dentate-spike export",
     "run_id": null
   },
-  "specified": false,
+  "specified": true,
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -278,6 +323,39 @@
       "note": "GUI final curation\n-RY",
       "snap_elsewhere": true,
       "v": 2
+    },
+    {
+      "at": "2026-09-21T14:16:19-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 5
+      },
+      "machine": "BarryLab",
+      "n": 5,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 5 stamp(s) moved by -5.6 to 8.8 ms; 4 left where they were. No labels changed.",
+      "snap": [
+        [
+          193.9274,
+          "spike"
+        ],
+        [
+          431.098729,
+          "spike"
+        ],
+        [
+          1030.467387,
+          "spike"
+        ],
+        [
+          1761.093826,
+          "spike"
+        ],
+        [
+          2189.144753,
+          "spike"
+        ]
+      ],
+      "v": 3
     }
   ]
 }

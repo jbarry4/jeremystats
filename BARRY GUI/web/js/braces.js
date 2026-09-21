@@ -1679,10 +1679,28 @@ BARRY.braces = (function () {
     if (s.committed) return bar;
     const waiting = c.waiting || 0;
     const nextV = vName(set_.entry, 'next_name');
+    /* Whether there is anything to write, said BEFORE the button is
+       pressed. A set whose every stamp is already on its peak is a good
+       set and a common one -- and offering "Bank it" on it, only to come
+       back with "there is nothing to write", makes a finished set look
+       like a failed one. Counted the way the write counts it: a row moves
+       if what it would land on differs from where it started. */
+    const moves = (s.rows || []).filter((r, i) => {
+      const said = callFor(i);
+      if (said === 'keep') return false;
+      const to = (said === 'move' && (s.calls || {})[String(i)])
+        ? (s.calls || {})[String(i)].t
+        : (r.now == null ? r.was : r.now);
+      return Math.abs(to - r.was) > 1e-9;
+    }).length;
     bar.appendChild(el('button', {
       class: 'btn primary',
-      text: 'Bank it as ' + nextV + '…',
-      title: 'Shows exactly what would be written before writing it',
+      disabled: moves ? null : 'disabled',
+      text: moves ? 'Bank it as ' + nextV + '…' : 'Nothing to bank',
+      title: moves
+        ? 'Shows exactly what would be written before writing it'
+        : 'Every stamp is already where the recording puts it, so a new '
+          + 'version would hold exactly what the last one does',
       onclick: () => commit(false),
     }));
     bar.appendChild(el('span', { class: 'hint', text: waiting
@@ -2902,16 +2920,23 @@ BARRY.braces = (function () {
       if (e.start < t0 || e.start > t1) continue;
       const x = X(e.start);
       const focus = !!e.f;
-      /* EVERY mark is full height.
+      /* A neighbour is a tick from the bottom; the pair being decided
+         runs the full height.
 
-         Short ticks for the ones not being decided were the wrong trade.
-         They made the focused pair easy to find and everything else easy
-         to miss -- and worse, they made a mark's VISIBILITY depend on a
-         flag that travels between windows, so any pointer that went
-         astray left a panel that looked empty rather than a panel that
-         looked slightly wrong. Emphasis can carry the focus instead:
-         wider, opaque, and haloed against whatever is underneath. */
-      const top = y0;
+         Curation's proportions, not invented ones -- 18% of the pane,
+         38% when the pane is short enough that 18% would be a few pixels
+         -- so stepping from Checkup to Braces is the same picture with
+         different colours rather than a second thing to learn.
+
+         This was briefly removed, and the reason is worth remembering: a
+         mark's size depends on a flag that travels between windows, and
+         while that flag was going astray every mark drew as a neighbour,
+         which made a panel look EMPTY rather than slightly wrong. Size
+         can carry the focus again because the focus now arrives -- as a
+         number on every pointer, and marks that arrive are adopted
+         whatever the receiver thinks it already knows. */
+      const small = plotH < 150;
+      const top = focus ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
       const bottom = y0 + plotH;
       const colour = e.k === 'now' ? DRAW.now
         : (e.st === 'confirmed' ? DRAW.ok
@@ -2920,29 +2945,27 @@ BARRY.braces = (function () {
 
       /* A line that survives whatever is under it: a dark and a light
          hairline either side, the same trick the curation marks and the
-         time gridlines use. Only on the focused pair, which is now the
-         only thing telling it apart from its neighbours -- so it is worth
-         the three strokes. */
-      if (focus) {
+         time gridlines use. On every mark, as curation does it -- a tick
+         over a jet raster is exactly as invisible as a full-height line
+         over one, and these are the ticks somebody is scanning for. */
+      {
         ctx.setLineDash([]);
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = focus ? 1.5 : 1;
+        ctx.globalAlpha = 0.55;
         ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-        ctx.beginPath(); ctx.moveTo(x - 1.5, top); ctx.lineTo(x - 1.5, bottom);
+        ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-        ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.lineTo(x + 1.5, bottom);
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.moveTo(x + 1, top); ctx.lineTo(x + 1, bottom);
         ctx.stroke();
       }
 
-      /* Forty full-height lines could be a fence, so the ones not being
-         decided are thin and quiet -- present, readable, and clearly not
-         the thing being asked about. The focused pair is twice the width,
-         fully opaque and haloed, which is a bigger difference than height
-         ever was. */
-      ctx.globalAlpha = focus ? 1 : 0.34;
-      ctx.setLineDash(dashed ? (focus ? [6, 4] : [3, 4]) : []);
-      ctx.lineWidth = focus ? 2.2 : 1;
+      /* Curation's weights too: the one being decided is wider and fully
+         opaque, a neighbour that has been answered is nearly so, and one
+         nobody has looked at is quieter still and dashed. */
+      ctx.globalAlpha = focus ? 1 : (e.st === 'open' ? 0.6 : 0.85);
+      ctx.setLineDash(dashed ? [4, 3] : []);
+      ctx.lineWidth = focus ? 2.5 : 1.6;
       ctx.strokeStyle = colour;
       ctx.beginPath();
       ctx.moveTo(x, top);
@@ -3308,6 +3331,17 @@ BARRY.braces = (function () {
     }
     busy = false;
     const rep = out.report || {};
+    /* "There is nothing to write" is an outcome, not a failure.
+
+       A set whose every stamp is already on its peak is a good set, and a
+       set looked at twice says this the second time. It used to come back
+       as a red error, which reads as something having gone wrong with a
+       proposal that is simply finished. */
+    if (rep.nothing_to_do) {
+      toast(rep.why || 'Every stamp is already where the recording puts '
+            + 'it, so there is nothing to bank.', null, 8000);
+      return;
+    }
     if (rep.error) { toast(rep.error, 'err', 9000); return; }
     if (apply === true) {
       toast('Banked as version ' + rep.version + '. ' + rep.moved
