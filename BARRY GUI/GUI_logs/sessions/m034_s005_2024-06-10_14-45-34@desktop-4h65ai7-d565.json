@@ -30,8 +30,8 @@
     "schema": "2026-09-04T15:57:01.804681+00:00",
     "session": "2026-09-04T15:57:01.804681+00:00",
     "start": "2026-09-04T15:57:01.804681+00:00",
-    "updated": "2026-09-14T18:41:17.156970+00:00",
-    "view_state": "2026-09-12T21:04:57.058460+00:00"
+    "updated": "2026-09-21T17:25:07.530656+00:00",
+    "view_state": "2026-09-14T14:24:21.356155+00:00"
   },
   "_keys": {
     "paths": {
@@ -83,16 +83,16 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T18:41:17.156970+00:00"
+        "2026-09-21T17:25:07.530656+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:47.743112+00:00"
+        "2026-09-14T14:10:47.108118+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T18:41:17.156970+00:00",
+    "at": "2026-09-21T17:25:07.530656+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -179,26 +179,28 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T14:41:17-04:00",
+      "at": "2026-09-21T13:25:07-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s5jun10\\2024-06-10_14-45-34",
       "root": "D:/PTEN/PTEN",
-      "scan": "scan_f143e6c51b"
+      "scan": "scan_97cbe5659e"
     },
     "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:47-04:00",
-      "by": "Shahriar Tafti",
-      "machine": "Bluebarry",
+      "at": "2026-09-14T10:10:47-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s5\\2024-06-10_14-45-34",
-      "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "root": null,
+      "scan": null
     }
   },
   "session": 5,
   "start": "2024-06-10T14:45:34",
   "updated": {
-    "at": "2026-09-14T14:41:17-04:00",
+    "app_version": "2026.09.21.5",
+    "at": "2026-09-21T13:25:07-04:00",
+    "commit": "6f2c51d",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -253,9 +255,9 @@
     "notch": 60,
     "probe": null,
     "spacing": 50,
-    "span": 1,
+    "span": 1.22,
     "stft_mode": null,
-    "t0": 1272.229,
+    "t0": 203.9894997639123,
     "ylim": null
   }
 }

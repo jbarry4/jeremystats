@@ -849,8 +849,24 @@ BARRY.views.toolkit = (function () {
       // Only while the curation view is the one being looked at. Polling for
       // a panel nobody can see is just traffic.
       if (BARRY.state.view !== 'toolkit') return;
+      // Nor while the window is behind another one. The answer is a fresh
+      // read every time it comes back, so nothing is missed by not asking.
+      if (document.hidden) return;
       loadPresence(true);
     }, PRESENCE_POLL);
+  }
+
+  /* Stop asking.
+
+     There was no way to: startPresence had no counterpart anywhere in this
+     file, so the timer it starts ran for the life of the page. The view
+     check inside it kept the fetches down while you were elsewhere, but the
+     timer itself never stopped, and the moment ToolKit was shown again it
+     resumed -- including in a background tab. Called from onHide below. */
+  function stopPresence() {
+    if (!presenceTimer) return;
+    clearInterval(presenceTimer);
+    presenceTimer = null;
   }
 
   /* Everyone active in a set, this machine included -- the card wants to
@@ -2988,6 +3004,16 @@ BARRY.views.toolkit = (function () {
        costs one request. */
     loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
+    /* Leaving ToolKit stops what ToolKit started.
+
+       Two timers ran on regardless: the presence beat above, and whatever
+       tool feed was mounted -- toolfeed.stop() was only ever reached by
+       mounting a different one, so navigating away left a 3-second poll
+       running for the rest of the session. onShow starts both again. */
+    onHide() {
+      stopPresence();
+      if (BARRY.toolfeed) BARRY.toolfeed.stop();
+    },
     /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
        to the tool row, and turning it on has to show up in the panel it is
        talking about rather than at the next navigation. */

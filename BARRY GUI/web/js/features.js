@@ -18,14 +18,27 @@ BARRY.prefs = (function () {
   let pending = null;
   let timer = null;
 
+  // One request, however many callers.
+  //
+  // `loaded` is only true once the answer is back, so two callers starting
+  // before it lands both fetched. That is not hypothetical: radio.wire()
+  // kicks this off at core.js:3150 without awaiting it, and BARRY.init
+  // awaits it again a few lines later -- so every boot asked for /api/prefs
+  // twice. Holding the promise rather than only the result is the whole fix.
+  let inflight = null;
+
   async function load(force) {
     if (loaded && !force) return cache;
-    try {
-      const d = await api('/api/prefs');
-      cache = d.prefs || {};
-      loaded = true;
-    } catch (e) { cache = {}; }
-    return cache;
+    if (inflight && !force) return inflight;
+    inflight = (async () => {
+      try {
+        const d = await api('/api/prefs');
+        cache = d.prefs || {};
+        loaded = true;
+      } catch (e) { cache = {}; } finally { inflight = null; }
+      return cache;
+    })();
+    return inflight;
   }
 
   function get(key, fallback) {

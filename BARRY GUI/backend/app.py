@@ -168,7 +168,29 @@ def _trace_start():
 
 @app.after_request
 def no_cache(resp):
-    resp.headers["Cache-Control"] = "no-store"
+    # API answers are never cached; files are cached and revalidated.
+    #
+    # This set `no-store` on EVERYTHING, and `no-store` means the browser may
+    # not keep the response at all -- not even to ask whether it is still
+    # good. So all 2.5 MB of web/js and app.css came down again on every
+    # load, over the same six connections the pollers are already using.
+    #
+    # `no-cache` is the header that means what was wanted here: keep it, but
+    # ask before using it. The answer to the asking is a 304 with no body, so
+    # editing a module and hitting refresh still shows the edit -- which in a
+    # codebase with no build step is not negotiable, and is why this is not
+    # `max-age`.
+    #
+    # Setting it only when the view has not spoken also stops this hook
+    # overwriting a deliberate one. /api/results/file asks for a day of
+    # caching because its URL carries a hash of the file's size and mtime, so
+    # a changed figure is a different URL; that header was being replaced
+    # with `no-store` here, one line after it was set, and every thumbnail in
+    # the Results grid was fetched again on every render.
+    if request.endpoint in ("static_files", "index"):
+        resp.headers.setdefault("Cache-Control", "no-cache")
+    elif "Cache-Control" not in resp.headers:
+        resp.headers["Cache-Control"] = "no-store"
 
     # Record what was asked for and how it went. A request that returns 200
     # with nothing useful in it leaves no other trace anywhere, and that is
@@ -12702,6 +12724,36 @@ _QUIET_PATHS = (
     "/api/video/clip", "/api/video/frame",
 )
 
+# The rest of the pollers -- but on GET only, which is the difference
+# between reading a thing and doing one.
+#
+# These cannot join the tuple above, because that one silences both verbs:
+# "/api/curation" there would take "POST /api/curation/decide" with it, and
+# a curation decision is exactly the kind of line worth keeping. Same for
+# "/api/registry", whose POSTs are somebody rescanning or forgetting a
+# recording.
+_QUIET_GETS = (
+    "/api/sync/status", "/api/sync/progress", "/api/warm/state",
+    "/api/presence", "/api/toolfeed", "/api/registry", "/api/curation",
+    "/api/video/convert/status", "/api/vacc/status",
+)
+
+# The interface itself: 34 files on a cold load, and the access line for
+# each one is noise by definition -- nobody debugs a 200 on app.css.
+#
+# They were not covered before because every rule above starts "/api/", and
+# these do not. A page load therefore printed 35+ lines, and Python's
+# logging holds one global handler lock, so request threads queue behind
+# each other to write them.
+#
+# That queueing has a sharp edge worth knowing about: if the Jarvis console
+# window is put into QuickEdit selection mode -- a stray click in it is
+# enough -- Windows blocks every write to it until the selection is
+# cleared, and the whole server stops with it. Fewer writes is a smaller
+# window for that, not a fix for it.
+_QUIET_SUFFIXES = (".js", ".css", ".map", ".svg", ".png", ".ico",
+                   ".woff", ".woff2", ".jpg", ".jpeg", ".gif", ".webp")
+
 
 class _QuietPolls(_logging.Filter):
     def filter(self, record):
@@ -12713,6 +12765,17 @@ class _QuietPolls(_logging.Filter):
             for p in _QUIET_PATHS:
                 if ('GET ' + p) in msg or ('POST ' + p) in msg:
                     return False
+            # Pulled apart rather than matched: this module has no `re`, and
+            # the one thing worse than a noisy log is a filter that throws
+            # into its own except and quietly stops filtering.
+            i = msg.find('"GET ')
+            if i >= 0:
+                path = msg[i + 5:].split(" ", 1)[0].split("?", 1)[0]
+                if path.lower().endswith(_QUIET_SUFFIXES):
+                    return False
+                for p in _QUIET_GETS:
+                    if path == p or path.startswith(p + "/"):
+                        return False
         except Exception:                        # noqa: BLE001
             return True
         return True

@@ -292,6 +292,10 @@
         "set",
         "2026-09-10T18:38:13.180561+00:00"
       ],
+      "deck:deck_65b1eb6d": [
+        "set",
+        "2026-09-21T16:30:16.752745+00:00"
+      ],
       "deck:deck_679e4142": [
         "set",
         "2026-09-09T13:46:14.061027+00:00"
@@ -2100,6 +2104,10 @@
         "set",
         "2026-09-11T15:22:41.799041+00:00"
       ],
+      "session:s52752d727942": [
+        "set",
+        "2026-09-21T16:39:13.274986+00:00"
+      ],
       "session:s546b30e34520": [
         "set",
         "2026-09-10T18:58:57.449608+00:00"
@@ -2428,6 +2436,10 @@
         "set",
         "2026-09-10T00:01:42.047039+00:00"
       ],
+      "session:sb84e6d5fd419": [
+        "set",
+        "2026-09-21T16:34:40.489954+00:00"
+      ],
       "session:sb9585fb14523": [
         "set",
         "2026-09-10T00:32:53.852873+00:00"
@@ -2451,6 +2463,10 @@
       "session:sbc22e3d0da57": [
         "set",
         "2026-09-15T20:53:20.462314+00:00"
+      ],
+      "session:sc2a1cc6377cb": [
+        "set",
+        "2026-09-21T16:27:22.380861+00:00"
       ],
       "session:sc2b162171c64": [
         "set",
@@ -2631,7 +2647,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-21T16:12:01.352269+00:00",
+    "at": "2026-09-21T16:39:13.274986+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -3283,6 +3299,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-10T14:38:13-0400"
+    },
+    "deck:deck_65b1eb6d": {
+      "at": "2026-09-21T12:30:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_65b1eb6d",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-09-21T12:30:16-0400"
     },
     "deck:deck_679e4142": {
       "at": "2026-09-09T09:46:10-0400",
@@ -6742,6 +6767,15 @@
       "synced": true,
       "synced_at": "2026-09-11T11:22:41-0400"
     },
+    "session:s52752d727942": {
+      "at": "2026-09-21T12:38:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s52752d727942",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-21T12:39:13-0400"
+    },
     "session:s546b30e34520": {
       "at": "2026-09-10T14:58:47-0400",
       "by": "desktop-4h65ai7-d565",
@@ -7480,6 +7514,15 @@
       "synced": true,
       "synced_at": "2026-09-09T20:01:42-0400"
     },
+    "session:sb84e6d5fd419": {
+      "at": "2026-09-21T12:34:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb84e6d5fd419",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-21T12:34:40-0400"
+    },
     "session:sb9585fb14523": {
       "at": "2026-09-09T20:32:02-0400",
       "by": "desktop-4h65ai7-d565",
@@ -7533,6 +7576,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-15T16:53:20-0400"
+    },
+    "session:sc2a1cc6377cb": {
+      "at": "2026-09-21T12:27:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc2a1cc6377cb",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-09-21T12:27:22-0400"
     },
     "session:sc2b162171c64": {
       "at": "2026-09-09T17:40:47-0400",

@@ -28,8 +28,8 @@
     "schema": "2026-09-04T15:57:01.584888+00:00",
     "session": "2026-09-04T15:57:01.584888+00:00",
     "start": "2026-09-04T15:57:01.584888+00:00",
-    "updated": "2026-09-14T18:41:10.757049+00:00",
-    "view_state": "2026-09-08T21:42:28.956208+00:00"
+    "updated": "2026-09-21T17:25:05.673920+00:00",
+    "view_state": "2026-09-16T18:50:18.584551+00:00"
   },
   "_keys": {
     "paths": {
@@ -71,18 +71,22 @@
         "set",
         "2026-09-08T21:34:38.077026+00:00"
       ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-16T18:49:30.052155+00:00"
+      ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T18:41:10.757049+00:00"
+        "2026-09-21T17:25:05.673920+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-10T20:35:46.675884+00:00"
+        "2026-09-14T14:10:03.755199+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T18:41:10.757049+00:00",
+    "at": "2026-09-21T17:25:05.673920+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -156,27 +160,37 @@
       "root": null,
       "scan": null
     },
+    "barrylab-d8e8": {
+      "at": "2026-09-16T14:49:28-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
+      "root": null,
+      "scan": null
+    },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T14:41:10-04:00",
+      "at": "2026-09-21T13:25:05-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
       "root": "D:/PTEN/PTEN",
-      "scan": "scan_f143e6c51b"
+      "scan": "scan_97cbe5659e"
     },
     "lcom549913-e62b": {
-      "at": "2026-09-10T16:35:46-04:00",
-      "by": "Shahriar Tafti",
-      "machine": "Bluebarry",
+      "at": "2026-09-14T10:10:03-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14",
       "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_4888cfefce"
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 2,
   "start": "2023-09-20T12:55:14",
   "updated": {
-    "at": "2026-09-14T14:41:10-04:00",
+    "app_version": "2026.09.21.5",
+    "at": "2026-09-21T13:25:05-04:00",
+    "commit": "6f2c51d",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -223,16 +237,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 5,
+    "hp": 4,
     "invert": true,
-    "lp": 100,
+    "lp": 12,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 60,
+    "notch": 0,
     "probe": null,
     "spacing": 50,
-    "span": 1,
+    "span": 5,
     "stft_mode": null,
-    "t0": 1925.411,
+    "t0": 3.5,
     "ylim": null
   }
 }

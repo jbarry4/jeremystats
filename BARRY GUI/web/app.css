@@ -2444,10 +2444,22 @@ body.dragging-session .pane { transition: outline .1s; }
      The cap was 94px, which is exactly two rows -- so a pane narrow enough
      to need a third got five pixels of it and the rest behind a scrollbar
      nobody notices. A control you can see the top of but not click is worse
-     than one that is honestly off-screen. 112px holds three rows; past that
-     it scrolls, because at some point the strip has to stop eating the
-     canvas it is a control for. */
-  min-height: 52px; max-height: 112px;
+     than one that is honestly off-screen. 112px held three rows; past that
+     it scrolled, because at some point the strip has to stop eating the
+     canvas it is a control for.
+
+     Then the strip grew a fourth row, and 112px landed the same way 94px
+     had: 124px of controls in a 111px box, thirteen pixels of a row showing
+     under a thin scrollbar. 140px holds four.
+
+     If a fifth ever appears, do NOT raise this again -- that is a treadmill,
+     and each turn of it takes another row off the canvas the strip exists to
+     control. Move a control behind a menu button instead, which is what cut
+     the strip from 2500px to one row the last time it outgrew itself.
+     web/_dev/check.html is what notices: it asserts the strip's scrollHeight
+     is within a pixel of its clientHeight, so a partial row fails rather than
+     quietly hiding. */
+  min-height: 52px; max-height: 140px;
   flex-wrap: wrap; overflow-y: auto; overflow-x: hidden;
   align-items: center; scrollbar-width: thin; row-gap: 4px;
 }

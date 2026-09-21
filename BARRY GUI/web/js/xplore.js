@@ -8127,15 +8127,68 @@ BARRY.views.xplore = (function () {
     return CH_HEADER_H;
   }
 
+  /* Read once per theme, not once per draw.
+
+     This is called at the top of drawPane, drawMini and drawTracking, so a
+     pan through a 2x2 grid asked getComputedStyle three times a frame and
+     pulled eight properties off each answer -- for values that only move
+     when somebody changes theme.
+
+     The key is the two attributes on <html> that a theme change actually
+     sets: applyTheme writes data-theme, applyVacc writes data-vacc, and
+     between them that is every path that can repaint these tokens. Keying on
+     the attributes rather than clearing from applyTheme means a third switch
+     added later invalidates this for free instead of silently not doing.
+
+     An empty read is not cached: app.css may not have applied yet on the
+     first frame after boot, and a fallback frozen in at that moment would
+     outlive the stylesheet -- the traces would come up in default colours
+     and stay there until somebody changed theme. */
+  let paletteCache = null;
+  let paletteKey = '';
+
   function palette() {
+    const d = document.documentElement.dataset;
+    const key = (d.theme || '') + '|' + (d.vacc || '');
+    if (paletteCache && key === paletteKey) return paletteCache;
     const cs = getComputedStyle(document.documentElement);
-    const get = (n, fb) => (cs.getPropertyValue(n) || fb).trim();
-    return {
+    let missing = false;
+    const get = (n, fb) => {
+      const v = (cs.getPropertyValue(n) || '').trim();
+      if (!v) missing = true;
+      return v || fb;
+    };
+    const out = {
       bg: get('--bg', '#0a1310'), grid: get('--line-soft', '#1a3227'),
       text: get('--text-2', '#a3bdb0'), dim: get('--text-3', '#6f8c7d'),
       trace: get('--trace', '#7FE3B0'), warn: get('--warn', '#ED8B33'),
       event: get('--event', '#FF8A7A'), accent: get('--accent', '#FFB81C'),
     };
+    if (!missing) { paletteCache = out; paletteKey = key; }
+    return out;
+  }
+
+  /* What writing c.width used to do for free.
+
+     Setting the width attribute reallocates the bitmap AND resets the whole
+     2D context -- transform, globalAlpha, line styles, dash, text alignment.
+     Every draw in this file has been getting that reset as a side effect.
+     sizePaneCanvas below now only reallocates when the box has really
+     changed, so the reset has to be asked for by name; without this, state
+     leaks into the next frame and shows up in a different function.
+
+     Two that would leak today: ctx.lineJoin is set to 'round' for the trace
+     polylines and never put back, and the "No channels selected" message
+     leaves textAlign at 'center'. Both are invisible until they are not. */
+  function resetPaneCtx(ctx, dpr) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+    ctx.lineJoin = 'miter';
+    ctx.lineCap = 'butt';
+    ctx.setLineDash([]);
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
   }
 
   function sizePaneCanvas(c) {
@@ -8147,9 +8200,32 @@ BARRY.views.xplore = (function () {
     const r = c.getBoundingClientRect();
     const w = Math.round(r.width), h = Math.round(r.height);
     if (!w || !h) return;
-    c.width = Math.max(1, Math.round(w * dpr));
-    c.height = Math.max(1, Math.round(h * dpr));
-    c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bw = Math.max(1, Math.round(w * dpr));
+    const bh = Math.max(1, Math.round(h * dpr));
+    // Only when it has actually changed. This ran on every frame of a pan,
+    // and writing either dimension reallocates and clears the whole bitmap.
+    //
+    // Compared against the BITMAP rather than a remembered CSS size on
+    // purpose: dragging the window to a monitor at a different scale changes
+    // dpr with no change in rect.width, and comparing bitmaps catches that
+    // without anyone having to watch for it.
+    const ctx = c.getContext('2d');
+    if (c.width !== bw || c.height !== bh) {
+      c.width = bw;
+      c.height = bh;
+    } else {
+      /* Cleared by hand, because the realloc above is what used to do it.
+         Every caller does clear its own area immediately after this, but
+         each of them computes that area its own way -- drawPane from the
+         bitmap, drawMini and drawTracking from clientWidth -- and those
+         agree only while the canvases carry no border or padding, which is
+         true today and is not a thing this function should depend on.
+         Clearing the whole bitmap here makes the guard exactly what it
+         claims to be: the same result, without the allocation. */
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, c.width, c.height);
+    }
+    resetPaneCtx(ctx, dpr);
   }
 
   /* Redraw when a pane changes size.
