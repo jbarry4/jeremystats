@@ -515,6 +515,40 @@ _INV = {"at": 0.0, "root": None, "list": []}
 INV_TTL_S = 300.0
 
 
+def inventory_ready(cfg, root=None):
+    """Is there a listing in hand, without going and getting one?"""
+    root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    return bool(_INV["list"]) and _INV["root"] == root
+
+
+def inventory_soon(cfg, root=None):
+    """Start a walk in the background and return at once.
+
+    For the routes that want the listing but must not wait for it. Walking
+    scratch takes about ten seconds against 120 recordings, and
+    `/api/vacc/knows` renders on the Sessions view -- measured at THIRTEEN
+    AND A HALF SECONDS on a page load, which is not a slow request, it is a
+    page that does not appear.
+
+    One walk at a time: a view that asks three times while the first is
+    still going should not start three.
+    """
+    if _INV.get("busy"):
+        return
+    _INV["busy"] = True
+
+    def go():
+        try:
+            inventory_cached(cfg, root, force=True)
+        except Exception:                                # noqa: BLE001
+            pass                                         # it stays unknown
+        finally:
+            _INV["busy"] = False
+
+    threading.Thread(target=go, daemon=True,
+                     name="barry-vacc-inventory").start()
+
+
 def inventory_cached(cfg, root=None, force=False):
     """`inventory`, but not on every page load.
 

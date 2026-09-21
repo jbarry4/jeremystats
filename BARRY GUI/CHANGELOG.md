@@ -15,6 +15,129 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.17.9 - Braces knows which channels are bad, and says how far along it is
+
+### Fixed
+
+- **Every channel came up ticked, on recordings with bad channels on
+  record.** `csc.open_session` writes `"bad": False` on every channel it
+  builds — which channels are bad is not in the `.ncs` files, it is a
+  decision somebody made about the recording, and it lives in the session
+  record keyed on identity. `_incisor_spec` has looked it up separately since
+  it was written; Braces read the flag that is always false.
+
+  So the list said 64 of 64 and the average quietly included the wire
+  somebody had thrown away. One place now, called by the plan, the run and
+  the bench, so the ticks on screen are the ticks the read honours. On this
+  archive that is CSC59 on almost every recording, and 8, 41 and 59 on
+  m33s8.
+
+- **"Reading the channel…" for three minutes, with a bar that never moved.**
+  Two faults on top of each other.
+
+  A job's stages come from a fixed list in `cfc.STAGES`, and anything not on
+  it is dropped silently — no stage, no progress, no error. The comment above
+  that line warns about exactly this. `ds profile` was not on the list, so
+  the job had no stage to be at. It is now, with its own name rather than
+  Incisor's: it counts channels read whole where `ds read` counts seconds of
+  recording, and `_learn` divides seconds by units without knowing which, so
+  sharing a name would have rewritten Incisor's read rate by the length of
+  the recording every time somebody aligned a set. It sits before the two
+  Incisor stages because a job keeps its stages in that list's order, and
+  listed the other way round the job reports its steps backwards.
+
+  The panel then read `job.step` and `job.frac`, neither of which a job
+  snapshot has. It carries `stages`, each with how many units it has and how
+  many are done, plus an ETA. So the line now says **Reading channel 21 of
+  63** and **about 2 minutes left**, and the bar moves.
+
+### Changed
+
+- **A proposal opens with what it would do, not with six panels of
+  statistics.** The counts, the histogram and the table each answer a
+  different question and all three are worth having, but none of them
+  answers the first one: is this worth banking. There is now a sentence
+  above them — *1055 stamps would move, by −5.6 ms typically, 59.7 ms at
+  most. 4 need a decision first — look at those below, then bank it.* — and
+  it says outright that nothing has been written and which version the set
+  is still on.
+
+  The button at the bottom names the version it would become rather than
+  saying "Accept", so the order of the thing is legible without having
+  pressed anything: see what it would do, look at the ones it is unsure of,
+  then bank it.
+
+## 2026.09.17.8 - Braces measures the probe, not a channel
+
+### Changed
+
+- **There is no channel setting, because the question was never about a
+  channel.** A dentate spike is a population event: it appears across most of
+  the shank at the same instant, largest near the hilus and smaller either
+  side. Picking one electrode and finding its peak answers *when was it
+  biggest here*, which is a question about that wire as much as about the
+  event — and measured on M8s9feb8, the best and second-best channels scored
+  within **0.3%** of each other. Another way of saying that the pick was
+  close to arbitrary.
+
+  Braces now averages the DS-band magnitude across every ticked channel into
+  **one trace**, and each stamp goes to the highest point of that inside its
+  window. One noisy wire cannot carry it and a dead one cannot sink it. The
+  magnitude is what makes the average mean anything, incidentally: a signed
+  sum across a probe cancels, because the deflection reverses across the
+  layer.
+
+  Accumulated channel by channel rather than stacked — sixty-four channels of
+  an hour at 1 kHz is 230 million floats held at once, and one accumulator
+  plus one channel is two arrays.
+
+  It agrees with the old measurement where it should. On M8s9feb8's 1213
+  spikes the single-channel run gave a median of −5.6 ms and a p95 of 16.4;
+  the profile over all 64 gives −5.6 and 16.5. Two different measurements of
+  the same offset landing on the same number is the best evidence either of
+  them is right.
+
+- **Bad channels are ticked off, not thrown out.** Every channel is listed
+  before the run with the ones this recording has marked bad already
+  unticked. Hiding them would make an average look like it was over the whole
+  probe when it was over fifty-six of sixty-four; unticking says the same
+  thing, is visible, and is one click to undo. Which channels went in, and
+  which were left out, is recorded on the proposal and on the version.
+
+- **The bench draws the profile.** It used to draw one channel's trace, which
+  is a line that peaks a few milliseconds from where the decision was
+  actually made — the exact disagreement this tool exists to remove, shown to
+  the person being asked to adjudicate it. It now draws the summed profile
+  over the same channels, read on the server, because six hundred
+  milliseconds of sixty-four channels is a short read on that side and
+  sixty-four requests on this one.
+
+### Added
+
+- **A move unlike the others is flagged.** The existing *near the edge* rule
+  is about the window: it catches a stamp that went nearly as far as it was
+  allowed to. That says nothing about a set whose jitter is small. On
+  M8s9feb8 the median move is 5.6 ms and the largest is 59.7, and at a
+  ±100 ms window not one of those trips an 80 ms edge — so the stamp that
+  went sixty was confirmed silently along with the twelve hundred that went
+  five.
+
+  Unusual is now measured against the set's own spread, robustly: six median
+  absolute deviations, scaled the way `incisor.threshold_for(estimator="mad")`
+  does it, with a floor so that a set whose moves all agree to the
+  millisecond does not find every one of them remarkable.
+
+  On that recording it asks about four of 1213. Two of them are neighbours
+  200 ms apart moving in opposite directions, +39.3 ms and −59.7 ms, which is
+  a burst where the assignment had real work to do and a person should see
+  it.
+
+  It also matters more than it did. Averaging drops the noise floor without
+  dropping the peaks, so nearly every peak in the profile clears the 4.5 SD
+  that *weak peak* is measured against — which left the whole set arriving
+  with no flags at all. A review pass that never asks anything is not a
+  review pass.
+
 ## 2026.09.17.7 - Braces picks its own channel, and stops asking for a number two versions share
 
 ### Changed

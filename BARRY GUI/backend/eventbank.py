@@ -1503,9 +1503,11 @@ class EventBank:
         }
         fresh["aligned"].update(params or {})
         fresh["note"] = note or (
-            "Aligned to CSC%s peaks, ±%g ms%s. %d stamp(s) moved by "
-            "%.1f to %.1f ms; %d left where they were. No labels changed."
-            % ((params or {}).get("channel"), (params or {}).get("window_ms"),
+            "Aligned to the mean magnitude over %s channels, ±%g ms%s. "
+            "%d stamp(s) moved by %.1f to %.1f ms; %d left where they were. "
+            "No labels changed."
+            % ((params or {}).get("n_channels"),
+               (params or {}).get("window_ms"),
                "" if src_v is None else ", reading v%d" % src_v,
                len(shifts), report["shift_min_ms"], report["shift_max_ms"],
                len(events) - len(shifts)))
