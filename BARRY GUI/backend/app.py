@@ -4082,6 +4082,18 @@ def api_braces_candidates():
             continue
         if not rec.get("specified"):
             continue
+        # NOTHING TO ALIGN, so not offered.
+        #
+        # A set can be fully curated and hold no events at all: somebody
+        # went through it and rejected every candidate, which is a real
+        # answer and nine of the sets in this bank are that, one of them
+        # 738 rejections. They were listed and greyed out for a while,
+        # which is defensible -- "this one is finished and it is all
+        # garbage" is worth being able to see -- but the place to see that
+        # is the Event Bank, which holds every entry and says what is in
+        # it. A list of things to align should hold things to align.
+        if not _n_good(rec):
+            continue
         vers = rec.get("versions") or []
         out.append({
             "id": rec["id"], "name": rec.get("name"),

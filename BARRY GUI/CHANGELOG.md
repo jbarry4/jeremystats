@@ -15,6 +15,93 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.21.7 - A push no longer loses what changed while it was reading
+
+### Fixed
+
+- **The incremental push had a window in which an edit was lost for ever.**
+  The cursor was stamped AFTER the read rather than before it:
+
+      since   = last_push
+      rows    = collect(...)      # half a minute on this store
+      started = now()             # <- cursor taken here
+
+  Anything edited while `collect` is running is then lost permanently. The
+  row is not in the batch, because collect had already passed it; and the
+  cursor moves past its timestamp, so no later push considers it either.
+  Nothing knows it was missed, so nothing retries — the local side reports
+  it as sent and the database keeps the old value indefinitely.
+
+  Measured, not theorised. Renaming ten bank entries while a push was
+  running sent five. The other five were written during the read and stayed
+  behind the cursor through every cycle after it: days-old names in the
+  database against local edits from a minute earlier.
+
+      cloud  Incisor CSC61   updated 2026-09-17T14:52:23Z
+      local  Incisor CSC61_PTEN m3 s7 2023-09-22   touched 2026-09-21T18:15:26Z
+
+  The cursor is taken first now. A row edited during the read is merely
+  re-sent next time, which the database drops as a no-op: sending something
+  twice is free, sending it never is not. The five that were already
+  stranded were recovered with a full push.
+
+- **Every stamp already on its peak came back as an error.** "Nothing moved,
+  so there is no new version to write" is what a set that is finished says,
+  and it was shown as a red failure — which reads as something having gone
+  wrong with a proposal that is simply right. It is an outcome now, said
+  calmly, and the button says "Nothing to bank" and is disabled BEFORE it is
+  pressed. A set where nothing moved but rejected candidates would be
+  dropped still counts as a change, because the version then holds the
+  spikes and nothing else.
+
+- **Movement did not reach the support panels.** A drag publishes the moved
+  marks every 120 ms, and the set is the same size while it happens — so
+  the shortcut for "same set, new position" ran instead of the branch that
+  adopts marks, applied the index and the focus, and kept the old positions.
+  The other windows followed the stamp being decided and drew every line
+  where it used to be. A pointer that brought its own marks is complete and
+  current, so it is now adopted before any shortcut can decide nothing has
+  changed.
+
+### Changed
+
+- **Neighbouring stamps are ticks again, in Checkup's proportions.** A
+  neighbour rises 18% of the pane from the bottom, 38% where the pane is
+  short enough that 18% would be a few pixels; the pair being decided runs
+  the full height, wider and opaque; an answered neighbour is quieter and an
+  untouched one quieter still and dashed. The same numbers curation uses, so
+  stepping between the two is one picture in different colours.
+
+  They were removed a few versions ago for a reason worth keeping straight:
+  a mark's size depends on a flag that travels between windows, and while
+  that flag was going astray every mark drew as a neighbour, which made a
+  panel look EMPTY rather than slightly wrong. Size can carry the focus
+  again because the focus now arrives — as a number on every pointer, and
+  with marks adopted unconditionally.
+
+- **Sets with nothing to align are no longer offered by Braces.** Nine of
+  the forty-eight were fully curated sets in which every candidate had been
+  rejected, one of them 738 of them. They were listed and greyed; the place
+  to see "this one is finished and it is all garbage" is the Event Bank,
+  which holds every entry. A list of things to align holds things to align.
+
+- **Every `Incisor CSC##` entry now carries its session.** Incisor names a
+  set after the channel it scanned, which is the one fact it is sure of and
+  the one fact that identifies nothing: ten entries were named exactly that
+  and six of the names were shared. Two different recordings both called
+  "Incisor CSC42" are indistinguishable in any list that shows a name, which
+  is every list.
+
+      Incisor CSC42   ->   Incisor CSC42_PTEN m47 s1 2024-12-04
+
+  `tools/name_incisor_sets.py`, which says what it would do and needs
+  `--apply` to do it. Three of the ten turned out to be the same recording
+  banked two or three times — same group id, same event count — which is
+  not a naming collision and cannot be fixed by renaming. They get a short
+  piece of their own id so they can be told apart, and the tool lists them
+  for somebody to decide about: deleting a banked entry is not a thing a
+  script should choose to do.
+
 ## 2026.09.21.6 - A set with nothing in it says so, and the batch keeps up
 
 ### Added
@@ -690,6 +777,30 @@ This file is the only place the version is written. The app reads it.
 - **The depth bars were labelled in microvolts** and have not been microvolts
   since they started being scored on the event-triggered template. Shown as a
   percentage of the strongest contact, which is what they are.
+
+## 2026.09.21.3 - The cluster matcher was fed two different things
+
+### Fixed
+
+- **Incisor's VACC list showed `'str' object has no attribute 'get'` where
+  the recordings should have been.** `_cluster_match` takes two lookups and
+  decides which known recording a cluster folder is. It was built twice, in
+  two places, and the two drifted: `/api/vacc/scan` filed the whole record in
+  both maps, and `_vacc_staged` filed the record in `by_loose` and the bare
+  **gid string** in `by_key`.
+
+  So the moment a cluster folder matched a recording *exactly*, the matcher
+  handed back a string and the caller's `rec.get("gid")` raised. Exact is 37
+  of the 39 matches on the real cluster — it is what the feature is for —
+  which is why this failed every time rather than occasionally.
+
+  The irony is that `_cluster_match` exists to keep the matching rule in one
+  place so the two callers cannot disagree, and it did that. What drifted was
+  what they fed it. So `_match_index()` now builds the pair, once, and both
+  maps hold the record: the loose branch needs the candidate's start date and
+  project before it will accept a match, and every caller asks for a gid.
+
+  `/api/incisor/batch/plan` answers again: 38 runnable, 1 blocked.
 
 ## 2026.09.21.2 - What kind of recording this is, on the row; and the sync stops shouting
 

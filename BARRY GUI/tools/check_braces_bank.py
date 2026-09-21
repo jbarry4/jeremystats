@@ -106,9 +106,13 @@ try:
     bad = BANK.align(eid, {0: 9.0}, params, dry_run=True)
     truthy("an alignment that reorders is refused", bad.get("error"),
            "moving event 0 from 1.012 to 9.0 jumps it past events 1 and 2")
-    # Nothing to do is not a version.
+    # Nothing to do is not a version -- and not a failure either. It is
+    # what a set that is already right looks like, so it comes back as an
+    # outcome the panel can be calm about rather than as a red error.
     bad = BANK.align(eid, {}, params, dry_run=True)
-    truthy("an alignment that moves nothing is refused", bad.get("error"))
+    truthy("an alignment that moves nothing writes nothing",
+           bad.get("nothing_to_do"))
+    truthy("...and is not reported as an error", not bad.get("error"))
 
     print("\nTHE WRITE")
     print("-" * 68)
@@ -160,9 +164,15 @@ try:
     # Re-running against the CURRENT events is refused before it gets as far
     # as the twin check, because they are already where it would put them.
     again = BANK.align(eid, moves, params, dry_run=True)
+    # NOT an error, and it used to be reported as one. Every stamp already
+    # sitting where the recording puts it is a good outcome and the common
+    # one for a set looked at twice -- there is simply nothing to write.
+    # The panel needs to tell that apart from a refusal so it can be calm
+    # about it, which is what `nothing_to_do` is for.
     truthy("re-running over an aligned set moves nothing, and says so",
-           again.get("error"))
-    print("       %s" % again["error"])
+           again.get("nothing_to_do"))
+    truthy("...as an outcome rather than an error", not again.get("error"))
+    print("       %s" % (again.get("why") or again.get("error")))
 
     # The twin check is the other half: the same alignment applied to the
     # same SOURCE version. Here the stamps really would move -- v1's

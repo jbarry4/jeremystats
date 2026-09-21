@@ -1595,10 +1595,26 @@ class EventBank:
                 "holds, which is a duplicate rather than an alignment. "
                 "Nothing was written." % len(collided))
             return report
-        if not shifts:
-            report["error"] = (
-                "Nothing moved, so there is no new version to write.")
+        if not shifts and not dropped_lbl:
+            # NOT AN ERROR, and it used to be reported as one.
+            #
+            # Every stamp already sitting where the recording puts it is a
+            # good outcome and a common one -- a set aligned once and
+            # looked at again says exactly this. There is still nothing to
+            # write, so the write does not happen; `nothing_to_do` says
+            # which of the two it is, and the panel can be calm about it
+            # rather than showing a red failure for a set that is right.
+            report["nothing_to_do"] = True
+            report["why"] = (
+                "Every stamp is already where the recording puts it, so "
+                "there is no new version to write. Nothing was changed.")
             return report
+        if not shifts:
+            # Nothing moved, but the rejected candidates would go, which
+            # IS a change worth a version: what an analysis reads is then
+            # the spikes rather than the spikes plus everything somebody
+            # threw out.
+            pass
 
         twin = "br-" + hashlib.sha256(
             ("%s|%s|%s" % (entry_id, src_id or src_v,

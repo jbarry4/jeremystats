@@ -7586,6 +7586,30 @@ BARRY.views.xplore = (function () {
     const have = sess.curationMarks;
     const sameSet = have && have.kind === pointer.kind
                  && (have.events || []).length === pointer.n;
+    /* MARKS BEAT EVERYTHING. A pointer that brought its own is complete
+       and current, whatever we are holding -- so it is adopted before any
+       of the shortcuts below get a chance to decide nothing has changed.
+
+       This is the whole of "the movement does not show on the support
+       panels". A drag publishes the moved marks every 120 ms, and the
+       set is the same size while it happens, so the shortcut for "same
+       set, just a new position" ran instead: it applied the index, the
+       time and the focus and kept the OLD mark positions. The other
+       windows followed the stamp being decided and drew every line where
+       it used to be. */
+    if (sameSet && pointer.events) {
+      have.events = pointer.events;
+      have.labels = pointer.labels || have.labels;
+      have.index = pointer.index;
+      have.at = pointer.at;
+      have.rev = pointer.rev || 0;
+      if (pointer.window_ms) have.window_ms = pointer.window_ms;
+      if ('home_t' in pointer) have.home_t = pointer.home_t;
+      if ('curve' in pointer) have.curve = pointer.curve;
+      have.curveAt = pointer.curveAt;
+      if (pointer.focus != null) have.focus = pointer.focus;
+      return true;
+    }
     if (sameSet) {
       const revJump = (pointer.rev || 0) - (have.rev || 0);
       /* A decision was made. Apply it from the pointer rather than

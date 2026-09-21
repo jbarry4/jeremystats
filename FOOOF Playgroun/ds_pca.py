@@ -303,7 +303,14 @@ def refine_and_read(session, channels, stamps, args, bad):
     half = args.window_ms / 1000.0
     sur = args.surround_ms / 1000.0
     rows, report = [], {}
-    cols, surrounds = {"raw": [], "notch": []}, {"raw": [], "notch": []}
+    # "raw" and "notch" are the broadband trace Toothy builds its features
+    # from. "band" is the 5-100 Hz, mains-out version -- not a feature, a
+    # PICTURE: it is what makes a dentate spike visible on a raster, and the
+    # GUI shows it so that somebody choosing a depth band is looking at the
+    # event rather than at the slow field it happens to be sitting on.
+    keys = ("raw", "notch", "band")
+    cols = {k: [] for k in keys}
+    surrounds = {k: [] for k in keys}
     fs_out = None
     step = max(1, len(stamps) // 10)
 
@@ -345,7 +352,7 @@ def refine_and_read(session, channels, stamps, args, bad):
         if i_ref - n_sur < 0 or i_ref + n_sur + 1 > wide.shape[1]:
             print("  #%d: refined stamp too close to the window edge" % (k + 1))
             continue
-        for key, w in (("raw", wide), ("notch", wide_n)):
+        for key, w in (("raw", wide), ("notch", wide_n), ("band", band)):
             cols[key].append(w[:, i_ref].copy())
             surrounds[key].append(w[:, i_ref - n_sur:i_ref + n_sur + 1].copy())
         rows.append({
@@ -365,7 +372,7 @@ def refine_and_read(session, channels, stamps, args, bad):
              else "measured but LEFT IN, which is what Toothy does "
                   "(--line 60 removes it)"))
     data = {k: {"col": np.array(cols[k]).T, "sur": np.array(surrounds[k])}
-            for k in ("raw", "notch")}
+            for k in keys}
     data["mains_uv"] = report.get("mains_uv", 0.0)
     data["wideband_uv"] = report.get("wideband_uv", 0.0)
     return rows, data, fs_out

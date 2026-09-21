@@ -1,56 +1,59 @@
 """
-ds_pca_gui.py -- the DS1/DS2 workbench: slide the depth band, watch it move.
+ds_pca_gui.py -- the DS1/DS2 workbench: drag the window, click the dots.
 
-WHY THIS EXISTS
-===============
-The one judgement `ds_pca.py` cannot make for you is WHICH CONTACTS the CSD
-runs over. Toothy has a person draw that box on screen and it is not a
-detail: the features ARE those contacts, so the window decides the answer.
-The command-line version picks a band from the event-triggered CSD and prints
-it, which is a guess you have to accept or override blind.
+WHAT YOU DRAG, AND WHY THERE ARE TWO OF THEM
+============================================
+Toothy's features are ONE SAMPLE. `ds_classification_gui.get_csd` builds
+`lfp_interp[channels][:, idx]` -- a [contacts x events] array where each
+column is a single instant -- so an event is described by its depth profile
+at exactly one millisecond, and the only choice anybody makes is which
+contacts. That is the whole feature set.
 
-Here you drag it. Everything downstream -- the CSD, the PCA, the clustering,
-the class-average profiles -- recomputes as the slider moves, because the
-expensive part happened once before the window opened.
+This opens up both axes. The rectangle on the CSD raster selects
+
+  DEPTH   which contacts the CSD runs over   (Toothy's one choice)
+  TIME    how many samples around the stamp go in  (Toothy: always one)
+
+and the features become that whole block, flattened. Pull the box down to a
+single column and you are running Toothy exactly; widen it and each event is
+described by a shape in depth AND time, which is what tells a biphasic event
+from a monophasic one of the same amplitude -- something a single sample
+cannot see however well the stamp is aligned.
+
+WHAT IS DRAWN IS NOT WHAT IS MEASURED, AND THAT IS DELIBERATE
+=============================================================
+The raster you drag on is the 5-100 Hz, mains-out CSD, because that is what
+makes a dentate spike LOOK like one: broadband, the event is buried under the
+slow field and you would be choosing a depth band by eye from a picture with
+no event in it.
+
+The FEATURES stay broadband, because that is what Toothy does -- its
+`bp_dict['raw']` is the plain downsampled trace and the DS band is used only
+to find peak times. The `60 Hz notch` box switches the features between
+Toothy's choice and ours. So: the picture is filtered, the measurement is
+whatever the checkbox says, and the two are never silently swapped.
+
+One more asymmetry worth knowing. The raster shows the CSD of the whole
+shank; the features are the CSD computed WITHIN the selected contacts, so
+the top and bottom rows of the box get Vaknin-extended at the box edge
+rather than reading their real neighbours. That is Toothy's behaviour and it
+is why the outermost row or two of a narrow box is not to be trusted.
+
+CLICKING A DOT
+==============
+Click any point in the PCA scatter and the left two panels stop showing the
+event-triggered average and show THAT event: its voltage traces, its own CSD
+raster. This is the check that matters before believing a cluster -- a class
+whose members all look like the class average is a type; a class whose
+members look like nothing in particular is a line drawn through a cloud.
+"Show average" puts it back.
 
 WHAT IS CHEAP AND WHAT IS NOT
 =============================
-Reading the recording is minutes: sixty-odd windows on sixty-four contacts,
-decimated and filtered. That happens ONCE, at startup, and is cached to a
-.npz beside the bank -- the second run opens instantly.
-
-Everything the controls touch is milliseconds: the CSD is a tridiagonal
-matrix times a [contacts x events] array, the PCA is two components over a
-few dozen points. So the sliders are live rather than a "recompute" button.
-
-The cache holds the plain AND the mains-notched copy of every window, which
-is why the notch is a checkbox and not a restart.
-
-THE CONTROLS
-============
-  band centre / width   which contacts the CSD runs over. This is the knob
-                        that matters. Watch the class-average profiles: a
-                        window centred on the hilar dipole gives two curves
-                        that differ in SHAPE; one centred off it gives two
-                        curves that differ only in size, which is the PCA
-                        sorting events by amplitude and calling it a type.
-  classes               how many clusters K-means is asked for. Two is
-                        Toothy's default and the DS1/DS2 question; more is
-                        worth a look when the scatter is plainly not two
-                        blobs.
-  60 Hz notch           on is ours, off is Toothy's.
-  CSD screen            interpolate over contacts whose baseline CSD towers
-                        over the probe median. Off is faithful to Toothy,
-                        which has no such screen -- and on this rig that
-                        lets five bad contacts decide the classification.
-  save                  writes the figure and the table for the CURRENT
-                        settings, named by the band, so a sweep leaves a
-                        trail rather than one overwritten file.
-
-NAMING. With two classes the shallower sink is DS1, which is Toothy's rule.
-With more, classes are numbered by sink depth the same way: DS1 shallowest.
-The sink contact of each class is in the legend, so if the anatomy says the
-numbering is upside down you can see it rather than infer it.
+Reading is minutes and happens once, cached to a .npz beside the bank. The
+CSD is a tridiagonal matrix multiply and the PCA is two components over a few
+dozen points, so everything the controls touch is milliseconds -- which is
+why the box is live rather than behind a "recompute" button.
 
 Run:
   python ds_pca_gui.py
@@ -67,7 +70,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from matplotlib.widgets import Button, CheckButtons, Slider
+from matplotlib.widgets import Button, CheckButtons, RectangleSelector, Slider
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
@@ -81,11 +84,14 @@ from ds_pca import (T_COND, T_DS_FREQ, T_F_ORDER, T_F_SIGMA, T_LFP_FS,
 from dentate_spike_aligner import (BANK, FOLDER, LINE_Q,         # noqa: E402
                                    parse_channels, read_bank)
 
+CACHE_VERSION = 2          # bumped when the cached arrays change shape
+
 # Assigned in a fixed order and never cycled: class 3 is always this orange,
 # whether or not class 4 exists, so adding a cluster cannot repaint the ones
 # already on screen.
 CLASS_COLORS = ["#1a7f37", "#7b3fa0", "#b8620a", "#1f6feb", "#a3155f"]
 GREY = "#8c9994"
+INK = "#1b2220"
 
 
 class Opts:
@@ -101,11 +107,11 @@ class Opts:
 def cache_path(args):
     """One cache per (recording, bank, read settings).
 
-    Keyed on the things that change what was READ, not on the things the
-    sliders change -- the whole point is that the sliders never invalidate it.
+    Keyed on what was READ, not on what the controls change -- the whole
+    point is that dragging the box never invalidates it.
     """
     key = "|".join(str(x) for x in (
-        os.path.abspath(args.folder), os.path.abspath(args.bank),
+        CACHE_VERSION, os.path.abspath(args.folder), os.path.abspath(args.bank),
         args.label, args.n_events, args.lfp_fs, args.band, args.window_ms,
         args.surround_ms, args.refine, args.spacing, args.pad,
         args.no_invert, args.channels))
@@ -120,10 +126,13 @@ def load_everything(args):
     if os.path.exists(path) and not args.refresh:
         z = np.load(path, allow_pickle=True)
         print("cache: " + os.path.basename(path))
-        return (list(z["rows"]), z["col_raw"], z["col_notch"],
-                z["sur_raw"], z["sur_notch"], list(z["nums"]),
-                dict(z["bad"].item()), str(z["session_label"]),
-                float(z["mains_uv"]), float(z["wideband_uv"]))
+        return dict(rows=list(z["rows"]),
+                    sur={k: z["sur_" + k] for k in ("raw", "notch", "band")},
+                    nums=[int(n) for n in z["nums"]],
+                    bad=dict(z["bad"].item()),
+                    session_label=str(z["session_label"]),
+                    mains_uv=float(z["mains_uv"]),
+                    wideband_uv=float(z["wideband_uv"]))
 
     kept = read_bank(args.bank, label=args.label)
     if not kept:
@@ -150,26 +159,57 @@ def load_everything(args):
     nums = [int(c["number"]) for c in chans]
     np.savez_compressed(
         path, rows=np.array(rows, dtype=object),
-        col_raw=data["raw"]["col"], col_notch=data["notch"]["col"],
         sur_raw=data["raw"]["sur"], sur_notch=data["notch"]["sur"],
+        sur_band=data["band"]["sur"],
         nums=np.array(nums), bad=np.array(bad, dtype=object),
         session_label=label, mains_uv=data["mains_uv"],
         wideband_uv=data["wideband_uv"])
     print("cached to " + os.path.basename(path))
-    return (rows, data["raw"]["col"], data["notch"]["col"],
-            data["raw"]["sur"], data["notch"]["sur"], nums, bad, label,
-            data["mains_uv"], data["wideband_uv"])
+    return dict(rows=rows,
+                sur={k: data[k]["sur"] for k in ("raw", "notch", "band")},
+                nums=nums, bad=bad, session_label=label,
+                mains_uv=data["mains_uv"], wideband_uv=data["wideband_uv"])
 
 
 # --------------------------------------------------------------------------
-# The cheap half, done on every slider move
+# The cheap half, done on every drag
 # --------------------------------------------------------------------------
+def stack_csd(sur, args):
+    """CSD of every event at once, as [nEvents x nCh x nSamp].
+
+    One matrix multiply rather than one per event: the CSD is independent
+    column by column, so every event's window can be laid side by side,
+    differenced in a single call and folded back. With sixty events that is
+    the difference between a drag that stutters and one that does not.
+    """
+    n_ev, n_ch, n_t = sur.shape
+    flat = sur.transpose(1, 0, 2).reshape(n_ch, n_ev * n_t)
+    csd = toothy_csd(flat, args.spacing, args)[1]        # filtered
+    return csd.reshape(n_ch, n_ev, n_t).transpose(1, 0, 2)
+
+
+def normalize_block(block):
+    """pyfx.Normalize per EVENT, over the whole selected block.
+
+    Toothy normalizes each event's single column across depth. With a time
+    window there is more than one column, and the honest generalization is
+    one min and one max for the whole patch -- normalizing each column
+    separately would erase exactly the thing a time window was opened to
+    see, which is how the profile changes from millisecond to millisecond.
+    """
+    out = np.asarray(block, dtype=np.float64).copy()
+    for i in range(out.shape[0]):
+        lo, hi = np.nanmin(out[i]), np.nanmax(out[i])
+        out[i] = np.zeros_like(out[i]) if hi == lo else (out[i] - lo) / (hi - lo)
+    return out
+
+
 def recompute(state):
-    """CSD -> PCA -> K-means -> class order, for the current settings."""
+    """Screen, CSD, features, PCA, K-means -- for the current selection."""
     a = state["args"]
-    col = state["col_notch"] if state["notch"] else state["col_raw"]
-    sur = state["sur_notch"] if state["notch"] else state["sur_raw"]
-    nums_all, chans = state["nums"], state["chans"]
+    sur = state["sur"]["notch" if state["notch"] else "raw"]
+    sur_band = state["sur"]["band"]
+    chans = state["chans"]
 
     bad = dict(state["bad0"])
     if state["screen"]:
@@ -179,32 +219,54 @@ def recompute(state):
             if not cbad:
                 break
             bad = {**bad, **cbad}
-            col = braces.repair(col, chans, bad)
             sur = np.array([braces.repair(s, chans, bad) for s in sur])
+            sur_band = np.array([braces.repair(s, chans, bad)
+                                 for s in sur_band])
 
-    lo = max(0, min(state["centre"] - state["span"] // 2,
-                    len(nums_all) - state["span"]))
-    sel = list(range(lo, lo + state["span"]))
-    nums = [nums_all[i] for i in sel]
+    # The picture: whole-shank CSD of the band-limited trace.
+    disp = stack_csd(sur_band, a)
 
-    _raw, filt, norm = toothy_csd(col[sel, :], a.spacing, a)
+    # The measurement: CSD computed WITHIN the chosen contacts, Toothy-style.
+    sel, t0, t1 = state["sel"], state["t0"], state["t1"]
+    feat_csd = stack_csd(sur[:, sel, :], a)[:, :, t0:t1]
+    norm = normalize_block(feat_csd)
+    X = norm.reshape(norm.shape[0], -1)
+
     pca = PCA(n_components=2)
-    fit = pca.fit_transform(norm.T)
+    fit = pca.fit_transform(X)
     k = int(state["nclasses"])
     km = KMeans(n_clusters=k, n_init="auto", random_state=a.seed).fit(fit)
 
+    # EVERY PICTURE COMES OFF THE SAME SIGNAL, and it is not the features.
+    #
+    # The class-average profile and the class-average rasters are both the
+    # 5-100 Hz, mains-out CSD over the selected block. They used to disagree
+    # -- the rasters band-limited, the profile broadband -- which meant the
+    # "sink CSC30" in the profile legend was not necessarily the sink you
+    # could see in the heatmap beside it. Two different answers to the same
+    # question, a few centimetres apart.
+    #
+    # The features stay broadband, because that is Toothy's method and the
+    # method is the thing being ported. So: the measurement is broadband,
+    # everything drawn is band-limited, and the split is on purpose.
+    prof = disp[:, sel, t0:t1].mean(axis=2)      # [nEvents x span]
+
     # Classes renumbered by sink depth, which generalizes Toothy's DS1/DS2
-    # rule to any number of them: DS1 is the shallowest sink. Without this the
-    # labels are whatever order K-means happened to seed in, and they change
-    # from one slider move to the next for no reason anybody can see.
+    # rule to any number: DS1 is the shallowest sink. Scored on `prof`, so
+    # the naming agrees with what is on screen -- Toothy scores it on its
+    # broadband features instead, and on this rig the two can disagree
+    # because the mains moves the argmin. A label is a naming convention;
+    # one you can check against the picture is the better convention.
     order = sorted(range(k), key=lambda c: (
-        int(np.argmin(np.nanmean(filt[:, km.labels_ == c], axis=1)))
+        int(np.argmin(np.nanmean(prof[km.labels_ == c], axis=0)))
         if (km.labels_ == c).any() else 10 ** 6))
     remap = {c: i + 1 for i, c in enumerate(order)}
     types = np.array([remap[x] for x in km.labels_])
 
-    return dict(sel=sel, nums=nums, filt=filt, norm=norm, fit=fit, pca=pca,
-                types=types, sur=sur[:, sel, :], bad=bad, k=k)
+    return dict(disp=disp, feat=feat_csd, norm=norm, fit=fit, pca=pca,
+                types=types, k=k, bad=bad, prof=prof,
+                nums_sel=[state["nums"][i] for i in sel],
+                n_features=X.shape[1])
 
 
 # --------------------------------------------------------------------------
@@ -212,81 +274,116 @@ def recompute(state):
 # --------------------------------------------------------------------------
 def draw(state, res):
     a = state["args"]
-    nums, types, filt = res["nums"], res["types"], res["filt"]
-    sur, fit, pca = res["sur"], res["fit"], res["pca"]
-    tw = np.linspace(-a.surround_ms, a.surround_ms, sur.shape[2])
+    nums, types = state["nums"], res["types"]
+    tw = state["tw"]
     groups = [(c, np.where(types == c)[0]) for c in range(1, res["k"] + 1)]
-    colors = {c: CLASS_COLORS[(c - 1) % len(CLASS_COLORS)]
-              for c, _ in groups}
+    colors = {c: CLASS_COLORS[(c - 1) % len(CLASS_COLORS)] for c, _ in groups}
+    pick = state["picked"]
+    sel, t0, t1 = state["sel"], state["t0"], state["t1"]
+    lo_n, hi_n = nums[sel[0]], nums[sel[-1]]
 
-    for ax in state["axes"].values():
-        ax.clear()
+    for key in ("volt", "pca", "profile", "csd1", "csd2"):
+        state["axes"][key].clear()
 
-    # --- PCA scatter --------------------------------------------------
-    ax = state["axes"]["pca"]
-    for c, rr in groups:
-        if rr.size:
-            ax.scatter(fit[rr, 0], fit[rr, 1], s=30, c=colors[c], lw=.6,
-                       edgecolors="white", label="DS%d  n=%d" % (c, rr.size))
-    ax.set_xlabel("PC1 (%.0f%%)" % (100 * pca.explained_variance_ratio_[0]),
-                  fontsize=9)
-    ax.set_ylabel("PC2 (%.0f%%)" % (100 * pca.explained_variance_ratio_[1]),
-                  fontsize=9)
-    ax.set_title("PCA of the normalized CSD", fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    ax.grid(alpha=.15, lw=.6)
-    ax.tick_params(labelsize=8)
-
-    # --- the average profile comparison -------------------------------
-    # The panel to read when deciding whether the band is right. Two classes
-    # that differ in SHAPE -- a sink at different depths -- are two kinds of
-    # event. Two curves of the same shape and different height are one kind
-    # of event, loud and quiet, which is what a badly placed window gives.
-    ax = state["axes"]["profile"]
-    for c, rr in groups:
-        if rr.size == 0:
-            continue
-        mu = np.nanmean(filt[:, rr], axis=1)
-        sem = np.nanstd(filt[:, rr], axis=1) / np.sqrt(rr.size)
-        ax.fill_betweenx(nums, mu - sem, mu + sem, color=colors[c],
-                         alpha=.20, lw=0)
-        ax.plot(mu, nums, color=colors[c], lw=1.9,
-                label="DS%d  sink CSC%s" % (c, sink_channel(filt, nums, rr)))
-    ax.axvline(0, color="#444444", lw=.9, ls="--")
-    ax.invert_yaxis()
-    ax.set_xlabel(r"mean CSD at the stamp ($\mu V/mm^2$)", fontsize=9)
-    ax.set_ylabel("CSC number", fontsize=9)
-    ax.set_title("class-average depth profile  ± SEM", fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    ax.grid(alpha=.15, lw=.6)
-    ax.tick_params(labelsize=8)
-
-    # --- mean waveform at each class's sink ---------------------------
-    ax = state["axes"]["wave"]
-    for c, rr in groups:
-        if rr.size == 0:
-            continue
-        ch = sink_channel(filt, nums, rr)
-        w = sur[rr][:, list(nums).index(ch), :]
-        mu = w.mean(axis=0)
-        sem = w.std(axis=0) / np.sqrt(rr.size)
-        ax.fill_between(tw, mu - sem, mu + sem, color=colors[c], alpha=.18,
-                        lw=0)
-        ax.plot(tw, mu, color=colors[c], lw=1.7, label="DS%d at CSC%d" % (c, ch))
-    ax.axvline(0, color="#111111", ls="--", lw=1.0)
+    # --- 1. voltage traces --------------------------------------------
+    # Stacked per contact, the way an ephys trace is read. Band-limited to
+    # match the raster beside it: on the broadband trace the slow field
+    # dwarfs the spike and nothing about the depth is legible.
+    ax = state["axes"]["volt"]
+    vb = state["sur"]["band"]
+    wave = vb[pick] if pick is not None else vb.mean(axis=0)
+    # Gain in CONTACT UNITS: the biggest deflection on the shank spans this
+    # many contacts. Traces overlapping is how a stacked ephys raster is
+    # supposed to look -- the first version scaled the peak to under half a
+    # contact and every channel drew as a flat line.
+    gain = state["gain"]
+    scale = float(np.percentile(np.abs(wave), 99.5)) or 1.0
+    for i, n in enumerate(nums):
+        inside = sel[0] <= i <= sel[-1]
+        ax.plot(tw, -wave[i] * gain / scale + n,
+                color=INK if inside else GREY, lw=.85 if inside else .5,
+                alpha=1.0 if inside else .40, zorder=3 if inside else 2)
+    ax.axvspan(tw[t0], tw[max(t0, t1 - 1)], color="#1f6feb", alpha=.12, lw=0)
+    ax.axvline(0, color="#b03030", ls="--", lw=1.0, alpha=.8)
+    ax.set_ylim(nums[-1] + gain + 1, nums[0] - gain - 1)
+    ax.set_xlim(tw[0], tw[-1])
     ax.set_xlabel("ms from the refined stamp", fontsize=9)
-    ax.set_ylabel("LFP (µV)", fontsize=9)
-    ax.set_title("mean waveform at each class's sink", fontsize=10)
+    ax.set_ylabel("CSC number", fontsize=9)
+    ax.set_title("voltage  %g–%g Hz, %s"
+                 % (a.band[0], a.band[1],
+                    "event #%d" % state["rows"][pick]["n"] if pick is not None
+                    else "mean of %d" % len(state["rows"])),
+                 fontsize=10)
+    ax.tick_params(labelsize=8)
+
+    # --- 2. the CSD raster, which is what you drag on ------------------
+    # Its axes are never cleared: a RectangleSelector lives on the axes and
+    # clearing them kills it. Only the image data changes.
+    mat = res["disp"][pick] if pick is not None else res["disp"].mean(axis=0)
+    lim = float(np.percentile(np.abs(mat), 99.5)) or 1.0
+    state["raster_im"].set_data(mat)
+    state["raster_im"].set_clim(-lim, lim)
+    state["axes"]["csd"].set_title(
+        "CSD  %g–%g Hz, 60 Hz out   —   drag a box: depth × time"
+        % (a.band[0], a.band[1]), fontsize=10)
+
+    # --- 3. PCA scatter, pickable -------------------------------------
+    ax = state["axes"]["pca"]
+    state["pick_artists"] = []
+    for c, rr in groups:
+        if rr.size == 0:
+            continue
+        art = ax.scatter(res["fit"][rr, 0], res["fit"][rr, 1], s=34,
+                         c=colors[c], lw=.6, edgecolors="white",
+                         label="DS%d  n=%d" % (c, rr.size), picker=6,
+                         zorder=3)
+        art._event_rows = rr
+        state["pick_artists"].append(art)
+    if pick is not None:
+        ax.scatter([res["fit"][pick, 0]], [res["fit"][pick, 1]], s=190,
+                   facecolors="none", edgecolors=INK, lw=1.8, zorder=4)
+    ax.set_xlabel("PC1 (%.0f%%)" % (100 * res["pca"].explained_variance_ratio_[0]),
+                  fontsize=9)
+    ax.set_ylabel("PC2 (%.0f%%)" % (100 * res["pca"].explained_variance_ratio_[1]),
+                  fontsize=9)
+    ax.set_title("PCA of %d features — click a dot" % res["n_features"],
+                 fontsize=10)
     ax.legend(fontsize=8, frameon=False)
     ax.grid(alpha=.15, lw=.6)
     ax.tick_params(labelsize=8)
 
-    # --- mean CSD heatmaps, first two classes -------------------------
+    # --- 4. class-average depth profile -------------------------------
+    # The panel that says whether the box is in the right place. Two curves
+    # differing in SHAPE -- sinks at different depths -- are two kinds of
+    # event. Two of the same shape at different heights are one kind, loud
+    # and quiet, which is a badly placed box sorting events by amplitude.
+    ax = state["axes"]["profile"]
+    ns = res["nums_sel"]
+    for c, rr in groups:
+        if rr.size == 0:
+            continue
+        mu = np.nanmean(res["prof"][rr], axis=0)
+        sem = np.nanstd(res["prof"][rr], axis=0) / np.sqrt(rr.size)
+        ax.fill_betweenx(ns, mu - sem, mu + sem, color=colors[c], alpha=.20,
+                         lw=0)
+        ax.plot(mu, ns, color=colors[c], lw=1.9,
+                label="DS%d  sink CSC%s"
+                      % (c, sink_channel(res["prof"].T, ns, rr)))
+    ax.axvline(0, color="#444444", lw=.9, ls="--")
+    ax.set_ylim(max(ns) + .5, min(ns) - .5)
+    ax.set_xlabel(r"mean CSD over the window ($\mu V/mm^2$)", fontsize=9)
+    ax.set_ylabel("CSC number", fontsize=9)
+    ax.set_title("class-average depth profile ± SEM", fontsize=10)
+    ax.legend(fontsize=8, frameon=False)
+    ax.grid(alpha=.15, lw=.6)
+    ax.tick_params(labelsize=8)
+
+    # --- 5 & 6. mean CSD per class, over the whole surround -----------
     mats = []
     for c, rr in groups[:2]:
         mats.append(None if rr.size == 0
-                    else toothy_csd(sur[rr].mean(axis=0), a.spacing, a)[1])
-    lim = max([np.abs(m).max() for m in mats if m is not None] or [1.0])
+                    else res["disp"][rr].mean(axis=0)[sel, :])
+    lim2 = max([np.abs(m).max() for m in mats if m is not None] or [1.0])
     for j, (key, (c, rr)) in enumerate(zip(("csd1", "csd2"), groups[:2])):
         ax = state["axes"][key]
         if mats[j] is None:
@@ -294,9 +391,11 @@ def draw(state, res):
                     transform=ax.transAxes, color=GREY, fontsize=9)
             continue
         ax.imshow(mats[j], aspect="auto", origin="upper", cmap="jet",
-                  vmin=-lim, vmax=lim,
-                  extent=[tw[0], tw[-1], nums[-1] + .5, nums[0] - .5])
-        ax.axvline(0, color="white", ls="--", lw=1.0)
+                  vmin=-lim2, vmax=lim2,
+                  extent=[tw[0], tw[-1], hi_n + .5, lo_n - .5])
+        ax.axvspan(tw[t0], tw[max(t0, t1 - 1)], color="white", alpha=.0, lw=0)
+        for x in (tw[t0], tw[max(t0, t1 - 1)]):
+            ax.axvline(x, color="white", lw=1.2, alpha=.9)
         ax.set_xlabel("ms", fontsize=9)
         if j == 0:
             ax.set_ylabel("CSC number", fontsize=9)
@@ -304,90 +403,109 @@ def draw(state, res):
                      color=colors[c])
         ax.tick_params(labelsize=8)
 
-    # --- the feature matrix -------------------------------------------
-    ax = state["axes"]["feat"]
-    order = np.concatenate([rr for _c, rr in groups if rr.size] or
-                           [np.arange(types.size)]).astype(int)
-    ax.imshow(res["norm"][:, order], aspect="auto", origin="upper",
-              cmap="jet", vmin=0, vmax=1,
-              extent=[0, order.size, nums[-1] + .5, nums[0] - .5])
-    at = 0
-    for _c, rr in groups[:-1]:
-        at += rr.size
-        if 0 < at < order.size:
-            ax.axvline(at, color="white", lw=1.4)
-    ax.set_xlabel("event, sorted by class", fontsize=9)
-    ax.set_title("normalized CSD — the features", fontsize=10)
-    ax.tick_params(labelsize=8, labelleft=False)
-
     repaired = sorted(set(res["bad"]) - set(state["bad0"]))
     state["fig"].suptitle(
-        "%s   ·   %d events   ·   CSD over CSC%d–%d   ·   %d classes   ·   "
-        "%s   ·   %s"
-        % (state["session_label"], types.size, nums[0], nums[-1], res["k"],
-           "60 Hz notched" if state["notch"] else "no notch (Toothy)",
-           ("CSD screen: CSC" + ",".join(str(n) for n in repaired))
-           if repaired else "CSD screen: nothing flagged"),
-        fontsize=11.5, y=.985)
+        "%s   ·   %d events   ·   depth CSC%d–%d (%d)   ·   time %+.0f to "
+        "%+.0f ms (%d sample%s)   ·   %d classes   ·   features %s   ·   %s"
+        % (state["session_label"], types.size, lo_n, hi_n, len(sel),
+           tw[t0], tw[max(t0, t1 - 1)], t1 - t0, "" if t1 - t0 == 1 else "s",
+           res["k"], "60 Hz notched" if state["notch"] else "no notch (Toothy)",
+           ("screen: CSC" + ",".join(str(n) for n in repaired))
+           if repaired else "screen: nothing flagged"),
+        fontsize=10.5, y=.988)
     state["fig"].canvas.draw_idle()
 
 
 # --------------------------------------------------------------------------
 def build(state):
-    fig = plt.figure(figsize=(15.5, 9.4))
+    fig = plt.figure(figsize=(16.2, 9.6))
     state["fig"] = fig
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=.36, wspace=.26,
-                           left=.06, right=.985, top=.90, bottom=.20)
+    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=.34, wspace=.26,
+                           left=.055, right=.985, top=.905, bottom=.155)
     state["axes"] = {
-        "pca": fig.add_subplot(gs[0, 0]),
-        "profile": fig.add_subplot(gs[0, 1]),
-        "wave": fig.add_subplot(gs[0, 2]),
-        "csd1": fig.add_subplot(gs[1, 0]),
-        "csd2": fig.add_subplot(gs[1, 1]),
-        "feat": fig.add_subplot(gs[1, 2]),
+        "volt": fig.add_subplot(gs[0, 0]),
+        "csd": fig.add_subplot(gs[0, 1]),
+        "pca": fig.add_subplot(gs[0, 2]),
+        "profile": fig.add_subplot(gs[1, 0]),
+        "csd1": fig.add_subplot(gs[1, 1]),
+        "csd2": fig.add_subplot(gs[1, 2]),
     }
 
-    n_ch = len(state["nums"])
-    lo, hi = state["nums"][0], state["nums"][-1]
+    nums, tw = state["nums"], state["tw"]
+    ax = state["axes"]["csd"]
+    state["raster_im"] = ax.imshow(
+        np.zeros((len(nums), tw.size)), aspect="auto", origin="upper",
+        cmap="jet", extent=[tw[0], tw[-1], nums[-1] + .5, nums[0] - .5])
+    ax.axvline(0, color="white", ls="--", lw=1.0, alpha=.8)
+    ax.set_xlabel("ms from the refined stamp", fontsize=9)
+    ax.set_ylabel("CSC number", fontsize=9)
+    ax.tick_params(labelsize=8)
 
-    # Left-inset far enough for the labels: a Slider writes its name OUTSIDE
-    # its own axes, so an axes starting at .08 puts the text off the sheet.
-    ax_c = fig.add_axes([.155, .105, .33, .022])
-    ax_s = fig.add_axes([.155, .065, .33, .022])
-    ax_k = fig.add_axes([.155, .025, .33, .022])
-    s_centre = Slider(ax_c, "band centre (CSC)", lo, hi,
-                      valinit=state["nums"][state["centre"]], valstep=1)
-    s_span = Slider(ax_s, "band width (contacts)", 4, min(40, n_ch),
-                    valinit=state["span"], valstep=1)
+    def on_select(eclick, erelease):
+        """A dragged box -> a contact range and a sample range."""
+        xs = sorted([eclick.xdata, erelease.xdata])
+        ys = sorted([eclick.ydata, erelease.ydata])
+        if None in xs or None in ys:
+            return
+        i0 = int(np.argmin(np.abs(tw - xs[0])))
+        i1 = int(np.argmin(np.abs(tw - xs[1])))
+        state["t0"], state["t1"] = i0, max(i0 + 1, i1 + 1)
+        c0 = int(np.clip(round(ys[0]) - nums[0], 0, len(nums) - 1))
+        c1 = int(np.clip(round(ys[1]) - nums[0], 0, len(nums) - 1))
+        if c1 - c0 < 2:                      # a CSD needs three contacts
+            c1 = min(len(nums) - 1, c0 + 2)
+        state["sel"] = list(range(c0, c1 + 1))
+        refresh()
+
+    state["selector"] = RectangleSelector(
+        ax, on_select, useblit=False, button=[1], interactive=True,
+        minspanx=0, minspany=0, spancoords="data",
+        props=dict(facecolor="none", edgecolor="white", lw=1.6, alpha=.9))
+
+    # --- controls -----------------------------------------------------
+    ax_k = fig.add_axes([.10, .055, .22, .022])
     s_k = Slider(ax_k, "classes", 2, 5, valinit=state["nclasses"], valstep=1)
-    for s in (s_centre, s_span, s_k):
-        s.label.set_fontsize(9)
-        s.valtext.set_fontsize(9)
+    s_k.label.set_fontsize(9)
+    s_k.valtext.set_fontsize(9)
 
-    ax_chk = fig.add_axes([.56, .025, .13, .105])
+    ax_chk = fig.add_axes([.40, .022, .13, .085])
     ax_chk.set_frame_on(False)
     chk = CheckButtons(ax_chk, ["60 Hz notch", "CSD screen"],
                        [state["notch"], state["screen"]])
     for t in chk.labels:
         t.set_fontsize(9)
 
-    ax_btn = fig.add_axes([.72, .055, .10, .045])
-    btn = Button(ax_btn, "save figure + csv")
-    btn.label.set_fontsize(9)
+    b_auto = Button(fig.add_axes([.565, .058, .085, .040]), "auto box")
+    b_one = Button(fig.add_axes([.565, .014, .085, .040]), "1 sample")
+    b_mean = Button(fig.add_axes([.665, .058, .085, .040]), "show average")
+    b_save = Button(fig.add_axes([.665, .014, .085, .040]), "save fig + csv")
+    for b in (b_auto, b_one, b_mean, b_save):
+        b.label.set_fontsize(8.5)
 
-    note = fig.text(.84, .078,
+    note = fig.text(.775, .058,
                     "mains %.0f µV rms of %.0f µV (%.0f%%)"
                     % (state["mains_uv"], state["wideband_uv"],
                        100 * state["mains_uv"] / max(state["wideband_uv"], 1e-9)),
                     fontsize=8.5, color=GREY, va="center")
+    hint = fig.text(.775, .022,
+                    "drag on the CSD raster to move the box", fontsize=8.5,
+                    color=GREY, va="center")
     state["note"] = note
 
+    def sync_box():
+        """Put the selector's own rectangle where the state says it is."""
+        sel, t0, t1 = state["sel"], state["t0"], state["t1"]
+        try:
+            state["selector"].extents = (tw[t0], tw[max(t0, t1 - 1)],
+                                         nums[sel[0]] - .5, nums[sel[-1]] + .5)
+        except Exception:
+            pass                       # an older matplotlib; the box is cosmetic
+
     def refresh(_=None):
-        state["centre"] = int(np.clip(int(s_centre.val) - lo, 0, n_ch - 1))
-        state["span"] = int(s_span.val)
         state["nclasses"] = int(s_k.val)
         state["res"] = recompute(state)
         draw(state, state["res"])
+        sync_box()
 
     def toggled(label):
         if label == "60 Hz notch":
@@ -396,11 +514,38 @@ def build(state):
             state["screen"] = not state["screen"]
         refresh()
 
+    def auto_box(_):
+        a = state["args"]
+        sur = state["sur"]["notch" if state["notch"] else "raw"]
+        sel = ds_pca.depth_band(sur, a, state["chans"], state["res"]["bad"])
+        state["sel"] = sel
+        state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
+        refresh()
+
+    def one_sample(_):
+        state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
+        refresh()
+
+    def show_mean(_):
+        state["picked"] = None
+        draw(state, state["res"])
+        sync_box()
+
+    def on_pick(event):
+        art = event.artist
+        rows = getattr(art, "_event_rows", None)
+        if rows is None or not len(event.ind):
+            return
+        state["picked"] = int(rows[event.ind[0]])
+        draw(state, state["res"])
+        sync_box()
+
     def save(_):
-        res = state["res"]
-        tag = "CSC%d-%d_%dcl_%s%s" % (
-            res["nums"][0], res["nums"][-1], res["k"],
-            "notch" if state["notch"] else "raw",
+        res, sel = state["res"], state["sel"]
+        tag = "CSC%d-%d_t%+d%+dms_%dcl_%s%s" % (
+            state["nums"][sel[0]], state["nums"][sel[-1]],
+            round(tw[state["t0"]]), round(tw[max(state["t0"], state["t1"] - 1)]),
+            res["k"], "notch" if state["notch"] else "raw",
             "_screen" if state["screen"] else "")
         png = os.path.join(_HERE, "ds_pca_%s.png" % tag)
         csvp = os.path.join(_HERE, "ds_pca_%s.csv" % tag)
@@ -417,13 +562,17 @@ def build(state):
         note.set_color("#1a7f37")
         state["fig"].canvas.draw_idle()
 
-    s_centre.on_changed(refresh)
-    s_span.on_changed(refresh)
     s_k.on_changed(refresh)
     chk.on_clicked(toggled)
-    btn.on_clicked(save)
-    state["_widgets"] = (s_centre, s_span, s_k, chk, btn)   # keep them alive
+    b_auto.on_clicked(auto_box)
+    b_one.on_clicked(one_sample)
+    b_mean.on_clicked(show_mean)
+    b_save.on_clicked(save)
+    fig.canvas.mpl_connect("pick_event", on_pick)
+    state["_widgets"] = (s_k, chk, b_auto, b_one, b_mean, b_save)
+    state["refresh"] = refresh
     refresh()
+    _ = hint
     return fig
 
 
@@ -438,9 +587,12 @@ def main():
     ap.add_argument("--refine", default="nearest",
                     choices=("nearest", "argmax"))
     ap.add_argument("--band", type=float, nargs=2, default=list(T_DS_FREQ),
-                    metavar=("LO", "HI"))
+                    metavar=("LO", "HI"),
+                    help="the band the raster and the refinement use")
     ap.add_argument("--window-ms", type=float, default=WINDOW_MS)
-    ap.add_argument("--surround-ms", type=float, default=SURROUND_MS)
+    ap.add_argument("--surround-ms", type=float, default=SURROUND_MS,
+                    help="how far either side of the stamp is available to "
+                         "the time box; widening it means re-reading")
     ap.add_argument("--channels", default="")
     ap.add_argument("--spacing", type=float, default=probes.CONTACT_PITCH_UM)
     ap.add_argument("--lfp-fs", type=float, default=T_LFP_FS)
@@ -452,8 +604,7 @@ def main():
     ap.add_argument("--no-vaknin", action="store_true")
     ap.add_argument("--h-power", type=int, default=1, choices=(1, 2))
     ap.add_argument("--csd-bad-x", type=float, default=4.0)
-    ap.add_argument("--csd-span", type=int, default=braces.DEPTH_BAND,
-                    help="the band width the sliders start at")
+    ap.add_argument("--csd-span", type=int, default=braces.DEPTH_BAND)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--refresh", action="store_true",
                     help="ignore the cache and read the recording again")
@@ -467,32 +618,33 @@ def main():
     if not os.path.exists(args.bank):
         sys.exit("no such bank: " + args.bank)
 
-    (rows, col_raw, col_notch, sur_raw, sur_notch, nums, bad, label,
-     mains_uv, wideband_uv) = load_everything(args)
-
-    # `chans` here is only ever used to look up channel numbers, which is all
-    # braces.repair and the screen need of it.
-    chans = [{"number": int(n)} for n in nums]
+    got = load_everything(args)
+    nums = got["nums"]
+    n_t = got["sur"]["raw"].shape[2]
     a = Opts(**vars(args))
-    state = {
-        "args": a, "rows": rows, "nums": nums, "chans": chans, "bad0": bad,
-        "col_raw": col_raw, "col_notch": col_notch,
-        "sur_raw": sur_raw, "sur_notch": sur_notch,
-        "session_label": label, "mains_uv": mains_uv,
-        "wideband_uv": wideband_uv,
-        "notch": True, "screen": True, "nclasses": 2,
-        "span": int(args.csd_span), "centre": len(nums) // 2,
-    }
 
-    # Open on the band the data suggests rather than the middle of the shank,
-    # so the first thing on screen is a real answer to argue with.
-    probe_args = Opts(**{**vars(args), "csd_span": int(args.csd_span)})
-    sel0 = ds_pca.depth_band(sur_notch, probe_args, chans, bad)
-    state["centre"] = int(np.mean(sel0))
+    # `chans` is only ever used to look up channel numbers, which is all
+    # braces.repair and the screen ask of it.
+    chans = [{"number": int(n)} for n in nums]
+    state = {
+        "args": a, "rows": got["rows"], "nums": nums, "chans": chans,
+        "bad0": got["bad"], "sur": got["sur"],
+        "session_label": got["session_label"], "mains_uv": got["mains_uv"],
+        "wideband_uv": got["wideband_uv"],
+        "notch": True, "screen": True, "nclasses": 2, "picked": None,
+        "gain": 4.0,
+        "tw": np.linspace(-args.surround_ms, args.surround_ms, n_t),
+        "centre_i": n_t // 2,
+    }
+    # Open on Toothy's own feature window -- one sample at the stamp -- over
+    # the depth band the data suggests, so the first thing on screen is the
+    # faithful answer and every widening of it is a visible departure.
+    state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
+    state["sel"] = ds_pca.depth_band(got["sur"]["notch"], a, chans, got["bad"])
 
     fig = build(state)
-    print("opening band: CSC%d-%d   (drag to move it)"
-          % (state["res"]["nums"][0], state["res"]["nums"][-1]))
+    print("opening box: CSC%d-%d, 1 sample at the stamp  (drag to change)"
+          % (nums[state["sel"][0]], nums[state["sel"][-1]]))
     if args.save:
         out = args.save if os.path.isabs(args.save) else \
             os.path.join(_HERE, args.save)

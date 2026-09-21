@@ -1056,8 +1056,27 @@ class Sync:
         because its timestamp was unreadable.
         """
         since = None if full else (self.cloud.state() or {}).get("last_push")
-        rows = self.collect(include_history=include_history)
+        # THE CURSOR IS TAKEN BEFORE THE READ, and that ordering is the
+        # whole correctness of an incremental push.
+        #
+        # It used to be taken after `collect`, which opens a window the
+        # length of the read -- thirty seconds on this store -- in which
+        # anything edited is lost for ever: the row is not in the batch,
+        # because collect had already passed it, and the cursor then moves
+        # past its timestamp, so no later push considers it either. It is
+        # not retried, because nothing knows it was missed.
+        #
+        # Measured, not theorised: renaming ten bank entries during a push
+        # sent five. The other five were written while collect was running
+        # and stayed behind the cursor through every subsequent cycle --
+        # the local side reported them as sent, and the database had the
+        # old names days later.
+        #
+        # Taken first, the same row is merely re-sent next time, which the
+        # database drops as a no-op. Sending something twice is free;
+        # sending it never is not.
         started = cloud.now()
+        rows = self.collect(include_history=include_history)
         sent, report = 0, {}
 
         # Rows pointing at a recording that no longer exists anywhere.
