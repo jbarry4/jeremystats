@@ -1,0 +1,2352 @@
+{
+ "id": "f89ea761f7eb",
+ "kind": "bug",
+ "title": "When in braces, clicking \"Back to project\" has the following errors listed in the screenshots",
+ "detail": "Jarvis debug report\ngenerated  2026-09-21 13:31:33\nmachine    BarryLab / Windows 11\npython     3.12.10\nmatlab     C:\\Program Files\\MATLAB\\R2025b\\bin\\matlab.EXE\nffmpeg     C:\\Users\\barry\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.1-full_build\\bin\\ffmpeg.EXE\nrepo       C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\nview       errors\nsession    PTEN m5 s2 2023-11-16\n\nUI ACTIONS, oldest first (52)\n------------------------------------------------------------------\n:11.471Z  link.scope                 {\"scope\": \"session\"}\n:18.927Z  session.open               {\"path\": \"Y:\\\\ProcessedPtenData\\\\M34_ptenblind\\\\M34s2jun7\\\\2024-06-07_11-40-57\", \"channels\": 64, \"fs\": 30000, \"duration_s\": 2712.8149333333336, \"resto\n:18.945Z  events.import              {\"file\": \"Events.nev\", \"n\": 2, \"source\": \"nev\", \"relative_to\": \"recording\", \"auto\": true}\n:21.168Z  braces.enter               {\"set\": \"brfa2fdd703c\", \"step\": \"opening\", \"path\": \"Y:\\\\ProcessedPtenData\\\\M5_Pten\\\\M5s2nov16\\\\2023-11-16_14-11-05\"}\n:21.575Z  session.open               {\"path\": \"Y:\\\\ProcessedPtenData\\\\M5_Pten\\\\M5s2nov16\\\\2023-11-16_14-11-05\", \"channels\": 64, \"fs\": 30000, \"duration_s\": 3011.6693333333333, \"restored\": \n:21.576Z  braces.enter               {\"set\": \"brfa2fdd703c\", \"step\": \"opened\", \"view\": \"xplore\"}\n:21.577Z  mode.change                {\"from\": null, \"to\": \"braces\", \"via\": \"\", \"since_gesture_ms\": 465}\n:21.635Z  events.import              {\"file\": \"Events.nev\", \"n\": 2, \"source\": \"nev\", \"relative_to\": \"recording\", \"auto\": true}\n:21.683Z  braces.enter               {\"set\": \"brfa2fdd703c\", \"step\": \"laid out\", \"view\": \"xplore\"}\n:21.685Z  window.change              {\"t0\": 0.1176, \"span\": 0.8, \"scope\": \"session\"}\n:21.687Z  braces.enter               {\"set\": \"brfa2fdd703c\", \"step\": \"ready\", \"n\": 719, \"view\": \"xplore\"}\n:21.001Z  window.change              {\"t0\": 86.4527, \"span\": 0.8, \"scope\": \"session\"}\n:26.900Z  window.change              {\"t0\": 105.9868, \"span\": 0.8, \"scope\": \"session\"}\n:30.208Z  window.change              {\"t0\": 124.2869, \"span\": 0.8, \"scope\": \"session\"}\n:34.005Z  window.change              {\"t0\": 140.4343, \"span\": 0.8, \"scope\": \"session\"}\n:38.281Z  window.change              {\"t0\": 428.5915, \"span\": 0.8, \"scope\": \"session\"}\n:47.605Z  window.change              {\"t0\": 478.1358, \"span\": 0.8, \"scope\": \"session\"}\n:50.666Z  window.change              {\"t0\": 568.705, \"span\": 0.8, \"scope\": \"session\"}\n:04.463Z  window.change              {\"t0\": 630.7498, \"span\": 0.8, \"scope\": \"session\"}\n:13.995Z  window.change              {\"t0\": 664.4312, \"span\": 0.8, \"scope\": \"session\"}\n:17.081Z  window.change              {\"t0\": 702.3756, \"span\": 0.8, \"scope\": \"session\"}\n:21.649Z  window.change              {\"t0\": 998.1189, \"span\": 0.8, \"scope\": \"session\"}\n:31.691Z  window.change              {\"t0\": 1018.3397, \"span\": 0.8, \"scope\": \"session\"}\n:36.148Z  window.change              {\"t0\": 1023.9763, \"span\": 0.8, \"scope\": \"session\"}\n:47.771Z  window.change              {\"t0\": 1051.2587, \"span\": 0.8, \"scope\": \"session\"}\n:55.790Z  window.change              {\"t0\": 1080.776, \"span\": 0.8, \"scope\": \"session\"}\n:59.404Z  window.change              {\"t0\": 1087.2754, \"span\": 0.8, \"scope\": \"session\"}\n:02.793Z  window.change              {\"t0\": 1149.2187, \"span\": 0.8, \"scope\": \"session\"}\n:15.530Z  window.change              {\"t0\": 1334.8994, \"span\": 0.8, \"scope\": \"session\"}\n:28.421Z  window.change              {\"t0\": 1350.0679, \"span\": 0.8, \"scope\": \"session\"}\n:54.167Z  window.change              {\"t0\": 1364.9762, \"span\": 0.8, \"scope\": \"session\"}\n:34.610Z  window.change              {\"t0\": 1482.7451, \"span\": 0.8, \"scope\": \"session\"}\n:41.484Z  window.change              {\"t0\": 1483.3849, \"span\": 0.8, \"scope\": \"session\"}\n:49.345Z  window.change              {\"t0\": 1493.8441, \"span\": 0.8, \"scope\": \"session\"}\n:54.337Z  window.change              {\"t0\": 1560.8269, \"span\": 0.8, \"scope\": \"session\"}\n:58.896Z  window.change              {\"t0\": 1646.7558, \"span\": 0.8, \"scope\": \"session\"}\n:03.012Z  window.change              {\"t0\": 1664.595, \"span\": 0.8, \"scope\": \"session\"}\n:10.955Z  window.change              {\"t0\": 1719.3054, \"span\": 0.8, \"scope\": \"session\"}\n:18.486Z  window.change              {\"t0\": 1759.2772, \"span\": 0.8, \"scope\": \"session\"}\n:28.248Z  window.change              {\"t0\": 2362.5772, \"span\": 0.8, \"scope\": \"session\"}\n:32.740Z  window.change              {\"t0\": 2387.1831, \"span\": 0.8, \"scope\": \"session\"}\n:42.291Z  window.change              {\"t0\": 2470.5263, \"span\": 0.8, \"scope\": \"session\"}\n:47.236Z  window.change              {\"t0\": 2534.1208, \"span\": 0.8, \"scope\": \"session\"}\n:55.021Z  window.change              {\"t0\": 2590.6465, \"span\": 0.8, \"scope\": \"session\"}\n:09.649Z  window.change              {\"t0\": 2622.018, \"span\": 0.8, \"scope\": \"session\"}\n:13.715Z  window.change              {\"t0\": 2716.0235, \"span\": 0.8, \"scope\": \"session\"}\n:18.582Z  window.change              {\"t0\": 2793.6384, \"span\": 0.8, \"scope\": \"session\"}\n:23.149Z  window.change              {\"t0\": 2813.671, \"span\": 0.8, \"scope\": \"session\"}\n:30.344Z  window.change              {\"t0\": 2828.4853, \"span\": 0.8, \"scope\": \"session\"}\n:35.647Z  window.change              {\"t0\": 2858.2568, \"span\": 0.8, \"scope\": \"session\"}\n:47.205Z  window.change              {\"t0\": 2939.8607, \"span\": 0.8, \"scope\": \"session\"}\n:54.647Z  window.change              {\"t0\": 3002.6292, \"span\": 0.8, \"scope\": \"session\"}\n\nBROWSER CONSOLE (1)\n------------------------------------------------------------------\n13:30:08  error braces.js:1849: TypeError: can't access property \"list\", view is null\n\nREQUESTS AS THE BROWSER SAW THEM (400)\n------------------------------------------------------------------\n13:30:39  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:39  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:40  GET  /api/cfc/job/1377f7509c2a            200        2 ms\n13:30:40  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:40  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:41  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:41  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:42  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:30:42  GET  /api/cfc/job/1377f7509c2a            200       12 ms\n13:30:42  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:30:43  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:43  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:44  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:44  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:44  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:45  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:45  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:46  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:46  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:47  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:47  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:47  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:48  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:48  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:30:49  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:30:49  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:49  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:50  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:50  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:51  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:51  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:51  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:52  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:30:52  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:53  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:53  GET  /api/cfc/job/1377f7509c2a            200       10 ms\n13:30:53  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:54  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:54  GET  /api/cfc/job/1377f7509c2a            200       14 ms\n13:30:55  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:30:55  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:55  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:56  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:56  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:57  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:57  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:57  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:30:58  GET  /api/cfc/job/1377f7509c2a            200       17 ms\n13:30:58  GET  /api/link                            200    25011 ms\n13:30:58  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:30:59  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:30:59  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:00  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:00  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:31:00  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:01  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:01  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:31:02  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:02  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:02  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:03  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:03  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:04  GET  /api/cfc/job/1377f7509c2a            200        9 ms\n13:31:04  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:04  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:05  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:05  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:06  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:06  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:06  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:07  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:07  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:08  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:08  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:08  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:09  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:09  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:10  GET  /api/cfc/job/1377f7509c2a            200        9 ms\n13:31:10  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:10  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:11  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:11  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:12  GET  /api/cfc/job/1377f7509c2a            200        2 ms\n13:31:12  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:31:12  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:13  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:13  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:14  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:14  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:15  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:15  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:15  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:16  GET  /api/cfc/job/1377f7509c2a            200       12 ms\n13:31:16  GET  /api/errors                          200       28 ms\n13:31:16  GET  /api/feedback                        200       40 ms\n13:31:16  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:16  GET  /api/errors/grouped                  200      441 ms\n13:31:16  GET  /api/debug/trace                     200        2 ms\n13:31:17  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:17  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:17  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:17  GET  /api/devices                         200     1166 ms\n13:31:18  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:18  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:19  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:19  GET  /api/cfc/job/1377f7509c2a            200        2 ms\n13:31:19  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:20  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:20  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:21  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:21  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:21  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:22  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:22  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:23  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:23  GET  /api/link                            200    25009 ms\n13:31:23  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:23  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:24  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:24  GET  /api/cfc/job/1377f7509c2a            200        8 ms\n13:31:25  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:25  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:26  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:26  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:26  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:27  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:27  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:28  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:28  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:28  GET  /api/cfc/job/1377f7509c2a            200        6 ms\n13:31:29  GET  /api/cfc/job/1377f7509c2a            200        7 ms\n13:31:29  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:30  GET  /api/cfc/job/1377f7509c2a            200        4 ms\n13:31:30  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:30  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:31  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n13:31:31  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:32  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:32  GET  /api/cfc/job/1377f7509c2a            200        5 ms\n13:31:32  GET  /api/cfc/job/1377f7509c2a            200        3 ms\n\nREQUESTS AS THE SERVER SAW THEM, newest first (200)\n------------------------------------------------------------------\n13:31:32  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:32  GET  /api/toolfeed/braces             200    240.3 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:32  GET  /api/toolfeed/bad                200    270.0 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:32  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:32  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:31  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:31  GET  /api/cfc/job/1377f7509c2a        200      1.3 ms  \n13:31:30  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:30  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:30  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:29  GET  /api/toolfeed/braces             200    251.2 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:29  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:29  GET  /api/toolfeed/bad                200    263.8 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:29  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:28  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:28  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:28  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:27  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:27  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:26  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:26  GET  /api/toolfeed/braces             200    247.9 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:26  GET  /api/toolfeed/bad                200    244.5 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:26  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:26  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:25  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:25  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:24  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:24  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:23  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:23  GET  /api/toolfeed/braces             200    245.5 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:23  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:23  GET  /api/toolfeed/bad                200    273.9 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:23  GET  /api/cfc/job/1377f7509c2a        200      0.6 ms  \n13:31:22  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:22  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:21  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:21  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:21  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:20  GET  /api/toolfeed/braces             200    267.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:20  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:20  GET  /api/toolfeed/bad                200    262.4 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:20  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:19  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:19  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:19  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:18  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:18  GET  /api/cfc/job/1377f7509c2a        200      0.4 ms  \n13:31:17  GET  /api/devices                     200   1161.9 ms  \n13:31:17  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:17  GET  /api/toolfeed/braces             200    227.3 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:17  GET  /api/toolfeed/bad                200    248.6 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:17  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:17  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:16  GET  /api/errors/grouped              200    436.9 ms  limit=600\n13:31:16  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:16  GET  /api/feedback                    200     31.6 ms  \n13:31:16  GET  /api/errors                      200     21.2 ms  limit=300\n13:31:16  GET  /api/cfc/job/1377f7509c2a        200      0.6 ms  \n13:31:15  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:15  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:14  GET  /api/cfc/job/1377f7509c2a        200      0.7 ms  \n13:31:14  GET  /api/toolfeed/braces             200    291.5 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:14  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:14  GET  /api/toolfeed/bad                200    267.6 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:14  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:13  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:13  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:12  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:12  GET  /api/cfc/job/1377f7509c2a        200      0.7 ms  \n13:31:12  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:11  GET  /api/toolfeed/braces             200    387.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:11  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:11  GET  /api/toolfeed/bad                200    247.1 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:11  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:10  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:10  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:10  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:09  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:09  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:08  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:08  GET  /api/toolfeed/braces             200    271.8 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:08  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:31:08  GET  /api/toolfeed/bad                200    282.4 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:08  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:31:07  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:07  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:06  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:06  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:06  GET  /api/cfc/job/1377f7509c2a        200      0.4 ms  \n13:31:05  GET  /api/toolfeed/braces             200    251.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:05  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:05  GET  /api/toolfeed/bad                200    245.7 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:05  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:04  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:04  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:04  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:03  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:03  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:02  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:02  GET  /api/toolfeed/braces             200    269.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:31:02  GET  /api/toolfeed/bad                200    271.4 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:31:02  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:02  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:01  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:01  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:00  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:31:00  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:31:00  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:59  GET  /api/toolfeed/braces             200    248.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:59  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:59  GET  /api/toolfeed/bad                200    250.4 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:59  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:58  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:58  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:57  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:57  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:57  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:56  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:56  GET  /api/toolfeed/braces             200    220.9 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:56  GET  /api/toolfeed/bad                200    271.3 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:56  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:55  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:55  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:55  GET  /api/cfc/job/1377f7509c2a        200      0.6 ms  \n13:30:54  GET  /api/cfc/job/1377f7509c2a        200      0.6 ms  \n13:30:54  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:53  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:53  GET  /api/toolfeed/braces             200    323.4 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:53  GET  /api/toolfeed/bad                200    423.1 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:53  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:53  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:52  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:52  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:51  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:51  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:51  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:50  GET  /api/toolfeed/braces             200    312.3 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:50  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:50  GET  /api/toolfeed/bad                200    260.2 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:50  GET  /api/cfc/job/1377f7509c2a        200      0.4 ms  \n13:30:49  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:49  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:49  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:48  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:48  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:47  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:47  GET  /api/toolfeed/braces             200    237.9 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:47  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:47  GET  /api/toolfeed/bad                200    251.0 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:47  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:46  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:46  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:45  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:45  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:44  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:44  GET  /api/toolfeed/braces             200    280.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:44  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:44  GET  /api/toolfeed/bad                200    276.7 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:44  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:43  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:43  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:42  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:42  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:42  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:41  GET  /api/toolfeed/braces             200    252.2 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:41  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:41  GET  /api/toolfeed/bad                200    233.1 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:41  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:40  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:40  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:40  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:39  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:39  GET  /api/cfc/job/1377f7509c2a        200      0.5 ms  \n13:30:38  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:30:38  GET  /api/toolfeed/braces             200    267.0 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:38  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:38  GET  /api/toolfeed/bad                200    289.9 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:38  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:37  GET  /api/cfc/job/1377f7509c2a        200      0.5 ms  \n13:30:37  GET  /api/cfc/job/1377f7509c2a        200      0.2 ms  \n13:30:36  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:36  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:30:36  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:35  GET  /api/toolfeed/braces             200    261.9 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:35  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:35  GET  /api/toolfeed/bad                200    262.6 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:35  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:34  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:34  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:34  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:30:33  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:33  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:32  GET  /api/cfc/job/1377f7509c2a        200      0.3 ms  \n13:30:32  GET  /api/toolfeed/braces             200    278.5 ms  limit=60&since=2026-09-21T17%3A23%3A56.000Z\n13:30:32  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:32  GET  /api/toolfeed/bad                200    278.1 ms  limit=60&since=2026-09-21T17%3A23%3A25.008Z\n13:30:31  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:31  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n13:30:31  GET  /api/cfc/job/1377f7509c2a        200      0.6 ms  \n13:30:30  GET  /api/cfc/job/1377f7509c2a        200      0.1 ms  \n\nLAST 12 LOGGED ERRORS\n------------------------------------------------------------------\n[2026-09-21T14:17:14+00:00] ui/mode.bounce: The mode changed to strata and back to none in 2500ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:16:00+00:00] incisor/estimate: could not segment\nTraceback (most recent call last):\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 2645, in api_incisor_estimate\n    \"probe\": probe_id,\n          ^^^^^^^^^^^^\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 2633, in _incisor_report\n    \"even_only\": bool(sess.get(\"even_only\")),\nValueError: could not segment\n\n[2026-09-21T14:15:22+00:00] ui/mode.bounce: The mode changed to strata and back to none in 2490ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:15:20+00:00] ui/mode.bounce: The mode changed to none and back to strata in 320ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:15:19+00:00] ui/mode.bounce: The mode changed to strata and back to none in 2860ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:09:40+00:00] ui/mode.bounce: The mode changed to none and back to strata in 1230ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:09:40+00:00] ui/mode.bounce: The mode changed to strata and back to none in 2000ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:09:13+00:00] ui/mode.bounce: The mode changed to strata and back to none in 1200ms with no click or keypress. Nothing in the code accounts for this; both stacks are below.\n[2026-09-21T14:08:30+00:00] results/folders/rename: There is no folder called 'HarnessFolder'.\nTraceback (most recent call last):\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 10100, in api_results_folders_rename\n    if folder is not None:\n              ^^^^^^^^^^^^\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\results.py\", line 699, in rename_folder\n    raise ValueError(\"There is no folder called %r.\" % src)\nValueError: There is no folder called 'HarnessFolder'.\n\n[2026-09-21T14:08:30+00:00] results/folders/rename: There is no folder called 'HarnessFolder/Panels'.\nTraceback (most recent call last):\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 10100, in api_results_folders_rename\n    if folder is not None:\n              ^^^^^^^^^^^^\n  File \"C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\backend\\results.py\", line 699, in rename_folder\n    raise ValueError(\"There is no folder called %r.\" % src)\nValueError: There is no folder called 'HarnessFolder/Panels'.\n\n[2026-09-21T14:04:59+00:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-21T13:57:11+00:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m5 s2 2023-11-16",
+  "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 3002.629228,
+   "span": 0.8
+  },
+  "screen": "1920x918",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0"
+ },
+ "wants": "",
+ "state": "open",
+ "at": "2026-09-21T13:32:04-0400",
+ "by": "Rain Younger",
+ "machine": "BARRYLAB",
+ "shard": "barrylab-d8e8",
+ "screenshots": [
+  {
+   "file": "f89ea761f7eb-1.png",
+   "bytes": 5334,
+   "caption": ""
+  },
+  {
+   "file": "f89ea761f7eb-2.png",
+   "bytes": 12206,
+   "caption": ""
+  }
+ ],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "d8d892c090",
+    "at": "2026-09-21T17:29:54.647Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 3002.6292,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "750a8c748d",
+    "at": "2026-09-21T17:29:47.205Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2939.8607,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "0d109f64ee",
+    "at": "2026-09-21T17:29:35.647Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2858.2568,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7d3b8f8ee4",
+    "at": "2026-09-21T17:29:30.344Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2828.4853,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "bbcbe1d0da",
+    "at": "2026-09-21T17:29:23.149Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2813.671,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c66a1f7a55",
+    "at": "2026-09-21T17:29:18.582Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2793.6384,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "254b006e71",
+    "at": "2026-09-21T17:29:13.715Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2716.0235,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "089109ef11",
+    "at": "2026-09-21T17:29:09.649Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2622.018,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "fd1be871ac",
+    "at": "2026-09-21T17:28:55.021Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2590.6465,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "807b1df953",
+    "at": "2026-09-21T17:28:47.236Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2534.1208,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ab5e8a7add",
+    "at": "2026-09-21T17:28:42.291Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2470.5263,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "2041439531",
+    "at": "2026-09-21T17:28:32.740Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2387.1831,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "2df06692a2",
+    "at": "2026-09-21T17:28:28.248Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 2362.5772,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "1a29b40f24",
+    "at": "2026-09-21T17:28:18.486Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1759.2772,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "63b7b9f108",
+    "at": "2026-09-21T17:28:10.955Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1719.3054,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "960cdcff57",
+    "at": "2026-09-21T17:28:03.012Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1664.595,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "6c2f92c9a1",
+    "at": "2026-09-21T17:27:58.896Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1646.7558,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c3093daa06",
+    "at": "2026-09-21T17:27:54.337Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1560.8269,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "b3787d5a22",
+    "at": "2026-09-21T17:27:49.345Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1493.8441,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "651ec10fb9",
+    "at": "2026-09-21T17:27:41.484Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1483.3849,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "6132fa1787",
+    "at": "2026-09-21T17:27:34.610Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1482.7451,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ef3ad0d3c9",
+    "at": "2026-09-21T17:26:54.167Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1364.9762,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "04e794bea3",
+    "at": "2026-09-21T17:26:28.421Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1350.0679,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "11464d3399",
+    "at": "2026-09-21T17:26:15.530Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1334.8994,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "0d73c44311",
+    "at": "2026-09-21T17:26:02.793Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1149.2187,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "a5943ab218",
+    "at": "2026-09-21T17:25:59.404Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1087.2754,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "59f2cf93f8",
+    "at": "2026-09-21T17:25:55.790Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1080.776,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c5b3da80f9",
+    "at": "2026-09-21T17:25:47.771Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1051.2587,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ae76277733",
+    "at": "2026-09-21T17:25:36.148Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1023.9763,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "4cf39277b7",
+    "at": "2026-09-21T17:25:31.691Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1018.3397,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "a8b3e6c0ca",
+    "at": "2026-09-21T17:25:21.649Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 998.1189,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "fccdc76380",
+    "at": "2026-09-21T17:25:17.081Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 702.3756,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7f7fe6ab56",
+    "at": "2026-09-21T17:25:13.995Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 664.4312,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "26254d7513",
+    "at": "2026-09-21T17:25:04.463Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 630.7498,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "cc2682eefd",
+    "at": "2026-09-21T17:24:50.666Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 568.705,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "990603273b",
+    "at": "2026-09-21T17:24:47.605Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 478.1358,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "37b3acb829",
+    "at": "2026-09-21T17:24:38.281Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 428.5915,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "90c6807662",
+    "at": "2026-09-21T17:24:34.005Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 140.4343,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "f42a58b776",
+    "at": "2026-09-21T17:24:30.208Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 124.2869,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "93ef8ea905",
+    "at": "2026-09-21T17:24:26.900Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 105.9868,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "45936c9d18",
+    "at": "2026-09-21T17:24:21.001Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 86.4527,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "0846377316",
+    "at": "2026-09-21T17:23:31.891Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "2d90c51cf2",
+    "at": "2026-09-21T17:23:22.222Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 3011.6693333333333,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ca2a08ea4d",
+    "at": "2026-09-21T17:23:21.818Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "e053c6a64c",
+    "at": "2026-09-21T17:23:21.687Z",
+    "action": "braces.enter",
+    "detail": {
+     "set": "brfa2fdd703c",
+     "step": "ready",
+     "n": 719,
+     "view": "xplore"
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "83e3fc54b4",
+    "at": "2026-09-21T17:23:21.685Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 0.1176,
+     "span": 0.8,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "02a5345c18",
+    "at": "2026-09-21T17:23:21.683Z",
+    "action": "braces.enter",
+    "detail": {
+     "set": "brfa2fdd703c",
+     "step": "laid out",
+     "view": "xplore"
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "d25d1e139d",
+    "at": "2026-09-21T17:23:21.635Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "052608c3f9",
+    "at": "2026-09-21T17:23:21.577Z",
+    "action": "mode.change",
+    "detail": {
+     "from": null,
+     "to": "braces",
+     "via": "",
+     "since_gesture_ms": 465
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "8707e7347c",
+    "at": "2026-09-21T17:23:21.576Z",
+    "action": "braces.enter",
+    "detail": {
+     "set": "brfa2fdd703c",
+     "step": "opened",
+     "view": "xplore"
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "6d443022e6",
+    "at": "2026-09-21T17:23:21.575Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 3011.6693333333333,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m005_s002_2023-11-16_14-11-05",
+     "loose_key": "m005_s002",
+     "label": "PTEN m5 s2 2023-11-16",
+     "mouse": 5,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "81ea551a00",
+    "at": "2026-09-21T17:23:21.168Z",
+    "action": "braces.enter",
+    "detail": {
+     "set": "brfa2fdd703c",
+     "step": "opening",
+     "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s2nov16\\2023-11-16_14-11-05"
+    },
+    "session": {},
+    "view": "toolkit",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "003fa38cb7",
+    "at": "2026-09-21T17:22:18.945Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m034_s002_2024-06-07_11-40-57",
+     "loose_key": "m034_s002",
+     "label": "PTEN m34 s2 2024-06-07",
+     "mouse": 34,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57"
+    },
+    "view": "toolkit",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "4518628fbb",
+    "at": "2026-09-21T17:22:18.927Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 2712.8149333333336,
+     "restored": [
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m034_s002_2024-06-07_11-40-57",
+     "loose_key": "m034_s002",
+     "label": "PTEN m34 s2 2024-06-07",
+     "mouse": 34,
+     "session": 2,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\M34s2jun7\\2024-06-07_11-40-57"
+    },
+    "view": "toolkit",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "405e6280b8",
+    "at": "2026-09-21T17:22:11.471Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ffe7d07824",
+    "at": "2026-09-21T13:31:33-04:00",
+    "action": "debug.report",
+    "detail": {
+     "note": false,
+     "requests": 400,
+     "actions": 52,
+     "console": 1
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7e945b53fe",
+    "at": "2026-09-21T13:30:08-04:00",
+    "action": "client.error",
+    "detail": {
+     "where": "braces.js:1849",
+     "message": "TypeError: can't access property \"list\", view is null",
+     "detail": "exitView@http://127.0.0.1:8733/js/braces.js:1849:9\n"
+    },
+    "session": {},
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "6fa29067e6",
+    "at": "2026-09-21T13:25:56-04:00",
+    "action": "braces.run",
+    "detail": {
+     "entry": "72f3eed667cd",
+     "n_channels": 64,
+     "n": 494,
+     "from_version": "00a6a7d17f33",
+     "window_ms": 100.0
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "fef8a044ee",
+    "at": "2026-09-21T13:23:53-04:00",
+    "action": "braces.run",
+    "detail": {
+     "entry": "acff04747da7",
+     "n_channels": 64,
+     "n": 9,
+     "from_version": "60f26ca5e2de",
+     "window_ms": 100.0
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "95de84b934",
+    "at": "2026-09-21T13:22:47-04:00",
+    "action": "braces.run",
+    "detail": {
+     "entry": "340307eba315",
+     "n_channels": 64,
+     "n": 4,
+     "from_version": "a1719f9c6e2b",
+     "window_ms": 100.0
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   }
+  ],
+  "errors": [],
+  "requests": [
+   {
+    "at": "13:31:27",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7046
+   },
+   {
+    "at": "13:31:28",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7047
+   },
+   {
+    "at": "13:31:28",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7048
+   },
+   {
+    "at": "13:31:28",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7049
+   },
+   {
+    "at": "13:31:29",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7050
+   },
+   {
+    "at": "13:31:29",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 263.8,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7051
+   },
+   {
+    "at": "13:31:29",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7052
+   },
+   {
+    "at": "13:31:29",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 251.2,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7053
+   },
+   {
+    "at": "13:31:30",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7054
+   },
+   {
+    "at": "13:31:30",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7055
+   },
+   {
+    "at": "13:31:30",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7056
+   },
+   {
+    "at": "13:31:31",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 1.3,
+    "n": 7057
+   },
+   {
+    "at": "13:31:31",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7058
+   },
+   {
+    "at": "13:31:32",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7059
+   },
+   {
+    "at": "13:31:32",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7060
+   },
+   {
+    "at": "13:31:32",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 270.0,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7061
+   },
+   {
+    "at": "13:31:32",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 240.3,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7062
+   },
+   {
+    "at": "13:31:32",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7063
+   },
+   {
+    "at": "13:31:33",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7064
+   },
+   {
+    "at": "13:31:33",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7065
+   },
+   {
+    "at": "13:31:34",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7066
+   },
+   {
+    "at": "13:31:34",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7067
+   },
+   {
+    "at": "13:31:34",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7068
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7069
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 253.5,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7070
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7071
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 255.0,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7072
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/feedback/shot/fefda6bef2a7-1.png",
+    "status": 200,
+    "ms": 4.2,
+    "n": 7073
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/feedback/shot/fefda6bef2a7-2.png",
+    "status": 200,
+    "ms": 6.2,
+    "n": 7074
+   },
+   {
+    "at": "13:31:35",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 22.1,
+    "n": 7075
+   },
+   {
+    "at": "13:31:36",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7076
+   },
+   {
+    "at": "13:31:36",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7077
+   },
+   {
+    "at": "13:31:36",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7078
+   },
+   {
+    "at": "13:31:37",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7079
+   },
+   {
+    "at": "13:31:37",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7080
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7081
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7082
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 363.0,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7083
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 5517.7,
+    "n": 7084
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 274.6,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7085
+   },
+   {
+    "at": "13:31:38",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7086
+   },
+   {
+    "at": "13:31:39",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7087
+   },
+   {
+    "at": "13:31:39",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7088
+   },
+   {
+    "at": "13:31:40",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7089
+   },
+   {
+    "at": "13:31:40",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7090
+   },
+   {
+    "at": "13:31:41",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7091
+   },
+   {
+    "at": "13:31:41",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7092
+   },
+   {
+    "at": "13:31:41",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 278.0,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7093
+   },
+   {
+    "at": "13:31:41",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 254.9,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7094
+   },
+   {
+    "at": "13:31:41",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7095
+   },
+   {
+    "at": "13:31:42",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7096
+   },
+   {
+    "at": "13:31:42",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7097
+   },
+   {
+    "at": "13:31:43",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7098
+   },
+   {
+    "at": "13:31:43",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7099
+   },
+   {
+    "at": "13:31:43",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7100
+   },
+   {
+    "at": "13:31:44",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7101
+   },
+   {
+    "at": "13:31:44",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 319.8,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7102
+   },
+   {
+    "at": "13:31:44",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7103
+   },
+   {
+    "at": "13:31:44",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 229.3,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7104
+   },
+   {
+    "at": "13:31:45",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7105
+   },
+   {
+    "at": "13:31:45",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7106
+   },
+   {
+    "at": "13:31:45",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.3,
+    "n": 7107
+   },
+   {
+    "at": "13:31:46",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7108
+   },
+   {
+    "at": "13:31:46",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7109
+   },
+   {
+    "at": "13:31:47",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.3,
+    "n": 7110
+   },
+   {
+    "at": "13:31:47",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 311.1,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7111
+   },
+   {
+    "at": "13:31:47",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7112
+   },
+   {
+    "at": "13:31:47",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 270.2,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7113
+   },
+   {
+    "at": "13:31:48",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7114
+   },
+   {
+    "at": "13:31:48",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7115
+   },
+   {
+    "at": "13:31:48",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7116
+   },
+   {
+    "at": "13:31:49",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.4,
+    "n": 7117
+   },
+   {
+    "at": "13:31:49",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7118
+   },
+   {
+    "at": "13:31:50",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7119
+   },
+   {
+    "at": "13:31:50",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.4,
+    "n": 7120
+   },
+   {
+    "at": "13:31:50",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 287.4,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7121
+   },
+   {
+    "at": "13:31:50",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7122
+   },
+   {
+    "at": "13:31:50",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 326.9,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7123
+   },
+   {
+    "at": "13:31:51",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7124
+   },
+   {
+    "at": "13:31:51",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7125
+   },
+   {
+    "at": "13:31:52",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7126
+   },
+   {
+    "at": "13:31:52",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7127
+   },
+   {
+    "at": "13:31:52",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7128
+   },
+   {
+    "at": "13:31:53",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7129
+   },
+   {
+    "at": "13:31:53",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 281.6,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7130
+   },
+   {
+    "at": "13:31:53",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7131
+   },
+   {
+    "at": "13:31:53",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 250.6,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7132
+   },
+   {
+    "at": "13:31:54",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7133
+   },
+   {
+    "at": "13:31:54",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7134
+   },
+   {
+    "at": "13:31:54",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.4,
+    "n": 7135
+   },
+   {
+    "at": "13:31:55",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7136
+   },
+   {
+    "at": "13:31:55",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7137
+   },
+   {
+    "at": "13:31:56",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7138
+   },
+   {
+    "at": "13:31:56",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 233.3,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7139
+   },
+   {
+    "at": "13:31:56",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7140
+   },
+   {
+    "at": "13:31:56",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 244.1,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7141
+   },
+   {
+    "at": "13:31:56",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7142
+   },
+   {
+    "at": "13:31:57",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7143
+   },
+   {
+    "at": "13:31:57",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7144
+   },
+   {
+    "at": "13:31:58",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7145
+   },
+   {
+    "at": "13:31:58",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7146
+   },
+   {
+    "at": "13:31:58",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7147
+   },
+   {
+    "at": "13:31:59",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7148
+   },
+   {
+    "at": "13:31:59",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 237.9,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7149
+   },
+   {
+    "at": "13:31:59",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7150
+   },
+   {
+    "at": "13:31:59",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 303.4,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7151
+   },
+   {
+    "at": "13:32:00",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7152
+   },
+   {
+    "at": "13:32:00",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7153
+   },
+   {
+    "at": "13:32:00",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7154
+   },
+   {
+    "at": "13:32:01",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.3,
+    "n": 7155
+   },
+   {
+    "at": "13:32:01",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7156
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7157
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/toolfeed/bad",
+    "status": 200,
+    "ms": 363.1,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A25.008Z",
+    "n": 7158
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7159
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/toolfeed/braces",
+    "status": 200,
+    "ms": 335.1,
+    "query": "limit=60&since=2026-09-21T17%3A23%3A56.000Z",
+    "n": 7160
+   },
+   {
+    "at": "13:32:02",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7161
+   },
+   {
+    "at": "13:32:03",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7162
+   },
+   {
+    "at": "13:32:03",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7163
+   },
+   {
+    "at": "13:32:04",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7164
+   },
+   {
+    "at": "13:32:04",
+    "method": "GET",
+    "path": "/api/cfc/job/1377f7509c2a",
+    "status": 200,
+    "ms": 0.1,
+    "n": 7165
+   }
+  ]
+ },
+ "notes": []
+}
