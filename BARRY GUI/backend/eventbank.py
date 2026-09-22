@@ -430,6 +430,20 @@ class EventBank:
             "curation_label": entry.get("curation_label"),
             "gid": entry.get("gid"),
         }
+        # Whether Braces has put these stamps on their peaks.
+        #
+        # Carried from the entry that was already here when the caller does
+        # not say otherwise. It is a fact about the STAMPS, and every other
+        # way of banking over an entry -- re-curating it, retyping it --
+        # changes labels rather than times. Dropped on each of those, an
+        # aligned set came back looking as though step three had never run,
+        # and the only way to find out otherwise was to read the version
+        # notes. A caller that really has moved the stamps passes its own.
+        keep_aligned = entry.get("aligned")
+        if keep_aligned is None and prior:
+            keep_aligned = prior.get("aligned")
+        if keep_aligned is not None:
+            rec["aligned"] = keep_aligned
 
         # Versions. Each bank of the same entry is a numbered version
         # holding what was in it and a note, so "how has the labelling

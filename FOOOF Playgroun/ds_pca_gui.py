@@ -489,8 +489,17 @@ def recompute(state):
                 if mu[i] < mu[i - 1] and mu[i] < mu[i + 1] and mu[i] < 0]
         decide.append(dict(c=c, n=int(rr.size), row=j, csc=ns[j],
                            value=float(mu[j]), rule=rule,
+                           # `or []` because the tort rule's `extra` is
+                           # None whenever the main source is the topmost
+                           # contact of the box -- there is no contact above
+                           # it, so `tort_main_sink` has no source to anchor
+                           # to. A narrow box near the top of the shank is an
+                           # ordinary drag, and without this it raised
+                           # TypeError inside the selector callback, which
+                           # reads as the window having frozen.
                            peaks=(peaks if isinstance(peaks, int) else
-                                  [(ns[r], v, pr) for r, v, pr in peaks]),
+                                  [(ns[r], v, pr) for r, v, pr in
+                                   (peaks or [])]),
                            sink=ns[int(np.argmin(mu))],
                            lows=[ns[i] for i in lows], mu=mu))
 

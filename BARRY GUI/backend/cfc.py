@@ -561,6 +561,21 @@ STAGES = [
     # not the same unit, and `_learn` cannot tell them apart.
     ("ds depth", "channels"),
     ("ds windows", "windows"),
+    # X-ray, which counts windows as Braces does but reads a great deal
+    # more of each one -- every channel over the surround, not the
+    # chosen band over the search window. Its own name for the reason
+    # given above: `_learn` divides seconds by units without knowing
+    # what a unit is, so two tools sharing a name teach each other the
+    # wrong rate.
+    ("ds pca read", "windows"),
+    # X-ray in bulk, where a unit is a whole recording rather than a
+    # window. Its own name for the reason above, and the trap is worse
+    # here than elsewhere: the batch declares the stage with a count of
+    # SETS, and each set's own read would then call `begin` and reset
+    # `of` to its window count -- so the bar would jump to a different
+    # scale per member. The batch ticks this one and leaves the inner
+    # reads to the member rows.
+    ("ds pca sets", "recordings"),
     ("ds read", "seconds"),
     ("ds detect", "channels"),
     ("slow bank", "bands"),

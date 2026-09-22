@@ -15,6 +15,246 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.22.5 - The pictures get the screen
+
+### Changed
+
+- **Two rows, not three columns.** Three equal columns gave each graph a
+  third of the width and left the bottom two thirds of the middle one empty:
+  on a wide monitor the rasters were letterboxes. The graphs now run across
+  the top at full height, and everything you set runs along the bottom with
+  the PCA beside it. The scatter belongs down there because it is the only
+  picture without a depth axis — nothing lines up with it and no guide
+  crosses it.
+
+- **A guide is a mark at a depth, not a line over the data.** Four solid
+  rules edge to edge is four opaque bars across the thing you are reading —
+  and the sink you are placing them against is exactly what they cover. Each
+  one is now a short tack at either edge, which is also what you take hold
+  of, with a faint dotted hairline between them so the eye can carry the
+  depth across a wide plot. Dragging one makes it solid for as long as the
+  drag lasts. Labels step down out of each other's way rather than printing
+  on top.
+
+- **Guides have their own colours.** Handed out from a palette that avoids
+  the DS1 green and DS2 purple — a guide in either reads as a finding about
+  one of them rather than the landmark both are measured against — and each
+  row's chip is the picker. The first version gave every guide one
+  near-black, which was invisible on the dark theme and made two of them
+  indistinguishable on every theme; guides written then are migrated on
+  read.
+
+### Fixed
+
+- **A commit that changed nothing announced a version anyway.**
+  `EventBank.add` mints a version only when something moved, which is right
+  — pressing Commit twice on the same answer should not put two identical
+  versions in the history — but the report claimed one either way. It now
+  says so plainly, and names the version that still holds those types.
+
+- **The preview and the confirmation named different versions.** One showed
+  the lineage name and the other the stored number, which differ as soon as
+  a number has been skipped — this bank holds an entry whose versions run
+  0,1,3,4,5. Both read the same function now.
+
+- **Committing three classes wrote a label nothing knew.** The panel offers
+  up to five and the ordering generalises, but the vocabulary stopped at
+  `ds2` — so a `ds3` was not counted by `_n_good` and the set read as though
+  two of its spikes had gone. `ds1`–`ds5` now, in the class colours.
+
+---
+
+## 2026.09.22.4 - Guides, and a panel that says what it is asking
+
+### Added
+
+- **Guides — named depth lines, drawn on every panel that has a depth.**
+  A sink at CSC30 means nothing until somebody has said where the hilus is,
+  and the whole job in X-ray is comparing one depth against another across
+  five pictures at once. So a guide is a line at one contact with a name on
+  it, and it is drawn on the voltage traces, the CSD raster, the
+  class-average profiles and the class-mean rasters alike.
+
+  **Drag it on any of them and it moves on all of them**, because there is
+  one of it. Each panel records how it maps a contact to a y as it draws,
+  and the drag inverts whichever mapping the pointer is over — so a line can
+  be taken hold of on whichever picture it is most legible against, which on
+  a jet colormap is not always the same one.
+
+  They belong to the **recording**, not to the panel, which is what lets
+  **Xplorefinder draw the same lines**: they are published through
+  `setChannelLines`, the mechanism Incisor already uses, so moving one there
+  writes back here and the next open has it in its new place.
+
+- **They are not StrataScope layers, and the difference is the point.**
+  StrataScope answers "which anatomical layer is each contact in" and stores
+  a region per contact — a claim about the whole shank, made once. A guide
+  is the other thing people do with a depth axis: put a line down, call it
+  something, and check every panel against it. It moves while somebody is
+  deciding. Forcing that through a per-contact region assignment would mean
+  relabelling four contacts to move a line by one. A recording can carry
+  both; neither is derived from the other, and StrataScope's boundaries are
+  now a checkbox rather than always drawn — once there are real guides,
+  sixty-four contacts' worth of region changes underneath them is more line
+  than data.
+
+### Changed
+
+- **The panel says what it is asking.** A status strip over the three
+  columns carries the box, the feature count, the class count, the rule, the
+  filtering and how many events landed in each class. All of it was settable
+  in the left column and none of it was readable there without
+  reconstructing the question from its parts — and a screenshot of the panel
+  now has the question in it, which is most of why anybody screenshots one.
+
+- **Less documentation on screen, more of it one hover away.** The panel
+  explained itself in a paragraph at the top and a two-line sentence under
+  each of four ordering rules. In a 230px column that is most of the column,
+  and none of it is the state. The sentences are `title` attributes now, and
+  the rule in force is the only one that still explains itself inline.
+
+- **Checkup is "clean them" rather than "call them"** in The Dentist's rail.
+
+---
+
+## 2026.09.22.3 - X-ray, and the fourth step of The Dentist
+
+### Added
+
+- **X-ray — telling DS1 from DS2.** Incisor finds the dentate spikes,
+  Checkup says which are real, Braces puts each stamp on its own peak, and
+  the bundle stopped there. This is the step that says which KIND each one
+  is, and it is the port of the workbench the method was developed in
+  (`FOOOF Playgroun/ds_pca_gui.py`, a matplotlib program that read a
+  hand-downloaded CSV and kept its state in sidecar JSON beside it).
+
+  The features are the CSD over a block of **depth and time** around each
+  stamp. Toothy uses one instant — its features are a column, and the only
+  choice anybody makes is which contacts — so pulled to one sample at the
+  stamp this is Toothy exactly, and widening the box is a visible departure
+  that can tell a biphasic event from a monophasic one of the same
+  amplitude. Two components of that, clustered, are DS1 and DS2.
+
+  The panel is three columns: the controls, two panes showing the voltage
+  and the CSD at 5–100 Hz with the mains out, and the answer. The box is
+  dragged on the raster itself and everything downstream of it is
+  milliseconds, so it is live rather than behind a recompute button.
+
+- **Four rules for which class is DS1, and a panel that shows its working.**
+  tortlab's CSDbC (the main sink above the main source), Toothy's plain
+  argmin, the most prominent source peak, and — new here — **anatomy**,
+  which measures each class's sink against the hilus StrataScope has
+  labelled. The first three all really ask "which class is shallower", which
+  is a question about the probe rather than about the brain; the fourth
+  survives a shank inserted the other way up. A rule stated in three words
+  reads as a fact about anatomy and is not one, so the panel names the
+  contact each rule landed on and says when a profile has more than one
+  sink.
+
+- **DS1 and DS2 as labels, not as a field.** `EventBank.add` whitelists what
+  an event is, and `SNAP_FIELDS` is narrower still, so a `ds_type` of its
+  own would have been dropped on the way in and would not have survived a
+  version restore even if it were not. As two more `good` labels in the DS
+  vocabulary they inherit everything already built: `by_label` counts them,
+  the per-version snapshot carries them, the bank's CSV export has a
+  `label_name` column, and Xplorefinder colours them apart with nothing new
+  written. The IED vocabulary already had two good labels, so this is the
+  shape rather than an invention. Appended, never replacing `spike`, and
+  with no keyboard keys — this is a computed call, not one somebody makes a
+  candidate at a time in Checkup.
+
+- **A commit that is provably a relabelling.** Curation identity in this
+  codebase IS the timestamp, so the difference between this and an operation
+  needing the care a re-time needs is that no stamp moves — asserted before
+  the write and again on what came back, rather than assumed. The preview is
+  the first thing the panel calls and the thing it shows, and it says in as
+  many words what is not happening: nothing re-detected, nothing dropped,
+  every rejection left exactly as it was.
+
+- **`tools/check_dspca.py`.** The port is the point, so the port is what is
+  checked: it runs `backend/dspca.py` and the standalone workbench side by
+  side on the `.npz` caches that workbench already wrote, and refuses to let
+  them disagree. 278 checks over two recordings, three box shapes, three
+  rules, two class counts, the notch switch, the hand flip and the CSD
+  screen — PCA coordinates to 1e-9 and every DS1/DS2 call identical.
+
+- **`web/_dev/dspca.html`.** 51 checks driving the real panel, on the demo
+  recording — so it needs no drive mounted and cannot touch a real set.
+
+### Fixed
+
+- **`EventBank.add` dropped the alignment record.** `aligned` is a fact
+  about the STAMPS, and every way of banking over an entry other than Braces
+  changes labels rather than times — re-curating a set, retyping it. Dropped
+  on each of those, an aligned set came back looking as though step three
+  had never run, and the only way to find out otherwise was to read the
+  version notes. It is now carried from the entry that was already there
+  unless the caller supplies its own.
+
+- **Checkup assumed every label had a keyboard key.** The category bar read
+  `lab.keys.join(...)` and `lab.keys[0]` with nothing guarding either, so the
+  first label added to a vocabulary without keys would have raised a
+  TypeError on every render — taking out the whole bar rather than its own
+  button. Read defensively now, and a label marked `computed` is skipped
+  there entirely: DS1/DS2 is worked out from a PCA over every event in the
+  set at once, so a button offering it for the one candidate on screen would
+  be offering a call that cannot be made that way. They still appear
+  everywhere a label is read — the counts, the version history, the marks on
+  the trace.
+
+- **A progress stage that was not in `cfc.STAGES` reported nothing at all.**
+  `Job.__init__` builds its stages by filtering that list, so a name not in
+  it produces an empty `stages` array — a run that is working and looks
+  stuck. X-ray's read is registered there now, under its own name, because
+  `_learn` divides seconds by units without knowing what a unit is and two
+  tools sharing a stage name teach each other the wrong rate. Its bulk
+  queue has a third name for the same reason, and a sharper one: the
+  queue counts recordings while each read inside it counts windows, so
+  sharing would have had every member reset the bar to its own scale.
+
+- **`tools/run_harnesses.py` had one developer's own path written into it.**
+  `ROOT` was an absolute path under another machine's home directory, so the
+  suite could not be run anywhere else. Derived from `__file__` now. The
+  failure was at least loud — a FileNotFoundError on the listdir — which is
+  more than can be said for the version of this that would have reported
+  "0 ok, 0 fail".
+
+- **The standalone workbench crashed on an ordinary drag.** With the tortlab
+  rule, a class whose main source is the topmost contact of the box has no
+  contact above it, so `tort_main_sink` returns no source — and `recompute`
+  tried to iterate it. A narrow box near the top of the shank is a normal
+  thing to drag, and the `TypeError` came out inside the selector callback,
+  which reads as the window having frozen.
+
+### Changed
+
+- **`scikit-learn` is a dependency.** The house pattern is a dependency-free
+  reimplementation — `backend/specparam.py` rebuilds FOOOF for exactly that
+  reason — and it is the wrong call here: Toothy classifies with sklearn's
+  own `PCA` and `KMeans`, parity with Toothy is the thing being ported, and
+  a hand-rolled k-means would be a second answer to the same question with
+  nothing to check it against. Guarded at the import, so a machine that has
+  not run Setup since this landed loses one tool rather than the whole
+  server.
+
+- **The contact pitch comes from the probe.** The standalone version
+  defaulted to 30 µm, which is the H10-D's within-column pitch, because it
+  was only ever pointed at one recording. The CSD divides by that, so on a
+  linear array every number it drew was out by the ratio. Read from the
+  recording's own probe now, the same three-step answer Incisor's scan uses
+  — and where nobody has confirmed a probe, the panel says so rather than
+  quietly assuming one.
+
+- **A CSD is refused across probe columns.** An H10-D is two shanks of three
+  interleaved columns, so consecutive CSC numbers are not neighbours and a
+  box of CSC26–41 spans all six. The second difference across that is not a
+  small error; it is a sink that is not there, with a contact number on it
+  and nothing on screen to say it is arithmetic between contacts 200 µm
+  apart in the wrong direction. The box has to lie inside one column, and
+  the refusal names the columns it could have used.
+
+---
+
 ## 2026.09.22.2 - Two stamps on one time is a flag, not a dead end
 
 ### Added

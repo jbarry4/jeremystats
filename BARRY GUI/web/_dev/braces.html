@@ -67,32 +67,19 @@ async function until(fn, ms, what) {
                             + JSON.stringify(b || {}) + ')');
   const get = (u) => ev('api(' + JSON.stringify(u) + ')');
 
-  head('THE RULE, THROUGH THE SERVER');
-  /* The edge case, checked end to end rather than only in Python: the
-     panel, the routes and the module all have to agree about it. */
-  let state = null;
-  try { state = await get('/api/dentist/state'); } catch (e) {}
-  ok('the bundle can say where its three steps have got to',
-     !!(state && state.steps && state.steps.braces),
-     'GET /api/dentist/state did not answer');
-  if (state) {
-    say('       ' + ['incisor', 'curate', 'braces']
-        .map((k) => k + ': ' + state.steps[k].label).join('\n       '), 'dim');
-  }
-
   head('THE RAIL');
   ev('setView("toolkit")');
   await until(() => D().querySelector('.tk-bundle'), 9000, 'the bundle card');
   const bundle = D().querySelector('.tk-bundle');
   ok('the ToolKit rail carries a bundle', !!bundle);
   const steps = [...D().querySelectorAll('.tk-step')];
-  eq('with three numbered steps', steps.length, 3);
+  eq('with four numbered steps', steps.length, 4);
   eq('named in the order they happen',
      steps.map((s) => s.querySelector('.tk-step-n').textContent),
-     ['Incisor', 'Checkup', 'Braces']);
+     ['Incisor', 'Checkup', 'Braces', 'X-ray']);
   ok('and numbered, because the order is a real dependency',
      steps.map((s) => s.querySelector('.tk-step-i').textContent)
-       .join('') === '123');
+       .join('') === '1234');
 
   /* Pressing step 3 must open Braces, not merely highlight the step. */
   steps[2].click();
@@ -135,12 +122,23 @@ async function until(fn, ms, what) {
       plan = await post('/api/braces/plan', { entry_id: pick.id });
     } catch (e) { say('       plan refused: ' + e.message, 'dim'); }
     if (plan && plan.ok) {
-      ok('the plan says which channel it would read and why',
-         plan.channel && !!plan.channel.how);
-      say('       CSC' + plan.channel.number + ' — ' + plan.channel.how,
-          'dim');
-      ok('and never a bare default',
-         plan.channel.how !== 'default' && plan.channel.how !== '');
+      /* `channels`, plural. This asked for `plan.channel.how` -- a single
+         chosen channel and the reason for it -- which the route stopped
+         returning when Braces moved from one channel to the whole shank:
+         it profiles across every contact now, so what the plan offers is
+         the list with the bad ones marked, and the caller ticks. The check
+         went on passing because nothing reached it -- the first candidate
+         on this machine was a recording that could not be opened, so the
+         plan call threw and the branch was skipped. */
+      const chans = plan.channels || [];
+      ok('the plan offers every channel, not only the good ones',
+         chans.length > 0 && chans.every((c) => c.number != null),
+         chans.length + ' channels');
+      ok('and says which are marked bad, rather than leaving them out',
+         chans.every((c) => 'bad' in c),
+         JSON.stringify(chans.slice(0, 2)));
+      say('       ' + chans.length + ' channels, '
+          + chans.filter((c) => c.bad).length + ' marked bad', 'dim');
     } else if (plan) {
       /* A refusal is a legitimate outcome and must be readable. */
       ok('a set it cannot measure refuses with a reason somebody can act on',

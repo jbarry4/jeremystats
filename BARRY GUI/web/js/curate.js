@@ -701,16 +701,31 @@ BARRY.curate = (function () {
 
     const cats = el('div', { class: 'cur-cats' });
     for (const lab of (kind.labels || [])) {
+      /* A computed label is not a button.
+
+         X-ray works DS1 and DS2 out from a PCA over every event in the set
+         at once, so there is no sense in which somebody could press it for
+         the candidate in front of them -- and a button that cannot be
+         pressed meaningfully is worse than no button. They still appear
+         everywhere a label is READ: the counts, the version history, the
+         marks on the trace.
+
+         `keys` is read defensively as well. It was `lab.keys.join(...)`,
+         which is a TypeError on any label without them -- so the first
+         keyless label added to a vocabulary would have taken out the whole
+         category bar rather than its own button. */
+      if (lab.computed) continue;
+      const keys = lab.keys || [];
       const on = ev && ev.label === lab.id;
       cats.appendChild(el('button', {
         class: 'cur-cat' + (on ? ' on' : ''),
         style: '--cat:' + lab.color,
-        title: lab.name + '   (' + lab.keys.join(' or ') + ')',
+        title: lab.name + (keys.length ? '   (' + keys.join(' or ') + ')' : ''),
         onclick: () => assign(on ? null : lab.id),
       }, [
-        el('kbd', { text: lab.keys[0] }),
+        keys.length ? el('kbd', { text: keys[0] }) : null,
         el('span', { text: lab.name }),
-      ]));
+      ].filter(Boolean)));
     }
     bar.appendChild(cats);
 

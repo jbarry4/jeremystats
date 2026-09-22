@@ -130,6 +130,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { await loadStrata(); return; }
     if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
@@ -230,6 +231,8 @@ BARRY.views.toolkit = (function () {
           || q.tool === 'incisor'
           // Braces picks a banked set, which carries its own recording.
           || q.tool === 'braces'
+          // X-ray picks a banked set too, and owns all three of its columns.
+          || q.tool === 'dspca'
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
@@ -254,8 +257,9 @@ BARRY.views.toolkit = (function () {
      numbered and the other tools are not. */
   const DENTIST = [
     ['incisor', 'Incisor', 'find them'],
-    ['curate', 'Checkup', 'call them'],
+    ['curate', 'Checkup', 'clean them'],
     ['braces', 'Braces', 'line them up'],
+    ['dspca', 'X-ray', 'tell them apart'],
   ];
 
   function bundleCard() {
@@ -264,7 +268,8 @@ BARRY.views.toolkit = (function () {
     box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
       toolIcon('incisor'),
       el('strong', { text: 'The Dentist' }),
-      el('span', { class: 'tk-bundle-c', text: '3 tools' }),
+      el('span', { class: 'tk-bundle-c',
+                   text: DENTIST.length + ' tools' }),
     ]));
     box.appendChild(el('div', { class: 'tk-steps' },
       DENTIST.map(([id, name, does], i) => {
@@ -2831,6 +2836,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { renderStrata(); return; }
     if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }

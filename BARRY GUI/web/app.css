@@ -8742,3 +8742,246 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   font-variant-numeric: tabular-nums; text-align: right;
   color: var(--text-2); min-width: 72px;
 }
+
+/* ==========================================================================
+   X-ray -- step four of The Dentist
+   ========================================================================== */
+/* Three columns, and the middle one is the point: the controls are narrow
+   because they are all short, the panes are wide because a raster you drag
+   a box on needs room to be dragged on, and the answer takes what is left.
+   Collapses to one column on a laptop rather than squeezing all three. */
+/* Two rows, not three columns.
+
+   Three equal columns gave each graph a third of the width and left the
+   bottom two thirds of the middle one empty: on a wide monitor the rasters
+   were letterboxes and the controls had a column to themselves they did not
+   need. The pictures get the top at full height; everything you set runs
+   along the bottom with the PCA beside it. */
+.dp-top {
+  display: grid; gap: 12px; align-items: start; margin-bottom: 12px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+}
+.dp-bottom {
+  display: grid; gap: 12px; align-items: stretch;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+}
+@media (max-width: 1150px) {
+  .dp-top, .dp-bottom { grid-template-columns: 1fr; }
+}
+.dp-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.dp-controls, .dp-panes, .dp-answer, .dp-pca {
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 12px;
+}
+.dp-spacer { flex: 1 1 auto; min-height: 4px; }
+
+.dp-intro > p { max-width: 78ch; }
+.dp-load { display: flex; align-items: center; gap: 10px; }
+.dp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dp-lab { font-size: 11px; color: var(--text-3); }
+.dp-choose select { min-width: 180px; }
+.dp-plan { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+
+/* The probe, and whether anybody has confirmed it. An unconfirmed one is
+   marked rather than hidden: "H3" and "nobody has told us" are different
+   things and only one of them is safe to run a CSD on. */
+.dp-probe {
+  font-size: 11.5px; color: var(--text-2);
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline;
+}
+.dp-probe.unsure { color: var(--warn); }
+.dp-unsure { color: var(--warn); }
+.dp-warn { color: var(--warn); }
+
+.dp-bar {
+  height: 6px; background: var(--bg-3); border-radius: 3px;
+  overflow: hidden; margin: 8px 0;
+}
+.dp-bar > i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .2s var(--ease-out, ease);
+}
+.dp-job { display: flex; flex-direction: column; gap: 6px; align-items: start; }
+
+/* Every canvas in the panel sizes itself from its box and draws at device
+   pixels, so the labels stay crisp when a pane is resized. */
+.dp-canvas {
+  width: 100%; display: block; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px;
+}
+.dp-shank { cursor: crosshair; touch-action: none; }
+.dp-scatter { cursor: pointer; }
+
+.dp-pane-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+}
+.dp-pane-foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+}
+.dp-chip {
+  font-size: 10.5px; color: var(--text-2); background: var(--bg-3);
+  border: 1px solid var(--line-soft); border-radius: 10px; padding: 1px 8px;
+}
+.dp-showing { font-size: 11px; color: var(--text-3); margin-left: auto; }
+.dp-box-read {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 11px; color: var(--text-2);
+  background: var(--bg-3); border-radius: 4px; padding: 5px 7px;
+}
+
+.dp-slider { flex: 1 1 90px; min-width: 70px; }
+.dp-val {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px; color: var(--text); min-width: 14px; text-align: right;
+}
+
+/* The rule picker. Each option carries its own sentence, because a rule
+   named in three words reads as a fact about anatomy and is not one. */
+.dp-rules { display: flex; flex-direction: column; gap: 4px; }
+.dp-rule {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 7px;
+  align-items: baseline; padding: 5px 6px; border-radius: 4px;
+  border: 1px solid transparent; cursor: pointer;
+}
+.dp-rule:hover { background: var(--bg-hover); }
+.dp-rule.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.dp-rule strong { font-size: 12px; }
+.dp-rule .dp-why {
+  grid-column: 2; font-size: 10.5px; color: var(--text-3); line-height: 1.35;
+}
+.dp-check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-2); cursor: pointer;
+}
+.dp-mains { font-size: 10.5px; }
+
+.dp-legend { display: flex; flex-wrap: wrap; gap: 10px; }
+.dp-tag, .dp-decide {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--text-2);
+}
+.dp-tag i, .dp-decide i {
+  width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+}
+.dp-decide.dim { color: var(--text-3); }
+.dp-why { display: flex; flex-direction: column; gap: 4px; }
+.dp-why > p { margin: 0; }
+.dp-repaired { font-size: 10.5px; }
+.dp-err strong { color: var(--err); }
+.dp-ask { padding: 16px 18px; }
+.dp-ask > p, .dp-ask > ul { max-width: 78ch; }
+.dp-ask li { font-size: 12.5px; color: var(--text-2); margin: 3px 0; }
+.dp-preview { width: 100%; margin: 10px 0; }
+.dp-preview td, .dp-preview th { font-size: 11.5px; }
+
+/* The bulk queue. Shut by default: it is a thing you do once per cohort,
+   not something that should take up the panel every time it opens. */
+.dp-bulk-shut { display: flex; align-items: center; gap: 10px; }
+.dp-bulk-card { display: flex; flex-direction: column; gap: 8px; }
+.dp-bulk { width: 100%; }
+.dp-bulk td, .dp-bulk th { font-size: 11.5px; padding: 3px 6px; }
+.dp-bulk tr.bad td { color: var(--err); }
+.dp-bulk td.dim { color: var(--text-3); }
+
+/* Guides: a short list and one row to add to it. Kept compact -- it sits in
+   a 200px column between the rule picker and the commit button, and a guide
+   is a name and a number. */
+.dp-guides { display: flex; flex-direction: column; gap: 6px; }
+.dp-grow { display: flex; align-items: center; gap: 6px; }
+.dp-gnum { width: 62px; flex: none; }
+.dp-gname { flex: 1 1 60px; min-width: 0; }
+.dp-glist { display: flex; flex-direction: column; gap: 2px; }
+.dp-guide {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 4px; border-radius: 4px;
+}
+.dp-guide:hover { background: var(--bg-hover); }
+/* The name is editable in place. It reads as text until you are in it,
+   because a column of input boxes is a form and this is a list. */
+.dp-gedit {
+  flex: 1 1 40px; min-width: 0; font-size: 11.5px; color: var(--text);
+  background: transparent; border: 1px solid transparent;
+  border-radius: 3px; padding: 2px 4px;
+}
+.dp-gedit:hover { border-color: var(--line); }
+.dp-gedit:focus {
+  border-color: var(--accent-line); background: var(--bg);
+  outline: none;
+}
+.dp-gcsc {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 10.5px; color: var(--text-3); flex: none;
+}
+.dp-gdrop { flex: none; font-size: 13px; line-height: 1; padding: 0 3px; }
+
+/* ---- X-ray, tightened -------------------------------------------------
+   The panel used to explain itself in a paragraph at the top and a sentence
+   under each of four rules. In a 230px column that is most of the column,
+   and none of it is the question being asked. The explanations moved into
+   `title` attributes; what is on screen is the state. */
+.dp-intro {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;
+  padding: 2px 0 6px;
+}
+.dp-step {
+  font-size: 10.5px; color: var(--text-3);
+  border: 1px solid var(--line); border-radius: 9px; padding: 0 7px;
+}
+.dp-intro .hint { flex: 1 1 320px; }
+
+/* The whole question, over the columns that set it. Also what lands in a
+   screenshot of the panel, which is the other reason it is one line. */
+.dp-strip {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 6px 10px; margin-bottom: 10px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.dp-strip-n { font-weight: 600; font-size: 12px; color: var(--text); }
+.dp-strip-b {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 10.5px; color: var(--text-2);
+  background: var(--bg-3); border-radius: 3px; padding: 1px 6px;
+}
+
+/* A little more room for the middle: the raster is the thing being dragged
+   on, and the controls are all short. */
+.dp-work { grid-template-columns: minmax(200px, 238px) minmax(0, 1.5fr) minmax(0, 1.1fr); }
+.dp-col { gap: 8px; }
+.dp-checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.dp-commit { width: 100%; }
+/* The rule rows carry their sentence only when chosen, so the unchosen ones
+   are a single line and the group is four lines rather than twelve. */
+.dp-rule { padding: 4px 6px; }
+.dp-rule .dp-why { margin-top: 1px; }
+
+/* The guide's ink, which is also how you change it. The native control
+   draws its own inset border and padding and looks like a button that has
+   come loose; stripped back, it reads as the line it stands for. */
+.dp-gcolor {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 18px; padding: 0; flex: none;
+  border: 1px solid var(--line); border-radius: 3px;
+  background: none; cursor: pointer;
+}
+.dp-gcolor::-webkit-color-swatch-wrapper { padding: 1px; }
+.dp-gcolor::-webkit-color-swatch { border: 0; border-radius: 2px; }
+.dp-gcolor::-moz-color-swatch { border: 0; border-radius: 2px; }
+
+/* The controls, as a bottom strip. Two columns inside their own box, so the
+   eight short groups read across instead of running a screen deep. */
+.dp-controls {
+  display: grid; align-content: start; gap: 4px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+}
+.dp-controls > .section-label { grid-column: 1 / -1; margin-top: 8px; }
+.dp-controls > .section-label:first-child { margin-top: 0; }
+.dp-controls > .dp-rules,
+.dp-controls > .dp-guides,
+.dp-controls > .dp-checks,
+.dp-controls > .hint,
+.dp-controls > .dp-commit,
+.dp-controls > p { grid-column: 1 / -1; }
+.dp-spacer { display: none; }
+.dp-pca { display: flex; flex-direction: column; gap: 8px; }
+.dp-pca .dp-canvas { flex: 1 1 auto; }

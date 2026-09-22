@@ -47,7 +47,12 @@ except Exception:                                        # noqa: BLE001
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 BASE = "http://127.0.0.1:8791"
-ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
+# Derived, not written down. It was one developer's own path, so the
+# suite could not run on any other machine -- and the failure is a
+# FileNotFoundError on the listdir, which is at least loud. The version
+# of this that would have been worse is a suite that found nothing and
+# reported "0 ok, 0 fail", which reads exactly like a clean sweep.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # A browser profile of the suite's own. See the note on
 # --user-data-dir below: without it a run competes with whatever
 # browser is already open and silently produces nothing.

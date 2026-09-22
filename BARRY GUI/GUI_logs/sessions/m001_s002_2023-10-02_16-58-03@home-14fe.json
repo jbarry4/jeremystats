@@ -1,12 +1,109 @@
 {
+  "_at": {
+    "bad_channels": "2026-09-17T17:25:29.256105+00:00",
+    "bad_channels_note": "2026-09-10T21:20:57.061769+00:00",
+    "condition": "2026-09-10T21:20:57.061769+00:00",
+    "converted": "2026-09-04T15:57:01.566631+00:00",
+    "created": "2026-09-02T23:51:19.786133+00:00",
+    "duration_s": "2026-09-04T15:57:01.566631+00:00",
+    "event_classes": "2026-09-04T15:57:01.566631+00:00",
+    "fs": "2026-09-04T15:57:01.566631+00:00",
+    "gid": "2026-09-02T23:51:19.786133+00:00",
+    "group": "2026-09-04T15:57:01.566631+00:00",
+    "hemisphere": "2026-09-10T21:20:57.061769+00:00",
+    "hemisphere_source": "2026-09-10T21:20:57.061769+00:00",
+    "key": "2026-09-04T15:57:01.566631+00:00",
+    "label": "2026-09-10T21:20:57.061769+00:00",
+    "loose_key": "2026-09-04T15:57:01.566631+00:00",
+    "mouse": "2026-09-04T15:57:01.566631+00:00",
+    "n_channels": "2026-09-04T15:57:01.566631+00:00",
+    "project": "2026-09-10T21:20:57.061769+00:00",
+    "project_source": "2026-09-04T15:57:01.566631+00:00",
+    "quality": "2026-09-04T15:57:01.566631+00:00",
+    "retired": "2026-09-10T21:20:57.061769+00:00",
+    "schema": "2026-09-04T15:57:01.566631+00:00",
+    "session": "2026-09-04T15:57:01.566631+00:00",
+    "spike_labels": "2026-09-04T15:57:01.566631+00:00",
+    "start": "2026-09-04T15:57:01.566631+00:00",
+    "updated": "2026-09-22T20:41:44.320015+00:00",
+    "view_state": "2026-09-21T15:11:57.036367+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
+        "gone",
+        "2026-09-22T20:41:44.915352+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
+        "gone",
+        "2026-09-22T20:41:44.320015+00:00"
+      ],
+      "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-08T18:38:41.924547+00:00"
+      ],
+      "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "G:\\PTEN\\M1_s2": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "G:\\PTEN\\M1_s2\\timestamps.mat": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.566631+00:00"
+      ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.471881+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-04T16:13:45.708005+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T21:03:18.599744+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-21T14:47:03.601192+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T16:47:44.548618+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-14T14:10:03.689871+00:00"
+      ]
+    }
+  },
   "_shard": {
-    "at": "2026-09-03T00:08:53.912778+00:00",
-    "from": "pre-shard file",
+    "at": "2026-09-22T20:41:44.915352+00:00",
     "machine": "home-14fe",
     "schema": 1
   },
   "bad_channels": [
-    18,
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
@@ -20,6 +117,11 @@
   },
   "duration_s": 1709.8581333333334,
   "event_classes": {
+    "DS candidates (ETS)": {
+      "color": "#4DD4C4",
+      "name": "DS candidates (ETS)",
+      "visible": true
+    },
     "Starting Recording": {
       "color": "#FF6B6B",
       "name": "Starting Recording",
@@ -34,6 +136,8 @@
   "fs": 30000.0,
   "gid": "s45bae70722f2",
   "group": "PTEN",
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m001_s002_2023-10-02_16-58-03",
   "label": "PTEN m1 s2 2023-10-02",
   "loose_key": "m001_s002",
@@ -43,26 +147,68 @@
     "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
     "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
     "G:\\PTEN\\M1_s2",
-    "G:\\PTEN\\M1_s2\\timestamps.mat"
+    "G:\\PTEN\\M1_s2\\timestamps.mat",
+    "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline",
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03"
   ],
   "project": "PTEN",
   "project_source": "guessed",
   "quality": "",
+  "retired": false,
   "schema": 2,
   "seen": {
     "BarryLab": {
-      "at": "2026-09-02T19:38:00-04:00",
+      "at": "2026-09-04T11:26:56-04:00",
       "by": "barry",
-      "path": "G:\\PTEN\\M1_s2",
-      "root": "G:/PTEN",
-      "scan": "scan_597c4266fa"
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
     },
     "DESKTOP-4H65AI7": {
-      "at": "2026-09-02T18:50:19-04:00",
+      "at": "2026-09-04T12:13:45-04:00",
       "by": "theexaminedexistence@gmail.com",
       "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
-      "root": "D:/PTEN",
-      "scan": "scan_765fa11e51"
+      "root": null,
+      "scan": null
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T17:03:18-04:00",
+      "by": "Rain",
+      "path": "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": null,
+      "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-21T10:46:58-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T12:47:44-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "root": null,
+      "scan": null
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-14T10:10:03-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+      "root": "D:/Data/Archive/PTEN Project/PTEN",
+      "scan": "scan_1a5cc6ded9"
     }
   },
   "session": 2,
@@ -71,55 +217,66 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "at": "2026-09-02T19:38:00-04:00",
-    "machine": "BarryLab",
+    "app_version": "2026.09.22.3",
+    "at": "2026-09-22T16:41:44-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
     "os": "Windows",
-    "user": "barry"
+    "user": "Shahriar Tafti"
   },
   "view_state": {
     "channels": [
-      0,
       1,
-      2,
       3,
-      4,
       5,
-      6,
       7,
-      8,
       9,
-      10,
       11,
-      12,
       13,
-      14,
       15,
-      16,
       17,
-      18,
       19,
-      20,
       21,
-      22,
       23,
-      24,
       25,
-      26,
       27,
-      28,
       29,
-      30,
-      31
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
     ],
     "clim": null,
-    "gain": 1,
-    "hp": 0,
-    "lp": 0,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 2.25,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
+    "probe": "h3",
     "spacing": 50,
-    "span": 10.000000000000002,
-    "t0": 1699.8581333333334,
+    "span": 0.8,
+    "stft_mode": null,
+    "t0": 849.0087990000001,
     "ylim": null
   }
 }

@@ -1,0 +1,528 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>dspca: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* X-ray, step four of The Dentist, driven through the real interface.
+
+   IT RUNS ON THE DEMO RECORDING, and that is the point. The demo session is
+   generated rather than stored, so this suite needs no drive mounted, runs
+   the same on every machine, and cannot damage anything: nothing it reads
+   exists on disk and nothing it does is written back to a real set.
+
+   Five things it has to get right, each of which has bitten a harness here
+   before:
+
+   1. `BARRY` is a const inside the app's own scope, not a property of
+      `window`, so it is reached through the frame's `eval`.
+   2. It ESTABLISHES its preconditions. The read is cached, so the second
+      run of this suite takes a different path through `startRead` than the
+      first -- both are exercised rather than assumed.
+   3. It waits for things rather than sleeping a guessed amount. A fit is
+      debounced at 60 ms and a read is a job; a fixed sleep passes on a fast
+      machine and fails on a loaded one.
+   4. It drives the REAL panel through the underscore exports, not a copy of
+      it. A harness that reimplements the thing it is testing tests nothing.
+   5. It is run under PowerShell. Under Bash, Edge dumps nothing and the
+      whole suite reads as clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(70), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const post = (u, b) => ev('apiPost(' + JSON.stringify(u) + ','
+                            + JSON.stringify(b || {}) + ')');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const st = () => ev('BARRY.dspca._state()');
+
+  /* ================================================================== */
+  head('THE BUNDLE NOW HAS FOUR STEPS');
+
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+  const steps = Array.from(D().querySelectorAll('.tk-step'))
+    .map((b) => (b.querySelector('.tk-step-n') || {}).textContent);
+  eq('the rail lists all four, in order', steps,
+     ['Incisor', 'Checkup', 'Braces', 'X-ray']);
+  const count = (D().querySelector('.tk-bundle-c') || {}).textContent;
+  eq('the header counts them', count, '4 tools');
+
+  /* The step opens, and owns the whole pane -- the bad-channel scope card
+     belongs to a different question and was being shown over three tools
+     that have nothing to do with it. */
+  const btn = Array.from(D().querySelectorAll('.tk-step'))
+    .find((b) => /X-ray/.test(b.textContent));
+  ok('the fourth step is clickable', !!btn);
+  if (btn) btn.click();
+  await until(() => D().querySelector('.dp-intro'), 10000, 'the panel');
+  ok('it opens its own panel', !!D().querySelector('.dp-intro'));
+  ok('and the bad-channel scope card is not over it',
+     !D().querySelector('#tkMain .tk-scope'));
+
+  /* ================================================================== */
+  head('THE SERVER, DIRECTLY');
+
+  const cands = await get('/api/dspca/candidates');
+  ok('candidates answers', !!(cands && cands.ok),
+     JSON.stringify(cands).slice(0, 160));
+  const demo = (cands.sets || []).find((s) => s.gid === 'demo-ds-tutorial');
+  ok('the demo set is offered', !!demo);
+  ok('and it counts its spikes rather than its candidates',
+     demo && demo.n_good > 0 && demo.n_good < demo.n,
+     demo && (demo.n_good + ' of ' + demo.n));
+
+  const plan = await post('/api/dspca/plan', { entry_id: demo.id });
+  ok('plan answers', !!(plan && plan.ok));
+  ok('it names the probe and says how sure it is',
+     !!(plan.probe && plan.probe.id && plan.probe.state),
+     JSON.stringify(plan.probe || {}).slice(0, 120));
+  ok('it reports merged windows, not one per stamp',
+     plan.read.n_windows > 0 && plan.read.n_windows < plan.stamps.n,
+     plan.read.n_windows + ' windows for ' + plan.stamps.n + ' stamps');
+
+  /* ================================================================== */
+  head('THE READ, AND THE BOX');
+
+  ev('BARRY.dspca._pick(' + JSON.stringify(demo.id) + ')');
+  await until(() => st().plan && st().plan.ok, 15000, 'the plan');
+  ev('BARRY.dspca._read(false)');
+  const got = await until(() => st().q.read, 60000, 'the read');
+  ok('the read finishes and the panel has a hash', !!got);
+  await until(() => st().fit && st().fit.ok, 15000, 'the first fit');
+  const f0 = st().fit;
+  ok('a first fit arrives with no box asked for', !!(f0 && f0.ok));
+  ok('and the server chose a depth band from the event template',
+     f0.box.n_contacts >= 3, JSON.stringify(f0.box));
+
+  /* Toothy's own feature window: one sample at the stamp. Pulled to one
+     column the port is Toothy exactly, and that is the number to check. */
+  ev('BARRY.dspca._box(' + f0.box.lo + ',' + f0.box.hi + ',0,0)');
+  await until(() => st().fit.box.n_samples === 1, 8000, 'the one-sample box');
+  const one = st().fit;
+  eq('one sample at the stamp gives one feature per contact',
+     one.n_features, one.box.n_contacts);
+
+  /* Widening it is a visible departure, and the feature count is the whole
+     evidence that the time axis is actually being used. */
+  ev('BARRY.dspca._box(' + f0.box.lo + ',' + f0.box.hi + ',-4,4)');
+  await until(() => st().fit.box.n_samples > 1, 8000, 'the wider box');
+  const wide = st().fit;
+  eq('widening the box multiplies the features',
+     wide.n_features, wide.box.n_contacts * wide.box.n_samples);
+  ok('and every event is still labelled',
+     wide.events.length === one.events.length
+     && wide.events.every((e) => e.type >= 1),
+     wide.events.length + ' vs ' + one.events.length);
+
+  /* A CSD is a second derivative across depth; three contacts is the floor,
+     and a drag that lands on two is somebody asking for the thinnest box
+     there is rather than a mistake to refuse. */
+  ev('BARRY.dspca._box(' + f0.box.lo + ',' + (f0.box.lo + 1) + ',0,0)');
+  await until(() => st().fit && st().fit.ok
+                    && st().fit.box.lo === f0.box.lo, 8000, 'the narrow box');
+  ok('a two-contact drag is widened to three, not refused',
+     st().fit.box.n_contacts >= 3, JSON.stringify(st().fit.box));
+
+  /* ================================================================== */
+  head('THE CONTROLS');
+
+  for (const k of [2, 3, 4]) {
+    ev('BARRY.dspca._k(' + k + ')');
+    await until(() => st().fit && st().fit.k === k, 8000, 'k=' + k);
+    const f = st().fit;
+    const total = Object.keys(f.counts)
+      .reduce((a, key) => a + f.counts[key], 0);
+    ok(k + ' classes labels every event and leaves none over',
+       f.k === k && total === f.events.length,
+       total + ' of ' + f.events.length);
+  }
+  ev('BARRY.dspca._k(2)');
+  await until(() => st().fit && st().fit.k === 2, 8000, 'back to two');
+
+  /* Each rule orders the classes by its own landmark, and says which point
+     it used. A rule that returned no working would be a verdict. */
+  for (const r of ['tort', 'sink', 'sources', 'anatomy']) {
+    ev('BARRY.dspca._rule(' + JSON.stringify(r) + ')');
+    await until(() => st().fit && st().fit.ok
+                      && (st().fit.decide[0] || {}).rule === r, 8000, r);
+    const d = st().fit.decide.filter((x) => x.n);
+    ok(r + ': every class names the contact the rule landed on',
+       d.length > 0 && d.every((x) => x.csc != null && x.row != null),
+       JSON.stringify(d.map((x) => x.csc)));
+  }
+  ev('BARRY.dspca._rule("tort")');
+  await until(() => st().fit && (st().fit.decide[0] || {}).rule === 'tort',
+              8000, 'back to tort');
+
+  /* ================================================================== */
+  head('THE PICTURES');
+
+  const gid = st().q.gid, read = st().q.read;
+  for (const what of ['shank', 'classes', 'traces']) {
+    const p = await post('/api/dspca/raster',
+                         { gid, read, what, index: 0 });
+    ok(what + ' draws', !!(p && p.ok),
+       JSON.stringify(p || {}).slice(0, 140));
+    if (what === 'traces' && p && p.ok) {
+      ok('traces keeps every contact, including the repaired ones',
+         p.rows.length === plan.session.n_channels,
+         p.rows.length + ' rows for ' + plan.session.n_channels + ' contacts');
+      ok('and the contact numbers have no hole in them',
+         p.contacts.every((n, i) => i === 0 || n === p.contacts[i - 1] + 1),
+         JSON.stringify(p.contacts));
+    }
+  }
+
+  /* All three pictures after the first fit, and the right ones after a
+     drag. A fit only moves the class means -- the panes above are a
+     whole-shank average the box does not enter into -- but the FIRST fit
+     has nothing on screen yet, and fetching only the class means there
+     leaves both panes blank. */
+  await until(() => { const p = st().pics;
+                      return p.traces && p.pane && p.classes; },
+              15000, 'all three pictures');
+  const pk = st().pics;
+  ok('the first fit fetches every picture, not only the class means',
+     !!(pk.traces && pk.traces.ok && pk.pane && pk.pane.ok
+        && pk.classes && pk.classes.ok),
+     JSON.stringify(Object.keys(pk)));
+  eq('and the pane shows the average until a spike is picked',
+     pk.pane.what, 'shank');
+
+  await until(() => D().querySelector('#dpShank'), 8000, 'the panes');
+  ok('both centre panes are on screen',
+     !!D().querySelector('#dpTraces') && !!D().querySelector('#dpShank'));
+  ok('and the filters are stated rather than implied',
+     /5.100 Hz/.test((D().querySelector('.dp-chip') || {}).textContent || ''),
+     (D().querySelector('.dp-chip') || {}).textContent);
+  /* The whole question on one line, over the columns that set it. It is
+     also what has to be in a screenshot of the panel for the screenshot to
+     mean anything. */
+  const strip = D().querySelector('.dp-strip');
+  ok('a status strip states the question', !!strip);
+  if (strip) {
+    const said = strip.textContent;
+    ok('it names the box, the classes and the rule',
+       /CSC\d+/.test(said) && /classes/.test(said) && /features/.test(said),
+       said.slice(0, 120));
+    ok('and how many landed in each class',
+       /DS1 \d+/.test(said), said.slice(0, 160));
+  }
+  /* THE LAYOUT, measured rather than eyeballed.
+
+     Three equal columns gave each graph a third of the width and left the
+     bottom two thirds of the middle one empty. The arrangement asked for is
+     the pictures across the top and everything you set along the bottom,
+     with the PCA beside the controls -- so that is what is checked. */
+  const box = (sel) => {
+    const n = D().querySelector(sel);
+    if (!n) return null;
+    const r = n.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height, b: r.bottom };
+  };
+  const panes = box('.dp-panes'), ans = box('.dp-answer');
+  const ctl = box('.dp-controls'), pca = box('.dp-pca');
+  ok('the graphs sit above the controls',
+     !!(panes && ctl) && panes.b <= ctl.y + 2,
+     JSON.stringify({ panesBottom: panes && panes.b, ctlTop: ctl && ctl.y }));
+  /* The side-by-side arrangement is asserted only where it is meant to
+     apply. Under 1150px the grids collapse to one column on purpose -- a
+     raster and a control strip sharing 900px are both too narrow to use --
+     so at that width "the PCA is to the right of the controls" is asserting
+     the opposite of what the stylesheet says. The harness window is
+     whatever Edge was given, so it is measured rather than assumed. */
+  const sideBySide = ev('window.innerWidth') >= 1150;
+  say('  viewport ' + ev('window.innerWidth') + 'px, so the columns are '
+      + (sideBySide ? 'side by side' : 'stacked'), 'note');
+  if (sideBySide) {
+    ok('the PCA sits to the right of the controls, on the same row',
+       !!(ctl && pca) && pca.x >= ctl.x + ctl.w - 2
+       && Math.abs(pca.y - ctl.y) < 40,
+       JSON.stringify({ ctl, pca }));
+    ok('the rasters get the wider half of the top row',
+       !!(panes && ans) && panes.w > ans.w,
+       JSON.stringify({ panes: panes && panes.w, answer: ans && ans.w }));
+  } else {
+    ok('stacked at this width, which is what the stylesheet asks for',
+       !!(ctl && pca) && pca.y >= ctl.y + ctl.h - 2,
+       JSON.stringify({ ctl, pca }));
+  }
+  const tall = ['dpTraces', 'dpShank', 'dpProfile', 'dpClasses', 'dpScatter']
+    .map((id) => [id, (box('#' + id) || {}).h]);
+  ok('every pane is a pane rather than a letterbox',
+     tall.every(([, h]) => h >= 200), JSON.stringify(tall));
+
+  ok('the answer column holds the depth pictures',
+     !!D().querySelector('#dpProfile') && !!D().querySelector('#dpClasses'));
+  ok('and the PCA is in its own pane below',
+     !!D().querySelector('.dp-pca #dpScatter'));
+  ok('and the panel shows its working on the naming',
+     !!D().querySelector('.dp-why'));
+
+  /* ================================================================== */
+  head('STEPPING THROUGH THE SPIKES');
+
+  ev('BARRY.dspca._step(1)');
+  await until(() => st().picked != null, 6000, 'a picked spike');
+  const first = st().picked;
+  ok('stepping picks a spike', first != null);
+  ev('BARRY.dspca._step(1)');
+  await until(() => st().picked !== first, 6000, 'the next one');
+  ok('and stepping again moves to another', st().picked !== first);
+  await until(() => (st().pics.pane || {}).what === 'event', 12000,
+              'the single-event raster');
+  eq('picking a spike switches the pane to that event',
+     (st().pics.pane || {}).what, 'event');
+  ok('the pane header says which one it is showing',
+     /spike \d+/.test((D().querySelector('.dp-showing') || {}).textContent || ''),
+     (D().querySelector('.dp-showing') || {}).textContent);
+
+  /* ================================================================== */
+  head('WHAT IT REFUSES');
+
+  const bad = await post('/api/dspca/fit', { gid, read, nclasses: 9 })
+    .catch((e) => ({ ok: false, error: String(e.message || e) }));
+  ok('nine classes is refused, with a reason',
+     !bad.ok && /classes/i.test(bad.error || ''), JSON.stringify(bad));
+
+  /* The check that matters on an interleaved probe. A box of contact
+     numbers is not a column on an H10-D, and the CSD across one is not a
+     small error -- it is a second difference between contacts 200 um apart
+     in the wrong direction. */
+  const cross = await post('/api/dspca/fit',
+                           { gid, read, probe: 'h10d',
+                             sel_lo: 6, sel_hi: 22 })
+    .catch((e) => ({ ok: false, error: String(e.message || e) }));
+  ok('a box across an H10-D’s columns is refused',
+     !cross.ok && /column/i.test(cross.error || ''),
+     JSON.stringify(cross).slice(0, 180));
+  ok('and the refusal names the columns it could have used',
+     /CSC\d+.\d+/.test(cross.error || ''), cross.error);
+
+  /* ================================================================== */
+  head('THE COMMIT, PREVIEWED BUT NOT WRITTEN');
+
+  /* Dry run only. A suite that ran the real write every time would mint a
+     version per run on a set people are meant to practise on -- and the
+     thing worth checking is the preview anyway, because the preview is what
+     somebody decides on. */
+  const dry = await post('/api/dspca/commit', {
+    entry_id: demo.id, read, dry_run: true, nclasses: 2, rule: 'tort' });
+  ok('the preview answers', !!(dry && dry.ok),
+     JSON.stringify(dry || {}).slice(0, 160));
+  eq('nothing is created or dropped', dry.n, dry.n_in);
+  ok('it types the curated spikes and leaves the rest alone',
+     dry.classified > 0 && dry.unchanged > 0
+     && dry.classified + dry.unchanged === dry.n,
+     dry.classified + ' typed, ' + dry.unchanged + ' left, of ' + dry.n);
+  ok('every type it writes is a label in the DS vocabulary',
+     Object.keys(dry.counts || {}).every((k) => /^ds[0-9]+$/.test(k)),
+     JSON.stringify(dry.counts));
+  ok('the counts add up to what it classified',
+     Object.keys(dry.counts).reduce((a, k) => a + dry.counts[k], 0)
+       === dry.classified);
+  ok('no stamp moves, and it says so', dry.moved_stamps === 0
+     && /No stamp moved/.test(dry.note || ''), dry.note);
+  ok('the preview shows the actual before and after',
+     (dry.sample || []).length > 0
+     && dry.sample.every((m) => m.was && m.now),
+     JSON.stringify((dry.sample || [])[0]));
+  ok('a rejection keeps the label it had',
+     dry.sample.some((m) => m.was === m.now && /Garbage/.test(m.was)),
+     JSON.stringify(dry.sample.map((m) => m.was + '->' + m.now)));
+  ok('the note records the box, the rule and where it read from',
+     /CSC\d+/.test(dry.note) && /rule/.test(dry.note)
+     && /Read from/.test(dry.note), dry.note);
+
+  /* The vocabulary addition, end to end: ds1 and ds2 are `good`, so a set
+     already carrying them is still offered as classifiable rather than
+     reading as a set with nothing in it. */
+  const again = await get('/api/dspca/candidates');
+  const back = (again.sets || []).find((x) => x.gid === 'demo-ds-tutorial');
+  ok('a set already typed is still counted as having spikes',
+     !!back && back.n_good > 0, back && String(back.n_good));
+
+  /* ================================================================== */
+  head('GUIDES, ON EVERY PANEL AT ONCE');
+
+  /* Start from nothing, so a second run of this suite is not measuring what
+     the first one left behind. */
+  await post('/api/guides/demo-ds-tutorial/delete', {});
+  ev('BARRY.dspca._dropGuide(null)');
+  await until(() => st === null || ev('BARRY.dspca._guides()').length === 0,
+              6000, 'an empty guide list');
+
+  ev('BARRY.dspca._addGuide(10, "hilus")');
+  await until(() => ev('BARRY.dspca._guides()').length === 1, 8000, 'a guide');
+  ev('BARRY.dspca._addGuide(6, "GCL")');
+  await until(() => ev('BARRY.dspca._guides()').length === 2, 8000, 'two');
+  const gs = ev('BARRY.dspca._guides()');
+  eq('a guide is a contact and a name',
+     gs.map((g) => [g.csc, g.label]), [[6, 'GCL'], [10, 'hilus']]);
+
+  /* THE CLAIM THAT MATTERS: every panel with a depth axis knows where a
+     contact is drawn, so one line lands on the same contact in all of them.
+     Checked through the mapping each panel recorded as it drew, rather than
+     by reading pixels. */
+  await until(() => { const d = ev('BARRY.dspca._depth()');
+                      return d.dpTraces && d.dpShank && d.dpProfile
+                             && d.dpClasses; },
+              12000, 'all four depth panels');
+  const depth = ev('BARRY.dspca._depth()');
+  eq('all four depth panels report a mapping',
+     Object.keys(depth).sort(),
+     ['dpClasses', 'dpProfile', 'dpShank', 'dpTraces']);
+  ok('and each maps a contact to a y inside its own plot',
+     Object.keys(depth).every((k) => {
+       const g = depth[k];
+       const y = g.y0 + ((10 - g.vlo) / (g.vhi - g.vlo)) * g.h;
+       return isFinite(y);
+     }), JSON.stringify(depth.dpTraces));
+
+  /* A guide dragged on one panel moves on all of them, because there is one
+     of it. */
+  const hil = gs.find((g) => g.label === 'hilus');
+  ev('BARRY.dspca._dragGuide(' + JSON.stringify(hil.id) + ', 14)');
+  await until(() => (ev('BARRY.dspca._guides()')
+                     .find((g) => g.id === hil.id) || {}).csc === 14,
+              8000, 'the moved guide');
+  ok('dragging a guide moves the one line, not a copy per panel',
+     ev('BARRY.dspca._guides()').filter((g) => g.label === 'hilus').length === 1
+     && ev('BARRY.dspca._guides()')
+          .find((g) => g.id === hil.id).csc === 14);
+
+  /* And it is the RECORDING that holds it, not the panel: the server has
+     the new position without the panel being asked again. */
+  /* Waited for on the SERVER, not in the panel.
+
+     A drag moves the line on screen immediately and lets the write follow --
+     otherwise it would feel tied to the pointer by a rubber band -- so the
+     panel showing 14 says nothing yet about what was stored. Checking the
+     local array and then asking the server in the same breath is a race the
+     harness would lose about half the time. */
+  await until(async () => {
+    const r = await get('/api/guides/demo-ds-tutorial');
+    return ((r.guides || []).find((g) => g.id === hil.id) || {}).csc === 14;
+  }, 10000, 'the move to reach the recording');
+  const onRec = await get('/api/guides/demo-ds-tutorial');
+  eq('the move is written against the recording',
+     (onRec.guides.find((g) => g.id === hil.id) || {}).csc, 14);
+  ok('moving does not wipe the name',
+     (onRec.guides.find((g) => g.id === hil.id) || {}).label === 'hilus',
+     JSON.stringify(onRec.guides));
+
+  /* IN XPLOREFINDER, not merely publishable to it.
+
+     The push is skipped unless the open recording is the one the guides
+     belong to, and the property that says so is `sess.identity.gid` --
+     there is no `sess.gid`, so the first version of this check would have
+     passed against a push that never happened. So the recording is actually
+     opened and the lines are read back out of xplore's own store. */
+  ok('the mechanism is the one Xplorefinder already draws with',
+     typeof ev('BARRY.views.xplore.setChannelLines') === 'function'
+     && typeof ev('BARRY.views.xplore.channelLines') === 'function');
+  const rec = (st().plan || {}).session || {};
+  if (rec.path) {
+    await ev('BARRY.views.xplore.open(' + JSON.stringify(rec.path) + ')');
+    await until(() => !!ev('BARRY.views.xplore.current()'), 20000,
+                'the recording in Xplorefinder');
+    ev('BARRY.dspca._addGuide(9, "check")');
+    await until(() => (ev('BARRY.views.xplore.channelLines') ? 
+                       ev('BARRY.views.xplore.channelLines()') : [])
+                      .some((l) => l.label === 'check'), 12000,
+                'the guide to reach Xplorefinder');
+    const lines = ev('BARRY.views.xplore.channelLines()');
+    ok('a guide added here appears on Xplorefinder’s panes',
+       lines.some((l) => l.label === 'check' && l.number === 9),
+       JSON.stringify(lines.map((l) => [l.label, l.number])));
+    ok('and it carries a way back, so dragging it there writes here',
+       lines.every((l) => typeof l.onmove === 'function'));
+    const ck = ev('BARRY.dspca._guides()').find((g) => g.label === 'check');
+    if (ck) ev('BARRY.dspca._dropGuide(' + JSON.stringify(ck.id) + ')');
+    await until(() => !ev('BARRY.views.xplore.channelLines()')
+                        .some((l) => l.label === 'check'), 10000,
+                'the guide to go');
+    ok('taking it off here takes it off there too',
+       !ev('BARRY.views.xplore.channelLines()')
+          .some((l) => l.label === 'check'));
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.dp-intro'), 8000, 'the panel back');
+  }
+
+  ev('BARRY.dspca._dropGuide(' + JSON.stringify(hil.id) + ')');
+  await until(() => ev('BARRY.dspca._guides()').length === 1, 8000, 'one left');
+  ok('a guide can be taken off',
+     ev('BARRY.dspca._guides()').length === 1);
+  ev('BARRY.dspca._dropGuide(null)');
+  await until(() => ev('BARRY.dspca._guides()').length === 0, 8000, 'none');
+  ok('and all of them at once', ev('BARRY.dspca._guides()').length === 0);
+
+  /* ================================================================== */
+  head('THE BULK QUEUE');
+
+  const bp = await get('/api/dspca/batch/plan');
+  ok('the batch plan answers', !!(bp && bp.ok));
+  ok('every set is in exactly one of the three lists',
+     bp.n === (bp.todo || []).length && bp.n_done === (bp.done || []).length
+     && bp.n_blocked === (bp.blocked || []).length,
+     bp.n + '/' + bp.n_done + '/' + bp.n_blocked);
+  ok('a set already read is listed as done rather than left out',
+     (bp.done || []).some((r) => r.gid === 'demo-ds-tutorial'),
+     JSON.stringify((bp.done || []).map((r) => r.gid)));
+  ok('every set left out says why, in a sentence',
+     (bp.blocked || []).every((r) => r.why && r.why.length > 12),
+     JSON.stringify((bp.blocked || []).slice(0, 2)));
+
+  /* Already read, so this must skip rather than spend the minutes again --
+     which is the whole reason the vault is keyed on the question rather
+     than on the run. */
+  const bj = await post('/api/dspca/batch', { entries: [demo.id] });
+  ok('a batch starts and declares its members up front',
+     !!(bj && bj.ok && bj.job), JSON.stringify(bj || {}).slice(0, 120));
+  await until(async () => {
+    const j = await get('/api/cfc/job/' + bj.job.id);
+    return (j.job || {}).status !== 'running';
+  }, 40000, 'the batch');
+  const jr = await get('/api/cfc/result/' + bj.job.id);
+  ok('and it skips what is already read', (jr.result.cached || []).length === 1
+     && (jr.result.read || []).length === 0,
+     JSON.stringify(jr.result));
+
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'dspca: ' + pass + ' ok, ' + fail + ' fail';
+})();
+</script></body></html>

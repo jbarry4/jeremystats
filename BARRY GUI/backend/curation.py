@@ -80,6 +80,60 @@ KINDS = {
              "color": "#E5A823", "flagged": True},
             {"id": "review", "name": "Flag for Deep Review",
              "keys": ["4", "r"], "color": "#8b5cf6", "flagged": True},
+            # DS1 and DS2 -- what X-ray writes, and the reason it writes a
+            # LABEL rather than a field of its own.
+            #
+            # `EventBank.add` whitelists what an event is -- start, end,
+            # channel, amplitude, label, label_id, from_t, align_flag -- and
+            # a `ds_type` beside those would be dropped on the way in. Worse,
+            # `SNAP_FIELDS` is start, label and label_id, so a new field
+            # would not survive a version restore either: you could go back
+            # to v4 and silently lose the classification.
+            #
+            # As labels they cost nothing and gain everything already built:
+            # `by_label` counts them, the per-version snapshot carries them,
+            # the bank's CSV export has a `label_name` column, and
+            # Xplorefinder colours them apart with nothing new written. The
+            # IED vocabulary above already has two `good` labels, so this is
+            # the shape rather than an invention.
+            #
+            # APPENDED, never replacing `spike`. Every set on disk was
+            # curated under the old vocabulary and still means what it meant;
+            # only a commit from X-ray moves an event onto one of these.
+            #
+            # `computed`, which is what the absence of keys used to imply
+            # and now states. Checkup shows a button per label and binds a
+            # key to each, and neither is right for these: DS1/DS2 is worked
+            # out from a PCA over every event at once, so a button offering
+            # it one candidate at a time would be offering a call that
+            # cannot be made that way -- and two more keys would change a
+            # tool this work does not otherwise touch. Everything that asks
+            # "is this a real event" reads `good` and is unaffected.
+            # Colours match `dspca.CLASS_COLORS[0:2]`, which the scatter, the
+            # profile and the class rasters all draw from.
+            # Five, because the panel offers up to five classes and the
+            # ordering generalises -- DS1 is the shallowest, whatever the
+            # count. Committing three classes wrote a `ds3` that no
+            # vocabulary knew, so `_n_good` stopped counting those events
+            # and the set read as though two of its spikes had gone.
+            #
+            # Toothy only ever makes two. Three or more is exploration, and
+            # the vocabulary has to be able to say what was explored or the
+            # record cannot.
+            #
+            # The colours are `dspca.CLASS_COLORS`, written out rather than
+            # imported: that module pulls in scipy and scikit-learn, and the
+            # curation vocabulary must not depend on either.
+            {"id": "ds1", "name": "Dentate Spike (DS1)",
+             "color": "#1a7f37", "good": True, "computed": True},
+            {"id": "ds2", "name": "Dentate Spike (DS2)",
+             "color": "#7b3fa0", "good": True, "computed": True},
+            {"id": "ds3", "name": "Dentate Spike (DS3)",
+             "color": "#b8620a", "good": True, "computed": True},
+            {"id": "ds4", "name": "Dentate Spike (DS4)",
+             "color": "#1f6feb", "good": True, "computed": True},
+            {"id": "ds5", "name": "Dentate Spike (DS5)",
+             "color": "#a3155f", "good": True, "computed": True},
         ],
     },
     "ied": {

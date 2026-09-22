@@ -347,8 +347,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
   for (const k of (kinds.kinds || [])) {
     say('  ' + k.id + ': ' + k.labels.map(
       (l) => l.name + ' (' + l.keys.join('/') + ')').join(', '), 'note');
-    check(k.id + ' has keys on every category',
-          k.labels.every((l) => (l.keys || []).length > 0));
+    /* Every category A PERSON ASSIGNS needs a key, which is the thing this
+       was always checking. A `computed` label -- DS1/DS2, worked out from a
+       PCA over the whole set -- is not one of those: it has no button in
+       Checkup and no key, and asserting otherwise would be demanding a
+       shortcut for a call nobody can make one candidate at a time. */
+    check(k.id + ' has keys on every category a person assigns',
+          k.labels.filter((l) => !l.computed)
+            .every((l) => (l.keys || []).length > 0));
+    check(k.id + ' offers no button for a computed category',
+          k.labels.filter((l) => l.computed)
+            .every((l) => !(l.keys || []).length));
     // The bug this found: sputter had `p`, which is also "previous".
     check(k.id + ' takes none of the navigation keys',
           k.labels.every((l) => (l.keys || []).every(
