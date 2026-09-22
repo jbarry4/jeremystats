@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.604944+00:00",
     "session": "2026-09-04T15:57:01.604944+00:00",
     "start": "2026-09-04T15:57:01.604944+00:00",
-    "updated": "2026-09-09T14:23:58.288033+00:00",
-    "view_state": "2026-09-09T14:23:58.288033+00:00"
+    "updated": "2026-09-22T17:40:40.865638+00:00",
+    "view_state": "2026-09-22T17:40:40.865638+00:00"
   },
   "_keys": {
     "paths": {
@@ -53,11 +53,15 @@
       "Strawbarry": [
         "set",
         "2026-09-09T13:42:04.186970+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-22T17:32:40.149935+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T14:23:58.288033+00:00",
+    "at": "2026-09-22T17:40:40.865638+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -116,12 +120,21 @@
       "path": "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s4sept13\\2023-09-13_17-24-49",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-22T13:32:40-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s4sept13\\2023-09-13_17-24-49",
+      "root": null,
+      "scan": null
     }
   },
   "session": 4,
   "start": "2023-09-13T17:24:49",
   "updated": {
-    "at": "2026-09-09T10:23:58-04:00",
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T13:40:40-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -167,18 +180,18 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
+    "gain": 2.5,
     "hp": 5,
     "invert": true,
     "lp": 100,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 985.626,
+    "t0": 916.310217,
     "ylim": null
   }
 }
