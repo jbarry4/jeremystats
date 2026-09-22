@@ -11,6 +11,8 @@
     "gid": "2026-09-02T23:51:19.791380+00:00",
     "group": "2026-09-04T15:57:01.575592+00:00",
     "has_video": "2026-09-04T15:57:01.575592+00:00",
+    "hemisphere": "2026-09-09T00:00:19.209436+00:00",
+    "hemisphere_source": "2026-09-09T00:00:19.209436+00:00",
     "key": "2026-09-04T15:57:01.575592+00:00",
     "label": "2026-09-04T15:57:01.575592+00:00",
     "loose_key": "2026-09-04T15:57:01.575592+00:00",
@@ -22,8 +24,8 @@
     "schema": "2026-09-04T15:57:01.575592+00:00",
     "session": "2026-09-04T15:57:01.575592+00:00",
     "start": "2026-09-04T15:57:01.575592+00:00",
-    "updated": "2026-09-08T21:33:55.755979+00:00",
-    "view_state": "2026-09-08T21:33:55.755979+00:00"
+    "updated": "2026-09-21T19:56:29.101763+00:00",
+    "view_state": "2026-09-21T19:56:29.101763+00:00"
   },
   "_keys": {
     "paths": {
@@ -60,11 +62,19 @@
       "StrawBarry": [
         "set",
         "2026-09-08T21:25:05.057864+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-21T19:49:59.754711+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T16:46:55.911713+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T21:33:55.755979+00:00",
+    "at": "2026-09-21T19:56:29.101763+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -86,6 +96,8 @@
   "gid": "sddf3e5010ff2",
   "group": "PTEN",
   "has_video": true,
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m002_s008_2024-01-26_17-48-00",
   "label": "PTEN m2 s8 2024-01-26",
   "loose_key": "m002_s008",
@@ -123,17 +135,34 @@
       "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-21T15:49:59-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T12:46:55-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
+      "root": null,
+      "scan": null
     }
   },
   "session": 8,
   "start": "2024-01-26T17:48:00",
   "updated": {
-    "at": "2026-09-08T17:33:55-04:00",
+    "app_version": "2026.09.21.7",
+    "at": "2026-09-21T15:56:29-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
@@ -174,17 +203,18 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 0.7692307692307692,
+    "gain": 2.596153846153846,
     "hp": 5,
     "invert": true,
     "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 432.304,
+    "t0": 428.722839,
     "ylim": null
   }
 }
