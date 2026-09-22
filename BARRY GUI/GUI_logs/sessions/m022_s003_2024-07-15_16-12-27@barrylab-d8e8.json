@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.695045+00:00",
     "session": "2026-09-04T15:57:01.695045+00:00",
     "start": "2026-09-04T15:57:01.695045+00:00",
-    "updated": "2026-09-12T19:17:05.816186+00:00",
-    "view_state": "2026-09-12T19:16:59.571204+00:00"
+    "updated": "2026-09-22T18:37:01.905866+00:00",
+    "view_state": "2026-09-22T18:37:01.905866+00:00"
   },
   "_keys": {
     "paths": {
@@ -56,12 +56,16 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-12T19:05:57.324940+00:00"
+        "2026-09-22T18:32:14.763520+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-16T14:30:09.082748+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-12T19:17:05.816186+00:00",
+    "at": "2026-09-22T18:37:01.905866+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -117,10 +121,18 @@
       "scan": "scan_765fa11e51"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-12T15:05:54-04:00",
+      "at": "2026-09-22T14:32:14-04:00",
       "by": "Rain Younger",
-      "machine": "Bluebarry",
+      "machine": "Strawbarry",
       "path": "E:\\Data\\m22s3jul15\\2024-07-15_16-12-27",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-16T10:30:09-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\m22_ptenblind\\m22s3jul15\\2024-07-15_16-12-27",
       "root": null,
       "scan": null
     }
@@ -128,10 +140,11 @@
   "session": 3,
   "start": "2024-07-15T16:12:27",
   "updated": {
-    "at": "2026-09-12T15:17:05-04:00",
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T14:37:01-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "Bluebarry",
+    "machine": "Strawbarry",
     "os": "Windows",
     "user": "Rain Younger"
   },
@@ -174,18 +187,18 @@
     "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 0.7692307692307692,
+    "gain": 2.5,
     "hp": 5,
     "invert": true,
     "lp": 100,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1.22,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 1787.958,
+    "t0": 1742.235541,
     "ylim": null
   }
 }
