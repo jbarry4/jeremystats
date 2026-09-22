@@ -1517,8 +1517,28 @@ class EventBank:
                 item.pop("align_flag", None)
             out.append(item)
 
+        # WRITTEN IN TIME ORDER, whatever order they arrived in.
+        #
+        # A stamp can end up the other side of its neighbour, and that is an
+        # alignment rather than a fault. The no-crossing rule holds over the
+        # peaks the tool assigns itself; it says nothing about a reviewer
+        # who drags one by hand onto the peak it plainly belongs on, and
+        # nothing about a stamp left where it was while its neighbour moves
+        # past it. All three are legitimate, and this used to refuse the
+        # whole write for the last two -- an afternoon of review turned away
+        # at the last step over two stamps that were right.
+        #
+        # So the list is sorted by where each stamp ENDS UP, which is the
+        # order every other write to this bank keeps (`bank` sorts the same
+        # way) and the order `events_at` will hand back. Nothing is lost by
+        # it: `from_t` travels on the event, so a stamp that changed places
+        # still says where it came from.
         ordered = sorted(out, key=lambda e: float(e.get("start") or 0.0))
+        # Whether the alignment changed anybody's place, and how many. Kept
+        # as a fact about the version rather than as a veto over it.
         order_held = [id(x) for x in ordered] == [id(x) for x in out]
+        resorted = sum(1 for was, now in zip(out, ordered) if was is not now)
+        out = ordered
 
         # Two stamps at one time is the failure the one-peak-per-stamp rule
         # exists to prevent, so it is checked here too rather than trusted
@@ -1548,6 +1568,7 @@ class EventBank:
             "unmoved": len(out) - len(shifts),
             "n_events": len(out),
             "order_held": order_held,
+            "resorted": resorted,
             "collisions": collided[:10],
             "shift_min_ms": min(shifts) if shifts else 0.0,
             "shift_max_ms": max(shifts) if shifts else 0.0,
@@ -1595,11 +1616,13 @@ class EventBank:
                 "%s would not survive being read back from it."
                 % (src_v, ", ".join(dropped)))
         if not order_held:
-            report["error"] = (
-                "The alignment reordered the events, which the no-crossing "
-                "rule makes impossible -- so something upstream is wrong. "
-                "Nothing was written.")
-            return report
+            # Said out loud, not refused -- see the sort above. The panel
+            # can show it beside the counts; a set whose stamps changed
+            # places is worth knowing about and is not a failure.
+            report["reordered"] = (
+                "%d stamp(s) ended up in a different place in the set than "
+                "they started in, so this version is written in time order."
+                % resorted)
         if collided:
             report["error"] = (
                 "%d stamp(s) would land on a time another stamp already "
@@ -1697,7 +1720,11 @@ class EventBank:
                 "shift_max_ms": report["shift_max_ms"],
                 "shift_median_ms": (absol[len(absol) // 2] if absol else 0.0),
                 "flagged": by_reason,
-                "order_held": True,
+                # What actually happened, not what used to be the only
+                # thing that could be written: a version whose stamps
+                # changed places says so in its own record.
+                "order_held": order_held,
+                "resorted": resorted,
             },
         }
         fresh["aligned"].update(params or {})

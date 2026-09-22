@@ -316,7 +316,13 @@ BARRY.braces = (function () {
       toast('Could not open that alignment: ' + e.message, 'err', 8000);
       return;
     }
-    filter = (set_.counts || {}).waiting ? 'flag' : 'all';
+    readOverlaps(set_.overlaps);
+    /* Opening on the pass that wants an answer. An overlap only appears
+       once somebody has been through the flags, so it comes second -- but
+       it comes before "All", because a set that cannot be banked should not
+       open on a list that does not say so. */
+    filter = (set_.counts || {}).waiting ? 'flag'
+      : ((set_.counts || {}).overlap ? 'overlap' : 'all');
     bench = null;
     render();
   }
@@ -340,12 +346,42 @@ BARRY.braces = (function () {
       set_.counts = got.counts;
       set_.would_move = got.would_move;
       set_.set.calls = got.calls;
+      // A move onto a time its neighbour already holds flags both of them,
+      // and moving either off unflags both -- so this is re-read on every
+      // decision rather than only when the set is opened.
+      set_.overlaps = got.overlaps;
+      readOverlaps(got.overlaps);
     } catch (e) {
       toast(e.message, 'err', 8000);
     }
   }
 
   const callFor = (n) => ((set_.set.calls || {})[String(n)] || {}).call || null;
+
+  /* THE OVERLAP FLAG, by row.
+
+     Every other flag is measured once and written into the row. This one is
+     a fact about the review -- two stamps sent to the same time, which the
+     bank will not write -- so the server works it out from the calls and
+     sends it with the set and with every decision. See `bracesset.OVERLAP`.
+
+     Held as a lookup rather than walked per row: the table draws four
+     hundred rows and the bench repaints on every keystroke. */
+  let overlapAt = new Map();
+  function readOverlaps(list) {
+    overlapAt = new Map();
+    (list || []).forEach((g) => (g.rows || []).forEach(
+      (i) => overlapAt.set(i, g)));
+  }
+  const overlapping = (i) => overlapAt.get(i) || null;
+  /* The OTHER stamp in the pair, which is the one somebody has to see for
+     the flag to mean anything. */
+  function overlapMate(i) {
+    const g = overlapping(i);
+    if (!g) return null;
+    const other = (g.rows || []).filter((x) => x !== i);
+    return other.length ? other[0] : null;
+  }
 
   /* Which rows the table is showing. `flag` is the pass that matters: the
      ones the tool would not vouch for and nobody has answered yet. */
@@ -359,6 +395,7 @@ BARRY.braces = (function () {
       else if (filter === 'done' && (said || !r.flag)) out.push([r, n]);
       else if (filter === 'same' && r.same) out.push([r, n]);
       else if (filter === 'nopeak' && r.flag === 'no_peak') out.push([r, n]);
+      else if (filter === 'overlap' && overlapping(n)) out.push([r, n]);
     });
     return out;
   }
@@ -1608,6 +1645,9 @@ BARRY.braces = (function () {
     contested: 'not the nearest peak',
     weak: 'weak peak',
     outlier: 'unlike the others',
+    // Not one of the proposal's. Raised by the review and cleared by the
+    // review -- see `overlapping`.
+    overlap: 'shares a time with another stamp',
   };
 
   function tableCard(c) {
@@ -1615,6 +1655,11 @@ BARRY.braces = (function () {
     const all = (set_.set.rows || []);
     const pills = [
       ['flag', 'Needs you', c.waiting || 0],
+      /* Only when there are any. A pass that is empty on every set anybody
+         has ever run is a pill that teaches people to ignore pills -- and
+         when it is not empty it is the one thing standing between this
+         proposal and the bank, so it goes near the front. */
+      ...(c.overlap ? [['overlap', 'Overlapping', c.overlap]] : []),
       ['all', 'All', all.length],
       ['done', 'Answered', (c.auto || 0) + (c.confirmed || 0)
                            + (c.kept || 0) + (c.moved || 0)],
@@ -1632,31 +1677,44 @@ BARRY.braces = (function () {
       card.appendChild(el('p', { class: 'hint', text:
         filter === 'flag'
           ? 'Nothing left to answer. Every flag has a decision on it.'
-          : 'Nothing in that pass.' }));
+          : filter === 'overlap'
+            ? 'No two stamps share a time. Nothing is standing in the way '
+              + 'of banking this.'
+            : 'Nothing in that pass.' }));
       return card;
     }
 
     const tb = el('tbody');
     for (const [r, n] of got.slice(0, 400)) {
       const said = callFor(n);
+      /* An overlap outranks whatever else the row has to say. Every other
+         state here is a description; this one is the reason the set cannot
+         be banked, and it usually sits on a row that already reads as
+         answered -- somebody moved a stamp, which is what caused it. */
+      const clash = overlapping(n);
       tb.appendChild(el('tr', {
-        class: (r.flag && !said) ? 'flagged' : (said ? 'said' : ''),
+        class: clash ? 'flagged'
+          : ((r.flag && !said) ? 'flagged' : (said ? 'said' : '')),
         onclick: () => openBench(n),
       }, [
-        el('td', { class: 'st', html: said
-          ? (said === 'keep' ? '<span class="dim">—</span>'
-             : '<span class="tick">✓</span>')
-          : (r.flag ? '<span class="flagmark">⚑</span>'
-             : '<span class="tick">✓</span>') }),
+        el('td', { class: 'st', html: clash
+          ? '<span class="flagmark">⚑</span>'
+          : (said
+             ? (said === 'keep' ? '<span class="dim">—</span>'
+                : '<span class="tick">✓</span>')
+             : (r.flag ? '<span class="flagmark">⚑</span>'
+                : '<span class="tick">✓</span>')) }),
         el('td', { text: clock(r.was) }),
         el('td', { text: r.peak == null ? 'unmoved' : clock(r.now) }),
         el('td', { text: ms(r.shift_ms) }),
         el('td', { text: r.peak_uv == null ? '—'
                          : String(Math.round(r.peak_uv)) }),
-        el('td', { class: 'br-why', text: said
-          ? (said === 'keep' ? 'left where it was'
-             : said === 'move' ? 'moved by hand' : 'confirmed')
-          : (REASONS[r.flag] || '') }),
+        el('td', { class: 'br-why', text: clash
+          ? REASONS.overlap
+          : (said
+             ? (said === 'keep' ? 'left where it was'
+                : said === 'move' ? 'moved by hand' : 'confirmed')
+             : (REASONS[r.flag] || '')) }),
       ]));
     }
     const tbl = el('table', { class: 'br-tbl' }, [
@@ -1703,6 +1761,23 @@ BARRY.braces = (function () {
           + 'version would hold exactly what the last one does',
       onclick: () => commit(false),
     }));
+    /* THE ONE THING THAT WILL STOP THE WRITE, said before the button is
+       pressed rather than after. Two stamps on one time is a duplicate and
+       the bank refuses it, so a proposal carrying one cannot be banked --
+       and finding that out from a red toast at the end is how a person
+       learns to distrust the button rather than the pair of stamps. */
+    const clash = c.overlap || 0;
+    if (clash) {
+      bar.appendChild(el('span', { class: 'warn-line', text:
+        clash + ' stamp' + (clash === 1 ? '' : 's') + ' share a time with '
+        + 'another stamp, which is one event written twice. This cannot be '
+        + 'banked until one of each pair moves.' }));
+      bar.appendChild(el('button', {
+        class: 'btn sm', text: 'Show me',
+        title: 'The overlapping stamps, in the pass of their own',
+        onclick: () => { filter = 'overlap'; render(); },
+      }));
+    }
     bar.appendChild(el('span', { class: 'hint', text: waiting
       ? waiting + ' flag' + (waiting === 1 ? '' : 's') + ' still unanswered. '
         + 'Those stamps stay exactly where they are — a flag nobody '
@@ -1748,7 +1823,13 @@ BARRY.braces = (function () {
   ];
 
   const vRows = () => (view && set_ && set_.set.rows) || [];
-  const vWanted = (r) => (!view || view.only === 'all') ? true : !!r.flag;
+  /* Which stamps the pass walks. An overlapping row is wanted even when it
+     arrived unflagged and has been answered: it is the one state a person
+     has to come back to, so stepping must not walk past it. `i` is the row
+     number -- every caller passes it, because `filter`, `findIndex` and
+     `forEach` all hand it over anyway. */
+  const vWanted = (r, i) => (!view || view.only === 'all')
+    ? true : (!!r.flag || !!overlapping(i));
   const vAt = () => vRows()[view.at] || null;
 
   async function enter() {
@@ -2044,7 +2125,9 @@ BARRY.braces = (function () {
     const cur = vAt();
     const evs = [];
     vRows().forEach((r, i) => {
-      if (view.only === 'flag' && !r.flag && r !== cur) return;
+      if (view.only === 'flag' && !r.flag && !overlapping(i) && r !== cur) {
+        return;
+      }
       const mine = r === cur;
       const said = callFor(i);
       // What the dashed half says: answered, still being asked about, or
@@ -2199,7 +2282,7 @@ BARRY.braces = (function () {
     const all = vRows();
     let i = view.at + d;
     while (i >= 0 && i < all.length) {
-      if (vWanted(all[i])) { vGoTo(i); return; }
+      if (vWanted(all[i], i)) { vGoTo(i); return; }
       i += d;
     }
     toast(d > 0 ? 'That is the last one in this pass.'
@@ -2338,6 +2421,11 @@ BARRY.braces = (function () {
       set_.counts = got.counts;
       set_.would_move = got.would_move;
       set_.set.calls = got.calls;
+      // A move onto a time its neighbour already holds flags both of them,
+      // and moving either off unflags both -- so this is re-read on every
+      // decision rather than only when the set is opened.
+      set_.overlaps = got.overlaps;
+      readOverlaps(got.overlaps);
     } catch (e) {
       toast(e.message, 'err', 8000);
       return;
@@ -2374,6 +2462,12 @@ BARRY.braces = (function () {
     const saidOf = (x) => callFor(x.i);
     const stateOf = (x) => {
       const said = saidOf(x);
+      /* First, because it outranks everything else a row can be. The
+         states below describe what was decided; this one says the decision
+         cannot be written, and it is nearly always sitting on a row that
+         otherwise reads as finished. A row called garbage is not written
+         at all, so it can never be one of a pair. */
+      if (overlapping(x.i)) return 'overlap';
       if (said === 'garbage') return 'garbage';
       if (said === 'move') return 'moved';
       if (said === 'confirm') return 'confirmed';
@@ -2383,11 +2477,15 @@ BARRY.braces = (function () {
     const STATE_NAME = {
       moved: 'moved by hand', confirmed: 'confirmed', kept: 'left alone',
       flagged: 'needs a decision', auto: 'moving, unflagged',
-      garbage: 'not an event',
+      garbage: 'not an event', overlap: 'shares a time',
     };
     const STATE_COLOUR = {
       moved: '#5cc98d', confirmed: '#5cc98d', kept: '#ED8B33',
       flagged: '#ED8B33', auto: 'var(--line)', garbage: '#d9534f',
+      // Not the red that means "removed" and not the orange that means
+      // "unanswered": a third thing, so the eye can find the pair in a
+      // list of twelve hundred.
+      overlap: '#c678dd',
     };
 
     const tally = {};
@@ -2443,8 +2541,8 @@ BARRY.braces = (function () {
       },
     });
     chips.appendChild(chip('all', 'All', rows.length));
-    for (const id of ['flagged', 'auto', 'confirmed', 'moved', 'kept',
-                      'garbage']) {
+    for (const id of ['overlap', 'flagged', 'auto', 'confirmed', 'moved',
+                      'kept', 'garbage']) {
       chips.appendChild(chip(id, STATE_NAME[id], tally[id] || 0));
     }
 
@@ -2457,6 +2555,7 @@ BARRY.braces = (function () {
         if (q) {
           const hay = [clock(x.r.was), x.r.was.toFixed(3),
                        ms(shiftOf(x)) + ' ms', STATE_NAME[st],
+                       overlapping(x.i) ? REASONS.overlap : '',
                        x.r.flag ? (REASONS[x.r.flag] || x.r.flag) : '']
             .filter(Boolean).join(' ').toLowerCase();
           if (hay.indexOf(q) < 0) continue;
@@ -2478,8 +2577,12 @@ BARRY.braces = (function () {
         class: 'cur-list-row' + (x.i === view.at ? ' here' : '')
              + (st === 'flagged' ? ' undecided' : ''),
         style: '--cat:' + STATE_COLOUR[st],
-        title: x.r.flag ? (REASONS[x.r.flag] || x.r.flag)
-                        : 'Nothing was flagged about this one',
+        title: st === 'overlap'
+          ? REASONS.overlap
+            + (overlapMate(x.i) != null
+               ? ' — stamp #' + (overlapMate(x.i) + 1) : '')
+          : (x.r.flag ? (REASONS[x.r.flag] || x.r.flag)
+                      : 'Nothing was flagged about this one'),
         onclick: () => { closeModal(); view.list = false; vGoTo(x.i); },
       }, [
         el('span', { class: 'cl-n', text: '#' + (x.i + 1) }),
@@ -2487,7 +2590,10 @@ BARRY.braces = (function () {
         el('span', { class: 'cl-move', text: ms(d) + ' ms' }),
         el('span', { class: 'cl-lab', text: STATE_NAME[st] }),
         el('span', { class: 'cl-who',
-                     text: x.r.flag ? (REASONS[x.r.flag] || x.r.flag) : '' }),
+                     text: st === 'overlap'
+                       ? (overlapMate(x.i) != null
+                          ? 'with #' + (overlapMate(x.i) + 1) : REASONS.overlap)
+                       : (x.r.flag ? (REASONS[x.r.flag] || x.r.flag) : '') }),
         x.i === view.at ? el('span', { class: 'pill sm', text: 'here' })
                         : null,
       ].filter(Boolean));
@@ -2645,7 +2751,16 @@ BARRY.braces = (function () {
       el('span', { class: 'cur-sub', text:
         clock(r.was) + '  →  ' + clock(vNow(r))
         + '   ' + ms((vNow(r) - r.was) * 1000) + ' ms'
-        + (r.flag ? '   ·   ' + (REASONS[r.flag] || r.flag) : '') }),
+        /* The overlap first and instead: it is the only thing here that
+           stops the set being banked, and the stamp it collides with is
+           the thing a person needs named -- it is drawn underneath this
+           one, a tenth of a millisecond away, where nothing on the trace
+           can tell them apart. */
+        + (overlapping(view.at)
+           ? '   ·   ' + REASONS.overlap
+             + (overlapMate(view.at) != null
+                ? ' (stamp ' + (overlapMate(view.at) + 1) + ')' : '')
+           : (r.flag ? '   ·   ' + (REASONS[r.flag] || r.flag) : '')) }),
       el('span', { class: 'cur-count', text: seen + ' / ' + n }),
     ]));
 
@@ -2798,7 +2913,7 @@ BARRY.braces = (function () {
               vBar();
               return;
             }
-            if (!vWanted(vAt())) {
+            if (!vWanted(vAt(), view.at)) {
               const i = vRows().findIndex(vWanted);
               if (i >= 0) { vGoTo(i); return; }
             }
@@ -3489,7 +3604,19 @@ BARRY.braces = (function () {
             + 'it, so there is nothing to bank.', null, 8000);
       return;
     }
-    if (rep.error) { toast(rep.error, 'err', 9000); return; }
+    if (rep.error) {
+      toast(rep.error, 'err', 9000);
+      /* A refusal naming rows is a refusal somebody can act on, so it puts
+         them on those rows. In the bench, on the first of them; in the
+         panel, on the pass that holds all of them. */
+      if ((rep.overlaps || []).length) {
+        readOverlaps(rep.overlaps);
+        const first = rep.overlaps[0].rows[0];
+        if (view) { view.only = 'all'; vGoTo(first); vBar(); }
+        else { filter = 'overlap'; render(); }
+      }
+      return;
+    }
     if (apply === true) {
       toast('Banked as version ' + rep.version + '. ' + rep.moved
             + ' stamp' + (rep.moved === 1 ? '' : 's') + ' moved.', 'ok', 7000);

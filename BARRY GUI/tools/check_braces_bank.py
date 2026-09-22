@@ -102,10 +102,23 @@ try:
     bad = BANK.align(eid, {0: 5.0, 1: 5.0}, params, dry_run=True)
     truthy("two stamps onto one time is refused", bad.get("error"))
     check("...and nothing was written", BANK.get(eid)["n"], 6)
-    # Reordering cannot happen under the rule, and is refused if it does.
-    bad = BANK.align(eid, {0: 9.0}, params, dry_run=True)
-    truthy("an alignment that reorders is refused", bad.get("error"),
-           "moving event 0 from 1.012 to 9.0 jumps it past events 1 and 2")
+    # Reordering is NOT a refusal, and it used to be one.
+    #
+    # The no-crossing rule holds over the peaks the tool assigns itself. It
+    # says nothing about a reviewer dragging a stamp onto the peak it
+    # plainly belongs on, or about one left where it was while its
+    # neighbour moves past it -- both legitimate, and both used to turn an
+    # afternoon of review away at the last step. So the write sorts by
+    # where the stamps end up and says how many changed places.
+    crossed = BANK.align(eid, {0: 9.0}, params, dry_run=True)
+    check("an alignment that reorders is not refused",
+          crossed.get("error"), None,
+          "moving event 0 from 1.012 to 9.0 jumps it past events 1 and 2")
+    check("...and says the order did not hold", crossed.get("order_held"),
+          False)
+    check("...and how many stamps changed places",
+          crossed.get("resorted"), 3)
+    truthy("...in words the panel can show", crossed.get("reordered"))
     # Nothing to do is not a version -- and not a failure either. It is
     # what a set that is already right looks like, so it comes back as an
     # outcome the panel can be calm about rather than as a red error.

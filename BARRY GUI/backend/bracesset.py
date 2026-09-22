@@ -44,6 +44,7 @@ import time
 import uuid
 
 from . import shards
+from .eventbank import EventBank
 
 SCHEMA = 1
 
@@ -84,6 +85,32 @@ SET_SPEC = {
 # aligned version holds the spikes, so a rejected one simply is not in it,
 # and the version's note says how many went that way.
 CALLS = ("confirm", "keep", "move", "garbage")
+
+# THE ONE FLAG THAT IS NOT IN THE PROPOSAL.
+#
+# `braces.REASONS` names the reasons the TOOL would not vouch for a row, and
+# they are measured once, when the set is made. This one is a fact about the
+# REVIEW: two stamps sent to the same time are one event written twice, not
+# two events, and the bank will not write it.
+#
+# It cannot be measured with the others. Nothing can know it until somebody
+# has moved something, and it stops being true the moment they move it back
+# -- so it is worked out from the calls every time they are read, and it is
+# the only way a row that arrived with no flag on it can end up wanting an
+# answer. That is also why it is not written into `rows`: a flag stored
+# against a decision that has since changed would be a lie the panel shows.
+#
+# It is not a refusal either. Somebody in the middle of a review will pass
+# through this state on the way to a set that is right, and being stopped at
+# the moment of making a mistake -- rather than being shown it and left to
+# fix it -- is how a tool makes people careful about the wrong thing.
+OVERLAP = "overlap"
+
+# Same rounding the bank matches duplicates on, so "these two share a time"
+# means one thing across the two. Read from there rather than spelled again:
+# a flag that disagreed with the write it is warning about would be worse
+# than no flag at all.
+OVERLAP_DP = EventBank.DUP_DP
 
 
 def _now():
@@ -247,6 +274,67 @@ class BracesSets:
 # --------------------------------------------------------------------------
 # Reading a set back
 # --------------------------------------------------------------------------
+def settled(rec):
+    """Every row, and the time it would be written at.
+
+    Yields `(n, row, call, kind, t)` in row order -- `n` the row's number,
+    `kind` what the review made of it, and `t` where the stamp ends up. `t`
+    is None for a row somebody called garbage, which is not written at all.
+
+    ONE PLACE, because `resolve` and `overlaps` have to agree about where a
+    stamp lands. A flag that disagreed with the write it is warning about
+    would be worse than no flag, and two copies of this walk would disagree
+    the first time either was edited.
+    """
+    calls = rec.get("calls") or {}
+    for n, row in enumerate(rec.get("rows") or []):
+        said = calls.get(str(n)) or {}
+        call = said.get("call")
+        was = row.get("was")
+        # Where the proposal would put it: its peak, unless the peak is
+        # where it already is, or there was no peak to go to.
+        prop = (row["now"] if (row.get("now") is not None
+                               and not row.get("same")) else was)
+        if call == "move":
+            yield n, row, call, "moved", said.get("t")
+        elif call == "garbage":
+            yield n, row, call, "garbage", None
+        elif call == "keep":
+            yield n, row, call, "kept", was
+        elif call == "confirm":
+            yield n, row, call, "confirmed", prop
+        elif row.get("flag"):
+            # Flagged and unresolved: it stays put, and it is still waiting.
+            yield n, row, call, "waiting", was
+        else:
+            yield n, row, call, "auto", prop
+
+
+def overlaps(rec):
+    """Rows that would be written onto a time another row already holds.
+
+    Returns `[{"t": seconds, "rows": [n, ...]}, ...]`, earliest first. Empty
+    is the normal answer and the one the panel is built around.
+
+    This is the `OVERLAP` flag: worked out from the calls as they stand,
+    named by ROW so the panel can jump to them, and gone the moment one of
+    them is moved off. Two stamps on one time is the one thing a review can
+    produce that the bank will not write -- see `EventBank.align` -- so it
+    is said here, against the rows that caused it, rather than as a refusal
+    at the end of an afternoon.
+    """
+    at = {}
+    for n, _row, _call, _kind, t in settled(rec):
+        if t is None:
+            continue
+        try:
+            key = round(float(t), OVERLAP_DP)
+        except (TypeError, ValueError):
+            continue
+        at.setdefault(key, []).append(n)
+    return [{"t": k, "rows": v} for k, v in sorted(at.items()) if len(v) > 1]
+
+
 def resolve(rec):
     """What this set would write, given the review so far.
 
@@ -263,46 +351,37 @@ def resolve(rec):
     this usable at twelve hundred events. A person can still flag one by
     hand, and then the same rule applies to it.
     """
-    calls = rec.get("calls") or {}
     moves, flags = {}, {}
     counts = {"confirmed": 0, "kept": 0, "moved": 0, "waiting": 0,
-              "auto": 0, "no_peak": 0, "garbage": 0}
+              "auto": 0, "no_peak": 0, "garbage": 0, "overlap": 0}
     rejects = []
-    for n, row in enumerate(rec.get("rows") or []):
+    for n, row, _call, kind, t in settled(rec):
         i = row.get("i")
-        said = calls.get(str(n)) or {}
-        call = said.get("call")
         why = row.get("flag")
         if why:
             flags[i] = why
-        if call == "move":
-            moves[i] = said["t"]
-            counts["moved"] += 1
-            continue
-        if call == "garbage":
+        counts[kind] += 1
+        if kind == "garbage":
             # Not an event after all. It does not move, it is not written,
             # and it is counted on its own -- lumping it in with "kept"
             # would hide the one decision here that changes what the set
             # contains rather than where something in it sits.
             rejects.append(i)
-            counts["garbage"] += 1
             continue
-        if call == "keep":
-            counts["kept"] += 1
+        if kind == "waiting" and why == "no_peak":
+            counts["no_peak"] += 1
+        # A stamp going where it already is is not a move. `align` reads it
+        # the same way -- a new time within a nanosecond of the old one
+        # records no shift -- so saying it twice only makes the two able to
+        # disagree.
+        try:
+            shifts = abs(float(t) - float(row.get("was"))) > 1e-9
+        except (TypeError, ValueError):
             continue
-        if call == "confirm":
-            if row.get("now") is not None and not row.get("same"):
-                moves[i] = row["now"]
-            counts["confirmed"] += 1
-            continue
-        # Nobody has said anything about this one.
-        if why:
-            # Flagged and unresolved: it stays put, and it is still waiting.
-            counts["waiting"] += 1
-            if why == "no_peak":
-                counts["no_peak"] += 1
-            continue
-        if row.get("now") is not None and not row.get("same"):
-            moves[i] = row["now"]
-        counts["auto"] += 1
+        if kind == "moved" or shifts:
+            moves[i] = t
+    # Named by row where the panel needs them, counted in stamps here: the
+    # counts are what the pills and the bar are drawn from, and "3 stamps
+    # share a time with another" is the sentence a person can act on.
+    counts["overlap"] = sum(len(g["rows"]) for g in overlaps(rec))
     return moves, flags, counts, rejects

@@ -3739,6 +3739,12 @@ def api_braces_set(set_id):
                  "params", "summary", "created", "committed", "rows",
                  "calls")},
         "counts": counts,
+        # Which rows currently sit on a time another row also claims, by
+        # row number so the panel can jump to them. Worked out from the
+        # calls rather than stored, so it is right after every keystroke
+        # and gone the moment one of the pair is moved off -- see
+        # `bracesset.OVERLAP`.
+        "overlaps": brsetmod.overlaps(rec),
         "would_move": len(moves),
         "entry": {"id": entry.get("id"), "name": entry.get("name"),
                   "n": entry.get("n"),
@@ -3776,7 +3782,12 @@ def api_braces_decide(set_id):
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/decide", exc, 400, {"set_id": set_id})
     moves, _flags, counts, rejects = brsetmod.resolve(rec)
+    # The overlap flag travels with every decision, because a decision is
+    # the only thing that can raise one or clear one: a move onto a time
+    # its neighbour already holds flags both of them, and moving either off
+    # unflags both. The panel repaints from this.
     return jsonify({"ok": True, "counts": counts, "would_move": len(moves),
+                    "overlaps": brsetmod.overlaps(rec),
                     "calls": rec.get("calls") or {}})
 
 
@@ -3831,6 +3842,24 @@ def api_braces_commit(set_id):
     # Said out loud rather than left to be noticed: a flag nobody resolved
     # does not move, and the number of them belongs beside the button.
     report["left_alone"] = counts.get("waiting", 0)
+    # AND WHICH ROWS TO GO AND LOOK AT.
+    #
+    # `align` refuses two stamps on one time and says how many and at what
+    # times -- correctly, since a duplicate is not an alignment. But the
+    # times are the bank's, and what the person in front of this has is a
+    # list of rows, so "2 stamp(s) would land on a time another stamp
+    # already holds" named nothing they could open. The rows are worked out
+    # here, where the set is, and the error names the flag they are under.
+    clash = brsetmod.overlaps(rec)
+    if clash:
+        report["overlaps"] = clash
+        if report.get("error"):
+            report["error"] = (
+                "%d stamp(s) share a time with another stamp, which is one "
+                "event written twice rather than two events. They are "
+                "flagged as overlapping in the review -- open that pass and "
+                "move one of each pair off. Nothing was written."
+                % sum(len(g["rows"]) for g in clash))
     if dry or report.get("error"):
         # THE REASON GOES WHERE THE CLIENT LOOKS FOR IT.
         #

@@ -15,6 +15,71 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.22.2 - Two stamps on one time is a flag, not a dead end
+
+### Added
+
+- **An `overlapping` pass in the review.** Two stamps sent to the same time
+  are one event written twice rather than two events, and the bank has
+  always refused to write it. What it said was "2 stamp(s) would land on a
+  time another stamp already holds" — true, and useless: the times were the
+  bank's, and what the person reading it had was a list of twelve hundred
+  rows.
+
+  It is now a flag like any other, except that it is worked out from the
+  decisions rather than measured when the set is made — nothing can know it
+  until somebody has moved something, and it stops being true the moment
+  they move it back. So it is raised by a decision and cleared by one, and
+  every route out of it works: move one of the pair off, leave one where it
+  was, or decide one was never an event.
+
+  It has a pill in the table, a colour of its own in the stamp list, and it
+  is included in the bench's pass, so stepping through the flags walks onto
+  it rather than past it. The bar names the stamp it collides with, which is
+  the thing that cannot be seen on the trace — the pair are a tenth of a
+  millisecond apart and drawn on top of each other. Banking a set that has
+  one refuses as it always did, and now puts you on the first of them.
+
+---
+
+## 2026.09.22.1 - A hand-moved stamp can cross its neighbour
+
+### Fixed
+
+- **An alignment could not be banked if a reviewer had moved a stamp past
+  its neighbour.** The last check before the write sorted the outgoing
+  stamps, compared that against the order they were built in, and refused
+  the whole write if the two disagreed: "The alignment reordered the
+  events, which the no-crossing rule makes impossible -- so something
+  upstream is wrong." Nothing upstream was wrong.
+
+  The no-crossing rule holds over the peaks `braces.assign` hands out
+  itself. It says nothing about the two things that come after it. A
+  reviewer dragging a stamp onto the peak it plainly belongs on is bound by
+  nothing but the window -- the bench allows the drag anywhere within
+  ±100 ms of where the stamp sits -- and a stamp left where it was, by a
+  `keep` or by having no peak in reach, does not move aside for a
+  neighbour that does. Both are legitimate alignments, and both arrived at
+  the bank as a refusal.
+
+  Two of them in `M8s9feb8`, a set of 1213 stamps with an afternoon of
+  review on it: one stamp hand-placed at 722.538 s, 10 ms ahead of the
+  neighbour that aligned to 722.549 s, and another moved to 1780.893 s,
+  14 ms past the one that landed on 1780.879 s. Everything else about the
+  set was right, and none of it could be banked.
+
+  The write now sorts by where each stamp ends up -- the order every other
+  write to this bank keeps, and the order a version reads back in -- rather
+  than refusing. Nothing is lost by the sort: `from_t` travels on the event,
+  so a stamp that changed places still says where it came from. The report
+  and the version record both carry `resorted`, the number of stamps that
+  changed place, so a version whose set was reordered says so.
+
+  Two stamps landing on ONE time is still refused. That is a duplicate
+  rather than an alignment, and it is a different fact about the set.
+
+---
+
 ## 2026.09.21.9 - Leaving the trace view cannot strand you in it
 
 ### Fixed
