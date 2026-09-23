@@ -5165,7 +5165,11 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
   border: 1px solid var(--accent-line); background: var(--accent-soft);
   color: var(--accent);
 }
-.cur-who:hover { background: var(--bg-3); }
+.cur-who:hover:not(.static) { background: var(--bg-3); }
+/* Stated, not offered. A sheet carries whose it is but cannot be handed to
+   somebody -- there is no assign path for one -- so its owner reads the same
+   and does not pretend to be pressable. */
+.cur-who.static { cursor: default; }
 .cur-who.none {
   border-color: var(--line); background: transparent; color: var(--text-3);
   border-style: dashed;
@@ -9532,6 +9536,92 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 }
 .dp-cmp .mh .sub { min-width: 0; }
 .dp-cmp-body { display: flex; flex-direction: column; gap: var(--sp-8); }
+
+/* Under the hood: the arithmetic, in stages.
+
+   Numbers as numbers, coloured as well so the shape is still visible in
+   them. A patch is tens of values, which is small enough to read, and
+   reading it is the point -- this is the panel somebody opens to check a
+   figure against the working behind it. */
+.dp-hood.modal.big > .mh, .dp-hood.modal.big > .mf {
+  flex-direction: row; align-items: center;
+}
+.dp-hood-body { display: flex; flex-direction: column; gap: var(--sp-6); }
+/* THE CHILDREN DO NOT SHRINK.
+
+   `.mb` is `flex: 1; min-height: 0` inside the dialog's column, so it has
+   a DEFINITE height -- and a flex column with a definite height shrinks
+   its own children to fit rather than overflowing and scrolling. Every
+   grid, both tables and the scree collapsed to a two-pixel sliver: the
+   stage headings and their paragraphs were all that survived, so the
+   panel read as "some things are cut off" when nothing was cut off at
+   all, it was crushed.
+
+   `flex: none` puts each stage back to its natural height, which is what
+   gives `.mb` something to scroll. */
+.dp-hood-body > * { flex: none; }
+.dp-cmp-body > * { flex: none; }
+.dp-hood-stage { margin-top: var(--sp-12); }
+.dp-hood-stage:first-child { margin-top: 0; }
+.dp-hood-head {
+  display: flex; align-items: baseline; gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+.dp-hood-n {
+  display: inline-grid; place-items: center;
+  width: 18px; height: 18px; flex: none;
+  border-radius: var(--r-pill); background: var(--accent-soft);
+  color: var(--accent); font-size: var(--fs-10); font-weight: 600;
+}
+.dp-hood-head strong { font-size: var(--fs-125); }
+.dp-hood-stage > .hint { max-width: 90ch; margin: var(--sp-2) 0 0; }
+.dp-hood-seg { display: flex; align-items: center; gap: var(--sp-10);
+               margin: var(--sp-6) 0 var(--sp-2); }
+
+/* The grids scroll sideways rather than squeezing the numbers: a patch
+   can be sixty contacts wide and a column of unreadable digits is not a
+   smaller table, it is a broken one. */
+.dp-hood-gridwrap { overflow-x: auto; max-width: 100%; }
+.dp-hood-grid { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.dp-hood-grid th, .dp-hood-grid td {
+  font-size: var(--fs-9); padding: 1px var(--sp-4); text-align: right;
+  white-space: nowrap; border: 1px solid var(--line);
+}
+.dp-hood-grid thead th, .dp-hood-grid tbody th {
+  color: var(--text-3); font-weight: 500; background: var(--bg-2);
+  position: sticky; left: 0;
+}
+.dp-hood-grid thead th { position: static; }
+.dp-hood-grid th.corner { position: sticky; left: 0; }
+.dp-hood-cell { cursor: help; }
+.dp-hood-terms { width: max-content; }
+.dp-hood-terms th, .dp-hood-terms td {
+  font-size: var(--fs-10); padding: var(--sp-2) var(--sp-10);
+  text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dp-hood-terms td.pos { color: var(--err); }
+.dp-hood-terms td.neg { color: var(--accent); }
+.dp-hood-terms tr.on td { font-weight: 600; }
+
+/* The scree, with the two that are clustered on marked: everything past
+   PC2 is computed and discarded, which is the point of showing it. */
+.dp-hood-scree {
+  display: flex; align-items: flex-end; gap: var(--sp-6);
+  height: 110px; margin-top: var(--sp-4);
+}
+/* Named, not reached for by position: the markup applies `.dp-hood-bar`
+   and a rule that matches `> div` instead leaves that class matching
+   nothing, which is what `check_classes.py` is for. */
+.dp-hood-bar {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-end; gap: 2px; height: 100%; min-width: 42px;
+}
+.dp-hood-bar > i {
+  display: block; width: 26px; background: var(--bg-3);
+  border-radius: var(--r-2) var(--r-2) 0 0;
+}
+.dp-hood-bar.used > i { background: var(--accent); }
 /* As wide as its numbers, not as wide as the dialog. Stretched, the two
    class columns sat against the right-hand edge a screen away from the
    row labels, which is the one thing a crosstab must not do. */

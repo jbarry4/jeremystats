@@ -268,9 +268,78 @@ BARRY.ui = (function () {
     ].filter(Boolean));
   }
 
+  /* ---------- a card on a workbench ---------- */
+
+  /* Checkup and StrataScope are the same idea -- things you have open, which
+     stay open until you put them down -- and both build a `.cur-set`. They
+     did not build the same one.
+
+       owner    Checkup: `button.cur-who`, clickable, reading "unassigned"
+                when nobody has it. StrataScope: `span.csr-who`, plain text,
+                absent ENTIRELY when nobody has it -- so the fact that a
+                sheet is unclaimed was invisible, and `.csr-who` belongs to
+                the shelf list rather than to the card anyway.
+       when     Checkup: beside the owner. StrataScope: a bare `.hint` on a
+                line of its own.
+       spacer   both wrote `el('div', { style: 'flex:1' })` next to a
+                `.spacer` class that already exists and is used ten lines up.
+
+     One shape now. The owner is always stated, including when there is not
+     one, because "nobody has this" is the thing a bench is for saying.
+
+     `owner.onAssign` is what separates them honestly: curation sets can be
+     handed to somebody and sheets cannot, so a set's owner is a button and
+     a sheet's is text. A control that looks pressable and is not would be a
+     worse lie than the one this replaces. */
+  function workbenchCard(o) {
+    const opt = o || {};
+    const own = opt.owner || {};
+    const name = own.name || null;
+    const ownerNode = own.onAssign
+      ? el('button', {
+          class: 'cur-who' + (name ? '' : ' none'),
+          title: name ? 'Assigned to ' + name + ' — click to change'
+                      : 'Nobody has this one. Click to put a name on it.',
+          text: name || 'unassigned',
+          onclick: own.onAssign,
+        })
+      : el('span', {
+          class: 'cur-who static' + (name ? '' : ' none'),
+          title: name ? 'Picked up by ' + name : 'Nobody has this one.',
+          text: name || 'unassigned',
+        });
+
+    return el('div', {
+      class: 'cur-set' + (opt.done ? ' done' : '')
+             + (opt.extra ? ' ' + opt.extra : ''),
+      'data-gid': opt.gid || null,
+    }, [
+      el('div', { class: 'cur-set-top' }, [
+        typeof opt.title === 'string' ? el('strong', { text: opt.title })
+                                      : opt.title,
+      ].concat(opt.chips || [])
+       .concat([
+         el('div', { class: 'spacer' }),
+         opt.count ? el('span', { class: 'cur-set-n', text: opt.count }) : null,
+       ]).filter(Boolean)),
+      el('div', { class: 'cur-set-who' }, [
+        ownerNode,
+        opt.when ? el('span', { class: 'cur-set-when', text: opt.when }) : null,
+      ].filter(Boolean)),
+    ].concat(opt.extras || [])
+     .concat([
+       opt.progress === undefined || opt.progress === null ? null
+         : el('div', { class: 'cur-prog small' },
+              [el('i', { style: 'width:' + (opt.progress || 0) + '%' })]),
+       opt.tally ? el('div', { class: 'cur-set-tally' }, opt.tally) : null,
+       opt.actions ? el('div', { class: 'cur-set-acts' }, opt.actions) : null,
+     ]).filter(Boolean));
+  }
+
   return {
     stepHeader: stepHeader,
     field: field,
+    workbenchCard: workbenchCard,
     button: button,
     searchField: searchField,
     magnifier: magnifier,
