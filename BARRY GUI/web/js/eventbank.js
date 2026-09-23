@@ -154,16 +154,11 @@ BARRY.views.eventbank = (function () {
       }),
     ]));
 
-    bar.appendChild(el('div', { class: 'search-wrap inline' }, [
-      el('svg', { viewBox: '0 0 20 20', class: 'search-icon',
-        html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
-      el('input', {
-        type: 'search', value: query,
-        placeholder: 'Search project, mouse, session, type, pipeline, who…',
-        oninput: debounceInput(
-          (e) => { query = e.target.value; keepFocus(render); }, 140),
-      }),
-    ]));
+    bar.appendChild(BARRY.ui.searchField({
+      value: query,
+      placeholder: 'Search project, mouse, session, type, pipeline, who…',
+      oninput: (e) => { query = e.target.value; keepFocus(render); },
+    }));
 
     const projects = Array.from(new Set(entries.map((e) => e.project || 'Unfiled')));
     if (kind === 'events' && projects.length > 1) {

@@ -184,8 +184,7 @@ BARRY.views.misc = (function () {
 
     box.appendChild(el('div', { class: 'grep-form' }, [
       el('div', { class: 'search-wrap inline' }, [
-        el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                    html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+        BARRY.ui.magnifier(),
         input,
       ]),
       el('label', { class: 'toggle sm' + (grepState.regex ? ' on' : '') }, [

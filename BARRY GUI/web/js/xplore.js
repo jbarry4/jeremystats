@@ -4719,8 +4719,7 @@ BARRY.views.xplore = (function () {
 
       body.appendChild(el('div', { class: 'search-wrap inline',
                                    style: 'margin:8px 0' }, [
-        el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                    html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+        BARRY.ui.magnifier(),
         el('input', {
           type: 'search', value: markQuery,
           placeholder: 'Filter by name, channel or time\u2026',
