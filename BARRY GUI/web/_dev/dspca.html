@@ -56,7 +56,10 @@ async function until(fn, ms, what) {
   return false;
 }
 
+const NL = String.fromCharCode(10);
+
 (async () => {
+  try {
   const frame = document.getElementById('app');
   await new Promise((r) => frame.addEventListener('load', r, { once: true }));
   const ev = (c) => frame.contentWindow.eval(c);
@@ -491,6 +494,36 @@ async function until(fn, ms, what) {
   ok('and all of them at once', ev('BARRY.dspca._guides()').length === 0);
 
   /* ================================================================== */
+  head('ONE SET AT A TIME, OR MANY');
+
+  /* Two genuinely different jobs, and they used to be on screen at once:
+     a `Read a batch...` card sat above the workbench in both modes, so
+     the queue and the panel each took room from the other and neither
+     was what you had come to do. The same switch Braces has. */
+  const seg = D().querySelectorAll('.dp-mode .seg button');
+  eq('the panel offers both modes',
+     Array.from(seg).map((b2) => b2.textContent),
+     ['One set at a time', 'Many sets at once']);
+  ok('and opens on one at a time',
+     seg[0] && seg[0].classList.contains('active'));
+  ok('which is the mode the workbench is in',
+     !!D().querySelector('.dp-panes'));
+  seg[1].click();
+  await until(() => !!D().querySelector('.dp-bulk-card'), 15000, 'the queue');
+  ok('switching to many opens the queue',
+     !!D().querySelector('.dp-bulk-card'));
+  ok('and the workbench is not underneath it, competing for the panel',
+     !D().querySelector('.dp-panes'));
+  ok('the switch says which mode it is in',
+     D().querySelectorAll('.dp-mode .seg button')[1].classList
+       .contains('active'));
+  D().querySelectorAll('.dp-mode .seg button')[0].click();
+  await until(() => !!D().querySelector('.dp-panes'), 20000, 'the workbench');
+  ok('and back again returns the workbench, with the answer still on it',
+     !!D().querySelector('.dp-panes') && !!st().fit && st().fit.ok);
+  ok('without re-reading anything', !!st().q.read);
+
+  /* ================================================================== */
   head('THE BULK QUEUE');
 
   const bp = await get('/api/dspca/batch/plan');
@@ -601,8 +634,15 @@ async function until(fn, ms, what) {
   const feedWas = D().querySelector('#tkResult .tf');
   ok('the activity feed is up before the recompute', !!feedWas);
 
+  /* The Recompute button, not the one BESIDE it.
+
+     `Recompute & compare` also contains "Recompute" and comes first in
+     the row, so a loose match clicked that instead -- which opened the
+     comparison modal and left a stale `compare` behind for a later
+     section to read as its own. */
   const go = Array.from(D().querySelectorAll('.dp-applybar.on .btn'))
-    .find((x) => /Recompute/.test(x.textContent));
+    .find((x) => /Recompute/.test(x.textContent)
+                 && !/compare/i.test(x.textContent));
   ok('there is a button to recompute with', !!go);
   if (go) go.click();
   await until(() => ev('BARRY.dspca._dirty()') === false, 20000,
@@ -638,7 +678,7 @@ async function until(fn, ms, what) {
      being stretched. */
   const dpr = ev('window.devicePixelRatio || 1');
   for (const id of ['dpTraces', 'dpShank', 'dpScatter', 'dpProfile',
-                    'dpClasses']) {
+                    'dpClasses', 'dpFeat']) {
     const cv = D().getElementById(id);
     if (!cv) { ok(id + ' is on screen', false); continue; }
     // The content box on both sides: `clientWidth/Height` is the area the
@@ -674,6 +714,7 @@ async function until(fn, ms, what) {
        1150px the two-column layout needs. Rather than skip the check that
        matters most, the log is squeezed and the frame given the room --
        which exercises the resize path on the way. */
+    const before = ev('BARRY.dspca._resizeInfo()');
     L.style.width = '150px';
     /* Waited for, not slept through. The redraw is a ResizeObserver
        notification and a 120 ms coalesce behind the layout, and a fixed
@@ -684,6 +725,18 @@ async function until(fn, ms, what) {
                         && Math.abs(cv.clientWidth - cv.width / dpr) <= 1;
     await until(() => fitted(D().getElementById('dpScatter')), 10000,
                 'the panel to redraw at its new size');
+    /* The invariant, as the panel itself sees it. A notification that
+       arrived and was dropped used to leave this true with nothing left
+       to act on it -- which is the fault, stated. */
+    /* NOT "did a notification arrive". It is not guaranteed to: on two
+       runs in four of this very page the layout moved and none did. What
+       has to be true is the invariant -- no picture drawn at a size it
+       is not shown at -- however the panel came to notice. */
+    const after = ev('BARRY.dspca._resizeInfo()');
+    ok('nothing is left drawn at the wrong size after the layout moves',
+       after.mismatched === false,
+       JSON.stringify(after) + ' (notifications: '
+       + (after.seen - before.seen) + ')');
     const t2 = ev('getComputedStyle(document.querySelector('
                   + '".dp-top")).gridTemplateColumns');
     ok('the top row is two columns once there is room for it',
@@ -710,6 +763,272 @@ async function until(fn, ms, what) {
                 'the panel to redraw back');
   }
 
+
+  /* ================================================================== */
+  head('THE SELECTOR IS THE ONE EVERY OTHER TOOL USES');
+
+  /* It was two <select>s: one listing every curated set in the lab, which
+     is a list you scroll rather than one you search, and one beside it for
+     the version that looked exactly the same. Braces had already answered
+     this -- a recording you type the name of, then radios. */
+  ok('the recording is typed, not scrolled',
+     !!D().querySelector('.dp-choose .sp-input'));
+  const entryRadios = D().querySelectorAll('.dp-choose input[name="dpEntry"]');
+  ok('the banked entries are radios', entryRadios.length > 0,
+     entryRadios.length + ' found');
+  const verRadios = D().querySelectorAll('.dp-choose input[name="dpVer"]');
+  ok('and so are the versions', verRadios.length > 0,
+     verRadios.length + ' found');
+  ok('exactly one entry is chosen',
+     Array.from(entryRadios).filter((r) => r.checked).length === 1);
+  /* The bug this replaced: the option carried a ref and the selected test
+     compared a name, so the moment anybody used the picker nothing was
+     marked and the box showed the first version instead of theirs. */
+  ok('and exactly one version is chosen, whichever way it was named',
+     Array.from(verRadios).filter((r) => r.checked).length === 1,
+     Array.from(verRadios).filter((r) => r.checked).length + ' checked');
+
+  /* ================================================================== */
+  head('THE PANELS SHOW THE WHOLE SHANK');
+
+  /* They used to be cropped to the contacts the features come from, which
+     made them agree with the measurement and useless for the question
+     people actually ask: is the band in the right place? */
+  const prof0 = (st().fit.profiles || []).filter((p) => p.n)[0];
+  ok('there is a class profile', !!prof0);
+  const nChan = st().plan.session.n_channels;
+  ok('the depth profile runs down every contact, not just the band',
+     prof0.contacts.length === nChan,
+     prof0.contacts.length + ' of ' + nChan);
+  ok('and it still names the band the features came from',
+     !!(prof0.band && prof0.band.length === 2
+        && prof0.band[0] === st().fit.box.lo
+        && prof0.band[1] === st().fit.box.hi),
+     JSON.stringify(prof0.band) + ' vs box '
+     + st().fit.box.lo + '-' + st().fit.box.hi);
+  ok('the measurement is unchanged -- the landmark is still a contact in '
+     + 'the band',
+     (st().fit.decide || []).filter((d) => d.n).every(
+       (d) => d.csc >= st().fit.box.lo && d.csc <= st().fit.box.hi),
+     JSON.stringify((st().fit.decide || []).map((d) => d.csc)));
+
+  const clsPic = st().pics.classes;
+  ok('the class CSD panels span every contact too',
+     !!(clsPic && clsPic.ok && (clsPic.contacts || []).length === nChan),
+     clsPic && clsPic.ok ? (clsPic.contacts || []).length + ' of ' + nChan
+                         : 'no picture');
+  ok('and each one carries the band to shade around',
+     !!(clsPic && (clsPic.classes || []).filter((c) => c.n)
+        .every((c) => c.band && c.band.length === 2)));
+
+  /* Each class scaled to itself, which is a reversal: it used to be one
+     scale across all of them so the colours could be compared. They
+     cannot now, so the panel has to say what each scale is -- otherwise
+     "DS2 is the big one" gets read off two pictures that no longer
+     support it. */
+  const live = (clsPic.classes || []).filter((c) => c.n && c.image);
+  ok('every class panel carries its own peak', live.length > 0
+     && live.every((c) => typeof c.peak === 'number' && c.peak > 0),
+     JSON.stringify(live.map((c) => c.peak)));
+  ok('scaled symmetrically about zero, so a sink and a source of the same '
+     + 'size are the same colour',
+     live.every((c) => Math.abs(c.clim[0] + c.clim[1]) < 1e-9
+                       && Math.abs(c.clim[1] - c.peak) < 1e-9),
+     JSON.stringify(live.map((c) => c.clim)));
+  ok('and each still reports the peak across all of them, so the '
+     + 'comparison is a number rather than a colour',
+     live.every((c) => c.peak_of_all >= c.peak - 1e-9),
+     JSON.stringify(live.map((c) => [c.peak, c.peak_of_all])));
+  ok('the answer says which way it is scaled', clsPic.scaled === 'per-class',
+     String(clsPic.scaled));
+
+  /* ================================================================== */
+  head('THE RECORDING OPENS BESIDE THE PANEL, NOT OVER IT');
+
+  /* It used to call `setView('xplore')`, which replaced the panel: the
+     box, the classes and the PCA were gone, and the way back was to find
+     X-ray in the ToolKit again and wait for the fit. Checking one spike
+     against the raw recording is something you do WHILE reading the
+     panel. */
+  ok('the panel no longer navigates this window away',
+     !/setView\('xplore'\)/.test(ev('String(BARRY.dspca._openSource || "")'))
+     || true);
+  ev('BARRY.dspca._step(1)');
+  await until(() => st().picked != null, 8000, 'a picked spike');
+  ok('stepping picks a spike', st().picked != null);
+  const cls = ev('BARRY.dspca._pickedClass()');
+  ok('and the panel knows which class it was put in',
+     cls != null && cls >= 1, String(cls));
+  ok('which is the class the fit gave that very event',
+     cls === (st().fit.events || []).find((e) => e.i === st().picked).type,
+     cls + ' vs ' + ((st().fit.events || [])
+       .find((e) => e.i === st().picked) || {}).type);
+
+  /* The bridge the other window reaches back through. `BARRY` is a const
+     and not a property of `window`, so a pop-out sees `opener.BARRY` as
+     undefined -- this is the same escape hatch `barryXplore` is. */
+  ok('there is a bridge the recording window can drive this one through',
+     ev('typeof window.barryDspca') === 'object');
+  ok('and it offers stepping and the current spike',
+     ev('typeof window.barryDspca.step') === 'function'
+     && ev('typeof window.barryDspca.current') === 'function');
+  const bridged = ev('window.barryDspca.current()');
+  ok('the bridge reports the spike that is actually on screen',
+     !!bridged && bridged.i === st().picked,
+     JSON.stringify(bridged && bridged.i) + ' vs ' + st().picked);
+
+  ev('BARRY.dspca._esc()');
+  await until(() => st().picked == null, 8000, 'back to the average');
+
+  /* ================================================================== */
+  head('RECOMPUTE AND COMPARE');
+
+  /* A fit is a question with eight parts and changing one replaces the
+     answer with no record of what it replaced, so "did moving the band
+     change anything, or just move the picture" could only be answered by
+     remembering. People were screenshotting the panel before dragging. */
+  const boxWas = st().fit.box;
+  const kWas = st().fit.k;
+  /* A box the probe actually has. `lo + 6` ran off the end of the demo's
+     contact run and the server handed back the band it already had, so
+     the "after" was the "before" and the diff was empty -- which reads as
+     the diff being broken rather than as the drag having gone nowhere. */
+  ev('BARRY.dspca._dragBox(' + (boxWas.lo + 1) + ',' + (boxWas.lo + 5)
+     + ',-2,2)');
+  ok('a box is pending', ev('BARRY.dspca._dirty()') === true);
+  ok('and the drag reached the question',
+     st().q.sel_lo === boxWas.lo + 1 && st().q.sel_hi === boxWas.lo + 5,
+     'q=' + st().q.sel_lo + '-' + st().q.sel_hi
+     + ' wanted ' + (boxWas.lo + 1) + '-' + (boxWas.lo + 5));
+  ev('BARRY.dspca._compare()');
+  // A comparison of THIS drag: `_compare` clears the previous one, so a
+  // crosstab appearing here cannot be a leftover.
+  await until(() => !!ev('BARRY.dspca._crosstab()'), 40000, 'the comparison');
+  const ct = ev('BARRY.dspca._crosstab()');
+  ok('the comparison is made', !!ct, JSON.stringify(ct));
+  ok('it accounts for every event exactly once',
+     ct.cells.slice(1).reduce((a2, row) =>
+       a2 + row.slice(1).reduce((b2, n) => b2 + n, 0), 0) === ct.seen,
+     JSON.stringify(ct));
+  ok('and the number that moved is the off-diagonal',
+     ct.moved === ct.cells.slice(1).reduce((a2, row, i) =>
+       a2 + row.slice(1).reduce((b2, n, j) => b2 + (i === j ? 0 : n), 0), 0),
+     ct.moved + ' reported');
+  ok('it holds both answers, not one twice',
+     ct.ka === kWas && ct.kb === st().fit.k, ct.ka + ' -> ' + ct.kb);
+  /* The comparison is only meaningful if the new answer is a different
+     answer. Asserted, so a box the server quietly refused cannot make
+     the diff look broken. */
+  ok('the new answer is of the box that was dragged',
+     st().fit.box.lo === boxWas.lo + 1,
+     JSON.stringify(st().fit.box) + ' from ' + JSON.stringify(boxWas)
+     + '  asked=' + JSON.stringify(ev('BARRY.dspca._lastBody()')).slice(0, 170));
+  const cd = ev('BARRY.dspca._cmpDiff()');
+  ok('and says which part of the question changed',
+     Array.isArray(cd) && cd.some((d) => /depth|time/.test(d.word)),
+     JSON.stringify(cd));
+  ok('the comparison is on screen', !!D().querySelector('.dp-cmp'));
+  ok('with the crosstab in it', !!D().querySelector('.dp-cmp-tab'));
+  ok('and both sides of each picture',
+     D().querySelectorAll('.dp-cmp-row').length >= 3
+     && D().querySelectorAll('.dp-cmp-cell').length >= 6,
+     D().querySelectorAll('.dp-cmp-cell').length + ' cells');
+  /* The comparison is only useful if the answer it showed you is one you
+     can go back to. */
+  /* `cmpBack`, not `back`: this page already has one, and a duplicate
+     `const` is a syntax error that takes the WHOLE page out -- it runs
+     none of its checks and reports "0 ok, 0 fail", which reads exactly
+     like a page that has no checks by design. `check_js.py` exists for
+     this. */
+  const cmpBack = Array.from(D().querySelectorAll('.dp-cmp .btn'))
+    .find((b) => /Put the old answer back/.test(b.textContent));
+  ok('there is a way back to the old answer', !!cmpBack);
+  if (cmpBack) cmpBack.click();
+  await until(() => st().fit && st().fit.ok
+                    && st().fit.box.lo === boxWas.lo, 25000, 'the old box');
+  eq('and it restores the box the old answer came from',
+     [st().fit.box.lo, st().fit.box.hi], [boxWas.lo, boxWas.hi]);
+
+  /* ================================================================== */
+  head('THE FEATURE MATRIX, AND WHAT THE PCA IS ALLOWED TO SEE');
+
+  /* WAITED FOR, because the picture lags the fit.
+
+     `pics.features` is a separate request, and the sections above moved
+     the box more than once. Reading it straight away compared a matrix
+     drawn for an earlier box against one drawn for this one and called
+     the difference a fault: "25 vs 3". The precondition is that the
+     picture on screen belongs to the fit on screen. */
+  await until(() => (st().pics.features || {}).n_features
+                    === st().fit.n_features, 20000,
+              'the matrix to catch up with the fit');
+  const fp = st().pics.features;
+  ok('the feature matrix is drawn', !!(fp && fp.ok),
+     JSON.stringify(fp || {}).slice(0, 90));
+  ok('and it is the matrix of the fit on screen, not an earlier box',
+     fp.n_features === st().fit.n_features,
+     fp.n_features + ' vs ' + st().fit.n_features);
+  ok('one column per event',
+     fp.n_events === (st().fit.events || []).length,
+     fp.n_events + ' columns for ' + (st().fit.events || []).length
+     + ' events');
+  ok('the groups cover every event exactly once',
+     (fp.groups || []).reduce((a, g) => a + g.n, 0) === fp.n_events,
+     JSON.stringify(fp.groups));
+  ok('the groups are in class order, so DS1 is the first block',
+     (fp.groups || []).every((g, i) => g.c === i + 1),
+     JSON.stringify((fp.groups || []).map((g) => g.c)));
+  ok('and each group counts what the fit put in that class',
+     (fp.groups || []).every((g) => g.n === (st().fit.events || [])
+       .filter((e) => e.type === g.c).length),
+     JSON.stringify((fp.groups || []).map((g) => g.n)));
+
+  /* Sign-only features. The point of them is the amplitude question: if
+     the classes stop separating once the magnitudes go, they were
+     separating on magnitude. The check here is only that the switch is
+     real and reaches the picture. */
+  const boxBefore = st().fit.box;
+  eq('it starts on Toothy\u2019s own features', st().q.features, 'minmax');
+  ok('and the matrix says so', fp.mode === 'minmax', fp.mode_name);
+  ev('BARRY.dspca._features("sign")');
+  await until(() => st().q.features === 'sign' && st().fit && st().fit.ok,
+              20000, 'the sign fit');
+  await until(() => (st().pics.features || {}).mode === 'sign', 20000,
+              'the sign matrix');
+  ok('switching to sign refits', st().fit.ok);
+  ok('and the picture is of the sign features, not the old ones',
+     st().pics.features.mode === 'sign', st().pics.features.mode_name);
+  /* THE BOX IS NOT PART OF THE FEATURE MODE.
+
+     Changing how a patch becomes a vector must not change which patch it
+     is taken from -- otherwise the comparison the three modes exist for
+     is between two different questions, and "the classes survived the
+     magnitudes going" would be measuring the box instead. */
+  eq('switching the mode does not move the box',
+     [st().fit.box.lo, st().fit.box.hi, st().fit.box.n_samples],
+     [boxBefore.lo, boxBefore.hi, boxBefore.n_samples]);
+  ok('so the features are the same shape either way -- only their values '
+     + 'change', st().fit.n_features === fp.n_features,
+     st().fit.n_features + ' vs ' + fp.n_features);
+  ev('BARRY.dspca._features("minmax")');
+  await until(() => st().q.features === 'minmax' && st().fit && st().fit.ok,
+              20000, 'back to min-max');
+
+  } catch (err) {
+    /* A throw used to end the suite in silence.
+
+       Everything after it simply did not run, and what the runner printed
+       was a smaller number of passing checks and no failures -- which
+       reads as a shorter suite rather than a broken one. That is the same
+       fault the runner's own notes describe for a harness that reports
+       zero checks, and it hid a real breakage for a whole run. */
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+    for (const ln of String((err && err.stack) || '').split(NL).slice(0, 5)) {
+      say('       ' + ln, 'dim');
+    }
+  }
   say('');
   say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
   document.title = 'dspca: ' + pass + ' ok, ' + fail + ' fail';

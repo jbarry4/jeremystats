@@ -159,7 +159,7 @@ class Params:
     FIT_KEYS = ("notch", "screen", "csd_bad_x", "csd_span", "nclasses",
                 "rule", "flip", "seed", "sel_lo", "sel_hi", "t_lo_ms",
                 "t_hi_ms", "cond", "f_order", "f_sigma", "no_vaknin",
-                "h_power")
+                "h_power", "features", "dead")
 
     def __init__(self, **kw):
         # -- the read ---------------------------------------------------
@@ -198,6 +198,13 @@ class Params:
 
         # -- the CSD ----------------------------------------------------
         self.cond = float(kw.get("cond") or T_COND)
+        # How the patch becomes a feature vector. A question ASKED of the
+        # read, never a property of it: switching it must not invalidate
+        # the .npz, which is the whole reason the box is draggable.
+        feats = str(kw.get("features") or "minmax")
+        self.features = feats if feats in FEATURES else "minmax"
+        self.dead = float(kw.get("dead") if kw.get("dead") is not None
+                          else DEAD_FRAC)
         self.f_order = int(kw.get("f_order") or T_F_ORDER)
         self.f_sigma = float(kw.get("f_sigma") or T_F_SIGMA)
         self.no_vaknin = bool(kw.get("no_vaknin", not T_VAKNIN))
@@ -427,19 +434,62 @@ def stack_csd(sur, p, pitch_um):
     return csd.reshape(n_ch, n_ev, n_t).transpose(1, 0, 2)
 
 
-def normalize_block(block):
-    """pyfx.Normalize per EVENT, over the whole selected block.
+FEATURES = ("minmax", "sign", "sign_dead")
+DEAD_FRAC = 0.15             # 'dead', as a fraction of the patch's own peak
 
-    Toothy normalizes each event's single column across depth. With a time
-    window there is more than one column, and the honest generalization is
-    one min and one max for the whole patch -- normalizing each column
-    separately would erase exactly the thing a time window was opened to
-    see, which is how the profile changes from millisecond to millisecond.
+FEATURE_NAMES = {
+    "minmax": "min-max (Toothy)",
+    "sign": "sign ±1",
+    "sign_dead": "sign + deadband",
+}
+
+
+def normalize_block(block, mode="minmax", dead=DEAD_FRAC):
+    """Turn each event's CSD patch into the vector the PCA sees.
+
+    `minmax` is Toothy: pyfx.Normalize per EVENT over the whole selected
+    block. Toothy normalizes each event's single column across depth. With
+    a time window there is more than one column, and the honest
+    generalization is one min and one max for the whole patch --
+    normalizing each column separately would erase exactly the thing a time
+    window was opened to see, which is how the profile changes from
+    millisecond to millisecond.
+
+    WHY THE OTHER TWO EXIST. Min-max removes SCALE exactly: a*x and x land
+    on the same point, so in principle a loud and a quiet event with the
+    same shape are the same feature vector. In practice it does not hold,
+    because the scale is set by two samples -- the single min and the
+    single max. A quiet event riding the same background noise normalizes
+    to a NOISIER shape, and that is an amplitude effect that survives the
+    normalization. Measured on M2ctls3jan23: under min-max the two K-means
+    classes differ in amplitude by 3.07x, and PC1 correlates 0.52 with log
+    amplitude. The clusters were substantially loud-versus-quiet.
+
+    `sign` throws the magnitudes away completely and keeps only source
+    (+1) or sink (-1) per contact, which is the laminar pattern and nothing
+    else. On the same recording that drops the class amplitude ratio to
+    1.12x -- the loudness split is gone.
+
+    `sign_dead` is sign with a null band, because pure sign gives a contact
+    two hundred microns from the dipole, where the CSD is essentially zero,
+    exactly as much vote as the contact at the sink. Everything within
+    `dead` of the patch's own peak becomes 0 rather than a coin flip.
+
+    Read the result with the amplitude question in mind: if the classes
+    stop separating once the magnitudes go, they were separating on
+    magnitude.
     """
     out = np.asarray(block, dtype=np.float64).copy()
     for i in range(out.shape[0]):
-        lo, hi = np.nanmin(out[i]), np.nanmax(out[i])
-        out[i] = np.zeros_like(out[i]) if hi == lo else (out[i] - lo) / (hi - lo)
+        x = out[i]
+        if mode == "sign":
+            out[i] = np.sign(x)
+        elif mode == "sign_dead":
+            thr = dead * np.nanmax(np.abs(x))
+            out[i] = np.where(x > thr, 1.0, np.where(x < -thr, -1.0, 0.0))
+        else:
+            lo, hi = np.nanmin(x), np.nanmax(x)
+            out[i] = np.zeros_like(x) if hi == lo else (x - lo) / (hi - lo)
     return out
 
 
@@ -1079,7 +1129,7 @@ def fit(got, p, layers=None):
 
     # The measurement: CSD computed WITHIN the chosen contacts, Toothy-style.
     feat_csd = stack_csd(sur[:, sel, :], p, p.spacing)[:, :, t0:t1]
-    norm = normalize_block(feat_csd)
+    norm = normalize_block(feat_csd, p.features, p.dead)
     X = norm.reshape(norm.shape[0], -1)
 
     pca = PCA(n_components=2)
@@ -1105,6 +1155,17 @@ def fit(got, p, layers=None):
     # everything drawn is band-limited, and the split is on purpose.
     prof = disp[:, sel, t0:t1].mean(axis=2)      # [nEvents x span]
     ns = [nums[i] for i in sel]
+
+    # The same profile down the WHOLE shank, for drawing and nothing else.
+    #
+    # The measurement stays on the selected band and has to: every ordering
+    # rule is scored on `prof`, and widening what is measured would change
+    # the answer rather than the picture. But a picture cropped to the band
+    # cannot show whether the band is in the right place, which is the one
+    # question somebody brings to it -- so the panel draws all of it and
+    # shades what is outside. Same `t0:t1`, so the two are the same
+    # quantity over a different set of contacts.
+    prof_all = disp[:, :, t0:t1].mean(axis=2)
 
     # Classes renumbered by their landmark depth, which generalizes Toothy's
     # DS1/DS2 rule to any number: DS1 is the shallowest. Scored on `prof`, so
@@ -1136,6 +1197,7 @@ def fit(got, p, layers=None):
         "coords": coords, "pca": pca, "types": types, "k": k,
         "bad": bad, "prof": prof, "decide": decide,
         "sel": sel, "nums_sel": ns, "t0": t0, "t1": t1, "tw": tw,
+        "prof_all": prof_all, "nums_all": nums,
         "n_features": int(X.shape[1]),
         "tort_upside": upside,
         "explained": [float(v) for v in pca.explained_variance_ratio_],
@@ -1260,19 +1322,28 @@ def profiles(res):
     and the contact named in the decision panel cannot come from two
     different answers to the same question.
     """
-    prof, types = res["prof"], np.asarray(res["types"])
-    ns = [int(n) for n in res["nums_sel"]]
+    types = np.asarray(res["types"])
+    sel_ns = [int(n) for n in res["nums_sel"]]
+    # Drawn down the whole shank, with the band that was MEASURED named
+    # separately so the panel can shade the rest rather than crop to it.
+    prof = res.get("prof_all")
+    ns = [int(n) for n in res.get("nums_all") or []]
+    if prof is None or not ns:
+        prof, ns = res["prof"], sel_ns
+    band = [min(sel_ns), max(sel_ns)] if sel_ns else None
     out = []
     for c in range(1, int(res["k"]) + 1):
         rr = np.where(types == c)[0]
         if rr.size == 0:
-            out.append({"c": c, "n": 0, "contacts": ns, "mean": [], "sem": []})
+            out.append({"c": c, "n": 0, "contacts": ns, "mean": [], "sem": [],
+                        "band": band})
             continue
         mu = np.nanmean(prof[rr], axis=0)
         sem = np.nanstd(prof[rr], axis=0) / np.sqrt(rr.size)
         out.append({"c": c, "n": int(rr.size), "contacts": ns,
                     "mean": [float(v) for v in mu],
-                    "sem": [float(v) for v in sem]})
+                    "sem": [float(v) for v in sem],
+                    "band": band})
     return out
 
 
@@ -1325,6 +1396,9 @@ def pictures(got, what, index=None, cmap="jet", gain=None, fit_params=None,
                 "contacts": nums, "lo": nums[0], "hi": nums[-1],
                 "layers": layers or {}}
 
+    if what == "features":
+        return _picture_features(got, p, cmap, encode, layers)
+
     if what != "classes":
         raise DsPcaError("%r is not something this panel draws." % what)
 
@@ -1333,34 +1407,112 @@ def pictures(got, what, index=None, cmap="jet", gain=None, fit_params=None,
     ns = [nums[i] for i in sel]
     t0, t1 = res["t0"], res["t1"]
 
-    # ONE COLOR SCALE ACROSS THE CLASSES, not one each.
+    # THE WHOLE SHANK, not the selected band.
     #
-    # Two heatmaps side by side with independent scales say nothing about
-    # which event is larger -- and "DS2 is the big one" is a claim people
-    # make off exactly this picture. Shared, the panels are comparable; per
-    # panel, they are two pictures that happen to be adjacent.
+    # These used to be cropped to the contacts the features come from, which
+    # made the picture agree with the measurement and useless for the
+    # question people actually ask it: is the band in the right place? A
+    # panel that only ever shows the inside of the box cannot answer that.
+    # So the class mean is drawn down the whole probe and the box is ruled
+    # on it, with everything outside dimmed -- the measurement is unchanged
+    # and is what `res["sel"]` still names.
     mats, out = [], []
     for c in range(1, int(res["k"]) + 1):
         rr = np.where(types == c)[0]
-        mats.append(None if rr.size == 0 else disp[rr].mean(axis=0)[sel, :])
+        mats.append(None if rr.size == 0 else disp[rr].mean(axis=0))
     live = [m for m in mats if m is not None]
-    hi = max([float(np.abs(m).max()) for m in live] or [1.0])
-    clim = (-hi, hi)
+    shared_hi = max([float(np.abs(m).max()) for m in live] or [1.0])
+
+    # A COLOUR SCALE PER CLASS, and each panel says what its own is.
+    #
+    # This was one scale across all of them, deliberately: two heatmaps
+    # side by side with independent scales say nothing about which event
+    # is larger, and "DS2 is the big one" is a claim people make off
+    # exactly this picture. But a shared scale has the opposite cost, and
+    # it is the one that bites in practice -- a class with a quarter of
+    # the amplitude is drawn as a wash of green, and the SHAPE, which is
+    # the whole question the panel exists to answer, is not visible at
+    # all.
+    #
+    # So: each class is scaled to itself, and each panel carries its own
+    # peak. The comparison is still available and is now a number to read
+    # rather than a colour to eyeball, which is the more honest way round
+    # -- the pictures never supported that comparison as well as they
+    # appeared to, because the classes rarely share a peak contact.
     for c, mat in enumerate(mats, start=1):
         rr = np.where(types == c)[0]
+        hi = shared_hi if mat is None else float(np.abs(mat).max()) or 1.0
+        clim = (-hi, hi)
         out.append({
             "c": c, "n": int(rr.size),
             "image": None if mat is None else encode(mat, cmap, clim),
             "extent": extent,
-            "lo": int(min(ns)), "hi": int(max(ns)),
+            # Its own scale, and the one it would have shared, so the panel
+            # can say how this class compares without redrawing anything.
+            "clim": [float(clim[0]), float(clim[1])],
+            "peak": float(hi),
+            "peak_of_all": float(shared_hi),
+            # The picture spans every contact; `band` is the part of it the
+            # features were taken from, so the panel can shade the rest.
+            "lo": int(min(nums)), "hi": int(max(nums)),
+            "band": [int(min(ns)), int(max(ns))] if ns else None,
             # Where the feature box sits inside the picture, so the panel can
             # rule it rather than describing it in a caption.
             "box_ms": [float(tw[t0]), float(tw[max(t0, t1 - 1)])],
         })
+    clim = (-shared_hi, shared_hi)
     return {"ok": True, "what": "classes", "classes": out,
+            "scaled": "per-class",
             "clim": [float(clim[0]), float(clim[1])],
-            "contacts": ns, "colors": CLASS_COLORS,
+            "contacts": nums, "band_contacts": ns, "colors": CLASS_COLORS,
             "layers": layers or {}}
+
+
+def _picture_features(got, p, cmap, encode, layers):
+    """The feature matrix itself: one column per event, sorted by class.
+
+    NOT DECORATION. This is the panel a bad contact shows up on, as a solid
+    stripe running the whole width of the sheet -- which is how the first
+    version of this analysis was caught classifying one wire rather than
+    one kind of event. Everything else here shows an average, and an
+    average is exactly where a single bad column hides.
+
+    It is also the only picture that shows the thing the PCA actually sees.
+    The rasters are the band-limited, mains-out CSD because that is what is
+    legible; the features are what `normalize_block` returned. Sorted by
+    class and ruled between them, so "these two groups look different" is
+    something you can check rather than take on trust.
+    """
+    res = fit(got, p, layers=layers)
+    types = np.asarray(res["types"])
+    norm = np.asarray(res["norm"])
+    X = norm.reshape(norm.shape[0], -1)
+
+    groups, order, at = [], [], 0
+    for c in range(1, int(res["k"]) + 1):
+        rr = np.where(types == c)[0]
+        order.append(rr)
+        groups.append({"c": int(c), "n": int(rr.size),
+                       "x0": int(at), "x1": int(at + rr.size)})
+        at += int(rr.size)
+    live = [r for r in order if r.size]
+    idx = np.concatenate(live) if live else np.arange(X.shape[0])
+    mat = X[idx].T                       # feature (depth x time) down, event across
+
+    # The scale the mode is on, not a robust percentile of it. min-max is 0
+    # to 1 by construction and sign is -1 to +1; a percentile would make the
+    # same pattern a different colour on two recordings, which is the one
+    # thing a panel for comparing patterns must not do.
+    clim = (0.0, 1.0) if p.features == "minmax" else (-1.0, 1.0)
+    return {"ok": True, "what": "features",
+            "image": encode(mat, cmap, clim),
+            "clim": [clim[0], clim[1]],
+            "n_events": int(mat.shape[1]), "n_features": int(mat.shape[0]),
+            "n_contacts": int(len(res["sel"])),
+            "n_samples": int(res["t1"] - res["t0"]),
+            "groups": groups, "colors": CLASS_COLORS,
+            "mode": p.features,
+            "mode_name": FEATURE_NAMES.get(p.features, p.features)}
 
 
 def _picture_traces(got, p, index, tw, nums, gain):

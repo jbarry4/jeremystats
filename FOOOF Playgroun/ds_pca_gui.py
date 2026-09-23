@@ -187,16 +187,18 @@ def load_flip(args):
     try:
         with open(flip_path(args), encoding="utf-8") as fh:
             got = json.load(fh)
-        return bool(got.get("flip")), str(got.get("rule") or "tort")
+        return (bool(got.get("flip")), str(got.get("rule") or "tort"),
+                str(got.get("features") or "minmax"))
     except Exception:
-        return False, "tort"
+        return False, "tort", "minmax"
 
 
 def save_flip(state):
     try:
         with open(flip_path(state["args"]), "w", encoding="utf-8") as fh:
             json.dump({"flip": bool(state.get("flip")),
-                       "rule": state.get("rule", "tort")}, fh)
+                       "rule": state.get("rule", "tort"),
+                       "features": state.get("features", "minmax")}, fh)
     except Exception as err:
         print("could not save the flip: %s" % err)
 
@@ -372,19 +374,49 @@ def stack_csd(sur, args):
     return csd.reshape(n_ch, n_ev, n_t).transpose(1, 0, 2)
 
 
-def normalize_block(block):
-    """pyfx.Normalize per EVENT, over the whole selected block.
+def normalize_block(block, mode="minmax", dead=0.15):
+    """Turn each event's CSD patch into the vector the PCA sees.
 
-    Toothy normalizes each event's single column across depth. With a time
-    window there is more than one column, and the honest generalization is
-    one min and one max for the whole patch -- normalizing each column
-    separately would erase exactly the thing a time window was opened to
+    `minmax` is Toothy: pyfx.Normalize per EVENT over the whole patch. With
+    a time window there is more than one column, and the honest
+    generalization is one min and one max for the whole patch -- normalizing
+    each column separately would erase the thing a time window was opened to
     see, which is how the profile changes from millisecond to millisecond.
+
+    WHY THE OTHER TWO EXIST. Min-max removes SCALE exactly: a*x and x land
+    on the same point, so in principle a loud and a quiet event with the
+    same shape are the same feature vector. In practice it does not hold,
+    because the scale is set by two samples -- the single min and the single
+    max. A quiet event riding the same background noise normalizes to a
+    NOISIER shape, and that is an amplitude effect that survives the
+    normalization. Measured on M2ctls3jan23: under min-max the two K-means
+    classes differ in amplitude by 3.07x, and PC1 correlates 0.52 with log
+    amplitude. The clusters were substantially loud-versus-quiet.
+
+    `sign` throws the magnitudes away completely and keeps only source
+    (+1) or sink (-1) per contact, which is the laminar pattern and nothing
+    else. On the same recording that drops the class amplitude ratio to
+    1.12x -- the loudness split is gone.
+
+    `sign_dead` is sign with a null band, because pure sign gives a contact
+    two hundred microns from the dipole, where the CSD is essentially zero,
+    exactly as much vote as the contact at the sink. Everything within
+    `dead` of the patch's own peak becomes 0 rather than a coin flip.
+
+    Read the result with the amplitude question in mind: if the classes stop
+    separating once the magnitudes go, they were separating on magnitude.
     """
     out = np.asarray(block, dtype=np.float64).copy()
     for i in range(out.shape[0]):
-        lo, hi = np.nanmin(out[i]), np.nanmax(out[i])
-        out[i] = np.zeros_like(out[i]) if hi == lo else (out[i] - lo) / (hi - lo)
+        x = out[i]
+        if mode == "sign":
+            out[i] = np.sign(x)
+        elif mode == "sign_dead":
+            thr = dead * np.nanmax(np.abs(x))
+            out[i] = np.where(x > thr, 1.0, np.where(x < -thr, -1.0, 0.0))
+        else:
+            lo, hi = np.nanmin(x), np.nanmax(x)
+            out[i] = np.zeros_like(x) if hi == lo else (x - lo) / (hi - lo)
     return out
 
 
@@ -425,7 +457,7 @@ def recompute(state):
     # The measurement: CSD computed WITHIN the chosen contacts, Toothy-style.
     sel, t0, t1 = state["sel"], state["t0"], state["t1"]
     feat_csd = stack_csd(sur[:, sel, :], a)[:, :, t0:t1]
-    norm = normalize_block(feat_csd)
+    norm = normalize_block(feat_csd, state.get("features", "minmax"))
     X = norm.reshape(norm.shape[0], -1)
 
     pca = PCA(n_components=2)
@@ -785,6 +817,10 @@ def draw(state, res):
            tw[t0], tw[max(t0, t1 - 1)], t1 - t0, "" if t1 - t0 == 1 else "s",
            res["k"], "60 Hz notched" if state["notch"] else "no notch (Toothy)"),
         fontsize=10.5, y=.988)
+    _fname = {"sign": "sign \u00b11", "sign_dead": "sign + deadband"}.get(
+        state.get("features", "minmax"), "min-max")
+    state["fig"].texts[0].set_text(
+        state["fig"].texts[0].get_text() + "   \u00b7   features " + _fname)
     state["fig"].texts[0].set_text(state["fig"].texts[0].get_text())
     state["repaired_note"].set_text(
         "repaired — amplitude: %s   ·   CSD: %s   ·   by hand: %s"
@@ -866,6 +902,17 @@ def build(state):
              va="center", fontweight="bold")
     ax_rad = fig.add_axes([.243, .048, .115, .100])
     ax_rad.set_frame_on(False)
+    fig.text(.372, .152, "features", fontsize=8.5, color=INK,
+             va="center", fontweight="bold")
+    ax_feat = fig.add_axes([.372, .048, .105, .100])
+    ax_feat.set_frame_on(False)
+    _feats = ["min-max (Toothy)", "sign +-1", "sign + deadband"]
+    _fkey = {"minmax": _feats[0], "sign": _feats[1], "sign_dead": _feats[2]}
+    radf = RadioButtons(ax_feat, _feats, active=_feats.index(
+        _fkey.get(state.get("features", "minmax"), _feats[0])))
+    for t in radf.labels:
+        t.set_fontsize(8.5)
+
     _rules = ["tort (sink < source)", "sink (Toothy)", "source peaks"]
     rad = RadioButtons(ax_rad, _rules, active=_rules.index(
         {"tort": _rules[0], "sink": _rules[1]}.get(
@@ -886,31 +933,31 @@ def build(state):
     for t in chk.labels:
         t.set_fontsize(9)
 
-    b_auto = Button(fig.add_axes([.372, .090, .072, .042]), "auto box")
-    b_one = Button(fig.add_axes([.372, .032, .072, .042]), "1 sample")
-    b_prev = Button(fig.add_axes([.452, .090, .072, .042]), "◀ prev")
-    b_next = Button(fig.add_axes([.452, .032, .072, .042]), "next ▶")
-    b_mean = Button(fig.add_axes([.532, .090, .072, .042]), "show average")
-    b_save = Button(fig.add_axes([.532, .032, .072, .042]), "save fig + csv")
-    b_clear = Button(fig.add_axes([.612, .090, .072, .042]), "clear guides")
-    b_unbad = Button(fig.add_axes([.612, .032, .072, .042]), "clear bad")
-    b_flip = Button(fig.add_axes([.692, .090, .072, .042]), "flip DS1/DS2")
+    b_auto = Button(fig.add_axes([.492, .090, .072, .042]), "auto box")
+    b_one = Button(fig.add_axes([.492, .032, .072, .042]), "1 sample")
+    b_prev = Button(fig.add_axes([.572, .090, .072, .042]), "◀ prev")
+    b_next = Button(fig.add_axes([.572, .032, .072, .042]), "next ▶")
+    b_mean = Button(fig.add_axes([.652, .090, .072, .042]), "show average")
+    b_save = Button(fig.add_axes([.652, .032, .072, .042]), "save fig + csv")
+    b_clear = Button(fig.add_axes([.732, .090, .072, .042]), "clear guides")
+    b_unbad = Button(fig.add_axes([.732, .032, .072, .042]), "clear bad")
+    b_flip = Button(fig.add_axes([.812, .090, .072, .042]), "flip DS1/DS2")
     for b in (b_auto, b_one, b_prev, b_next, b_mean, b_save, b_clear, b_unbad,
               b_flip):
         b.label.set_fontsize(8.5)
 
-    tb = TextBox(fig.add_axes([.820, .090, .065, .040]), "guide ",
+    tb = TextBox(fig.add_axes([.915, .090, .062, .040]), "guide ",
                  initial="", textalignment="left")
-    tb_bad = TextBox(fig.add_axes([.820, .032, .065, .040]), "bad ",
+    tb_bad = TextBox(fig.add_axes([.915, .032, .062, .040]), "bad ",
                      initial="", textalignment="left")
     for t in (tb, tb_bad):
         t.label.set_fontsize(8.5)
         t.text_disp.set_fontsize(8.5)
 
-    state["where"] = fig.text(.692, .055, "", fontsize=8.5, va="center",
+    state["where"] = fig.text(.812, .055, "", fontsize=8.5, va="center",
                               color=INK)
     state["guide_note"] = fig.text(
-        .900, .012, "", fontsize=8.5, va="center", color=GREY)
+        .812, .012, "", fontsize=8.5, va="center", color=GREY)
     state["repaired_note"] = fig.text(
         .5, .958, "", fontsize=8.5, va="center", ha="center", color=GREY)
 
@@ -1035,6 +1082,16 @@ def build(state):
         save_bad(state)
         refresh()
 
+    def pick_features(label):
+        """Which transform the PCA sees. The amplitude question lives here."""
+        state["features"] = ("sign" if label == "sign +-1"
+                             else "sign_dead" if label.startswith("sign +")
+                             else "sign_dead" if "deadband" in label
+                             else "minmax")
+        save_flip(state)
+        say("features: " + label)
+        refresh()
+
     def pick_rule(label):
         """Which landmark orders the classes. Kept with the flip."""
         state["rule"] = ("tort" if label.startswith("tort")
@@ -1096,6 +1153,7 @@ def build(state):
     b_unbad.on_clicked(clear_bad)
     b_flip.on_clicked(flip_types)
     rad.on_clicked(pick_rule)
+    radf.on_clicked(pick_features)
     tb.on_submit(on_submit)
     tb_bad.on_submit(on_bad)
     fig.canvas.mpl_connect("pick_event", on_pick)
@@ -1111,8 +1169,9 @@ def build(state):
     state["clear_bad"] = clear_bad
     state["flip_types"] = flip_types
     state["pick_rule"] = pick_rule
+    state["pick_features"] = pick_features
     state["_widgets"] = (s_k, chk, b_auto, b_one, b_prev, b_next, b_mean,
-                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad)
+                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad, radf)
     state["refresh"] = refresh
     refresh()
     return fig
@@ -1185,7 +1244,7 @@ def main():
     state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
     state["sel"] = ds_pca.depth_band(got["sur"]["notch"], a, chans, got["bad"])
 
-    state["flip"], state["rule"] = load_flip(args)
+    state["flip"], state["rule"], state["features"] = load_flip(args)
 
     fig = build(state)
     print("opening box: CSC%d-%d, 1 sample at the stamp  (drag to change)"

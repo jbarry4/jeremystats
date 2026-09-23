@@ -9210,9 +9210,19 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 }
 .dp-panes > .dp-shank { flex: 1 1 auto; min-height: 220px; }
 .dp-answer > .dp-profile { flex: 1 1 auto; min-height: 200px; }
+/* The SAME tracks as the row above it.
+
+   The controls had a 320px column and the PCA everything else, so the
+   eight short control groups ran a screen deep in a narrow strip while
+   the scatter -- one square cloud of dots -- had most of the window. Both
+   were the wrong way round, and neither lined up with the pictures above.
+
+   Sharing the top row's tracks fixes all three at once: the controls sit
+   under the CSD and get its width, so they read across instead of down,
+   and the PCA sits under the answer column and is the size of it. */
 .dp-bottom {
   display: grid; gap: 12px; align-items: stretch;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
 }
 @media (max-width: 1150px) {
   .dp-top, .dp-bottom { grid-template-columns: 1fr; }
@@ -9264,10 +9274,15 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
+/* In the pane's own button row, so what you press is next to what you
+   dragged. Marked by the accent rather than by a box, which in a row of
+   buttons would be one border too many. */
 .dp-applybar.on {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  margin-bottom: 10px; border-color: var(--accent);
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding-left: 8px; margin-left: 2px;
+  border-left: 2px solid var(--accent);
 }
+.dp-moved { color: var(--accent); }
 
 /* Every canvas in the panel sizes itself from its box and draws at device
    pixels, so the labels stay crisp when a pane is resized. */
@@ -9340,8 +9355,12 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-preview { width: 100%; margin: 10px 0; }
 .dp-preview td, .dp-preview th { font-size: 11.5px; }
 
-/* The bulk queue. Shut by default: it is a thing you do once per cohort,
-   not something that should take up the panel every time it opens. */
+/* The mode switch, and the queue it opens. The switch is the same
+   control Braces uses for the same choice; only the hint beside it
+   differs. */
+.dp-mode { display: flex; flex-wrap: wrap; align-items: center;
+           gap: var(--sp-10); }
+.dp-mode .hint { flex: 1 1 260px; min-width: 0; }
 .dp-bulk-shut { display: flex; align-items: center; gap: 10px; }
 .dp-bulk-card { display: flex; flex-direction: column; gap: 8px; }
 .dp-bulk { width: 100%; }
@@ -9416,10 +9435,73 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-col { gap: 8px; }
 .dp-checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .dp-commit { width: 100%; }
+
+/* Before and after, side by side.
+
+   The crosstab is the headline and is styled as one: the diagonal is
+   what stayed put and everything off it is what moved, which is the
+   number people open this for. The pictures are underneath because two
+   heatmaps that look slightly different is exactly the evidence this
+   panel exists to replace. */
+.dp-cmp-body { display: flex; flex-direction: column; gap: var(--sp-8); }
+.dp-cmp-tab { width: auto; margin: var(--sp-4) 0 var(--sp-8); }
+.dp-cmp-tab th, .dp-cmp-tab td {
+  font-size: var(--fs-11); padding: var(--sp-2) var(--sp-10);
+  text-align: right;
+}
+.dp-cmp-tab th:first-child { text-align: left; }
+.dp-cmp-n { font-variant-numeric: tabular-nums; color: var(--text-3); }
+.dp-cmp-n.same { color: var(--text); font-weight: 600; }
+.dp-cmp-n.moved { color: var(--warn); font-weight: 600; }
+.dp-cmp-pair { display: flex; flex-direction: column; gap: var(--sp-4); }
+.dp-cmp-row {
+  display: grid; gap: var(--sp-12);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.dp-cmp-cell {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-8);
+  min-width: 0;
+}
+.dp-cmp-lab {
+  font-size: var(--fs-9); text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-3);
+}
+.dp-cmp-strip { display: flex; gap: var(--sp-6); align-items: flex-end; }
+.dp-cmp-cls { display: flex; flex-direction: column; gap: var(--sp-2);
+              min-width: 0; flex: 1 1 0; }
+/* Nearest neighbour, for the same reason the canvas uses it: a column is
+   one event and a row is one feature, so there is nothing between two of
+   them to interpolate -- and smoothing blends the single odd column these
+   panels exist to show into the ones beside it. */
+.dp-cmp-img { width: 100%; display: block; border: 1px solid var(--line);
+              border-radius: var(--r-3); image-rendering: pixelated; }
+.dp-cmp-decide { display: flex; flex-direction: column; gap: var(--sp-2); }
+.dp-cmp-drow { display: flex; align-items: center; gap: var(--sp-6);
+               font-size: var(--fs-11); }
+.dp-swatch { width: 9px; height: 9px; border-radius: 2px;
+             display: inline-block; flex: none; }
 /* The rule rows carry their sentence only when chosen, so the unchosen ones
    are a single line and the group is four lines rather than twelve. */
-.dp-rule { padding: 4px 6px; }
-.dp-rule .dp-why { margin-top: 1px; }
+.dp-rule { padding: var(--sp-2) var(--sp-4); }
+.dp-rule .dp-why { margin-top: 0; }
+/* The chosen option explains itself, and used to do it in four lines --
+   which set the height of the whole row, so picking a rule with a long
+   sentence moved everything below it down. Two lines, clipped, with the
+   rest on the hover every option already carries. */
+.dp-rule .dp-why {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; font-size: var(--fs-9); line-height: 1.35;
+}
+.dp-rule strong { font-size: var(--fs-11); }
+.dp-controls .dp-checks { gap: var(--sp-2) var(--sp-10); }
+.dp-controls .dp-guides { gap: var(--sp-4); }
+.dp-controls .dp-commit { margin-top: var(--sp-6); }
+/* The mains line and the guide note are asides, not paragraphs. */
+.dp-controls > .hint, .dp-controls > p { font-size: var(--fs-10);
+                                         margin: 0; }
+.dp-mains { margin-top: var(--sp-2) !important; }
 
 /* The guide's ink, which is also how you change it. The native control
    draws its own inset border and padding and looks like a button that has
@@ -9436,12 +9518,29 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 
 /* The controls, as a bottom strip. Two columns inside their own box, so the
    eight short groups read across instead of running a screen deep. */
+/* COMPACT, because it is a strip of settings and not a page of them.
+
+   Eight groups, each one or two controls, laid out with a section label
+   above every one. At 4px row gaps and full-width rows for the rule
+   pickers that came to about 700px of column for perhaps 300px of
+   control, and most of it was air between a heading and the one radio
+   under it. Everything here is a token: type from `--fs-*`, space from
+   the even `--sp-*` steps. */
 .dp-controls {
-  display: grid; align-content: start; gap: 4px 16px;
-  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  display: grid; align-content: start; gap: var(--sp-2) var(--sp-16);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 }
+/* A heading and the thing it names belong together, not evenly spaced
+   between the group above and the group below. */
+.dp-controls > .section-label { margin-top: var(--sp-8) !important;
+                                margin-bottom: 0; }
+.dp-controls > .section-label:first-child { margin-top: 0 !important; }
 .dp-controls > .section-label { grid-column: 1 / -1; margin-top: 8px; }
 .dp-controls > .section-label:first-child { margin-top: 0; }
+.dp-controls > .dp-rules { grid-column: 1 / -1; display: grid;
+  gap: var(--sp-2) var(--sp-8);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: start; }
 .dp-controls > .dp-rules,
 .dp-controls > .dp-guides,
 .dp-controls > .dp-checks,

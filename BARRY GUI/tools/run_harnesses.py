@@ -278,7 +278,19 @@ def main():
                      # Both pass at 1600x1000. A layout harness run in a 423px
                      # window is measuring the window, not the layout.
                      "--window-size=1600,1000",
-                     "--virtual-time-budget=150000", "--dump-dom", url],
+                     # Virtual time, not wall time, and it is a CAP: a
+                     # page that finishes sooner costs nothing. 150000 was
+                     # not enough for the longest suite any more -- dspca
+                     # stopped part way through with no tally line, and
+                     # since the runner counts the "ok" lines it found, a
+                     # suite cut in half reported as a shorter suite that
+                     # Virtual time runs far faster than wall time: every
+                     # `until` that waits spends its whole timeout out of
+                     # this budget in a fraction of a second of real time.
+                     # The wall timeout below is what catches a stuck page;
+                     # this only has to be large enough not to cut a
+                     # healthy one in half.
+                     "--virtual-time-budget=600000", "--dump-dom", url],
                     stdout=sink, stderr=subprocess.DEVNULL,
                     timeout=280, cwd=ROOT)
             with open(dump, "rb") as fh:

@@ -4314,7 +4314,11 @@ def _dspca_params_raw(body, sess, stored=None):
         nclasses=body.get("nclasses"), rule=body.get("rule"),
         flip=body.get("flip", False), seed=body.get("seed"),
         sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
-        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"))
+        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+        # How the patch becomes a feature vector: min-max (Toothy),
+        # or one of the two that throw the magnitudes away and keep
+        # only the laminar pattern. See dspca.normalize_block.
+        features=body.get("features"), dead=body.get("dead"))
 
 
 def _dspca_params(body, sess, stored=None):
@@ -4696,7 +4700,11 @@ def api_dspca_fit():
             nclasses=body.get("nclasses"), rule=body.get("rule"),
             flip=body.get("flip", False), seed=body.get("seed"),
             sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
-            t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"))
+            t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+            # How the patch becomes a feature vector: min-max (Toothy),
+            # or one of the two that throw the magnitudes away and keep
+            # only the laminar pattern. See dspca.normalize_block.
+            features=body.get("features"), dead=body.get("dead"))
         res = dspca.fit(got, p, layers=_dspca_layers(gid))
     except dspca.DsPcaError as exc:
         return fail("dspca/fit", exc, 400, {"gid": gid})
@@ -5014,6 +5022,9 @@ def api_dspca_raster():
                the class it was put in.
       classes  the per-class mean over the selected depth band only.
       traces   the band-limited voltage, as vectors, for the stacked panel.
+      features the feature matrix, one column per event, sorted by class --
+               the only picture of what the PCA actually sees, and the one
+               a bad contact shows up on as a stripe.
     """
     body = request.get_json(force=True) or {}
     gid, ph = body.get("gid"), body.get("read")
@@ -5312,7 +5323,11 @@ def _dspca_fit_params(body, got):
         nclasses=body.get("nclasses"), rule=body.get("rule"),
         flip=body.get("flip", False), seed=body.get("seed"),
         sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
-        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"))
+        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+        # How the patch becomes a feature vector: min-max (Toothy),
+        # or one of the two that throw the magnitudes away and keep
+        # only the laminar pattern. See dspca.normalize_block.
+        features=body.get("features"), dead=body.get("dead"))
 
 
 @app.route("/api/cfc/cache")

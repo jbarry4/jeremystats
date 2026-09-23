@@ -56,6 +56,9 @@ BARRY.dspca = (function () {
     rule: 'tort',
     notch: true,
     screen: false,
+    /* How each event's patch becomes the vector the PCA sees. See
+       `FEATURES` below, and `normalize_block` in backend/dspca.py. */
+    features: 'minmax',
     flip: false,
     gain: 4,
     cmap: 'jet',
@@ -369,6 +372,16 @@ BARRY.dspca = (function () {
      follow the pointer -- a box that sprang back to where it was while the
      numbers under it stayed put would read as the drag having failed. Once
      the fit lands the two are the same thing again. */
+  /* Which class the spike being looked at was put in, or null for the
+     average. Every panel that highlights it asks this one function, so
+     the ring on the PCA, the curve on the profile and the outlined class
+     mean cannot disagree about which one is on screen. */
+  function pickedClass() {
+    if (picked == null || !fit || !fit.ok) return null;
+    const e = (fit.events || []).find((x) => x.i === picked);
+    return e ? e.type : null;
+  }
+
   function shownBox() {
     if (dirty && q.sel_lo != null && q.sel_hi != null) {
       return { lo: q.sel_lo, hi: q.sel_hi,
@@ -382,6 +395,7 @@ BARRY.dspca = (function () {
       gid: q.gid, read: q.read,
       nclasses: q.nclasses, rule: q.rule,
       notch: q.notch, screen: q.screen, flip: q.flip,
+      features: q.features,
       sel_lo: q.sel_lo, sel_hi: q.sel_hi,
       t_lo_ms: q.t_lo_ms, t_hi_ms: q.t_hi_ms,
     }, extra || {});
@@ -393,8 +407,22 @@ BARRY.dspca = (function () {
      server -- so without this the panel would have sixty requests in flight
      and draw the answer to a box nobody is looking at any more. Short enough
      that letting go feels instant. */
+  let lastBody = null;          // what the last fit actually asked for
+  let fitGen = 0;
+
+  /* Is the box in the form still the one this request asked for? */
+  function sameBox(body) {
+    return String(body.sel_lo) === String(q.sel_lo)
+        && String(body.sel_hi) === String(q.sel_hi)
+        && String(body.t_lo_ms) === String(q.t_lo_ms)
+        && String(body.t_hi_ms) === String(q.t_hi_ms);
+  }
+
   const refit = debounce(async function refit_() {
     if (!q.read) return;
+    const mine = ++fitGen;
+    const body = fitBody();
+    lastBody = body;
     fitting = true;
     /* Just the two lines that changed. Rebuilding the whole panel to say
        "working" would be the most expensive possible way to say it, and it
@@ -404,8 +432,9 @@ BARRY.dspca = (function () {
     if (!hadBusy || !hadBar) render();
     let got;
     try {
-      got = await apiPost('/api/dspca/fit', fitBody());
+      got = await apiPost('/api/dspca/fit', body);
     } catch (e) {
+      if (mine !== fitGen) return;     // a newer fit is already on its way
       /* The box crossing a probe column lands here, and it is the one error
          worth keeping on screen rather than toasting: it is a statement
          about the box that is still selected. */
@@ -415,25 +444,42 @@ BARRY.dspca = (function () {
       render();
       return;
     }
+    // Superseded while it was away. Its answer is about a question nobody
+    // is asking any more, and showing it would be the slow reply winning.
+    if (mine !== fitGen) return;
     fit = got;
     fitting = false;
-    // The answer on screen is this box's now.
-    dirty = false;
-    /* What the server settled on, back into the form. The first fit has no
-       box at all and the server chooses one from the event-triggered
-       template; leaving `q` empty after that would mean the next drag
-       started from nothing. */
-    q.sel_lo = got.box.lo;
-    q.sel_hi = got.box.hi;
-    q.t_lo_ms = got.box.t_lo_ms;
-    q.t_hi_ms = got.box.t_hi_ms;
+
+    /* WHAT THE SERVER SETTLED ON, BACK INTO THE FORM -- but only if the
+       form is still asking what this request asked.
+
+       The first fit has no box at all and the server chooses one from the
+       event-triggered template, so without this the next drag would start
+       from nothing. The guard is the other half, and it is a real fault
+       rather than a precaution: a fit takes about a second over seven
+       hundred events, a box can be dragged in that second, and this wrote
+       the OLD box back over the new one when the answer arrived. From the
+       outside the drag simply undid itself a moment after you let go --
+       and the recompute that followed then asked for the box you had just
+       been moved off.
+
+       Found by the harness: the panel asked for CSC8-12 and the request
+       that went out said CSC7-9. */
+    const stillMine = sameBox(body);
+    if (stillMine) {
+      dirty = false;
+      q.sel_lo = got.box.lo;
+      q.sel_hi = got.box.hi;
+      q.t_lo_ms = got.box.t_lo_ms;
+      q.t_hi_ms = got.box.t_hi_ms;
+    }
     render();
     drawAll();
     /* A drag only moves the class means -- the two panes above are a
        whole-shank average that the box does not enter into. But the FIRST
        fit after a read has no pictures at all yet, so that one fetches
        everything. */
-    pictures(pics.pane ? ['classes'] : null);
+    pictures(pics.pane ? ['classes', 'features'] : null);
   }, 60);
 
   /* WHAT ACTUALLY CHANGED, and nothing else.
@@ -453,6 +499,7 @@ BARRY.dspca = (function () {
       traces: { what: 'traces', index: picked, gain: q.gain },
       pane: { what: paneKind, index: picked },
       classes: { what: 'classes' },
+      features: { what: 'features' },
     };
     const want = which && which.length ? which : Object.keys(all);
     const mine = ++picGen;
@@ -513,8 +560,12 @@ BARRY.dspca = (function () {
     box.appendChild(intro());
     if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
     if (!cands.length) { box.appendChild(nothing()); return; }
+    box.appendChild(modeSwitch());
+    if (bulk.on) {
+      box.appendChild(bulkCard());
+      return;
+    }
     box.appendChild(chooser());
-    box.appendChild(bulkCard());
     if (job) { box.appendChild(progress()); return; }
     if (!q.read) { box.appendChild(readCard()); return; }
     box.appendChild(workbench());
@@ -560,23 +611,14 @@ BARRY.dspca = (function () {
      What this does is pay the expensive half in advance, so that afterwards
      each of those sets is a box somebody can drag at milliseconds. */
   function bulkCard() {
-    if (!bulk.on) {
-      return el('div', { class: 'card dp-bulk-shut' }, [
-        el('button', { class: 'btn small', text: 'Read a batch\u2026',
-                       onclick: () => { bulk.on = true; render();
-                                        loadBulk(); } }),
-        el('span', { class: 'hint', text:
-          'Pay the reading for many sets at once. Nothing is classified and '
-          + 'nothing is banked.' }),
-      ]);
-    }
+    /* No shut state any more: the mode switch above is what opens and
+       closes this, and a card that also closed itself meant two controls
+       for one thing and a panel that could be in neither mode. */
     const kids = [
       el('div', { class: 'dp-row' }, [
         el('div', { class: 'section-label', style: 'margin:0',
                     text: 'Read a batch' }),
         el('div', { style: 'flex:1' }),
-        el('button', { class: 'btn small ghost', text: 'Close',
-                       onclick: () => { bulk.on = false; render(); } }),
       ]),
     ];
     if (bulk.job) {
@@ -600,7 +642,7 @@ BARRY.dspca = (function () {
           el('td', { class: 'dim', text: m.error || '' }),
         ]))),
       ]));
-      kids.push(el('button', { class: 'btn small', text: 'Stop',
+      kids.push(el('button', { class: 'btn ghost sm', text: 'Stop',
         onclick: () => apiPost('/api/cfc/job/' + bulk.job.id + '/cancel', {})
                          .catch(() => {}) }));
       return el('div', { class: 'card dp-bulk-card' }, kids);
@@ -632,7 +674,7 @@ BARRY.dspca = (function () {
                      text: r.aligned ? ('v' + r.aligned) : 'not aligned' }),
         ]))),
       ]));
-      kids.push(el('button', { class: 'btn primary', text: 'Read the ticked',
+      kids.push(el('button', { class: 'btn', text: 'Read the ticked',
                                onclick: runBulk }));
     }
     if (bp.blocked.length) {
@@ -715,8 +757,7 @@ BARRY.dspca = (function () {
 
   function loading(what) {
     return el('div', { class: 'card dp-load' }, [
-      el('div', { class: 'spinner' }),
-      el('span', { class: 'hint', text: what + '…' }),
+      loader(what),
     ]);
   }
 
@@ -730,55 +771,237 @@ BARRY.dspca = (function () {
     ]);
   }
 
-  /* ---------- 1. the set, and which version to read ---------- */
+  /* One set, or many.
+
+     Two genuinely different jobs rather than two views of one. Picking a
+     set, checking what it would read and reading it is a thing you do
+     while thinking; paying the reading for a whole cohort is a thing you
+     set off and come back to. Braces draws exactly this switch for
+     exactly this reason, and this is the same control rather than a
+     second answer to the same question.
+
+     It replaces a `Read a batch...` button that sat above the panel in
+     both modes -- so the batch queue and the workbench were on screen
+     together, each taking room from the other, and neither of them was
+     what you had come to do. */
+  function modeSwitch() {
+    return el('div', { class: 'card dp-mode' }, [
+      el('div', { class: 'seg' }, [
+        ['one', 'One set at a time'],
+        ['many', 'Many sets at once'],
+      ].map(([id, label]) => el('button', {
+        class: (bulk.on ? 'many' : 'one') === id ? 'active' : '',
+        onclick: () => {
+          if ((bulk.on ? 'many' : 'one') === id) return;
+          bulk.on = id === 'many';
+          render();
+          if (bulk.on && !bulk.plan) loadBulk();
+        },
+        text: label,
+      }))),
+      el('span', { class: 'hint', text: bulk.on
+        ? 'Reads them one after another and stops there. Nothing is '
+          + 'classified and nothing is banked \u2014 every set still has to '
+          + 'be read through and called by somebody.'
+        : 'Pick a recording, check what it would read, then read it.' }),
+    ]);
+  }
+
+  /* ---------- 1. the set, and which version to read ----------
+
+     The same three controls every other tool in the bundle uses, in the
+     same order: a recording you type the name of, the banked entries on
+     it as a radio list, and the versions of the chosen one as another.
+
+     It was two dropdowns. A <select> of every curated set in the lab is a
+     list you scroll rather than one you search, and it put the recording
+     and the entry on one line of text so neither could be read -- with
+     the version box beside it, being a second <select>, indistinguishable
+     from it. Braces answered this already; this is its answer rather than
+     a second one. */
   function chooser() {
-    const s = setOf();
-    const sel = el('select', {
-      class: 'input', onchange: (e) => pickSet(e.target.value),
-    }, (cands || []).map((c) => el('option', {
-      value: c.id, selected: c.id === q.entry || null,
-      text: (c.session_label || c.name || c.id) + '  ·  ' + c.n_good
-            + ' spike' + (c.n_good === 1 ? '' : 's'),
-    })));
+    const box = el('div', { class: 'card dp-choose' });
 
+    // One row per recording, named from the registry where it knows the
+    // recording and from the set itself where it does not.
+    const regRows = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    const byGid = new Map();
+    for (const r of regRows) byGid.set(r.gid, r);
+    const rows = [];
+    const seen = new Set();
+    for (const c of (cands || [])) {
+      if (!c.gid || seen.has(c.gid)) continue;
+      seen.add(c.gid);
+      rows.push(byGid.get(c.gid) || {
+        gid: c.gid, label: c.session_label || c.name,
+        project: c.project, mouse: c.mouse, session: c.session,
+        reachable: true,
+      });
+    }
+    rows.sort((x, y) => String(x.label || '').localeCompare(
+      String(y.label || '')));
+
+    // Opened on something workable rather than on nothing.
+    if (!q.gid || !seen.has(q.gid)) {
+      const on = (cands || []).find((c) => c.id === q.entry);
+      q.gid = (on && on.gid) || (rows[0] || {}).gid || null;
+    }
+
+    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                text: 'Recording' }));
+    box.appendChild(BARRY.pickSession({
+      rows,
+      value: q.gid,
+      placeholder: 'Which recording? Type a mouse, session or date\u2026',
+      onpick: (r) => {
+        if (r.gid === q.gid) return;
+        q.gid = r.gid;
+        /* A different recording means a different entry, and everything
+           downstream of it. Keeping the old one left the panel describing
+           a set no longer among the ones on offer -- and asking for its
+           version, which is the "no version 5" dead end from the other
+           side. */
+        const first = (cands || []).find((c) => c.gid === r.gid);
+        plan = null;
+        if (first) { pickSet(first.id); return; }
+        q.entry = null; q.from_version = null; q.read = null; fit = null;
+        render();
+      },
+    }));
+
+    const mine = (cands || []).filter((c) => c.gid === q.gid);
+    if (!mine.length) {
+      box.appendChild(el('p', { class: 'confirm-msg', text:
+        'Nothing curated is banked against this recording, so there is '
+        + 'nothing to classify. Incisor finds the candidates, Checkup goes '
+        + 'through them and Braces times them; this is step four.' }));
+      return box;
+    }
+
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Which banked entry' }));
+    const list = el('div', { class: 'bm-list' });
+    for (const c of mine) {
+      /* A set with no spikes left in it is SHOWN and cannot be picked.
+         Shown, because "every candidate was rejected" is a real answer,
+         and a row that silently is not there reads as a set that does not
+         exist. */
+      const good = c.n_good || 0;
+      list.appendChild(el('label', {
+        class: 'bm-row' + (c.id === q.entry ? ' on' : '')
+               + (good ? '' : ' off'),
+        title: good ? '' : 'Every candidate here was rejected or left '
+               + 'undecided, so there are no dentate spikes to classify.',
+      }, [
+        el('input', {
+          type: 'radio', name: 'dpEntry',
+          disabled: good ? null : 'disabled',
+          checked: c.id === q.entry ? 'checked' : null,
+          onchange: () => pickSet(c.id),
+        }),
+        el('span', { class: 'mk-name', text: c.name || c.id }),
+        el('span', { class: 'flagchip', text: good
+          ? good + ' spike' + (good === 1 ? '' : 's') + ' of ' + c.n
+          : c.n + ' stamps, none of them spikes' }),
+        el('span', { class: 'person-what', text:
+          c.newest_aligned_name ? 'v' + c.newest_aligned_name + '  aligned'
+          : c.newest_usable_name ? 'v' + c.newest_usable_name
+          : 'not through Braces' }),
+      ]));
+    }
+    box.appendChild(list);
+
+    /* And which version of it to read the stamps from.
+
+       Radios rather than a second dropdown: a version is a decision with
+       somebody's name on it, and the count and whether it has been
+       aligned are the whole of how anybody chooses between two. A version
+       whose snapshot never reached this machine is shown and disabled
+       with the reason on the row -- it has a name, a count and no times,
+       and leaving it out would read as it not existing. */
     const vers = ((plan && plan.ok && plan.versions) || []);
-    const vsel = el('select', {
-      class: 'input', disabled: !vers.length || null,
-      onchange: (e) => { q.from_version = e.target.value || null;
-                         q.read = null; fit = null; refreshPlan(); },
-    }, vers.map((v) => el('option', {
-      /* Marked by EITHER name. `pickSet` starts from a version's number and
-         this select hands back its ref, so comparing against one of them
-         left nothing selected the moment somebody used the picker -- the
-         box then showed the first version while `q.from_version` held the
-         one they chose. */
-      value: v.ref,
-      selected: (String(v.ref) === String(q.from_version)
-                 || String(v.name) === String(q.from_version)) || null,
-      disabled: !v.usable || null,
-      text: 'v' + v.name + '  ·  ' + v.n + (v.aligned ? '  · aligned' : '')
-            + (v.usable ? '' : '  · ' + (v.why_not || 'not readable here')),
-    })));
+    if (vers.length) {
+      box.appendChild(el('div', { class: 'section-label',
+                                  text: 'Read the stamps from' }));
+      const vlist = el('div', { class: 'bm-list dp-vers' });
+      /* "As they are now" is a real choice and needs a row.
 
-    return el('div', { class: 'card dp-choose' }, [
-      el('div', { class: 'dp-row' }, [
-        el('label', { class: 'dp-lab', text: 'Set' }), sel,
-        el('label', { class: 'dp-lab', text: 'Read from' }), vsel,
-      ]),
+         `from_version` null means the server reads `rec["events"]` --
+         the set as it currently stands, which is what a set nobody has
+         banked a version of has and what the plan falls back to when the
+         version asked for is not here. With no row for it, that state
+         left every radio unchecked: the list looked like a set with no
+         version rather than a set being read at its newest. */
+      const nowOn = q.from_version == null;
+      vlist.appendChild(el('label', {
+        class: 'bm-row' + (nowOn ? ' on' : ''),
+        title: 'The stamps as this set currently stands, rather than a '
+             + 'banked version of it.',
+      }, [
+        el('input', {
+          type: 'radio', name: 'dpVer', checked: nowOn ? 'checked' : null,
+          onchange: () => {
+            q.from_version = null;
+            q.read = null;
+            fit = null;
+            refreshPlan();
+          },
+        }),
+        el('span', { class: 'mk-name', text: 'as they are now' }),
+        el('span', { class: 'flagchip', text: (plan.stamps || {}).of != null
+          ? (plan.stamps.of + ' stamps') : '' }),
+        el('span', { class: 'person-what', text: 'not a banked version' }),
+      ]));
+      for (const v of vers) {
+        const on = String(v.ref) === String(q.from_version)
+                   || String(v.name) === String(q.from_version);
+        vlist.appendChild(el('label', {
+          class: 'bm-row' + (on ? ' on' : '') + (v.usable ? '' : ' off'),
+          title: v.usable ? (v.note || '') : (v.why_not || ''),
+        }, [
+          el('input', {
+            type: 'radio', name: 'dpVer',
+            disabled: v.usable ? null : 'disabled',
+            checked: on ? 'checked' : null,
+            onchange: () => {
+              q.from_version = v.ref;
+              q.read = null;
+              fit = null;
+              refreshPlan();
+            },
+          }),
+          el('span', { class: 'mk-name', text: 'v' + v.name }),
+          el('span', { class: 'flagchip', text: v.n + ' stamps' }),
+          el('span', { class: 'person-what', text:
+            (v.aligned ? 'aligned' : 'not aligned')
+            + (v.by ? '  ' + v.by : '')
+            + (v.usable ? '' : '  ' + (v.why_not || 'not readable here')) }),
+        ]));
+      }
+      box.appendChild(vlist);
+    }
+
+    const cur = setOf();
+    const tail = [
       plan && plan.ok && plan.version_note
         ? el('p', { class: 'hint dp-warn', text:
-            plan.version_note + ' Reading the events as they are now — pick '
-            + 'a version above if you wanted a different one.' })
+            plan.version_note + ' Reading the events as they are now \u2014 '
+            + 'pick a version above if you wanted a different one.' })
         : null,
-      s && !s.newest_aligned_name ? el('p', { class: 'hint dp-warn', text:
-        'Nothing in this set has been through Braces. Every feature here is '
-        + 'read at one instant relative to the stamp, so stamps that are a '
-        + 'few milliseconds out do not classify badly — they classify a '
-        + 'smear. Step 3 first is worth the minutes.' }) : null,
+      cur && !cur.newest_aligned_name
+        ? el('p', { class: 'hint dp-warn', text:
+            'Nothing in this set has been through Braces. Every feature '
+            + 'here is read at one instant relative to the stamp, so stamps '
+            + 'that are a few milliseconds out do not classify badly \u2014 '
+            + 'they classify a smear. Step 3 first is worth the minutes.' })
+        : null,
       plan && !plan.ok
         ? el('p', { class: 'hint err', text: plan.error })
         : planLine(),
-    ].filter(Boolean));
+    ].filter(Boolean);
+    for (const t of tail) box.appendChild(t);
+    return box;
   }
 
   function planLine() {
@@ -829,7 +1052,7 @@ BARRY.dspca = (function () {
         + 'afterwards without touching the disk again. It is cached against '
         + 'the read settings, so this is once.' }),
       el('div', { class: 'dp-row' }, [
-        el('button', { class: 'btn primary', text: 'Read ' + (plan.stamps.n)
+        el('button', { class: 'btn', text: 'Read ' + (plan.stamps.n)
                        + ' spikes', onclick: () => startRead(false) }),
         rd.cached ? el('button', {
           class: 'btn', text: 'Read again',
@@ -872,7 +1095,6 @@ BARRY.dspca = (function () {
   function workbench() {
     return el('div', {}, [
       busyLine(),
-      applyBar(),
       statusStrip(),
       el('div', { class: 'dp-top' }, [
         el('div', { class: 'dp-col dp-panes' }, panes()),
@@ -901,6 +1123,7 @@ BARRY.dspca = (function () {
     traces: 'Drawing the voltage traces',
     pane: 'Drawing the CSD',
     classes: 'Averaging the CSD of each class',
+    features: 'Laying out the feature matrix',
   };
 
   function busyLine() {
@@ -911,8 +1134,7 @@ BARRY.dspca = (function () {
       : (drawingWhat ? (PIC_WORDS[drawingWhat] || 'Drawing') : null);
     if (!what) return el('div', { class: 'dp-busy' });
     return el('div', { class: 'dp-busy on' }, [
-      el('div', { class: 'spinner' }),
-      el('span', { class: 'hint', text: what + '…' }),
+      loader(what),
     ]);
   }
 
@@ -932,23 +1154,306 @@ BARRY.dspca = (function () {
      the two checkboxes are single deliberate clicks that each mean one
      fit, and making those wait for a second click would be ceremony. */
   function applyBar() {
-    if (!dirty) return el('div', { class: 'dp-applybar' });
+    if (!dirty) return el('span', { class: 'dp-applybar' });
     const b = shownBox() || {};
-    return el('div', { class: 'card dp-applybar on' }, [
-      el('strong', { text: 'The box has moved' }),
-      el('span', { class: 'hint', text:
-        'CSC' + b.lo + '–' + b.hi + '  ·  ' + fmtMs(b.t_lo_ms)
-        + ' to ' + fmtMs(b.t_hi_ms)
-        + '  ·  the answer below is still the previous box’s' }),
-      el('div', { style: 'flex:1' }),
-      el('button', { class: 'btn small', text: 'Put it back',
+    return el('span', { class: 'dp-applybar on' }, [
+      el('span', { class: 'hint dp-moved', text:
+        'box moved to CSC' + b.lo + '–' + b.hi + ', '
+        + fmtMs(b.t_lo_ms) + ' to ' + fmtMs(b.t_hi_ms) }),
+      el('button', { class: 'btn ghost sm', text: 'put it back',
                      disabled: fitting || null, onclick: revertBox }),
-      el('button', { class: 'btn primary', text:
+      el('button', { class: 'btn ghost sm', text: 'Recompute & compare',
+                     disabled: fitting || null,
+                     title: 'Keep the answer on screen, compute the new '
+                          + 'one, and show which events changed identity '
+                          + 'between them.',
+                     onclick: () => refitCompare() }),
+      el('button', { class: 'btn sm', text:
                      fitting ? 'Recomputing…' : 'Recompute  ↵',
                      disabled: fitting || null,
-                     title: 'Or press Enter.',
+                     title: 'The answer below is still the previous box’s. '
+                          + 'Or press Enter.',
                      onclick: () => refit() }),
     ]);
+  }
+
+  /* ==================================================================
+     Recompute, and compare
+
+     A fit is a question with eight parts -- the box, the class count, the
+     rule, the features, the notch, the flip -- and changing one of them
+     replaces the answer with no record of what it replaced. So the
+     honest question, "did moving the band actually change anything, or
+     did it just move the picture", could only be answered by
+     remembering. People were screenshotting the panel before dragging.
+
+     This keeps the answer that is on screen, computes the new one, and
+     puts them side by side with the thing neither picture shows on its
+     own: WHICH EVENTS CHANGED IDENTITY. Both fits are over the same read
+     and the same list of events, so `events[i].type` before against
+     after is an exact crosstab rather than an estimate -- and the count
+     off its diagonal is the answer to the question.
+
+     One caution it states rather than hides: a class NUMBER is not a
+     class. Classes are renumbered by depth on every fit, so DS1 before
+     and DS1 after are both "the shallower one" and need not contain the
+     same events at all. That is exactly what the crosstab is for. */
+  let compare = null;
+
+  async function refitCompare() {
+    if (!fit || !fit.ok || fitting) return;
+    /* Cleared first. A comparison left over from last time is a pair of
+       answers to a question nobody is asking, and anything reading
+       `compare` while this one is still computing would get it. */
+    compare = null;
+    /* THE OLD QUESTION IS THE ONE THE OLD ANSWER ANSWERED, and that is
+       not what `q` holds.
+
+       A dragged box sits in `q` waiting to be recomputed -- that is the
+       whole point of the apply bar -- so by the time this runs, `q`
+       already describes the NEW question. Snapshotting it gave a
+       "before" whose box was the after's, so the settings diff showed no
+       box change at all and "put the old answer back" put the new box
+       back. The fit carries the box it was computed from; everything
+       else in `q` refits as it is changed and so already agrees with
+       it. */
+    const f0 = fit;
+    const before = {
+      fit: f0,
+      q: Object.assign({}, q, {
+        sel_lo: f0.box.lo, sel_hi: f0.box.hi,
+        t_lo_ms: f0.box.t_lo_ms, t_hi_ms: f0.box.t_hi_ms,
+      }),
+      pics: Object.assign({}, pics),
+    };
+    await refit.now ? refit.now() : refit();
+    /* `refit` is debounced, so it has not necessarily run yet. Waited for
+       rather than slept through: a fit is milliseconds on a small set and
+       about a second on seven hundred events. */
+    const until = Date.now() + 30000;
+    while (Date.now() < until) {
+      if (!fitting && fit && fit !== f0) break;
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    if (!fit || !fit.ok || fit === f0) {
+      toast('Nothing to compare: the new fit did not arrive.', 'warn', 7000);
+      return;
+    }
+    compare = { before, after: { fit, q: Object.assign({}, q) } };
+    // The pictures for the new answer, so both sides are drawn from the
+    // server rather than one of them being redrawn from memory.
+    await pictures(['classes', 'features']);
+    compare.after.pics = Object.assign({}, pics);
+    showCompare();
+    BARRY.activity.log('dspca.compare', {
+      gid: q.gid, moved: crosstab(compare).moved,
+    });
+  }
+
+  /* The crosstab, and the one number that summarises it. */
+  function crosstab(cmp) {
+    const a = (cmp.before.fit.events || []);
+    const b = (cmp.after.fit.events || []);
+    const byI = new Map();
+    for (const e of b) byI.set(e.i, e.type);
+    const ka = cmp.before.fit.k, kb = cmp.after.fit.k;
+    const cells = [];
+    for (let i = 0; i <= ka; i++) cells.push(new Array(kb + 1).fill(0));
+    let moved = 0, seen = 0;
+    for (const e of a) {
+      const to = byI.get(e.i);
+      if (to == null) continue;
+      seen += 1;
+      cells[e.type][to] += 1;
+      if (e.type !== to) moved += 1;
+    }
+    return { cells, ka, kb, moved, seen };
+  }
+
+  /* What actually differs between the two questions. Listing every
+     setting would bury the one that changed. */
+  const Q_WORDS = [
+    ['sel_lo', 'depth from'], ['sel_hi', 'depth to'],
+    ['t_lo_ms', 'time from'], ['t_hi_ms', 'time to'],
+    ['nclasses', 'classes'], ['rule', 'rule'],
+    ['features', 'features'], ['notch', '60 Hz notch'],
+    ['flip', 'flipped'], ['screen', 'CSD screen'],
+  ];
+
+  function settingsDiff(cmp) {
+    const out = [];
+    for (const [key, word] of Q_WORDS) {
+      const was = cmp.before.q[key], now = cmp.after.q[key];
+      if (String(was) === String(now)) continue;
+      out.push({ word, was, now });
+    }
+    return out;
+  }
+
+  function showCompare() {
+    const cmp = compare;
+    if (!cmp) return;
+    const ct = crosstab(cmp);
+    const diff = settingsDiff(cmp);
+    const wrap = el('div', { class: 'modal big dp-cmp' });
+
+    wrap.appendChild(el('div', { class: 'mh' }, [
+      el('h3', { text: 'Before and after' }),
+      el('span', { class: 'hint', text: diff.length
+        ? diff.map((d) => d.word + ': ' + fmtVal(d.was) + ' \u2192 '
+                          + fmtVal(d.now)).join('   \u00b7   ')
+        : 'Nothing about the question changed, so any difference below is '
+          + 'the K-means seed and not your edit.' }),
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'close-x', text: '\u00d7', onclick: closeModal }),
+    ]));
+
+    const body = el('div', { class: 'dp-cmp-body' });
+
+    /* THE HEADLINE. Not the pictures -- two heatmaps that look slightly
+       different is exactly the evidence this panel exists to replace. */
+    body.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+                                 text: 'Which events changed identity' }));
+    body.appendChild(el('p', { class: 'hint', text:
+      ct.moved + ' of ' + ct.seen + ' events ('
+      + (100 * ct.moved / Math.max(1, ct.seen)).toFixed(1)
+      + '%) are in a different class than before. A class NUMBER is not a '
+      + 'class: they are renumbered by depth on every fit, so DS1 means '
+      + '\u201cthe shallower one\u201d both times and need not hold the '
+      + 'same events.' }));
+
+    const head = [el('th', { text: 'before \u2193  after \u2192' })];
+    for (let j = 1; j <= ct.kb; j++) {
+      head.push(el('th', {}, [
+        el('i', { class: 'dp-swatch', style: 'background:' + colorOf(j) }),
+        el('span', { text: ' DS' + j }),
+      ]));
+    }
+    const rows = [];
+    for (let i = 1; i <= ct.ka; i++) {
+      const tds = [el('th', {}, [
+        el('i', { class: 'dp-swatch', style: 'background:' + colorOf(i) }),
+        el('span', { text: ' DS' + i }),
+      ])];
+      for (let j = 1; j <= ct.kb; j++) {
+        const n = ct.cells[i][j];
+        tds.push(el('td', {
+          class: 'dp-cmp-n' + (i === j ? ' same' : (n ? ' moved' : '')),
+          text: n ? String(n) : '\u00b7',
+        }));
+      }
+      rows.push(el('tr', {}, tds));
+    }
+    body.appendChild(el('table', { class: 'tbl dp-cmp-tab' }, [
+      el('thead', {}, [el('tr', {}, head)]),
+      el('tbody', {}, rows),
+    ]));
+
+    /* And then the pictures, the same ones the panel draws, in the same
+       order, so the eye can go from the number to the thing it is about. */
+    body.appendChild(sideBySide('Mean CSD per class', cmp, 'classes'));
+    body.appendChild(sideBySide('The features, every event', cmp, 'features'));
+    body.appendChild(profilesSide(cmp));
+
+    wrap.appendChild(body);
+    wrap.appendChild(el('div', { class: 'mf modal-actions' }, [
+      el('button', { class: 'btn ghost', text: 'Put the old answer back',
+                     onclick: () => { revertCompare(); closeModal(); } }),
+      el('button', { class: 'btn', text: 'Keep the new one',
+                     onclick: closeModal }),
+    ]));
+    showModal(wrap, { replace: true });
+  }
+
+  function fmtVal(v) {
+    if (v === true) return 'on';
+    if (v === false) return 'off';
+    if (v == null) return 'auto';
+    return String(v);
+  }
+
+  /* The old question, put back. The comparison is only useful if the
+     answer it showed you is one you can return to. */
+  function revertCompare() {
+    if (!compare) return;
+    Object.assign(q, compare.before.q);
+    dirty = false;
+    refit();
+  }
+
+  /* One picture, twice. Server-rendered images either side, which is why
+     this is a few lines rather than a second copy of every draw routine:
+     both sides are the same picture from the same encoder. */
+  function sideBySide(title, cmp, kind) {
+    const box = el('div', { class: 'dp-cmp-pair' });
+    box.appendChild(el('div', { class: 'section-label', text: title }));
+    const row = el('div', { class: 'dp-cmp-row' });
+    for (const [label, side] of [['before', cmp.before], ['after', cmp.after]]) {
+      const cell = el('div', { class: 'dp-cmp-cell' });
+      cell.appendChild(el('span', { class: 'dp-cmp-lab', text: label }));
+      const pic = (side.pics || {})[kind];
+      if (!pic || !pic.ok) {
+        cell.appendChild(el('p', { class: 'hint', text:
+          'Not drawn for this one.' }));
+      } else if (kind === 'features') {
+        cell.appendChild(el('img', { class: 'dp-cmp-img', src: pic.image,
+                                     alt: title + ', ' + label }));
+        cell.appendChild(el('span', { class: 'hint', text:
+          pic.mode_name + '  \u00b7  ' + pic.n_events + ' events' }));
+      } else {
+        const strip = el('div', { class: 'dp-cmp-strip' });
+        for (const c of (pic.classes || [])) {
+          if (!c.image) continue;
+          strip.appendChild(el('div', { class: 'dp-cmp-cls' }, [
+            el('img', { class: 'dp-cmp-img', src: c.image,
+                        alt: 'DS' + c.c }),
+            el('span', { class: 'hint', style: 'color:' + colorOf(c.c),
+                         text: 'DS' + c.c + '  n=' + c.n
+                               + (c.peak != null
+                                  ? '  \u00b1' + fmtPeak(c.peak) : '') }),
+          ]));
+        }
+        cell.appendChild(strip);
+      }
+      row.appendChild(cell);
+    }
+    box.appendChild(row);
+    return box;
+  }
+
+  /* The depth profiles, drawn rather than fetched -- they are the one
+     panel the server does not render as an image, and the landmark each
+     rule chose is the whole point of showing them here. */
+  function profilesSide(cmp) {
+    const box = el('div', { class: 'dp-cmp-pair' });
+    box.appendChild(el('div', { class: 'section-label', text:
+      'Class-average depth profile, and the landmark each rule chose' }));
+    const row = el('div', { class: 'dp-cmp-row' });
+    for (const [label, side] of [['before', cmp.before], ['after', cmp.after]]) {
+      const cell = el('div', { class: 'dp-cmp-cell' });
+      cell.appendChild(el('span', { class: 'dp-cmp-lab', text: label }));
+      const list = el('div', { class: 'dp-cmp-decide' });
+      for (const d of (side.fit.decide || [])) {
+        if (!d.n) continue;
+        list.appendChild(el('div', { class: 'dp-cmp-drow' }, [
+          el('i', { class: 'dp-swatch', style: 'background:' + colorOf(d.c) }),
+          el('strong', { text: 'DS' + d.c }),
+          el('span', { class: 'hint', text: 'n=' + d.n }),
+          el('span', { class: 'hint', text: d.csc != null
+            ? 'landmark CSC' + d.csc : 'no landmark' }),
+        ]));
+      }
+      cell.appendChild(list);
+      cell.appendChild(el('span', { class: 'hint', text:
+        (side.fit.box ? ('CSC' + side.fit.box.lo + '\u2013'
+                         + side.fit.box.hi + '  \u00b7  ')
+                      : '')
+        + (side.fit.n_features || '?') + ' features  \u00b7  PC1 '
+        + pct((side.fit.explained || [])[0]) }));
+      row.appendChild(cell);
+    }
+    box.appendChild(row);
+    return box;
   }
 
   /* Back to the box the answer on screen was computed from. */
@@ -1010,11 +1515,11 @@ BARRY.dspca = (function () {
     // ways of setting it that a drag cannot express.
     out.push(label('The box', true));
     out.push(el('div', { class: 'dp-row' }, [
-      el('button', { class: 'btn small', text: '1 sample', title:
+      el('button', { class: 'btn ghost sm', text: '1 sample', title:
         'Toothy’s own feature window: one instant at the stamp. '
         + 'Pulled here, this panel is Toothy exactly.',
         onclick: () => { q.t_lo_ms = 0; q.t_hi_ms = 0; refit(); } }),
-      el('button', { class: 'btn small', text: 'auto depth', title:
+      el('button', { class: 'btn ghost sm', text: 'auto depth', title:
         'The contiguous run of contacts holding most of the '
         + 'event-triggered template.',
         onclick: () => { q.sel_lo = null; q.sel_hi = null; refit(); } }),
@@ -1030,7 +1535,6 @@ BARRY.dspca = (function () {
     if (runs.length > 1) {
       out.push(label('Column'));
       out.push(el('select', {
-        class: 'input',
         onchange: (e) => {
           const r = runs[+e.target.value];
           if (!r) return;
@@ -1084,7 +1588,7 @@ BARRY.dspca = (function () {
         + 'instead. StrataScope is where they are set.' }));
     }
     out.push(el('button', {
-      class: 'btn small' + (q.flip ? ' primary' : ''),
+      class: 'btn' + (q.flip ? '' : ' ghost') + ' sm',
       text: q.flip ? 'flipped by hand' : 'flip DS1/DS2',
       title: 'The last word on the labels is anatomy’s.',
       onclick: () => { q.flip = !q.flip; refit(); },
@@ -1100,16 +1604,46 @@ BARRY.dspca = (function () {
                                          refit(); } }),
         el('span', { text: '60 Hz notch' }),
       ]),
-      el('label', { class: 'dp-check', title:
-        'A heuristic for contacts a CSD cannot be run over. Off by default '
-        + '— on a good probe it finds contacts that are simply '
-        + 'carrying signal.' }, [
-        el('input', { type: 'checkbox', checked: q.screen || null,
-                      onchange: (e) => { q.screen = e.target.checked;
-                                         refit(); } }),
-        el('span', { text: 'CSD screen' }),
-      ]),
+      /* The CSD screen is gone from here.
+
+         It was a checkbox for a heuristic that looks for contacts a
+         CSD cannot be run down, repairs them, and goes round again up
+         to five times. Off by default, and on a probe worth analysing
+         it finds nothing -- so what it looked like from the panel was
+         a control that did nothing at all, which is worse than not
+         having one. The screen itself is still in backend/dspca.py
+         and still reachable as `screen` on the API for a probe that
+         needs it; it is not a decision to put in front of somebody
+         mid-analysis. */
     ]));
+    /* WHAT THE PCA IS ALLOWED TO SEE.
+
+       Min-max is Toothy, and it removes SCALE exactly -- in principle. In
+       practice the scale is set by two samples, the single min and the
+       single max, so a quiet event riding the same background noise
+       normalizes to a NOISIER shape, and that is an amplitude effect that
+       survives the normalization. Measured on M2ctls3jan23: under min-max
+       the two classes differ in amplitude by 3.07x and PC1 correlates
+       0.52 with log amplitude. The clusters were substantially loud
+       against quiet.
+
+       The other two throw the magnitudes away and keep the laminar
+       pattern; on the same recording sign drops that ratio to 1.12x.
+       Read the answer with the amplitude question in mind: if the classes
+       stop separating once the magnitudes go, they were separating on
+       magnitude. */
+    out.push(label('What the PCA sees'));
+    out.push(el('div', { class: 'dp-rules' }, FEATURES.map(([id, nm, why]) =>
+      el('label', {
+        class: 'dp-rule' + (q.features === id ? ' on' : ''), title: why,
+      }, [
+        el('input', { type: 'radio', name: 'dpFeat',
+                      checked: q.features === id || null,
+                      onchange: () => { q.features = id; refit(); } }),
+        el('strong', { text: nm }),
+        q.features === id ? el('span', { class: 'dp-why', text: why }) : null,
+      ].filter(Boolean)))));
+
     out.push(mainsLine());
 
     out.push(label('Guides'));
@@ -1117,7 +1651,7 @@ BARRY.dspca = (function () {
 
     out.push(el('div', { class: 'dp-spacer' }));
     out.push(el('button', {
-      class: 'btn primary dp-commit', disabled: !(fit && fit.ok) || null,
+      class: 'btn dp-commit', disabled: !(fit && fit.ok) || null,
       text: 'Commit DS1/DS2…',
       title: 'Write the call as the next version of the bank entry. '
              + 'A preview first, always.',
@@ -1128,6 +1662,23 @@ BARRY.dspca = (function () {
       + 'deleted, no stamp moved.' }));
     return out.filter(Boolean);
   }
+
+  /* The three ways a patch becomes a feature vector, in the order they
+     throw information away. */
+  const FEATURES = [
+    ['minmax', 'min-max (Toothy)',
+     'Each event scaled to 0-1 over the whole patch. Toothy’s own features '
+     + '— and the scale is set by two samples, so an amplitude effect '
+     + 'survives it.'],
+    ['sign', 'sign ±1',
+     'Source or sink per contact and nothing else: the laminar pattern with '
+     + 'the magnitudes thrown away. If the classes survive this, they are '
+     + 'not a loud-against-quiet split.'],
+    ['sign_dead', 'sign + deadband',
+     'Sign, but everything within 15% of the patch’s own peak counts as '
+     + 'neither. Stops a contact where the CSD is essentially zero getting '
+     + 'as much vote as the one at the sink.'],
+  ];
 
   const RULES = [
     ['tort', 'tortlab', 'the main sink above the main source; the '
@@ -1264,9 +1815,9 @@ BARRY.dspca = (function () {
   function guideList() {
     const b = (fit && fit.ok && fit.box) || {};
     const mid = b.lo ? Math.round((b.lo + b.hi) / 2) : '';
-    const csc = el('input', { class: 'input dp-gnum', type: 'number',
+    const csc = el('input', { class: 'dp-gnum', type: 'number',
                               placeholder: 'CSC', value: mid });
-    const name = el('input', { class: 'input dp-gname', type: 'text',
+    const name = el('input', { class: 'dp-gname', type: 'text',
                                placeholder: 'name, e.g. hilus' });
     const add = () => {
       const n = parseInt(csc.value, 10);
@@ -1306,12 +1857,14 @@ BARRY.dspca = (function () {
 
     return el('div', { class: 'dp-guides' }, [
       el('div', { class: 'dp-grow' }, [csc, name,
-        el('button', { class: 'btn small', text: 'add', onclick: add })]),
+        el('button', { class: 'btn ghost sm', text: 'add', onclick: add })]),
       rows.length ? el('div', { class: 'dp-glist' }, rows)
+                  /* Short, because it sits in the control strip and the
+                     strip is settings rather than documentation. The
+                     whole sentence is on the `add` button's title. */
                   : el('p', { class: 'hint', text:
-                      'None yet. A guide is a named line at one contact, '
-                      + 'drawn on every panel here and in Xplorefinder — '
-                      + 'drag it on any of them and it moves on all.' }),
+                      'None yet. A named line at one contact, on every '
+                      + 'panel here and in Xplorefinder.' }),
       rows.length ? el('div', { class: 'dp-grow' }, [
         el('button', { class: 'linkish', text: 'clear all',
                        onclick: () => dropGuide(null) }),
@@ -1353,17 +1906,23 @@ BARRY.dspca = (function () {
       el('canvas', { class: 'dp-canvas dp-shank', id: 'dpShank' }),
       el('div', { class: 'dp-pane-foot' }, [
         el('span', { class: 'hint', text: 'drag a box: depth × time' }),
-        el('button', { class: 'btn small', text: '◀ prev',
+        el('button', { class: 'btn ghost sm', text: '◀ prev',
                        onclick: () => step(-1) }),
-        el('button', { class: 'btn small', text: 'next ▶',
+        el('button', { class: 'btn ghost sm', text: 'next ▶',
                        onclick: () => step(+1) }),
-        el('button', { class: 'btn small', text: 'show average',
+        el('button', { class: 'btn ghost sm', text: 'show average',
                        disabled: picked == null || null,
                        onclick: () => { picked = null; render();
                                         pictures(['traces', 'pane']); } }),
-        el('button', { class: 'btn small', text: 'Open in Xplorefinder',
+        el('button', { class: 'btn ghost sm', text: 'Open in Xplorefinder',
                        disabled: picked == null || null,
                        onclick: openInXplore }),
+        /* Here, and not in a bar over the pictures.
+
+           It is about the box, the box is dragged on the panel just above,
+           and a bar across the top of the panel put the thing you press
+           furthest from the thing you just did. */
+        applyBar(),
       ]),
     ];
   }
@@ -1384,6 +1943,30 @@ BARRY.dspca = (function () {
 
     out.push(el('div', { class: 'section-label', text: 'Mean CSD per class' }));
     out.push(el('canvas', { class: 'dp-canvas dp-classes', id: 'dpClasses' }));
+
+    /* The feature matrix itself: one column per event, sorted by class.
+
+       NOT DECORATION. Every other picture here is an average, and an
+       average is exactly where one bad column hides. On this one a dead
+       contact is a solid stripe running the width of the sheet, which is
+       how the first version of this analysis was caught classifying one
+       wire rather than one kind of event.
+
+       It is also the only panel showing what the PCA actually sees: the
+       rasters are the band-limited, mains-out CSD because that is what is
+       legible, and this is whatever the feature mode returned. */
+    out.push(el('div', { class: 'section-label', text:
+      'The features, every event' }));
+    out.push(el('canvas', { class: 'dp-canvas dp-feat', id: 'dpFeat' }));
+    if (pics.features && pics.features.ok) {
+      const pf = pics.features;
+      out.push(el('p', { class: 'hint', text:
+        pf.n_features + ' features (' + pf.n_contacts + ' contacts '
+        + '× ' + pf.n_samples + ' sample'
+        + (pf.n_samples === 1 ? '' : 's') + ') down, ' + pf.n_events
+        + ' events across, sorted by class — ' + pf.mode_name
+        + '. A dead contact is a stripe.' }));
+    }
 
     out.push(whyCard());
     out.push(repairedLine());
@@ -1531,12 +2114,31 @@ BARRY.dspca = (function () {
     return { cv, g, w, h };
   }
 
-  function drawAll() {
+  /* THE FIXED-HEIGHT PANELS FIRST, and the order is not arbitrary.
+
+     `sized` gives those an explicit height, which changes how much of the
+     column is left for the ones that stretch. Drawing a stretching panel
+     before them measures a share that is about to change -- and nothing
+     tells it to try again, because what ended up wrong is the canvas's
+     backing store and not its box, so no resize is observed. That is what
+     left the profile and the scatter drawn at the wrong size on some runs
+     and not others.
+
+     Fixed first, then stretching, and then one more pass if anything is
+     still mismatched. Bounded at two: a third would not be a fix, it
+     would be a loop. */
+  function drawPass() {
     drawTraces();
+    drawClasses();
     drawShank();
     drawScatter();
     drawProfile();
-    drawClasses();
+    drawFeatures();
+  }
+
+  function drawAll() {
+    drawPass();
+    if (mismatched()) drawPass();
     watchSize();
   }
 
@@ -1664,6 +2266,18 @@ BARRY.dspca = (function () {
       return null;
     }
     return null;
+  }
+
+  /* A CSD peak, short enough for a corner. Three significant figures is
+     more than the picture carries and two is enough to compare on. */
+  function fmtPeak(v) {
+    const x = Math.abs(v);
+    if (!isFinite(x) || x === 0) return '0';
+    if (x >= 1000) return (x / 1000).toFixed(1) + 'k';
+    if (x >= 100) return String(Math.round(x));
+    if (x >= 10) return x.toFixed(1);
+    if (x >= 1) return x.toFixed(2);
+    return x.toExponential(1);
   }
 
   function frac(ms, ext) {
@@ -1948,6 +2562,31 @@ BARRY.dspca = (function () {
                              * (s.h - PAD.t - PAD.b);
     s.g.strokeStyle = k.line;
     s.g.strokeRect(PAD.l, PAD.t, s.w - PAD.l - PAD.r, s.h - PAD.t - PAD.b);
+
+    /* The curve runs down the whole shank; the FEATURES came from part of
+       it. Shaded rather than cropped: a picture of only the inside of the
+       box cannot answer the question people bring to it, which is whether
+       the box is in the right place. The band is left bright and the rest
+       is dimmed, so the measurement is still the thing your eye goes to. */
+    const bd = ps[0].band;
+    if (bd && bd.length === 2) {
+      const yA = Y(bd[0] - 0.5), yB = Y(bd[1] + 0.5);
+      s.g.fillStyle = k.bg;
+      s.g.globalAlpha = 0.55;
+      s.g.fillRect(PAD.l, PAD.t, s.w - PAD.l - PAD.r, yA - PAD.t);
+      s.g.fillRect(PAD.l, yB, s.w - PAD.l - PAD.r, s.h - PAD.b - yB);
+      s.g.globalAlpha = 1;
+      s.g.strokeStyle = k.accent;
+      s.g.lineWidth = 1;
+      s.g.setLineDash([2, 2]);
+      for (const y of [yA, yB]) {
+        s.g.beginPath();
+        s.g.moveTo(PAD.l, y); s.g.lineTo(s.w - PAD.r, y);
+        s.g.stroke();
+      }
+      s.g.setLineDash([]);
+    }
+
     // Zero: the line between a sink and a source.
     s.g.strokeStyle = k.dim;
     s.g.setLineDash([3, 3]);
@@ -1955,10 +2594,18 @@ BARRY.dspca = (function () {
     s.g.moveTo(X(0), PAD.t); s.g.lineTo(X(0), s.h - PAD.b);
     s.g.stroke(); s.g.setLineDash([]);
 
+    /* The class of the spike on screen, brought forward.
+
+       Stepping through spikes one at a time is the check that separates a
+       type from a line drawn through a cloud, and the question at each
+       step is "which of these two is this one". The PCA rings the dot;
+       without the same thing here the answer was on one panel only. */
+    const pc = pickedClass();
     for (const p of ps) {
       const col = colorOf(p.c);
+      const off = pc != null && p.c !== pc;
       s.g.fillStyle = col;
-      s.g.globalAlpha = 0.18;
+      s.g.globalAlpha = off ? 0.05 : 0.18;
       s.g.beginPath();
       for (let i = 0; i < ns.length; i++) {
         const x = X(p.mean[i] - p.sem[i]);
@@ -1968,9 +2615,9 @@ BARRY.dspca = (function () {
         s.g.lineTo(X(p.mean[i] + p.sem[i]), Y(ns[i]));
       }
       s.g.closePath(); s.g.fill();
-      s.g.globalAlpha = 1;
+      s.g.globalAlpha = off ? 0.3 : 1;
       s.g.strokeStyle = col;
-      s.g.lineWidth = 1.9;
+      s.g.lineWidth = off ? 1.1 : 2.6;
       s.g.beginPath();
       for (let i = 0; i < ns.length; i++) {
         const x = X(p.mean[i]);
@@ -1979,10 +2626,18 @@ BARRY.dspca = (function () {
       s.g.stroke();
       // The point the ACTIVE rule used, marked. Without it the legend
       // asserts a landmark and the curve beside it has three.
+      /* By CONTACT NUMBER, not by row.
+
+         `row` indexes the selected band, which is what the rule was
+         scored on; this curve now runs down the whole shank, so the same
+         index points at a different contact. `csc` is the number and
+         means the same thing in both. */
       const d = (fit.decide || []).find((x) => x.c === p.c);
-      if (d && d.row != null && d.row < ns.length) {
+      const di = d && d.csc != null ? ns.indexOf(d.csc) : -1;
+      s.g.globalAlpha = 1;
+      if (di >= 0) {
         s.g.beginPath();
-        s.g.arc(X(p.mean[d.row]), Y(ns[d.row]), 4.5, 0, 6.2832);
+        s.g.arc(X(p.mean[di]), Y(ns[di]), 4.5, 0, 6.2832);
         s.g.fillStyle = col; s.g.fill();
         s.g.strokeStyle = '#fff'; s.g.lineWidth = 1.4; s.g.stroke();
       }
@@ -2013,21 +2668,62 @@ BARRY.dspca = (function () {
       const img = imageFor('cls' + c.c, c.image, drawClasses);
       const ph = s.h - PAD.t - PAD.b;
       if (img) s.g.drawImage(img, x0, PAD.t, each, ph);
+
+      /* The panel is the whole shank; the FEATURES came from a band of
+         it. Dimmed rather than cropped, for the same reason as the depth
+         profile beside it: cropping makes the picture agree with the
+         measurement and useless for deciding whether the band is in the
+         right place. */
+      if (c.band && c.band.length === 2) {
+        const span = (c.hi + 0.5) - (c.lo - 0.5);
+        const yOf = (n) => PAD.t + ((n - (c.lo - 0.5)) / span) * ph;
+        const yA = yOf(c.band[0] - 0.5), yB = yOf(c.band[1] + 0.5);
+        s.g.fillStyle = k.bg;
+        s.g.globalAlpha = 0.5;
+        s.g.fillRect(x0, PAD.t, each, yA - PAD.t);
+        s.g.fillRect(x0, yB, each, PAD.t + ph - yB);
+        s.g.globalAlpha = 1;
+      }
+      // The class of the spike on screen, outlined rather than merely
+      // bordered like the others.
+      const isPicked = pickedClass() === c.c;
       s.g.strokeStyle = colorOf(c.c);
-      s.g.lineWidth = 1.5;
+      s.g.lineWidth = isPicked ? 3 : 1.5;
       s.g.strokeRect(x0, PAD.t, each, ph);
       // Where the feature box sits inside the surround.
       const a = x0 + frac(c.box_ms[0], c.extent) * each;
       const b = x0 + frac(c.box_ms[1], c.extent) * each;
-      s.g.strokeStyle = 'rgba(255,255,255,.9)';
+      s.g.strokeStyle = k.accent;
       s.g.lineWidth = 1.1;
-      for (const x of [a, b]) {
-        s.g.beginPath(); s.g.moveTo(x, PAD.t); s.g.lineTo(x, PAD.t + ph);
-        s.g.stroke();
+      let yTop = PAD.t, yBot = PAD.t + ph;
+      if (c.band && c.band.length === 2) {
+        const span = (c.hi + 0.5) - (c.lo - 0.5);
+        const yOf = (n) => PAD.t + ((n - (c.lo - 0.5)) / span) * ph;
+        yTop = yOf(c.band[0] - 0.5); yBot = yOf(c.band[1] + 0.5);
       }
+      // The box, closed on all four sides now that there is shank above
+      // and below it: two vertical rules on a full-depth panel would say
+      // the features came from the whole of it.
+      s.g.strokeRect(a, yTop, Math.max(1.5, b - a), yBot - yTop);
       s.g.fillStyle = colorOf(c.c);
       s.g.font = '10px system-ui, sans-serif';
       s.g.fillText('DS' + c.c + '  n=' + c.n, x0 + 2, s.h - 5);
+      /* EACH PANEL SAYS WHAT ITS OWN SCALE IS.
+
+         They are scaled to themselves now, so a class with a quarter of
+         the amplitude fills its panel as completely as the loud one --
+         which is the point, because the shape is the question. It also
+         means the colours no longer compare, and somebody will read "DS2
+         is the big one" off two panels that say no such thing. The peak
+         is printed so that comparison is a number, which the pictures
+         can actually support. */
+      if (c.peak != null) {
+        s.g.fillStyle = k.dim;
+        s.g.font = '9px system-ui, sans-serif';
+        s.g.textAlign = 'right';
+        s.g.fillText('±' + fmtPeak(c.peak), x0 + each - 2, s.h - 5);
+        s.g.textAlign = 'left';
+      }
     });
     s.g.fillStyle = k.dim;
     s.g.font = '9px system-ui, sans-serif';
@@ -2041,6 +2737,77 @@ BARRY.dspca = (function () {
     depthAt('dpClasses', s, cs[0].lo - 0.5, cs[0].hi + 0.5);
     layerLines(s, k, cs[0].lo - 0.5, cs[0].hi + 0.5);
     drawGuides(s, 'dpClasses');
+  }
+
+  /* The feature matrix: features down, events across, grouped by class.
+
+     The groups are ruled AND named. A white line between two blocks says
+     "these are two groups"; it does not say which one is DS1, and that is
+     the only question anybody brings to this picture. */
+  function drawFeatures() {
+    const s = sized('dpFeat', 210, true);
+    const d = pics.features;
+    if (!s || !d || !d.ok) return;
+    const k = ink();
+    const x0 = PAD.l, y0 = PAD.t;
+    const pw = s.w - PAD.l - PAD.r, ph = s.h - PAD.t - PAD.b - 10;
+    /* NEAREST NEIGHBOUR, not the browser's default smoothing.
+
+       This bitmap is one pixel per event across and one per feature
+       down -- about 37 by 48 on a small set -- shown five hundred pixels
+       wide. Smoothed, each event is blended into the two beside it, and
+       what arrives is a soft wash: that is the blur.
+
+       It is also wrong rather than merely soft. A column here is ONE
+       EVENT and a row is ONE FEATURE; neither is a sample of something
+       continuous, so there is nothing in between two of them to
+       interpolate. The whole reason this panel exists is that a single
+       bad column shows up on it -- a dead contact as a stripe, one odd
+       event as a line -- and smoothing is precisely the operation that
+       blends a single odd column into its neighbours until it is not
+       visible. The CSD rasters are left smoothed because a field
+       sampled at contacts really does have something in between.
+
+       Restored afterwards: the context is shared with everything else
+       drawn on this canvas. */
+    const img = imageFor('feat', d.image, drawFeatures);
+    if (img) {
+      const was = s.g.imageSmoothingEnabled;
+      s.g.imageSmoothingEnabled = false;
+      s.g.drawImage(img, x0, y0, pw, ph);
+      s.g.imageSmoothingEnabled = was;
+    }
+    s.g.strokeStyle = k.line;
+    s.g.lineWidth = 1;
+    s.g.strokeRect(x0, y0, pw, ph);
+
+    const total = Math.max(1, d.n_events);
+    const at = (n) => x0 + (n / total) * pw;
+    for (const g of (d.groups || [])) {
+      if (!g.n) continue;
+      if (g.x1 < total) {
+        s.g.strokeStyle = k.bg;
+        s.g.lineWidth = 1.6;
+        s.g.beginPath();
+        s.g.moveTo(at(g.x1), y0);
+        s.g.lineTo(at(g.x1), y0 + ph);
+        s.g.stroke();
+      }
+      const a = at(g.x0), b = at(g.x1);
+      s.g.fillStyle = colorOf(g.c);
+      s.g.fillRect(a, y0 + ph + 2, Math.max(1, b - a), 3);
+      s.g.font = '10px system-ui, sans-serif';
+      const tag = 'DS' + g.c + '  n=' + g.n;
+      if (b - a > s.g.measureText(tag).width + 6) {
+        s.g.fillText(tag, a + 3, s.h - 2);
+      }
+    }
+    s.g.fillStyle = k.dim;
+    s.g.font = '9px system-ui, sans-serif';
+    s.g.textAlign = 'right';
+    s.g.fillText('feature', PAD.l - 4, y0 + 8);
+    s.g.fillText(String(d.n_features), PAD.l - 4, y0 + ph - 1);
+    s.g.textAlign = 'left';
   }
 
   /* ==================================================================
@@ -2165,6 +2932,8 @@ BARRY.dspca = (function () {
     }
     if (!best || bd > 18 * 18) return;
     picked = best.i;
+    // Clicking a dot moves the recording window as well, when there is one.
+    setTimeout(pushXray, 0);
     render();
     pictures(['traces', 'pane']);
   }
@@ -2178,12 +2947,62 @@ BARRY.dspca = (function () {
     picked = evs[next].i;
     render();
     pictures(['traces', 'pane']);
+    // The other window is looking at this spike too, if it is open.
+    pushXray();
   }
 
   /* The real view, for when the picture here is not enough.
 
      Same filters, same window, and the recording itself rather than an
      average of it -- which is the one thing this panel cannot show. */
+  /* ==================================================================
+     The recording itself, in a window of its own
+     ==================================================================
+     NOT by taking over XploreFinder in this window, which is what this
+     did. `setView('xplore')` replaced the panel: the box, the classes and
+     the PCA were gone, and the way back was to find X-ray in the ToolKit
+     again and wait for the fit. Checking one spike against the raw
+     recording is something you do WHILE reading the panel, so the panel
+     has to still be there.
+
+     A second window, on the recording, which every other tool in this
+     application that needs one already opens the same way -- Incisor for
+     its channel lines, Braid for its panels. It is named, so pressing the
+     button again focuses the one that is open rather than opening a
+     third.
+
+     And it FOLLOWS. Every spike this panel steps to is pushed into it, as
+     curation marks: the same `sess.curationMarks` Checkup publishes, so
+     the window draws every dentate spike in the set coloured by the class
+     it was put in, with the one being looked at marked. Nothing in the
+     other window had to learn about X-ray for that -- it already knows how
+     to draw a curated set. */
+  let xrayWin = null;
+
+  function xrayOpen() {
+    try { return !!(xrayWin && !xrayWin.closed); } catch (e) { return false; }
+  }
+
+  function xrayUrl(path, t) {
+    /* A CSD over the traces, five hundred milliseconds wide.
+
+       The CSD because that is what the classes are made of and what the
+       panel is showing; the traces beside it because a sink that is only
+       on the CSD is worth being suspicious of. Starting points, not a
+       cage: the window is the whole application. */
+    const args = new URLSearchParams({
+      csc: path,
+      panes: JSON.stringify([{ panel: 'csd' }, { panel: 'traces' }]),
+      t0: Math.max(0, t - 0.25).toFixed(4),
+      span: '0.5',
+      hp: '5', lp: '100', notch: '60',
+      chrome: 'notabs,noheads',
+      role: 'xray',
+      theme: (BARRY.state && BARRY.state.theme) || 'dark',
+    });
+    return location.origin + '/?' + args.toString() + '#xplore';
+  }
+
   async function openInXplore() {
     if (picked == null || !plan || !plan.ok) return;
     const ev = (fit.events || []).find((e) => e.i === picked);
@@ -2193,19 +3012,73 @@ BARRY.dspca = (function () {
       toast('This set does not say which recording it came from.', 'err', 8000);
       return;
     }
-    setView('xplore');
-    const sess = await BARRY.views.xplore.open(path);
-    if (!sess) {
-      toast('That recording could not be opened here.', 'err', 8000);
+    if (xrayOpen()) {
+      try { xrayWin.focus(); } catch (e) { /* not important */ }
+      pushXray();
       return;
     }
-    sess.hp = 5; sess.lp = 100; sess.notch = 60;
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }, { panel: 'csd' }],
-                                { col: 0.5, row: 0.5 });
-    const span = 0.2;
-    BARRY.views.xplore.setWindow(0, Math.max(0, ev.t - span / 2), span);
-    if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+    xrayWin = window.open(xrayUrl(path, ev.t), 'barry-xray-traces',
+                          'width=1180,height=900,menubar=no,toolbar=no');
+    if (!xrayWin) {
+      toast('The recording window was blocked. Allow pop-ups for 127.0.0.1, '
+            + 'then press \u201cOpen in Xplorefinder\u201d again.', 'err', 9000);
+      return;
+    }
+    render();
+    /* WAITED FOR, not assumed. The window is a whole application booting,
+       and it has to read the recording before it has anything to draw a
+       mark on. Publishing into it early is how Incisor's lines went
+       missing, and this is the same arrangement. */
+    const until = Date.now() + 60000;
+    while (Date.now() < until) {
+      if (!xrayOpen()) { render(); return; }
+      if (pushXray()) { render(); break; }
+      await new Promise((r) => setTimeout(r, 250));
+    }
     BARRY.activity.log('dspca.xplore', { gid: q.gid, t: ev.t, type: ev.type });
+  }
+
+  /* Every spike in the set, coloured by class, with the current one
+     marked -- pushed into the other window.
+
+     Returns whether it actually landed, so the opener above can keep
+     waiting rather than believing it worked. */
+  function pushXray() {
+    if (!xrayOpen() || !fit || !fit.ok) return false;
+    let xf = null;
+    try { xf = xrayWin.barryXplore; } catch (e) { return false; }
+    if (!xf || !xf.current) return false;
+    let sess = null;
+    try { sess = xf.current(); } catch (e) { return false; }
+    if (!sess) return false;
+
+    const evs = fit.events || [];
+    const at = picked == null ? -1 : evs.findIndex((e) => e.i === picked);
+    const now = at >= 0 ? evs[at] : null;
+    try {
+      /* The same shape Checkup publishes. `label` is the class, so the
+         other window colours DS1 and DS2 differently without knowing what
+         a dentate spike class is. */
+      sess.curationMarks = {
+        kind: 'dspca',
+        index: Math.max(0, at),
+        at: now ? now.t : null,
+        gid: q.gid,
+        labels: Array.from({ length: fit.k }, (_x, i) => ({
+          id: 'DS' + (i + 1), name: 'DS' + (i + 1), color: colorOf(i + 1),
+        })),
+        events: evs.map((e) => ({ start: e.t, label: 'DS' + e.type })),
+      };
+      if (now && xf.setWindow) {
+        const span = (sess.span && sess.span > 0.01) ? sess.span : 0.5;
+        xf.setWindow(0, Math.max(0, now.t - span / 2), span);
+      }
+      if (xf.redraw) { xf.redraw(0); xf.redraw(1); }
+      else if (xf.refreshAll) xf.refreshAll();
+    } catch (e) {
+      return false;
+    }
+    return true;
   }
 
   function onKey(e) {
@@ -2251,9 +3124,11 @@ BARRY.dspca = (function () {
   let sizeWatched = null;
   let redrawSoon = null;
   let redrawing = false;
+  let roSeen = 0;              // notifications that reached onBoxResize
+  let roDrew = 0;              // of those, the ones that redrew
 
   const CANVAS_IDS = ['dpTraces', 'dpShank', 'dpScatter', 'dpProfile',
-                      'dpClasses'];
+                      'dpClasses', 'dpFeat'];
 
   /* Is any picture being shown at a size it was not drawn at?
 
@@ -2277,11 +3152,28 @@ BARRY.dspca = (function () {
   }
 
   function onBoxResize() {
-    if (redrawing || redrawSoon) return;
+    roSeen += 1;
+    if (redrawing) return;              // no re-entry from our own drawing
+    /* DEBOUNCED, not throttled.
+
+       This used to return early whenever a check was already pending,
+       which DROPS a notification rather than coalescing it. A resize
+       arrives as a burst; if the pending check then ran a moment before
+       the layout had settled it found nothing mismatched, and the
+       notifications that would have caught it a frame later had already
+       been thrown away. Nothing was left to tell the panel, so it stayed
+       drawn at its old size until something else happened to redraw it.
+
+       Measured in the harness, which is the only reason this was ever
+       more than a theory: after squeezing the log, `seen` had gone up by
+       two, `drew` was still nought and `mismatched` was true. Re-arming
+       means the check always happens after the LAST notification. */
+    if (redrawSoon) clearTimeout(redrawSoon);
     redrawSoon = setTimeout(() => {
       redrawSoon = null;
       if (!q.read || !fit || !mismatched()) return;
       redrawing = true;
+      roDrew += 1;
       try { drawAll(); } finally { redrawing = false; }
     }, 120);
   }
@@ -2294,7 +3186,40 @@ BARRY.dspca = (function () {
      redraw worked on one harness run and not the next. The canvases are
      rebuilt by every render, so they are re-observed by every draw, and
      `disconnect` drops the previous set rather than accumulating it. */
+  /* A CHECK, not only a notification.
+
+     The notification is not guaranteed. Measured in the harness, four
+     runs of the same page: on two of them squeezing the log changed the
+     layout, moved every panel, and produced no resize notification
+     inside the frame at all -- `seen` did not move and the pictures
+     stayed drawn at their old size. A design that can only react to
+     being told is wrong whenever it is not told.
+
+     So the invariant is also checked on a slow tick while the panel is
+     on screen: six `getElementById`s and a few reads, no request, and no
+     work at all when nothing has moved. It stops itself as soon as the
+     panel is gone, which is what keeps it from being a poller left
+     running for a tool nobody is looking at. */
+  let sizeTick = null;
+
+  function startSizeTick() {
+    if (sizeTick) return;
+    sizeTick = setInterval(() => {
+      if (!document.getElementById('dpShank')) {
+        clearInterval(sizeTick);
+        sizeTick = null;
+        return;
+      }
+      if (redrawing || redrawSoon) return;
+      if (!q.read || !fit || !mismatched()) return;
+      redrawing = true;
+      roDrew += 1;
+      try { drawAll(); } finally { redrawing = false; }
+    }, 400);
+  }
+
   function watchSize() {
+    startSizeTick();
     if (typeof ResizeObserver !== 'function') return;
     if (!sizeWatch) sizeWatch = new ResizeObserver(onBoxResize);
     sizeWatch.disconnect();
@@ -2315,6 +3240,28 @@ BARRY.dspca = (function () {
     return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10) + ' ms';
   }
 
+  /* Published as a real property so the OTHER window can drive this one.
+
+     `BARRY` is declared `const` in core.js, which makes it a lexical
+     binding and not a property of `window` -- `opener.BARRY` is undefined
+     however completely this page has loaded. `barryXplore`, `barryCfc`
+     and `barrySpectrum` exist for the same reason, and the recording
+     window reaches back through this one. */
+  window.barryDspca = {
+    step: (d) => step(d || 1),
+    pick: (i) => { picked = i; render(); pictures(['traces', 'pane']);
+                   pushXray(); },
+    current: () => (picked == null ? null
+                    : (fit && fit.ok
+                       ? (fit.events || []).find((e) => e.i === picked)
+                       : null)),
+    classOf: (i) => {
+      const e = fit && fit.ok
+        ? (fit.events || []).find((x) => x.i === i) : null;
+      return e ? e.type : null;
+    },
+  };
+
   return {
     paint,
     // For web/_dev/dspca.html, which drives the real panel rather than a
@@ -2328,6 +3275,17 @@ BARRY.dspca = (function () {
       q.sel_lo = lo; q.sel_hi = hi; q.t_lo_ms = a; q.t_hi_ms = b; refit();
     },
     _rule: (r) => { q.rule = r; refit(); },
+    // Same shape as `_rule`: set it and recompute, which is what the
+    // radio beside it does.
+    _features: (m) => { q.features = m; refit(); },
+    _pickedClass: pickedClass,
+    _compare: refitCompare,
+    _crosstab: () => (compare ? crosstab(compare) : null),
+    _cmpDiff: () => (compare ? settingsDiff(compare) : null),
+    _lastBody: () => lastBody,
+    _cmpQ: () => (compare ? { before: compare.before.q,
+                              after: compare.after.q } : null),
+    _esc: () => { picked = null; render(); pictures(['traces', 'pane']); },
     _k: (n) => { q.nclasses = n; refit(); },
     _step: step,
     _draw: drawAll,
@@ -2384,6 +3342,11 @@ BARRY.dspca = (function () {
       render();
     },
     _dirty: () => dirty,
+    /* Why a resize did or did not redraw. `seen` counts notifications
+       that reached the handler at all, which is the half a harness
+       cannot otherwise see. */
+    _resizeInfo: () => ({ seen: roSeen, drew: roDrew,
+                          watching: !!sizeWatch, mismatched: mismatched() }),
     _reset: () => { cands = null; plan = null; fit = null; q.read = null;
                     q.entry = null; picked = null; pics = {}; },
   };

@@ -15,6 +15,248 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.23.8 - X-ray: comparing two answers, and the recording beside the panel
+
+### Added
+
+- **Recompute & compare.** A fit is a question with eight parts, and
+  changing one of them replaced the answer with no record of what it
+  replaced. So the honest question — "did moving the band change
+  anything, or did it just move the picture?" — could only be answered by
+  remembering, and people were screenshotting the panel before dragging.
+
+  The button keeps the answer that is on screen, computes the new one, and
+  puts them side by side with the thing neither picture shows on its own:
+  WHICH EVENTS CHANGED IDENTITY. Both fits are over the same read and the
+  same list of events, so before-class against after-class is an exact
+  crosstab rather than an estimate, and the count off its diagonal is the
+  answer. Under it, both mean-CSD strips, both feature matrices and each
+  rule’s chosen landmark, and a way back to the old answer.
+
+  It states one thing the pictures cannot: a class NUMBER is not a class.
+  Classes are renumbered by depth on every fit, so DS1 before and DS1
+  after both mean "the shallower one" and need not hold the same events.
+  That is exactly what the crosstab is for.
+
+- **The recording opens in a window of its own.** `Open in Xplorefinder`
+  called `setView('xplore')`, which replaced the panel: the box, the
+  classes and the PCA were gone, and the way back was to find X-ray in the
+  ToolKit again and wait for the fit. Checking one spike against the raw
+  recording is something you do WHILE reading the panel.
+
+  It opens a second window now, the way Incisor opens its traces and Braid
+  its panels, and it FOLLOWS: every spike the panel steps to is pushed
+  into it as curation marks — the same `sess.curationMarks` Checkup
+  publishes — so it draws every dentate spike in the set coloured by its
+  class with the one being looked at marked. Nothing in the other window
+  had to learn what X-ray is; it already knows how to draw a curated set.
+  `window.barryDspca` is the way back in, for the same reason
+  `barryXplore` exists.
+
+- **One set at a time, or many.** The same switch Braces has, for the same
+  reason: picking a set and reading it is a thing you do while thinking,
+  and paying the reading for a cohort is a thing you set off and come back
+  to. It replaces a `Read a batch...` card that sat above the panel in
+  both modes, so the queue and the workbench were on screen together, each
+  taking room from the other, and neither was what you had come to do.
+
+### Changed
+
+- **Each class’s mean CSD is scaled to itself.** It was one scale across
+  all of them, deliberately: two heatmaps side by side with independent
+  scales say nothing about which event is larger. But the shared scale has
+  the opposite cost and it is the one that bites — a class with a
+  quarter of the amplitude is drawn as a wash of green, and the SHAPE,
+  which is the whole question, is not visible at all. Each panel now
+  carries its own peak, so the comparison is a number to read rather than
+  a colour to eyeball. That is the more honest way round: the pictures
+  never supported that comparison as well as they appeared to, because
+  the classes rarely share a peak contact.
+
+- **The spike you are looking at is marked on every panel.** The PCA rang
+  its dot already; the depth profile now brings its class forward and
+  dims the others, and its class mean is outlined. One function answers
+  "which class is on screen", so the three cannot disagree.
+
+- **The control strip is compact.** Eight groups of one or two controls,
+  each with a heading above it, at full-width rows and loose gaps: about
+  700px of column for perhaps 300px of control, most of it air between a
+  heading and the single radio under it. Tokens throughout, and the
+  chosen rule’s sentence is clamped to two lines — it was four, and it
+  set the height of the whole row, so picking a rule with a long
+  explanation moved everything below it down.
+
+### Fixed
+
+- **A fit landing late undid a box you had just dragged.** `refit` wrote
+  the server’s box back into the form when it returned, which is right for
+  the first fit — the server picks the band and the next drag has to
+  start from somewhere — and wrong for every other one. A fit is about a
+  second over seven hundred events, a box can be dragged in that second,
+  and the answer arriving then wrote the OLD box over the new one. From
+  the outside the drag simply undid itself a moment after you let go, and
+  the recompute that followed asked for the box you had just been moved
+  off.
+
+  It only writes back if the form still holds the box the request asked
+  for, and a superseded fit is dropped rather than drawn. Found by the
+  harness: the panel was showing CSC8—12 and the request that went out
+  said CSC7—9.
+
+- **"Recompute & compare" also matches "Recompute".** Which is how the
+  harness found the one above: a check looking for the recompute button
+  by its text clicked the new one beside it, opened the comparison modal
+  and left a stale comparison behind for a later section to read as its
+  own. The comparison is cleared when a new one starts, so nothing can
+  read the previous answer while this one is still computing.
+
+### Checked
+
+- `web/_dev/dspca.html` is 163 checks. The new ones drive the mode switch,
+  the comparison and the crosstab against what the fit actually put in
+  each class, the per-class colour scales, and the bridge the second
+  window drives this one through.
+
+- Two checks in it were themselves wrong and said so loudly: one compared
+  a feature matrix drawn for an earlier box against the current fit and
+  called the difference a fault, and one dragged to a contact the demo
+  probe does not have, so the server handed back the band it already had
+  and the comparison had nothing to compare. Both now establish the
+  precondition instead of assuming it.
+
+## 2026.09.23.7 - X-ray: sign-only features, the feature matrix, and the selector everything else uses
+
+### Added
+
+- **Sign-only features.** Min-max is Toothy, and it removes SCALE exactly
+  — in principle. In practice the scale is set by two samples, the single
+  min and the single max, so a quiet event riding the same background
+  noise normalizes to a NOISIER shape, and that is an amplitude effect
+  that survives the normalization. Measured on M2ctls3jan23: under min-max
+  the two classes differ in amplitude by 3.07x and PC1 correlates 0.52
+  with log amplitude. The clusters were substantially loud against quiet.
+
+  So there are three now, in the order they throw information away:
+  `min-max (Toothy)`, `sign ±1`, and `sign + deadband`. Sign keeps source
+  or sink per contact and nothing else — the laminar pattern with the
+  magnitudes gone, which on that recording drops the ratio to 1.12x. The
+  deadband stops a contact where the CSD is essentially zero getting as
+  much vote as the one at the sink.
+
+  Read the answer with the amplitude question in mind: if the classes stop
+  separating once the magnitudes go, they were separating on magnitude.
+  It is a parameter of the FIT, not of the read, so switching it does not
+  invalidate the cached read — the box stays draggable.
+
+- **The feature matrix, as a panel.** One column per event, sorted by
+  class, ruled and named DS1/DS2 between the groups.
+
+  Not decoration. Every other picture in the tool is an average, and an
+  average is exactly where one bad column hides: on this one a dead
+  contact is a solid stripe running the width of the sheet, which is how
+  the first version of this analysis was caught classifying one wire
+  rather than one kind of event. It is also the only panel that shows
+  what the PCA actually sees — the rasters are the band-limited,
+  mains-out CSD because that is what is legible, and this is whatever the
+  feature mode returned.
+
+### Changed
+
+- **The depth profile and the class CSDs show the whole shank.** They were
+  cropped to the contacts the features come from, which made the picture
+  agree with the measurement and useless for the question people bring to
+  it: is the band in the right place? A panel that only ever shows the
+  inside of the box cannot answer that. Both now run down the whole probe
+  with the band left bright and everything outside dimmed, and the box
+  ruled on all four sides.
+
+  The MEASUREMENT is unchanged and still comes from the band — every
+  ordering rule is scored on it, and widening what is measured would
+  change the answer rather than the picture. One consequence needed
+  fixing with it: the landmark dot was placed by its row index into the
+  selected band, and the same index means a different contact on a
+  full-shank curve. It goes by contact number now.
+
+- **The selector is the one every other tool uses.** It was two
+  `<select>`s: one listing every curated set in the lab, which is a list
+  you scroll rather than one you search, and one beside it for the
+  version that looked exactly the same. Now a recording you type the name
+  of, the banked entries on it as radios, and the versions of the chosen
+  one as radios — Braces' pattern, reused rather than re-answered.
+
+  With a row for **as they are now**, which had no way of being shown
+  before. `from_version` null means the server reads the set as it
+  currently stands, and that is what a set nobody has banked a version of
+  has and what the plan falls back to. With no row for it, every radio
+  sat unchecked and the list read as a set with no versions at all.
+
+- **The CSD screen checkbox is gone.** It offered a heuristic that looks
+  for contacts a CSD cannot be run down, repairs them and goes round
+  again up to five times. Off by default, and on a probe worth analysing
+  it finds nothing — so from the panel it was a control that appeared to
+  do nothing, which is worse than not having one. The screen is still in
+  `backend/dspca.py` and still reachable as `screen` on the API.
+
+### Fixed
+
+- **The controls followed the GUI constitution, which said none of this.**
+  X-ray used `.btn.small` on eleven buttons and `.primary` on four. Neither
+  matches any rule — `small` resolves on its own, so those buttons were
+  quietly full size beside the eighty-four that use `.btn.sm`, and
+  `.primary` does nothing at all because `.btn` is already the filled
+  style. It also rendered `<div class="spinner">`, which the constitution
+  cites this tool by name for: there is no such rule, so the loading card
+  showed an empty div. All three are the house controls now and
+  `check_classes.py` reports no naked elements.
+
+- **A picture could be left drawn at a size it was not shown at.** Two
+  causes, both found by measuring rather than by looking.
+
+  `drawAll` drew the stretching panels before the fixed-height ones. The
+  fixed ones are given an explicit height, which changes how much of the
+  column is left for the others — so the profile and the scatter were
+  measuring a share that was about to change, and nothing told them to
+  try again, because what ended up wrong was the backing store and not
+  the box. Fixed-height first now, then stretching, then one more pass if
+  anything is still mismatched.
+
+  And the resize handler DROPPED notifications while a check was pending
+  rather than coalescing them. A resize arrives as a burst; if the
+  pending check ran a moment before the layout settled it found nothing
+  wrong, and the notifications that would have caught it a frame later
+  had already been thrown away. It re-arms now, so the check happens
+  after the last notification.
+
+  Underneath both: the notification is not guaranteed at all. Measured
+  over four runs of the same harness page, squeezing the log moved every
+  panel and produced no resize notification inside the frame on two of
+  them. So the invariant — no picture drawn at a size it is not shown at
+  — is also checked on a slow tick while the panel is on screen, which
+  stops itself as soon as the panel is gone.
+
+### Checked
+
+- `web/_dev/dspca.html` is 129 checks, from 79. The new ones cover the
+  selector, the full-shank panels against the band they name, the feature
+  matrix groups against what the fit put in each class, and the feature
+  mode reaching the picture.
+
+- **The harness was swallowing throws.** A throw ended the suite in
+  silence: everything after it did not run, and what the runner printed
+  was a smaller number of passing checks and no failures, which reads as
+  a shorter suite rather than a broken one. It hid a real breakage for a
+  whole run — `registryRows` is a function and the new selector called it
+  as an array, and the suite reported "11 ok, 0 fail". There is a catch
+  that reports it as a failure now.
+
+- **And cutting itself in half.** Edge's `--virtual-time-budget` was
+  150000, and virtual time runs far faster than wall time: every `until`
+  that waits spends its whole timeout out of that budget in a fraction of
+  a second. The longest suite ran past it, stopped with no tally line,
+  and was counted as the checks it had managed — passing. The wall
+  timeout is what catches a stuck page; the budget only has to be large
+  enough not to cut a healthy one in half.
+
 ## 2026.09.23.6 - The catalogue opens in under two seconds, and the board is a board
 
 ### Fixed
