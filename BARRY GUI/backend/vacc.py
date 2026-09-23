@@ -697,6 +697,22 @@ echo "home=$HOME"
 """
 
 
+def install_script(pub):
+    """The remote command that appends one public key, as a string.
+
+    Split out from `install_key` so it can be checked without a
+    cluster: it is a shell script assembled by string formatting, which
+    is exactly the kind of thing that is wrong in a way nobody sees
+    until it runs somewhere else.
+
+    The key arrives on stdin rather than in the command line -- a
+    command line is visible to every process on the login node, and
+    while a PUBLIC key is not a secret, the habit is the point.
+    """
+    return "printf '%s' " + shlex.quote(pub) + " | {\n" \
+        + _INSTALL.strip() + "\n}"
+
+
 def install_key(netid, password, host=None, duo="1"):
     """Put this machine's public key on the cluster, once.
 
@@ -729,7 +745,20 @@ def install_key(netid, password, host=None, duo="1"):
         raise SSHError("This machine's public key has characters in it that "
                        "are not safe to send. Install it by hand.",
                        "bad-key")
-    script = "printf '%%s' %s | { %s ; }" % (shlex.quote(pub), _INSTALL)
+    # The brace group closes on its own line, with no semicolon.
+    #
+    # `_INSTALL` is written as a block constant and already ends with a
+    # newline, so appending " ; }" put a bare `;` at the start of line
+    # 16 -- and a semicolon with no command before it is a syntax
+    # error. The far side answered `bash: -c: line 16: ; }` and the
+    # first sign-in failed AFTER authenticating, which is the worst
+    # place for a quoting bug to sit: every hard part had already
+    # worked.
+    #
+    # `tools/test_vaccsignin.py` now runs the generated script through
+    # `bash -n`, so the thing that is sent is checked rather than
+    # assumed to be well formed.
+    script = install_script(pub)
     out = _password_ssh(netid, host or DEFAULT_HOST, password, script,
                         duo=duo)
     said = {}

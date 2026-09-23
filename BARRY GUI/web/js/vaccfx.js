@@ -45,6 +45,7 @@ BARRY.vaccfx = (function () {
   let inner = null;          // the artwork inside it, held still
   let redraw = null;         // re-runs the drawing, on resize
   let raf = 0;
+  let rafAt = 0;
   let want = { x: -9999, y: -9999 };
   let have = { x: -9999, y: -9999 };
   let wired = false;
@@ -164,7 +165,29 @@ BARRY.vaccfx = (function () {
      writes nobody sees, each one invalidating the compositor's idea of
      where the sprite is. */
   function schedule() {
-    if (raf) return;
+    const now = (window.performance && performance.now)
+      ? performance.now() : Date.now();
+    if (raf) {
+      /* A frame is pending. Normally it arrives in sixteen milliseconds and
+         there is nothing to do -- that is the coalescing this exists for.
+
+         But `requestAnimationFrame` is starved wherever the page is not
+         painting: a background tab, a minimised window, the headless
+         browser the harness runs in. This used to return unconditionally,
+         so a callback that never came left `raf` set for ever and every
+         later move was dropped. The glow stopped following the pointer and
+         nothing said why. Measured in the harness: 29 moves, one frame.
+
+         So a frame that has not arrived in a quarter of a second is given
+         up on. One extra write per 250 ms in that case, none in the normal
+         one. */
+      if ((now - rafAt) < 250) return;
+      try { cancelAnimationFrame(raf); } catch (e) { /* already gone */ }
+      raf = 0;
+      place();
+      return;
+    }
+    rafAt = now;
     raf = requestAnimationFrame(() => {
       raf = 0;
       stats.frames += 1;

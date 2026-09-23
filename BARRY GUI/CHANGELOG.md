@@ -15,6 +15,109 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.23.11 - StrataScope's support panels get the layers, and you can see them
+
+### Fixed
+
+- **The aid window showed no layers at all.** StrataScope puts the CSD, the
+  theta CSD, the voltage raster and the stacked time-frequency view in a
+  second window, because the traces need the whole of the first one. A
+  second window is a separate page: its own session objects, its own
+  modules, none of the labelling mode's state. The overlay is gated on a
+  payload, nothing was putting one there, and so the four panels a boundary
+  is actually read off were the four with no boundaries drawn on them.
+
+  The sheet now goes over the link channel, the way the curation pointer
+  already did -- the labels, the regions, the wash strength and the current
+  selection, coalesced so a drag down the rail is one request in flight
+  rather than sixty-four queued behind a long poll. The aid window adopts it
+  into exactly the state a window has when somebody turns the layer wash on
+  by hand, so there is one painter and one set of rules rather than two.
+
+  The selection travels with it, which is the part that was missing even in
+  principle: "which channels am I about to label" is the question the CSD
+  can answer and the rail cannot, and the aid window has no rail in it.
+
+### Changed
+
+- **The overlay is drawn to be seen on a raster.** It was a 10% wash and a
+  one-pixel coloured hairline. Both were being asked to show up on jet,
+  which is saturated everywhere -- and the region colours were chosen to be
+  told apart from each other, not from a colormap. Where the two agreed the
+  overlay was invisible at any alpha.
+
+  So the answer is carried by ink that does not fade, and the wash is left
+  to be atmosphere:
+
+  - an opaque column of the region colour down the **right** edge of every
+    panel with channel lanes -- right, because the left edge already carries
+    the channel numbers on a raster and the selection tick on the traces;
+  - boundary rules drawn twice, a dark rule first and the region colour on
+    top of it, so the line is findable anywhere on the picture and still
+    says which boundary it is: 5-6 pixels of ink where there was 1;
+  - the region's name against that column wherever the run is tall enough
+    to hold one, because a colour with nothing to decode it is not an answer
+    in a window with no rail;
+  - the selection tick widened and made opaque, and the wash strengths
+    raised by about half.
+
+  Measured rather than eyeballed: `web/_dev/strataglow.html` draws the real
+  painter over a synthetic raster as saturated as jet and reports the
+  difference -- how far the wash moves a pixel, how many pixels thick each
+  boundary rule comes out, and whether the spine and the names are there --
+  for each of the four panel shapes the server really sends, and then drives
+  the real aid-window URL to check the sheet arrives and paints. 40 checks;
+  17 of them fail against the code this replaces.
+
+---
+
+## 2026.09.23.10 - The first sign-in sent a broken script, and setup now finishes the job
+
+### Fixed
+
+- **The very first sign-in failed with `bash: -c: line 16: ` ; }'`.** The
+  remote command is assembled by formatting a shell block into
+  `printf ... | { ... ; }`, and the block already ends with a newline -- so
+  the appended `" ; }"` landed a bare semicolon at the start of its own
+  line, and a semicolon with no command before it is a syntax error.
+
+  The bad news is where it sat: the failure came AFTER authenticating. The
+  password, the key generation and the connection had all worked. The only
+  thing wrong was the shape of the text being sent, which is the one part
+  nothing was checking.
+
+  So it is checked now. `install_script()` is split out of `install_key()`
+  and `tools/test_vaccsignin.py` runs the result through `bash -n` -- both
+  the current form, which must parse, and the exact form that failed, which
+  must still not. The checker is calibrated against a known-good and a
+  known-bad script first, because `bash -n -c <string>` returns 1 on this
+  platform whatever it is given and would have made the test pass
+  vacuously.
+
+### Changed
+
+- **Setup asks for the password and installs the key**, rather than
+  recording a NetID and leaving the real work to the app.
+
+  It asks in the right order, which is what makes it bearable: keys already
+  on the machine are tried against the account FIRST, and on a shared rig
+  that is the ordinary case -- one person sets the cluster up and everybody
+  after them is asked for nothing but their NetID. Measured on this machine,
+  an existing key is found in 1.5 s and a wrong NetID is ruled out in 0.3 s.
+
+  `getpass` rather than `input`, so it is not echoed into the scrollback of
+  a window that stays open all day, and a console that cannot suppress the
+  echo is told to use the app instead of having somebody's password printed
+  across it. The password is held for one `ssh` invocation and dropped.
+
+  The key is proved with a key-only connection before the config is written.
+  Recording "signed in" on the strength of a password that has now been
+  discarded is how a machine ends up configured and unable to connect, with
+  nothing left to retry.
+
+  Skipping stays a first-class answer at every step, and a launcher with no
+  terminal -- a double-clicked window -- asks nothing at all.
+
 ## 2026.09.23.9 - A version number is not a version name
 
 ### Fixed
@@ -1904,7 +2007,7 @@ This file is the only place the version is written. The app reads it.
   since they started being scored on the event-triggered template. Shown as a
   percentage of the strongest contact, which is what they are.
 
-## 2026.09.21.3 - The cluster matcher was fed two different things
+## 2026.09.21.12 - The cluster matcher was fed two different things
 
 ### Fixed
 
@@ -1928,7 +2031,7 @@ This file is the only place the version is written. The app reads it.
 
   `/api/incisor/batch/plan` answers again: 38 runnable, 1 blocked.
 
-## 2026.09.21.2 - What kind of recording this is, on the row; and the sync stops shouting
+## 2026.09.21.11 - What kind of recording this is, on the row; and the sync stops shouting
 
 ### Fixed
 
@@ -2007,7 +2110,7 @@ This file is the only place the version is written. The app reads it.
 
   Together, an idle machine goes from 90,720 requests a day to about 270.
 
-## 2026.09.21.1 - Two probes in two places, the cluster gets the catalogue, and signing in
+## 2026.09.21.10 - Two probes in two places, the cluster gets the catalogue, and signing in
 
 ### Added
 

@@ -71,6 +71,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec, patheffects
+from scipy.signal import find_peaks
 from matplotlib.widgets import (Button, CheckButtons, RadioButtons,
                                 RectangleSelector, Slider, TextBox)
 from sklearn.cluster import KMeans
@@ -188,9 +189,10 @@ def load_flip(args):
         with open(flip_path(args), encoding="utf-8") as fh:
             got = json.load(fh)
         return (bool(got.get("flip")), str(got.get("rule") or "tort"),
-                str(got.get("features") or "minmax"))
+                str(got.get("features") or "minmax"),
+                bool(got.get("depth_feat")))
     except Exception:
-        return False, "tort", "minmax"
+        return False, "tort", "minmax", False
 
 
 def save_flip(state):
@@ -198,7 +200,8 @@ def save_flip(state):
         with open(flip_path(state["args"]), "w", encoding="utf-8") as fh:
             json.dump({"flip": bool(state.get("flip")),
                        "rule": state.get("rule", "tort"),
-                       "features": state.get("features", "minmax")}, fh)
+                       "features": state.get("features", "minmax"),
+                       "depth_feat": bool(state.get("depth_feat"))}, fh)
     except Exception as err:
         print("could not save the flip: %s" % err)
 
@@ -420,6 +423,48 @@ def normalize_block(block, mode="minmax", dead=0.15):
     return out
 
 
+def sink_depth_features(block, weight=1.0):
+    """Each event's own two sink depths, as two extra features.
+
+    THE IDEA. Every other feature is a magnitude at a contact, so the PCA has
+    to INFER depth from the pattern across contacts -- and it will only do
+    that if depth happens to be the largest source of variance, which on
+    these recordings it is not (amplitude is). This hands it the depth
+    directly: find the two most prominent sinks in this event's own profile
+    and put where they are into the vector, as numbers.
+
+    Sorted by DEPTH, not by prominence, so the pair means "the shallower
+    sink and the deeper sink" for every event. Sorting by prominence would
+    make feature 1 the main sink for some events and the secondary sink for
+    others, and a PCA cannot make anything of a column that changes meaning
+    row to row.
+
+    Scaled to [0, 1] across the selected band, so the two new columns sit in
+    the same range as min-max features and neither swamps nor vanishes
+    against them. `weight` scales them further: at 1.0 two depth columns sit
+    among sixteen profile columns, so raise it if depth should count for
+    more than an eighth of the vector.
+
+    An event with fewer than two detectable sinks repeats what it has, which
+    keeps the column count fixed and says, truthfully, that its two sinks
+    are at the same place.
+    """
+    prof = np.asarray(block, dtype=np.float64).mean(axis=2)   # [nEv x span]
+    span = prof.shape[1]
+    out = np.zeros((prof.shape[0], 2), dtype=np.float64)
+    for i, mu in enumerate(prof):
+        idx, props = find_peaks(-mu, prominence=0.0)
+        if idx.size == 0:
+            rows = [int(np.argmin(mu))] * 2
+        else:
+            best = np.argsort(props["prominences"])[::-1][:2]
+            rows = sorted(int(idx[j]) for j in best)
+            if len(rows) == 1:
+                rows = rows * 2
+        out[i] = [r / max(span - 1, 1) for r in rows]
+    return out * float(weight)
+
+
 def recompute(state):
     """Screen, CSD, features, PCA, K-means -- for the current selection."""
     a = state["args"]
@@ -459,6 +504,9 @@ def recompute(state):
     feat_csd = stack_csd(sur[:, sel, :], a)[:, :, t0:t1]
     norm = normalize_block(feat_csd, state.get("features", "minmax"))
     X = norm.reshape(norm.shape[0], -1)
+    if state.get("depth_feat"):
+        X = np.hstack([X, sink_depth_features(feat_csd,
+                                              state.get("depth_weight", 1.0))])
 
     pca = PCA(n_components=2)
     fit = pca.fit_transform(X)
@@ -820,7 +868,8 @@ def draw(state, res):
     _fname = {"sign": "sign \u00b11", "sign_dead": "sign + deadband"}.get(
         state.get("features", "minmax"), "min-max")
     state["fig"].texts[0].set_text(
-        state["fig"].texts[0].get_text() + "   \u00b7   features " + _fname)
+        state["fig"].texts[0].get_text() + "   \u00b7   features " + _fname
+        + ("  + sink depths" if state.get("depth_feat") else ""))
     state["fig"].texts[0].set_text(state["fig"].texts[0].get_text())
     state["repaired_note"].set_text(
         "repaired — amplitude: %s   ·   CSD: %s   ·   by hand: %s"
@@ -932,6 +981,13 @@ def build(state):
     # so unless somebody asks.
     for t in chk.labels:
         t.set_fontsize(9)
+
+    ax_dep = fig.add_axes([.372, .006, .105, .030])
+    ax_dep.set_frame_on(False)
+    chk_dep = CheckButtons(ax_dep, ["+ sink depths"],
+                           [bool(state.get("depth_feat"))])
+    for t in chk_dep.labels:
+        t.set_fontsize(8.5)
 
     b_auto = Button(fig.add_axes([.492, .090, .072, .042]), "auto box")
     b_one = Button(fig.add_axes([.492, .032, .072, .042]), "1 sample")
@@ -1082,6 +1138,13 @@ def build(state):
         save_bad(state)
         refresh()
 
+    def toggle_depth(_label):
+        state["depth_feat"] = not state.get("depth_feat")
+        save_flip(state)
+        say("sink depths %s the feature vector"
+            % ("added to" if state["depth_feat"] else "removed from"))
+        refresh()
+
     def pick_features(label):
         """Which transform the PCA sees. The amplitude question lives here."""
         state["features"] = ("sign" if label == "sign +-1"
@@ -1154,6 +1217,7 @@ def build(state):
     b_flip.on_clicked(flip_types)
     rad.on_clicked(pick_rule)
     radf.on_clicked(pick_features)
+    chk_dep.on_clicked(toggle_depth)
     tb.on_submit(on_submit)
     tb_bad.on_submit(on_bad)
     fig.canvas.mpl_connect("pick_event", on_pick)
@@ -1170,8 +1234,9 @@ def build(state):
     state["flip_types"] = flip_types
     state["pick_rule"] = pick_rule
     state["pick_features"] = pick_features
+    state["toggle_depth"] = toggle_depth
     state["_widgets"] = (s_k, chk, b_auto, b_one, b_prev, b_next, b_mean,
-                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad, radf)
+                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad, radf, chk_dep)
     state["refresh"] = refresh
     refresh()
     return fig
@@ -1244,7 +1309,8 @@ def main():
     state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
     state["sel"] = ds_pca.depth_band(got["sur"]["notch"], a, chans, got["bad"])
 
-    state["flip"], state["rule"], state["features"] = load_flip(args)
+    (state["flip"], state["rule"], state["features"],
+     state["depth_feat"]) = load_flip(args)
 
     fig = build(state)
     print("opening box: CSC%d-%d, 1 sample at the stamp  (drag to change)"

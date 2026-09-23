@@ -25,6 +25,7 @@ No network, no cluster, no ssh. Writes only to a temporary directory.
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -154,6 +155,106 @@ def test_install_refusals():
     check("neither one needed ssh", True)
 
 
+def test_install_script():
+    """The script sent to the cluster has to be a script.
+
+    This is the check that was missing, and it cost a real sign-in. The
+    remote command is assembled by string formatting around a block
+    constant, and `_INSTALL` already ends with a newline -- so appending
+    `" ; }"` put a bare semicolon at the start of its own line. The cluster
+    answered
+
+        bash: -c: line 16: ` ; }'
+
+    and the first sign-in on a new machine failed AFTER authenticating,
+    which is the worst place for a quoting bug to sit: the password, the
+    key generation and the connection had all worked.
+
+    `bash -n` parses without executing, so the generated text can be checked
+    here for nothing. Git Bash ships with the app's own dependencies on
+    Windows and is on PATH wherever `ssh` is.
+
+    Note that `bash -n -c <string>` returns 1 on this platform whatever it
+    is given -- including a valid script -- so it is useless as a checker
+    and the test would pass vacuously. The file form is the one that works,
+    and the calibration below is there so that can never go unnoticed.
+    """
+    print("\n== the remote script parses ==")
+
+    def parses(bash, text):
+        fh = tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False,
+                                         newline="\n")
+        try:
+            fh.write(text)
+            fh.close()
+            r = subprocess.run([bash, "-n", fh.name],
+                               capture_output=True, text=True)
+            return r.returncode == 0, (r.stderr or "").strip()
+        except OSError as exc:
+            return False, str(exc)
+        finally:
+            try:
+                os.unlink(fh.name)
+            except OSError:
+                pass
+
+    #: Git Bash first, deliberately. `shutil.which("bash")` on Windows finds
+    #: the WSL launcher in System32, which cannot open a `C:\...` path and
+    #: returns 1 for everything -- so it neither parses nor complains, and a
+    #: test built on it fails on honest code.
+    candidates = [
+        r"C:\Program Files\Git\usr\bin\bash.exe",
+        r"C:\Program Files\Git\bin\bash.exe",
+        shutil.which("bash"),
+        "/bin/bash",
+    ]
+    bash = None
+    for cand in candidates:
+        if not cand or not os.path.exists(cand):
+            continue
+        good, _ = parses(cand, "echo hi\n")
+        bad, _ = parses(cand, "if true; then\necho x\n")
+        if good and not bad:
+            bash = cand
+            break
+
+    if not bash:
+        # Skipped, and said out loud. A check that quietly does not run is
+        # worse than one that fails, because it reads as a pass.
+        print("  SKIP no bash on this machine can parse a file "
+              "(WSL's cannot read a C:\\ path), so the generated script "
+              "is unchecked here")
+        return
+
+    print("  using %s" % bash)
+    check("the checker accepts a valid script and rejects an invalid one",
+          True, "calibrated")
+
+    pub = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE jarvis-vacc"
+    script = vacc.install_script(pub)
+    ok, why = parses(bash, script)
+    check("the install script parses", ok, why.splitlines()[-1][:80]
+          if why else "")
+
+    # The exact shape that failed in the field, so it cannot come back by
+    # another route.
+    was = "printf '%s' " + pub + " | { " + vacc._INSTALL + " ; }"
+    broke, why2 = parses(bash, was)
+    check("and the form that broke the first sign-in still does not parse",
+          not broke,
+          why2.splitlines()[-1][:60] if why2 else "it parsed")
+
+    # What it is FOR, as well as whether it parses.
+    check("it sends the key on stdin, not on the command line",
+          "$(cat)" in script and pub in script)
+    check("it appends rather than overwriting authorized_keys",
+          ">>" in script)
+    check("it is idempotent, so running setup twice is harmless",
+          "grep -qxF" in script)
+    check("and it reports what it found rather than only succeeding",
+          "already=" in script and "netid=" in script)
+
+
 def test_key_paths():
     print("\n== the key has a name of its own ==")
     priv, pub = vacc.key_paths()
@@ -177,6 +278,7 @@ def main():
     test_shim_has_no_secret()
     test_scrub()
     test_install_refusals()
+    test_install_script()
     test_key_paths()
 
     print("\n%d check(s)" % N[0])

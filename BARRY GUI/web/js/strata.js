@@ -45,22 +45,61 @@ BARRY.strata = (function () {
   /* How strongly the layer wash is drawn over the rasters. The bands are
      there to show where a boundary fell, and at some point they are in the
      way of the data that decides where it should have fallen -- so this is
-     the reader's to set, not a constant. */
+     the reader's to set, not a constant.
+
+     The numbers went up by about half. Measured on a fully saturated
+     synthetic raster (web/_dev/strataglow.html), the old 'faint' moved the
+     mean pixel by 21 units out of 255 and this one moves it by 31 -- which
+     is a real difference and is still not, on its own, what makes a
+     boundary findable. A wash is alpha-blended, the region colours were
+     chosen to be told apart from each other rather than from jet, and where
+     the two happen to agree the difference is zero however high the alpha
+     goes. That is what the opaque ink below is for; this is atmosphere, and
+     these are the strengths at which each name is true. */
   const WASHES = [
     { id: 'off', name: 'Off', alpha: 0, why: 'No wash at all' },
-    { id: 'faint', name: 'Faint', alpha: 0.10,
+    { id: 'faint', name: 'Faint', alpha: 0.15,
       why: 'Just enough to see the boundary' },
-    { id: 'clear', name: 'Clear', alpha: 0.22,
+    { id: 'clear', name: 'Clear', alpha: 0.30,
       why: 'Readable without hiding the trace' },
-    { id: 'solid', name: 'Solid', alpha: 0.42,
+    { id: 'solid', name: 'Solid', alpha: 0.52,
       why: 'For checking the layout at a glance' },
   ];
   let wash = 'faint';
 
   function washAlpha() {
     const w = WASHES.find((x) => x.id === wash);
-    return w ? w.alpha : 0.10;
+    return w ? w.alpha : 0.15;
   }
+
+  /* The parts of the overlay that do NOT fade with the wash.
+
+     A wash has to stay weak enough to read the data through, which means it
+     can never be the thing that carries the answer on a busy raster. So the
+     answer is carried by ink that is opaque and the wash is left to be
+     atmosphere:
+
+       the spine      an opaque column of the region colour down the right
+                      edge, outside the traces and outside the channel
+                      numbers on the left of a raster, so it covers no data
+                      and is legible at any wash
+       the boundary   a dark rule with the region colour on top of it. The
+                      dark half is what makes it visible on jet, where a
+                      1px coloured hairline lands on a background of the
+                      same chroma and disappears
+       the name       the region's name against the spine wherever the run
+                      is tall enough to hold it, because the aid window has
+                      no rail in it and a colour with nothing to decode it
+                      is not an answer
+
+     All three are measured by web/_dev/strataglow.html against a synthetic
+     raster, so "enough contrast" is a number rather than an impression. */
+  const SPINE_W = 7;          // the opaque colour column at the right edge
+  const BOUND_HALO = 4.5;     // the dark rule a boundary is drawn on
+  const BOUND_LINE = 2.25;    // the boundary itself, over that rule
+  const PICK_TICK = 5;        // the selection tick at the left edge
+  const NAME_MIN_H = 17;      // a run shorter than this has no room to say
+  const NAME_MIN_W = 170;     // nor does a pane narrower than this
 
   /* ==================================================================
      Entering and leaving
@@ -142,7 +181,7 @@ BARRY.strata = (function () {
     setMode('strata', exit);
     layout();
     sess.strata = { gid, labels: sheet.labels, regions };
-    render();
+    render();                              // and render() shares the sheet
     // The panes settle a frame or two after the layout change, and the rail
     // is measured off them.
     requestAnimationFrame(() => setTimeout(alignRail, 260));
@@ -160,11 +199,17 @@ BARRY.strata = (function () {
     BARRY.activity.log('strata.leave', {
       gid, labelled: (sheet.progress || {}).labelled,
     }, sess);
+    /* Before the sheet is dropped, because share() reads it -- and it has
+       to be said at all, or the aid window (which may outlive this mode if
+       somebody keeps it open) would keep drawing a sheet nobody is working
+       on any more. */
+    sheet = null;
+    share();
     if (sess) delete sess.strata;
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
     setMode(null);
-    sheet = null; sess = null; gid = null; brush = null;
+    sess = null; gid = null; brush = null;
     const rail = $('#strataRail');
     if (rail) rail.remove();
     const bar = $('#strataBar');
@@ -228,10 +273,37 @@ BARRY.strata = (function () {
   const labelOf = (num) => (sheet && sheet.labels[String(num)]) || null;
   const regionOf = (id) => regions.find((r) => r.id === id) || null;
 
+  /* Say what the sheet is, to whoever else is looking at this recording.
+
+     The four panels a boundary is actually read off are in a second window
+     (openAids above), and a second window is a separate page: it has its
+     own session objects, its own modules and none of this one's state. The
+     overlay in it is gated on a payload, and until this existed nothing
+     ever put one there -- so the view built for deciding boundaries was the
+     one view with no boundaries drawn on it.
+
+     Sent on every render and every save. That is a lot of calls, and they
+     are coalesced at the other end (xplore.js publishStrata): only the
+     latest sheet means anything, and at most one is ever in flight.
+
+     The selection goes with it. "Which channels am I about to label" is the
+     question the CSD can answer and the rail cannot, and the aid window has
+     no rail in it at all. */
+  function share() {
+    if (!sess) return;
+    const pub = BARRY.views.xplore && BARRY.views.xplore.publishStrata;
+    if (!pub) return;
+    pub(sess, sheet
+      ? { gid, labels: sheet.labels, regions,
+          picked: Array.from(picked), wash }
+      : { off: true });
+  }
+
   function render() {
     if (!sheet) return;
     bar();
     rail();
+    share();
     if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
   }
 
@@ -423,6 +495,7 @@ BARRY.strata = (function () {
        wrong is the common case, and clearing it would mean picking the
        whole run again to fix one. */
     patchRows(nums);
+    share();
 
     const mine = ++paintSeq;
     saving += 1;
@@ -430,7 +503,7 @@ BARRY.strata = (function () {
     try {
       const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
                                 + '/set', { labels });
-      if (mine === paintSeq) sheet = res.sheet;
+      if (mine === paintSeq) { sheet = res.sheet; share(); }
     } catch (e) {
       if (sheet) {
         for (const key of Object.keys(was)) {
@@ -441,6 +514,7 @@ BARRY.strata = (function () {
       recount();
       toast('That did not save: ' + e.message, 'err', 8000);
       patchRows(nums);
+      share();
     } finally {
       saving -= 1;
       updateSaving();
@@ -634,6 +708,10 @@ BARRY.strata = (function () {
     if (region) sheet.labels[key] = region; else delete sheet.labels[key];
     recount();
     patchRows([channel]);
+    // Before the save, not after it: the other windows should follow the
+    // stroke, not the round trip. A failed save puts the label back and
+    // shares again below.
+    share();
 
     /* Dragging across a rail fires one of these per channel, and they come
        back in whatever order the server finishes them. `sheet = res.sheet`
@@ -650,12 +728,13 @@ BARRY.strata = (function () {
     try {
       const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
                                 + '/set', { channel, region });
-      if (mine === paintSeq) sheet = res.sheet;
+      if (mine === paintSeq) { sheet = res.sheet; share(); }
     } catch (e) {
       if (was) sheet.labels[key] = was; else delete sheet.labels[key];
       recount();
       toast('That did not save: ' + e.message, 'err', 8000);
       patchRows([channel]);
+      share();
     } finally {
       saving -= 1;
       updateSaving();
@@ -869,6 +948,53 @@ BARRY.strata = (function () {
       }
     }
 
+    /* The runs, worked out once and then used three times -- the spine, the
+       names and the boundary rules all describe the same thing, and walking
+       the channel list three times to find it separately is how they drift
+       apart. A run is a stretch of consecutive LANES with one label on
+       them, which is not the same as a stretch of consecutive channels:
+       a CSD drops the first and last, and a probe-column pane shows a
+       subset, so the lanes are what a reader sees and the lanes are what
+       gets banded. */
+    const runs = [];
+    for (let i = 0; i < chans.length; i++) {
+      const id = labelAt(chans[i].number);
+      const last = runs[runs.length - 1];
+      if (last && last.id === id) last.to = i;
+      else runs.push({ id, from: i, to: i });
+    }
+
+    if (alpha > 0) {
+      /* The spine: the answer, in ink that does not fade.
+
+         At the RIGHT edge, deliberately. The left edge of a raster already
+         carries the channel numbers (xplore.js draws them into the panel
+         rather than into a gutter) and the left edge of the traces carries
+         the selection tick below -- an opaque column there would cover the
+         numbers the overlay exists to be read against. The right edge of a
+         raster is empty on every panel that has channel lanes; the frequency
+         axis that does use both edges belongs to a panel with no lanes,
+         which returns above and never reaches this. */
+      const spineW = Math.min(SPINE_W, Math.max(3, plotW * 0.06));
+      const spineX = x0 + plotW - spineW;
+      for (const run of runs) {
+        const reg = regAt(run.id);
+        if (!reg) continue;
+        const top = y0 + run.from * lane;
+        const hgt = Math.max(1, Math.ceil((run.to - run.from + 1) * lane));
+        ctx.globalAlpha = 0.96;
+        ctx.fillStyle = reg.color;
+        ctx.fillRect(spineX, top, spineW, hgt);
+      }
+      /* One dark edge down the inside of the spine, drawn once for the
+         whole column rather than per run. Without it a pale region colour
+         against a pale part of the raster has no border at all, and the
+         spine stops reading as a separate thing laid over the picture. */
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(spineX - 1, y0, 1, plotH);
+    }
+
     /* The selection, on the data rather than only on the rail.
 
        Which channels are about to be labelled is the question the raster
@@ -877,46 +1003,98 @@ BARRY.strata = (function () {
        changes. Drawn whatever the wash is set to -- turning the layers down
        is not a reason to stop showing what you are pointing at.
 
-       Only while the mode is open. exit() does not empty `picked` -- it
-       has never had to, because nothing else could reach this function
-       -- so a selection left behind on the way out would otherwise come
+       The module's own set while the mode is open; the payload's otherwise,
+       which is how it reaches the aid window -- a separate page with no
+       module state in it, where "which channels am I about to label" is
+       exactly the question the CSD is open to answer.
+
+       The two are kept apart on purpose. exit() does not empty `picked` --
+       it has never had to -- so the module's set is read only while the
+       sheet is open, and a selection left behind on the way out cannot come
        back as an accent wash in a view whose whole promise is that it
-       changes nothing. */
-    if (sheet && picked.size) {
+       changes nothing. The payload's set arrives and leaves with the
+       payload. */
+    const picks = (sheet && picked.size) ? picked
+      : ((pay && pay.picked && pay.picked.length)
+         ? new Set(pay.picked) : null);
+    if (picks && picks.size) {
       ctx.globalAlpha = 1;
       ctx.strokeStyle = P.accent || '#4bc7f0';
       ctx.lineWidth = 1;
       for (let i = 0; i < chans.length; i++) {
-        if (!picked.has(chans[i].number)) continue;
+        if (!picks.has(chans[i].number)) continue;
         const top = y0 + i * lane;
-        ctx.globalAlpha = 0.14;
+        ctx.globalAlpha = 0.2;
         ctx.fillStyle = P.accent || '#4bc7f0';
         ctx.fillRect(x0, top, plotW, Math.ceil(lane));
         // A tick at the edge, because at 64 channels a lane is a few pixels
-        // and a wash that thin is easy to miss.
-        ctx.globalAlpha = 0.95;
-        ctx.fillRect(x0, top, 3, Math.max(1, Math.ceil(lane)));
+        // and a wash that thin is easy to miss. Opaque, and wider than the
+        // hairline it was: three pixels of a half-transparent accent over a
+        // jet raster is the same colour as the raster about a third of the
+        // time.
+        ctx.globalAlpha = 1;
+        ctx.fillRect(x0, top, PICK_TICK, Math.max(1, Math.ceil(lane)));
       }
     }
 
-    // A firm line where the layer changes: that boundary is the thing being
-    // decided, and a wash of colour alone does not show exactly where it fell.
-    // The boundary line stays unless the wash is off entirely: it is the
-    // thing being decided, and it costs almost no ink.
-    ctx.globalAlpha = alpha > 0 ? 0.85 : 0;
-    ctx.lineWidth = 1;
-    let prev = null;
-    for (let i = 0; i < chans.length; i++) {
-      const id = labelAt(chans[i].number);
-      if (prev !== null && id !== prev) {
-        const reg = regAt(id) || regAt(prev);
-        ctx.strokeStyle = reg ? reg.color : P.accent;
+    /* A firm line where the layer changes: that boundary is the thing being
+       decided, and a wash of colour alone does not show exactly where it
+       fell. The boundary line stays unless the wash is off entirely: it is
+       the thing being decided, and it costs almost no ink.
+
+       Two strokes, not one. The region colours are chosen to be told apart
+       from each other, not to be told apart from a jet colormap -- #33FF57
+       over the green middle of a CSD is invisible, and that is the panel
+       where a boundary is actually read. So the dark rule goes down first
+       and the colour goes on top of it: the dark half is what makes the
+       line findable anywhere on the picture, and the coloured half is what
+       says which boundary it is. */
+    if (alpha > 0) {
+      for (let r = 1; r < runs.length; r++) {  // [0] starts at the top edge,
+        const run = runs[r];                   // which is not a change
+        const reg = regAt(run.id) || regAt(runs[r - 1].id);
+        const y = Math.round(y0 + run.from * lane) + 0.5;
         ctx.beginPath();
-        ctx.moveTo(x0, Math.round(y0 + i * lane) + 0.5);
-        ctx.lineTo(x0 + plotW, Math.round(y0 + i * lane) + 0.5);
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x0 + plotW, y);
+        ctx.globalAlpha = 0.72;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = BOUND_HALO;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = reg ? reg.color : (P.accent || '#4bc7f0');
+        ctx.lineWidth = BOUND_LINE;
         ctx.stroke();
       }
-      prev = id;
+
+      /* And the name, wherever the run is tall enough to hold one.
+
+         The rail decodes the colours in the labelling window. The aid
+         window has no rail -- it is four folded panes in a second window --
+         so without this the CSD carries an answer in a vocabulary that is
+         only written down somewhere else. Skipped on a short run rather
+         than shrunk, because a 6px region name is not a name. */
+      if (plotW >= NAME_MIN_W) {
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = '10.5px system-ui, sans-serif';
+        for (const run of runs) {
+          const reg = regAt(run.id);
+          if (!reg) continue;
+          const hgt = (run.to - run.from + 1) * lane;
+          if (hgt < NAME_MIN_H) continue;
+          const mid = y0 + (run.from + run.to + 1) / 2 * lane;
+          const text = reg.name || reg.id;
+          const tw = ctx.measureText(text).width;
+          const right = x0 + plotW - SPINE_W - 4;
+          ctx.globalAlpha = 0.78;
+          ctx.fillStyle = '#000';
+          ctx.fillRect(right - tw - 5, mid - 8, tw + 8, 16);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = reg.color;
+          ctx.fillText(text, right - 1, mid + 0.5);
+        }
+      }
     }
     ctx.restore();
   }

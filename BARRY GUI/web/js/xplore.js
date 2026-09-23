@@ -7535,6 +7535,17 @@ BARRY.views.xplore = (function () {
     return 'curation:' + sessKey(sess);
   }
 
+  /* Which layer each channel is in, for the windows that are not doing the
+     labelling.
+
+     Its own channel for the same reason curation has one: it changes on a
+     different clock from everything else. A stroke down the rail publishes
+     one of these per channel and none of that should make another window
+     rebuild its bad-channel state. */
+  function strataChannel(sess) {
+    return 'strata:' + sessKey(sess);
+  }
+
   /* The same in-flight coalescing `publishLink` has, and for a sharper
      reason. Curating fires this twice per keystroke -- once for the colour
      that just changed, once from the move onto the next candidate -- and
@@ -7753,6 +7764,88 @@ BARRY.views.xplore = (function () {
     } finally {
       sess._curFetching = false;
     }
+  }
+
+  /* Send the sheet to the other windows, coalesced exactly like the
+     curation pointer above and for the same reason: painting a run down the
+     rail fires one of these per channel, into a six-connection pool that is
+     also holding a 25s long poll. Only the latest sheet is worth anything,
+     so keep that one and send it when the current request lands.
+
+     The whole sheet rather than a pointer to it. A sheet is a channel-to-
+     region map -- 64 short strings -- and the alternative is every other
+     window re-fetching /api/layers on every stroke of a drag. */
+  let strSending = false;
+  let strPending = null;
+
+  async function publishStrata(sess, payload) {
+    if (!sess) return;
+    if (strSending) { strPending = { sess, payload }; return; }
+    strSending = true;
+    try {
+      const res = await apiPost('/api/link', {
+        channel: strataChannel(sess), origin: LINK_ID,
+        value: payload || { off: true },
+      });
+      if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
+    } catch (e) { /* best effort, like the rest of the linking */
+    } finally {
+      strSending = false;
+      const next = strPending;
+      strPending = null;
+      if (next) publishStrata(next.sess, next.payload);
+    }
+  }
+
+  /* The receiving side.
+
+     This is why StrataScope's aid window showed no layers at all. The four
+     panels a boundary is actually read off -- the CSD, the theta CSD, the
+     voltage raster and the stacked time-frequency view -- live in a second
+     window now (strata.js:196), and a second window is a separate PAGE with
+     its own session objects. The overlay is gated on `sess.strata`, nothing
+     was setting it over there, and so the one view built for the job was
+     the one view without the answer on it.
+
+     What it sets is exactly what the read-only look sets when somebody
+     flips the layer switch in a menu (setLayerWash below): `layerView`,
+     `strata` and a wash strength. That is deliberate -- this window is then
+     an ordinary window with the layers turned on, down to the hook that
+     puts the region chip on a lane-less panel, rather than a second way of
+     drawing the same thing. */
+  function adoptStrata(sess, v) {
+    if (!sess) return false;
+    if (!v || v.off || !v.labels) {
+      // Only what we adopted. Somebody may have turned the wash on in this
+      // window by hand, and the labelling window stopping is no reason to
+      // take that away from them.
+      if (!sess._strataFromLink) return false;
+      delete sess._strataFromLink;
+      delete sess.layerView;
+      delete sess.strata;
+      sess.layerWash = 'off';
+      return true;
+    }
+    const sheet = { gid: v.gid, labels: v.labels, regions: v.regions || [] };
+    sess.layerView = sheet;
+    sess.strata = { gid: v.gid, labels: v.labels, regions: sheet.regions,
+                    /* Which channels the other window has selected. The
+                       rail says "rows 30 to 41"; the CSD says whether those
+                       are the rows where the signal changes, and that is
+                       the question this window is open to answer. */
+                    picked: v.picked || [] };
+    sess._strataFromLink = true;
+    /* The strength the labelling window is set to. The aid window is opened
+       with no control strip on it, so there is no other way for it to get
+       one -- and two windows of the same recording disagreeing about how
+       strong the wash is is the thing the shared setting exists to stop. */
+    if (v.wash && layerWashes().some((w) => w.id === v.wash)) {
+      sess.layerWash = v.wash;
+    } else if (layerWash(sess) === 'off') {
+      sess.layerWash = 'clear';
+    }
+    installLayerHook();
+    return true;
   }
 
   async function publishFacts(sess) {
@@ -7977,6 +8070,25 @@ BARRY.views.xplore = (function () {
             if (p2._mini) drawMini(i, p2, sess);
           }
         }
+      }
+    }
+
+    /* The layer sheet, always -- like the facts and the curation above.
+
+       Which layer a channel is in is a fact about the recording, not one
+       window's opinion about how to look at it, and the aid window has no
+       other way to learn it: it is opened with no control strip, so it
+       cannot even be switched on by hand over there. */
+    for (const id of XF.order) {
+      const sess = XF.sessions[id];
+      const slot = channels[strataChannel(sess)];
+      if (!slot || slot.origin === LINK_ID) continue;
+      // Skipped in the window doing the labelling: it owns the sheet and
+      // would otherwise adopt back what it just sent.
+      if (BARRY.strata && BARRY.strata.active) continue;
+      if (adoptStrata(sess, slot.value)) {
+        // A repaint, not a refetch: nothing about the samples changed.
+        repaintLayers(sess);
       }
     }
 
@@ -10181,6 +10293,11 @@ BARRY.views.xplore = (function () {
        web/_dev/evensync.html. */
     publishFacts: (sess) => publishFacts(sess || active()),
     publishCuration: (sess, pointer) => publishCuration(sess, pointer),
+    /* StrataScope's way of telling the other windows what it has. Exposed
+       rather than reached for, because the sheet lives in strata.js and the
+       linking lives here, and neither should have to know the other's
+       internals to say one sentence. */
+    publishStrata: (sess, payload) => publishStrata(sess, payload),
     reopenSameView: (sess) => reopenSameView(sess || active()),
     // Repaint what is already loaded. Curation redraws its overlay on every
     // keystroke; going back to the server for the same samples would make
