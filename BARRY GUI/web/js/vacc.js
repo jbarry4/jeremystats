@@ -188,9 +188,9 @@ BARRY.vacc = (function () {
     box.appendChild(list);
 
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', {
-        class: 'btn ghost', text: scanning ? 'Scanning…' : 'Scan this folder',
-        disabled: scanning ? 'disabled' : null,
+      BARRY.ui.button({
+        kind: 'ghost', text: scanning ? 'Scanning…' : 'Scan this folder',
+        disabled: scanning,
         onclick: () => scan(here.at, true),
       }),
       el('span', { class: 'hint quiet',
@@ -228,9 +228,9 @@ BARRY.vacc = (function () {
 
     if (d.dry && n) {
       box.appendChild(el('div', { class: 'tk-actions' }, [
-        el('button', {
-          class: 'btn', text: 'Add ' + n + ' path(s) to the registry',
-          disabled: scanning ? 'disabled' : null,
+        BARRY.ui.button({
+          kind: 'primary', text: 'Add ' + n + ' path(s) to the registry',
+          disabled: scanning,
           onclick: () => scan(d.root, false),
         }),
         el('span', { class: 'hint quiet',
@@ -448,16 +448,19 @@ BARRY.vacc = (function () {
     ]));
 
     const msg = el('p', { class: 'hint quiet', id: 'vaccSignMsg' });
-    const go = el('button', {
-      class: 'btn', id: 'vaccSignGo',
+    const go = BARRY.ui.button({
+      kind: 'primary', id: 'vaccSignGo',
       text: st.configured ? 'Sign in again' : 'Sign in',
       onclick: () => doSignIn(),
     });
-    b.appendChild(el('div', { class: 'vacc-actions' }, [
+    /* Cancel, then the primary. This dialog had them the other way round --
+       Sign in on the left, Cancel to the right of it -- which is the reverse
+       of every other dialog in the application, and the one place somebody
+       reaches for Cancel without reading. */
+    b.appendChild(BARRY.ui.actions([
+      BARRY.ui.button({ kind: 'ghost', text: 'Cancel', onclick: closeModal }),
       go,
-      el('button', { class: 'btn ghost', text: 'Cancel',
-                     onclick: closeModal }),
-    ]));
+    ], { extra: 'vacc-actions' }));
     b.appendChild(msg);
 
     netid.addEventListener('keydown', (e) => {
@@ -561,8 +564,8 @@ BARRY.vacc = (function () {
           ? el('div', {}, [
               el('p', { class: 'hint',
                 text: 'Nobody is signed in to VACC on this computer.' }),
-              el('button', { class: 'btn', text: 'Sign in to VACC…',
-                             onclick: () => showSignIn() }),
+              BARRY.ui.button({ kind: 'primary', text: 'Sign in to VACC…',
+                                onclick: () => showSignIn() }),
             ])
           : el('div', { class: 'vacc-who' }, [
               el('span', { class: 'hint',
