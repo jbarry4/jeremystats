@@ -43,8 +43,8 @@ unclassed button  |  font 13/400 sans  pad 5/10/5/10  radius 7  border 0  |  but
 unclassed button  |  font 13/550 sans  pad 5/10/5/10  radius 7  border 0  |  button.active.nav-item
 unclassed button  |  font 9.5/400 sans  pad 2/5/2/5  radius 4  border 1  |  button.app-ver
 unclassed button  |  font 9/400 mono  pad 0/5/0/3  radius 999  border 1  |  button.confirmed.probechip.sm button.detected.probechip.sm button.probechip.sm.unknown
-unclassed button  |  font 9/400 mono  pad 1/6/1/6  radius 20  border 1  |  button.exclude.flag-btn button.flag-btn button.flag-btn.good button.flag-btn.review
 unclassed button  |  font 9/400 mono  pad 1/6/1/6  radius 999  border 0  |  button.concat.fixed.flagchip button.concat.fixed.flagchip.safe button.concat.flagchip
+unclassed button  |  font 9/400 mono  pad 1/6/1/6  radius 999  border 1  |  button.exclude.flag-btn button.flag-btn button.flag-btn.good button.flag-btn.review
 
 ## compositions
 div.card  |  h3 p div.card-actions
