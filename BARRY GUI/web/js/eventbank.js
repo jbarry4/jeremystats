@@ -454,7 +454,7 @@ BARRY.views.eventbank = (function () {
       class: 'ver-note-input', rows: '3',
       placeholder: 'e.g. checked against the CSD, moved the GCL up two',
     });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Snapshot this layer sheet' }),
       el('p', { class: 'sub', text: x.session_label || x.gid }),
     ]));
@@ -466,7 +466,7 @@ BARRY.views.eventbank = (function () {
           + 'changes.' }));
     wrap.appendChild(el('div', { class: 'section-label', text: 'What this pass was' }));
     wrap.appendChild(note);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
       el('button', {
@@ -878,7 +878,7 @@ BARRY.views.eventbank = (function () {
 
   function editVersion(e, v) {
     const wrap = el('div', { class: 'modal ver-edit' });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Version ' + v.v }),
       el('p', { class: 'sub', title: BARRY.whenRaw(v.at),
                 text: BARRY.when(v.at, 'minute')
@@ -900,7 +900,7 @@ BARRY.views.eventbank = (function () {
     wrap.appendChild(el('p', { class: 'hint',
       text: 'The counts are not editable \u2014 they are what was banked. '
           + 'An edited note records that it was edited.' }));
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost', text: 'Cancel',
                      onclick: closeModal }),

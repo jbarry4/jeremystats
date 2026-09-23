@@ -80,7 +80,7 @@ async function untilN(fn, tries = 250, gap = 100) {
     const box = dlg.querySelector('.ver-note-input');
     box.value = note;
     box.dispatchEvent(new W.Event('input', { bubbles: true }));
-    const go = Array.from(dlg.querySelectorAll('.modal-foot button'))
+    const go = Array.from(dlg.querySelectorAll('.mf button'))
       .find((b) => /^Bank/.test(b.textContent));
     const title = dlg.querySelector('h2').textContent;
     go.click();

@@ -356,7 +356,7 @@ BARRY.tour = (function () {
        that had not changed. Now Next performs the step if it has one, and
        there is nothing to get out of step with. */
     const nextBtn = el('button', {
-      class: 'btn primary sm',
+      class: 'btn sm',
       text: last ? 'Finish' : 'Next',
       onclick: async () => {
         if (advancing) return;

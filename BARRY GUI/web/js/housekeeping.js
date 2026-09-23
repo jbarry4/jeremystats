@@ -1499,7 +1499,7 @@ BARRY.views.housekeeping = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
         el('button', {
-          class: 'btn primary', text: 'Merge',
+          class: 'btn', text: 'Merge',
           onclick: async () => {
             try {
               await apiPost('/api/registry/merge',

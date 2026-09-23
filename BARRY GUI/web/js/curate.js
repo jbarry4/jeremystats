@@ -1071,7 +1071,7 @@ BARRY.curate = (function () {
       ]) : null;
     }).filter(Boolean);
 
-    showModal(el('div', { class: 'rcpt-wrap' }, [
+    showModal(el('div', { class: 'modal rcpt-wrap' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Session receipt' }),
         el('span', { class: 'sub', text: r.session || r.name || gid }),
@@ -1187,7 +1187,7 @@ BARRY.curate = (function () {
       const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
 
       const wrap = el('div', { class: 'modal bank-dialog' });
-      wrap.appendChild(el('div', { class: 'modal-head' }, [
+      wrap.appendChild(el('div', { class: 'mh' }, [
         el('h2', { text: vs.length ? 'Bank this as version ' + next
                                    : 'Bank this set' }),
         el('p', { class: 'sub', text: (at && at.name) || '' }),
@@ -1277,7 +1277,7 @@ BARRY.curate = (function () {
         closeModal();
         resolve(val);
       };
-      wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      wrap.appendChild(el('div', { class: 'mf' }, [
         el('div', { style: 'flex:1' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: () => done(null) }),
@@ -1308,7 +1308,7 @@ BARRY.curate = (function () {
       tally[k] = (tally[k] || 0) + 1;
     }
 
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Everything in this set' }),
       el('p', { class: 'sub',
                 text: events().length + ' candidates  \u00b7  '
@@ -1459,7 +1459,7 @@ BARRY.curate = (function () {
     wrap.appendChild(controls);
     wrap.appendChild(chips);
     wrap.appendChild(rowsHost);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
     ]));

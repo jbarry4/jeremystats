@@ -57,10 +57,35 @@ PREFIXES = ("fb-", "hk-", "sb-", "sb-h-", "sb-mini-", "fold-", "unfold-")
 STATE = {"js", "hidden", "on", "off", "active", "now", "done", "sel",
          "none", "dragging", "collapsed"}
 
+# Elements whose only class matches no rule, checked by hand and correct as
+# they are: each inherits everything it needs from a styled parent, and the
+# class is there to name the part rather than to paint it. Static analysis
+# cannot see "the parent is a grid and this is one of its cells", so they
+# are listed rather than guessed at.
+#
+# Anything NOT in here with no styling is a real fault. Keep the list short
+# and say why, or it becomes the place faults go to be forgotten.
+FINE_BARE = {
+    "gh-sess":     "a cell of the .gh-row grid; the recording name is "
+                   "deliberately the plain text colour beside the coloured "
+                   "rank, time and author",
+    "rl-name":     "sits beside .rcpt-lab .rl-n, which is scoped through "
+                   "its parent; the name takes the inherited body style",
+    "sid":         "inside .bank-sess, which sets the mono face, the size "
+                   "and the colour for the whole row",
+    "vacc-browse": "a bare wrapper around crumbs and a file list that are "
+                   "styled themselves; it has no appearance of its own",
+}
+
 
 def applied():
-    """Every class literal the markup applies, with where it came from."""
+    """Every class literal the markup applies, with where it came from.
+
+    Returns (tokens, strings): the individual class names, and the whole
+    `class` attributes they came from. Both are needed -- see main().
+    """
     out = {}
+    strings = []
 
     def add(name, where):
         if not name or name in STATE or name in PREFIXES:
@@ -84,6 +109,7 @@ def applied():
             for m in re.finditer(r"class:\s*'([^']*)'", src):
                 for c in m.group(1).split():
                     add(c, fn)
+                strings.append((m.group(1), fn))
             for m in re.finditer(
                     r"classList\.(?:add|remove|toggle)\('([^']*)'", src):
                 add(m.group(1), fn)
@@ -95,7 +121,8 @@ def applied():
         for m in re.finditer(r'class="([^"]*)"', src):
             for c in m.group(1).split():
                 add(c, fn)
-    return out
+            strings.append((m.group(1), fn))
+    return out, strings
 
 
 def styled():
@@ -153,40 +180,76 @@ def queried():
     return found
 
 
+
+
 def main():
     quiet = "--quiet" in sys.argv[1:]
-    use, have, asked = applied(), styled(), queried()
-    dead = sorted((c, sorted(w)) for c, w in use.items() if c not in have)
-    inert = [(c, w) for c, w in dead if c not in asked]
-    hooks = [(c, w) for c, w in dead if c in asked]
+    (use, strings), have, asked = applied(), styled(), queried()
 
-    if not dead:
+    def real(text):
+        return [t for t in text.split()
+                if t not in STATE
+                and re.fullmatch(r"[a-z][a-z0-9-]*[a-z0-9]", t)]
+
+    # A NAKED ELEMENT: every class on it is unmatched, so nothing anywhere
+    # gives it a rule. This is the fault worth failing on. `.spinner` is
+    # one -- X-ray's loading card really does render an empty div.
+    naked = {}
+    for text, where in strings:
+        toks = real(text)
+        if toks and not any(t in have for t in toks):
+            if any(t in asked for t in toks):
+                continue            # a handle, not a styling fault
+            if any(t in FINE_BARE for t in toks):
+                continue            # checked by hand; see the note there
+            naked.setdefault(text, set()).add(where)
+
+    in_naked = set()
+    for text in naked:
+        in_naked.update(real(text))
+
+    # A LABEL: the element IS styled, by a base class, and carries an extra
+    # name no rule matches -- `card br-plan`, `flagchip hemi`, `mini pane-x`.
+    # That is a note saying which card this is, not a control failing to
+    # look like anything. Reported, never failed: deleting twenty of these
+    # to quiet a checker would throw away the only thing naming them, and
+    # they are where a future rule would attach.
+    label = sorted(c for c in use if c not in have and c not in asked
+                   and c not in in_naked)
+    hooks = sorted(c for c in use if c not in have and c in asked)
+
+    def aside(n, what, names):
+        print("\n%d %s:\n  %s"
+              % (n, what, "  ".join("." + c for c in names)))
+
+    if not naked:
         if not quiet:
-            print("%d classes applied, every one of them styled." % len(use))
+            print("No naked elements: every element the markup builds is "
+                  "styled by at least one of its classes.")
+            if label:
+                aside(len(label), "unstyled labels on styled elements "
+                      "(fine -- they name nothing a rule can find)", label)
+            if hooks:
+                aside(len(hooks), "unstyled classes used as selector "
+                      "handles", hooks)
         return 0
 
     if not quiet:
-        print("%d of %d applied classes have no rule.\n" % (len(dead), len(use)))
-        if inert:
-            print("UNSTYLED AND UNUSED -- nothing styles these and nothing "
-                  "looks for them:\n")
-            for name, where in inert:
-                print("  %-22s %s" % ("." + name, " ".join(where)))
-            print("\n  Each is a control asking to look a certain way and "
-                  "not doing it.\n  Give it the rule it wants, point it at "
-                  "the rule that already exists,\n  or take the class off.")
+        print("%d element(s) with no styling at all -- every class on them "
+              "is unmatched:\n" % len(naked))
+        for text, where in sorted(naked.items()):
+            print('  %-32s %s' % ('class="' + text + '"',
+                                  " ".join(sorted(where))))
+        print("\n  Each is an element asking to look a certain way and not "
+              "doing it.\n  Give it the rule it wants, point it at one that "
+              "already exists,\n  or take the class off.")
+        if label:
+            aside(len(label), "unstyled labels on styled elements "
+                  "(not a fault)", label)
         if hooks:
-            print("\nUNSTYLED BUT USED AS A HANDLE -- something selects on "
-                  "these, so\nremoving one is a behaviour change, not a "
-                  "styling one. Not counted\nas a fault; listed so a real "
-                  "one cannot hide among them:\n")
-            for name, where in hooks:
-                print("  %-22s %s" % ("." + name, " ".join(where)))
-    # Only the inert ones fail. A class that exists purely so something can
-    # find the element is doing its job without a rule, and treating it as a
-    # fault would mean this check could never reach zero -- and a check that
-    # never reaches zero is one nobody reads.
-    return 1 if inert else 0
+            aside(len(hooks), "unstyled classes used as selector handles "
+                  "(not a fault)", hooks)
+    return 1
 
 
 if __name__ == "__main__":

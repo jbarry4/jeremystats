@@ -675,7 +675,7 @@ BARRY.braces = (function () {
          than one that waits. */
       const ready = !!(plan && plan.ok);
       go.appendChild(el('button', {
-        class: 'btn primary', text: 'Line them up',
+        class: 'btn', text: 'Line them up',
         disabled: ready ? null : 'disabled',
         title: ready ? '' : 'This set cannot be read here',
         onclick: run,
@@ -1050,7 +1050,7 @@ BARRY.braces = (function () {
       }));
     } else {
       bar.appendChild(el('button', {
-        class: 'btn primary', disabled: n ? null : 'disabled',
+        class: 'btn', disabled: n ? null : 'disabled',
         text: 'Align ' + n + ' set' + (n === 1 ? '' : 's'),
         onclick: runBulk,
       }));
@@ -1752,7 +1752,7 @@ BARRY.braces = (function () {
       return Math.abs(to - r.was) > 1e-9;
     }).length;
     bar.appendChild(el('button', {
-      class: 'btn primary',
+      class: 'btn',
       disabled: moves ? null : 'disabled',
       text: moves ? 'Bank it as ' + nextV + '…' : 'Nothing to bank',
       title: moves
@@ -2495,7 +2495,7 @@ BARRY.braces = (function () {
     }
 
     const wrap = el('div', { class: 'modal cur-list-modal' });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Every stamp in this alignment' }),
       el('p', { class: 'sub',
                 text: rows.length + ' stamps  \u00b7  '
@@ -2633,7 +2633,7 @@ BARRY.braces = (function () {
     wrap.appendChild(controls);
     wrap.appendChild(chips);
     wrap.appendChild(rowsHost);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn', text: 'Close',
                      onclick: () => { view.list = false; closeModal();
@@ -3348,7 +3348,7 @@ BARRY.braces = (function () {
         + 'nothing.' }));
     }
     card.appendChild(el('div', { class: 'br-bench-bar' }, [
-      el('button', { class: 'btn primary sm', text: 'Confirm',
+      el('button', { class: 'btn sm', text: 'Confirm',
                      onclick: () => answer('confirm') }),
       el('button', { class: 'btn ghost sm', text: 'Keep it where it was',
                      onclick: () => answer('keep') }),
