@@ -121,26 +121,72 @@ def styled():
     return set(re.findall(r"\.([A-Za-z_][\w-]*)", css))
 
 
+def queried():
+    """Classes some selector looks things up by.
+
+    An unstyled class is not automatically deletable. It may be a handle --
+    `querySelector('.held-acts')`, a harness reaching in to assert on
+    something, a `closest()` test. Removing one of those turns a styling
+    tidy-up into a behaviour change, and the CSS baseline cannot see it
+    because there was never any CSS.
+
+    So the two questions are asked separately: does a rule match it, and
+    does anything look for it. Only a class that answers no to both is inert.
+    """
+    found = set()
+    roots = [os.path.join(WEB, "js"), os.path.join(WEB, "_dev")]
+    for root in roots:
+        for here, _dirs, files in os.walk(root):
+            for fn in sorted(files):
+                if not fn.endswith((".js", ".html")):
+                    continue
+                with open(os.path.join(here, fn), encoding="utf-8",
+                          errors="replace") as fh:
+                    src = fh.read()
+                # Anything that looks like a class selector inside a string:
+                # querySelector, closest, matches, and the harnesses' own.
+                for m in re.finditer(
+                        r"""(?:querySelector(?:All)?|closest|matches)\s*\(\s*"""
+                        r"""['"`]([^'"`]+)['"`]""", src):
+                    for c in re.findall(r"\.([A-Za-z_][\w-]*)", m.group(1)):
+                        found.add(c)
+    return found
+
+
 def main():
     quiet = "--quiet" in sys.argv[1:]
-    use, have = applied(), styled()
+    use, have, asked = applied(), styled(), queried()
     dead = sorted((c, sorted(w)) for c, w in use.items() if c not in have)
+    inert = [(c, w) for c, w in dead if c not in asked]
+    hooks = [(c, w) for c, w in dead if c in asked]
 
     if not dead:
         if not quiet:
-            print("%d classes applied, every one of them styled."
-                  % len(use))
+            print("%d classes applied, every one of them styled." % len(use))
         return 0
 
     if not quiet:
-        print("%d of %d applied classes have no rule in app.css:\n"
-              % (len(dead), len(use)))
-        for name, where in dead:
-            print("  %-22s %s" % ("." + name, " ".join(where)))
-        print("\nEach is a control asking to look a certain way and not "
-              "doing it.\nGive it the rule it wants, point it at the rule "
-              "that already exists,\nor take the class off.")
-    return 1
+        print("%d of %d applied classes have no rule.\n" % (len(dead), len(use)))
+        if inert:
+            print("UNSTYLED AND UNUSED -- nothing styles these and nothing "
+                  "looks for them:\n")
+            for name, where in inert:
+                print("  %-22s %s" % ("." + name, " ".join(where)))
+            print("\n  Each is a control asking to look a certain way and "
+                  "not doing it.\n  Give it the rule it wants, point it at "
+                  "the rule that already exists,\n  or take the class off.")
+        if hooks:
+            print("\nUNSTYLED BUT USED AS A HANDLE -- something selects on "
+                  "these, so\nremoving one is a behaviour change, not a "
+                  "styling one. Not counted\nas a fault; listed so a real "
+                  "one cannot hide among them:\n")
+            for name, where in hooks:
+                print("  %-22s %s" % ("." + name, " ".join(where)))
+    # Only the inert ones fail. A class that exists purely so something can
+    # find the element is doing its job without a rule, and treating it as a
+    # fault would mean this check could never reach zero -- and a check that
+    # never reaches zero is one nobody reads.
+    return 1 if inert else 0
 
 
 if __name__ == "__main__":

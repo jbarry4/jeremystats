@@ -744,19 +744,43 @@ BARRY GUI/
     index.html  app.css
     js/core.js         shared state, API, routing, log dock
     js/features.js     preferences, command palette, shared dialogs
-    js/{pipeline,explorer,xplore,sessions,logs,misc}.js
-    js/{eventimport,figure,results,storyboard,eventbank,activity}.js
-    _dev/              four harnesses that drive the real UI in an iframe
+    js/{pipeline,explorer,xplore,sessions,logs,misc}.js      the views
+    js/{eventimport,figure,figrebuild,results,storyboard,eventbank,activity}.js
+    js/toolkit.js      the tool menu, Event curation and StrataScope
+    js/{incisor,curate,braces,dspca}.js      The Dentist, steps 1 to 4
+    js/{comod,cfcguide,cfcscope,spectrum,panorama,strata}.js the analysis tools
+    js/{vacc,vaccfx,kilosort,housekeeping,hk_views}.js
+    js/{radio,tour,tourmodules,toolfeed}.js
+    _dev/              159 harnesses that drive the real UI in an iframe
+    _dev/baseline/     the UI's measured shape, to diff a refactor against
+    GUI-CONSTITUTION.md  how new interface is built
   Output/                       everything exported, grouped by session
   GUI_logs/                     the sync store
 ```
 
 ### Tests
 
-There is no framework and nothing to install. `web/_dev/` holds four pages
-that drive the live interface in an iframe and report what they find — 66
-assertions across all nine sections, plus a channel-alignment measurement and a
-listener-leak count. See `web/_dev/README.md`.
+There is no framework and nothing to install. `web/_dev/` holds 159 pages that
+drive the live interface in an iframe and report what they find — behaviour
+harnesses, geometry measurements, a listener-leak count, and pose pages that
+open one state and hold it for a screenshot. See `web/_dev/README.md`.
+
+```
+python tools/harness_run.py            every harness
+python tools/harness_run.py motion     just the ones whose names match
+python tools/check_classes.py          classes the markup applies that no rule matches
+python tools/ui_baseline.py            diff the UI's measured shape against the stored baseline
+```
+
+Run them from **PowerShell**. Measured: under a bash shell Edge's
+`--dump-dom` writes nothing on this machine, so every harness reports zero
+checks and the whole suite reads as a clean sweep.
+
+### Building new interface
+
+`web/GUI-CONSTITUTION.md` is the rulebook — where buttons go, which loader to
+use, what the theme rules are, which words to use, and the checks that enforce
+the parts a machine can check. Read it before adding a view or a tool.
 
 ## Notes
 
