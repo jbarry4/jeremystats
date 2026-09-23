@@ -415,15 +415,14 @@ BARRY.braces = (function () {
   function pickView() {
     const box = el('div', { class: 'br-wrap' });
 
-    box.appendChild(el('div', { class: 'card br-intro' }, [
-      el('div', { class: 'section-label',
-                  text: 'Braces · step 3 of The Dentist' }),
-      el('p', { class: 'hint', text:
-        'Every stamp onto the peak it belongs to. A ±100 ms window, the '
-        + 'DS-filtered magnitude, and one peak per stamp — so a spike '
-        + 'that drifted early is not corrected by stealing the next '
-        + 'one’s. Nothing is written until you accept it.' }),
-    ]));
+    box.appendChild(BARRY.ui.stepHeader({
+      title: 'Braces',
+      step: 'step 3 of The Dentist',
+      blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
+           + 'DS-filtered magnitude, and one peak per stamp — so a spike '
+           + 'that drifted early is not corrected by stealing the next '
+           + 'one’s. Nothing is written until you accept it.',
+    }));
 
     if (!cands) {
       box.appendChild(el('div', { class: 'card', text: 'Reading the bank…' }));

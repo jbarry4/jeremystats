@@ -209,6 +209,41 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('the channel control is still a hit target',
         parseFloat(cs(ctlChan).minWidth) >= 26, cs(ctlChan).minWidth);
 
+  head('the tool header Braces and X-ray now share');
+
+  const h1 = via(ui.stepHeader({ title: 'Braces', step: 'step 3 of The Dentist',
+                                 blurb: 'Every stamp onto the peak it belongs to.' }));
+  const h2 = via(ui.stepHeader({ title: 'X-ray', step: 'step 4 of The Dentist',
+                                 blurb: 'Which kind of dentate spike each one is.' }));
+  const print = (n) => Array.from(n.children)
+    .map((k) => k.tagName.toLowerCase() + '.' + (k.className || '')).join(' ');
+  check('the two steps are built the same way', print(h1) === print(h2),
+        print(h1) + '  vs  ' + print(h2));
+  check('and measure the same', shape(h1) === shape(h2));
+  check('the title is mixed case, not shouted',
+        W().getComputedStyle(h1.querySelector('strong')).textTransform === 'none',
+        W().getComputedStyle(h1.querySelector('strong')).textTransform);
+  check('the step is a chip beside the title, not part of it',
+        !!h1.querySelector('.step-n')
+        && !/step 3/.test(h1.querySelector('strong').textContent));
+  check('a tool with no bundle gets no chip',
+        !ui.stepHeader({ title: 'Panorama', blurb: 'x' }).querySelector('.step-n'));
+
+  head('a labelled control');
+  const fld = via(ui.field({ label: 'Recording',
+                             control: D().createElement('select'),
+                             hint: 'which one to read' }));
+  check('the label is the house one',
+        !!fld.querySelector('.section-label'));
+  check('the label opening a field has no top margin',
+        W().getComputedStyle(fld.querySelector('.section-label')).marginTop
+          === '0px',
+        W().getComputedStyle(fld.querySelector('.section-label')).marginTop);
+  const inl = via(ui.field({ label: 'Set', control: D().createElement('select'),
+                             inline: true }));
+  check('inline puts the label beside the control',
+        W().getComputedStyle(inl).display === 'flex');
+
   head('the rest');
   const acts = via(ui.actions([ui.button({ text: 'a' }), null, false,
                                ui.button({ text: 'b' })]));

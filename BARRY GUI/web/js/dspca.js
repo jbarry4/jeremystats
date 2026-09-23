@@ -797,13 +797,12 @@ BARRY.dspca = (function () {
   }
 
   function intro() {
-    return el('div', { class: 'dp-intro' }, [
-      el('strong', { text: 'X-ray' }),
-      el('span', { class: 'dp-step', text: 'step 4 of The Dentist' }),
-      el('span', { class: 'hint', text:
-        'Which kind of dentate spike each one is — drag a box on the '
-        + 'CSD to choose the depth and time the features come from.' }),
-    ]);
+    return BARRY.ui.stepHeader({
+      title: 'X-ray',
+      step: 'step 4 of The Dentist',
+      blurb: 'Which kind of dentate spike each one is — drag a box on the '
+           + 'CSD to choose the depth and time the features come from.',
+    });
   }
 
   function loading(what) {

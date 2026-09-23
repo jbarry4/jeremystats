@@ -1672,6 +1672,39 @@ code { font-family: var(--mono); }
   color: var(--text-3); margin: 0 0 10px; font-weight: 600;
 }
 * + .section-label { margin-top: 22px; }
+
+/* ---------- a tool's header, and a labelled control -----------------------
+
+   One shape each, for two things that had thirteen and six. See
+   GUI-CONSTITUTION.md section 6 and `BARRY.ui.stepHeader` / `.field`.
+
+   The title is mixed case and unboxed, because `.tk-head` and `.view-head`
+   -- the two headers that were already shared -- are both a mixed-case title
+   with its subtitle beside it, and neither is in a card. The step is a chip
+   rather than part of the title: a title says what the tool is, and "step 3
+   of The Dentist" is a different fact about it. */
+.step-head {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: var(--sp-8); padding: 2px 0 var(--sp-6);
+}
+.step-head strong { font-size: var(--fs-14); flex: none; }
+.step-head .step-n {
+  font-size: var(--fs-105); color: var(--text-3);
+  border: 1px solid var(--line); border-radius: 9px; padding: 0 7px;
+  flex: none; white-space: nowrap;
+}
+/* The blurb takes the rest of the line and wraps under on a narrow panel,
+   rather than pushing the chip off the end. */
+.step-head .hint { flex: 1 1 320px; margin: 0; max-width: 78ch; }
+
+.ui-field { min-width: 0; }
+.ui-field > .hint { margin: 4px 0 0; }
+/* Label beside the control rather than above it, for a control too short to
+   deserve a line of its own. The label stops shouting at that size. */
+.ui-field.inline {
+  display: flex; align-items: baseline; gap: var(--sp-8); flex-wrap: wrap;
+}
+.ui-field.inline > .section-label { margin: 0; flex: none; }
 .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-10); }
 .param {
   padding: 10px 12px; background: var(--bg-2);
@@ -8781,7 +8814,6 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    Braces
    ========================================================================== */
 .br-wrap { display: flex; flex-direction: column; gap: var(--sp-12); }
-.br-intro p { margin: 6px 0 0; }
 .br-empty strong { display: block; margin-bottom: 6px; }
 .br-set { width: 100%; }
 .br-warn { color: var(--warn); }
@@ -9273,7 +9305,6 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 }
 .dp-spacer { flex: 1 1 auto; min-height: 4px; }
 
-.dp-intro > p { max-width: 78ch; }
 .dp-load { display: flex; align-items: center; gap: var(--sp-10); }
 .dp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
 .dp-choose select { min-width: 180px; }
@@ -9458,15 +9489,6 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
    under each of four rules. In a 230px column that is most of the column,
    and none of it is the question being asked. The explanations moved into
    `title` attributes; what is on screen is the state. */
-.dp-intro {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-8);
-  padding: 2px 0 6px;
-}
-.dp-step {
-  font-size: var(--fs-105); color: var(--text-3);
-  border: 1px solid var(--line); border-radius: 9px; padding: 0 7px;
-}
-.dp-intro .hint { flex: 1 1 320px; }
 
 /* The whole question, over the columns that set it. Also what lands in a
    screenshot of the panel, which is the other reason it is one line. */

@@ -214,7 +214,63 @@ BARRY.ui = (function () {
               [].concat(chips || []).filter(Boolean));
   }
 
+  /* ---------- a tool's header ---------- */
+
+  /* The composition the shape audit could not see.
+
+     Two adjacent steps of one bundle had two unrelated headers. Braces built
+     `.card.br-intro` › `.section-label` + `p.hint` -- ALL CAPS, boxed in a
+     card, the step number buried in the title text as "Braces · step 3 of
+     The Dentist". X-ray built `.dp-intro` › `strong` + `.dp-step` pill +
+     `.hint` -- mixed case, unboxed, the step in a chip of its own. Both
+     measured fine. They just were not the same thing.
+
+     Across the application there were thirteen bespoke tool headers using
+     four alignments, seven gaps, three title elements and three subtitle
+     classes between them.
+
+     This is X-ray's shape, formalised, because it is the one already closest
+     to the house: `.tk-head` and `.view-head` are both a mixed-case title
+     with a subtitle beside or under it, and neither is boxed. The step
+     belongs in a chip rather than in the title -- a title should say what the
+     tool is, and "· step 3 of The Dentist" is a different fact about it.
+
+     `step` is optional: a tool that is not part of a bundle just omits it. */
+  function stepHeader(o) {
+    const opt = o || {};
+    return el('div', { class: 'step-head' }, [
+      el('strong', { text: opt.title }),
+      opt.step ? el('span', { class: 'step-n', text: opt.step }) : null,
+      opt.blurb ? el('p', { class: 'hint', text: opt.blurb }) : null,
+    ].filter(Boolean));
+  }
+
+  /* ---------- a labelled control ---------- */
+
+  /* Six primitives did this job: `.section-label`, `.field label`,
+     `.dp-lab`, `.ctl > label`, `.mini-field` and `.vacc-field`, plus
+     `.wiz-grid .field label` un-uppercasing some of them.
+
+     `.section-label` is the one that wins on merit and on usage -- 164 uses
+     across 25 files -- so this is that, with the control under it and the
+     hint under that. `inline: true` puts the label beside a short control
+     instead, which is the one variation that is about the control rather
+     than about somebody's taste. */
+  function field(o) {
+    const opt = o || {};
+    return el('div', {
+      class: 'ui-field' + (opt.inline ? ' inline' : '')
+             + (opt.extra ? ' ' + opt.extra : ''),
+    }, [
+      el('div', { class: 'section-label', text: opt.label }),
+      opt.control,
+      opt.hint ? el('p', { class: 'hint', text: opt.hint }) : null,
+    ].filter(Boolean));
+  }
+
   return {
+    stepHeader: stepHeader,
+    field: field,
     button: button,
     searchField: searchField,
     magnifier: magnifier,

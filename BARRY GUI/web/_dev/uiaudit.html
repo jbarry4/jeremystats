@@ -54,7 +54,8 @@
                         is the check that catches that family.
      compositions       the same class must not have two different internal
                         shapes (`.cur-set` did), and two classes must not
-                        have the same one (`.br-intro` and `.dp-intro` do).
+                        have the same one (`.br-intro` and `.dp-intro` did, until they became
+                        one `.step-head`).
      the named claims   the specific findings, asserted individually so a
                         fix can be seen landing.
 */
@@ -232,8 +233,8 @@ function walk(pass, root, win) {
   /* Compositions, once -- they do not change with width. */
   if (pass === PASSES[0][0] + 'x' + PASSES[0][1]) {
     root.querySelectorAll(
-      '.card, .cur-set, .tk-head, .view-head, .sec-head, .br-intro, '
-      + '.dp-intro, .modal, .empty-state'
+      '.card, .cur-set, .tk-head, .view-head, .sec-head, .step-head, '
+      + '.modal, .empty-state'
     ).forEach((n) => {
       if (counted.has(n)) return;
       counted.add(n);

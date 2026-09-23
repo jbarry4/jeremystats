@@ -90,8 +90,12 @@ const NL = String.fromCharCode(10);
     .find((b) => /X-ray/.test(b.textContent));
   ok('the fourth step is clickable', !!btn);
   if (btn) btn.click();
-  await until(() => D().querySelector('.dp-intro'), 10000, 'the panel');
-  ok('it opens its own panel', !!D().querySelector('.dp-intro'));
+  /* `.step-head` is shared with Braces now, so the check is the header
+     that says X-ray rather than the presence of any header. */
+  const xrayHead = () => Array.from(D().querySelectorAll('.step-head'))
+    .find((h) => /X-ray/.test(h.textContent));
+  await until(xrayHead, 10000, 'the panel');
+  ok('it opens its own panel', !!xrayHead());
   ok('and the bad-channel scope card is not over it',
      !D().querySelector('#tkMain .tk-scope'));
 
@@ -482,7 +486,7 @@ const NL = String.fromCharCode(10);
        !ev('BARRY.views.xplore.channelLines()')
           .some((l) => l.label === 'check'));
     ev('setView("toolkit")');
-    await until(() => D().querySelector('.dp-intro'), 8000, 'the panel back');
+    await until(xrayHead, 8000, 'the panel back');
   }
 
   ev('BARRY.dspca._dropGuide(' + JSON.stringify(hil.id) + ')');
