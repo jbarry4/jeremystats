@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:05:45.169673+00:00",
+    "gid": "2026-09-18T19:05:45.169673+00:00",
+    "group": "2026-09-18T19:05:45.169673+00:00",
+    "key": "2026-09-18T19:05:45.169673+00:00",
+    "label": "2026-09-18T19:05:45.169673+00:00",
+    "loose_key": "2026-09-18T19:05:45.169673+00:00",
+    "mouse": "2026-09-18T19:05:45.169673+00:00",
+    "project": "2026-09-18T19:05:45.169673+00:00",
+    "project_source": "2026-09-18T19:05:45.169673+00:00",
+    "retired": "2026-09-18T19:05:45.169673+00:00",
+    "schema": "2026-09-18T19:05:45.169673+00:00",
+    "session": "2026-09-18T19:05:45.169673+00:00",
+    "start": "2026-09-18T19:05:45.169673+00:00",
+    "updated": "2026-09-18T19:08:01.147885+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\het\\KCNT1M22_het\\kcnt1M22s2jun2\\2023-06-02_16-17-49": [
+        "set",
+        "2026-09-18T19:08:01.147885+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:08:01.147885+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:05:45-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "sf7ad23f6940b",
+  "group": null,
+  "key": "m022_s002_2023-06-02_16-17-49",
+  "label": "KCNT1 m22 s2 2023-06-02",
+  "loose_key": "m022_s002",
+  "mouse": 22,
+  "paths": [
+    "D:\\KCNT1\\urethane\\het\\KCNT1M22_het\\kcnt1M22s2jun2\\2023-06-02_16-17-49"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2023-06-02T20:17:49+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:08:01-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

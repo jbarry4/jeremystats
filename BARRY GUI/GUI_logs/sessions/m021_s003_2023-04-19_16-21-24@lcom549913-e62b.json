@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:05:07.195667+00:00",
+    "gid": "2026-09-18T19:05:07.195667+00:00",
+    "group": "2026-09-18T19:05:07.195667+00:00",
+    "key": "2026-09-18T19:05:07.195667+00:00",
+    "label": "2026-09-18T19:05:07.195667+00:00",
+    "loose_key": "2026-09-18T19:05:07.195667+00:00",
+    "mouse": "2026-09-18T19:05:07.195667+00:00",
+    "project": "2026-09-18T19:05:07.195667+00:00",
+    "project_source": "2026-09-18T19:05:07.195667+00:00",
+    "retired": "2026-09-18T19:05:07.195667+00:00",
+    "schema": "2026-09-18T19:05:07.195667+00:00",
+    "session": "2026-09-18T19:05:07.195667+00:00",
+    "start": "2026-09-18T19:05:07.195667+00:00",
+    "updated": "2026-09-18T19:06:24.029057+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\het\\KCNT1M21_opto2_het\\KCNT1M21s3apr19\\2023-04-19_16-21-24": [
+        "set",
+        "2026-09-18T19:06:24.029057+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:06:24.029057+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:05:07-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s5064388bb92e",
+  "group": null,
+  "key": "m021_s003_2023-04-19_16-21-24",
+  "label": "KCNT1 m21 s3 2023-04-19",
+  "loose_key": "m021_s003",
+  "mouse": 21,
+  "paths": [
+    "D:\\KCNT1\\urethane\\het\\KCNT1M21_opto2_het\\KCNT1M21s3apr19\\2023-04-19_16-21-24"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2023-04-19T20:21:24+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:06:24-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

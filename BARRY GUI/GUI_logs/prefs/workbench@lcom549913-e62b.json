@@ -1,10 +1,12 @@
 {
   "_at": {
+    "curate_span": "2026-09-17T19:46:07.441482+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
-    "radio": "2026-09-11T18:37:26.887148+00:00",
+    "radio": "2026-09-16T16:46:56.784774+00:00",
     "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
-    "updated": "2026-09-14T15:19:38.299451+00:00"
+    "result_group": "2026-09-16T16:47:27.723505+00:00",
+    "updated": "2026-09-18T18:23:40.965197+00:00"
   },
   "_keys": {
     "themes": {
@@ -14,7 +16,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-11T15:43:57.077537+00:00"
+        "2026-09-14T14:16:13.956005+00:00"
       ],
       "Home": [
         "set",
@@ -22,15 +24,26 @@
       ],
       "LCOM549913": [
         "set",
-        "2026-09-08T17:53:47.145828+00:00"
+        "2026-09-18T18:09:34.331137+00:00"
+      ]
+    },
+    "vacc": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-17T17:29:56.492043+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-09-18T18:07:09.210843+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T15:19:38.299451+00:00",
+    "at": "2026-09-18T18:23:40.965197+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
+  "curate_span": 1,
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
@@ -39,7 +52,7 @@
   "radio": {
     "agreed": true,
     "small": true,
-    "station": "rFZHOHl-L8A",
+    "station": "4xDzrJKXOOY",
     "volume": 55
   },
   "recent_scripts": [
@@ -56,11 +69,16 @@
     "IED/03_IED_Detection/Analyze_MatFile_Start.m",
     "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
   ],
+  "result_group": "",
   "themes": {
     "BarryLab": "horizon-night",
     "DESKTOP-4H65AI7": "jirai-yami",
     "Home": "dark",
-    "LCOM549913": "dark"
+    "LCOM549913": "light"
   },
-  "updated": "2026-09-14T11:19:38-04:00"
+  "updated": "2026-09-18T14:23:40-04:00",
+  "vacc": {
+    "DESKTOP-4H65AI7": true,
+    "LCOM549913": true
+  }
 }
