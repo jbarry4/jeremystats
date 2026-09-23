@@ -630,17 +630,42 @@ BARRY.dspca = (function () {
         el('i', { style: 'width:'
                   + (100 * (st.of ? (st.done || 0) / st.of : 0)).toFixed(1)
                   + '%' })]));
+      /* A SET THAT IS DONE CAN BE OPENED WHILE THE REST RUN.
+
+         The read is the expensive half and it is finished for that one;
+         nothing about the others is in its way. The queue used to be a
+         plain table, so the answer to "this one is done, let me look at
+         it" was to wait for the whole batch -- which on a cohort is the
+         difference between a coffee and an afternoon. The same thing
+         Braces does with the proposals it files as they land.
+
+         The batch keeps running. Opening a set only changes what this
+         panel is showing; the job is on the server and the poll below
+         does not stop, which is why the switch above keeps reporting it. */
       kids.push(el('table', { class: 'tbl dp-bulk' }, [
-        el('tbody', {}, (bulk.job.members || []).map((m) => el('tr', {
-          class: m.status === 'error' ? 'bad' : null,
-        }, [
-          el('td', { text: m.label }),
-          el('td', { text: m.cached ? 'already read'
-                           : m.status === 'running'
-                             ? (m.of ? m.done + ' / ' + m.of : 'reading\u2026')
-                             : m.status }),
-          el('td', { class: 'dim', text: m.error || '' }),
-        ]))),
+        el('tbody', {}, (bulk.job.members || []).map((m) => {
+          const ready = m.status === 'done';
+          return el('tr', {
+            class: m.status === 'error' ? 'bad' : (ready ? 'ready' : null),
+          }, [
+            el('td', {}, [
+              ready
+                ? el('button', {
+                    class: 'mini', text: m.label,
+                    title: 'Open this one now. The rest of the batch keeps '
+                         + 'reading.',
+                    onclick: () => openRead(m.id),
+                  })
+                : el('span', { text: m.label }),
+            ]),
+            el('td', { text: m.cached ? 'already read'
+                             : m.status === 'running'
+                               ? (m.of ? m.done + ' / ' + m.of
+                                       : 'reading\u2026')
+                               : m.status }),
+            el('td', { class: 'dim', text: m.error || '' }),
+          ]);
+        })),
       ]));
       kids.push(el('button', { class: 'btn ghost sm', text: 'Stop',
         onclick: () => apiPost('/api/cfc/job/' + bulk.job.id + '/cancel', {})
@@ -655,6 +680,20 @@ BARRY.dspca = (function () {
     kids.push(el('div', { class: 'hint', text:
       bp.n + ' could be read now  \u00b7  ' + bp.n_done + ' already read  '
       + '\u00b7  ' + bp.n_blocked + ' cannot be' }));
+
+    /* Already read, and therefore instant to open. These were listed as a
+       count and nothing else, so the reading paid for last week was
+       reachable only by going back to one-at-a-time and finding the set
+       in the picker. */
+    if ((bp.done || []).length) {
+      kids.push(el('div', { class: 'section-label', text: 'Already read' }));
+      kids.push(el('div', { class: 'dp-done-list' },
+        bp.done.slice(0, 24).map((r) => el('button', {
+          class: 'mini', text: r.label,
+          title: 'Open it. The read is cached, so this is immediate.',
+          onclick: () => openRead(r.entry_id),
+        }))));
+    }
     if (bp.todo.length) {
       kids.push(el('table', { class: 'tbl dp-bulk' }, [
         el('thead', {}, [el('tr', {}, ['', 'set', 'spikes', 'aligned']
@@ -703,6 +742,18 @@ BARRY.dspca = (function () {
       toast(e.message, 'err', 8000);
     }
     render();
+  }
+
+  /* Open one set from the queue, leaving the queue running.
+
+     `pickSet` does the rest: the plan comes back saying the read is
+     cached, so `refreshPlan` sets the hash and the fit follows without
+     touching the disk. */
+  function openRead(entryId) {
+    if (!entryId) return;
+    bulk.on = false;
+    pickSet(entryId);
+    BARRY.activity.log('dspca.open_from_batch', { entry: entryId });
   }
 
   async function runBulk() {
@@ -804,6 +855,16 @@ BARRY.dspca = (function () {
           + 'classified and nothing is banked \u2014 every set still has to '
           + 'be read through and called by somebody.'
         : 'Pick a recording, check what it would read, then read it.' }),
+      /* A batch left running while you look at one of its results. It is
+         still going, and a panel that stopped mentioning it would read as
+         having cancelled it. */
+      bulk.job && !bulk.on
+        ? el('span', { class: 'hint dp-bulk-note', text: (() => {
+            const st = (bulk.job.stages || [])[0] || {};
+            return 'Batch still reading \u2014 ' + (st.done || 0) + ' of '
+                 + (st.of || '?') + '.';
+          })() })
+        : null,
     ]);
   }
 
@@ -1299,16 +1360,27 @@ BARRY.dspca = (function () {
 
     wrap.appendChild(el('div', { class: 'mh' }, [
       el('h3', { text: 'Before and after' }),
-      el('span', { class: 'hint', text: diff.length
+      el('span', { class: 'sub', text: diff.length
         ? diff.map((d) => d.word + ': ' + fmtVal(d.was) + ' \u2192 '
                           + fmtVal(d.now)).join('   \u00b7   ')
         : 'Nothing about the question changed, so any difference below is '
           + 'the K-means seed and not your edit.' }),
-      el('div', { style: 'flex:1' }),
-      el('button', { class: 'close-x', text: '\u00d7', onclick: closeModal }),
+      el('span', { class: 'spacer' }),
+      el('button', { class: 'btn ghost sm', text: 'Close',
+                     onclick: closeModal }),
     ]));
 
-    const body = el('div', { class: 'dp-cmp-body' });
+    /* `mb` IS THE SCROLLING ELEMENT, and leaving it off is why this
+       dialog had no scrollbar and lost its bottom half.
+
+       `.modal.big` is a flex column of header, body and footer, and
+       `.modal.big > *` gives every child `flex: 1; overflow: hidden`.
+       The body is only rescued from that by `.mb`, which is where the
+       `overflow-y: auto` and the padding live. Without it the body was
+       a clipped box: the feature matrices were cut off mid-panel, the
+       profiles below them were not reachable at all, and there was
+       nothing to scroll. */
+    const body = el('div', { class: 'mb dp-cmp-body' });
 
     /* THE HEADLINE. Not the pictures -- two heatmaps that look slightly
        different is exactly the evidence this panel exists to replace. */
@@ -1356,10 +1428,14 @@ BARRY.dspca = (function () {
     body.appendChild(profilesSide(cmp));
 
     wrap.appendChild(body);
-    wrap.appendChild(el('div', { class: 'mf modal-actions' }, [
-      el('button', { class: 'btn ghost', text: 'Put the old answer back',
+    wrap.appendChild(el('div', { class: 'mf' }, [
+      el('span', { class: 'hint', text: ct.moved
+        ? ct.moved + ' of ' + ct.seen + ' events moved class'
+        : 'No event changed class' }),
+      el('span', { class: 'spacer' }),
+      el('button', { class: 'btn ghost sm', text: 'Put the old answer back',
                      onclick: () => { revertCompare(); closeModal(); } }),
-      el('button', { class: 'btn', text: 'Keep the new one',
+      el('button', { class: 'btn sm', text: 'Keep the new one',
                      onclick: closeModal }),
     ]));
     showModal(wrap, { replace: true });
@@ -2770,13 +2846,14 @@ BARRY.dspca = (function () {
 
        Restored afterwards: the context is shared with everything else
        drawn on this canvas. */
+    /* Set and LEFT set. Nothing else drawn on this canvas is an image --
+       the rest is strokes, fills and text, which the flag does not touch
+       -- so restoring it afterwards changed nothing except to make the
+       state unreadable from outside, which is how the harness checks
+       it. */
+    s.g.imageSmoothingEnabled = false;
     const img = imageFor('feat', d.image, drawFeatures);
-    if (img) {
-      const was = s.g.imageSmoothingEnabled;
-      s.g.imageSmoothingEnabled = false;
-      s.g.drawImage(img, x0, y0, pw, ph);
-      s.g.imageSmoothingEnabled = was;
-    }
+    if (img) s.g.drawImage(img, x0, y0, pw, ph);
     s.g.strokeStyle = k.line;
     s.g.lineWidth = 1;
     s.g.strokeRect(x0, y0, pw, ph);

@@ -9366,6 +9366,10 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-bulk { width: 100%; }
 .dp-bulk td, .dp-bulk th { font-size: 11.5px; padding: 3px 6px; }
 .dp-bulk tr.bad td { color: var(--err); }
+/* A row whose read has finished, and is therefore a thing you can open. */
+.dp-bulk tr.ready td:first-child { font-weight: 600; }
+.dp-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.dp-bulk-note { color: var(--accent); }
 .dp-bulk td.dim { color: var(--text-3); }
 
 /* Guides: a short list and one row to add to it. Kept compact -- it sits in
@@ -9443,8 +9447,25 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
    number people open this for. The pictures are underneath because two
    heatmaps that look slightly different is exactly the evidence this
    panel exists to replace. */
+/* The header and footer as ROWS.
+
+   Scoped to this dialog rather than fixed in `.modal.big .mh`, which is
+   shared with every other big dialog: `.modal.big > *` sets
+   `flex-direction: column` on all of them and `.mh` never sets it back,
+   so the title, the subtitle and the Close button stacked and centred.
+   Changing the shared rule would change dialogs this work has nothing to
+   do with; it is noted rather than done here. */
+.dp-cmp.modal.big > .mh, .dp-cmp.modal.big > .mf {
+  flex-direction: row; align-items: center;
+}
+.dp-cmp .mh .sub { min-width: 0; }
 .dp-cmp-body { display: flex; flex-direction: column; gap: var(--sp-8); }
-.dp-cmp-tab { width: auto; margin: var(--sp-4) 0 var(--sp-8); }
+/* As wide as its numbers, not as wide as the dialog. Stretched, the two
+   class columns sat against the right-hand edge a screen away from the
+   row labels, which is the one thing a crosstab must not do. */
+.dp-cmp-tab { width: max-content; max-width: 100%;
+              margin: var(--sp-4) 0 var(--sp-8); }
+.dp-cmp-tab th, .dp-cmp-tab td { white-space: nowrap; }
 .dp-cmp-tab th, .dp-cmp-tab td {
   font-size: var(--fs-11); padding: var(--sp-2) var(--sp-10);
   text-align: right;

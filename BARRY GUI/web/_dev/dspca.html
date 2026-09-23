@@ -526,6 +526,36 @@ const NL = String.fromCharCode(10);
   /* ================================================================== */
   head('THE BULK QUEUE');
 
+  /* A set that has finished reading can be opened while the rest run.
+
+     Reported: "when you do a batch run you can't click to open any of
+     them if they are done processing while others process". The read is
+     the expensive half and it is finished for that one; waiting for the
+     whole batch is, on a cohort, the difference between a coffee and an
+     afternoon. */
+  D().querySelectorAll('.dp-mode .seg button')[1].click();
+  await until(() => !!D().querySelector('.dp-bulk-card') && !!st().plan,
+              20000, 'the queue');
+  await until(() => !!ev('BARRY.dspca._bulk().plan'), 20000, 'the batch plan');
+  const bplan = ev('BARRY.dspca._bulk().plan');
+  ok('the queue lists what has already been read',
+     (bplan.done || []).length > 0, (bplan.done || []).length + ' done');
+  const doneBtns = D().querySelectorAll('.dp-done-list .mini');
+  ok('and each one is a way in, not just a count',
+     doneBtns.length === Math.min(24, (bplan.done || []).length),
+     doneBtns.length + ' buttons for ' + (bplan.done || []).length);
+  if (doneBtns.length) {
+    doneBtns[0].click();
+    await until(() => !D().querySelector('.dp-bulk-card'), 15000,
+                'the workbench');
+    ok('clicking one opens it', !ev('BARRY.dspca._bulk().on'));
+    await until(() => st().q.read, 25000, 'its read');
+    ok('with its read already in hand, so nothing is re-read',
+       !!st().q.read);
+  }
+  D().querySelectorAll('.dp-mode .seg button')[0].click();
+  await until(() => !!D().querySelector('.dp-panes'), 20000, 'back');
+
   const bp = await get('/api/dspca/batch/plan');
   ok('the batch plan answers', !!(bp && bp.ok));
   ok('every set is in exactly one of the three lists',
@@ -835,6 +865,21 @@ const NL = String.fromCharCode(10);
      live.every((c) => Math.abs(c.clim[0] + c.clim[1]) < 1e-9
                        && Math.abs(c.clim[1] - c.peak) < 1e-9),
      JSON.stringify(live.map((c) => c.clim)));
+  /* THE FEATURE MATRIX IS NOT INTERPOLATED.
+
+     Reported as blurry, and it was: the bitmap is one pixel per event
+     across and one per feature down -- about 37 by 48 -- shown five
+     hundred pixels wide, and canvas smooths by default. Soft is the
+     small half of the problem. A column is ONE EVENT and a row is ONE
+     FEATURE, so there is nothing between two of them to interpolate,
+     and smoothing is exactly the operation that blends the single odd
+     column this panel exists to show into the ones beside it. */
+  const smooth = ev('(function(){var c=document.getElementById("dpFeat");'
+                    + 'return c ? c.getContext("2d").imageSmoothingEnabled '
+                    + ': null; })()');
+  ok('the feature matrix is drawn without interpolation',
+     smooth === false, String(smooth));
+
   ok('and each still reports the peak across all of them, so the '
      + 'comparison is a number rather than a colour',
      live.every((c) => c.peak_of_all >= c.peak - 1e-9),
@@ -933,6 +978,50 @@ const NL = String.fromCharCode(10);
      D().querySelectorAll('.dp-cmp-row').length >= 3
      && D().querySelectorAll('.dp-cmp-cell').length >= 6,
      D().querySelectorAll('.dp-cmp-cell').length + ' cells');
+
+  /* IT HAS TO BE REACHABLE. Reported as "no scrolling, half of it cut
+     off": the body was missing `mb`, so `.modal.big > *` gave it
+     `overflow: hidden` and everything past the fold was clipped with
+     nothing to scroll. Checked as geometry, because that is what went
+     wrong -- a dialog whose content is taller than its box and cannot
+     scroll is a dialog with a hidden half. */
+  const mb = D().querySelector('.dp-cmp .mb');
+  ok('the dialog body is the scrolling one', !!mb);
+  if (mb) {
+    const canScroll = ev('(function(){var e=document.querySelector('
+                         + '".dp-cmp .mb"); return getComputedStyle(e)'
+                         + '.overflowY; })()');
+    ok('and it is allowed to scroll', /auto|scroll/.test(String(canScroll)),
+       String(canScroll));
+    ok('nothing is cut off with no way to reach it',
+       mb.scrollHeight <= mb.clientHeight + 1 || /auto|scroll/
+         .test(String(canScroll)),
+       mb.scrollHeight + ' of ' + mb.clientHeight);
+  }
+  /* The footer has to be inside the box, not pushed out of the bottom of
+     it, or the two buttons that end the comparison are unreachable. */
+  const mf = D().querySelector('.dp-cmp .mf');
+  const shell = D().querySelector('.dp-cmp');
+  ok('the footer is inside the dialog', !!mf && !!shell
+     && mf.getBoundingClientRect().bottom
+        <= shell.getBoundingClientRect().bottom + 1,
+     mf && shell ? (mf.getBoundingClientRect().bottom.toFixed(0) + ' vs '
+                    + shell.getBoundingClientRect().bottom.toFixed(0)) : '');
+  /* And it reads across, not down: `.modal.big > *` makes every child a
+     flex COLUMN, which stacked the title, the subtitle and Close. */
+  const mh = D().querySelector('.dp-cmp .mh');
+  ok('the header reads across rather than stacking',
+     !!mh && mh.getBoundingClientRect().height < 70,
+     mh ? mh.getBoundingClientRect().height.toFixed(0) + 'px tall' : '');
+  /* The crosstab is as wide as its numbers. Stretched to the dialog, the
+     class columns sit a screen away from the row labels. */
+  const tab = D().querySelector('.dp-cmp-tab');
+  ok('the crosstab is not stretched across the whole dialog',
+     !!tab && !!shell
+     && tab.getBoundingClientRect().width
+        < shell.getBoundingClientRect().width * 0.8,
+     tab && shell ? (tab.getBoundingClientRect().width.toFixed(0) + ' of '
+                     + shell.getBoundingClientRect().width.toFixed(0)) : '');
   /* The comparison is only useful if the answer it showed you is one you
      can go back to. */
   /* `cmpBack`, not `back`: this page already has one, and a duplicate

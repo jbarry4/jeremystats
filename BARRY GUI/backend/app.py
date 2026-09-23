@@ -128,6 +128,35 @@ MAX_CACHED_SESSIONS = 6
 # ==========================================================================
 # Error plumbing -- every failure is logged with context and returned readably
 # ==========================================================================
+def named_versions(vers, drop=("snap",)):
+    """One entry's versions, each carrying the name a person reads.
+
+    THE NUMBER IS NOT THE NAME, and half the application was showing the
+    number. `v` is what a machine minted; it is not unique, because two
+    machines mint independently and the union keeps both -- measured on
+    this bank, entry 7d5fa32206b4 holds seven versions numbered
+    0,1,2,3,4,3,4. `versions.label_rows` walks the lineage in creation
+    order and hands back a name that IS unique, branching to `1.1` where
+    a version was built on one that already had work after it.
+
+    Showing the raw number meant the same history read differently
+    depending on which panel you were in: X-ray's picker listed v0 to v4
+    from `label_rows`, and the bank's own history strip listed v0, v1,
+    v2, v3, v3 from the number -- five versions, four names, one of them
+    twice, and no way to tell which was which. Anything that serialises
+    versions goes through here, so there is one answer.
+
+    `drop` keeps the snapshot blob out of a list response; pass `()` to
+    keep everything.
+    """
+    out = []
+    for ver, name in versionsmod.label_rows(list(vers or [])):
+        row = {k: v for k, v in ver.items() if k not in drop}
+        row["name"] = name
+        out.append(row)
+    return out
+
+
 def fail(where, exc, status=400, context=None, user_message=None):
     """Log an error and return a JSON body the UI can show verbatim."""
     detail = traceback.format_exc(limit=8)
@@ -3322,10 +3351,34 @@ def _braces_session(rec):
             "machine. It was last seen at %s."
             % ((row["paths"] or [""])[-1]))
     if not path:
+        # WHICH of the three things is missing, by name.
+        #
+        # This said "does not say which recording it came from" for all of
+        # them, including the case where the entry names the recording
+        # perfectly well -- somebody reading it had the label in front of
+        # them, "PTEN m34 s8 2026-06-10", under a sentence saying there
+        # was no name. A label is a name and not a locator, and the useful
+        # thing to say is which of the two is missing and what to do.
+        label = rec.get("session_label") or rec.get("name") or ""
+        named = ("%s " % label) if label else ""
+        if not gid:
+            raise ValueError(
+                "This set %sis not attached to a recording -- it carries a "
+                "label, which is a name, but no registry id, which is what "
+                "actually finds the folder. Re-bank it from a curation set, "
+                "or import it onto a recording first."
+                % (("(%s) " % label) if label else ""))
+        if row is None:
+            raise ValueError(
+                "This set names %s and carries its registry id (%s), but no "
+                "recording with that id is in the registry on this machine. "
+                "Scan the folder it lives in, or the archive it was filed "
+                "to, and it will be found."
+                % (label or "a recording", gid))
         raise ValueError(
-            "This set does not say which recording it came from, so there "
-            "is nothing to measure its stamps against. Re-bank it from a "
-            "curation set, or import it onto a recording first.")
+            "The registry knows %s(%s) but has no folder recorded for it on "
+            "any machine, so there is nothing to read. Scan the folder it "
+            "lives in." % (named, gid))
     sess, err = _session_for(path, None, True)
     if err:
         raise ValueError(
@@ -7153,9 +7206,10 @@ def _cur_history(gid, kind, summaries=None):
         if rec.get("gid") != gid or (rec.get("type") or "") != kind:
             continue
         vers = []
-        for ver in (rec.get("versions") or []):
+        for ver, vname in versionsmod.label_rows(rec.get("versions") or []):
             vers.append({
                 "v": ver.get("v"),
+                "name": vname,
                 "label": ver.get("label"),
                 "at": ver.get("at"),
                 "by": ver.get("by"),
@@ -7412,16 +7466,17 @@ def api_curation_for_recording(gid):
             continue
         vs = []
         newest = rec.get("version") or 0
-        for v in (rec.get("versions") or []):
+        for v, vname in versionsmod.label_rows(rec.get("versions") or []):
             vs.append({
-                "v": v.get("v"), "at": v.get("at"), "by": v.get("by"),
+                "v": v.get("v"), "name": vname,
+                "at": v.get("at"), "by": v.get("by"),
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
                 "imported": bool(v.get("imported")),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
             })
-        vs.sort(key=lambda x: -(x["v"] or 0))
+        vs.sort(key=lambda x: versionsmod.key(x["name"]), reverse=True)
         out.append({
             "id": rec["id"], "name": rec.get("name"), "kind": kind,
             "kind_name": curation.KINDS[kind]["name"],
@@ -8375,8 +8430,7 @@ def api_curation_banked(gid, kind):
             # true of the set and false of the entry it writes onto.
             "adopted": ent.get("curation_label") is None,
             "source": (ent.get("source") or {}).get("pipeline"),
-            "versions": [{k: v for k, v in ver.items() if k != "snap"}
-                         for ver in (ent.get("versions") or [])],
+            "versions": named_versions(ent.get("versions")),
         },
         "split": [{"id": e["id"], "name": e.get("name"), "n": e.get("n"),
                    "label": e.get("curation_label")}
@@ -12323,9 +12377,7 @@ def api_bank_version(entry_id, v):
     }])
     mirror_bank_soon()
     return jsonify({"ok": True, "changed": changed, "undo": undo,
-                    "versions": [{k: val for k, val in x.items()
-                                  if k != "snap"}
-                                 for x in (rec.get("versions") or [])]})
+                    "versions": named_versions(rec.get("versions"))})
 
 
 @app.route("/api/bank/<entry_id>/dedupe", methods=["POST"])
