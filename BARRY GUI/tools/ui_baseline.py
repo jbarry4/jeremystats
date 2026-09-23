@@ -94,7 +94,12 @@ def capture(port):
     body = (body.replace("&lt;", "<").replace("&gt;", ">")
                 .replace("&quot;", '"').replace("&#39;", "'")
                 .replace("&amp;", "&"))
-    text = body.strip("\n")
+    # Edge's DOM serialisation brings the dump back with CRLF line endings
+    # even though the page joined it with LF. Normalised here, at the one
+    # place text enters this tool, so the stored baseline and every later
+    # capture are the same shape. Normalising only on the comparison side
+    # produced a 160-byte difference and a diff showing no changed lines.
+    text = body.replace("\r\n", "\n").replace("\r", "\n").strip("\n")
     if len(text.splitlines()) < 20:
         raise SystemExit("the dump has only %d lines; something did not run"
                          % len(text.splitlines()))
@@ -124,18 +129,35 @@ def main():
               % (os.path.relpath(BASELINE, APP), len(text.splitlines())))
         return 0
 
-    with open(BASELINE, encoding="utf-8") as fh:
-        was = fh.read()
+    # newline="" and an explicit strip of \r, because git checks this file
+    # out with CRLF on Windows while the capture is always LF. Comparing the
+    # two raw reported "0 lines added, 0 removed" and still exited 1 -- a
+    # difference in every line and a diff showing none, which is the worst
+    # possible answer from the thing that is supposed to say what changed.
+    with open(BASELINE, encoding="utf-8", newline="") as fh:
+        was = fh.read().replace("\r\n", "\n")
     if was == text:
         print("no change: %d lines, identical to the baseline"
               % len(text.splitlines()))
         return 0
+
+    fresh = os.path.join(tempfile.gettempdir(), "jarvis-ui-now.txt")
+    with open(fresh, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
 
     import difflib
     diff = list(difflib.unified_diff(
         was.splitlines(), text.splitlines(),
         "baseline", "now", lineterm="", n=1))
     print("\n".join(diff))
+    if not diff:
+        # The two differ as bytes but not as lines: whitespace at the end of
+        # a line, or the file ending differently. Say which, rather than
+        # reporting "nothing changed" and exiting non-zero -- an answer that
+        # contradicts itself is worse than either half of it.
+        print("the files differ but no line does: stored %d bytes, measured "
+              "%d. Fresh capture at %s" % (len(was), len(text), fresh))
+        return 1
     adds = len([d for d in diff if d.startswith("+") and d[1:2] != "+"])
     dels = len([d for d in diff if d.startswith("-") and d[1:2] != "-"])
     print("\n%d line(s) added, %d removed. Every one of them has to be a "

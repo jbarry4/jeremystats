@@ -71,6 +71,77 @@
   --radius-sm: 7px;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 
+  /* ---- geometry and type -------------------------------------------------
+
+     Colour has been governed since the first theme: thirty tokens, ten
+     palettes, and a harness that checks all of them. Size never was. An
+     audit of the built page found 21 distinct font sizes, 13 radii and 15
+     gap values, every one of them typed as a literal -- which is why the
+     same control is 11px in one view and 11.5px in the next, and why
+     nobody could have noticed.
+
+     These are named for their VALUE, not for a role. `--fs-115` is 11.5px
+     and nothing else. That is deliberate and it is the point of this pass:
+     every token below resolves to a number already in the stylesheet, so
+     adopting one is a rename that cannot change what is on screen. A
+     semantic layer (`--fs-body`) would have required deciding what each
+     size MEANS, and deciding that while also moving 700 declarations is
+     how a refactor becomes a redesign nobody asked for.
+
+     What they buy immediately is the enumeration. The scale is now a list
+     in one place, so a fourteenth font size is visibly a new one rather
+     than another plausible number in a file of 9,000 lines.
+
+     THE HALF STEPS ARE REAL AND THEY STAY. 9.5, 10.5, 11.5 and 12.5 carry
+     298 declarations between them -- 41% of the type in the application.
+     Rounding them away would have shrunk almost every dense surface by
+     about 5% in a single commit, in one direction, with no harness able to
+     see it. If the scale should be tighter, that is a design decision and
+     it gets its own change, with a before and an after to look at.
+
+     Not everything is here. A value used once or twice is left as a
+     literal rather than given a token nobody will reach for; see
+     GUI-CONSTITUTION.md for which to use when. */
+
+  /* Type. Nine body steps, then the four display sizes. */
+  --fs-9:    9px;
+  --fs-95:   9.5px;
+  --fs-10:   10px;
+  --fs-105:  10.5px;
+  --fs-11:   11px;
+  --fs-115:  11.5px;
+  --fs-12:   12px;
+  --fs-125:  12.5px;
+  --fs-13:   13px;
+  --fs-135:  13.5px;
+  --fs-15:   15px;
+  --fs-17:   17px;
+  --fs-20:   20px;
+
+  /* Corners. `--radius` and `--radius-sm` above are the two that already
+     had names and 160 uses; these are the rest of what the file actually
+     contains. `--r-pill` is 999px -- a capsule, whatever the height. */
+  --r-2:     2px;
+  --r-3:     3px;
+  --r-4:     4px;
+  --r-5:     5px;
+  --r-6:     6px;
+  --r-8:     8px;
+  --r-pill:  999px;
+
+  /* Space, for gaps and margins. Even numbers only: the odd ones in the
+     file are drift rather than decisions, and a scale that admits both 5
+     and 6 is not a scale. */
+  --sp-2:    2px;
+  --sp-4:    4px;
+  --sp-6:    6px;
+  --sp-8:    8px;
+  --sp-10:   10px;
+  --sp-12:   12px;
+  --sp-16:   16px;
+  --sp-20:   20px;
+  --sp-24:   24px;
+
   --mono: "JetBrains Mono", "Cascadia Code", ui-monospace, "SF Mono", Consolas, monospace;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 
