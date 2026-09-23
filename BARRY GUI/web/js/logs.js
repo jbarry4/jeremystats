@@ -2110,7 +2110,7 @@ BARRY.views.errors = (function () {
       return;
     }
 
-    host.appendChild(el('div', { class: 'fb-stats' }, [
+    host.appendChild(el('div', { class: 'chip-row' }, [
       el('span', { class: 'stat-chip',
                    text: backup.files + ' file(s)' }),
       el('span', { class: 'stat-chip', text: kb(backup.bytes) }),

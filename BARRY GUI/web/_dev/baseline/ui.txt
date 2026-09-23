@@ -20,7 +20,7 @@ select  |  font 11.5/400 mono  pad 5/8/5/8  radius 5  border 1  |  select
 select  |  font 11.5/400 sans  pad 5/22/5/8  radius 7  border 1  |  select
 select  |  font 11/400 sans  pad 4/8/4/8  radius 5  border 1  |  select
 select  |  font 13.5/400 sans  pad 0/22/0/0  radius 7  border 1  |  select.mini-select
-status chip  |  font 12/400 sans  pad 6/10/6/10  radius 7  border 1  |  button.chip-btn button.chip-btn.on.vacc-live button.chip-btn.sync-go
+status chip  |  font 12/400 sans  pad 6/10/6/10  radius 7  border 1  |  button.chip-btn button.chip-btn.sync-go button.chip-btn.vacc-live
 status chip  |  font 12/400 sans  pad 6/8/6/8  radius 7  border 1  |  button.chip-btn.dirty.sync-info
 text field  |  font 11.5/400 mono  pad 3/7/3/7  radius 7  border 1  |  input
 text field  |  font 12/400 mono  pad 2/2/2/2  radius 7  border 1  |  textarea.scratch-code
@@ -65,8 +65,8 @@ button.as-button.dev-bar-label  |  5px
 button.btn.filter-open.ghost.sm  |  6px
 button.chip-btn  |  8px
 button.chip-btn.dirty.sync-info  |  8px
-button.chip-btn.on.vacc-live  |  8px
 button.chip-btn.sync-go  |  8px
+button.chip-btn.vacc-live  |  8px
 button.concat.fixed.flagchip  |  4px
 button.concat.fixed.flagchip.safe  |  4px
 button.concat.flagchip  |  4px
@@ -95,6 +95,7 @@ div.blocked.stage  |  10px
 div.brand  |  10px
 div.card-actions  |  7px
 div.card-grid  |  12px
+div.chip-row  |  6px
 div.ctl  |  3px
 div.ctl.on  |  3px
 div.dev-bar.res-toolbar  |  10px
@@ -107,9 +108,8 @@ div.dz-inner  |  18px
 div.dz-text  |  2px
 div.empty-state  |  14px
 div.err-ghead  |  10px
-div.fb-actions  |  10px
-div.fb-path  |  9px
-div.fb-stats  |  6px
+div.fbar-actions  |  6px
+div.fbar-path  |  9px
 div.filter-bar  |  6px
 div.filter-row  |  5px
 div.flag-set  |  3px

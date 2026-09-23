@@ -507,7 +507,7 @@ BARRY.views.misc = (function () {
     }
 
     host.innerHTML = '';
-    const bar = el('div', { class: 'fb-stats', style: 'margin-bottom:10px' }, [
+    const bar = el('div', { class: 'chip-row', style: 'margin-bottom:10px' }, [
       el('span', { class: 'stat-chip', text: data.files.length + ' file(s)' }),
       el('code', { style: 'font-size:10.5px;color:var(--text-3)', text: data.dir }),
       el('button', {

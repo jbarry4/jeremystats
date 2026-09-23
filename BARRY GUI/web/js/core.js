@@ -1309,7 +1309,7 @@ function showSync() {
                      onclick: closeModal }),
     ]),
     el('div', { class: 'mb' }, [
-      el('div', { class: 'fb-stats' }, [
+      el('div', { class: 'chip-row' }, [
         el('span', { class: 'stat-chip', text: (counts.runs || 0) + ' runs' }),
         el('span', { class: 'stat-chip', text: (counts.sessions || 0) + ' sessions' }),
         el('span', { class: 'stat-chip', text: (counts.errors || 0) + ' errors' }),

@@ -4261,7 +4261,7 @@ BARRY.views.xplore = (function () {
           onclick: closeModal }),
       ]),
       el('div', { class: 'mb' }, [
-        el('div', { class: 'fb-stats', style: 'margin-bottom:10px' }, [
+        el('div', { class: 'chip-row', style: 'margin-bottom:10px' }, [
           count,
           quick('All', () => sess.info.channels.forEach((c) => chosen.add(c.index))),
           quick('None', () => chosen.clear()),
@@ -5808,7 +5808,7 @@ BARRY.views.xplore = (function () {
       hint ? el('span', { class: 'hint', text: hint }) : null,
     ]);
 
-    const status = el('div', { class: 'fb-stats' });
+    const status = el('div', { class: 'chip-row' });
     const perCh = el('div', { class: 'preview-wrap hidden' });
 
     const showDraft = (res) => {

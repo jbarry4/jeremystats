@@ -1471,13 +1471,28 @@ code { font-family: var(--mono); }
   margin-top: 14px; padding: 11px 14px;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius);
 }
-.fb-path { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
-.fb-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
-            color: var(--text-3); flex: none; }
-.fb-path code { font-size: 11.5px; color: var(--text); overflow: hidden;
-                text-overflow: ellipsis; white-space: nowrap; }
-.fb-stats { display: flex; gap: 6px; flex-wrap: wrap; }
-.fb-actions { display: flex; gap: 6px; }
+/* `fbar-`, not `fb-`, and `.chip-row` rather than either.
+
+   `fb-` meant two unrelated features. The folder bar above claimed
+   `.fb-actions` and so did the feedback panel a few thousand lines down,
+   with different spacing -- and the later rule wins, so this bar had been
+   quietly wearing the feedback panel's 10px gap instead of its own 6px.
+   Nothing failed; it just was not what it said.
+
+   The folder bar is the smaller claim on the prefix and the feedback panel
+   owns fifteen other `fb-` classes, so the folder bar moves.
+
+   `.fb-stats` turned out not to belong to either. Six other modules had
+   picked it up as "a row of stat chips", which is what it is, so it is
+   named that now and lives with the chip it lays out rather than in a
+   block about folders. */
+.fbar-path { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+.fbar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+              color: var(--text-3); flex: none; }
+.fbar-path code { font-size: 11.5px; color: var(--text); overflow: hidden;
+                  text-overflow: ellipsis; white-space: nowrap; }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.fbar-actions { display: flex; gap: 6px; }
 .stat-chip {
   padding: 3px 9px; border-radius: 999px; font-size: 11px;
   background: var(--bg-3); color: var(--text-2); font-family: var(--mono);
@@ -1940,8 +1955,12 @@ code { font-family: var(--mono); }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
-.pane-grid.panes-6 .pane-head { padding: 2px 7px; }
-.pane-grid.panes-6 .pane-head .pane-meta { display: none; }
+/* The pane head used to be squeezed here too -- 2px 7px, and the meta
+   hidden -- to make room for six control strips. The strips were lifted out
+   of the panes later and the head was given its space back, further down
+   this file, but this pair was left behind. Same specificity, later rule
+   wins, so it has been doing nothing since; and it sat inside the geometry
+   `_dev/align.html` measures, which is not where a dead rule should be. */
 .pane-grid.panes-6 .pane-ctl { display: none; }
 .pane-grid.panes-6 .pane-chans { display: none; }
 .pane-grid.panes-6 .pane-main { grid-template-columns: 1fr; }
@@ -2142,9 +2161,13 @@ body.strip-resizing canvas { pointer-events: none; }
 }
 .scan-line.last { font-size: 11px; color: var(--text-2); }
 .sess-filters { display: flex; align-items: center; gap: 12px; margin: 16px 0 10px; flex-wrap: wrap; }
+/* The icon and the padding for an inline search field are set once, in the
+   search-wrap block further down. They were set here too, with 30px of left
+   padding against that block's 32px -- same specificity, later rule wins, so
+   this pair had been doing nothing since the day the second one was added.
+   Two numbers for one measurement is how the third search-field shape got
+   in. Only the layout of the wrapper belongs here. */
 .search-wrap.inline { padding: 0; flex: 1; min-width: 220px; }
-.search-wrap.inline .search-icon { left: 10px; transform: translateY(-50%); top: 50%; }
-.search-wrap.inline input { padding: 6px 10px 6px 30px; }
 .grp { margin-bottom: 20px; }
 .grp-head {
   display: flex; align-items: center; gap: 9px; padding: 7px 2px;
