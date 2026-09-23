@@ -148,6 +148,7 @@ function fingerprint(n) {
 }
 
 const shapes = new Map();   /* family -> Map(shape -> Set(id)) */
+const gaps = new Map();     /* id -> Set(gap) -- see below */
 const grids = new Map();    /* "pass|id" -> column count */
 const overflow = new Set(); /* "pass|id" */
 const comps = new Map();    /* class -> Set(fingerprint) */
@@ -184,6 +185,21 @@ function walk(pass, root, win) {
       const cols = (cs.gridTemplateColumns || 'none').trim();
       const ncol = cols === 'none' ? 0 : cols.split(/\s+/).length;
       grids.set(pass + '|' + idOf(n), ncol);
+    }
+    /* The space BETWEEN things, which the control shapes cannot see.
+
+       Without this the dump is blind to a whole class of change: two
+       features sharing a class name by accident and one of them silently
+       getting the other's spacing, and the gap renames of the token pass.
+       Both are invisible in font size and padding. */
+    if (/flex|grid/.test(cs.display)) {
+      const g = (cs.rowGap === cs.columnGap)
+        ? cs.rowGap : cs.rowGap + ' ' + cs.columnGap;
+      if (g && g !== 'normal' && parseFloat(g) !== 0) {
+        const k = idOf(n);
+        if (!gaps.has(k)) gaps.set(k, new Set());
+        gaps.get(k).add(g);
+      }
     }
     /* +2 rather than +1: sub-pixel layout rounding produces a one-pixel
        difference on elements that are not actually overflowing, and a
@@ -326,6 +342,11 @@ function styledClasses(doc) {
   L.push('## compositions');
   for (const k of [...comps.keys()].sort()) {
     for (const p of [...comps.get(k)].sort()) L.push(k + '  |  ' + p);
+  }
+  L.push('');
+  L.push('## container gaps');
+  for (const k of [...gaps.keys()].sort()) {
+    L.push(k + '  |  ' + [...gaps.get(k)].sort().join('  '));
   }
   L.push('');
   L.push('## grid column counts');

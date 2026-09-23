@@ -58,6 +58,126 @@ header.view-head  |  div.head-titles
 header.view-head  |  div.head-titles div.head-actions
 header.view-head  |  div.head-titles div.track-switch
 
+## container gaps
+button.active.nav-item  |  10px
+button.active.pill  |  1px
+button.as-button.dev-bar-label  |  5px
+button.btn.filter-open.ghost.sm  |  6px
+button.chip-btn  |  8px
+button.chip-btn.dirty.sync-info  |  8px
+button.chip-btn.on.vacc-live  |  8px
+button.chip-btn.sync-go  |  8px
+button.concat.fixed.flagchip  |  4px
+button.concat.fixed.flagchip.safe  |  4px
+button.concat.flagchip  |  4px
+button.confirmed.probechip.sm  |  4px
+button.detected.probechip.sm  |  4px
+button.dim.folder-chip  |  6px
+button.folder-chip  |  6px
+button.folder-chip.on  |  6px
+button.hist-row  |  8px
+button.mini  |  5px
+button.mini.on  |  5px
+button.nav-item  |  10px
+button.on.tk-tool  |  3px
+button.pill  |  1px
+button.probechip.sm.unknown  |  4px
+button.rail-toggle  |  10px
+button.tk-step  |  3px 8px
+button.tk-tool  |  3px
+button.tree-head  |  7px
+button.who-chip  |  8px
+div.acts  |  5px
+div.bank-row  |  1px 8px
+div.bank-sess  |  8px
+div.bank-split  |  14px
+div.blocked.stage  |  10px
+div.brand  |  10px
+div.card-actions  |  7px
+div.card-grid  |  12px
+div.ctl  |  3px
+div.ctl.on  |  3px
+div.dev-bar.res-toolbar  |  10px
+div.digest-body  |  8px
+div.digest-head  |  10px
+div.digest-kinds  |  4px
+div.digest-sess  |  10px
+div.dz-actions  |  8px
+div.dz-inner  |  18px
+div.dz-text  |  2px
+div.empty-state  |  14px
+div.err-ghead  |  10px
+div.fb-actions  |  10px
+div.fb-path  |  9px
+div.fb-stats  |  6px
+div.filter-bar  |  6px
+div.filter-row  |  5px
+div.flag-set  |  3px
+div.flat.tk-pills  |  6px
+div.folder-bar  |  16px
+div.grep-form  |  7px
+div.grp-head  |  8px  9px
+div.head-actions  |  8px
+div.head-titles  |  10px
+div.list-row  |  10px
+div.list-rows  |  1px
+div.log-head  |  10px
+div.mouse-row  |  4px 10px
+div.nav-group  |  2px
+div.opt-field  |  6px
+div.out-grid  |  10px
+div.rail-foot  |  5px
+div.rail-scroll  |  10px  6px
+div.rail-sync  |  4px
+div.rb-main  |  8px
+div.rb-opts  |  12px
+div.res-acts  |  4px
+div.res-folders  |  6px
+div.res-grid  |  12px
+div.res-toolbar  |  10px
+div.root-bar  |  9px
+div.sc-flags  |  3px
+div.sc-top  |  6px
+div.scratch-row  |  7px
+div.scratch-wrap  |  7px
+div.seg  |  2px
+div.sess-cards  |  5px
+div.sess-filters  |  12px
+div.stage  |  10px
+div.stage-actions  |  6px
+div.stage-list  |  6px
+div.stage-meta  |  10px
+div.stage-opts  |  8px 14px
+div.stage-title  |  9px
+div.stat-row  |  5px
+div.tf-head  |  8px
+div.tf-row  |  10px
+div.tk-bundle  |  9px
+div.tk-bundle-hd  |  7px
+div.tk-head  |  12px
+div.tk-layout  |  16px
+div.tk-main  |  14px
+div.tk-pills  |  6px
+div.tk-result  |  12px
+div.tk-steps  |  4px
+div.tk-tool-head  |  7px
+div.tk-tools  |  8px
+div.tl-legend  |  12px
+div.track-actions  |  10px
+div.track-switch  |  2px
+div.tree-item  |  8px
+div.xf-head  |  16px
+div.xf-tabs  |  4px
+header.compact.view-head  |  10px 18px
+header.view-head  |  10px 18px
+label.sm.toggle  |  6px
+label.toggle  |  6px
+nav  |  10px  6px
+p.err-archived.hint  |  10px
+span.brand-line  |  2px
+span.rail-pips  |  3px
+span.recent-list  |  5px
+
 ## grid column counts
 1100x600|button.tk-step  |  2
 1100x600|div.bank-row  |  3
