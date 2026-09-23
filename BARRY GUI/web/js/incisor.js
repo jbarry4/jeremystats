@@ -454,7 +454,7 @@ BARRY.incisor = (function () {
 
   function vaccPickCard() {
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '1. Which recordings' }));
     if (!vaccList) {
       box.appendChild(el('p', { class: 'hint quiet',
@@ -602,7 +602,7 @@ BARRY.incisor = (function () {
 
   function batchCard() {
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '2. On the cluster' }));
     box.appendChild(batchRows());
     return box;
@@ -610,7 +610,7 @@ BARRY.incisor = (function () {
 
   function reviewCard() {
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '3. Look at them, then bank' }));
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
       text: 'Nothing is banked on its own. Open one, read the three plots, '
@@ -713,7 +713,7 @@ BARRY.incisor = (function () {
 
   function head() {
     return el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', style: 'margin-top:0',
+      el('div', { class: 'section-label',
                   text: 'Incisor — dentate spike detection' }),
       el('p', { class: 'hint', style: 'max-width:78ch;line-height:1.6',
         text: 'A port of Toothy’s detector, checked against Toothy’s '
@@ -727,7 +727,7 @@ BARRY.incisor = (function () {
 
   function pickCard() {
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '1. Which recording' }));
     const rows = BARRY.views.toolkit.registryRows
       ? BARRY.views.toolkit.registryRows() : [];
@@ -753,7 +753,7 @@ BARRY.incisor = (function () {
     const p = est.plan || {};
     const c = est.continuity || {};
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '2. Scan every channel' }));
     if (est.error) {
       box.appendChild(el('p', { class: 'warn-line', text: est.error }));
@@ -1579,7 +1579,7 @@ BARRY.incisor = (function () {
   /* ---------------- step 3: the channel ---------------- */
   function channelCard() {
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '3. Which channel' }));
     /* The question this step invites, answered before it is asked.
 
@@ -1754,7 +1754,7 @@ BARRY.incisor = (function () {
     const row = (res.channels || []).find(
       (c) => Number(c.number) === Number(hil));
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: '4. Bank the candidates' }));
     if (!row) {
       /* A question, not a dead end. This is reached when the scan and the

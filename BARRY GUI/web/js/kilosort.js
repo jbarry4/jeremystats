@@ -280,7 +280,7 @@ BARRY.kilosort = (function () {
      Run
      ================================================================== */
   function runPane(node) {
-    node.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    node.appendChild(el('div', { class: 'section-label',
                                  text: 'Which recording' }));
     node.appendChild(BARRY.pickSession({
       rows: sessions,

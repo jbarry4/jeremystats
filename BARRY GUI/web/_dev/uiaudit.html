@@ -157,6 +157,7 @@ function fingerprint(n) {
 
 const shapes = new Map();   /* family -> Map(shape -> Set(id)) */
 const gaps = new Map();     /* id -> Set(gap) -- see below */
+const labels = new Map();   /* "first"|"later" -> Set(margin-top) */
 const grids = new Map();    /* "pass|id" -> column count */
 const overflow = new Set(); /* "pass|id" */
 const comps = new Map();    /* class -> Set(fingerprint) */
@@ -216,6 +217,16 @@ function walk(pass, root, win) {
         && cs.overflowX !== 'scroll') {
       overflow.add(pass + '|' + idOf(n));
     }
+  });
+
+  root.querySelectorAll('.section-label').forEach((n) => {
+    const cs2 = win.getComputedStyle(n);
+    if (cs2.display === 'none') return;
+    const where = n.previousElementSibling ? 'later' : 'first';
+    const inline = n.getAttribute('style') ? ' (inline style)' : '';
+    const k = where + inline;
+    if (!labels.has(k)) labels.set(k, new Set());
+    labels.get(k).add(cs2.marginTop);
   });
 
   /* Compositions, once -- they do not change with width. */
@@ -350,6 +361,16 @@ function styledClasses(doc) {
   L.push('## compositions');
   for (const k of [...comps.keys()].sort()) {
     for (const p of [...comps.get(k)].sort()) L.push(k + '  |  ' + p);
+  }
+  L.push('');
+  /* Section labels carry the only margin in the file worth tracking: the
+     rule gave every one of them 22px on top, which is wrong whenever it is
+     the first thing in a card, so 41 call sites pasted an inline style to
+     undo it. Recorded as "is it the first child, and what did it get", which
+     is the question. */
+  L.push('## section-label top margins');
+  for (const k of [...labels.keys()].sort()) {
+    L.push(k + '  |  ' + [...labels.get(k)].sort().join('  '));
   }
   L.push('');
   L.push('## container gaps');

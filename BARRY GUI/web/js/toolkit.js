@@ -179,7 +179,7 @@ BARRY.views.toolkit = (function () {
     host.innerHTML = '';
     host.appendChild(el('div', { class: 'tk-layout' }, [
       el('div', { class: 'tk-tools' }, [
-        el('div', { class: 'section-label', style: 'margin-top:0',
+        el('div', { class: 'section-label',
                     text: 'Bundles' }),
         bundleCard(),
         el('div', { class: 'section-label', text: 'Tools' }),
@@ -386,7 +386,7 @@ BARRY.views.toolkit = (function () {
   /* ---------- picking the scope ---------- */
   function scopeCard() {
     const box = el('div', { class: 'card tk-scope' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Which recordings' }));
 
     const total = (scopes && scopes.total) || 0;
@@ -2409,7 +2409,7 @@ BARRY.views.toolkit = (function () {
     ]));
 
     const card = el('div', { class: 'card' });
-    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    card.appendChild(el('div', { class: 'section-label',
                                  text: 'Open a recording' }));
     card.appendChild(pick);
     card.appendChild(el('div', { class: 'tk-actions' }, [
@@ -2426,7 +2426,7 @@ BARRY.views.toolkit = (function () {
        obvious from their names and the second one is the whole reason the
        mode exists. */
     const what = el('div', { class: 'card' });
-    what.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    what.appendChild(el('div', { class: 'section-label',
                                  text: 'What it gives you' }));
     what.appendChild(el('dl', { class: 'tk-what' }, [
       el('dt', { text: 'Theta power, band by band' }),

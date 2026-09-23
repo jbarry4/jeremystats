@@ -656,7 +656,7 @@ BARRY.figure = (function () {
   function leftColumn() {
     const col = el('div', { class: 'fig-col' });
 
-    col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0', text: 'Page' }));
+    col.appendChild(el('div', { class: 'section-label', text: 'Page' }));
     col.appendChild(field('Preset', el('select', {
       onchange: (e) => {
         const p = pages.find((x) => x.id === e.target.value);
@@ -1149,7 +1149,7 @@ BARRY.figure = (function () {
   /* ---------- center: live preview ---------- */
   function centerColumn() {
     const col = el('div', { class: 'fig-col' });
-    col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0', text: 'Preview' }));
+    col.appendChild(el('div', { class: 'section-label', text: 'Preview' }));
     const box = el('div', { class: 'fig-preview', id: 'figPreview' }, [
       el('div', { style: 'display:flex;align-items:center;gap:10px;color:var(--text-3)' }, [
         el('span', { class: 'spin' }), el('span', { text: 'Rendering…' }),
@@ -1165,7 +1165,7 @@ BARRY.figure = (function () {
     const col = el('div', { class: 'fig-col' });
     const p = layout.panels[selected];
 
-    col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0', text: 'Titles' }));
+    col.appendChild(el('div', { class: 'section-label', text: 'Titles' }));
     col.appendChild(field('Figure title', text(layout.title, (v) => {
       layout.title = v; schedulePreview();
     })));

@@ -57,6 +57,10 @@ header.view-head  |  div.head-titles
 header.view-head  |  div.head-titles div.head-actions
 header.view-head  |  div.head-titles div.track-switch
 
+## section-label top margins
+first  |  0px
+later  |  22px
+
 ## container gaps
 button.active.nav-item  |  10px
 button.active.pill  |  1px

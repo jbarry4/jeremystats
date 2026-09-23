@@ -264,7 +264,7 @@ BARRY.views.spectrum = (function () {
   /* ---------------- the form ---------------- */
   function formCard() {
     const box = el('div', { class: 'card comod-form' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'What to measure' }));
     box.appendChild(el('p', { class: 'hint', style: 'margin:0 0 10px',
       text: (ctx.label || ctx.path) + '  ·  '

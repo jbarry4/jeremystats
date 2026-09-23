@@ -1652,10 +1652,26 @@ code { font-family: var(--mono); }
   white-space: pre-wrap; max-height: 260px; overflow-y: auto;
 }
 .desc-box.none { color: var(--text-3); font-style: italic; }
+/* The house label, 164 uses across 25 files -- and the top margin was on the
+   wrong rule for every one of them.
+
+   It read `margin: 22px 0 10px`, which is right for a label separating two
+   sections and wrong for the first label in its container, which is what
+   most of them are. So 41 call sites pasted `style: 'margin-top:0'` to undo
+   it, and the ones that did not paste it sat 22px lower than their
+   neighbours for no reason anybody chose.
+
+   The space belongs BETWEEN two of them, not on top of one, so it is on the
+   sibling combinator. First in its parent gets nothing; anything following
+   something else gets the gap. No call site has to know, and it holds in any
+   container rather than in the ones somebody remembered to name -- measured:
+   a `:first-child` rule scoped to cards and modals still left first labels
+   reading 22px elsewhere. */
 .section-label {
   font-size: var(--fs-105); text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--text-3); margin: 22px 0 10px; font-weight: 600;
+  color: var(--text-3); margin: 0 0 10px; font-weight: 600;
 }
+* + .section-label { margin-top: 22px; }
 .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-10); }
 .param {
   padding: 10px 12px; background: var(--bg-2);

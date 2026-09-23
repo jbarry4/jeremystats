@@ -2920,7 +2920,7 @@ BARRY.views.sessions = (function () {
     const st = (BARRY.vacc && BARRY.vacc.last) || {};
 
     host.appendChild(el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', style: 'margin-top:0',
+      el('div', { class: 'section-label',
                   text: 'What the cluster can reach' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
         text: st.available
@@ -2994,7 +2994,7 @@ BARRY.views.sessions = (function () {
     }
 
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Look around it, and scan' }));
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
       text: 'Scanning a folder walks everything under it and tells the '

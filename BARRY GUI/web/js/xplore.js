@@ -5948,7 +5948,7 @@ BARRY.views.xplore = (function () {
       el('div', { class: 'mb' }, [
         el('div', { class: 'wiz-grid' }, [
           el('div', {}, [
-            el('div', { class: 'section-label', style: 'margin-top:0', text: 'Detector' }),
+            el('div', { class: 'section-label', text: 'Detector' }),
             el('div', { class: 'field' }, [
               el('label', { text: 'How to set the threshold' }),
               el('div', { class: 'seg', id: 'thrMode' }, [
@@ -6010,7 +6010,7 @@ BARRY.views.xplore = (function () {
                   + '(HP ' + sess.hp + ' / LP ' + sess.lp + ' / notch ' + sess.notch + ').' }),
           ]),
           el('div', {}, [
-            el('div', { class: 'section-label', style: 'margin-top:0', text: 'Result' }),
+            el('div', { class: 'section-label', text: 'Result' }),
             status,
             perCh,
             el('div', { class: 'section-label', text: 'Committed sets' }),
