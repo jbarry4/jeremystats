@@ -300,6 +300,25 @@ def main():
             print("%-22s TIMED OUT" % name, flush=True)
             continue
 
+        # Edge wrote nothing at all.
+        #
+        # This happens -- a locked profile, a browser that handed the URL
+        # somewhere else and exited -- and it is NOT the same as a page with
+        # no checks in it. Counted as zero, it came out the other end as
+        # "no checks reported (shot-takers and probes, mostly)" and
+        # "nothing failing", which is a clean sweep. Two comparisons in a
+        # consistency pass read as agreeing when neither page had run.
+        #
+        # An empty capture is a failed run, and the only honest thing to
+        # call it is NO OUTPUT.
+        if not raw.strip():
+            rows.append((name, 0, 1, "NO OUTPUT", [
+                "Edge produced an empty dump -- the page did not run. "
+                "Kill any msedge processes and delete " + PROFILE]))
+            print("%-22s NO OUTPUT   (empty dump; the page never ran)"
+                  % name, flush=True)
+            continue
+
         title = (re.search(r"<title>(.*?)</title>", raw, re.S) or [None, ""])[1]
         text = strip(raw)
 

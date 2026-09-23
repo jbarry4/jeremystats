@@ -257,14 +257,30 @@ Six primitives did this: `.section-label`, `.field label`, `.dp-lab`,
 `.ctl > label`, `.mini-field`, `.vacc-field` — and `.wiz-grid .field label`
 un-uppercasing some of them. `.section-label` won on merit and on usage.
 
+### `workbenchCard({ title, chips, count, owner, when, progress, tally, actions })`
+
+A thing you have open, on a bench, until you put it down. Checkup and
+StrataScope both build one.
+
+**The owner is always stated, including when there is not one.** "Nobody has
+this" is what a bench exists to say. StrataScope used to omit it entirely
+when unassigned, so an unclaimed sheet looked identical to one whose owner you
+simply had not read.
+
+**What is deliberately not unified.** A curation set can be handed to
+somebody; a sheet cannot — there is no assign path for one. So a set's owner
+is a `button.cur-who` and a sheet's is `span.cur-who.static`: same words, same
+place, no hover, no pointer. A control that looks pressable and is not would
+be a worse lie than the inconsistency it replaced.
+
+That is the general rule when two surfaces differ: **unify the shape, keep the
+difference that is about what the thing can do.**
+
 ### Still to come
 
-`workbenchCard` and `analysisRun`. Checkup and StrataScope build the same
-`.cur-set` two different ways — the owner is a clickable `button.cur-who` in
-one and dead `span.csr-who` text in the other, absent entirely when
-unassigned. Comod, Incisor, Panorama and Spectrum share three dead
-`.comod-*` classes, which is its own evidence that they were copy-pasted from
-one another. Until those land, follow §1 and copy the nearest well-behaved
+`analysisRun`. Comod, Incisor, Panorama and Spectrum share three dead
+`.comod-*` classes, which is its own evidence they were copy-pasted from one
+another. Until it lands, follow §1 and copy the nearest well-behaved
 neighbour.
 
 ---
