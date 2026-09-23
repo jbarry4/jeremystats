@@ -61,13 +61,34 @@ const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } }
   A.src = '/#toolkit';
   await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.views.toolkit'),
               40000);
+  /* Icons belong to TOOLS, not to the steps inside a bundle.
+
+     A bundle -- The Dentist -- carries one mark, and the tools within it
+     are listed as numbered steps: `.tk-step-i` where a tool has
+     `svg.tk-ico`. Numbering them is the point, because they are meant to
+     be done in order. This page was widened to `.tk-tool, .tk-step` when
+     Incisor, Checkup and Braces moved into the bundle, and then demanded
+     an icon from three rows that are numbered on purpose. */
   const tools = await until(() => {
-    const n = D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step');
+    const n = D().querySelectorAll('#tkBody .tk-tool');
     return n.length ? n : null;
   }, 30000);
   ck('the toolkit rendered its tools', !!tools, 'none');
   if (!tools) { document.title = 'toolicons: ' + (bad || 1) + ' FAILED'; return; }
   say('note', '  ' + tools.length + ' tools');
+
+  const steps = D().querySelectorAll('#tkBody .tk-step');
+  if (steps.length) {
+    head('A bundle step is numbered instead');
+    say('note', '  ' + steps.length + ' step(s)');
+    for (const s of steps) {
+      const nm = (s.querySelector('.tk-step-n') || {}).textContent || '?';
+      const n = (s.querySelector('.tk-step-i') || {}).textContent || '';
+      ck(nm + ' is numbered', /^\d+$/.test(n.trim()), 'got "' + n + '"');
+      ck('  ' + nm + ' does not also carry a tool mark',
+         !s.querySelector('svg.tk-ico'));
+    }
+  }
 
   head('Every tool carries a mark');
   const seen = [];

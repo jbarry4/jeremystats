@@ -1,15 +1,16 @@
 {
   "_at": {
-    "added": "2026-09-09T15:16:40.672921+00:00",
-    "by_label": "2026-09-09T15:16:40.672921+00:00",
+    "added": "2026-09-09T02:03:44.651438+00:00",
+    "aligned": "2026-09-21T20:26:38.918194+00:00",
+    "by_label": "2026-09-21T20:26:38.918194+00:00",
     "curation_label": "2026-09-09T15:16:40.672921+00:00",
     "duration_s": "2026-09-09T15:16:40.672921+00:00",
-    "events": "2026-09-09T15:16:40.672921+00:00",
+    "events": "2026-09-21T20:26:38.918194+00:00",
     "gid": "2026-09-09T15:16:40.672921+00:00",
     "id": "2026-09-09T15:16:40.672921+00:00",
     "label_names": "2026-09-09T15:16:40.672921+00:00",
     "mouse": "2026-09-09T15:16:40.672921+00:00",
-    "n": "2026-09-09T15:16:40.672921+00:00",
+    "n": "2026-09-21T20:26:38.918194+00:00",
     "name": "2026-09-09T15:16:40.672921+00:00",
     "note": "2026-09-09T15:16:40.672921+00:00",
     "project": "2026-09-09T15:16:40.672921+00:00",
@@ -47,6 +48,10 @@
         "set",
         "2026-09-09T15:16:40.672921+00:00"
       ],
+      "br-f526e3bd6f": [
+        "set",
+        "2026-09-21T20:26:38.918194+00:00"
+      ],
       "v0-938188a4": [
         "set",
         "2026-09-09T15:16:40.672921+00:00"
@@ -58,7 +63,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:16:40.672921+00:00",
+    "at": "2026-09-21T20:26:38.918194+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -67,37 +72,101 @@
     "by": "Shahriar Tafti",
     "machine": "DESKTOP-4H65AI7"
   },
+  "aligned": {
+    "at": "2026-09-21T16:26:38-04:00",
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by": "Rain Younger",
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      57,
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "profile": {
+      "47": 0.287484,
+      "48": 0.349511,
+      "49": 0.309023,
+      "50": 0.374873,
+      "51": 0.319859,
+      "52": 0.064815,
+      "53": -0.060721,
+      "54": -0.086755,
+      "55": -0.287387,
+      "56": -0.384232,
+      "57": -0.288479,
+      "58": -0.257581,
+      "59": -0.117891,
+      "60": 0.064139,
+      "61": 0.138178,
+      "62": 0.156678
+    },
+    "screened": {
+      "57": "not ticked",
+      "59": "dead (0.5 uV against a median of 116)"
+    },
+    "smooth_ms": 0.0,
+    "source_version": 2,
+    "source_version_id": "8bc727363b10",
+    "spacing_um": 30.0,
+    "tool": "jarvis.braces/1",
+    "version": 3,
+    "window_ms": 100.0
+  },
   "by_label": {
-    "garbage": 2,
-    "spike": 3
+    "Dentate Spike": 3
   },
   "curation_label": "*",
   "duration_s": null,
   "events": [
     {
+      "from_t": 295.294,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 295.294
+      "start": 295.302215
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 393.768
-    },
-    {
+      "from_t": 1372.155,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1372.155
+      "start": 1372.171632
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1456.064
-    },
-    {
+      "from_t": 1527.027,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1527.027
+      "start": 1527.070265
     }
   ],
   "gid": "sba57286bdee3",
@@ -135,7 +204,7 @@
     "spike": "Dentate Spike"
   },
   "mouse": 8,
-  "n": 5,
+  "n": 3,
   "name": "M8s2feb6",
   "note": "",
   "project": "PTEN",
@@ -286,6 +355,115 @@
         ]
       ],
       "v": 2
+    },
+    {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63
+        ],
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {},
+        "invert": true,
+        "left_out": [
+          57,
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 3,
+        "n_unmoved": 2,
+        "order": 3,
+        "order_held": true,
+        "profile": {
+          "47": 0.287484,
+          "48": 0.349511,
+          "49": 0.309023,
+          "50": 0.374873,
+          "51": 0.319859,
+          "52": 0.064815,
+          "53": -0.060721,
+          "54": -0.086755,
+          "55": -0.287387,
+          "56": -0.384232,
+          "57": -0.288479,
+          "58": -0.257581,
+          "59": -0.117891,
+          "60": 0.064139,
+          "61": 0.138178,
+          "62": 0.156678
+        },
+        "screened": {
+          "57": "not ticked",
+          "59": "dead (0.5 uV against a median of 116)"
+        },
+        "shift_max_ms": 43.265,
+        "shift_median_ms": 16.632,
+        "shift_min_ms": 8.215,
+        "smooth_ms": 0.0,
+        "source_version": 2,
+        "source_version_id": "8bc727363b10",
+        "spacing_um": 30.0,
+        "tool": "jarvis.braces/1",
+        "window_ms": 100.0
+      },
+      "at": "2026-09-21T16:26:38-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 3
+      },
+      "changed": 0,
+      "from_id": "8bc727363b10",
+      "from_v": 2,
+      "gained": 0,
+      "id": "br-f526e3bd6f",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 3,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 3 stamp(s) moved by 8.2 to 43.3 ms; 2 left where they were. No labels changed.",
+      "shifted": 3,
+      "snap": [
+        [
+          295.302215,
+          "spike"
+        ],
+        [
+          1372.171632,
+          "spike"
+        ],
+        [
+          1527.070265,
+          "spike"
+        ]
+      ],
+      "v": 3
     }
   ]
 }

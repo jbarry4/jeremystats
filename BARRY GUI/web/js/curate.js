@@ -701,16 +701,31 @@ BARRY.curate = (function () {
 
     const cats = el('div', { class: 'cur-cats' });
     for (const lab of (kind.labels || [])) {
+      /* A computed label is not a button.
+
+         X-ray works DS1 and DS2 out from a PCA over every event in the set
+         at once, so there is no sense in which somebody could press it for
+         the candidate in front of them -- and a button that cannot be
+         pressed meaningfully is worse than no button. They still appear
+         everywhere a label is READ: the counts, the version history, the
+         marks on the trace.
+
+         `keys` is read defensively as well. It was `lab.keys.join(...)`,
+         which is a TypeError on any label without them -- so the first
+         keyless label added to a vocabulary would have taken out the whole
+         category bar rather than its own button. */
+      if (lab.computed) continue;
+      const keys = lab.keys || [];
       const on = ev && ev.label === lab.id;
       cats.appendChild(el('button', {
         class: 'cur-cat' + (on ? ' on' : ''),
         style: '--cat:' + lab.color,
-        title: lab.name + '   (' + lab.keys.join(' or ') + ')',
+        title: lab.name + (keys.length ? '   (' + keys.join(' or ') + ')' : ''),
         onclick: () => assign(on ? null : lab.id),
       }, [
-        el('kbd', { text: lab.keys[0] }),
+        keys.length ? el('kbd', { text: keys[0] }) : null,
         el('span', { text: lab.name }),
-      ]));
+      ].filter(Boolean)));
     }
     bar.appendChild(cats);
 
@@ -1056,7 +1071,7 @@ BARRY.curate = (function () {
       ]) : null;
     }).filter(Boolean);
 
-    showModal(el('div', { class: 'rcpt-wrap' }, [
+    showModal(el('div', { class: 'modal rcpt-wrap' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Session receipt' }),
         el('span', { class: 'sub', text: r.session || r.name || gid }),
@@ -1172,7 +1187,7 @@ BARRY.curate = (function () {
       const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
 
       const wrap = el('div', { class: 'modal bank-dialog' });
-      wrap.appendChild(el('div', { class: 'modal-head' }, [
+      wrap.appendChild(el('div', { class: 'mh' }, [
         el('h2', { text: vs.length ? 'Bank this as version ' + next
                                    : 'Bank this set' }),
         el('p', { class: 'sub', text: (at && at.name) || '' }),
@@ -1206,7 +1221,7 @@ BARRY.curate = (function () {
           const v = vs[i];
           list.appendChild(el('div', { class: 'ver-row' }, [
             el('div', { class: 'ver-top' }, [
-              el('span', { class: 'ver-n', text: 'v' + v.v }),
+              el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
               v.imported ? el('span', { class: 'flagchip',
                                         text: 'the import' }) : null,
               el('span', { class: 'ver-when',
@@ -1262,7 +1277,7 @@ BARRY.curate = (function () {
         closeModal();
         resolve(val);
       };
-      wrap.appendChild(el('div', { class: 'modal-foot' }, [
+      wrap.appendChild(el('div', { class: 'mf' }, [
         el('div', { style: 'flex:1' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: () => done(null) }),
@@ -1293,7 +1308,7 @@ BARRY.curate = (function () {
       tally[k] = (tally[k] || 0) + 1;
     }
 
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Everything in this set' }),
       el('p', { class: 'sub',
                 text: events().length + ' candidates  \u00b7  '
@@ -1444,7 +1459,7 @@ BARRY.curate = (function () {
     wrap.appendChild(controls);
     wrap.appendChild(chips);
     wrap.appendChild(rowsHost);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
     ]));
@@ -1869,8 +1884,18 @@ BARRY.vers = (function () {
 
     const announce = () => {
       for (const [node, ch] of marks) {
-        node.classList.toggle('on', !!pick && ch.v === pick.v
-                                     && ch.entry === pick.entry);
+        /* Matched on the version ITSELF, not on its number.
+           The stored number is not unique -- two machines curating one
+           entry both mint the next one and the union keeps both, which is
+           what the per-version id exists for -- so `ch.v === pick.v` lit up
+           every row sharing a number. On an entry holding two v1s that is
+           two rows highlighted and one radio filled, which reads as the
+           dialog having lost track of what you picked.
+
+           `ch.row` is the version object the row was built from, so
+           identity settles it and needs no id to be present: the histories
+           that predate ids are exactly the ones most likely to collide. */
+        node.classList.toggle('on', !!pick && ch.row === pick.row);
       }
       said.innerHTML = '';
       if (pick) {

@@ -47,7 +47,12 @@ except Exception:                                        # noqa: BLE001
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 BASE = "http://127.0.0.1:8791"
-ROOT = r"c:\Users\Z390\Desktop\jeremystats\BARRY GUI"
+# Derived, not written down. It was one developer's own path, so the
+# suite could not run on any other machine -- and the failure is a
+# FileNotFoundError on the listdir, which is at least loud. The version
+# of this that would have been worse is a suite that found nothing and
+# reported "0 ok, 0 fail", which reads exactly like a clean sweep.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # A browser profile of the suite's own. See the note on
 # --user-data-dir below: without it a run competes with whatever
 # browser is already open and silently produces nothing.
@@ -73,7 +78,7 @@ SESSION = "demo:long-session"
 # scan writes down, what it can see without opening a file, and which records
 # it brightens. Passed nothing, it scanned a folder named "null" and failed
 # eight checks every run.
-NEEDS_ROOT = {"scanreg.html"}
+NEEDS_ROOT = {"scanreg.html", "scanlive.html"}
 
 # Harnesses measured to be WORSE with it. Both treat the parameter as
 # optional and take a different path when it is present.
@@ -97,10 +102,18 @@ OK = re.compile(r"(?m)^\s*(?:ok|OK|PASS|\u2713)\b")
 BAD = re.compile(r"(?m)^\s*(?:FAIL|BAD|ERROR|\u2717|\u2718)\b")
 
 
-_FAKE = [None]
+# A fixture PER HARNESS, not one shared between them.
+#
+# `scanreg.html` and `scanlive.html` both scan a fixture and both forget
+# what they registered afterwards -- and forgetting is permanent, because
+# the tombstone is what stops a scratch copy creeping back. Sharing one
+# folder meant whichever ran first tombstoned the three recordings and the
+# second could then never register them, so its "the scan registered what
+# it found" checks failed with nothing wrong with the scan.
+_FAKE = {}
 
 
-def fake_drive():
+def fake_drive(who="shared"):
     """A throwaway drive with recordings on it, for the scan harness.
 
     The scanner calls a folder a recording when it holds a `csc*.ncs` file,
@@ -113,8 +126,8 @@ def fake_drive():
     Under the system temp directory, rebuilt once per run, and named
     `fakedrive` because that is the pattern `scanreg.html` cleans up by.
     """
-    if _FAKE[0]:
-        return _FAKE[0]
+    if _FAKE.get(who):
+        return _FAKE[who]
     import tempfile
     # A folder per run.
     #
@@ -128,7 +141,8 @@ def fake_drive():
     # A stamped folder is genuinely new every time, which is what those
     # checks are about.
     root = os.path.join(tempfile.gettempdir(), "barry_fakedrive",
-                        "fakedrive_" + time.strftime("%Y%m%d_%H%M%S"))
+                        "fakedrive_%s_%s" % (who,
+                                             time.strftime("%Y%m%d_%H%M%S")))
     # 1044 bytes per Neuralynx record; 512 records is about 8.7 s at 30 kHz
     # with 512 samples per record.
     header_bytes = 16 * 1024
@@ -143,8 +157,13 @@ def fake_drive():
     #
     # The mouse number and the dates move with the clock, so each run meets
     # recordings Jarvis has never seen.
+    # And an identity per HARNESS as well as per run. A recording is
+    # identified by mouse, session and start time, not by the folder above
+    # it -- so two fixtures built in the same minute describe the same three
+    # animals, and the second harness's records match the first's loosely.
+    # The name is folded in so they cannot.
     mouse = 900 + (int(time.strftime("%j")) * 7 + int(time.strftime("%H%M"))
-                   % 90) % 90
+                   % 90 + sum(ord(c) for c in who) * 11) % 90
     day = time.strftime("2026-%m-%d")
     sessions = [
         ("FAKEPROJ", "fake_m%d" % mouse,
@@ -177,7 +196,7 @@ def fake_drive():
                 fh.write(head)
                 fh.write(b"\x00" * (header_bytes - len(head)))
                 fh.write(b"\x00" * (1044 * records))
-    _FAKE[0] = root
+    _FAKE[who] = root
     return root
 
 
@@ -214,7 +233,7 @@ def main():
         if name not in NO_SESSION:
             url += "?session=" + urllib.parse.quote(SESSION, safe="")
         if name in NEEDS_ROOT:
-            root = fake_drive()
+            root = fake_drive(name.replace('.html', ''))
             url += ("&" if "?" in url else "?") + "root=" \
                 + urllib.parse.quote(root, safe="")
         try:
@@ -259,7 +278,19 @@ def main():
                      # Both pass at 1600x1000. A layout harness run in a 423px
                      # window is measuring the window, not the layout.
                      "--window-size=1600,1000",
-                     "--virtual-time-budget=150000", "--dump-dom", url],
+                     # Virtual time, not wall time, and it is a CAP: a
+                     # page that finishes sooner costs nothing. 150000 was
+                     # not enough for the longest suite any more -- dspca
+                     # stopped part way through with no tally line, and
+                     # since the runner counts the "ok" lines it found, a
+                     # suite cut in half reported as a shorter suite that
+                     # Virtual time runs far faster than wall time: every
+                     # `until` that waits spends its whole timeout out of
+                     # this budget in a fraction of a second of real time.
+                     # The wall timeout below is what catches a stuck page;
+                     # this only has to be large enough not to cut a
+                     # healthy one in half.
+                     "--virtual-time-budget=600000", "--dump-dom", url],
                     stdout=sink, stderr=subprocess.DEVNULL,
                     timeout=280, cwd=ROOT)
             with open(dump, "rb") as fh:
@@ -319,6 +350,18 @@ def main():
                          if "THREW" in l), "").strip()[:90]
             if not note and "CRASH" in (title or ""):
                 note = "title says CRASH"
+
+        # A page whose title never moved off "running" did not finish, and
+        # that is a failure however few checks it managed. It used to file
+        # as "none" beside the shot-takers, which is where two harnesses
+        # with a plain syntax error in their own <script> sat unnoticed --
+        # nothing runs, nothing is written, and "0 ok 0 fail" reads exactly
+        # like a page that has no checks by design.
+        if not ok and not bad and re.search(r":\s*running\s*$",
+                                            (title or "").strip()):
+            threw = True
+            note = ("page never finished — its own script probably did not "
+                    "parse (node --check it)")
 
         rows.append((name, ok, bad, note, fails))
         flag = "FAIL" if (bad or threw) else ("none" if not ok else "ok  ")

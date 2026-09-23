@@ -1,0 +1,368 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — one interface, or several</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 10px 14px; }
+  #dump { white-space: pre; font: 11px/1.45 ui-monospace, monospace;
+          color: #9fb4c4; padding: 0 14px 40px; }
+  iframe { position: fixed; right: 0; bottom: 0; width: 900px; height: 600px;
+           border: 0; border-left: 1px solid #243; opacity: .35; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 12px 0 4px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<pre id="dump"></pre>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The measurement this whole exercise is reviewed against.
+
+   "Many buttons, search bars and UI features scattered all over the place,
+   all of them slightly varying" is a claim about pixels, so this reads
+   pixels: every interactive control in every view, bucketed by the job it
+   does and grouped by its MEASURED shape -- font size, padding, radius,
+   border. A family with one shape is one control. A family with nine is
+   nine controls wearing one name.
+
+   It emits a stable text dump, and the dump is the artifact. A refactor
+   that is meant to change nothing must produce an empty diff against it;
+   one that is meant to change three selectors must produce exactly those
+   three lines. Reviewing a 1,500-line mechanical CSS diff by eye is not
+   review, and this is what replaces it.
+
+   Everything in the dump is deliberately independent of the DATA. Counts
+   of instances are not recorded -- they move with how many recordings are
+   on the machine -- only the distinct shapes, fingerprints and column
+   counts, which move only when the styling does.
+
+   Four passes. Three widths, because 37 media queries and 22
+   `repeat(auto-fill, minmax())` grids mean a rule can be correct at one
+   size and wrong at another; and one short window, because the rail has
+   its own `@media (max-height: 700px)` compaction that nothing else
+   exercises.
+
+   Three things are checked beyond the dump:
+
+     unstyled classes   every class applied in the markup must resolve to at
+                        least one CSS rule. `.btn.small` asked 11 buttons to
+                        be small with no rule to make them small; `.spinner`
+                        renders an empty div where a spinner should be. This
+                        is the check that catches that family.
+     compositions       the same class must not have two different internal
+                        shapes (`.cur-set` did), and two classes must not
+                        have the same one (`.br-intro` and `.dp-intro` do).
+     the named claims   the specific findings, asserted individually so a
+                        fix can be seen landing.
+*/
+const out = document.getElementById('out');
+const dumpEl = document.getElementById('dump');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+const VIEWS = ['pipeline', 'sessions', 'explorer', 'xplore', 'toolkit',
+               'eventbank', 'results', 'storyboard', 'history', 'misc',
+               'errors'];
+
+/* width x height for each pass. The short one is last so the tall passes
+   are not measured against a window that has just been resized. */
+const PASSES = [[1500, 600], [1100, 600], [900, 600], [1500, 700]];
+
+/* The buckets. First match wins, so the specific ones come first: a `.pill`
+   is not a general button, and a search field is not a general text field. */
+function bucket(n) {
+  const c = n.classList;
+  const tag = n.tagName.toLowerCase();
+  if (tag === 'input' && n.type === 'search') return 'search field';
+  if (tag === 'input' && n.closest('.search-wrap')) return 'search field';
+  if (tag === 'input' && (n.type === 'checkbox' || n.type === 'radio')) return null;
+  if (tag === 'input' || tag === 'textarea') return 'text field';
+  if (tag === 'select') return 'select';
+  if (c.contains('close-x')) return 'close X';
+  if (c.contains('badbtn')) return 'mark-bad button';
+  if (c.contains('chip-btn')) return 'status chip';
+  if (c.contains('pill')) return 'pill';
+  if (c.contains('mini')) return 'mini button';
+  if (c.contains('toggle')) return 'toggle';
+  if (c.contains('linkish')) return 'link button';
+  if (n.closest('.seg, .track-switch, .ctl-seg')) return 'segmented item';
+  if (n.closest('.xf-tabs, .inc-tabs')) return 'tab';
+  if (c.contains('btn')) return 'button';
+  if (tag === 'button') return 'unclassed button';
+  return null;
+}
+
+/* The shape, to a tenth of a pixel. Colour is left out deliberately: it is
+   the one axis the theme system already governs, and including it would
+   split every family by state (on, active, danger) and bury the geometry
+   this page is about. */
+function shape(cs) {
+  const p = [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft]
+    .map((v) => Math.round(parseFloat(v) * 10) / 10).join('/');
+  const r = Math.round(parseFloat(cs.borderTopLeftRadius) * 10) / 10;
+  const b = Math.round(parseFloat(cs.borderTopWidth) * 10) / 10;
+  const fs = Math.round(parseFloat(cs.fontSize) * 10) / 10;
+  const mono = /mono|consol|courier/i.test(cs.fontFamily) ? 'mono' : 'sans';
+  return 'font ' + fs + '/' + cs.fontWeight + ' ' + mono
+       + '  pad ' + p + '  radius ' + r + '  border ' + b;
+}
+
+/* How a node is named in the dump. Its own classes, sorted and capped, so
+   the line is stable whatever order they were written in. */
+function idOf(n) {
+  const raw = (n.className && n.className.baseVal !== undefined)
+    ? n.className.baseVal : (n.className || '');
+  const cls = String(raw).trim().split(/\s+/).filter(Boolean).sort();
+  return n.tagName.toLowerCase()
+       + (cls.length ? '.' + cls.slice(0, 4).join('.') : '');
+}
+
+/* A composition's fingerprint: what it is made of, in order. This is the
+   layer the shape audit cannot see -- two cards can measure identically and
+   still be built from different parts, which is what makes one tool look
+   like a different application from the next. */
+function fingerprint(n) {
+  return Array.from(n.children).map((k) => {
+    const raw = (k.className && k.className.baseVal !== undefined)
+      ? k.className.baseVal : (k.className || '');
+    const first = String(raw).trim().split(/\s+/)[0];
+    return k.tagName.toLowerCase() + (first ? '.' + first : '');
+  }).join(' ');
+}
+
+const shapes = new Map();   /* family -> Map(shape -> Set(id)) */
+const gaps = new Map();     /* id -> Set(gap) -- see below */
+const grids = new Map();    /* "pass|id" -> column count */
+const overflow = new Set(); /* "pass|id" */
+const comps = new Map();    /* class -> Set(fingerprint) */
+const domClasses = new Set();
+const counted = new WeakSet();
+
+function addShape(node) {
+  const b = bucket(node);
+  if (!b) return;
+  const cs = node.ownerDocument.defaultView.getComputedStyle(node);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return;
+  if (!shapes.has(b)) shapes.set(b, new Map());
+  const fam = shapes.get(b);
+  const s = shape(cs);
+  if (!fam.has(s)) fam.set(s, new Set());
+  fam.get(s).add(idOf(node));
+}
+
+function walk(pass, root, win) {
+  root.querySelectorAll('*').forEach((n) => {
+    n.classList.forEach((c) => domClasses.add(c));
+  });
+
+  root.querySelectorAll(
+    'button, input, select, textarea, label.toggle, [role="button"]'
+  ).forEach(addShape);
+
+  /* Grids and overflow are per pass: a column count that flips between
+     1500 and 900 is the thing worth catching. */
+  root.querySelectorAll('*').forEach((n) => {
+    const cs = win.getComputedStyle(n);
+    if (cs.display === 'none') return;
+    if (cs.display === 'grid' || cs.display === 'inline-grid') {
+      const cols = (cs.gridTemplateColumns || 'none').trim();
+      const ncol = cols === 'none' ? 0 : cols.split(/\s+/).length;
+      grids.set(pass + '|' + idOf(n), ncol);
+    }
+    /* The space BETWEEN things, which the control shapes cannot see.
+
+       Without this the dump is blind to a whole class of change: two
+       features sharing a class name by accident and one of them silently
+       getting the other's spacing, and the gap renames of the token pass.
+       Both are invisible in font size and padding. */
+    if (/flex|grid/.test(cs.display)) {
+      const g = (cs.rowGap === cs.columnGap)
+        ? cs.rowGap : cs.rowGap + ' ' + cs.columnGap;
+      if (g && g !== 'normal' && parseFloat(g) !== 0) {
+        const k = idOf(n);
+        if (!gaps.has(k)) gaps.set(k, new Set());
+        gaps.get(k).add(g);
+      }
+    }
+    /* +2 rather than +1: sub-pixel layout rounding produces a one-pixel
+       difference on elements that are not actually overflowing, and a
+       baseline full of phantom lines is a baseline nobody reads. */
+    if (n.scrollWidth > n.clientWidth + 2 && cs.overflowX !== 'auto'
+        && cs.overflowX !== 'scroll') {
+      overflow.add(pass + '|' + idOf(n));
+    }
+  });
+
+  /* Compositions, once -- they do not change with width. */
+  if (pass === PASSES[0][0] + 'x' + PASSES[0][1]) {
+    root.querySelectorAll(
+      '.card, .cur-set, .tk-head, .view-head, .sec-head, .br-intro, '
+      + '.dp-intro, .modal, .empty-state'
+    ).forEach((n) => {
+      if (counted.has(n)) return;
+      counted.add(n);
+      const cs = win.getComputedStyle(n);
+      if (cs.display === 'none') return;
+      const key = idOf(n);
+      if (!comps.has(key)) comps.set(key, new Set());
+      comps.get(key).add(fingerprint(n));
+    });
+  }
+}
+
+/* Every class any rule mentions. Read from the live stylesheet rather than
+   from the file, so a rule that does not parse is a rule that does not
+   count -- which is the honest definition. */
+function styledClasses(doc) {
+  const found = new Set();
+  const eat = (rules) => {
+    for (const r of rules || []) {
+      if (r.selectorText) {
+        const m = r.selectorText.match(/\.[A-Za-z_][\w-]*/g) || [];
+        m.forEach((c) => found.add(c.slice(1)));
+      }
+      if (r.cssRules) eat(r.cssRules);
+    }
+  };
+  for (const sheet of doc.styleSheets) {
+    try { eat(sheet.cssRules); } catch (e) { /* cross-origin; none here */ }
+  }
+  return found;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  /* `setView` is a function declaration and so is on the frame's window;
+     `BARRY` is a const and is not. */
+  const ready = await untilN(() => typeof win().setView === 'function');
+  check('the application loads', ready >= 0, 'no setView after 25s');
+  if (ready < 0) { document.title = 'FAIL'; return; }
+  await sleep(600);
+
+  head('walking every view, at every size');
+  for (const [w, h] of PASSES) {
+    const pass = w + 'x' + h;
+    f.style.width = w + 'px';
+    f.style.height = h + 'px';
+    await sleep(350);
+    let n = 0;
+    for (const v of VIEWS) {
+      try {
+        win().setView(v);
+        await sleep(450);
+        const root = doc().getElementById('app') || doc().body;
+        walk(pass, root, win());
+        n += 1;
+      } catch (e) {
+        say('bad', pass + ' ' + v + ' — would not open: ' + e.message);
+      }
+    }
+    check(pass + ' — ' + n + ' of ' + VIEWS.length + ' views read',
+          n === VIEWS.length);
+  }
+
+  head('classes that promise styling and deliver none');
+  const styled = styledClasses(doc());
+  /* Dynamic and state-only classes are applied by script and styled through
+     a parent; they are not what this check is about. */
+  const SKIP = /^(js|hidden|on|off|active|now|done|sel|none|is-|has-)/;
+  const dead = [...domClasses].filter(
+    (c) => !styled.has(c) && !SKIP.test(c)).sort();
+  check('every class applied in the markup resolves to a rule',
+        dead.length === 0, dead.length + ': ' + dead.join(' '));
+
+  head('the named claims');
+  const d = doc();
+  const probe = d.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0';
+  const mk = (cls) => { const b2 = d.createElement('button');
+                        b2.className = cls; b2.textContent = 'Read a batch';
+                        probe.appendChild(b2); return b2; };
+  const plain = mk('btn'), sm = mk('btn sm'), small = mk('btn small');
+  d.body.appendChild(probe);
+  const px = (n) => parseFloat(win().getComputedStyle(n).fontSize);
+  check('.btn.sm is smaller than .btn', px(sm) < px(plain),
+        px(sm) + ' vs ' + px(plain));
+  check('.btn.small is not a second spelling of .btn.sm',
+        px(small) === px(sm),
+        '.btn.small measures ' + px(small) + ', .btn.sm ' + px(sm)
+        + ', plain .btn ' + px(plain));
+  probe.remove();
+
+  const sf = shapes.get('search field');
+  check('every search field is one shape', sf && sf.size === 1,
+        sf ? sf.size + ' shapes' : 'none reached');
+
+  for (const [k, v] of comps) {
+    if (v.size > 1) {
+      check(k + ' is built one way', false, v.size + ' different structures');
+    }
+  }
+  const byPrint = new Map();
+  for (const [k, v] of comps) {
+    for (const p of v) {
+      if (!byPrint.has(p)) byPrint.set(p, new Set());
+      byPrint.get(p).add(k);
+    }
+  }
+
+  /* ---- the dump ---- */
+  const L = [];
+  L.push('# UI baseline. Shapes, compositions and column counts.');
+  L.push('# Data-independent by construction: no instance counts.');
+  L.push('');
+  L.push('## control shapes');
+  for (const fam of [...shapes.keys()].sort()) {
+    for (const s of [...shapes.get(fam).keys()].sort()) {
+      L.push(fam + '  |  ' + s + '  |  '
+             + [...shapes.get(fam).get(s)].sort().join(' '));
+    }
+  }
+  L.push('');
+  L.push('## compositions');
+  for (const k of [...comps.keys()].sort()) {
+    for (const p of [...comps.get(k)].sort()) L.push(k + '  |  ' + p);
+  }
+  L.push('');
+  L.push('## container gaps');
+  for (const k of [...gaps.keys()].sort()) {
+    L.push(k + '  |  ' + [...gaps.get(k)].sort().join('  '));
+  }
+  L.push('');
+  L.push('## grid column counts');
+  for (const k of [...grids.keys()].sort()) L.push(k + '  |  ' + grids.get(k));
+  L.push('');
+  L.push('## overflowing');
+  for (const k of [...overflow].sort()) L.push(k);
+  L.push('');
+  L.push('## classes with no rule');
+  for (const c of dead) L.push(c);
+  dumpEl.textContent = L.join('\n');
+
+  head(bad === 0 ? 'one interface' : bad + ' places where it is several');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

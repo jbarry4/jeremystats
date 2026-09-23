@@ -1,0 +1,281 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vacccircuit: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The wiring: a surge that crosses the interface, and a layer that stays
+   lit under the cursor.
+
+   The assertion this page exists for is the second one's cost. A glow that
+   follows the pointer is the easiest thing in the application to build
+   wrongly: written with `left`/`top` it relayouts the layer and repaints
+   everything it overlaps, at pointer rate, in an application whose main
+   view redraws canvases on every pan frame. So it must move by `transform`
+   and nothing else, and it must have no CSS animation at all -- because
+   `vaccquiet.html` asserts that nothing is animating once the interface is
+   at rest, and a permanent luminance lift in peripheral vision is how a
+   feature gets switched off and never switched back on.
+
+   The surge is the opposite problem: it is allowed to be expensive, for
+   about a second, and then it has to be gone. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  check('the module loaded', ev('typeof BARRY.vaccfx') === 'object');
+
+  say('');
+  say('=== off means gone, not hidden ===');
+  ev('applyVacc(false, false)');
+  await sleep(300);
+  /* Removed rather than display:none. A fixed full-screen element left in
+     the tree is one more thing for every future `querySelectorAll('*')` to
+     walk, and one more thing to explain to whoever finds it. */
+  check('there is no circuit layer with the mode off',
+        !D().getElementById('vaccCircuit'));
+
+  say('');
+  say('=== on brings the wiring up ===');
+  ev('applyVacc(true, false)');
+  await sleep(400);
+  const layer = D().getElementById('vaccCircuit');
+  check('the circuit layer appears', !!layer);
+  if (!layer) { document.title = 'vacccircuit: ' + (fails || 1) + ' FAILED'; return; }
+  const cs = W().getComputedStyle(layer);
+  check('it takes no clicks', cs.pointerEvents === 'none', cs.pointerEvents);
+  check('and is fixed over the page', cs.position === 'fixed', cs.position);
+  const board = layer.querySelector('.vcx-traces');
+  const glow = layer.querySelector('.vcx-glow');
+  check('it has a board', !!board);
+  check('and a lit patch', !!glow);
+
+  /* The DOM goes up empty and the artwork arrives on the next idle
+     callback. That is the whole cost design: one paint, never on the way
+     in, where it would land during boot or during the power-up when the
+     compositor is already busy. */
+  check('the board starts empty, so nothing is drawn on the way in',
+        board && board.children.length === 0,
+        board ? board.children.length + ' children' : '-');
+  const svg = await until(() => layer.querySelector('.vcx-traces svg'), 8000);
+  check('and the artwork arrives once the browser is idle', !!svg);
+
+  if (board) {
+    const o = parseFloat(W().getComputedStyle(board).opacity);
+    /* Faint on purpose: the interface should look like it is sitting ON
+       something, not like somebody drew over it. */
+    check('the traces are faint enough to sit under real content',
+          o > 0 && o < 0.15, String(o));
+  }
+
+  say('');
+  say('=== it is a board, not a grid ===');
+  /* The difference is routing. A grid is parallel lines that tile; traces
+     leave a pad, turn at 45 degrees rather than square, and stop. The
+     chamfered corner is the strongest visual signature of a board, and it
+     is the one thing a repeating gradient cannot express -- which is why
+     this is drawn rather than tiled. */
+  const paths = Array.from(layer.querySelectorAll('.vcx-traces path'));
+  const pads = Array.from(layer.querySelectorAll('.vcx-traces circle'));
+  say('    ' + paths.length + ' traces, ' + pads.length + ' pads', 'note');
+  check('there are traces', paths.length > 4, paths.length + '');
+  check('and pads where they terminate', pads.length > 4, pads.length + '');
+
+  const ds = paths.map((n) => n.getAttribute('d') || '');
+  /* Every trace is a run of segments, not one straight line -- a single
+     `M ... L ...` with two points is a grid line. */
+  const multi = ds.filter((d) => (d.match(/L/g) || []).length >= 3);
+  check('each trace is routed, not a single straight line',
+        multi.length > paths.length * 0.6,
+        multi.length + ' of ' + paths.length + ' have 3+ segments');
+
+  /* The chamfer: a corner cut produces two points that differ in BOTH x
+     and y by the same small amount. A square corner never does. */
+  const chamfered = ds.filter((d) => {
+    const pts = d.match(/-?\d+(?:\.\d+)?/g) || [];
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      const dx = Math.abs(+pts[i + 2] - +pts[i]);
+      const dy = Math.abs(+pts[i + 3] - +pts[i + 1]);
+      if (dx > 0.5 && dy > 0.5 && Math.abs(dx - dy) < 0.5) return true;
+    }
+    return false;
+  });
+  check('and corners are chamfered at 45 degrees, not square',
+        chamfered.length > paths.length * 0.4,
+        chamfered.length + ' of ' + paths.length + ' have a 45 corner');
+
+  /* Lengths vary. A lattice has one length, repeated. */
+  const lens = new Set(ds.map((d) => (d.match(/L/g) || []).length));
+  check('traces are different lengths, as on a board',
+        lens.size > 1, lens.size + ' distinct segment counts');
+
+  say('');
+  say('=== and the one paint stays cheap ===');
+  const all = layer.querySelectorAll('svg *').length;
+  say('    ' + all + ' drawn elements across both layers', 'note');
+  /* Every path here is painted twice -- once faint, once inside the lit
+     patch. The ceiling is what keeps "one paint" true on a large monitor. */
+  check('the board is bounded, so the single paint stays cheap',
+        all > 0 && all < 700, all + ' elements');
+
+  say('');
+  say('=== NOTHING in the wiring animates at rest ===');
+  /* The rule `vaccquiet.html` polices for the whole interface, asserted
+     here against this layer specifically, because this is the layer most
+     likely to break it. */
+  const rest = ev(`(function(){
+    var out = [];
+    var n = document.getElementById('vaccCircuit');
+    if (!n) return '[]';
+    var all = [n].concat(Array.prototype.slice.call(n.querySelectorAll('*')));
+    all.forEach(function(x){
+      ['', '::before', '::after'].forEach(function(pe){
+        var a = getComputedStyle(x, pe || null).animationName;
+        if (a && a !== 'none') out.push((x.className || x.id) + pe + ':' + a);
+      });
+    });
+    return JSON.stringify(out);
+  })()`);
+  const restList = JSON.parse(rest);
+  check('no animation is running on the circuit layer',
+        restList.length === 0, restList.join(', ') || 'none');
+
+  say('');
+  say('=== the glow moves by transform, and only by transform ===');
+  check('the pointer listeners are attached', ev('BARRY.vaccfx.wired') === true);
+  const before = W().getComputedStyle(glow).transform;
+  ev('window.dispatchEvent(new PointerEvent("pointermove",'
+     + '{clientX: 500, clientY: 300, bubbles: true}))');
+  await until(() => W().getComputedStyle(glow).transform !== before, 3000);
+  say('    ' + ev('JSON.stringify(BARRY.vaccfx.stats)'), 'note');
+  const after = W().getComputedStyle(glow).transform;
+  check('a pointer move moves it', before !== after,
+        'stats=' + ev('JSON.stringify(BARRY.vaccfx.stats)')
+        + '  ' + String(after).slice(0, 40));
+  /* The one that matters for cost. `left`/`top` would relayout the layer
+     and repaint everything under it at pointer rate. */
+  const box = W().getComputedStyle(glow);
+  check('it is positioned by transform, not by left/top',
+        (box.left === '0px' || box.left === 'auto')
+        && (box.top === '0px' || box.top === 'auto'),
+        'left=' + box.left + ' top=' + box.top);
+  check('and it really is a translate',
+        /matrix|translate/.test(after), String(after).slice(0, 40));
+
+  const at500 = after;
+  ev('BARRY.vaccfx.moveTo(900, 640)');
+  await until(() => W().getComputedStyle(glow).transform !== at500, 3000);
+  check('and it follows, rather than jumping once and stopping',
+        W().getComputedStyle(glow).transform !== at500,
+        String(W().getComputedStyle(glow).transform).slice(0, 44));
+
+  say('');
+  say('=== clicking sends a ring, and the ring leaves ===');
+  ev('window.dispatchEvent(new PointerEvent("pointerdown",'
+     + '{clientX: 600, clientY: 400, bubbles: true}))');
+  const ring = await until(
+    () => D().querySelector('#vaccCircuit .vcx-ripple'), 2000);
+  check('a ripple appears where the pointer went down', !!ring);
+  if (ring) {
+    const rs = W().getComputedStyle(ring);
+    check('it is at the click, not at the origin',
+          ring.style.left === '600px' && ring.style.top === '400px',
+          ring.style.left + ',' + ring.style.top);
+    check('and it animates opacity and transform only',
+          /vcxRipple/.test(rs.animationName), rs.animationName);
+  }
+  const ringGone = await until(
+    () => !D().querySelector('#vaccCircuit .vcx-ripple'), 4000);
+  check('and it removes itself afterwards', !!ringGone);
+  /* Back to rest, which is where the no-animation rule applies. */
+  const rest2 = JSON.parse(ev(`(function(){
+    var out = [], n = document.getElementById('vaccCircuit');
+    if (!n) return '[]';
+    Array.prototype.slice.call(n.querySelectorAll('*')).forEach(function(x){
+      var a = getComputedStyle(x).animationName;
+      if (a && a !== 'none') out.push(x.className + ':' + a);
+    });
+    return JSON.stringify(out);
+  })()`));
+  check('and the layer is quiet again', rest2.length === 0,
+        rest2.join(', ') || 'none');
+
+  say('');
+  say('=== the surge reaches each part in turn ===');
+  const host = ev('(function(){ var h = BARRY.vaccfx.surge({x: 28, y: 700});'
+                + ' return h ? h.children.length : 0; })()');
+  check('it draws a halo per part of the interface', host > 1,
+        host + ' children');
+  const nodes = D().querySelectorAll('#vaccSurge .vcx-node');
+  say('    ' + nodes.length + ' halo(s) + the wave', 'note');
+  check('there is a wave as well as the halos',
+        !!D().querySelector('#vaccSurge .vcx-wave'));
+  /* Propagation, not a staged sequence: each halo is delayed by its own
+     distance from the origin, so the order is whatever the layout is and
+     stays right when the window is resized or the rail is collapsed. */
+  const delays = Array.from(nodes)
+    .map((n) => parseFloat(n.style.animationDelay) || 0);
+  check('the halos are delayed rather than fired together',
+        new Set(delays).size > 1,
+        delays.length + ' halos, ' + new Set(delays).size + ' distinct delays');
+  check('and the nearest one goes first',
+        Math.min.apply(null, delays) < Math.max.apply(null, delays),
+        Math.min.apply(null, delays) + 'ms to '
+        + Math.max.apply(null, delays) + 'ms');
+  /* A long scrolled page can hold hundreds of cards, and a hundred halos
+     is a hundred layers for the compositor to hold for a second. */
+  check('and it is capped, so a long page does not light every card',
+        nodes.length <= 40, nodes.length + ' halos');
+
+  say('');
+  say('=== and the surge gets out of the way ===');
+  const surgeGone = await until(() => !D().getElementById('vaccSurge'), 9000);
+  check('the surge layer removes itself', !!surgeGone);
+  check('while the circuit layer stays, because it is the mode',
+        !!D().getElementById('vaccCircuit'));
+
+  say('');
+  say('=== turning the mode off takes the wiring with it ===');
+  ev('applyVacc(false, false)');
+  await sleep(400);
+  check('the circuit layer is gone', !D().getElementById('vaccCircuit'));
+  check('and nothing of it is left in the page',
+        D().querySelectorAll('.vcx-traces, .vcx-glow, .vcx-ripple').length === 0,
+        D().querySelectorAll('.vcx-traces, .vcx-glow, .vcx-ripple').length
+        + ' left');
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vacccircuit: ' + fails + ' FAILED'
+                         : 'vacccircuit: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vacccircuit CRASH'; });
+</script></body></html>

@@ -130,6 +130,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { await loadStrata(); return; }
     if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
     /* Kilosort has nothing to do with bad channels.
@@ -230,6 +231,8 @@ BARRY.views.toolkit = (function () {
           || q.tool === 'incisor'
           // Braces picks a banked set, which carries its own recording.
           || q.tool === 'braces'
+          // X-ray picks a banked set too, and owns all three of its columns.
+          || q.tool === 'dspca'
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
@@ -254,8 +257,9 @@ BARRY.views.toolkit = (function () {
      numbered and the other tools are not. */
   const DENTIST = [
     ['incisor', 'Incisor', 'find them'],
-    ['curate', 'Checkup', 'call them'],
+    ['curate', 'Checkup', 'clean them'],
     ['braces', 'Braces', 'line them up'],
+    ['dspca', 'X-ray', 'tell them apart'],
   ];
 
   function bundleCard() {
@@ -264,7 +268,8 @@ BARRY.views.toolkit = (function () {
     box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
       toolIcon('incisor'),
       el('strong', { text: 'The Dentist' }),
-      el('span', { class: 'tk-bundle-c', text: '3 tools' }),
+      el('span', { class: 'tk-bundle-c',
+                   text: DENTIST.length + ' tools' }),
     ]));
     box.appendChild(el('div', { class: 'tk-steps' },
       DENTIST.map(([id, name, does], i) => {
@@ -462,14 +467,57 @@ BARRY.views.toolkit = (function () {
 
   function sessionPicker() {
     const list = (scopes && scopes.sessions) || [];
-    return field('Session', el('select', {
-      onchange: (e) => { q.key = e.target.value; refresh(); },
-    }, list.map((s) => el('option', {
-      value: s.key,
-      selected: q.key === s.key ? 'selected' : null,
-      // The bad count in the label answers the question before it is asked.
-      text: (s.label || s.key) + (s.n_bad ? '   (' + s.n_bad + ' bad)' : ''),
-    }))));
+    if (!list.length) {
+      return el('p', { class: 'hint',
+        text: 'No session has anything recorded against it yet.' });
+    }
+
+    /* The registry, for what the scope list cannot know: the date, the
+       project, and whether the recording is on a drive this machine can
+       reach. Joined on the session key. A scope row the registry has never
+       seen still appears -- it is a real session with real marks against
+       it -- and its dot stays dark, which is the truth: nothing here can
+       open it. */
+    const reg = registryRowsInternal();
+    const byKey = new Map();
+    for (const r of reg) if (r.key) byKey.set(r.key, r);
+    const known = reg.length > 0;
+
+    const rows = list.map((s) => {
+      const r = byKey.get(s.key) || {};
+      return {
+        // pickSession identifies a row by `gid`; here the identity IS the
+        // session key, which is what the scope filter is keyed on.
+        gid: s.key,
+        key: s.key,
+        // The bad count in the label answers the question before it is
+        // asked, and it is searchable along with everything else.
+        label: (s.label || s.key)
+               + (s.n_bad ? '   (' + s.n_bad + ' bad)' : ''),
+        project: r.project, cohort: r.cohort,
+        mouse: r.mouse, session: r.session, date: r.date,
+        // Unknown to the registry is not reachable. Where there is no
+        // registry at all, nothing is claimed either way rather than
+        // every dot going dark on a cold cache.
+        reachable: known ? !!r.reachable : true,
+      };
+    });
+
+    return field('Session', BARRY.pickSession({
+      rows,
+      value: q.key,
+      placeholder: 'Which session? Type a mouse, a date, a project\u2026',
+      onpick: (r) => { q.key = r.gid; refresh(); },
+    }));
+  }
+
+  /* The registry rows as this module holds them. The exported
+     `registryRows` is the same thing; this is here so the picker above
+     does not have to reach out through `BARRY.views` to read its own
+     module's cache. */
+  function registryRowsInternal() {
+    return (((regCache.data) || {}).tree || [])
+      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || []));
   }
 
   function listPicker(label, values, current, onchange, fmt) {
@@ -806,8 +854,24 @@ BARRY.views.toolkit = (function () {
       // Only while the curation view is the one being looked at. Polling for
       // a panel nobody can see is just traffic.
       if (BARRY.state.view !== 'toolkit') return;
+      // Nor while the window is behind another one. The answer is a fresh
+      // read every time it comes back, so nothing is missed by not asking.
+      if (document.hidden) return;
       loadPresence(true);
     }, PRESENCE_POLL);
+  }
+
+  /* Stop asking.
+
+     There was no way to: startPresence had no counterpart anywhere in this
+     file, so the timer it starts ran for the life of the page. The view
+     check inside it kept the fetches down while you were elsewhere, but the
+     timer itself never stopped, and the moment ToolKit was shown again it
+     resumed -- including in a background tab. Called from onHide below. */
+  function stopPresence() {
+    if (!presenceTimer) return;
+    clearInterval(presenceTimer);
+    presenceTimer = null;
   }
 
   /* Everyone active in a set, this machine included -- the card wants to
@@ -1471,7 +1535,7 @@ BARRY.views.toolkit = (function () {
             disabled: v.usable ? null : 'disabled',
             checked: ver && ver.v === v.v ? 'checked' : null,
             onchange: () => { ver = v; paint(); } }),
-          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
           v.imported ? el('span', { class: 'flagchip',
                                     text: 'the detector' }) : null,
           el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
@@ -1490,7 +1554,7 @@ BARRY.views.toolkit = (function () {
         body.appendChild(el('p', { class: 'confirm-msg',
           text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
               + (decided ? ', ' + decided + ' of them already decided as of '
-                           + 'v' + ver.v + '.'
+                           + 'v' + (ver.name != null ? ver.name : ver.v) + '.'
                          : ', none decided \u2014 a fresh pass.') }));
         if (ver.note) {
           body.appendChild(el('p', { class: 'hint', text: '\u201c'
@@ -2772,6 +2836,7 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { renderStrata(); return; }
     if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
@@ -2930,9 +2995,31 @@ BARRY.views.toolkit = (function () {
     /* The cached registry rows, flattened, for a tool that wants its own
        session picker. Through here rather than each tool fetching, so one
        sixty-second cache serves them all. */
-    registryRows: () => (((regCache.data) || {}).tree || [])
-      .flatMap((p) => (p.mice || []).flatMap((m) => m.sessions || [])),
+    registryRows: registryRowsInternal,
+    /* And the read that fills it, for a tool that needs the rows rather than
+       merely preferring them.
+
+       `registryRows` is a getter over a cache nothing here is obliged to
+       have filled: Curation, StrataScope and Braid each warm it on their way
+       in, but a tool opened before any of those reads an empty list and
+       cannot tell that apart from a registry with nothing in it. Braces read
+       it that way for its bad-channel column and its reachability, and so
+       said "none bad" against forty-six recordings that have channels marked
+       and "can be read here" about every one of them. A tool that needs the
+       answer awaits this first; the cache is shared, so warming it twice
+       costs one request. */
+    loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
+    /* Leaving ToolKit stops what ToolKit started.
+
+       Two timers ran on regardless: the presence beat above, and whatever
+       tool feed was mounted -- toolfeed.stop() was only ever reached by
+       mounting a different one, so navigating away left a 3-second poll
+       running for the rest of the session. onShow starts both again. */
+    onHide() {
+      stopPresence();
+      if (BARRY.toolfeed) BARRY.toolfeed.stop();
+    },
     /* Redraw the chrome without re-fetching anything. VACC Mode adds a mark
        to the tool row, and turning it on has to show up in the panel it is
        talking about rather than at the next navigation. */

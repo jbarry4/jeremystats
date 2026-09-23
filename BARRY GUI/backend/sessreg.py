@@ -33,14 +33,24 @@ import os
 import re
 import uuid
 
-from . import ids, shards
+from . import ids, probes, shards
 
 SCHEMA = 2
 
 # The lab's projects. Not a closed set -- anything already on disk shows up
-# alongside these -- but these two are what most recordings belong to, so they
+# alongside these -- but these are what most recordings belong to, so they
 # are offered first and spelled consistently.
-KNOWN_PROJECTS = ("KCNT1", "PTEN")
+#
+# ORDER IS LOAD-BEARING. `guess_project` returns the FIRST name that matches,
+# and a project name that starts with another project's name has to come
+# first or it can never win: "KCNT1 Urethane" contains "KCNT1", so with the
+# shorter one first every urethane recording would be filed under KCNT1.
+#
+# That is not a tidiness problem. The urethane work is a separate body of
+# work whose mouse and session numbers restart from one, so m13 s3 exists in
+# both -- and filing them together would put two different animals under one
+# name and make `loose_key` ambiguous across the pair.
+KNOWN_PROJECTS = ("KCNT1 Urethane", "KCNT1", "PTEN")
 
 UNFILED = "Unfiled"
 
@@ -85,6 +95,47 @@ def _opens(path):
     return ok
 
 
+def warm_opens(paths, workers=16):
+    """Fill the `_opens` cache for many paths at once.
+
+    `_opens` asks the loader whether a folder will actually open, which
+    costs a listdir -- 71 ms a path on this lab's drives, measured. Done one
+    after another over 417 reachable paths that is about thirty seconds, and
+    it is what made the first read of the registry after a restart feel
+    broken.
+
+    None of that time is computation. It is sixteen drives being asked one
+    at a time, so this asks them at once. The cache `_opens` already keeps
+    does the rest: the second read is thousandths of a second.
+
+    Deliberately best-effort and silent. A share that hangs must slow this
+    down, not break it -- the caller is about to fall back to asking each
+    path itself anyway, which is exactly what used to happen.
+    """
+    todo = [p for p in dict.fromkeys(paths or []) if p and p not in _OPENS]
+    if len(todo) < 2:
+        for p in todo:
+            _opens(p)
+        return
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+    except ImportError:
+        for p in todo:
+            _opens(p)
+        return
+    n = max(2, min(int(workers), len(todo)))
+    try:
+        with ThreadPoolExecutor(max_workers=n) as pool:
+            list(pool.map(_opens, todo))
+    except Exception:                                    # noqa: BLE001
+        # A pool that will not start is not a reason to fail a read.
+        for p in todo:
+            try:
+                _opens(p)
+            except Exception:                            # noqa: BLE001
+                pass
+
+
 def _newest_sighting(rec):
     """The most recent time any machine laid eyes on this recording."""
     best = None
@@ -97,6 +148,57 @@ def _newest_sighting(rec):
     if best is None and isinstance((rec or {}).get("last_seen"), dict):
         best = rec["last_seen"]
     return best
+
+
+BANK_SIZE = 64
+
+
+def banks_for(n_channels):
+    """A 128-channel recording is two probes, and the registry should say so.
+
+    STRUCTURE ONLY. This says "there are two banks of sixty-four"; it does
+    NOT say which is hippocampus and which is cortex, because that is a fact
+    about how a particular animal was implanted and this function only knows
+    a number. The lab's KCNT1 recordings run 1-64 hippocampus and 65-128
+    cortex, and writing that in here would apply it to the twenty
+    128-channel recordings currently filed under no project at all, and to
+    the one under PTEN, silently and with no way to tell which were guessed.
+
+    So `region` is None until a person says. A blank that is visibly blank
+    can be filled in; a guess that looks like a fact cannot be found again.
+
+    One bank is not a bank -- a 64-channel recording gets nothing, because
+    "this recording has one probe in it" is not information.
+    """
+    try:
+        n = int(n_channels or 0)
+    except (TypeError, ValueError):
+        return None
+    if n <= BANK_SIZE or n % BANK_SIZE:
+        return None
+    out = []
+    for i in range(n // BANK_SIZE):
+        first = i * BANK_SIZE + 1
+        out.append({"id": "b%d" % (i + 1), "first": first,
+                    "last": first + BANK_SIZE - 1, "region": None})
+    return out
+
+
+def _project_pattern(name):
+    """A project name, however the folders happen to spell the gap in it.
+
+    The same body of work is `KCNT1 Urethane` on the cluster and
+    `D:\\KCNT1\\urethane\\hom\\...` on this lab's own drive -- a space in one
+    place and a path separator in the other. Matching the literal string
+    finds one and not the other, which is worse than finding neither: the
+    recording is then KCNT1 from one machine and KCNT1 Urethane from
+    another, and the cross-project guard in the cluster matcher refuses to
+    connect a recording to its own copy.
+
+    So any run of space, underscore, hyphen or slash counts as the gap.
+    """
+    words = [w for w in re.split(r"[\s_\-/\\]+", name.upper()) if w]
+    return r"[\s_\-/\\]+".join(re.escape(w) for w in words)
 
 
 def guess_project(identity, paths=()):
@@ -122,10 +224,65 @@ def guess_project(identity, paths=()):
         # A path segment that STARTS with the project name. Anchored so
         # "PTEN_DKO" counts and an unrelated folder that merely contains the
         # letters somewhere in the middle does not.
-        if re.search(r"(?<![A-Z0-9])" + re.escape(name), hay):
+        #
+        # `name.upper()`, because `hay` is upper-cased and the name is not.
+        # That was invisible while every project was spelled in capitals --
+        # "KCNT1" matches itself either way -- and the first name with a
+        # lower-case letter in it, "KCNT1 Urethane", silently never matched
+        # and every urethane recording filed itself under KCNT1.
+        if re.search(r"(?<![A-Z0-9])" + _project_pattern(name), hay):
             return name
     g = (identity.get("group") or "").strip()
     return g or UNFILED
+
+
+#: Words that name a project somewhere and something else somewhere else.
+#: Each entry is (word, the project it suggests).
+AMBIGUOUS_WORDS = (("urethane", "KCNT1 Urethane"),)
+
+
+def project_flags(rec, paths=()):
+    """Paths whose own text disagrees with the project the record is filed under.
+
+    "Urethane" is the case this exists for, and it is worth writing down why
+    it is a flag and not a rule.
+
+    The word appears in two different roles in this lab's data. In
+    `D:\\KCNT1\\urethane\\wt\\...` it names the project -- a separate body of
+    work from KCNT1, with its own mice and its own session numbers that
+    happen to collide. In
+
+        Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M15_s3_baseline_urethane
+        Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M15_s8_CNO_urethane
+
+    it names the anaesthetic, and those two recordings are PTEN. A rule that
+    reads the word and re-files on it moves them out of the project they
+    belong to, and does it silently. `guess_project` gets all three right
+    because it reads path *segments*, but it can only be as right as the
+    paths it was given, and a path can be wrong.
+
+    So: say what the path says, say what the record says, and let a person
+    who can tell the difference look. Setting the project by hand clears the
+    flag, because `project_source == "manual"` is already this codebase's
+    way of recording that somebody decided.
+
+    Returns [] for the ordinary case, so a caller can test it as a boolean.
+    """
+    if (rec.get("project_source") or "") == "manual":
+        return []
+    filed = (rec.get("project") or UNFILED)
+    out = []
+    for word, suggests in AMBIGUOUS_WORDS:
+        if filed == suggests:
+            continue                       # already filed the way it reads
+        pat = re.compile(r"(?<![A-Z0-9])" + _project_pattern(word))
+        for p in (paths if paths else (rec.get("paths") or [])):
+            if not isinstance(p, str):
+                continue
+            if pat.search(p.upper()):
+                out.append({"word": word, "path": p,
+                            "suggests": suggests, "filed": filed})
+    return out
 
 
 def cohort_of(identity_or_rec):
@@ -383,6 +540,19 @@ class Registry:
                 "duration_s": s.get("duration_s") or None,
                 "has_video": True if s.get("has_video") else None,
                 "converted": True if s.get("converted") else None,
+                # How many probes went in, which a scan CAN see -- it is the
+                # channel count over sixty-four. Which one is hippocampus and
+                # which is cortex it cannot see, and does not claim to: see
+                # `banks_for`.
+                #
+                # Written ONCE, and never by a later scan. `_durable_patch`
+                # writes any fact that differs from what is stored, and a
+                # freshly computed bank list has every `region` back at None
+                # -- so a second scan of the same drive would quietly erase
+                # every anatomy somebody had filled in. The structure does
+                # not change; the labels on it are decisions.
+                "channel_banks": (None if (rec or {}).get("channel_banks")
+                                  else banks_for(s.get("channels"))),
             }
             patch = self._durable_patch(rec, ident, facts) or {}
             if not rec:
@@ -420,17 +590,29 @@ class Registry:
             done += 1
         return done
 
-    def set_project(self, gid, project):
+    def set_project(self, gid, project, source="manual"):
         """Move a recording into a project, by hand.
 
-        Marked as a manual choice so a later guess cannot quietly overrule it.
+        Marked as a manual choice so a later guess cannot quietly overrule
+        it -- and so `project_flags` stops asking about it, because somebody
+        has answered.
+
+        `source` exists so a caller can put a record back exactly as it
+        found one. `web/_dev/housekeeping.html` drives this picker and then
+        restores the old value, which left the record reading "set by hand"
+        for ever after, with nobody having set it by hand. That is not a
+        cosmetic difference: a manual project is immune to `refile_projects`
+        and raises no filing flag, so a harness run was quietly immunising a
+        real recording against both. Only a restore should pass anything
+        other than the default.
         """
         rec = self.by_gid(gid)
         if not rec:
             raise KeyError(gid)
         return self._patch(rec, {
             "project": (project or "").strip() or UNFILED,
-            "project_source": "manual",
+            "project_source": source if source in ("manual", "guessed")
+                              else "manual",
         })
 
     def set_label(self, gid, label):
@@ -598,10 +780,23 @@ class Registry:
         `attachments` is a callable given a record and returning a dict of
         counts, so this module does not have to know what a storyboard is.
         """
+        live = [r for r in self.all() if not r.get("retired")]
+
+        # Ask every drive at once, before asking any record about itself.
+        #
+        # `summary` calls `_opens` per reachable path, and `_opens` is a
+        # listdir: 71 ms each on this lab's drives, measured, over 417
+        # reachable paths -- about thirty seconds of the first read after a
+        # restart, spent entirely waiting. Warming them in parallel first
+        # turns that into roughly the slowest single drive, and every
+        # `summary` below then hits a cache that costs nothing.
+        #
+        # The order matters and is the whole trick: inside the loop the
+        # calls are serial by construction, however many threads exist.
+        warm_opens([p for r in live for p in (r.get("paths") or [])])
+
         out = {}
-        for rec in self.all():
-            if rec.get("retired"):
-                continue
+        for rec in live:
             proj = rec.get("project") or UNFILED
             mouse = rec.get("mouse")
             mkey = "m%03d" % mouse if isinstance(mouse, int) else "unknown"
@@ -647,6 +842,10 @@ class Registry:
             "label": rec.get("label"),
             "project": rec.get("project") or UNFILED,
             "project_source": rec.get("project_source") or "guessed",
+            # Paths whose own text names a different project than the one
+            # this is filed under. A flag for a person, never a re-file --
+            # `project_flags` records why.
+            "project_flags": project_flags(rec, paths),
             # The sub-grouping the folders name, when it is not just the
             # project again -- PTEN_DKO inside PTEN. Visible and filterable
             # without splitting the project it belongs to.
@@ -697,6 +896,21 @@ class Registry:
             "extraction_note": rec.get("extraction_note"),
             "needs_processing": rec.get("needs_processing"),
             "n_channels": rec.get("n_channels"),
+            # Which probe went into the animal. A fact about the recording,
+            # not about whoever has it open -- it used to live in the
+            # Xplorefinder session's view state, so it lasted as long as the
+            # window did and travelled to nobody. `probes.suggest` fills the
+            # gap with a guess the row carries separately, so "nobody has
+            # said" and "somebody said H3" stay different answers.
+            "probe": rec.get("probe"),
+            "probe_source": rec.get("probe_source"),
+            "probe_suggested": probes.suggest(rec.get("n_channels")),
+            # Three states, decided in one place: confirmed by a person,
+            # detected from the channel count and not yet agreed, or
+            # unknown. Every surface that draws a chip reads this rather
+            # than working it out again from `probe` and `n_channels`,
+            # because two copies of that rule would disagree.
+            "probe_state": probes.state_of(rec),
             "fs": rec.get("fs"),
             "duration_s": rec.get("duration_s"),
             "has_video": bool(rec.get("has_video")),

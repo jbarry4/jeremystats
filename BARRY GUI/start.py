@@ -243,13 +243,93 @@ def ask_for_key(logs_dir):
     print("  Skipping for now. Add it later from the Sync panel.")
 
 
+def ask_for_netid(logs_dir):
+    """First start on a new machine: which VACC account is this.
+
+    A NetID is the whole question. `<netid>@login.vacc.uvm.edu` is the
+    account, `/gpfs1/home/<n>/<e>/<netid>` is the home directory and
+    `/gpfs2/scratch/<netid>` is the scratch space -- all of it derived, so
+    there is nothing else to ask for and no reason to ask for it twice.
+
+    Deliberately no password here. Installing a key needs one, and a console
+    that may be a double-clicked window is the wrong place to type one:
+    there is no way to promise it was not echoed, and the Duo push that
+    follows needs somebody watching. So this records the NetID, and the
+    sign-in panel in the app does the part that needs a password -- in a
+    password field, with the push explained, on a screen that can say what
+    is happening while it waits.
+
+    Skipping is a first-class answer, for the same reason it is for the
+    cloud key: Jarvis runs entirely without the cluster, and start-up must
+    never depend on somebody having a credential to hand.
+    """
+    from backend import vacc
+
+    cfg = vacc.load_config(logs_dir)
+    if cfg.get("configured"):
+        print("  VACC    : %s@%s" % (cfg.get("netid"), cfg.get("host")))
+        return
+    if not cfg.get("needs_netid"):
+        return
+    if not vacc.have_ssh():
+        # Nothing here can work without it, and saying so once is better
+        # than every later button failing differently.
+        print("  VACC    : no ssh client on this machine, so the cluster is "
+              "out of reach")
+        return
+
+    print()
+    print("  Jarvis can run Incisor and Panorama on the VACC, if you have")
+    print("  an account. All it needs is your NetID -- the part of your UVM")
+    print("  email before the @.")
+    print()
+    print("  It is stored in GUI_logs/.vacc.json, which git ignores.")
+    print("  No password is asked for here: the one time one is needed, the")
+    print("  Sign in to VACC panel in the app asks for it, installs an SSH")
+    print("  key, and never asks again.")
+    print()
+    print("  Press Enter to skip.")
+    print()
+
+    if not sys.stdin or not sys.stdin.isatty():
+        print("  (not a terminal, so skipping the question)")
+        return
+
+    try:
+        netid = input("  UVM NetID: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    if not netid:
+        print("  Skipped. Turn VACC Mode on later and it will offer to set "
+              "this up.")
+        return
+    if not vacc.NETID_RE.match(netid):
+        print("  That does not look like a NetID (letters and digits, no")
+        print("  spaces, no @). Skipping -- the app can set it up later.")
+        return
+
+    vacc.save_config(logs_dir, netid=netid)
+    keys = [k for k in vacc.existing_keys()]
+    if keys:
+        print("  Saved. There %s already %d SSH key%s on this machine; if one"
+              % ("are" if len(keys) != 1 else "is", len(keys),
+                 "s" if len(keys) != 1 else ""))
+        print("  of them works on the cluster, Jarvis will use it. Otherwise")
+        print("  open Sign in to VACC in the app and it will install one.")
+    else:
+        print("  Saved. Open Sign in to VACC in the app to install a key --")
+        print("  that is the one time your password is needed.")
+
+
 def main():
     print(banner())
     if not check_deps():
         pause()
         return 1
 
-    from backend.app import app, refresh_catalog, REPO_ROOT, LOGS_DIR
+    from backend.app import (app, refresh_catalog, warm_start,
+                             REPO_ROOT, LOGS_DIR)
     from backend import runner, sysinfo, video
 
     sysdesc = sysinfo.describe()
@@ -271,6 +351,14 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         print("  (could not check the sync settings: %s)" % exc)
 
+    # Same moment, same reason: the cluster needs a NetID and nothing else,
+    # and a machine that has never been told one cannot offer to run
+    # anything on it. Never fatal -- Jarvis runs entirely without a cluster.
+    try:
+        ask_for_netid(LOGS_DIR)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check the VACC settings: %s)" % exc)
+
     stale = runner.sweep_temp_files(REPO_ROOT)
     if stale:
         print("  Cleaned : %d leftover temp script(s)" % stale)
@@ -287,6 +375,20 @@ def main():
     print("  Stop    : Ctrl+C in this window\n")
 
     threading.Timer(0.9, lambda: webbrowser.open(url)).start()
+
+    # The warm start, and this is the only place it is switched on.
+    #
+    # It hands the interface last boot's answer to the three roll-ups that
+    # take five seconds each from cold, then recomputes all three behind the
+    # page and tells it which -- if any -- actually changed. See
+    # backend/warmcache.py for what bounds it; the short version is that the
+    # window shuts as soon as the real answers are in hand or as soon as
+    # somebody clicks something, whichever comes first.
+    #
+    # Only here, so a server started by the harness suite or by a script
+    # reads the store live exactly as it always did.
+    if os.environ.get("JARVIS_WARM", "1") != "0":
+        warm_start()
 
     # Threaded so a long-running job's log stream never blocks the UI.
     try:

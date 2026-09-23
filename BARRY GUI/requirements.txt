@@ -15,3 +15,14 @@ openpyxl>=3.0
 # different defaults, so every Panorama result records which fitter produced
 # it and with what settings.
 fooof>=1.1.1
+# PCA and K-means, for The Dentist's fourth step (backend/dspca.py). Toothy
+# classifies DS1 vs DS2 with sklearn's own PCA and KMeans, and parity with
+# Toothy is the thing being ported -- so this is the one place the app takes
+# a dependency rather than reimplementing. A hand-rolled k-means would be a
+# second answer to the same question with nothing to check it against, which
+# is exactly what backend/specparam.py exists to avoid for the OTHER case,
+# where there was a reference implementation to check against.
+#
+# Guarded at the import in dspca.py: a machine that has not run Setup since
+# this line landed loses that one tool, not the whole server.
+scikit-learn>=1.1

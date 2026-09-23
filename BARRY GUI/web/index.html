@@ -24,20 +24,73 @@
   :root[data-theme="light"] #boot { background: #f6f7f9; color: #5a6b78; }
   #boot.gone { opacity: 0; visibility: hidden; pointer-events: none; }
   .boot-in { display: flex; flex-direction: column; align-items: center;
-             gap: 14px; transform: translateY(-6px); }
-  .boot-mark {
-    width: 46px; height: 46px; border-radius: 11px;
-    background: #154734; display: grid; place-items: center;
-    box-shadow: 0 0 0 0 rgba(255, 184, 28, .45);
-    animation: bootPulse 1.9s ease-out infinite;
+             gap: 16px; transform: translateY(-6px); }
+
+  /* The scope. A trace being recorded, which is what this application is
+     for -- a sweep runs left to right, the line is drawn behind it, and a
+     dentate spike goes past every couple of seconds. The waveform is real
+     path data, not a spinner wearing a costume: it is the same shape as the
+     mark in the rail and on the favicon. */
+  .boot-scope {
+    width: 320px; max-width: 76vw; height: 84px;
+    border: 1px solid rgba(255, 184, 28, .18);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,184,28,.05), transparent 60%),
+      #0a1310;
+    overflow: hidden; position: relative;
   }
-  .boot-mark svg { width: 30px; height: 30px; display: block; }
-  @keyframes bootPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(255, 184, 28, .40); }
-    70%  { box-shadow: 0 0 0 16px rgba(255, 184, 28, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 184, 28, 0); }
+  :root[data-theme="light"] .boot-scope {
+    background: linear-gradient(180deg, rgba(21,71,52,.05), transparent 60%),
+                #ffffff;
+    border-color: rgba(21, 71, 52, .2);
   }
-  .boot-name { color: #c9d6de; font-size: 13px; letter-spacing: .04em; }
+  .boot-trace { width: 100%; height: 100%; display: block; }
+  .boot-base {
+    stroke: rgba(255, 184, 28, .13); stroke-width: 1;
+  }
+  :root[data-theme="light"] .boot-base { stroke: rgba(21, 71, 52, .14); }
+  .boot-wave {
+    fill: none; stroke-width: 1.8; stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* The trace already on the screen, so the scope is never empty. */
+  .boot-wave.dim { stroke: rgba(255, 184, 28, .17); }
+  :root[data-theme="light"] .boot-wave.dim { stroke: rgba(21, 71, 52, .2); }
+  /* And the bright one, drawn by its own dash offset as the head goes past.
+     `pathLength="1000"` on the element is what makes that exact: the dash
+     lengths are then in thousandths of the path rather than in user units
+     somebody has to measure and keep in step with the `d`. */
+  .boot-wave.live {
+    stroke-dasharray: 1000; stroke-dashoffset: 1000;
+    animation: bootDraw 2.6s cubic-bezier(.4, 0, .2, 1) infinite;
+  }
+  :root[data-theme="light"] .boot-wave.live { stroke: #154734; }
+  /* The recording head, running with the line rather than ahead of it. */
+  .boot-sweep {
+    stroke: #FFB81C; stroke-width: 1.5;
+    filter: drop-shadow(0 0 4px rgba(255, 184, 28, .7));
+    animation: bootSweep 2.6s cubic-bezier(.4, 0, .2, 1) infinite;
+  }
+  :root[data-theme="light"] .boot-sweep { stroke: #154734; filter: none; }
+  @keyframes bootDraw {
+    0%   { stroke-dashoffset: 1000; opacity: 1; }
+    72%  { stroke-dashoffset: 0; opacity: 1; }
+    92%  { stroke-dashoffset: 0; opacity: 0; }
+    100% { stroke-dashoffset: 1000; opacity: 0; }
+  }
+  @keyframes bootSweep {
+    0%   { transform: translateX(0); opacity: 0; }
+    6%   { opacity: 1; }
+    72%  { transform: translateX(320px); opacity: 1; }
+    78%  { transform: translateX(320px); opacity: 0; }
+    100% { transform: translateX(320px); opacity: 0; }
+  }
+
+  .boot-name {
+    color: #c9d6de; font-size: 13px; letter-spacing: .16em;
+    text-transform: uppercase;
+  }
   :root[data-theme="light"] .boot-name { color: #2d3b45; }
   .boot-what { font-size: 11px; opacity: .8; min-height: 1.6em; }
   /* A track that fills rather than a spinner: a spinner says "busy", a bar
@@ -52,6 +105,7 @@
     height: 100%; width: 18%; border-radius: 2px; background: #FFB81C;
     animation: bootSlide 1.25s ease-in-out infinite;
   }
+  :root[data-theme="light"] .boot-fill { background: #154734; }
   @keyframes bootSlide {
     0%   { transform: translateX(-110%); width: 26%; }
     50%  { width: 52%; }
@@ -63,8 +117,10 @@
   }
   .boot-slow.on { opacity: .75; }
   @media (prefers-reduced-motion: reduce) {
-    .boot-mark, .boot-fill { animation: none; }
+    .boot-fill, .boot-wave, .boot-sweep { animation: none; }
     .boot-fill { width: 100%; }
+    .boot-wave.live { stroke-dashoffset: 0; }
+    .boot-sweep { opacity: 0; }
     #boot { transition: none; }
   }
 </style>
@@ -76,11 +132,43 @@
      scripts themselves parsing. -->
 <div id="boot">
   <div class="boot-in">
-    <div class="boot-mark">
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none"
-              stroke="#FFB81C" stroke-width="2.4"
-              stroke-linecap="round" stroke-linejoin="round"/>
+    <div class="boot-scope">
+      <!-- A trace being recorded, because that is what this application is
+           for. The sweep runs left to right, the line is drawn behind it,
+           and a dentate spike goes past every couple of seconds -- the same
+           shape as the mark in the rail and on the favicon. It is a real
+           waveform, drawn once into the path below, not a spinner wearing a
+           costume. -->
+      <svg class="boot-trace" viewBox="0 0 320 84" aria-hidden="true"
+           preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="bootFade" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#FFB81C" stop-opacity="0"/>
+            <stop offset=".25" stop-color="#FFB81C" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#FFB81C" stop-opacity="1"/>
+          </linearGradient>
+        </defs>
+        <line class="boot-base" x1="0" y1="52" x2="320" y2="52"/>
+        <!-- The trace already on the screen. Without it the scope is empty
+             for the first third of every sweep, and on a boot that takes
+             half a second that is all anybody ever sees. -->
+        <path class="boot-wave dim" pathLength="1000" d="
+          M0 52 L14 51 L22 53 L30 52 L38 50 L46 53 L54 52
+          L62 52 L66 56 L72 14 L79 62 L86 44 L92 52
+          L104 51 L112 53 L120 52 L128 50 L136 53 L146 52
+          L154 52 L158 57 L164 22 L171 60 L178 46 L184 52
+          L196 51 L206 53 L214 52 L222 50 L230 53 L238 52
+          L246 52 L250 55 L256 18 L263 61 L270 45 L276 52
+          L288 51 L298 53 L306 52 L314 51 L320 52"/>
+        <path class="boot-wave live" stroke="url(#bootFade)" pathLength="1000" d="
+          M0 52 L14 51 L22 53 L30 52 L38 50 L46 53 L54 52
+          L62 52 L66 56 L72 14 L79 62 L86 44 L92 52
+          L104 51 L112 53 L120 52 L128 50 L136 53 L146 52
+          L154 52 L158 57 L164 22 L171 60 L178 46 L184 52
+          L196 51 L206 53 L214 52 L222 50 L230 53 L238 52
+          L246 52 L250 55 L256 18 L263 61 L270 45 L276 52
+          L288 51 L298 53 L306 52 L314 51 L320 52"/>
+        <line class="boot-sweep" x1="0" y1="6" x2="0" y2="78"/>
       </svg>
     </div>
     <div class="boot-name">Jarvis</div>
@@ -286,12 +374,12 @@
         </div>
 
         <div class="folder-bar hidden" id="pipeFolderBar">
-          <div class="fb-path">
-            <span class="fb-label">Folder</span>
+          <div class="fbar-path">
+            <span class="fbar-label">Folder</span>
             <code id="pipeFolderPath"></code>
           </div>
-          <div class="fb-stats" id="pipeFolderStats"></div>
-          <div class="fb-actions">
+          <div class="chip-row" id="pipeFolderStats"></div>
+          <div class="fbar-actions">
             <button class="btn ghost sm" id="pipeReveal">Open in Explorer</button>
             <button class="btn ghost sm" id="pipeRecheck">Re-check</button>
             <button class="btn ghost sm" id="pipeClear">Clear</button>
@@ -672,6 +760,7 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/features.js"></script>
 <script src="js/activity.js"></script>
 <script src="js/pipeline.js"></script>
@@ -694,8 +783,10 @@
 <script src="js/strata.js"></script>
 <script src="js/incisor.js"></script>
 <script src="js/braces.js"></script>
+<script src="js/dspca.js"></script>
 <script src="js/panorama.js"></script>
 <script src="js/vacc.js"></script>
+<script src="js/vaccfx.js"></script>
 <script src="js/cfcscope.js"></script>
 <script src="js/comod.js"></script>
 <script src="js/spectrum.js"></script>

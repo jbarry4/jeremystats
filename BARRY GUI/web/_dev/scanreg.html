@@ -262,22 +262,43 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('');
   say('=== putting the registry back ===', 'hd');
   const tidyReg = await (await fetch('/api/registry')).json();
-  let cleared = 0;
+  let cleared = 0, detached = 0;
   for (const p of (tidyReg.tree || [])) {
     for (const m of p.mice) {
       for (const sn of m.sessions) {
         const paths = sn.paths || [];
-        const allFake = paths.length
-          && paths.every((x) => /barry_fakedrive/i.test(x));
-        const ourKey = /^m9\d\d_s\d/.test(String(sn.key || ''));
-        if (allFake && ourKey) {
+        const fake = paths.filter((x) => /barry_fakedrive/i.test(x));
+        if (!fake.length) continue;
+        if (fake.length === paths.length) {
+          /* Nothing but fixture paths, so the whole record is this
+             harness's and forgetting it is the restore.
+
+             The key test that used to guard this as well has gone: the
+             fixture mints `m9xx` keys, but a fixture folder whose
+             timestamps collide with a real recording re-identifies to
+             THAT recording's key, and one slipped through as `m001_s002`
+             and sat in the registry failing the check below every run. */
           await post('/api/registry/' + sn.gid + '/forget', {});
           cleared += 1;
+        } else {
+          /* Some fixture paths on a record that is otherwise real. That is
+             the dangerous case and it is why this is `forget_path` and not
+             `forget`: the fixture re-identified to a real recording, so the
+             fake path was UNIONED onto it. Forgetting the record would take
+             a real PTEN recording's eight paths with it. Detach only the
+             ones under the temp fixture folder, which cannot be anybody's
+             data. */
+          for (const bad of fake) {
+            await post('/api/registry/' + sn.gid + '/patch',
+                       { forget_path: bad });
+            detached += 1;
+          }
         }
       }
     }
   }
-  say('  fixture recordings cleared: ' + cleared, 'note');
+  say('  fixture recordings cleared: ' + cleared
+      + ', fixture paths detached from real ones: ' + detached, 'note');
   const end = await (await fetch('/api/registry')).json();
   const stillOurs = (end.tree || []).flatMap((p) => p.mice.flatMap(
     (m) => m.sessions)).filter(

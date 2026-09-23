@@ -1156,7 +1156,7 @@ BARRY.figure = (function () {
       ]),
     ]);
     col.appendChild(box);
-    col.appendChild(el('div', { class: 'fb-stats', id: 'figProblems' }));
+    col.appendChild(el('div', { class: 'chip-row', id: 'figProblems' }));
     return col;
   }
 

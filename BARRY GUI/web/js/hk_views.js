@@ -224,8 +224,174 @@ BARRY.hk = (function () {
     return lines.join('\n');
   }
 
+  /* ==================================================================
+     Which probe went into the animal, as a chip
+     ==================================================================
+     Here rather than in either view, because three places draw it -- the
+     drive scan, Everything Jarvis knows and Everything VACC knows -- and
+     three copies of "is this confirmed" would eventually disagree about
+     what green means.
+
+     Three states, and they are not degrees of confidence:
+
+       confirmed   somebody said so. Green, and every view can rely on it.
+       detected    the channel count supports a guess and nobody has
+                   agreed. The guess is USED -- a dual implant drawn as one
+                   array is worse than one drawn as two and marked
+                   unconfirmed -- but it is never drawn as a fact.
+       unknown     no count, or a count that supports nothing. A question
+                   mark, not a default: "H3" and "we do not know" are
+                   different things and only one of them is safe to run a
+                   CSD on.
+
+     The server decides which is which (`probes.state_of`), so this only
+     draws. A view that worked it out from `probe` and `n_channels` itself
+     would be the second copy of the rule. */
+  const PROBE_WORD = {
+    confirmed: "confirmed",
+    detected: "detected, not confirmed",
+    unknown: "not known",
+  };
+
+  function probeChip(s, opts) {
+    const st = (s && s.probe_state) || null;
+    if (!st) return null;                  // absent is not "unknown"
+    const o = opts || {};
+    const cls = "probechip " + st.state;
+    const node = el(o.onclick ? "button" : "span", {
+      class: cls + (o.small ? " sm" : ""),
+      "data-probe-state": st.state,
+      title: probeTitle(s, st),
+      /* The event is handed on, because the caller needs the button it
+         was fired from to hang a popover off -- and reaching for a global
+         `event` to get it works in exactly one browser by accident. */
+      onclick: o.onclick
+        ? (e) => { e.stopPropagation(); o.onclick(s, st, e); }
+        : null,
+    }, [
+      el("span", { class: "pc-dot" }),
+      el("span", { class: "pc-name", text: st.short || "?" }),
+    ]);
+    return node;
+  }
+
+  function probeTitle(s, st) {
+    const head = st.state === "confirmed"
+      ? "Probe: " + (st.short || "?") + " — confirmed"
+      : st.state === "detected"
+        ? "Probe: probably " + (st.short || "?")
+          + " — nobody has confirmed it"
+        : "Probe: not known";
+    const tail = st.state === "confirmed"
+      ? "Everything reads this: Xplorefinder lays the panes out by it and a "
+        + "CSD is run down each line of contacts separately."
+      : st.state === "detected"
+        ? "It is being used, because drawing a dual implant as one array is "
+          + "worse than drawing it as two and saying so — but it is a "
+          + "guess from the channel count until somebody agrees."
+        : "Anything that needs a line of contacts will treat this as a "
+          + "single array, which is right for most recordings and wrong for "
+          + "a dual implant.";
+    return head + '\n\n' + (st.why || '') + '\n\n' + tail
+         + '\n\nClick to set it.';
+  }
+
+  /* Setting it, from wherever the chip was clicked.
+
+     One popover for all three surfaces. The detected guess is offered
+     first and as a single button, because agreeing with it is the common
+     case by a wide margin -- 70 of the 71 dual implants here are detected
+     and unconfirmed, and making somebody pick from a list to say "yes,
+     that one" 70 times is how a queue stops getting worked. */
+  let PROBE_DEFS = null;
+
+  function setProbeMenu(button, s, after) {
+    const draw = () => {
+      const box = el('div', { class: 'ctl-pop-body probe-pop' });
+      const st = s.probe_state || {};
+      box.appendChild(el('div', { class: 'ctl-pop-title', text: 'Probe' }));
+
+      if (!PROBE_DEFS) {
+        box.appendChild(el('p', { class: 'hint quiet', text: 'Reading the '
+                                  + 'templates…' }));
+        api('/api/probes').then((d) => {
+          PROBE_DEFS = d.probes || [];
+          const open = document.querySelector('.ctl-pop');
+          if (open && open.firstChild) open.replaceChild(draw(), open.firstChild);
+        }).catch(() => { PROBE_DEFS = []; });
+        return box;
+      }
+
+      box.appendChild(el('p', { class: 'hint', style: 'max-width:44ch',
+        text: st.why || '' }));
+
+      /* Agreeing with the guess: one button, and it says what it is
+         agreeing to rather than just "confirm". */
+      if (st.state === 'detected' && st.probe) {
+        box.appendChild(el('button', {
+          class: 'btn sm probe-confirm',
+          text: 'Confirm — ' + (st.short || st.probe),
+          onclick: () => { closePopover(); apply(s, st.probe, after); },
+        }));
+      }
+
+      const list = el('div', { class: 'ctl-pop-group' });
+      for (const p of PROBE_DEFS) {
+        const on = (s.probe || '') === p.id;
+        list.appendChild(el('button', {
+          class: 'ctl-pop-opt probe-opt' + (on ? ' on' : ''),
+          'data-probe': p.id, title: p.note || '',
+          onclick: () => { closePopover(); apply(s, p.id, after); },
+        }, [
+          el('span', { class: 'pc-name', text: SHORT_OF(p.id) }),
+          el('span', { text: p.name }),
+        ]));
+      }
+      box.appendChild(list);
+
+      if (s.probe) {
+        box.appendChild(el('button', {
+          class: 'linkish', text: 'Nobody has said',
+          title: 'Clear it. Not the same as saying H3 — one is an '
+               + 'answer and the other is the absence of one.',
+          onclick: () => { closePopover(); apply(s, '', after); },
+        }));
+      }
+      return box;
+    };
+    openPopover(button, draw);
+  }
+
+  function SHORT_OF(id) {
+    return ({ h3: 'H3', h10d: 'H10', dual: 'HIP/M2' })[id]
+        || String(id || '?').toUpperCase();
+  }
+
+  async function apply(s, probe, after) {
+    if (!s.gid) {
+      toast('This recording has no permanent id yet, so there is nothing '
+            + 'to attach a probe to. Open it once, or scan the folder it '
+            + 'is in.', 'err', 8000);
+      return;
+    }
+    try {
+      const res = await apiPost(
+        '/api/registry/' + encodeURIComponent(s.gid) + '/probe', { probe });
+      const named = (res.channel_banks || [])
+        .filter((b) => (b.said_via || '').indexOf('probe:') === 0);
+      toast(probe
+        ? ('Probe set to ' + SHORT_OF(probe)
+           + (named.length
+              ? ', and ' + named.map((b) => b.region).join(' and ')
+                + ' labelled from it.' : '.'))
+        : 'Cleared — nobody has said what probe this is.', 'ok', 6000);
+      if (after) after(res);
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
   return {
-    flatten, attrsFor, attributes, groupsOf,
+    flatten, attrsFor, attributes, groupsOf, probeChip, PROBE_WORD,
+    setProbeMenu, SHORT_OF,
     SESSION_COLS, mouseCols, miceRows, sortRows, table, toTSV,
   };
 }());

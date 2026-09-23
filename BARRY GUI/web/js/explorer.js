@@ -280,12 +280,45 @@ BARRY.views.explorer = (function () {
   /* ======================================================================
      Feature 2 -- Searchable source, with the line numbers people quote
      ====================================================================== */
+  /* The lines as they were read, lowercased once.
+
+     `markSourceHits` below cannot search the spans' own textContent: each
+     one carries a four-space line number in front of the code, so a query
+     of digits would match line numbers rather than source. Kept here, in
+     the order the spans are in, so the two are indexed alike. */
+  let sourceHay = [];
+
+  /* Re-mark the lines already on screen.
+
+     Called instead of re-rendering, so the search box keeps focus and the
+     caret keeps its place. Cheap enough to run per keystroke behind the
+     140 ms debounce: a class toggle per line, no nodes created. */
+  function markSourceHits() {
+    const pre = $('.src-lines');
+    if (!pre) return;
+    const q = sourceQuery.trim().toLowerCase();
+    const kids = pre.children;
+    let n = 0, first = null;
+    for (let i = 0; i < kids.length; i++) {
+      const hit = !!q && sourceHay[i] !== undefined
+        && sourceHay[i].includes(q);
+      if (hit) { n += 1; if (!first) first = kids[i]; }
+      // toggle() with a second argument writes only when it differs.
+      kids[i].classList.toggle('hit', hit);
+    }
+    const hint = $('#scriptDetail .sec-head .hint');
+    if (hint) hint.textContent = q ? n + ' line(s)' : '';
+    if (first) first.scrollIntoView({ block: 'center' });
+  }
+
   function sourceBlock() {
     const src = current.source || '';
     const lines = src.split(/\r?\n/);
     const q = sourceQuery.trim().toLowerCase();
     const hits = q ? lines.reduce((n, ln, i) =>
       (ln.toLowerCase().includes(q) ? n.concat(i + 1) : n), []) : [];
+
+    sourceHay = lines.map((ln) => ln.toLowerCase());
 
     const pre = el('pre', { class: 'src-lines' });
     lines.forEach((ln, i) => {
@@ -309,12 +342,21 @@ BARRY.views.explorer = (function () {
           el('input', {
             type: 'search', placeholder: 'Find in this file\u2026',
             value: sourceQuery,
-            oninput: (e) => {
+            /* Mark the lines; do not rebuild the view.
+
+               This called renderDetail(), which empties #scriptDetail -- and
+               this input lives inside it. So every keystroke destroyed the
+               element being typed into, rebuilt one span per source line
+               (three thousand of them for a long script), and dropped focus,
+               which is why searching a file meant typing one letter at a
+               time and clicking back in.
+
+               The spans are already here and already carry their line
+               number. A search only changes which of them are marked. */
+            oninput: debounceInput((e) => {
               sourceQuery = e.target.value;
-              renderDetail();
-              const first = $('.src-line.hit');
-              if (first) first.scrollIntoView({ block: 'center' });
-            },
+              markSourceHits();
+            }, 140),
           }),
         ]),
         el('span', { class: 'hint',

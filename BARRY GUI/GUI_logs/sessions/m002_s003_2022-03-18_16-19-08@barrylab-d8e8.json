@@ -1,0 +1,69 @@
+{
+  "_at": {
+    "created": "2026-09-18T15:41:30.102911+00:00",
+    "gid": "2026-09-18T15:41:30.102911+00:00",
+    "group": "2026-09-18T15:41:30.102911+00:00",
+    "key": "2026-09-18T15:46:11.116053+00:00",
+    "label": "2026-09-18T15:46:11.116053+00:00",
+    "loose_key": "2026-09-18T15:46:11.116053+00:00",
+    "mouse": "2026-09-18T15:46:11.116053+00:00",
+    "project": "2026-09-21T14:15:30.031530+00:00",
+    "project_source": "2026-09-21T14:15:30.031530+00:00",
+    "retired": "2026-09-18T15:46:11.116053+00:00",
+    "schema": "2026-09-18T15:46:11.116053+00:00",
+    "session": "2026-09-18T15:46:11.116053+00:00",
+    "start": "2026-09-18T15:46:11.116053+00:00",
+    "updated": "2026-09-21T14:15:30.031530+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08": [
+        "set",
+        "2026-09-18T15:53:54.366581+00:00"
+      ],
+      "Z:\\harness\\split-me": [
+        "set",
+        "2026-09-18T19:25:14.601651+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-21T14:15:30.031530+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T11:41:30-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s96884739a6ff",
+  "group": null,
+  "key": "m002_s003_2022-03-18_16-19-08",
+  "label": "KCNT1 m2 s3 2022-03-18",
+  "loose_key": "m002_s003",
+  "mouse": 2,
+  "paths": [
+    "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+    "Z:\\harness\\split-me"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "manual",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2022-03-18T20:19:08+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-21T10:15:30-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

@@ -297,7 +297,7 @@ BARRY.figrebuild = (function () {
     // alongside the new one.
     if (go) {
       go.replaceWith(el('button', {
-        class: 'btn primary', id: 'rbGo',
+        class: 'btn', id: 'rbGo',
         text: 'Open the figure builder →',
         /* The builder is a full dialog of its own, so hand back the
            middle of the screen before opening it. */

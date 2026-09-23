@@ -81,9 +81,19 @@ async function untilN(fn, tries = 300, gap = 90) {
   const probes = JSON.parse(W.eval(
     'JSON.stringify(BARRY.views.xplore.state.probes.map(function(p){'
     + 'return {id:p.id, n:(p.columns||[]).length}; }))'));
-  check('two probes are offered', probes.length === 2, JSON.stringify(probes));
+  /* Asserted by what each template IS, not by how many there are.
+     Pinning the count meant adding the dual-array template -- two
+     implants, hippocampus and M2 -- failed a page that has nothing to do
+     with it, and said "two probes are offered" as though that were the
+     property under test. */
+  check('the templates this page needs are there',
+        probes.some((p) => p.id === 'h3') && probes.some((p) => p.id === 'h10d'),
+        JSON.stringify(probes));
   const h10 = probes.find((p) => p.id === 'h10d');
   check('the H10 has six columns', h10 && h10.n === 6, JSON.stringify(h10));
+  const h3 = probes.find((p) => p.id === 'h3');
+  check('and the H3 has none, because it is one line of contacts',
+        h3 && !h3.n, JSON.stringify(h3));
 
   head('Switching to H10 lays out six columns');
   const sel = D.getElementById('xfProbe');

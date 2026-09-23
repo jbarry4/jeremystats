@@ -418,10 +418,20 @@ BARRY.views.history = (function () {
                                 : 'No actions logged yet.' }));
         return;
       }
+      const afrag = document.createDocumentFragment();
       for (const a of list) {
-        host.appendChild(el('button', {
+        afrag.appendChild(el('button', {
           class: 'hist-row',
-          title: JSON.stringify(a.detail || {}, null, 1),
+          /* Serialised when somebody actually points at it.
+
+             This ran JSON.stringify over every row's detail on every
+             render -- twelve hundred of them behind a filter box that
+             re-renders as you type -- to fill a tooltip that is only ever
+             read one at a time. */
+          onmouseenter: (e) => {
+            const n = e.currentTarget;
+            if (!n.title) n.title = JSON.stringify(a.detail || {}, null, 1);
+          },
           onclick: () => renderActivityDetail(a),
         }, [
           el('span', { class: 'st ' + actionClass(a.action) }),
@@ -440,6 +450,7 @@ BARRY.views.history = (function () {
             text: BARRY.when(a.at, 'stamp') }),
         ].filter(Boolean)));
       }
+      host.appendChild(afrag);
       return;
     }
 
@@ -454,19 +465,39 @@ BARRY.views.history = (function () {
       return;
     }
 
+    /* Built off to the side and put in once.
+
+       The rows go into a live #histList otherwise, which is four hundred
+       insertions into a node the browser is laying out between each one. */
+    const frag = document.createDocumentFragment();
     for (const r of list) {
       const at = (r.provenance || {}).at || '';
-      host.appendChild(el('button', {
+      const row = el('button', {
         class: 'hist-row' + (selected === r.id ? ' active' : ''),
         title: r.script || r.label,
-        onclick: () => { selected = r.id; renderList(); renderDetail(r); },
+        /* Move the mark; do not rebuild the list.
+
+           This called renderList(), which repaints the timeline, rebuilds
+           the digest card and every row, and empties the host on the way --
+           so clicking the fortieth run scrolled you back to the first, and
+           the row you had just clicked was a different element by the time
+           the click finished. All that changed is which row is marked. */
+        onclick: () => {
+          selected = r.id;
+          const was = host.querySelector('.hist-row.active');
+          if (was) was.classList.remove('active');
+          row.classList.add('active');
+          renderDetail(r);
+        },
       }, [
         el('span', { class: 'st ' + (r.kind === 'figure' ? 'figure' : (r.status || '')) }),
         el('span', { class: 'nm', text: r.label || r.script || '(run)' }),
         el('span', { class: 'tm', title: BARRY.whenRaw(at),
                      text: BARRY.when(at, 'stamp') }),
-      ]));
+      ]);
+      frag.appendChild(row);
     }
+    host.appendChild(frag);
   }
 
   function actionClass(action) {
@@ -2079,7 +2110,7 @@ BARRY.views.errors = (function () {
       return;
     }
 
-    host.appendChild(el('div', { class: 'fb-stats' }, [
+    host.appendChild(el('div', { class: 'chip-row' }, [
       el('span', { class: 'stat-chip',
                    text: backup.files + ' file(s)' }),
       el('span', { class: 'stat-chip', text: kb(backup.bytes) }),

@@ -131,7 +131,7 @@ async function untilN(fn, tries = 250, gap = 100) {
   dlg.querySelector('input[type=text]').value = 'The good pass';
   dlg.querySelector('.ver-note-input').value =
     'rewritten: this is the one we used in the figure';
-  Array.from(dlg.querySelectorAll('.modal-foot button'))
+  Array.from(dlg.querySelectorAll('.mf button'))
     .find((b) => /Save/.test(b.textContent)).click();
   await sleep(1400);
   const after2 = rowFor(2);
@@ -181,7 +181,7 @@ async function untilN(fn, tries = 250, gap = 100) {
   /* BARRY.confirm is a dialog, not window.confirm. */
   const okBtn = await (async () => {
     for (let i = 0; i < 100; i++) {
-      const b = Array.from(D.querySelectorAll('.modal-foot button, .modal button'))
+      const b = Array.from(D.querySelectorAll('.mf button, .modal button'))
         .find((x) => /^Delete v2$/.test(x.textContent.trim()));
       if (b) return b;
       await sleep(100);

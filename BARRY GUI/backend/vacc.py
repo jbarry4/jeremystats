@@ -57,6 +57,8 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
+import tempfile
 import threading
 import time
 
@@ -358,6 +360,388 @@ def _why(kind, err):
         return "No VACC account is set up on this machine."
     return (err or "").strip().splitlines()[-1] if (err or "").strip() else \
         "The cluster returned an error."
+
+
+# --------------------------------------------------------------------------
+# Getting somebody onto the cluster the first time
+# --------------------------------------------------------------------------
+# Everything above assumes a key is already installed. This is how it gets
+# there, and it is the only code in the app that ever sees a password.
+#
+# The shape of the thing
+# ----------------------
+# A netid is all anybody should have to know. The account is
+# `<netid>@login.vacc.uvm.edu`, the home directory is
+# `/gpfs1/home/<n>/<e>/<netid>` and the scratch space is
+# `/gpfs2/scratch/<netid>` -- all derivable, and `load_config` already
+# derives them. So the guided setup asks for a netid and a password once,
+# installs a key, and never asks for a password again.
+#
+# Why a key rather than just keeping the password
+# -----------------------------------------------
+# Because a status chip polls. Password login at UVM means Duo, and a Duo
+# push every ten seconds for six hours is not a feature. A key removes the
+# second factor for subsequent logins, which is UVM's own documented
+# advice, and it means the app holds no credential at all.
+#
+# What happens to the password
+# ----------------------------
+# It arrives over localhost, is put in the environment of exactly one `ssh`
+# process, and is dropped when that process exits. It is never written to
+# disk, never in a command line, never logged, and never in an error
+# message. `_scrub` exists to make the last of those true even when ssh
+# echoes something back.
+NETID_RE = re.compile(r"^[a-z][a-z0-9]{1,15}$", re.I)
+
+KEY_NAME = "id_ed25519_jarvis_vacc"
+
+#: What ssh is allowed to try while installing the key. Password and
+#: keyboard-interactive only: offering the key we are about to install would
+#: make a half-finished install look like a working one.
+INSTALL_OPTS = [
+    "-o", "BatchMode=no",
+    "-o", "PreferredAuthentications=keyboard-interactive,password",
+    "-o", "PubkeyAuthentication=no",
+    "-o", "NumberOfPasswordPrompts=1",
+    "-o", "StrictHostKeyChecking=accept-new",
+    "-o", "ConnectTimeout=20",
+]
+
+
+def forget_account(logs_dir):
+    """Stop being signed in on this machine.
+
+    Removes the netid and the key path from this machine's config and
+    nothing else. Deliberately NOT the key itself and deliberately not the
+    entry in the cluster's `authorized_keys`:
+
+      * the key may be one the person uses from their own terminal, and
+        deleting it because they pressed Sign out in an application would be
+        taking something that was not this application's to take;
+      * removing the entry on the far side needs a working connection, so a
+        sign-out would fail exactly when somebody is signing out BECAUSE the
+        connection is broken.
+
+    So this is "forget who I am here", which is what signing out of a
+    workstation means. Signing back in re-uses the same key and asks for no
+    password, which is the right behaviour for the shared rig: four
+    undergraduates take turns and none of them needs a password after the
+    first time any of them set it up.
+    """
+    p = config_path(logs_dir)
+    cur = _read(p)
+    was = cur.get("netid")
+    for k in ("netid", "key_path", "account"):
+        cur.pop(k, None)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(cur, fh, indent=2, sort_keys=True)
+    os.replace(tmp, p)
+    try:
+        os.chmod(p, 0o600)
+    except OSError:
+        pass
+    return was
+
+
+def ssh_dir():
+    """`~/.ssh`, created if it is not there, with sane permissions."""
+    home = os.path.expanduser("~")
+    path = os.path.join(home, ".ssh")
+    if not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
+        try:
+            os.chmod(path, 0o700)
+        except OSError:
+            pass                      # Windows: ACLs, not modes. Not fatal.
+    return path
+
+
+def key_paths():
+    """Where Jarvis's own VACC key lives, whether or not it exists yet."""
+    priv = os.path.join(ssh_dir(), KEY_NAME)
+    return priv, priv + ".pub"
+
+
+def _scrub(text, password):
+    """Never let a password reach a log, a toast or an error message.
+
+    ssh does not normally echo one, but "normally" is not a guarantee worth
+    making about a credential, and this costs nothing.
+    """
+    if not password or not text:
+        return text
+    return text.replace(password, "********")
+
+
+def have_key():
+    """Is Jarvis's own VACC key already on this machine."""
+    priv, pub = key_paths()
+    return os.path.isfile(priv) and os.path.isfile(pub)
+
+
+def existing_keys():
+    """Any key ssh would already offer, so setup can say "you have one".
+
+    Someone who has been using the cluster from a terminal already has a
+    working key, and generating a second one and installing it would be
+    busywork with a password prompt attached.
+    """
+    out = []
+    try:
+        names = sorted(os.listdir(ssh_dir()))
+    except OSError:
+        return out
+    for n in names:
+        if not n.endswith(".pub"):
+            continue
+        priv = os.path.join(ssh_dir(), n[:-4])
+        if os.path.isfile(priv):
+            out.append({"name": n[:-4], "path": priv,
+                        "mine": n[:-4] == KEY_NAME})
+    return out
+
+
+def working_key(netid, host=None, keys=None, timeout=25):
+    """The first key on this machine that the cluster already accepts.
+
+    Tried BEFORE asking for a password, which is the whole point. On a
+    shared rig the key is installed once and then four people take turns:
+    without this, every one of them is asked for a password that is not
+    needed, and being asked for a password by software that does not need
+    one is how people learn to type it into things that should not have it.
+
+    Each attempt is a real connection with `BatchMode=yes`, so a key the
+    cluster does not accept fails immediately rather than prompting. Costs
+    about a second per key and there are rarely more than two.
+
+    Returns the path, or None. Never raises: this is an optimisation, and a
+    failure here just means falling through to the password.
+    """
+    netid = (netid or "").strip()
+    if not NETID_RE.match(netid) or not have_ssh():
+        return None
+    cfg = {"netid": netid, "host": host or DEFAULT_HOST}
+    for k in (keys if keys is not None else existing_keys()):
+        path = k["path"] if isinstance(k, dict) else k
+        try:
+            out = _ssh(dict(cfg, key_path=path), "whoami", timeout=timeout)
+        except Exception:                                # noqa: BLE001
+            continue
+        if (out or "").strip() == netid:
+            return path
+    return None
+
+
+def make_key(comment="jarvis-vacc"):
+    """Generate the keypair, if it is not already there.
+
+    ed25519 with no passphrase. A passphrase on a key the app has to use
+    unattended would mean an agent, an agent means a prompt somewhere, and
+    the point of this is that there is no prompt after the first one.
+    """
+    priv, pub = key_paths()
+    if os.path.isfile(priv) and os.path.isfile(pub):
+        return {"created": False, "path": priv, "public": read_pubkey()}
+    if not shutil.which("ssh-keygen"):
+        raise SSHError("There is no ssh-keygen on this machine, so a key "
+                       "cannot be made here.", "no-ssh")
+    # Remove a half-made pair: ssh-keygen refuses to overwrite and would sit
+    # waiting for an answer nobody can give it.
+    for p in (priv, pub):
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+    proc = subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-N", "", "-C", comment,
+         "-f", priv],
+        capture_output=True, text=True, **_popen_kwargs())
+    if proc.returncode != 0 or not os.path.isfile(pub):
+        raise SSHError("Could not make a key: %s"
+                       % (proc.stderr or proc.stdout or "").strip(),
+                       "keygen")
+    try:
+        os.chmod(priv, 0o600)
+    except OSError:
+        pass
+    return {"created": True, "path": priv, "public": read_pubkey()}
+
+
+def read_pubkey():
+    _priv, pub = key_paths()
+    try:
+        with open(pub, "r", encoding="utf-8") as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
+def _askpass_shim(tmpdir):
+    """A launcher ssh can execute, pointing at `tools/vacc_askpass.py`.
+
+    Windows cannot execute a `.py` as `SSH_ASKPASS`, so this writes the one
+    line of batch that runs it with the interpreter already running us.
+    It contains no secret -- two paths, and nothing else.
+    """
+    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          os.pardir, "tools", "vacc_askpass.py")
+    helper = os.path.abspath(helper)
+    if not os.path.isfile(helper):
+        raise SSHError("The sign-in helper is missing from this copy of "
+                       "Jarvis (tools/vacc_askpass.py).", "no-helper")
+    if os.name == "nt":
+        path = os.path.join(tmpdir, "askpass.bat")
+        body = '@echo off\r\n"%s" "%s" %%*\r\n' % (sys.executable, helper)
+    else:
+        path = os.path.join(tmpdir, "askpass.sh")
+        body = '#!/bin/sh\nexec "%s" "%s" "$@"\n' % (sys.executable, helper)
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(body)
+    if os.name != "nt":
+        os.chmod(path, 0o700)
+    return path
+
+
+def _password_ssh(netid, host, password, remote_command, timeout=120,
+                  duo="1"):
+    """One ssh run authenticated by password, with Duo answered by push.
+
+    The only function in the app that handles a password, and it holds it
+    for exactly as long as the child process lives.
+    """
+    if not have_ssh():
+        raise SSHError("No ssh on this machine.", "no-ssh")
+    tmpdir = tempfile.mkdtemp(prefix="jarvis-vacc-")
+    try:
+        shim = _askpass_shim(tmpdir)
+        env = dict(os.environ)
+        env["SSH_ASKPASS"] = shim
+        # Without `force`, ssh only uses SSH_ASKPASS when it has no
+        # terminal, and "no terminal" is not something this can rely on --
+        # a Flask thread launched from a console window inherits one, and
+        # ssh would then ignore the helper entirely and block on a prompt
+        # nobody can see. OpenSSH 8.4+; Windows ships 9.5.
+        env["SSH_ASKPASS_REQUIRE"] = "force"
+        env.setdefault("DISPLAY", "localhost:0")   # older builds check it
+        env["JARVIS_VACC_PASSWORD"] = password or ""
+        env["JARVIS_VACC_DUO"] = str(duo or "1")
+
+        cmd = (["ssh"] + list(INSTALL_OPTS)
+               + ["%s@%s" % (netid, host), remote_command])
+        try:
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env, **_popen_kwargs())
+        except OSError as exc:
+            raise SSHError("Could not start ssh: %s" % exc, "no-ssh")
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            sysinfo.kill_tree(proc)
+            try:
+                proc.communicate(timeout=5)
+            except Exception:                        # noqa: BLE001
+                pass
+            raise SSHError(
+                "The cluster did not finish signing in within %ds. If a Duo "
+                "request went to your phone, it may have expired -- try "
+                "again and approve it when it arrives." % timeout, "timeout")
+        out = _scrub((out or b"").decode("utf-8", "replace"), password)
+        err = _scrub((err or b"").decode("utf-8", "replace"), password)
+        if proc.returncode != 0:
+            low = err.lower()
+            if "permission denied" in low or "authentication failed" in low:
+                raise SSHError(
+                    "The cluster did not accept that netid and password.",
+                    "bad-password", err)
+            if "could not resolve" in low or "connection timed out" in low:
+                raise SSHError("Could not reach the cluster from here.",
+                               "unreachable", err)
+            raise SSHError(_why("failed", err), "failed", err)
+        return out
+    finally:
+        # The password lives in `env`, which goes out of scope with this
+        # frame; the shim is two paths and is removed regardless.
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+#: Appends the public key to `authorized_keys` and nothing else.
+#:
+#: Idempotent on purpose -- running setup twice is an ordinary thing to do,
+#: and a file with the same key in it four times is untidy in a place that
+#: is awkward to tidy from here. `grep -qxF` is an exact whole-line match,
+#: so a key that differs by one character is still added.
+#:
+#: The key arrives on stdin rather than in the command line: a command line
+#: is visible to every process on the login node, and while a PUBLIC key is
+#: not a secret, the habit is the point -- the next thing somebody puts in
+#: one will be.
+_INSTALL = r"""
+set -eu
+umask 077
+mkdir -p "$HOME/.ssh"
+KEY=$(cat)
+touch "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+if grep -qxF "$KEY" "$HOME/.ssh/authorized_keys"; then
+  echo "already=1"
+else
+  printf '%s\n' "$KEY" >> "$HOME/.ssh/authorized_keys"
+  echo "already=0"
+fi
+echo "netid=$(whoami)"
+echo "home=$HOME"
+"""
+
+
+def install_key(netid, password, host=None, duo="1"):
+    """Put this machine's public key on the cluster, once.
+
+    Returns what the far side said about itself, so the caller can write the
+    config from facts rather than from what was typed into the form.
+    """
+    netid = (netid or "").strip()
+    if not NETID_RE.match(netid):
+        raise SSHError(
+            "That does not look like a UVM netid. It is the name in front "
+            "of the @ in your UVM email -- letters and digits, no spaces.",
+            "bad-netid")
+    if not password:
+        raise SSHError("A password is needed once, to install the key. "
+                       "After that the key is used and this is not asked "
+                       "again.", "bad-password")
+    pub = read_pubkey()
+    if not pub:
+        raise SSHError("There is no key to install yet.", "no-key")
+
+    # `_password_ssh` needs the command to read the key from stdin, and
+    # stdin is where the key goes -- so it is passed by writing it into the
+    # remote script's input through a here-doc-free route: ssh's own stdin
+    # is the DEVNULL the askpass mechanism needs, so the key is handed over
+    # as the command's argument-free stdin via `printf` on the LOCAL side is
+    # not possible. Instead the key is embedded as a quoted literal, which
+    # is safe because a public key is base64 and a comment: no quotes, no
+    # backticks, no dollar signs.
+    if not re.match(r"^[A-Za-z0-9+/=@:.\- ]+$", pub):
+        raise SSHError("This machine's public key has characters in it that "
+                       "are not safe to send. Install it by hand.",
+                       "bad-key")
+    script = "printf '%%s' %s | { %s ; }" % (shlex.quote(pub), _INSTALL)
+    out = _password_ssh(netid, host or DEFAULT_HOST, password, script,
+                        duo=duo)
+    said = {}
+    for line in (out or "").splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
+            said[k.strip()] = v.strip()
+    return {
+        "already": said.get("already") == "1",
+        "netid": said.get("netid") or netid,
+        "home": said.get("home") or "",
+    }
 
 
 # --------------------------------------------------------------------------

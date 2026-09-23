@@ -1,0 +1,279 @@
+# UI baseline. Shapes, compositions and column counts.
+# Data-independent by construction: no instance counts.
+
+## control shapes
+button  |  font 11.5/550 sans  pad 5/10/5/10  radius 7  border 1  |  button.active.btn.ghost.sm button.btn.filter-open.ghost.sm button.btn.ghost.sm button.btn.sm
+button  |  font 12.5/550 sans  pad 7/14/7/14  radius 7  border 1  |  button.btn button.btn.ghost
+link button  |  font 10/400 sans  pad 0/0/0/0  radius 0  border 0  |  button.linkish
+mini button  |  font 10.5/400 sans  pad 3/8/3/8  radius 0  border 1  |  button.mini
+mini button  |  font 10.5/400 sans  pad 3/8/3/8  radius 5  border 1  |  button.mini button.mini.on
+pill  |  font 11.5/400 sans  pad 4/11/4/11  radius 999  border 1  |  button.active.pill button.pill
+pill  |  font 11.5/400 sans  pad 6/11/6/11  radius 999  border 1  |  button.active.pill button.pill
+search field  |  font 12.5/400 sans  pad 7/10/7/30  radius 7  border 1  |  input
+search field  |  font 13.5/400 sans  pad 6/10/6/32  radius 7  border 1  |  input
+search field  |  font 13.5/400 sans  pad 7/10/7/32  radius 7  border 1  |  input
+segmented item  |  font 11.5/400 mono  pad 4/9/4/9  radius 5  border 0  |  button
+segmented item  |  font 11.5/600 mono  pad 4/9/4/9  radius 5  border 0  |  button.active
+segmented item  |  font 12.5/400 sans  pad 5/16/5/16  radius 6  border 0  |  button
+segmented item  |  font 12.5/550 sans  pad 5/16/5/16  radius 6  border 0  |  button.active
+select  |  font 11.5/400 mono  pad 5/8/5/8  radius 5  border 1  |  select
+select  |  font 11.5/400 sans  pad 5/22/5/8  radius 7  border 1  |  select select.mini-select
+select  |  font 11/400 sans  pad 4/8/4/8  radius 5  border 1  |  select
+status chip  |  font 12/400 sans  pad 6/10/6/10  radius 7  border 1  |  button.chip-btn button.chip-btn.sync-go button.chip-btn.vacc-live
+status chip  |  font 12/400 sans  pad 6/8/6/8  radius 7  border 1  |  button.chip-btn.dirty.sync-info
+text field  |  font 11.5/400 mono  pad 3/7/3/7  radius 7  border 1  |  input
+text field  |  font 12/400 mono  pad 2/2/2/2  radius 7  border 1  |  textarea.scratch-code
+text field  |  font 12/400 mono  pad 8/11/8/11  radius 7  border 1  |  input
+toggle  |  font 11.5/400 sans  pad 5/9/5/9  radius 5  border 1  |  label.toggle
+toggle  |  font 11/400 sans  pad 4/8/4/8  radius 5  border 1  |  label.sm.toggle
+unclassed button  |  font 11.5/400 sans  pad 5/9/5/9  radius 7  border 1  |  button.who-chip
+unclassed button  |  font 11.5/400 sans  pad 6/8/6/8  radius 6  border 0  |  button.hist-row
+unclassed button  |  font 11.5/600 sans  pad 6/8/6/8  radius 6  border 0  |  button.tree-head
+unclassed button  |  font 11/400 sans  pad 0/0/0/0  radius 5  border 1  |  button.res-pick button.res-star button.sc-pick
+unclassed button  |  font 11/400 sans  pad 0/2/0/2  radius 0  border 0  |  button.tree-fav
+unclassed button  |  font 11/400 sans  pad 2/9/2/9  radius 999  border 0  |  button
+unclassed button  |  font 11/400 sans  pad 3/10/3/10  radius 999  border 1  |  button.dim.folder-chip button.folder-chip
+unclassed button  |  font 11/600 sans  pad 3/10/3/10  radius 999  border 1  |  button.folder-chip.on
+unclassed button  |  font 12/400 sans  pad 6/8/6/8  radius 4  border 1  |  button.tk-step
+unclassed button  |  font 12/400 sans  pad 7/10/7/10  radius 7  border 0  |  button.rail-toggle
+unclassed button  |  font 13.5/400 sans  pad 0/0/0/0  radius 5  border 0  |  button.log-toggle
+unclassed button  |  font 13.5/400 sans  pad 10/12/10/12  radius 7  border 1  |  button.on.tk-tool button.tk-tool
+unclassed button  |  font 13.5/400 sans  pad 2/9/2/9  radius 999  border 1  |  button.as-button.dev-bar-label
+unclassed button  |  font 13/400 sans  pad 5/10/5/10  radius 7  border 0  |  button.nav-item
+unclassed button  |  font 13/550 sans  pad 5/10/5/10  radius 7  border 0  |  button.active.nav-item
+unclassed button  |  font 9.5/400 sans  pad 2/5/2/5  radius 4  border 1  |  button.app-ver.dirty
+unclassed button  |  font 9/400 mono  pad 0/5/0/3  radius 999  border 1  |  button.confirmed.probechip.sm button.detected.probechip.sm button.probechip.sm.unknown
+unclassed button  |  font 9/400 mono  pad 1/6/1/6  radius 20  border 1  |  button.exclude.flag-btn button.flag-btn button.flag-btn.good button.flag-btn.review
+unclassed button  |  font 9/400 mono  pad 1/6/1/6  radius 999  border 0  |  button.concat.fixed.flagchip button.concat.fixed.flagchip.safe button.concat.flagchip
+
+## compositions
+div.card  |  h3 p div.card-actions
+div.card.tk-scope  |  div.section-label div.tk-pills div.section-label div.tk-pills label.toggle p.hint
+div.empty-state  |  svg p
+div.tk-head  |  div div.spacer button.btn
+header.compact.view-head  |  div.head-titles div.head-actions
+header.compact.view-head  |  div.xf-head div.head-actions
+header.view-head  |  div.head-titles
+header.view-head  |  div.head-titles div.head-actions
+header.view-head  |  div.head-titles div.track-switch
+
+## container gaps
+button.active.nav-item  |  10px
+button.active.pill  |  1px
+button.as-button.dev-bar-label  |  5px
+button.btn.filter-open.ghost.sm  |  6px
+button.chip-btn  |  8px
+button.chip-btn.dirty.sync-info  |  8px
+button.chip-btn.sync-go  |  8px
+button.chip-btn.vacc-live  |  8px
+button.concat.fixed.flagchip  |  4px
+button.concat.fixed.flagchip.safe  |  4px
+button.concat.flagchip  |  4px
+button.confirmed.probechip.sm  |  4px
+button.detected.probechip.sm  |  4px
+button.dim.folder-chip  |  6px
+button.folder-chip  |  6px
+button.folder-chip.on  |  6px
+button.hist-row  |  8px
+button.mini  |  5px
+button.mini.on  |  5px
+button.nav-item  |  10px
+button.on.tk-tool  |  3px
+button.pill  |  1px
+button.probechip.sm.unknown  |  4px
+button.rail-toggle  |  10px
+button.tk-step  |  3px 8px
+button.tk-tool  |  3px
+button.tree-head  |  7px
+button.who-chip  |  8px
+div.acts  |  5px
+div.bank-row  |  1px 8px
+div.bank-sess  |  8px
+div.bank-split  |  14px
+div.blocked.stage  |  10px
+div.brand  |  10px
+div.card-actions  |  7px
+div.card-grid  |  12px
+div.chip-row  |  6px
+div.ctl  |  3px
+div.ctl.on  |  3px
+div.dev-bar.res-toolbar  |  10px
+div.digest-body  |  8px
+div.digest-head  |  10px
+div.digest-kinds  |  4px
+div.digest-sess  |  10px
+div.dz-actions  |  8px
+div.dz-inner  |  18px
+div.dz-text  |  2px
+div.empty-state  |  14px
+div.err-ghead  |  10px
+div.fbar-actions  |  6px
+div.fbar-path  |  9px
+div.filter-bar  |  6px
+div.filter-row  |  5px
+div.flag-set  |  3px
+div.flat.tk-pills  |  6px
+div.folder-bar  |  16px
+div.grep-form  |  7px
+div.grp-head  |  8px  9px
+div.head-actions  |  8px
+div.head-titles  |  10px
+div.list-row  |  10px
+div.list-rows  |  1px
+div.log-head  |  10px
+div.mouse-row  |  4px 10px
+div.nav-group  |  2px
+div.opt-field  |  6px
+div.out-grid  |  10px
+div.rail-foot  |  5px
+div.rail-scroll  |  10px  6px
+div.rail-sync  |  4px
+div.rb-main  |  8px
+div.rb-opts  |  12px
+div.res-acts  |  4px
+div.res-folders  |  6px
+div.res-grid  |  12px
+div.res-toolbar  |  10px
+div.root-bar  |  9px
+div.sc-flags  |  3px
+div.sc-top  |  6px
+div.scratch-row  |  7px
+div.scratch-wrap  |  7px
+div.seg  |  2px
+div.sess-cards  |  5px
+div.sess-filters  |  12px
+div.stage  |  10px
+div.stage-actions  |  6px
+div.stage-list  |  6px
+div.stage-meta  |  10px
+div.stage-opts  |  8px 14px
+div.stage-title  |  9px
+div.stat-row  |  5px
+div.tf-head  |  8px
+div.tf-row  |  10px
+div.tk-bundle  |  9px
+div.tk-bundle-hd  |  7px
+div.tk-head  |  12px
+div.tk-layout  |  16px
+div.tk-main  |  14px
+div.tk-pills  |  6px
+div.tk-result  |  12px
+div.tk-steps  |  4px
+div.tk-tool-head  |  7px
+div.tk-tools  |  8px
+div.tl-legend  |  12px
+div.track-actions  |  10px
+div.track-switch  |  2px
+div.tree-item  |  8px
+div.xf-head  |  16px
+div.xf-tabs  |  4px
+header.compact.view-head  |  10px 18px
+header.view-head  |  10px 18px
+label.sm.toggle  |  6px
+label.toggle  |  6px
+nav  |  10px  6px
+p.err-archived.hint  |  10px
+span.brand-line  |  2px
+span.rail-pips  |  3px
+span.recent-list  |  5px
+
+## grid column counts
+1100x600|button.tk-step  |  2
+1100x600|div.bank-row  |  3
+1100x600|div.bank-split  |  2
+1100x600|div.blocked.stage  |  3
+1100x600|div.card-grid  |  3
+1100x600|div.digest-sess  |  3
+1100x600|div.err-ghead  |  4
+1100x600|div.mouse-row  |  2
+1100x600|div.out-grid  |  3
+1100x600|div.res-grid  |  3
+1100x600|div.res-thumb  |  0
+1100x600|div.sess-cards  |  3
+1100x600|div.split  |  2
+1100x600|div.stage  |  3
+1100x600|div.stage-num  |  0
+1100x600|div.tf-row  |  8
+1100x600|div.thumb  |  0
+1100x600|div.tk-layout  |  3
+1500x600|button.tk-step  |  2
+1500x600|div.bank-row  |  3
+1500x600|div.bank-split  |  4
+1500x600|div.blocked.stage  |  3
+1500x600|div.card-grid  |  3
+1500x600|div.digest-sess  |  3
+1500x600|div.err-ghead  |  4
+1500x600|div.mouse-row  |  2
+1500x600|div.out-grid  |  3
+1500x600|div.res-grid  |  3
+1500x600|div.res-thumb  |  0
+1500x600|div.sess-cards  |  3
+1500x600|div.split  |  2
+1500x600|div.stage  |  3
+1500x600|div.stage-num  |  0
+1500x600|div.tf-row  |  8
+1500x600|div.thumb  |  0
+1500x600|div.tk-layout  |  3
+1500x700|button.tk-step  |  2
+1500x700|div.bank-row  |  3
+1500x700|div.bank-split  |  4
+1500x700|div.blocked.stage  |  3
+1500x700|div.card-grid  |  3
+1500x700|div.digest-sess  |  3
+1500x700|div.err-ghead  |  4
+1500x700|div.mouse-row  |  2
+1500x700|div.out-grid  |  3
+1500x700|div.res-grid  |  3
+1500x700|div.res-thumb  |  0
+1500x700|div.sess-cards  |  3
+1500x700|div.split  |  2
+1500x700|div.stage  |  3
+1500x700|div.stage-num  |  0
+1500x700|div.tf-row  |  8
+1500x700|div.thumb  |  0
+1500x700|div.tk-layout  |  3
+900x600|button.tk-step  |  2
+900x600|div.bank-row  |  3
+900x600|div.bank-split  |  2
+900x600|div.blocked.stage  |  3
+900x600|div.card-grid  |  3
+900x600|div.digest-sess  |  3
+900x600|div.err-ghead  |  4
+900x600|div.mouse-row  |  2
+900x600|div.out-grid  |  3
+900x600|div.res-grid  |  3
+900x600|div.res-thumb  |  0
+900x600|div.sess-cards  |  3
+900x600|div.split  |  2
+900x600|div.stage  |  3
+900x600|div.stage-num  |  0
+900x600|div.tf-row  |  2
+900x600|div.thumb  |  0
+900x600|div.tk-layout  |  2
+
+## overflowing
+1100x600|code
+1100x600|div.err-ghead
+1100x600|div.err-group
+1100x600|span
+1100x600|span.nm
+1100x600|span.pth
+1100x600|span.tf-on
+1500x600|div.err-ghead
+1500x600|div.err-group
+1500x600|span
+1500x600|span.nm
+1500x700|div.err-ghead
+1500x700|div.err-group
+1500x700|span
+1500x700|span.nm
+900x600|code
+900x600|div.err-ghead
+900x600|div.err-group
+900x600|span
+900x600|span.nm
+900x600|span.pth
+
+## classes with no rule
+hemi
+sid

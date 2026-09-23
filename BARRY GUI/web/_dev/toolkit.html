@@ -98,19 +98,53 @@ async function until(fn, ms) {
   };
 
   // One session.
+  /* A searchable picker, not a dropdown.
+     It was a `<select>` and is now `BARRY.pickSession` -- a search box over
+     a list of rows -- which is a better control for six hundred sessions
+     and meant this page was looking for an element that no longer exists.
+     Driven the way a person drives it: type, then click a row. */
   pick('One session');
-  await sleep(700);
-  const sel = $('.tk-fields select');
-  check('a session picker appears', !!sel,
-        sel ? sel.options.length + ' options' : 'none');
-  check('the options say how many bad channels each has',
-        Array.from(sel.options).some((o) => /\(\d+ bad\)/.test(o.text)),
-        sel.options[0].text);
-  // Choose a session that has something marked.
-  const withBad = Array.from(sel.options).find((o) => /\(\d+ bad\)/.test(o.text));
-  if (withBad) {
-    sel.value = withBad.value;
-    sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(900);
+  const box = $('.tk-fields .sp-box');
+  check('a session picker appears', !!box,
+        box ? 'search box' : ($('.tk-fields') || {}).textContent || 'none');
+  if (box) {
+    const input = box.querySelector('.sp-input');
+    check('it is a search box, so six hundred sessions are findable',
+          !!input, box.className);
+    input.focus();
+    input.value = '';
+    input.dispatchEvent(new W.Event('input', { bubbles: true }));
+    await sleep(500);
+    check('it lists sessions to choose from',
+          box.querySelectorAll('.sp-row').length > 0,
+          box.querySelectorAll('.sp-row').length + ' rows');
+
+    /* Searched for, not scrolled to. The list shows the first handful of
+       six hundred and only 67 of them have anything marked, so taking
+       whatever is on screen and expecting a bad-channel count is a
+       coin toss. The scope payload already knows which ones have marks. */
+    const marked = (scopes.sessions || []).filter((x) => x.n_bad > 0);
+    check('the server says which sessions have something marked',
+          marked.length > 0, marked.length + ' of '
+          + (scopes.sessions || []).length);
+    var withBad = null;
+    if (marked.length) {
+      const want = String(marked[0].label || marked[0].key || '');
+      input.value = want.slice(0, 18);
+      input.dispatchEvent(new W.Event('input', { bubbles: true }));
+      await sleep(600);
+      const hits = Array.from(box.querySelectorAll('.sp-row'));
+      check('searching for one of them finds it', hits.length > 0,
+            'typed "' + want.slice(0, 18) + '", ' + hits.length + ' hit(s)');
+      check('and the row says how many bad channels it has',
+            hits.some((r) => /\(\d+ bad\)/.test(r.textContent)),
+            (hits[0] || {}).textContent);
+      withBad = hits.find((r) => /\(\d+ bad\)/.test(r.textContent)) || hits[0];
+    }
+  }
+  if (box && withBad) {
+    withBad.click();
     await sleep(900);
     check('one session gives fewer rows than everything',
           rowsNow() > 0 && rowsNow() <= allRows,

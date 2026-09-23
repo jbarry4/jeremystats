@@ -25,13 +25,25 @@
     "type": "2026-09-08T21:24:28.395893+00:00",
     "type_name": "2026-09-08T21:24:28.395893+00:00",
     "units": "2026-09-08T21:24:28.395893+00:00",
-    "version": "2026-09-08T21:24:28.395893+00:00"
+    "version": "2026-09-21T15:26:35.771947+00:00"
   },
   "_keys": {
     "history": {
       "{\"at\": \"2026-09-08T17:24:28-04:00\", \"by\": \"Rain\", \"changed\": [\"events\"], \"now_n\": 38, \"was_n\": 38, \"why\": \"re-banked from the curation set\"}": [
         "set",
         "2026-09-08T21:24:28.395893+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:02:29-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-09T02:02:29.119488+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:41-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-09T02:03:41.309774+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:04:56-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 1, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-09T02:04:56.268389+00:00"
       ]
     },
     "versions": {
@@ -41,16 +53,24 @@
       ],
       "v0-f64da75a": [
         "set",
-        "2026-09-08T21:24:28.395893+00:00"
+        "2026-09-09T02:03:41.309774+00:00"
       ],
       "v1-0ce138c9": [
         "set",
-        "2026-09-08T21:24:28.395893+00:00"
+        "2026-09-09T02:03:41.309774+00:00"
+      ],
+      "{\"at\": \"2026-09-21T11:24:29-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 37}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 37, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 36 stamp(s) moved by -98.0 to 86.3 ms; 2 left where they were. No labels changed.\", \"snap\": [[544.185886, \"spike\"], [734.947581, \"spike\"], [735.630674, \"spike\"], [769.697225, \"spike\"], [781.858952, \"spike\"], [796.459315, \"spike\"], [1101.724134, \"spike\"], [1420.761382, \"spike\"], [1592.057255, \"spike\"], [1720.280904, \"spike\"], [1810.828582, \"spike\"], [1851.863608, \"spike\"], [1906.343447, \"spike\"], [1913.104413, \"spike\"], [1990.55201, \"spike\"], [2062.552175, \"spike\"], [2083.478453, \"spike\"], [2099.332659, \"spike\"], [2195.299208, \"spike\"], [2207.41737, \"spike\"], [2207.52968, \"spike\"], [2216.537267, \"spike\"], [2219.915336, \"spike\"], [2220.438456, \"spike\"], [2237.044655, \"spike\"], [2237.160474, \"spike\"], [2270.672173, \"spike\"], [2350.478131, \"spike\"], [2366.269136, \"spike\"], [2386.487454, \"spike\"], [2387.734484, \"spike\"], [2395.156234, \"spike\"], [2500.295273, \"spike\"], [2511.393, \"spike\"], [2600.677933, \"spike\"], [2613.891001, \"spike\"], [2666.326342, \"spike\"]], \"v\": 3}": [
+        "set",
+        "2026-09-21T15:26:36.601294+00:00"
+      ],
+      "{\"at\": \"2026-09-21T11:24:29-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 37}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 37, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 36 stamp(s) moved by -98.0 to 86.3 ms; 2 left where they were. No labels changed.\", \"snap_elsewhere\": true, \"v\": 3}": [
+        "gone",
+        "2026-09-21T15:26:36.601294+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T21:24:28.395893+00:00",
+    "at": "2026-09-21T15:26:36.601294+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -268,6 +288,29 @@
       "now_n": 38,
       "was_n": 38,
       "why": "re-banked from the curation set"
+    },
+    {
+      "at": "2026-09-08T22:02:29-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:41-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
+    },
+    {
+      "at": "2026-09-08T22:04:56-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 1,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
     }
   ],
   "id": "841aad39cfff",
@@ -303,11 +346,11 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "by_label": {
         "unspecified": 38
       },
@@ -478,7 +521,7 @@
     },
     {
       "at": "2026-09-02T19:00:02-04:00",
-      "by": "theexaminedexistence@gmail.com",
+      "by": "Shahriar Tafti",
       "by_label": {
         "garbage": 15,
         "spike": 23
@@ -827,6 +870,167 @@
         ]
       ],
       "v": 2
+    },
+    {
+      "at": "2026-09-21T11:24:29-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Dentate Spike": 37
+      },
+      "machine": "DESKTOP-4H65AI7",
+      "n": 37,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 36 stamp(s) moved by -98.0 to 86.3 ms; 2 left where they were. No labels changed.",
+      "snap": [
+        [
+          544.185886,
+          "spike"
+        ],
+        [
+          734.947581,
+          "spike"
+        ],
+        [
+          735.630674,
+          "spike"
+        ],
+        [
+          769.697225,
+          "spike"
+        ],
+        [
+          781.858952,
+          "spike"
+        ],
+        [
+          796.459315,
+          "spike"
+        ],
+        [
+          1101.724134,
+          "spike"
+        ],
+        [
+          1420.761382,
+          "spike"
+        ],
+        [
+          1592.057255,
+          "spike"
+        ],
+        [
+          1720.280904,
+          "spike"
+        ],
+        [
+          1810.828582,
+          "spike"
+        ],
+        [
+          1851.863608,
+          "spike"
+        ],
+        [
+          1906.343447,
+          "spike"
+        ],
+        [
+          1913.104413,
+          "spike"
+        ],
+        [
+          1990.55201,
+          "spike"
+        ],
+        [
+          2062.552175,
+          "spike"
+        ],
+        [
+          2083.478453,
+          "spike"
+        ],
+        [
+          2099.332659,
+          "spike"
+        ],
+        [
+          2195.299208,
+          "spike"
+        ],
+        [
+          2207.41737,
+          "spike"
+        ],
+        [
+          2207.52968,
+          "spike"
+        ],
+        [
+          2216.537267,
+          "spike"
+        ],
+        [
+          2219.915336,
+          "spike"
+        ],
+        [
+          2220.438456,
+          "spike"
+        ],
+        [
+          2237.044655,
+          "spike"
+        ],
+        [
+          2237.160474,
+          "spike"
+        ],
+        [
+          2270.672173,
+          "spike"
+        ],
+        [
+          2350.478131,
+          "spike"
+        ],
+        [
+          2366.269136,
+          "spike"
+        ],
+        [
+          2386.487454,
+          "spike"
+        ],
+        [
+          2387.734484,
+          "spike"
+        ],
+        [
+          2395.156234,
+          "spike"
+        ],
+        [
+          2500.295273,
+          "spike"
+        ],
+        [
+          2511.393,
+          "spike"
+        ],
+        [
+          2600.677933,
+          "spike"
+        ],
+        [
+          2613.891001,
+          "spike"
+        ],
+        [
+          2666.326342,
+          "spike"
+        ]
+      ],
+      "v": 3
     }
   ]
 }

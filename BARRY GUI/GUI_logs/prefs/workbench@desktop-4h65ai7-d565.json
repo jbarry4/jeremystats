@@ -1,22 +1,24 @@
 {
   "_at": {
-    "curate_span": "2026-09-17T15:12:14.571580+00:00",
+    "braces_curve": "2026-09-22T19:14:33.231377+00:00",
+    "curate_at": "2026-09-23T14:30:37.628594+00:00",
+    "curate_span": "2026-09-23T14:29:42.545749+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "pipeline_folders": "2026-09-09T22:26:54.566652+00:00",
-    "radio": "2026-09-16T16:46:56.784774+00:00",
+    "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
+    "radio": "2026-09-22T20:39:05.475834+00:00",
     "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
-    "result_group": "2026-09-16T16:47:27.723505+00:00",
-    "smoke_probe": "2026-09-17T17:26:25.497980+00:00",
+    "result_group": "2026-09-23T14:19:24.425473+00:00",
+    "smoke_probe": "2026-09-23T14:30:06.280539+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-09-18T13:23:03.111578+00:00",
+    "updated": "2026-09-23T17:30:02.241002+00:00",
     "vacc": "2026-09-16T14:55:08.027793+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-09-17T17:26:28.165399+00:00"
+        "2026-09-23T14:30:08.208628+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -34,7 +36,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-14T14:16:13.956005+00:00"
+        "2026-09-23T12:47:51.370008+00:00"
       ],
       "Home": [
         "set",
@@ -50,27 +52,87 @@
       ]
     },
     "vacc": {
+      "BarryLab": [
+        "set",
+        "2026-09-21T16:18:01.470499+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-17T17:29:56.492043+00:00"
+        "2026-09-23T17:29:56.929028+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-22T21:06:24.756552+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-18T13:23:03.111578+00:00",
+    "at": "2026-09-23T17:30:02.241002+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "curate_span": 10,
+  "braces_curve": true,
+  "curate_at": {
+    "demo-ds-tutorial:ds": {
+      "at": 1790173836827,
+      "id": "e7b1108a8e9",
+      "n": 24,
+      "review": "flag",
+      "t": 33.9
+    },
+    "s0159b3a9fcf7:ied": {
+      "at": 1790109330543,
+      "id": "e0d898dd4a4",
+      "n": 10,
+      "review": "left",
+      "t": 18.3
+    },
+    "s0ed1b8c54a0e:ied": {
+      "at": 1790102833793,
+      "id": "e4a81fd9f3c",
+      "n": 10,
+      "review": "left",
+      "t": 13.8
+    },
+    "s3cbe283bf5c8:ied": {
+      "at": 1789748432214,
+      "id": "eeae8586e05",
+      "n": 10,
+      "review": "left",
+      "t": 13.8
+    },
+    "s6b2088ae883b:ied": {
+      "at": 1790003703480,
+      "id": "ec669ac61da",
+      "n": 10,
+      "review": "left",
+      "t": 18.3
+    },
+    "s72df5edc7210:ds": {
+      "at": 1790014707235,
+      "id": "eb6a9368fb8",
+      "n": 4,
+      "review": "flag",
+      "t": 1548.814
+    },
+    "se0c7b6ba6d5a:ds": {
+      "at": 1789747616145,
+      "id": "ee62be48ed8",
+      "n": 581,
+      "review": "left",
+      "t": 5.292001
+    }
+  },
+  "curate_span": 1.2,
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
-    "session": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
+    "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
   },
   "radio": {
     "agreed": true,
     "small": true,
-    "station": "4xDzrJKXOOY",
+    "station": "rFZHOHl-L8A",
     "volume": 55
   },
   "recent_scripts": [
@@ -95,8 +157,10 @@
     "Home": "dark",
     "LCOM549913": "dark"
   },
-  "updated": "2026-09-18T09:23:03-04:00",
+  "updated": "2026-09-23T13:30:02-04:00",
   "vacc": {
-    "DESKTOP-4H65AI7": true
+    "BarryLab": false,
+    "DESKTOP-4H65AI7": false,
+    "Home": true
   }
 }

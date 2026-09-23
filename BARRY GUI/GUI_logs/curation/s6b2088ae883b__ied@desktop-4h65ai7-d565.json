@@ -1,0 +1,208 @@
+{
+  "_at": {
+    "assignee": "2026-09-23T15:32:53.129330+00:00",
+    "created": "2026-09-23T15:32:53.129330+00:00",
+    "gid": "2026-09-23T15:32:53.129330+00:00",
+    "imports": "2026-09-23T15:32:53.129330+00:00",
+    "kind": "2026-09-23T15:32:53.129330+00:00",
+    "labels": "2026-09-23T15:32:53.129330+00:00",
+    "name": "2026-09-23T15:32:53.129330+00:00",
+    "open": "2026-09-23T15:32:53.129330+00:00",
+    "schema": "2026-09-23T15:32:53.129330+00:00",
+    "session_label": "2026-09-23T15:32:53.129330+00:00",
+    "source": "2026-09-23T15:32:53.129330+00:00",
+    "updated": "2026-09-23T15:32:53.129330+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e02bb40b208": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "e4fa96c9e40": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "e698a9c3976": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "e804c6a07ec": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "e870e67528a": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "ebc398b2200": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "ed55f9303d8": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "ed58005d875": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "edb9fcefcef": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ],
+      "ef29062e4d5": [
+        "set",
+        "2026-09-23T15:32:53.129330+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-23T15:32:53.129330+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "assignee": null,
+  "created": {
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T11:32:53-04:00",
+    "commit": "94e5cff",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "events": [
+    {
+      "channel": 8,
+      "id": "ebc398b2200",
+      "label": null,
+      "start": 12.0
+    },
+    {
+      "channel": 8,
+      "id": "e02bb40b208",
+      "label": null,
+      "start": 12.9
+    },
+    {
+      "channel": 8,
+      "id": "ef29062e4d5",
+      "label": null,
+      "start": 13.8
+    },
+    {
+      "channel": 8,
+      "id": "edb9fcefcef",
+      "label": null,
+      "start": 14.7
+    },
+    {
+      "channel": 8,
+      "id": "e870e67528a",
+      "label": null,
+      "start": 15.6
+    },
+    {
+      "channel": 8,
+      "id": "e698a9c3976",
+      "label": null,
+      "start": 16.5
+    },
+    {
+      "channel": 8,
+      "id": "ed55f9303d8",
+      "label": null,
+      "start": 17.4
+    },
+    {
+      "channel": 8,
+      "id": "e804c6a07ec",
+      "label": null,
+      "start": 18.3
+    },
+    {
+      "channel": 8,
+      "id": "e4fa96c9e40",
+      "label": null,
+      "start": 19.2
+    },
+    {
+      "channel": 8,
+      "id": "ed58005d875",
+      "label": null,
+      "start": 20.1
+    }
+  ],
+  "gid": "s6b2088ae883b",
+  "imports": [
+    {
+      "at": "2026-09-23T11:32:53-0400",
+      "n": 10,
+      "skipped": 0,
+      "source": {
+        "from": "harness"
+      }
+    }
+  ],
+  "kind": "ied",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "solid",
+      "keys": [
+        "1",
+        "s"
+      ],
+      "name": "Solid"
+    },
+    {
+      "color": "#3b82f6",
+      "good": true,
+      "id": "sputter",
+      "keys": [
+        "2",
+        "t"
+      ],
+      "name": "Sputter"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "3",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "4",
+        "f"
+      ],
+      "name": "Flag"
+    }
+  ],
+  "name": "curate harness",
+  "open": false,
+  "schema": 1,
+  "session_label": "KCNT1 m2 s1 2022-03-18",
+  "source": {
+    "from": "harness"
+  },
+  "updated": {
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T11:32:53-04:00",
+    "commit": "94e5cff",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

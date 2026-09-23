@@ -6,17 +6,19 @@
     "label": "2026-09-09T05:16:04.841341+00:00",
     "loose_key": "2026-09-09T05:16:04.841341+00:00",
     "mouse": "2026-09-09T05:16:04.841341+00:00",
+    "probe": "2026-09-22T20:26:02.882748+00:00",
+    "probe_source": "2026-09-21T13:04:37.965999+00:00",
     "project": "2026-09-09T05:16:54.275569+00:00",
     "project_source": "2026-09-09T05:16:54.275569+00:00",
-    "retired": "2026-09-09T19:10:44.737875+00:00",
+    "retired": "2026-09-10T19:03:34.026439+00:00",
     "schema": "2026-09-09T05:16:54.275569+00:00",
     "session": "2026-09-09T05:16:04.841341+00:00",
     "start": "2026-09-09T05:16:04.841341+00:00",
-    "updated": "2026-09-09T19:10:44.737875+00:00",
-    "view_state": "2026-09-09T14:14:34.362184+00:00"
+    "updated": "2026-09-22T20:26:02.882748+00:00",
+    "view_state": "2026-09-21T17:51:38.261561+00:00"
   },
   "_shard": {
-    "at": "2026-09-09T19:10:44.737875+00:00",
+    "at": "2026-09-22T20:26:02.882748+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -35,6 +37,8 @@
   "loose_key": "demo_long-session",
   "mouse": 2,
   "paths": [],
+  "probe": "h3",
+  "probe_source": "manual",
   "project": "Unfiled",
   "project_source": "guessed",
   "retired": false,
@@ -42,12 +46,13 @@
   "session": 3,
   "start": "2020-01-02T00:00:00",
   "updated": {
-    "at": "2026-09-09T15:10:44-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T16:26:02-04:00",
+    "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
@@ -131,7 +136,7 @@
     "spacing": 50,
     "span": 10,
     "stft_mode": null,
-    "t0": 0,
-    "ylim": null
+    "t0": 12.742980561555076,
+    "ylim": 2133.0312426885184
   }
 }

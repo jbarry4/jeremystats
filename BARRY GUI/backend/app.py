@@ -29,6 +29,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                incisor as incisormod,
                braces as bracesmod,
                bracesset as brsetmod,
+               dspca,
+               guides as guidesmod,
                versions as versionsmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
@@ -46,7 +48,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccrun as vaccrunmod, video)
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccrun as vaccrunmod, video,
+               warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(HERE)
@@ -57,6 +60,22 @@ LOGS_DIR = os.path.join(APP_DIR, "GUI_logs")
 app = Flask(__name__, static_folder=None)
 
 STORE = store.Store(LOGS_DIR, auto_stage=False)
+
+# Last boot's answers to the three slow roll-ups, so this boot can show
+# something in the time it takes to paint rather than in the time it takes to
+# merge fifteen hundred shards. See warmcache.py -- in particular the five
+# rules that bound when a cached byte can be seen at all.
+#
+# Stamped with the version and commit of the code that wrote it: an update
+# that changes the shape of a payload must never hand the new interface last
+# week's shape.
+#
+# Created here, armed nowhere. `arm()` is the launcher's call and only the
+# launcher's, so a server started by the harness suite or by a script reads
+# the store exactly as it always did.
+WARM = warmcache.WarmCache(
+    LOGS_DIR, stamp="|".join(str(x) for x in store._code_version()))
+
 # Reports live beside the logs, one file each, sharded by machine -- same
 # rule as everything else that gets edited, so two people never write the
 # same file.
@@ -109,6 +128,35 @@ MAX_CACHED_SESSIONS = 6
 # ==========================================================================
 # Error plumbing -- every failure is logged with context and returned readably
 # ==========================================================================
+def named_versions(vers, drop=("snap",)):
+    """One entry's versions, each carrying the name a person reads.
+
+    THE NUMBER IS NOT THE NAME, and half the application was showing the
+    number. `v` is what a machine minted; it is not unique, because two
+    machines mint independently and the union keeps both -- measured on
+    this bank, entry 7d5fa32206b4 holds seven versions numbered
+    0,1,2,3,4,3,4. `versions.label_rows` walks the lineage in creation
+    order and hands back a name that IS unique, branching to `1.1` where
+    a version was built on one that already had work after it.
+
+    Showing the raw number meant the same history read differently
+    depending on which panel you were in: X-ray's picker listed v0 to v4
+    from `label_rows`, and the bank's own history strip listed v0, v1,
+    v2, v3, v3 from the number -- five versions, four names, one of them
+    twice, and no way to tell which was which. Anything that serialises
+    versions goes through here, so there is one answer.
+
+    `drop` keeps the snapshot blob out of a list response; pass `()` to
+    keep everything.
+    """
+    out = []
+    for ver, name in versionsmod.label_rows(list(vers or [])):
+        row = {k: v for k, v in ver.items() if k not in drop}
+        row["name"] = name
+        out.append(row)
+    return out
+
+
 def fail(where, exc, status=400, context=None, user_message=None):
     """Log an error and return a JSON body the UI can show verbatim."""
     detail = traceback.format_exc(limit=8)
@@ -151,7 +199,29 @@ def _trace_start():
 
 @app.after_request
 def no_cache(resp):
-    resp.headers["Cache-Control"] = "no-store"
+    # API answers are never cached; files are cached and revalidated.
+    #
+    # This set `no-store` on EVERYTHING, and `no-store` means the browser may
+    # not keep the response at all -- not even to ask whether it is still
+    # good. So all 2.5 MB of web/js and app.css came down again on every
+    # load, over the same six connections the pollers are already using.
+    #
+    # `no-cache` is the header that means what was wanted here: keep it, but
+    # ask before using it. The answer to the asking is a 304 with no body, so
+    # editing a module and hitting refresh still shows the edit -- which in a
+    # codebase with no build step is not negotiable, and is why this is not
+    # `max-age`.
+    #
+    # Setting it only when the view has not spoken also stops this hook
+    # overwriting a deliberate one. /api/results/file asks for a day of
+    # caching because its URL carries a hash of the file's size and mtime, so
+    # a changed figure is a different URL; that header was being replaced
+    # with `no-store` here, one line after it was set, and every thumbnail in
+    # the Results grid was fetched again on every render.
+    if request.endpoint in ("static_files", "index"):
+        resp.headers.setdefault("Cache-Control", "no-cache")
+    elif "Cache-Control" not in resp.headers:
+        resp.headers["Cache-Control"] = "no-store"
 
     # Record what was asked for and how it went. A request that returns 200
     # with nothing useful in it leaves no other trace anywhere, and that is
@@ -639,10 +709,43 @@ def api_csc_open():
     out["media"] = video.find_media(folder)
     out["nev"] = _find_nev(folder)
     out["view_state"] = (stored or {}).get("view_state") or {}
+    out["probe"] = _probe_for(stored)
+    out["probe_source"] = (stored or {}).get("probe_source") or (
+        "view" if ((stored or {}).get("view_state") or {}).get("probe")
+        else ("guessed" if out["probe"] != "h3" else None))
     out["bookmarks"] = (stored or {}).get("bookmarks", [])
     out["spike_sets"] = ((stored or {}).get("spike_labels") or {}).get("sets", [])
     out["event_classes"] = (stored or {}).get("event_classes") or {}
     return jsonify(out)
+
+
+def _probe_for(stored):
+    """Which probe template a recording was made with, from one place.
+
+    Three answers in descending order of authority, and the order is the
+    point:
+
+      1. `probe` on the record -- somebody said so, and it travels between
+         machines with everything else about the recording.
+      2. `view_state.probe` -- where the choice used to live. Read so that
+         a recording somebody set up before this field existed does not
+         quietly revert to H3 on its next open.
+      3. `probes.suggest(n_channels)` -- a guess, and only ever one that a
+         number can support: 128 channels is two 64-contact implants far
+         more often than it is one 128-contact array in this lab.
+
+    Never guesses past a real answer, and never writes. Filing the guess
+    would turn it into a fact nobody could find again, which is the same
+    argument `banks_for` makes about leaving `region` blank.
+    """
+    stored = stored or {}
+    said = stored.get("probe")
+    if said and probebook.get(said):
+        return str(said).lower()
+    was = (stored.get("view_state") or {}).get("probe")
+    if was and probebook.get(was):
+        return str(was).lower()
+    return probebook.suggest(stored.get("n_channels"))
 
 
 def _find_nev(folder):
@@ -840,7 +943,12 @@ def api_session_events():
 
 @app.route("/api/sessions")
 def api_sessions():
-    return jsonify({"ok": True, "sessions": STORE.all_sessions()})
+    # REG.all() rather than STORE.all_sessions(): the same records, merged
+    # the same way, but cached against the shard directory's signature
+    # instead of re-read from 1510 files on every call. Measured: 4.1 s a
+    # call against 0.1 s. Safe here because nothing downstream edits what it
+    # is handed -- these go straight out as JSON.
+    return jsonify({"ok": True, "sessions": REG.all()})
 
 
 @app.route("/api/identify")
@@ -890,8 +998,28 @@ def api_errors_test():
     return jsonify({"ok": True, "error": rec})
 
 
-@app.route("/api/sync/status")
-def api_sync_status():
+def _sync_status_body():
+    """The EXPENSIVE half of the answer, and only that half.
+
+    Measured cold: 8.2 s, effectively all of it `STORE.index()` merging the
+    session shards for the first time in this process; warm it is 0.02 s.
+    That one number is the whole reason this route was worth warming, and
+    the rest of what the route returns is measured in tens of
+    milliseconds.
+
+    So the rest is deliberately NOT in here. Everything below costs
+    nothing, and two of them -- what this process started at, and what has
+    been edited since it did -- are facts about this process rather than
+    about the store. Yesterday's answers to those are not stale, they are
+    wrong: a cached `code_changed` from a session where somebody edited the
+    source would raise "restart Jarvis, it is running older code" on a
+    Jarvis that had started ten seconds ago.
+
+    Keeping them out also makes the fingerprint mean something. With
+    `started_at` in the body, every boot differs from every other boot by
+    construction, the comparison always says "changed", and the page always
+    refetches a quarter of a megabyte to be told what it already had.
+    """
     idx = None
     try:
         # index() rebuilds only when the store has actually changed; this
@@ -899,14 +1027,26 @@ def api_sync_status():
         idx = STORE.index()
     except Exception:
         pass
-    return jsonify({"ok": True, "git": STORE.git_status(),
-                    "root": LOGS_DIR, "index": idx,
-                    "auto_stage": STORE.auto_stage,
-                    # Carried on a poll that already happens, so noticing
-                    # that Jarvis needs restarting costs no extra request.
-                    "code_changed": _code_changed(),
-                    "started_at": _STARTED_AT,
-                    "conflicts": conflict_audit()})
+    return {"ok": True, "root": LOGS_DIR, "index": idx,
+            "auto_stage": STORE.auto_stage}
+
+
+@app.route("/api/sync/status")
+def api_sync_status():
+    body, how = WARM.serve("sync_status", _sync_status_body,
+                           fresh=bool(request.args.get("fresh")))
+    body = dict(body)
+    # Always live, cache or no cache. 0.26 s between them, against the 8 s
+    # the index costs, and every one of them is either about this process or
+    # about the working tree as it is right now.
+    body["git"] = STORE.git_status()
+    # Carried on a poll that already happens, so noticing that Jarvis needs
+    # restarting costs no extra request.
+    body["code_changed"] = _code_changed()
+    body["started_at"] = _STARTED_AT
+    body["conflicts"] = conflict_audit()
+    body["warm"] = WARM.marker("sync_status", how)
+    return jsonify(body)
 
 
 def conflict_audit():
@@ -942,6 +1082,72 @@ def conflict_audit():
         "machines": sorted(machines),
         "mine": shards.machine_id(),
     }
+
+
+# ==========================================================================
+# The warm start
+# ==========================================================================
+# When the roll-up was built, which is not part of what it says.
+#
+# `STORE.index()` stamps itself, and a fresh process always rebuilds -- so
+# without this every boot differed from every other boot by construction,
+# every boot was reported as changed, and the page refetched a quarter of a
+# megabyte each time to be handed a different timestamp over identical
+# counts. Measured: with it declared, two consecutive boots compare equal.
+#
+# The counts themselves are emphatically NOT excluded. A change in what the
+# store holds is the one thing this whole mechanism exists to notice.
+WARM.volatile("sync_status", ["index.generated"])
+
+
+@app.before_request
+def _warm_watch_writes():
+    """The window closes the moment somebody does something.
+
+    Here rather than in each route, because the rule is about the person and
+    not about the endpoint: a route added next year inherits it without
+    anybody remembering to opt in. warmcache.BOOT_CHATTER lists the three
+    POSTs the interface makes on its own way up.
+    """
+    if request.method != "GET" and request.path.startswith("/api/"):
+        WARM.note_write(request.path)
+
+
+@app.route("/api/warm/state")
+def api_warm_state():
+    """Which warmed answers have been recomputed for real, and which of them
+    turned out to differ from what the page was shown.
+
+    Polled by the page for as long as `warming` is true, and it has to be
+    cheap enough to poll: no store reads, no disk, just what the prime
+    thread has recorded. A name appears here once its live value is in hand;
+    the value says whether refetching it would change anything, which on an
+    ordinary boot is false for all three and the page does nothing at all.
+    """
+    return jsonify(dict({"ok": True}, **WARM.state()))
+
+
+def warm_start(window_s=warmcache.WINDOW_S):
+    """Open the warm window and start recomputing behind it.
+
+    Called by start.py, which is to say by "Wake up Jarvis", and by nothing
+    else. A server brought up by the harness suite, by vacc_run or by a
+    script that imports this module never calls it, so those read the store
+    live exactly as they always have -- a test that measures the cache when
+    it means to measure the store is a test that has stopped testing.
+
+    The order is the order they are wanted in: the sync chip and the error
+    badge are on screen from the first frame, VACC decides whether the rail
+    chip appears, and the registry is wanted the moment somebody opens
+    Sessions. It also happens to be the cheapest order -- all three read the
+    session shards, and the first one to do it pays for the other two.
+    """
+    WARM.arm(window_s)
+    WARM.prime([
+        ("sync_status", _sync_status_body),
+        ("vacc_knows", _vacc_knows_body),
+        ("registry", _registry_body),
+    ])
 
 
 @app.route("/api/sync/reindex", methods=["POST"])
@@ -2468,7 +2674,10 @@ def _incisor_spec(body, sess):
             "Every channel in this recording is marked bad, so there is "
             "nothing to scan. Put at least one back and run it again.")
 
-    probe_id = (stored.get("view_state") or {}).get("probe") or "h3"
+    # The recording's probe, not the window's. It used to be read straight
+    # out of `view_state`, so a scan run from a machine that had never had
+    # the recording open scanned a dual implant as one linear array.
+    probe_id = _probe_for(stored)
     probe = probebook.get(probe_id) or {}
     spec = {
         "path": sess.get("path"),
@@ -3142,10 +3351,34 @@ def _braces_session(rec):
             "machine. It was last seen at %s."
             % ((row["paths"] or [""])[-1]))
     if not path:
+        # WHICH of the three things is missing, by name.
+        #
+        # This said "does not say which recording it came from" for all of
+        # them, including the case where the entry names the recording
+        # perfectly well -- somebody reading it had the label in front of
+        # them, "PTEN m34 s8 2026-06-10", under a sentence saying there
+        # was no name. A label is a name and not a locator, and the useful
+        # thing to say is which of the two is missing and what to do.
+        label = rec.get("session_label") or rec.get("name") or ""
+        named = ("%s " % label) if label else ""
+        if not gid:
+            raise ValueError(
+                "This set %sis not attached to a recording -- it carries a "
+                "label, which is a name, but no registry id, which is what "
+                "actually finds the folder. Re-bank it from a curation set, "
+                "or import it onto a recording first."
+                % (("(%s) " % label) if label else ""))
+        if row is None:
+            raise ValueError(
+                "This set names %s and carries its registry id (%s), but no "
+                "recording with that id is in the registry on this machine. "
+                "Scan the folder it lives in, or the archive it was filed "
+                "to, and it will be found."
+                % (label or "a recording", gid))
         raise ValueError(
-            "This set does not say which recording it came from, so there "
-            "is nothing to measure its stamps against. Re-bank it from a "
-            "curation set, or import it onto a recording first.")
+            "The registry knows %s(%s) but has no folder recorded for it on "
+            "any machine, so there is nothing to read. Scan the folder it "
+            "lives in." % (named, gid))
     sess, err = _session_for(path, None, True)
     if err:
         raise ValueError(
@@ -3186,6 +3419,20 @@ def _braces_spec(body, sess):
     two numbers. Built from `_incisor_spec` so the band, the decimation and
     the threshold cannot drift from the detector's."""
     spec = _incisor_spec(dict(body, channels=None), sess)
+    # What the magnitude is taken of. CSD by default -- the part of the
+    # signal that cannot be volume-conducted -- with the voltage the
+    # detectors themselves ran on one setting away, so the two can be
+    # compared on the same set rather than argued about.
+    spec["measure"] = ("voltage" if body.get("measure") == "voltage"
+                       else "csd")
+    # The mains, and how long a moving average to run over the trace.
+    # Both are settings because both change the number: a notch that is not
+    # taken out leaves 60 Hz inside a 5-100 Hz band, and smoothing merges
+    # the twin lobes rectification makes at the cost of some timing.
+    if body.get("line_hz") is not None:
+        spec["line_hz"] = float(body.get("line_hz") or 0.0)
+    if body.get("smooth_ms") is not None:
+        spec["smooth_ms"] = float(body.get("smooth_ms") or 0.0)
     for key, default in (("window_ms", bracesmod.WINDOW_MS),
                          ("edge_frac", bracesmod.EDGE_FRAC),
                          ("same_ms", bracesmod.SAME_MS)):
@@ -3245,6 +3492,7 @@ def api_braces_plan():
             "usable": why is None, "why_not": why,
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
+    _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
     return jsonify({
         "ok": True,
         "entry": {"id": rec["id"], "name": rec.get("name"),
@@ -3265,6 +3513,12 @@ def api_braces_plan():
                       "bad": bool(c.get("bad"))}
                      for c in _braces_channels(sess)],
         "versions": versions,
+        # The NAME of the newest and of the one a commit would write. The
+        # number is not unique -- see `versions.tip_next` -- so anything
+        # shown to a person has to be the lineage name or it is a label
+        # that belongs to two versions at once.
+        "current_name": _cur_name,
+        "next_name": _next_name,
         "current_version": max([v["v"] for v in versions] or [0]),
         "spec": {k: spec.get(k) for k in
                  ("band", "lfp_fs", "height_sd", "abs_uv", "dist_ms",
@@ -3337,6 +3591,24 @@ def api_braces_run():
         if lid in align_ids:
             align_ids.add(name)
 
+    # NOTHING TO ALIGN.
+    #
+    # A set can be fully curated and hold no events at all -- somebody went
+    # through it and rejected every candidate, which is a real answer and
+    # nine of the forty-eight sets in this bank are that. Running anyway
+    # reads the recording for a minute and files a proposal with no rows in
+    # it, which is a thing somebody then has to work out is empty on
+    # purpose. Refused here instead, with the reason.
+    n_good = sum(1 for ev in events
+                 if (ev.get("label_id") or ev.get("label")) in align_ids)
+    if not n_good:
+        return jsonify({
+            "ok": False,
+            "error": "Nothing in this set is a dentate spike: all %d "
+                     "candidate(s) were rejected or are still undecided. "
+                     "There is nothing to align, so nothing was read."
+                     % len(events)}), 400
+
     # Which channels go into the profile.
     #
     # Whatever the caller ticked, and where it said nothing, every channel
@@ -3347,21 +3619,86 @@ def api_braces_run():
     all_ch = _braces_channels(sess)
     if want_ch:
         want = {int(x) for x in want_ch}
-        use_chans = [c for c in all_ch if int(c["number"]) in want]
     else:
-        use_chans = [c for c in all_ch if not c.get("bad")]
-    if not use_chans:
+        want = {int(c["number"]) for c in all_ch if not c.get("bad")}
+    if not want:
         return jsonify({"ok": False,
                         "error": "No channels are ticked, so there is "
                                  "nothing to build a profile from."}), 400
-    left_out = [int(c["number"]) for c in all_ch
-                if int(c["number"]) not in
-                {int(x["number"]) for x in use_chans}]
+
+    # A contact nobody wants is INTERPOLATED, not removed.
+    #
+    # A current source density is a second difference ACROSS DEPTH. Taking
+    # a contact out of the middle of the list does not leave a shorter
+    # probe, it leaves an unevenly spaced one -- and a second difference
+    # over an uneven grid has a step in it exactly where the missing wire
+    # was, which is then the largest thing on the shank. So the geometry is
+    # kept whole and the unwanted rows are replaced by the interpolation of
+    # their neighbours: they carry no information of their own, which is
+    # what "we do not trust this wire" means.
+    idx = [i for i, c in enumerate(all_ch) if int(c["number"]) in want]
+    use_chans = all_ch[idx[0]:idx[-1] + 1]
+    left_out = [int(c["number"]) for c in use_chans
+                if int(c["number"]) not in want]
+
+    stamp_times = [float(e["start"]) for e in events
+                   if e.get("start") is not None]
+    depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
 
     def work(job):
-        prof = bracesmod.profile(sess, use_chans, report, spec, job)
+        # The probe is screened FIRST, over one clean stretch.
+        #
+        # A CSD does not merely include a bad contact, it amplifies it: a
+        # dead wire between two live ones is the largest deflection
+        # anywhere on the shank. Every magnitude question after this --
+        # which depth, which peak -- would otherwise be answered with it.
+        # Screened contacts join the ones nobody ticked: interpolated, and
+        # reported rather than silently dropped.
+        screened = bracesmod.screen(sess, use_chans, spec, stamp_times)
+        bad_nums = dict(screened)
+        for n in left_out:
+            bad_nums.setdefault(int(n), "not ticked")
+
+        # Where on the shank these events actually are, worked out from the
+        # events themselves: the CSD averaged over a sample of the stamps
+        # at their curated times, so what is time-locked to them adds and
+        # what is not falls away. The band and the depth profile both come
+        # out of that average.
+        band_nums, depth_rows, at, prof = bracesmod.depth_band(
+            sess, use_chans, spec, stamp_times, want=depth_n, job=job,
+            bad=bad_nums)
+        # One more contact either side of the band.
+        #
+        # A CSD has no value at the ends of the list it is
+        # given, so reading exactly the band would lose its
+        # top and bottom rows -- the two the band was chosen
+        # for. The extra pair is read and then thrown away by
+        # `compute_csd` itself.
+        want_set = set(band_nums)
+        on = []
+        for i, c in enumerate(use_chans):
+            if int(c["number"]) in want_set:
+                on.append(c)
+            elif ((i + 1 < len(use_chans)
+                   and int(use_chans[i + 1]["number"]) in want_set)
+                  or (i and int(use_chans[i - 1]["number"]) in want_set)):
+                on.append(c)
         job.check()
-        peaks = bracesmod.profile_peaks(prof, report, spec, job)
+        # Then only the windows the stamps can reach, on only those
+        # channels. Neither half is a shortcut -- reading a channel that
+        # cannot see the event, or a stretch no stamp can reach, cannot
+        # change where a stamp goes.
+        peaks = bracesmod.windowed_peaks(sess, on, report, spec,
+                                         stamp_times, job, bad=bad_nums)
+        # Recorded, not used: see `params_of`. The profile says the band is
+        # sitting on a dipole, which is worth keeping even though nothing
+        # is projected onto it.
+        peaks["profile"] = {str(k): v for k, v in prof.items()}
+        peaks["depth"] = {"channels": band_nums, "profile": depth_rows,
+                          "from": at, "of": len(use_chans),
+                          "weights": {str(k): v for k, v in prof.items()},
+                          "screened": {str(k): v
+                                       for k, v in screened.items()}}
         job.check()
         out = bracesmod.propose(events, peaks,
                                window_ms=spec["window_ms"],
@@ -3375,6 +3712,14 @@ def api_braces_run():
         # tomorrow, and somebody opening this proposal then still has to be
         # able to ask which channels it was measured from.
         out["left_out"] = left_out
+        # Which contacts were interpolated rather than believed, on the
+        # summary as well as in the params: the panel says so in the line
+        # that explains what the measurement was made on, and a set read
+        # back tomorrow has to be able to say it too.
+        out["screened"] = peaks.get("screened") or {}
+        out["depth"] = peaks.get("depth")
+        out["n_windows"] = peaks.get("n_windows")
+        out["read_s"] = peaks.get("read_s")
         made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
                              out, name=rec.get("name"), by=who)
         # The summary travels with the job's result so the panel can draw
@@ -3384,7 +3729,9 @@ def api_braces_run():
                 "n_channels": peaks.get("n_channels"),
                 "from_version": src_v}
 
-    steps = [("ds profile", len(use_chans)), ("ds detect", 1)]
+    steps = [("ds depth", len(use_chans)),
+             ("ds windows", max(1, len(bracesmod.spans(
+                 stamp_times, spec["window_ms"]))))]
     job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
@@ -3405,7 +3752,7 @@ def api_braces_sets():
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
-        _moves, _flags, counts = brsetmod.resolve(rec)
+        _moves, _flags, counts, _rej = brsetmod.resolve(rec)
         out.append({
             "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
             "gid": rec.get("gid"), "name": rec.get("name"),
@@ -3427,15 +3774,32 @@ def api_braces_set(set_id):
     if not rec:
         return jsonify({"ok": False,
                         "error": "No alignment set %s." % set_id}), 404
-    moves, _flags, counts = brsetmod.resolve(rec)
+    moves, _flags, counts, rejects = brsetmod.resolve(rec)
     entry = BANK.get(rec.get("entry_id")) or {}
+    # Where the recording is, so the panel can open it in the trace view
+    # without a second round trip to work out something the set already
+    # implies. None when this machine cannot reach it, which the browse
+    # button reads as "not from here".
+    here = None
+    try:
+        sess, _row = _braces_session(entry)
+        here = sess.get("path")
+    except Exception:                                    # noqa: BLE001
+        here = None
     return jsonify({
+        "session_path": here,
         "ok": True,
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
                  "params", "summary", "created", "committed", "rows",
                  "calls")},
         "counts": counts,
+        # Which rows currently sit on a time another row also claims, by
+        # row number so the panel can jump to them. Worked out from the
+        # calls rather than stored, so it is right after every keystroke
+        # and gone the moment one of the pair is moved off -- see
+        # `bracesset.OVERLAP`.
+        "overlaps": brsetmod.overlaps(rec),
         "would_move": len(moves),
         "entry": {"id": entry.get("id"), "name": entry.get("name"),
                   "n": entry.get("n"),
@@ -3443,7 +3807,11 @@ def api_braces_set(set_id):
                   "label_names": entry.get("label_names") or {},
                   "current_version": max(
                       [v.get("v") or 0
-                       for v in (entry.get("versions") or [])] or [0])},
+                       for v in (entry.get("versions") or [])] or [0]),
+                  "current_name": versionsmod.tip_next(
+                      entry.get("versions") or [])[0],
+                  "next_name": versionsmod.tip_next(
+                      entry.get("versions") or [])[1]},
     })
 
 
@@ -3452,16 +3820,29 @@ def api_braces_decide(set_id):
     """Confirm a row, keep it where it was, or move it somewhere else."""
     body = request.get_json(force=True) or {}
     calls = body.get("calls")
-    if calls is None and body.get("call") is not None:
+    if calls is None and "row" in body:
         # One row, which is what the bench sends on every keystroke.
-        calls = {str(body.get("row")): {"call": body["call"],
-                                        "t": body.get("t")}}
+        #
+        # A null `call` with a row means "forget what was said about this
+        # one". It used to fall through to `calls or {}` and decide
+        # nothing, while answering ok -- so a caller doing the obvious
+        # thing got a success and no effect, which is how a check of mine
+        # passed while testing nothing. The panel had been sending the
+        # `calls` form for exactly this reason; now both work.
+        calls = {str(body.get("row")):
+                 (None if body.get("call") is None
+                  else {"call": body["call"], "t": body.get("t")})}
     try:
         rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/decide", exc, 400, {"set_id": set_id})
-    moves, _flags, counts = brsetmod.resolve(rec)
+    moves, _flags, counts, rejects = brsetmod.resolve(rec)
+    # The overlap flag travels with every decision, because a decision is
+    # the only thing that can raise one or clear one: a move onto a time
+    # its neighbour already holds flags both of them, and moving either off
+    # unflags both. The panel repaints from this.
     return jsonify({"ok": True, "counts": counts, "would_move": len(moves),
+                    "overlaps": brsetmod.overlaps(rec),
                     "calls": rec.get("calls") or {}})
 
 
@@ -3485,14 +3866,30 @@ def api_braces_commit(set_id):
             "error": "This alignment is already version %s of the set."
                      % (rec["committed"] or {}).get("version")}), 400
 
-    moves, flags, counts = brsetmod.resolve(rec)
+    moves, flags, counts, rejects = brsetmod.resolve(rec)
     dry = body.get("apply") is not True
     try:
+        # The labels that name a real event, worked out the same way the
+        # run worked them out: from the curation vocabulary for this
+        # entry's kind, by id AND by display name, plus whatever this
+        # entry itself calls them. Everything else is a candidate somebody
+        # REJECTED, and an aligned version has no business carrying it.
+        entry = BANK.get(rec.get("entry_id")) or {}
+        goods = [lab for lab
+                 in (curation.KINDS.get(entry.get("type") or "ds")
+                     or curation.KINDS["ds"])["labels"]
+                 if lab.get("good")]
+        keep_ids = ({lab["id"] for lab in goods}
+                    | {lab["name"] for lab in goods})
+        for lid, name in (entry.get("label_names") or {}).items():
+            if lid in keep_ids:
+                keep_ids.add(name)
         report = BANK.align(rec["entry_id"], moves, rec.get("params") or {},
                             note=body.get("note"), by=_braces_who(body),
                             dry_run=dry,
                             from_version=rec.get("from_version"),
-                            flags=flags)
+                            flags=flags, keep_ids=keep_ids,
+                            reject=rejects)
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/commit", exc, 400, {"set_id": set_id})
 
@@ -3500,8 +3897,37 @@ def api_braces_commit(set_id):
     # Said out loud rather than left to be noticed: a flag nobody resolved
     # does not move, and the number of them belongs beside the button.
     report["left_alone"] = counts.get("waiting", 0)
+    # AND WHICH ROWS TO GO AND LOOK AT.
+    #
+    # `align` refuses two stamps on one time and says how many and at what
+    # times -- correctly, since a duplicate is not an alignment. But the
+    # times are the bank's, and what the person in front of this has is a
+    # list of rows, so "2 stamp(s) would land on a time another stamp
+    # already holds" named nothing they could open. The rows are worked out
+    # here, where the set is, and the error names the flag they are under.
+    clash = brsetmod.overlaps(rec)
+    if clash:
+        report["overlaps"] = clash
+        if report.get("error"):
+            report["error"] = (
+                "%d stamp(s) share a time with another stamp, which is one "
+                "event written twice rather than two events. They are "
+                "flagged as overlapping in the review -- open that pass and "
+                "move one of each pair off. Nothing was written."
+                % sum(len(g["rows"]) for g in clash))
     if dry or report.get("error"):
-        return jsonify({"ok": not report.get("error"), "report": report})
+        # THE REASON GOES WHERE THE CLIENT LOOKS FOR IT.
+        #
+        # A refusal lives in `report.error`, and the response said
+        # `ok: false` with nothing at the top level -- so the client, which
+        # reads `data.error` and falls back to the status code, showed
+        # "Request failed (200)". A refusal with a carefully written
+        # sentence in it came out as a number. Both places now, because
+        # the panel reads the report and the transport reads the top.
+        out = {"ok": not report.get("error"), "report": report}
+        if report.get("error"):
+            out["error"] = report["error"]
+        return jsonify(out)
 
     BRACES.mark_committed(set_id, report.get("version"),
                           report.get("version_id"), by=_braces_who(body))
@@ -3554,7 +3980,12 @@ def api_braces_profile(set_id):
         return jsonify({"ok": False, "error": "Empty window."}), 400
 
     try:
-        got = bracesmod.profile_window(sess, chans, report, spec, t0, t1)
+        # The set's own screening, so the bench draws the trace this
+        # proposal was made on rather than a fresh measurement over
+        # contacts the run did not believe.
+        got = bracesmod.profile_window(
+            sess, chans, report, spec, t0, t1,
+            bad=dict(pr.get("screened") or {}))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/profile", exc, 400, {"set_id": set_id})
     return jsonify({"ok": True, **got})
@@ -3567,6 +3998,174 @@ def api_braces_delete(set_id):
         return jsonify(BRACES.forget(set_id))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/delete", exc, 400, {"set_id": set_id})
+
+
+def _n_good(rec):
+    """How many events in this entry are the thing Braces aligns.
+
+    The curation vocabulary decides, not a hard-coded word: a fifth
+    category added to the DS labels tomorrow is handled without anybody
+    remembering to come back here. Counted by id and by display name,
+    because entries banked before `label_id` existed carry only the name.
+    """
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    n = 0
+    for ev in (rec.get("events") or []):
+        if (ev.get("label_id") or ev.get("label")) in want:
+            n += 1
+    return n
+
+
+def _tip_usable(vers):
+    """The newest version whose stamps can be read back on this machine.
+
+    `versions.tip_next` names the newest there is, which is the right
+    answer to "what is this entry on" and the wrong one to "what can a run
+    start from": a version that arrived as a row without its snapshot has
+    a name and a count and no times. Newest by LINEAGE rather than last in
+    the list, because creation order and lineage order are the same thing
+    only until something branches.
+    """
+    named = versionsmod.label_rows(vers or [])
+    ok = [name for ver, name in named if ver.get("snap")]
+    return versionsmod.newest(ok) if ok else None
+
+
+@app.route("/api/bank/sync")
+def api_bank_sync():
+    """Which entries and versions have reached the database, and which have
+    not.
+
+    `?verify=1` asks the database; without it the answer comes from the
+    local push cursor, which is instant and works with the network down.
+    `?id=` narrows it to one entry.
+    """
+    want_id = request.args.get("id")
+    verify = request.args.get("verify") in ("1", "true", "yes")
+    state = {}
+    try:
+        state = CLOUD.cloud.state() or {}
+    except Exception:                                    # noqa: BLE001
+        state = {}
+    last_push = state.get("last_push")
+
+    entries = [e for e in BANK.all()
+               if not want_id or e.get("id") == want_id]
+
+    # What the database holds, asked once for all of them rather than once
+    # each: forty-eight round trips to answer one panel is a panel nobody
+    # opens twice.
+    up_entry, up_snap, err = {}, {}, None
+    if verify:
+        try:
+            # `query=` is the whole query string, and `select_all` does
+            # not add one of its own -- so the column list goes here, and
+            # the snapshot table's column is `v`, the same name the push
+            # writes. Asked for by name rather than `*`: the entries table
+            # carries every event of every set, which is megabytes nobody
+            # needs to answer "is it up there".
+            for row in CLOUD.cloud.select_all(
+                    "bank_entries", query="select=id,n,versions,updated_at"):
+                up_entry[row.get("id")] = row
+            for row in CLOUD.cloud.select_all(
+                    "bank_snapshots", query="select=entry_id,v"):
+                up_snap.setdefault(str(row.get("entry_id")), set()).add(
+                    str(row.get("v")))
+        except Exception as exc:                         # noqa: BLE001
+            err = str(exc)
+
+    out = []
+    for rec in entries:
+        vers = list(rec.get("versions") or [])
+        named = versionsmod.label_rows(vers)
+        touched = cloudsync._bank_touched(rec)
+        # "Waiting" means changed since the last push finished. A machine
+        # that has never pushed has everything waiting, which is true.
+        waiting = True
+        if last_push and touched:
+            waiting = cloudsync._after(touched, last_push)
+        elif last_push and not touched:
+            waiting = False
+
+        # Demo recordings never go up, by design -- so reporting one as
+        # "not in the database" is crying wolf about the one thing here
+        # that is working exactly as intended.
+        demo = CLOUD._is_demo(rec)
+        row = {
+            "id": rec.get("id"), "name": rec.get("name"),
+            "gid": rec.get("gid"), "local_only": bool(demo),
+            "session_label": rec.get("session_label"),
+            "n": rec.get("n"),
+            "touched": touched,
+            "waiting": bool(waiting),
+            "n_versions": len(vers),
+            "newest": (named[-1][1] if named else None),
+            "versions": [],
+        }
+        cloud_row = up_entry.get(rec.get("id")) if verify else None
+        there = up_snap.get(str(rec.get("id"))) or set()
+        their_v = set()
+        if cloud_row:
+            for v in (cloud_row.get("versions") or []):
+                if isinstance(v, dict) and v.get("v") is not None:
+                    their_v.add(str(v.get("v")))
+        for ver, name in named:
+            vn = str(ver.get("v"))
+            row["versions"].append({
+                "v": ver.get("v"), "name": name,
+                "id": ver.get("id"),
+                "at": ver.get("at"), "by": ver.get("by"),
+                "n": ver.get("n"),
+                # A version with no snapshot HERE cannot have sent one, and
+                # is the reason somebody else may not be able to read it
+                # back. Said plainly rather than left to be inferred from a
+                # missing row at the other end.
+                "snap_here": bool(ver.get("snap")),
+                "in_cloud": (vn in their_v) if verify and cloud_row else None,
+                "snap_in_cloud": (vn in there) if verify else None,
+            })
+        if verify:
+            row["in_cloud"] = bool(cloud_row)
+            row["cloud_n"] = (cloud_row or {}).get("n")
+            row["cloud_updated"] = (cloud_row or {}).get("updated_at")
+            row["cloud_versions"] = len(their_v)
+            # The three ways of being out of step, named so the panel does
+            # not have to work them out from four numbers.
+            missing = [v["name"] for v in row["versions"]
+                       if v["in_cloud"] is False]
+            no_snap = [v["name"] for v in row["versions"]
+                       if v["snap_here"] and v["snap_in_cloud"] is False]
+            row["missing_versions"] = missing
+            row["missing_snapshots"] = no_snap
+            row["state"] = ("local only" if demo
+                            else "absent" if not cloud_row
+                            else "versions" if missing
+                            else "snapshots" if no_snap
+                            else "behind" if row["waiting"]
+                            else "synced")
+        else:
+            row["state"] = ("local only" if demo
+                            else "waiting" if row["waiting"] else "sent")
+        out.append(row)
+
+    out.sort(key=lambda r: (r.get("touched") or ""), reverse=True)
+    return jsonify({
+        "ok": True,
+        # A property, not a call.
+        "configured": bool(CLOUD.cloud.configured),
+        "verified": bool(verify and not err),
+        "error": err,
+        "last_push": last_push,
+        "n": len(out),
+        "entries": out,
+    })
 
 
 @app.route("/api/braces/candidates")
@@ -3587,6 +4186,18 @@ def api_braces_candidates():
             continue
         if not rec.get("specified"):
             continue
+        # NOTHING TO ALIGN, so not offered.
+        #
+        # A set can be fully curated and hold no events at all: somebody
+        # went through it and rejected every candidate, which is a real
+        # answer and nine of the sets in this bank are that, one of them
+        # 738 rejections. They were listed and greyed out for a while,
+        # which is defensible -- "this one is finished and it is all
+        # garbage" is worth being able to see -- but the place to see that
+        # is the Event Bank, which holds every entry and says what is in
+        # it. A list of things to align should hold things to align.
+        if not _n_good(rec):
+            continue
         vers = rec.get("versions") or []
         out.append({
             "id": rec["id"], "name": rec.get("name"),
@@ -3596,12 +4207,1180 @@ def api_braces_candidates():
             "session_label": rec.get("session_label"),
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
+            "current_name": versionsmod.tip_next(vers)[0],
+            # How many of these are actually dentate spikes.
+            #
+            # Not `n`, which counts candidates: a set can be fully curated
+            # and hold nothing but rejections, and there is nothing to
+            # align in that. Worked out from the curation vocabulary the
+            # same way the run works it out -- by id AND by display name,
+            # because older entries carry only the name.
+            "n_good": _n_good(rec),
+            # The whole history, named and in lineage order, so a bulk
+            # table can show which version each entry would be read from
+            # and let any of them be changed before anything runs. `ref` is
+            # what a run must be given back: the per-version id where there
+            # is one, because it is the only thing that names one version
+            # and only one, and the number where there is not.
+            "versions": [
+                {"v": ver.get("v") or 0,
+                 "name": name,
+                 "ref": BANK.version_key(ver),
+                 "n": ver.get("n"),
+                 "at": ver.get("at"),
+                 "by": ver.get("by"),
+                 "note": ver.get("note"),
+                 "aligned": bool(ver.get("aligned")),
+                 # A version with no snapshot on this machine cannot
+                 # supply stamps, so it cannot be a starting point.
+                 "usable": bool(ver.get("snap")),
+                 # The newest one that can actually be read HERE.
+                 #
+                 # Not the same as the newest, and the difference is not
+                 # rare: measured on this bank, 14 of 49 sets have a tip
+                 # whose snapshot never reached this machine, so the
+                 # newest READABLE version is one or more behind. A bulk
+                 # run defaulting to a version it cannot open is a queue
+                 # of failures, and one silently defaulting to an older
+                 # version without saying so is worse.
+                 "newest": name == _tip_usable(vers)}
+                for ver, name in versionsmod.label_rows(vers)
+            ],
+            "newest_name": versionsmod.tip_next(vers)[0],
+            "newest_usable_name": _tip_usable(vers),
             "aligned": rec.get("aligned"),
             "added": rec.get("added"),
         })
     out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
              reverse=True)
     return jsonify({"ok": True, "sets": out, "n": len(out)})
+
+
+# ==========================================================================
+# X-ray -- telling DS1 from DS2
+# ==========================================================================
+# Step four of The Dentist. Incisor found them, Checkup said which ones are
+# real, Braces put each stamp on its own peak, and this says which KIND each
+# one is.
+#
+# TWO HALVES, AND THE SPLIT IS THE WHOLE DESIGN.
+#
+#   /api/dspca/read   minutes. Every event's window, in three filterings,
+#                     cached to an .npz keyed on what was READ.
+#   /api/dspca/fit    milliseconds. Screen, CSD, features, PCA, K-means and
+#                     the DS1/DS2 call, from those arrays.
+#
+# Dragging the feature box calls `fit` and never `read`, which is why the box
+# can be live rather than behind a "recompute" button. The read key is
+# deliberately narrow -- `Params.READ_KEYS` -- so that changing the number of
+# classes, the naming rule or the notch cannot invalidate an hour of reading.
+
+
+def _dspca_entry(entry_id):
+    """The bank entry, or a 400 that says which id was not found."""
+    rec = BANK.get(entry_id)
+    if not rec:
+        raise ValueError("No bank entry %s." % entry_id)
+    return rec
+
+
+def _dspca_layers(gid):
+    """What somebody has said each contact is, or {}.
+
+    StrataScope writes this per recording, and it is the only thing in the
+    app that knows where the hilus is. The `anatomy` ordering rule reads it,
+    and the panel draws it as boundaries on every depth axis -- which is what
+    the standalone version kept in a sidecar JSON beside the bank, where
+    nothing else could find it.
+    """
+    try:
+        return (LAYERS.get(gid) or {}).get("labels") or {}
+    except Exception:                                    # noqa: BLE001
+        return {}
+
+
+def _dspca_save(gid, ph, got):
+    return dspca.save_read(_dspca_npz(gid, ph), got)
+
+
+def _dspca_load(gid, ph):
+    """The arrays for one read, from memory if they are still there.
+
+    The LRU matters more than it looks: every drag of the feature box is a
+    `fit`, and a fit that went to disk for forty megabytes first would make
+    the cheapest control in the panel the slowest.
+    """
+    key = "dspca:%s:%s" % (gid, ph)
+    hit = cfcmod.cache_get(key)
+    if hit is not None:
+        return hit
+    got = dspca.load_read(_dspca_npz(gid, ph))
+    cfcmod.cache_put(key, got)
+    return got
+
+
+def _dspca_read_hash(p):
+    """A name for one READ, from the settings that change what is on disk.
+
+    Not `DSPCA.hash_of`, which covers the fit settings too: those name the
+    answer, and two answers to different questions share one read. Keeping
+    them apart is what makes the box live.
+    """
+    return toolresults.params_hash(p.read_params(), dspca.Params.READ_KEYS)
+
+
+def _dspca_npz(gid, ph):
+    return DSPCA.cached_path(gid, ph, ".npz")
+
+
+def _dspca_params_raw(body, sess, stored=None):
+    """One question, with the probe read off the recording rather than guessed.
+
+    `_probe_for` is the same three-step answer Incisor's scan uses -- what
+    somebody said, then what the view remembers, then a guess a channel count
+    can support. It matters more here than almost anywhere: the CSD divides
+    by the contact pitch, and an H10-D read as a linear array is a second
+    difference between contacts that are not neighbours.
+    """
+    stored = _stored_for(sess) if stored is None else stored
+    band = body.get("band") or dspca.T_DS_FREQ
+    return dspca.Params(
+        lfp_fs=body.get("lfp_fs"),
+        band=(float(band[0]), float(band[1])),
+        window_ms=body.get("window_ms"),
+        surround_ms=body.get("surround_ms"),
+        pad=body.get("pad"),
+        refine=body.get("refine"),
+        spacing=body.get("spacing"),
+        probe=body.get("probe") or _probe_for(stored),
+        line=body.get("line_hz"),
+        line_q=body.get("line_q"),
+        invert=bool(sess.get("invert", True)),
+        channels=body.get("channels") or "",
+        bad=[int(c["number"]) for c in _braces_channels(sess)
+             if c.get("bad")],
+        cond=body.get("cond"), f_order=body.get("f_order"),
+        f_sigma=body.get("f_sigma"), no_vaknin=body.get("no_vaknin", False),
+        h_power=body.get("h_power"),
+        notch=body.get("notch", True), screen=body.get("screen", False),
+        csd_bad_x=body.get("csd_bad_x"), csd_span=body.get("csd_span"),
+        nclasses=body.get("nclasses"), rule=body.get("rule"),
+        flip=body.get("flip", False), seed=body.get("seed"),
+        sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
+        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+        # How the patch becomes a feature vector: min-max (Toothy),
+        # or one of the two that throw the magnitudes away and keep
+        # only the laminar pattern. See dspca.normalize_block.
+        features=body.get("features"), dead=body.get("dead"))
+
+
+def _dspca_params(body, sess, stored=None):
+    p = _dspca_params_raw(body, sess, stored)
+    # Settled HERE rather than lazily inside the read, so that the pitch
+    # actually used appears in the job's spec and in the read key. Left to
+    # resolve itself later, the key said `null` and the progress panel
+    # reported a CSD at no particular spacing.
+    if p.spacing is None:
+        p.spacing = dspca.spacing_for(p.probe)
+    return p
+
+
+def _dspca_good_ids(rec):
+    """The labels that name a real dentate spike, for this entry.
+
+    Read out of the curation vocabulary's `good` flag rather than spelled
+    out, which is what lets `ds1` and `ds2` join the vocabulary and be
+    counted here without anybody remembering to come back -- the same
+    argument `_n_good` makes. By id AND by display name, because entries
+    banked before `label_id` existed carry only the name.
+    """
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    return want
+
+
+def _dspca_stamps(rec, src_v):
+    """The curated dentate spikes of one version, as `dspca.read` wants them.
+
+    Only the events somebody called a spike. A set that has been through
+    Checkup is a list of candidates with verdicts on them, and classifying
+    the rejections would be a PCA of whatever the detector mistook for an
+    event.
+    """
+    if src_v is None:
+        events = rec.get("events") or []
+    else:
+        events, _dropped = BANK.events_at(rec, src_v)
+    want = _dspca_good_ids(rec)
+    out = []
+    for ev in events:
+        lab = ev.get("label_id") or ev.get("label")
+        if lab not in want:
+            continue
+        out.append({"t": float(ev.get("start")), "label": lab,
+                    "by": ev.get("decided_by") or ""})
+    out.sort(key=lambda e: e["t"])
+    return out, len(events)
+
+
+@app.route("/api/dspca/candidates")
+def api_dspca_candidates():
+    """Dentate spike sets that could be split into DS1 and DS2, newest first.
+
+    The same gate Braces uses -- curated, and with something left after the
+    rejections -- plus one preference of its own: a version that has been
+    through Braces is offered first and marked, because every feature here
+    is read at ONE INSTANT relative to the stamp. A set whose stamps are a
+    few milliseconds out does not classify badly, it classifies a smear.
+    """
+    gid = request.args.get("gid")
+    out = []
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ds":
+            continue
+        if gid and rec.get("gid") != gid:
+            continue
+        if not rec.get("specified"):
+            continue
+        if not _n_good(rec):
+            continue
+        vers = rec.get("versions") or []
+        named = versionsmod.label_rows(vers)
+        aligned = [name for ver, name in named
+                   if ver.get("snap") and ver.get("aligned")]
+        out.append({
+            "id": rec["id"], "name": rec.get("name"),
+            "gid": rec.get("gid"), "n": rec.get("n"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"),
+            "session_label": rec.get("session_label"),
+            "by_label": rec.get("by_label") or {},
+            "n_good": _n_good(rec),
+            "current_version": max([v.get("v") or 0 for v in vers] or [0]),
+            "current_name": versionsmod.tip_next(vers)[0],
+            "versions": [
+                {"v": ver.get("v") or 0, "name": name,
+                 "ref": BANK.version_key(ver), "n": ver.get("n"),
+                 "at": ver.get("at"), "by": ver.get("by"),
+                 "note": ver.get("note"),
+                 "aligned": bool(ver.get("aligned")),
+                 "usable": bool(ver.get("snap")),
+                 "newest": name == _tip_usable(vers)}
+                for ver, name in named],
+            "newest_name": versionsmod.tip_next(vers)[0],
+            "newest_usable_name": _tip_usable(vers),
+            # The newest version that has been through step three, which is
+            # what this step should start from where there is one.
+            "newest_aligned_name": (versionsmod.newest(aligned)
+                                    if aligned else None),
+            "aligned": rec.get("aligned"),
+            "added": rec.get("added"),
+        })
+    out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
+             reverse=True)
+    return jsonify({"ok": True, "sets": out, "n": len(out)})
+
+
+@app.route("/api/dspca/plan", methods=["POST"])
+def api_dspca_plan():
+    """What a run would read, before it reads it.
+
+    Which recording, which probe and how sure we are of it, how many stamps,
+    how many windows, whether the read is already cached -- and, where the
+    probe has columns, which runs of contacts a CSD may legally be taken
+    down. All of it knowable up front, and all of it worth knowing before a
+    read that takes minutes.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec = _dspca_entry(body.get("entry_id"))
+        sess, _row = _braces_session(rec)
+        stored = _stored_for(sess)
+        p = _dspca_params(body, sess, stored)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/plan", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+
+    src_v = body.get("from_version")
+    # A version this set does not have is answered, not refused.
+    #
+    # The picker in the panel is built from `versions` below, so failing
+    # here returned no versions -- and the only thing on screen was an
+    # empty "Read from" box and the sentence "This set has no version 5",
+    # with nothing to click that could put it right. You had to pick a
+    # different set and come back.
+    #
+    # It got there by asking for another set's version: the plan requests
+    # raced and the picker was briefly the previous set's. That race is
+    # fixed where it happened, in the panel. This is the other half -- the
+    # answer to an impossible version is the set's real versions and a line
+    # saying what was read instead, which is recoverable.
+    version_note = None
+    try:
+        stamps, n_all = _dspca_stamps(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        if src_v is None:
+            return fail("dspca/plan", exc, 400, {"from_version": src_v})
+        version_note = str(exc)
+        src_v = None
+        try:
+            stamps, n_all = _dspca_stamps(rec, None)
+        except Exception as exc2:                        # noqa: BLE001
+            return fail("dspca/plan", exc2, 400, {"from_version": src_v})
+
+    chans = _braces_channels(sess)
+    state = probebook.state_of(dict(stored,
+                                    n_channels=len(sess.get("channels") or [])))
+    try:
+        runs, _probe = dspca.geometry(p.probe, chans)
+    except dspca.DsPcaError as exc:
+        return fail("dspca/plan", exc, 400, {"probe": p.probe})
+
+    ph = _dspca_read_hash(p)
+    cached = DSPCA.has_cached(rec.get("gid"), ph, ".npz")
+    n_windows = len(bracesmod.spans([e["t"] for e in stamps],
+                                    window_ms=p.window_ms + p.surround_ms,
+                                    pad_s=p.pad)) if stamps else 0
+
+    named = versionsmod.label_rows(rec.get("versions") or [])
+    versions = [{"v": ver.get("v") or 0, "name": name,
+                 "ref": BANK.version_key(ver), "at": ver.get("at"),
+                 "by": ver.get("by"), "n": ver.get("n"),
+                 "note": ver.get("note"),
+                 "aligned": bool(ver.get("aligned")),
+                 "usable": bool(ver.get("snap")),
+                 "why_not": (None if ver.get("snap") else
+                             "no snapshot on this machine, so the stamps it "
+                             "held cannot be read back")}
+                for ver, name in named]
+    versions.sort(key=lambda r: versionsmod.key(r["name"]))
+    cur_name, next_name = versionsmod.tip_next(rec.get("versions") or [])
+
+    return jsonify({
+        "ok": True,
+        "entry": {"id": rec["id"], "name": rec.get("name"),
+                  "n": rec.get("n"), "gid": rec.get("gid"),
+                  "session_label": rec.get("session_label"),
+                  "aligned": rec.get("aligned")},
+        "session": {"path": sess.get("path"), "name": sess.get("name"),
+                    "fs": sess.get("fs"),
+                    "n_channels": len(sess.get("channels") or [])},
+        "channels": [{"number": int(c["number"]), "label": c.get("label"),
+                      "bad": bool(c.get("bad"))} for c in chans],
+        # The geometry, and how sure anybody is of it. `state` is
+        # confirmed / detected / unknown and the panel has to say which:
+        # "H3" and "nobody has told us" are different things and only one of
+        # them is safe to run a CSD on.
+        "probe": {"id": p.probe, "pitch_um": p.spacing or
+                  dspca.spacing_for(p.probe),
+                  "state": state.get("state"), "short": state.get("short"),
+                  "why": state.get("why"),
+                  "runs": [{"id": r["id"], "label": r["label"],
+                            "n": len(r["rows"]),
+                            "lo": min(r["numbers"]), "hi": max(r["numbers"])}
+                           for r in runs]},
+        "stamps": {"n": len(stamps), "of": n_all,
+                   "first": stamps[0]["t"] if stamps else None,
+                   "last": stamps[-1]["t"] if stamps else None},
+        "read": {"hash": ph, "cached": bool(cached),
+                 "n_windows": n_windows,
+                 "window_s": round(2 * (p.window_ms + p.surround_ms) / 1000.0
+                                   + 2 * p.pad, 3),
+                 "refine": p.refine},
+        "versions": versions,
+        # What was actually read from, so the panel stops asking for a
+        # version that is not here, and why -- shown as a warning rather
+        # than silently reading something else.
+        "read_version": src_v,
+        "version_note": version_note,
+        "current_name": cur_name,
+        "next_name": next_name,
+        "params": p.as_dict(),
+    })
+
+
+@app.route("/api/dspca/read", methods=["POST"])
+def api_dspca_read():
+    """The expensive half: every event's window, in three filterings.
+
+    A job, because it reads a hundred and fifty milliseconds around every
+    stamp on every channel -- seconds on a local disk and minutes over a
+    share. Poll it on /api/cfc/job/<id>, which is not cfc-specific.
+
+    Nothing is classified here and nothing is written to the bank. What comes
+    out is an .npz and a record saying what was read.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec = _dspca_entry(body.get("entry_id"))
+        sess, _row = _braces_session(rec)
+        stored = _stored_for(sess)
+        p = _dspca_params(body, sess, stored)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/read", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+
+    src_v = body.get("from_version")
+    try:
+        stamps, n_all = _dspca_stamps(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/read", exc, 400, {"from_version": src_v})
+    if not stamps:
+        return jsonify({
+            "ok": False,
+            "error": "Nothing in this set is a dentate spike: all %d "
+                     "candidate(s) were rejected or are still undecided. "
+                     "There is nothing to classify, so nothing was read."
+                     % n_all}), 400
+
+    gid = rec.get("gid")
+    ph = _dspca_read_hash(p)
+    chans = _braces_channels(sess)
+    # EVERY channel, including the ones marked bad.
+    #
+    # Not a slip and not generosity: a CSD is a second difference across
+    # depth, and dropping a contact out of the middle leaves the remaining
+    # ones unevenly spaced. The derivative over an uneven grid is not a
+    # current source density, it is a second difference with a step in it
+    # exactly where the missing wire was -- `braces.repair`'s docstring says
+    # so, and it is the reason that function interpolates rather than drops.
+    #
+    # So the bad ones are read, replaced by the interpolation of their good
+    # neighbours, and reported. What they are NOT is absent, which would also
+    # have put a hole in the contact numbering that the feature box maps
+    # through.
+    use = chans
+    marked = {int(c["number"]): "marked bad on this recording"
+              for c in chans if c.get("bad")}
+    force = bool(body.get("force"))
+
+    if DSPCA.has_cached(gid, ph, ".npz") and not force:
+        # Already read, at these settings, possibly by somebody else. The
+        # whole point of keying on the question rather than on the run.
+        return jsonify({"ok": True, "cached": True, "read": ph,
+                        "n": len(stamps), "from_version": src_v})
+
+    def work(job):
+        # Two sources, merged before anything is read: what somebody marked
+        # on this recording, and what the amplitude screen finds now. Both
+        # are repaired the same way and both are reported, so the panel can
+        # say which found what rather than showing one list of repairs with
+        # no provenance.
+        bad = dict(marked)
+        bad.update(bracesmod.screen(sess, use, p.spec(),
+                                    [e["t"] for e in stamps]))
+        job.check()
+        got = dspca.read(sess, use, stamps, p, bad, job=job)
+        _dspca_save(gid, ph, got)
+        DSPCA.put({
+            "gid": gid, "params_hash": DSPCA.hash_of(p.as_dict()),
+            "read_hash": ph, "entry_id": rec["id"],
+            "from_version": src_v,
+            "params": p.as_dict(),
+            "n_events": len(got["rows"]),
+            "n_asked": len(stamps),
+            "missed": got["missed"],
+            "screened": {str(k): v for k, v in (got["bad"] or {}).items()},
+            "mains_uv": got["mains_uv"],
+            "wideband_uv": got["wideband_uv"],
+            "spacing_um": got["spacing_um"],
+            "probe": got["probe"],
+        })
+        return {"read": ph, "n": len(got["rows"]), "n_asked": len(stamps),
+                "missed": got["missed"],
+                "screened": {str(k): v for k, v in (got["bad"] or {}).items()},
+                "mains_uv": got["mains_uv"],
+                "wideband_uv": got["wideband_uv"]}
+
+    n_windows = max(1, len(bracesmod.spans(
+        [e["t"] for e in stamps], window_ms=p.window_ms + p.surround_ms,
+        pad_s=p.pad)))
+    steps = [("ds pca read", n_windows)]
+    # Roughly how many megasamples come off the disk, which is what
+    # `cfc.estimate` learns a per-machine rate from.
+    span_s = n_windows * (2 * (p.window_ms + p.surround_ms) / 1000.0
+                          + 2 * p.pad)
+    msamples = max(0.001, span_s * float(sess.get("fs") or 30000.0)
+                   * len(use) / 1e6)
+    job = cfcmod.start(p.spec(), steps, work, msamples)
+    STORE.record_activity([{
+        "action": "dspca.read",
+        "detail": {"entry": rec["id"], "n": len(stamps),
+                   "from_version": src_v, "refine": p.refine,
+                   "probe": p.probe, "read": ph},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "read": ph,
+                    "n": len(stamps), "n_channels": len(use)})
+
+
+@app.route("/api/dspca/fit", methods=["POST"])
+def api_dspca_fit():
+    """The cheap half. This is what the box, the slider and the rule call.
+
+    Milliseconds, from arrays that are already read. Everything a panel draws
+    comes back in one response so that dragging the box is one request rather
+    than five.
+    """
+    body = request.get_json(force=True) or {}
+    gid = body.get("gid")
+    ph = body.get("read")
+    if not gid or not ph:
+        return jsonify({"ok": False,
+                        "error": "Say which recording and which read to fit "
+                                 "(gid and read)."}), 400
+    try:
+        got = _dspca_load(gid, ph)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/fit", exc, 400, {"gid": gid, "read": ph})
+
+    try:
+        p = dspca.Params(
+            spacing=body.get("spacing") or got.get("spacing_um"),
+            probe=body.get("probe") or got.get("probe"),
+            surround_ms=got.get("surround_ms"),
+            cond=body.get("cond"), f_order=body.get("f_order"),
+            f_sigma=body.get("f_sigma"),
+            no_vaknin=body.get("no_vaknin", False),
+            h_power=body.get("h_power"),
+            notch=body.get("notch", True), screen=body.get("screen", False),
+            csd_bad_x=body.get("csd_bad_x"), csd_span=body.get("csd_span"),
+            nclasses=body.get("nclasses"), rule=body.get("rule"),
+            flip=body.get("flip", False), seed=body.get("seed"),
+            sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
+            t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+            # How the patch becomes a feature vector: min-max (Toothy),
+            # or one of the two that throw the magnitudes away and keep
+            # only the laminar pattern. See dspca.normalize_block.
+            features=body.get("features"), dead=body.get("dead"))
+        res = dspca.fit(got, p, layers=_dspca_layers(gid))
+    except dspca.DsPcaError as exc:
+        return fail("dspca/fit", exc, 400, {"gid": gid})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/fit", exc, 500, {"gid": gid})
+
+    rows = got.get("rows") or []
+    types = [int(t) for t in res["types"]]
+    counts = {}
+    for t in types:
+        counts[t] = counts.get(t, 0) + 1
+    return jsonify({
+        "ok": True,
+        "gid": gid, "read": ph,
+        # One row per event, which is what the scatter plots and what a
+        # commit writes. `i` is the event's place in the set it was read
+        # from -- carried rather than implied, because a classification
+        # silently permuted against its stamps is the kind of wrong that
+        # looks right.
+        "events": [{"i": r.get("i"), "n": r.get("n"),
+                    "t": r.get("refined_s"), "stamp_s": r.get("stamp_s"),
+                    "offset_ms": r.get("offset_ms"),
+                    "pc1": float(res["coords"][k][0]),
+                    "pc2": float(res["coords"][k][1]),
+                    "type": types[k]}
+                   for k, r in enumerate(rows)],
+        "counts": counts,
+        "k": res["k"],
+        "explained": res["explained"],
+        "n_features": res["n_features"],
+        "box": {"lo": int(min(res["nums_sel"])),
+                "hi": int(max(res["nums_sel"])),
+                "n_contacts": len(res["sel"]),
+                "t_lo_ms": float(res["tw"][res["t0"]]),
+                "t_hi_ms": float(res["tw"][max(res["t0"], res["t1"] - 1)]),
+                "n_samples": int(res["t1"] - res["t0"])},
+        "contacts": [int(n) for n in res["nums_sel"]],
+        # The class-average depth profiles, with their standard error --
+        # the panel that says whether the box is in the right place. Two
+        # curves differing in SHAPE are two kinds of event; two of the same
+        # shape at different heights are one kind, loud and quiet, which is
+        # a badly placed box sorting events by amplitude.
+        "profiles": dspca.profiles(res),
+        "decide": res["decide"],
+        "tort_upside": bool(res["tort_upside"]),
+        "screened": {str(k): v for k, v in (res["bad"] or {}).items()},
+        "mains_uv": got.get("mains_uv"),
+        "wideband_uv": got.get("wideband_uv"),
+        "spacing_um": res["spacing_um"],
+        "layers": _dspca_layers(gid) or {},
+        "colors": dspca.CLASS_COLORS,
+    })
+
+
+# ==========================================================================
+# Guides -- named depth lines, shared by every panel that has a depth
+# ==========================================================================
+# Keyed on the recording rather than on the tool, so a line drawn in X-ray is
+# the same line in Xplorefinder and in whatever reads them next. See
+# backend/guides.py for why they are not StrataScope layers.
+
+
+@app.route("/api/guides/<gid>")
+def api_guides_get(gid):
+    return jsonify({"ok": True, "gid": gid, "guides": GUIDES.get(gid),
+                    "max": guidesmod.MAX_GUIDES,
+                    "palette": guidesmod.PALETTE})
+
+
+@app.route("/api/guides/<gid>", methods=["POST"])
+def api_guides_put(gid):
+    """Put a guide somewhere, or move and rename one that is already there.
+
+    One route for both, because from a panel's side it is one gesture: a line
+    appears where you put it and stays where you drag it.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        got = GUIDES.put(gid, body.get("csc"),
+                         label=body.get("label"),
+                         color=body.get("color"),
+                         guide_id=body.get("id"),
+                         session_label=body.get("session_label"))
+    except guidesmod.GuideError as exc:
+        return fail("guides/put", exc, 400, {"gid": gid})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("guides/put", exc, 500, {"gid": gid})
+    STORE.record_activity([{
+        "action": "guides.put",
+        "detail": {"gid": gid, "csc": body.get("csc"),
+                   "label": body.get("label"),
+                   "moved": bool(body.get("id"))},
+    }])
+    return jsonify({"ok": True, "gid": gid, "guides": got,
+                    "palette": guidesmod.PALETTE})
+
+
+@app.route("/api/guides/<gid>/delete", methods=["POST"])
+def api_guides_delete(gid):
+    """One guide, or all of them. `id` absent means all."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        got = (GUIDES.clear(gid) if not body.get("id")
+               else GUIDES.remove(gid, body.get("id")))
+    except guidesmod.GuideError as exc:
+        return fail("guides/delete", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "guides.delete",
+        "detail": {"gid": gid, "id": body.get("id") or "all"},
+    }])
+    return jsonify({"ok": True, "gid": gid, "guides": got})
+
+
+@app.route("/api/dspca/batch/plan", methods=["GET", "POST"])
+def api_dspca_batch_plan():
+    """Which sets a batch would do, which are already done, and why the rest
+    are left out.
+
+    Everything knowable before the run is settled before it. A set whose
+    recording this machine cannot open, or which nobody has curated, should
+    say so while somebody can still do something about it rather than wait
+    its turn behind thirty others and then fail.
+
+    ALREADY DONE IS ITS OWN COLUMN, not an omission. The vault is keyed on
+    the question rather than on the run, so a batch that died halfway resumes
+    by skipping what is there -- and a colleague who ran the other half is
+    not having their half done again. That only reads as a feature if the
+    panel can say which is which.
+
+    GET as well as POST, for the same reason Incisor's is: it reads and
+    answers a question rather than doing anything.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    if request.method == "GET":
+        body = dict(request.args)
+    try:
+        todo, done, blocked = [], [], []
+        for rec in BANK.all():
+            if (rec.get("type") or "") != "ds":
+                continue
+            label = (rec.get("session_label") or rec.get("name")
+                     or rec.get("id"))
+            row = {"entry_id": rec["id"], "gid": rec.get("gid"),
+                   "label": label, "n_good": _n_good(rec),
+                   "project": rec.get("project"), "mouse": rec.get("mouse"),
+                   "session": rec.get("session")}
+            if not rec.get("specified"):
+                blocked.append(dict(row, why="nobody has been through this "
+                                             "one in Checkup yet"))
+                continue
+            if not row["n_good"]:
+                blocked.append(dict(row, why="every candidate was rejected, "
+                                             "so there is nothing to type"))
+                continue
+            try:
+                sess, _r = _braces_session(rec)
+            except Exception as exc:                     # noqa: BLE001
+                blocked.append(dict(row, why=str(exc)))
+                continue
+            p = _dspca_params(body, sess)
+            ph = _dspca_read_hash(p)
+            row["read"] = ph
+            row["probe"] = p.probe
+            row["path"] = sess.get("path")
+            # An aligned version is what this step should start from. Not a
+            # blocker -- a set can be classified without it and the numbers
+            # are still numbers -- but the row says so, because every
+            # feature here is read at one instant relative to the stamp.
+            vers = rec.get("versions") or []
+            named = versionsmod.label_rows(vers)
+            aligned = [n for v, n in named if v.get("snap") and v.get("aligned")]
+            row["aligned"] = versionsmod.newest(aligned) if aligned else None
+            if DSPCA.has_cached(rec.get("gid"), ph, ".npz"):
+                done.append(dict(row, cached=True))
+            else:
+                todo.append(row)
+        key = lambda r: (str(r.get("project") or ""), str(r.get("mouse") or ""),
+                         str(r.get("session") or ""))
+        todo.sort(key=key)
+        done.sort(key=key)
+        blocked.sort(key=key)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/batch-plan", exc, 400)
+    return jsonify({"ok": True, "todo": todo, "done": done,
+                    "blocked": blocked, "n": len(todo),
+                    "n_done": len(done), "n_blocked": len(blocked)})
+
+
+@app.route("/api/dspca/batch", methods=["POST"])
+def api_dspca_batch():
+    """Read every chosen set, one at a time.
+
+    ONE AT A TIME, and that is not a simplification. Each read pulls a window
+    around every stamp on every contact off the disk; two at once over a
+    network share is slower than two in sequence, not faster, and the machine
+    has one page cache.
+
+    Nothing is classified and nothing is written to any bank here. What this
+    produces is the expensive half -- the reads -- so that afterwards every
+    one of them is a box somebody can drag at milliseconds. Typing a set is a
+    decision with a person's name on it, and a batch that also committed
+    would be making forty of them without anyone looking.
+    """
+    body = request.get_json(force=True) or {}
+    want = body.get("entries") or []
+    force = bool(body.get("force"))
+    if not want:
+        return jsonify({"ok": False,
+                        "error": "Nothing was chosen to read."}), 400
+
+    items, skipped = [], []
+    for eid in want:
+        rec = BANK.get(eid)
+        if not rec:
+            skipped.append({"entry_id": eid, "why": "no such entry"})
+            continue
+        items.append({"id": eid,
+                      "label": (rec.get("session_label") or rec.get("name")
+                                or eid)})
+    if not items:
+        return jsonify({"ok": False, "error": "None of those exist.",
+                        "skipped": skipped}), 400
+
+    def work(job):
+        job.members_init(items)
+        job.begin("ds pca sets", of=len(items), unit="recordings")
+        out = {"read": [], "cached": [], "failed": []}
+        for k, it in enumerate(items):
+            eid = it["id"]
+            job.check()
+            job.tick("ds pca sets", k)
+            job.member(eid, status="running")
+            try:
+                rec = BANK.get(eid)
+                sess, _row = _braces_session(rec)
+                p = _dspca_params(body, sess)
+                stamps, _n_all = _dspca_stamps(rec, body.get("from_version"))
+                if not stamps:
+                    raise ValueError("nothing in this set is a dentate spike")
+                gid = rec.get("gid")
+                ph = _dspca_read_hash(p)
+                if DSPCA.has_cached(gid, ph, ".npz") and not force:
+                    job.member(eid, status="done", cached=True)
+                    out["cached"].append({"entry_id": eid, "read": ph})
+                    continue
+                chans = _braces_channels(sess)
+                marked = {int(c["number"]): "marked bad on this recording"
+                          for c in chans if c.get("bad")}
+                bad = dict(marked)
+                bad.update(bracesmod.screen(sess, chans, p.spec(),
+                                            [e["t"] for e in stamps]))
+                # `job=None` deliberately: the inner read would call
+                # `begin("ds pca read", of=<its own windows>)` and rescale
+                # the bar this queue is counting sets on. How far through one
+                # set is goes on the member row, which is where somebody
+                # looks for it.
+                job.member(eid, of=len(stamps))
+                got = dspca.read(sess, chans, stamps, p, bad)
+                _dspca_save(gid, ph, got)
+                DSPCA.put({
+                    "gid": gid, "params_hash": DSPCA.hash_of(p.as_dict()),
+                    "read_hash": ph, "entry_id": eid,
+                    "from_version": body.get("from_version"),
+                    "params": p.as_dict(),
+                    "n_events": len(got["rows"]), "n_asked": len(stamps),
+                    "missed": got["missed"],
+                    "screened": {str(k): v
+                                 for k, v in (got["bad"] or {}).items()},
+                    "mains_uv": got["mains_uv"],
+                    "wideband_uv": got["wideband_uv"],
+                    "spacing_um": got["spacing_um"], "probe": got["probe"],
+                })
+                job.member(eid, status="done", done=len(got["rows"]),
+                           of=len(stamps))
+                out["read"].append({"entry_id": eid, "read": ph,
+                                    "n": len(got["rows"])})
+            except Exception as exc:                     # noqa: BLE001
+                # One set that cannot be read must not end the queue. The
+                # row says why and the run carries on, which is the whole
+                # reason for doing this as a queue rather than as a loop
+                # somebody watches.
+                job.member(eid, status="error", error=str(exc))
+                out["failed"].append({"entry_id": eid, "why": str(exc)})
+        out["skipped"] = skipped
+        return out
+
+    steps = [("ds pca sets", len(items))]
+    job = cfcmod.start({}, steps, work, max(0.001, float(len(items))))
+    STORE.record_activity([{
+        "action": "dspca.batch",
+        "detail": {"n": len(items), "force": force},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(items),
+                    "skipped": skipped})
+
+
+@app.route("/api/dspca/raster", methods=["POST"])
+def api_dspca_raster():
+    """The pictures: the shank, one event, the class averages, the traces.
+
+    Through `analysis._encode_image`, which is what every other raster in the
+    app is drawn with -- same colormaps, same robust percentile, same
+    transparent NaN for a channel that was never read. A panel that rolled
+    its own would be a second answer to "what does a CSD look like here", and
+    the two would drift the first time anybody changed a colormap.
+
+    WHICH SIGNAL. Everything drawn is the band-limited, mains-out CSD, and
+    the features are broadband. That split is Toothy's method on one side and
+    legibility on the other, and it is stated on screen rather than implied --
+    see the module docstring in backend/dspca.py.
+
+    `what`:
+      shank    the event-triggered mean over every contact. The drag target.
+      event    one event, same axes, for checking a cluster member against
+               the class it was put in.
+      classes  the per-class mean over the selected depth band only.
+      traces   the band-limited voltage, as vectors, for the stacked panel.
+      features the feature matrix, one column per event, sorted by class --
+               the only picture of what the PCA actually sees, and the one
+               a bad contact shows up on as a stripe.
+    """
+    body = request.get_json(force=True) or {}
+    gid, ph = body.get("gid"), body.get("read")
+    what = (body.get("what") or "shank").lower()
+    if not gid or not ph:
+        return jsonify({"ok": False,
+                        "error": "Say which recording and which read to draw "
+                                 "(gid and read)."}), 400
+    try:
+        got = _dspca_load(gid, ph)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/raster", exc, 400, {"gid": gid, "read": ph})
+
+    try:
+        return jsonify(dspca.pictures(
+            got, what,
+            index=body.get("index"),
+            cmap=body.get("cmap") or "jet",
+            gain=body.get("gain"),
+            fit_params=_dspca_fit_params(body, got),
+            encode=lambda m, cm, cl: analysis._encode_image(m, cm, cl),
+            clim_of=analysis._robust_clim,
+            layers=_dspca_layers(gid)))
+    except dspca.DsPcaError as exc:
+        return fail("dspca/raster", exc, 400, {"gid": gid, "what": what})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/raster", exc, 500, {"gid": gid, "what": what})
+
+
+@app.route("/api/dspca/commit", methods=["POST"])
+def api_dspca_commit():
+    """Write the DS1/DS2 call as the next version of the bank entry.
+
+    WHAT THIS OPERATION IS, EXACTLY: it changes labels and nothing else.
+
+    Not a re-time and not a re-detection. Every stamp comes out of the
+    version it went in as, to the bit -- which is asserted here rather than
+    assumed, because that assertion is the whole difference between this and
+    an operation that would need the care a re-time needs. Curation identity
+    in this codebase IS the timestamp, at `curation.MATCH_DP` of four
+    decimals; an operation that moved one would orphan every decision keyed
+    on it and reproduce the m33 s8 doubling on the next shard merge. So:
+    count in equals count out, every `start` identical, and no event created
+    or dropped.
+
+    WHY A LABEL RATHER THAN A FIELD. See the note beside `ds1` in
+    `curation.KINDS` -- `EventBank.add` whitelists what an event is, and
+    `SNAP_FIELDS` is narrower still, so a `ds_type` of its own would be
+    dropped on the way in and would not survive a version restore even if it
+    were not. As labels they inherit `by_label`, the snapshots, the CSV
+    export and Xplorefinder's colours with nothing new written.
+
+    `dry_run` is the first thing the panel calls and the thing it shows. Every
+    maintenance operation in this app works that way.
+    """
+    body = request.get_json(force=True) or {}
+    dry = bool(body.get("dry_run", True))
+    try:
+        rec = _dspca_entry(body.get("entry_id"))
+        sess, _row = _braces_session(rec)
+        p = _dspca_params(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/commit", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+
+    gid, ph = rec.get("gid"), body.get("read")
+    if not ph:
+        return jsonify({"ok": False,
+                        "error": "Say which read these types came from."}), 400
+    try:
+        got = _dspca_load(gid, ph)
+        res = dspca.fit(got, p, layers=_dspca_layers(gid))
+    except dspca.DsPcaError as exc:
+        return fail("dspca/commit", exc, 400, {"gid": gid})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/commit", exc, 500, {"gid": gid})
+
+    src_v = body.get("from_version")
+    try:
+        if src_v is None:
+            events = list(rec.get("events") or [])
+        else:
+            events, _dropped = BANK.events_at(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/commit", exc, 400, {"from_version": src_v})
+    if not events:
+        return jsonify({"ok": False,
+                        "error": "That version holds no events."}), 400
+
+    # WHICH EVENT IS WHICH, by time and not by position.
+    #
+    # `read` drops stamps it could not place -- a window past the end of the
+    # recording, or inside a gap -- so the classified list is a SUBSET of the
+    # version's, and zipping the two would put DS1 on whichever event
+    # happened to be sitting at that index. Matched at curation's own
+    # resolution, which is the resolution the rest of the app calls two
+    # stamps the same stamp at.
+    rows = got.get("rows") or []
+    types = [int(t) for t in res["types"]]
+    want = {}
+    for r, ty in zip(rows, types):
+        want[curation._tkey(r.get("stamp_s"))] = ty
+
+    names = {l["id"]: l["name"] for l in curation.KINDS["ds"]["labels"]}
+    # Two tallies, and they are not the same question. `counts` is what this
+    # run classified, which is what the note reports. `tally` is every event
+    # in the entry by label id, which is what `by_label` has to be.
+    #
+    # Supplied rather than left to `EventBank.add`, whose fallback counts by
+    # DISPLAY NAME. Curation passes ids, so without this one entry would hold
+    # versions keyed `{"spike": 18}` and `{"Dentate Spike (DS1)": 16}` and
+    # nothing comparing two versions would line them up.
+    out, moved, counts, left, tally = [], 0, {}, 0, {}
+    for ev in events:
+        item = dict(ev)
+        ty = want.get(curation._tkey(ev.get("start")))
+        if ty is None:
+            # Not classified: a rejection, something still undecided, or a
+            # stamp the read could not place. Its label is left exactly as it
+            # was -- this operation has no opinion about events it did not
+            # look at.
+            left += 1
+        else:
+            lid = "ds%d" % ty
+            if (ev.get("label_id") or ev.get("label")) != lid:
+                moved += 1
+            item["label_id"] = lid
+            item["label"] = names.get(lid, lid)
+            counts[lid] = counts.get(lid, 0) + 1
+        out.append(item)
+        key = item.get("label_id") or item.get("label") or "unspecified"
+        tally[key] = tally.get(key, 0) + 1
+
+    # THE ASSERTION THAT GUARDS THE WRITE, run before the write and again on
+    # what came back. A partial or reordered result is a bug in this function
+    # and must never reach the bank.
+    same = (len(out) == len(events)
+            and all(curation._tkey(a.get("start"))
+                    == curation._tkey(b.get("start"))
+                    for a, b in zip(out, events)))
+    if not same:
+        return jsonify({
+            "ok": False,
+            "error": "The types could not be matched onto the stamps without "
+                     "moving one, so nothing was written. This is a bug, not "
+                     "a setting."}), 500
+
+    box = res
+    note = (
+        "DS1/DS2 by PCA over CSC%d–%d × %s to %s, %s features, "
+        "%d classes, ordered by the %s rule. %s. Read from %s. "
+        "No stamp moved."
+        % (min(res["nums_sel"]), max(res["nums_sel"]),
+           _ms(res["tw"][res["t0"]]),
+           _ms(res["tw"][max(res["t0"], res["t1"] - 1)]),
+           "60 Hz notched" if p.notch else "broadband (Toothy)",
+           res["k"], p.rule,
+           ", ".join("%d %s" % (v, names.get(k, k))
+                     for k, v in sorted(counts.items())) or "nothing classified",
+           ("v%s" % src_v) if src_v is not None else "the live set"))
+
+    _cur, next_name = versionsmod.tip_next(rec.get("versions") or [])
+    report = {
+        "ok": True, "dry_run": dry,
+        "entry": {"id": rec["id"], "name": rec.get("name"),
+                  "session_label": rec.get("session_label")},
+        "from_version": src_v,
+        "next_name": next_name,
+        "n": len(out), "n_in": len(events),
+        "classified": sum(counts.values()),
+        "unchanged": left,
+        "relabelled": moved,
+        "counts": counts,
+        "by_label": tally,
+        "label_names": names,
+        "note": note,
+        "params": p.as_dict(),
+        # A handful, so the preview shows the actual before and after rather
+        # than describing it.
+        "sample": [{"t": ev.get("start"),
+                    "was": (ev.get("label") or ev.get("label_id") or "—"),
+                    "now": (o.get("label") or o.get("label_id") or "—")}
+                   for ev, o in list(zip(events, out))[:8]],
+        "moved_stamps": 0,
+    }
+    if dry:
+        return jsonify(report)
+
+    who = (body.get("by") or "").strip() or None
+    try:
+        made = BANK.add({
+            # The SAME entry id, so this replaces in place and everything
+            # pointing at the entry keeps pointing at it.
+            "id": rec["id"],
+            "gid": rec.get("gid"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"),
+            "session_key": rec.get("session_key"),
+            "session_loose_key": rec.get("session_loose_key"),
+            "session_label": rec.get("session_label"),
+            "session_path": rec.get("session_path"),
+            "recording_start": rec.get("recording_start"),
+            "duration_s": rec.get("duration_s"),
+            "type": "ds", "type_name": rec.get("type_name") or "Dentate spike",
+            "name": rec.get("name"),
+            "events": out,
+            "by_label": tally,
+            "label_names": names,
+            # STILL CURATED. `specified` is `bool(entry["curated"])` and is
+            # recomputed on every add, so leaving it out would file a
+            # hand-curated set as an uncurated import -- which drops it out
+            # of Braces' candidate list, out of this one, and out of
+            # everything else gated on somebody having said what these
+            # events are. This step refines the labels of a set that has
+            # already been through Checkup; it cannot make it less curated.
+            "curated": True,
+            "curation_label": rec.get("curation_label") or "*",
+            # Where this pass belongs in the history, so the lineage reads
+            # as a line rather than as two branches from the same parent.
+            "based_on": src_v if src_v is not None else rec.get("based_on"),
+            "pipeline": "X-ray (DS1/DS2 by PCA)",
+            "added_by": who,
+            "parameters": p.as_dict(),
+            "version_note": note,
+        })
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/commit", exc, 400, {"entry_id": rec["id"]})
+
+    # And again, on what the bank actually kept. `add` re-sorts by start and
+    # rounds to six decimals; both are harmless here and neither is assumed.
+    back = made or BANK.get(rec["id"]) or {}
+    kept = back.get("events") or []
+
+    # WHETHER ANYTHING WAS ACTUALLY WRITTEN.
+    #
+    # `add` mints a version only when something changed, which is right --
+    # pressing Commit twice on the same answer should not put two identical
+    # versions in the history. But it means a commit can legitimately write
+    # nothing, and reporting a version number either way says it wrote when
+    # it did not. Somebody re-pressing the button deserves the sentence, not
+    # a confirmation of something that did not happen.
+    report["written"] = bool(back.get("new_version"))
+    report["version"] = back.get("version")
+    # The NAME, as well as the stored number, and the name is what a person
+    # is shown. They differ whenever a number has been skipped -- this bank
+    # holds entries whose versions run 0,1,3,4,5 -- so the preview saying
+    # "bank this as v5" and the confirmation saying "banked as v6" is one
+    # commit described two ways. `versions.tip_next` is the same function the
+    # preview asked, so they cannot drift.
+    report["version_name"] = versionsmod.tip_next(
+        back.get("versions") or [])[0]
+    if not report["written"]:
+        report["already"] = (
+            "These are already the types on this set, so nothing was "
+            "written. Version %s still holds them."
+            % report["version_name"])
+    report["n_after"] = len(kept)
+    report["stamps_held"] = (
+        len(kept) == len(events)
+        and sorted(curation._tkey(e.get("start")) for e in kept)
+        == sorted(curation._tkey(e.get("start")) for e in events))
+    if not report["stamps_held"]:
+        report["warning"] = (
+            "The bank came back with a different set of stamps than went in. "
+            "Nothing here moves a stamp, so restore the previous version and "
+            "say so.")
+    STORE.record_activity([{
+        "action": "dspca.commit",
+        "detail": {"entry": rec["id"], "from_version": src_v,
+                   "version": back.get("version"), "counts": counts,
+                   "rule": p.rule, "k": res["k"], "read": ph},
+    }])
+    return jsonify(report)
+
+
+def _ms(v):
+    return ("%+.0f ms" % float(v))
+
+
+def _dspca_fit_params(body, got):
+    """The fit half of a request, for the routes that need a classification.
+
+    Built from the same body keys `/api/dspca/fit` reads, so a raster asked
+    for beside a fit cannot be a picture of a different answer.
+    """
+    return dspca.Params(
+        spacing=body.get("spacing") or got.get("spacing_um"),
+        probe=body.get("probe") or got.get("probe"),
+        surround_ms=got.get("surround_ms"),
+        cond=body.get("cond"), f_order=body.get("f_order"),
+        f_sigma=body.get("f_sigma"),
+        no_vaknin=body.get("no_vaknin", False),
+        h_power=body.get("h_power"),
+        notch=body.get("notch", True), screen=body.get("screen", False),
+        csd_bad_x=body.get("csd_bad_x"), csd_span=body.get("csd_span"),
+        nclasses=body.get("nclasses"), rule=body.get("rule"),
+        flip=body.get("flip", False), seed=body.get("seed"),
+        sel_lo=body.get("sel_lo"), sel_hi=body.get("sel_hi"),
+        t_lo_ms=body.get("t_lo_ms"), t_hi_ms=body.get("t_hi_ms"),
+        # How the patch becomes a feature vector: min-max (Toothy),
+        # or one of the two that throw the magnitudes away and keep
+        # only the laminar pattern. See dspca.normalize_block.
+        features=body.get("features"), dead=body.get("dead"))
 
 
 @app.route("/api/cfc/cache")
@@ -5105,11 +6884,24 @@ def api_layers_regions():
 
 @app.route("/api/layers")
 def api_layers_list():
-    """Every layer sheet, for the ToolKit list."""
+    """Every layer sheet, for the ToolKit list.
+
+    One index for the whole list rather than a lookup per sheet. `by_gid`
+    re-checks the shard directory's signature on every call -- a listing
+    plus a stat of all 1510 files, about 0.3 s -- so seventy-two sheets
+    meant seventy-two of those, and this route took ten seconds to return
+    423 KB. Measured: 0.16 s to read the sheets, 14.6 s to look up twenty
+    of their recordings.
+
+    Exactly the shape of fix `_attach_index(bulk=True)` is in
+    `/api/registry`, and for the same reason: the expensive part is per
+    STORE, not per row, so it belongs outside the loop.
+    """
+    by_gid = {r.get("gid"): r for r in REG.all() if r.get("gid")}
     out = []
     for rec in LAYERS.all():
         row = LAYERS.summary(rec)
-        sess = REG.by_gid(rec.get("gid"))
+        sess = by_gid.get(rec.get("gid"))
         row["session"] = REG.summary(sess) if sess else None
         out.append(row)
     out.sort(key=lambda r: -(r.get("progress", {}).get("labelled") or 0))
@@ -5414,9 +7206,10 @@ def _cur_history(gid, kind, summaries=None):
         if rec.get("gid") != gid or (rec.get("type") or "") != kind:
             continue
         vers = []
-        for ver in (rec.get("versions") or []):
+        for ver, vname in versionsmod.label_rows(rec.get("versions") or []):
             vers.append({
                 "v": ver.get("v"),
+                "name": vname,
                 "label": ver.get("label"),
                 "at": ver.get("at"),
                 "by": ver.get("by"),
@@ -5673,16 +7466,17 @@ def api_curation_for_recording(gid):
             continue
         vs = []
         newest = rec.get("version") or 0
-        for v in (rec.get("versions") or []):
+        for v, vname in versionsmod.label_rows(rec.get("versions") or []):
             vs.append({
-                "v": v.get("v"), "at": v.get("at"), "by": v.get("by"),
+                "v": v.get("v"), "name": vname,
+                "at": v.get("at"), "by": v.get("by"),
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
                 "imported": bool(v.get("imported")),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
             })
-        vs.sort(key=lambda x: -(x["v"] or 0))
+        vs.sort(key=lambda x: versionsmod.key(x["name"]), reverse=True)
         out.append({
             "id": rec["id"], "name": rec.get("name"), "kind": kind,
             "kind_name": curation.KINDS[kind]["name"],
@@ -6636,8 +8430,7 @@ def api_curation_banked(gid, kind):
             # true of the set and false of the entry it writes onto.
             "adopted": ent.get("curation_label") is None,
             "source": (ent.get("source") or {}).get("pipeline"),
-            "versions": [{k: v for k, v in ver.items() if k != "snap"}
-                         for ver in (ent.get("versions") or [])],
+            "versions": named_versions(ent.get("versions")),
         },
         "split": [{"id": e["id"], "name": e.get("name"), "n": e.get("n"),
                    "label": e.get("curation_label")}
@@ -6684,20 +8477,40 @@ def api_curation_restore(gid, kind):
     for lab in rec.get("labels") or []:
         to_id[lab["name"]] = lab["id"]
         to_id[lab["id"]] = lab["id"]
+    # A LIST per instant, not one candidate.
+    #
+    # Two candidates can share a rounded time -- one set on this machine
+    # holds 41 such pairs -- and a dict keyed on the time holds one of
+    # them, so the other could never be matched and its banked decision was
+    # dropped without a word. That is where a version holding 64 decisions
+    # put 63 of them back. Consumed in order, so N stamps at one instant
+    # take the N decisions banked at that instant.
     by_t = {}
     for e in rec.get("events") or []:
         try:
-            by_t[round(float(e["start"]), 4)] = e
+            by_t.setdefault(round(float(e["start"]), 4), []).append(e)
         except (TypeError, ValueError, KeyError):
             continue
+    used = {}
 
-    pairs, missing, unchanged = {}, 0, 0
+    pairs, missing, unchanged, shared = {}, 0, 0, 0
     for pair in snap:
         try:
             when, lab = float(pair[0]), pair[1]
         except (TypeError, ValueError, IndexError):
             continue
-        hit = by_t.get(round(when, 4))
+        key = round(when, 4)
+        here = by_t.get(key) or []
+        seen = used.get(key, 0)
+        if seen >= len(here):
+            # More decisions banked at this instant than there are
+            # candidates on the bench to put them on.
+            missing += 1
+            continue
+        hit = here[seen]
+        used[key] = seen + 1
+        if len(here) > 1:
+            shared += 1
         if hit is None:
             missing += 1
             continue
@@ -6709,7 +8522,8 @@ def api_curation_restore(gid, kind):
 
     if not pairs:
         return jsonify({"ok": True, "changed": 0, "unchanged": unchanged,
-                        "missing": missing, "version": want_v,
+                        "missing": missing, "shared": shared,
+                        "version": want_v,
                         "progress": CURATE.progress(rec)})
     try:
         # Credited to whoever banked that version, at the time they
@@ -6735,7 +8549,14 @@ def api_curation_restore(gid, kind):
                    "missing": missing},
     }])
     return jsonify({"ok": True, "changed": n, "unchanged": unchanged,
-                    "missing": missing, "version": want_v, "progress": prog})
+                    "missing": missing,
+                    # How many of those decisions landed on a candidate
+                    # that shares its instant with another. Reported
+                    # because a set with these in it is worth deduping,
+                    # and because silence here is what made 64 decisions
+                    # look like 63.
+                    "shared": shared,
+                    "version": want_v, "progress": prog})
 
 
 @app.route("/api/curation/restamp", methods=["POST"])
@@ -7124,8 +8945,36 @@ def _demo_project():
 
 @app.route("/api/registry")
 def api_registry():
-    """Every recording Jarvis has met, as a project / mouse / session tree."""
-    if request.args.get("backfill"):
+    """Every recording Jarvis has met, as a project / mouse / session tree.
+
+    Warmed, but only in its plain form. `?backfill=` writes to the registry
+    and `?no_demo=` changes the answer, so either one goes straight to the
+    builder -- a cache keyed on a name rather than on a query string must
+    never be handed a request whose query string matters.
+    """
+    backfill = bool(request.args.get("backfill"))
+    demo = not request.args.get("no_demo")
+    if backfill or not demo:
+        body, how = _registry_body(backfill=backfill, demo=demo), "live"
+    else:
+        body, how = WARM.serve("registry", _registry_body,
+                               fresh=bool(request.args.get("fresh")))
+    body = dict(body)
+    body["warm"] = WARM.marker("registry", how)
+    return jsonify(body)
+
+
+def _registry_body(backfill=False, demo=True):
+    """The tree, with nothing read off the request.
+
+    Measured at 6.0 s on 687 records, and the Sessions view cannot draw a
+    row until it lands -- which is why that view has had a skeleton in it
+    for as long as it has existed. Most of the six seconds is `REG.all()`
+    merging the shards, the same read `/api/vacc/knows` does; once either
+    one has done it the other is nearly free, which is why they are primed
+    in that order.
+    """
+    if backfill:
         REG.backfill()
     # One index for the whole tree: `_attachments` used to read the figure
     # catalogue and the deck list once per recording, which is 508 reads of
@@ -7156,11 +9005,11 @@ def api_registry():
 
     mark(tree)
 
-    if not request.args.get("no_demo"):
+    if demo:
         # Last, so real data is what you see first -- but always there, so
         # a machine with nothing mounted is not an empty application.
         tree = list(tree) + [_demo_project()]
-    return jsonify({
+    return {
         "ok": True,
         "projects": REG.projects(),
         "known_projects": list(sessreg.KNOWN_PROJECTS),
@@ -7175,7 +9024,7 @@ def api_registry():
         # So the tree can branch on any of them without a second round trip.
         "mice": MICE.index(),
         "attributes": MICE.attributes(),
-    })
+    }
 
 
 @app.route("/api/registry/<gid>")
@@ -7201,7 +9050,12 @@ def api_registry_patch(gid):
     try:
         rec = None
         if "project" in body:
-            rec = REG.set_project(gid, body["project"])
+            # `project_source` is only ever passed by something putting a
+            # record back as it found it -- see `set_project`. A person
+            # choosing from the picker sends no source and gets "manual",
+            # which is what choosing means.
+            rec = REG.set_project(gid, body["project"],
+                                  body.get("project_source") or "manual")
         if "label" in body:
             rec = REG.set_label(gid, body["label"])
         if "note" in body:
@@ -7438,8 +9292,14 @@ def api_toolkit_scopes():
 
     Offering the mice and projects that actually exist is the difference
     between a filter and a guessing game.
+
+    Through REG.all(), which is the same read cached against the shard
+    signature. Straight off the store this was 4.9 s EVERY time the ToolKit
+    was opened -- not merely the first -- because `STORE.all_sessions()`
+    re-reads and re-merges all 1510 shards on every call and the registry
+    does not. Nothing below edits a record, so the shared copies are fine.
     """
-    sessions = STORE.all_sessions()
+    sessions = REG.all()
     mice, groups, days = set(), set(), []
     for rec in sessions:
         if rec.get("mouse") is not None:
@@ -7474,7 +9334,9 @@ def api_toolkit_bad_channels():
     form = "wide" if request.args.get("form") == "wide" else "long"
     include_clean = request.args.get("clean") in ("1", "true", "yes")
     try:
-        picked = toolkit.select(STORE.all_sessions(), **args)
+        # REG.all(): the same records, cached against the shard
+        # signature. `toolkit.select` and `rows` only read.
+        picked = toolkit.select(REG.all(), **args)
     except toolkit.ToolkitError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -7500,7 +9362,9 @@ def api_toolkit_bad_channels_export():
     form = "wide" if request.args.get("form") == "wide" else "long"
     include_clean = request.args.get("clean") in ("1", "true", "yes")
     try:
-        picked = toolkit.select(STORE.all_sessions(), **args)
+        # REG.all(): the same records, cached against the shard
+        # signature. `toolkit.select` and `rows` only read.
+        picked = toolkit.select(REG.all(), **args)
     except toolkit.ToolkitError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -10186,6 +12050,21 @@ BRACES = brsetmod.BracesSets(LOGS_DIR, STORE)
 REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
+GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
+
+# X-ray's vault: one record per (recording, question), and the read cached
+# beside it.
+#
+# Two hashes, not one, and the split is what makes the feature box live.
+# `hash_of` covers the read settings AND the fit settings, which is what
+# NAMES an answer -- two people asking for four classes instead of two get
+# separate records and both stay answerable. `_dspca_read_hash` covers the
+# read settings alone, which is what names the .npz -- so changing the class
+# count, the rule or the notch reuses an hour of reading instead of
+# repeating it.
+DSPCA = toolresults.ToolResults(
+    LOGS_DIR, "dspca", STORE,
+    keys=tuple(dspca.Params.READ_KEYS) + tuple(dspca.Params.FIT_KEYS))
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
@@ -10498,9 +12377,7 @@ def api_bank_version(entry_id, v):
     }])
     mirror_bank_soon()
     return jsonify({"ok": True, "changed": changed, "undo": undo,
-                    "versions": [{k: val for k, val in x.items()
-                                  if k != "snap"}
-                                 for x in (rec.get("versions") or [])]})
+                    "versions": named_versions(rec.get("versions"))})
 
 
 @app.route("/api/bank/<entry_id>/dedupe", methods=["POST"])
@@ -11051,6 +12928,22 @@ PUSH_EVERY = 60          # a floor; a write pushes sooner than this
 PUSH_AFTER_WRITE = 6     # quiet period after the last write before pushing
 FILES_EVERY = 300        # figures and screenshots, which are big and rare
 
+# How far a quiet machine backs off, and how fast.
+#
+# A pull every 20 seconds is right when somebody is working and two people
+# are editing the same set. It is not right for the eight hours the rig sits
+# on the Sessions view with nobody in the room -- and it was doing it
+# anyway: 4,320 cycles a day, each one asking twenty-one tables a question
+# whose answer was "nothing", which measured at about 6.5 GB of egress a
+# month against a 5 GB allowance.
+#
+# So the interval doubles each time a pull brings back nothing and drops
+# straight back to the floor the moment anything arrives or anybody writes.
+# A cycle that finds work is as quick as it ever was; a cycle that finds
+# none happens sixteen times less often.
+PULL_MAX = 320           # five and a bit minutes, the ceiling when idle
+PULL_GROWTH = 2.0        # doubling, so it reaches the ceiling in four
+
 # When a write happened, so a push can follow it promptly. Set by the
 # after_request hook rather than by each route: there are about ninety routes
 # that write and one place they all pass through.
@@ -11100,6 +12993,7 @@ def _cloud_loop():
     time.sleep(8)           # let the app finish starting
     next_pull = next_push = next_files = 0.0
     retry_at = 0.0
+    idle_pull = float(PULL_EVERY)   # grows while nothing is happening
     while True:
         try:
             cfg = CLOUD.cloud.reload()
@@ -11123,11 +13017,23 @@ def _cloud_loop():
             if due_pull or due_push or due_files:
                 if due_push:
                     _push_wanted[0] = 0.0
+                before = dict(_cloud_last.get("applied") or {})
                 cloud_sync_once(pull=due_pull, push=due_push,
                                 files=due_files)
                 base = max(5, int(cfg.get("interval") or PULL_EVERY))
                 if due_pull:
-                    next_pull = time.time() + base
+                    # Did that cycle find anything? A local write counts as
+                    # well: somebody typing here is the best available
+                    # evidence that somebody is also working elsewhere.
+                    got = _cloud_last.get("applied") or {}
+                    moved = any(v for k, v in got.items()
+                                if not str(k).startswith("_"))
+                    if moved or wrote or got != before:
+                        idle_pull = base
+                    else:
+                        idle_pull = min(PULL_MAX,
+                                        max(base, idle_pull * PULL_GROWTH))
+                    next_pull = time.time() + idle_pull
                 if due_push:
                     next_push = time.time() + max(base, PUSH_EVERY)
                 if due_files:
@@ -11252,6 +13158,87 @@ def api_vacc_check():
     return jsonify(vaccmod.status())
 
 
+def _match_index():
+    """The two lookups `_cluster_match` reads, built once.
+
+    Both maps hold the RECORD, never the bare id. That is not a detail: the
+    loose branch has to check the candidate's start date and project before
+    it will accept a match, and every caller asks the result for its `gid`.
+
+    This function exists because there were two copies of this loop and they
+    drifted. `/api/vacc/scan` filed the record in both maps; `_vacc_staged`
+    filed the record in `by_loose` and the bare **gid string** in `by_key`.
+    So the moment a cluster folder matched a known recording EXACTLY -- the
+    common case, and the one the whole feature is for -- `_cluster_match`
+    handed back a string and the caller's `rec.get("gid")` raised
+    `'str' object has no attribute 'get'`. The Incisor VACC list printed
+    that sentence where the recordings should have been.
+
+    `_cluster_match` was written to stop precisely this, by keeping the
+    matching rule in one place, and it did. What drifted was what the two
+    callers fed it -- so the builder lives here now as well.
+    """
+    by_key, by_loose = {}, {}
+    for rec in (REG.all() or []):
+        if not rec.get("gid"):
+            continue
+        if rec.get("key"):
+            by_key.setdefault(str(rec["key"]).lower(), rec)
+        if rec.get("loose_key"):
+            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    return by_key, by_loose
+
+
+def _cluster_match(path, by_key, by_loose):
+    """Which known recording a cluster folder is, or why it is nobody.
+
+    Returns `(rec, how, why)`. `rec` is None when nothing matched or when a
+    match was refused, and `why` then says which.
+
+    THE RULE, IN ONE PLACE
+
+    An exact key is mouse, session AND the recording's own start time, so two
+    different recordings sharing one is not a thing that happens. A loose key
+    is mouse and session only, and in this lab that is not an identity: the
+    numbering restarts per project, so m13 s3 is a PTEN recording from
+    2023-08-01, a KCNT1 one, and a KCNT1 Urethane one, and their loose keys
+    are character-for-character identical.
+
+    So a loose match has to agree about the day AND about the project, and
+    the project comes from the full path -- `KCNT1 Urethane/...` is a
+    different body of work from `KCNT1/...` even though one name contains
+    the other. Both are checked because either alone lets a pair through:
+    two projects can record on the same day, and one project can hold the
+    same mouse-and-session twice across years.
+    """
+    ident = ids.identify(path)
+    key = str(ident.get("key") or "").lower()
+    loose = str(ident.get("loose_key") or "").lower()
+
+    if key and key in by_key:
+        return by_key[key], "exact", None
+    if not (loose and loose in by_loose):
+        return None, None, None
+
+    cand = by_loose[loose]
+    mine_day = str(ident.get("start") or "")[:10]
+    their_day = str(cand.get("start") or "")[:10]
+    if mine_day and their_day and mine_day != their_day:
+        return (None, None,
+                "same mouse and session as %s, but recorded on %s rather "
+                "than %s" % (cand.get("gid"), mine_day, their_day))
+
+    mine_proj = sessreg.guess_project(ident, [path])
+    their_proj = (cand.get("project") or "").strip()
+    if (mine_proj and their_proj and mine_proj != sessreg.UNFILED
+            and their_proj != sessreg.UNFILED and mine_proj != their_proj):
+        return (None, None,
+                "same mouse and session as %s, but this path is %s work and "
+                "that recording is %s" % (cand.get("gid"), mine_proj,
+                                          their_proj))
+    return cand, "loose", None
+
+
 def _vacc_staged(force=False, wait=True):
     """What the cluster already holds, keyed by the gid it belongs to.
 
@@ -11280,60 +13267,21 @@ def _vacc_staged(force=False, wait=True):
         return {}, []
     found = vaccmod.inventory_cached(cfg, root, force=force)
 
-    by_key, by_loose = {}, {}
-    for rec in REG.all():
-        gid = rec.get("gid")
-        if not gid:
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), gid)
-        if rec.get("loose_key"):
-            # The record, not just the id: a loose match has to be checked
-            # against something, and the date is the only thing left.
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     # Exact beats loose, and two exacts for one gid is a refusal.
     #
-    # The loose key is mouse-and-session, which is not an identity: this lab
-    # has an `m22 s3` in PTEN recorded 2024-07-15 and an `m22 s3` in KCNT1
-    # recorded 2023-06-02, and the first version of this took whichever came
-    # last out of the listing. It offered to run the PTEN recording's scan
-    # against the KCNT1 recording's data, said so in a correctly formatted
-    # sentence, and would have banked the answer under the PTEN gid.
-    #
-    # `mouse+session is not an identity` is a thing this codebase already
-    # knows -- numbering restarts per project. So a loose match is only ever
-    # a fallback, and an ambiguous one is dropped rather than guessed.
+    # The rule about WHICH recording a cluster folder is lives in
+    # `_cluster_match`, so this and `/api/vacc/scan` cannot drift about it.
+    # What is decided here is the other half: what to do when two folders
+    # both answer to one recording.
     staged, unknown, by_gid = {}, [], {}
     for row in found:
-        ident = ids.identify(row["path"])
-        key = str(ident.get("key") or "").lower()
-        loose = str(ident.get("loose_key") or "").lower()
-        if key and key in by_key:
-            gid, how = by_key[key], "exact"
-        elif loose and loose in by_loose:
-            # A loose key is mouse-and-session, and numbering restarts per
-            # project -- `m013_s003` is a KCNT1 recording from 2022-08-15
-            # AND a PTEN one from 2023-08-01, and the loose keys are
-            # character-for-character identical. So the day has to agree.
-            #
-            # Without this, the batch offered to run PTEN m13 s3's scan
-            # against KCNT1 data from a year earlier, and PTEN m2 s2's
-            # against a recording from two years earlier, and would have
-            # banked both answers under the PTEN gids. Nothing on screen
-            # would have looked wrong.
-            cand = by_loose[loose]
-            mine = str(ident.get("start") or "")[:10]
-            theirs = str(cand.get("start") or "")[:10]
-            if mine and theirs and mine != theirs:
-                unknown.append(dict(row, why="same mouse and session as %s, "
-                                             "but recorded on %s rather than %s"
-                                             % (cand.get("gid"), mine, theirs)))
-                continue
-            gid, how = cand.get("gid"), "loose"
-        else:
-            unknown.append(row)
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        if rec is None:
+            unknown.append(dict(row, why=why) if why else row)
             continue
+        gid = rec.get("gid")
         if not gid:
             unknown.append(row)
             continue
@@ -11479,6 +13427,115 @@ def _vacc_run_for(tool, sess, spec, plan, report, tool_steps):
     return run, where
 
 
+@app.route("/api/registry/<gid>/bank", methods=["POST"])
+def api_registry_bank(gid):
+    """Say which probe a block of channels is.
+
+    The only way a bank gets an anatomy. A scan records that a 128-channel
+    recording is two banks of sixty-four and stops there, because the number
+    of channels cannot tell you which one went into hippocampus -- so this
+    is a person answering, and it is recorded as one.
+    """
+    body = request.get_json(force=True) or {}
+    bank_id = str(body.get("bank") or "").strip()
+    region = body.get("region")
+    region = str(region).strip() if region not in (None, "") else None
+    try:
+        rec = REG.by_gid(gid)
+        if not rec:
+            return jsonify({"ok": False, "error": "No session " + gid}), 404
+        banks = [dict(b) for b in (rec.get("channel_banks") or [])]
+        if not banks:
+            return jsonify({"ok": False,
+                            "error": "That recording has one probe in it."}), 400
+        hit = [b for b in banks if b.get("id") == bank_id]
+        if not hit:
+            return jsonify({"ok": False,
+                            "error": "No bank %s here." % bank_id}), 400
+        hit[0]["region"] = region
+        hit[0]["said_by"] = (STORE.provenance() or {}).get("user")
+        rec = REG._patch(rec, {"channel_banks": banks})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("registry/bank", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "registry.bank",
+        "detail": {"gid": gid, "bank": bank_id, "region": region},
+    }])
+    return jsonify({"ok": True, "channel_banks": (rec or {}).get("channel_banks")})
+
+
+@app.route("/api/registry/<gid>/probe", methods=["POST"])
+def api_registry_probe(gid):
+    """Say which probe template a recording was made with.
+
+    A fact about the animal, so it belongs on the recording rather than on
+    whoever happens to have it open -- which is where it used to live, in
+    the Xplorefinder session's view state, and therefore only for as long as
+    that window stayed open and only for the person who set it.
+
+    It is load-bearing rather than descriptive. The template decides how the
+    array is divided into lines of contacts, and a CSD is only meaningful
+    down one line: get it wrong on a dual implant and the derivative steps
+    from hippocampus to M2 between two contacts and produces a number that
+    is not a current sink and does not look wrong.
+
+    `""` clears it, which is not the same as `h3` -- one says nobody has
+    said, the other says somebody said it is a single array. `banks_for`
+    already draws that distinction for regions and this follows it.
+    """
+    body = request.get_json(force=True) or {}
+    want = body.get("probe")
+    want = str(want).strip().lower() if want not in (None, "") else None
+    if want and not probebook.get(want):
+        return jsonify({"ok": False,
+                        "error": "No probe template called %r." % want}), 400
+    try:
+        rec = REG.by_gid(gid)
+        if not rec:
+            return jsonify({"ok": False, "error": "No session " + gid}), 404
+        patch = {"probe": want, "probe_source": "manual" if want else None}
+        # Choosing a template with named regions IS somebody saying which
+        # bank is which.
+        #
+        # `banks_for` refuses to guess a region, and it is right to: a
+        # number of channels cannot tell you which probe went into
+        # hippocampus. But picking "Dual array (hippocampus + M2)" is not a
+        # guess -- it is a person naming the implant, and leaving the banks
+        # blank afterwards would mean the same fact had to be entered twice
+        # and could disagree with itself.
+        #
+        # Only ever fills a blank. A region somebody already set stands,
+        # because this is the weaker statement of the two: the template says
+        # what the montage usually is, and the bank says what this animal
+        # was.
+        banks = [dict(b) for b in (rec.get("channel_banks") or [])]
+        if banks and want:
+            cols = probebook.get(want) or {}
+            named = [c for c in (cols.get("columns") or []) if c.get("region")]
+            if len(named) == len(banks):
+                touched = False
+                who = (STORE.provenance() or {}).get("user")
+                for bank, col in zip(banks, named):
+                    if bank.get("region"):
+                        continue
+                    bank["region"] = col["region"]
+                    bank["said_by"] = who
+                    bank["said_via"] = "probe:" + want
+                    touched = True
+                if touched:
+                    patch["channel_banks"] = banks
+        rec = REG._patch(rec, patch)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("registry/probe", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "registry.probe",
+        "detail": {"gid": gid, "probe": want},
+    }])
+    return jsonify({"ok": True, "probe": (rec or {}).get("probe"),
+                    "probe_source": (rec or {}).get("probe_source"),
+                    "channel_banks": (rec or {}).get("channel_banks")})
+
+
 @app.route("/api/vacc/browse")
 def api_vacc_browse():
     """One level of the cluster's filesystem. `?path=` to go deeper."""
@@ -11520,41 +13577,36 @@ def api_vacc_scan():
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/scan", exc, 400, {"path": root})
 
-    by_key, by_loose = {}, {}
-    for rec in (REG.all() or []):
-        if not rec.get("gid"):
-            continue
-        if rec.get("key"):
-            by_key.setdefault(str(rec["key"]).lower(), rec)
-        if rec.get("loose_key"):
-            by_loose.setdefault(str(rec["loose_key"]).lower(), rec)
+    by_key, by_loose = _match_index()
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
         ident = ids.identify(row["path"])
-        key = str(ident.get("key") or "").lower()
-        loose = str(ident.get("loose_key") or "").lower()
-        rec = by_key.get(key)
-        how = "exact"
-        if rec is None and loose in by_loose:
-            cand = by_loose[loose]
-            mine = str(ident.get("start") or "")[:10]
-            theirs = str(cand.get("start") or "")[:10]
-            # Same guard as the batch matcher: mouse+session is not an
-            # identity, and this lab has the same one in two projects.
-            if mine and theirs and mine != theirs:
-                ambiguous.append({"path": row["path"],
-                                  "why": "same mouse and session as %s but "
-                                         "recorded on %s rather than %s"
-                                         % (cand.get("gid"), mine, theirs)})
-                continue
-            rec, how = cand, "loose"
+        # One rule, shared with the batch matcher -- see `_cluster_match`.
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        if rec is None and why:
+            ambiguous.append({"path": row["path"], "why": why})
+            continue
         if rec is None:
+            # Nobody here knows this recording. Whether it can BECOME one
+            # depends on whether its folder names an animal and a session:
+            # a gid is permanent and everything hangs off it, and one minted
+            # for `ACTIVE_WHEEL_DATA/bw10` can never be matched to anything
+            # by identity, so it would be a record that exists and cannot be
+            # found. Measured: 84 of the 120 recordings on this cluster are
+            # that shape.
+            can_register = (ident.get("mouse") is not None
+                            and ident.get("session") is not None)
             unmatched.append({"path": row["path"],
                               "n_channels": row.get("n_channels"),
                               "mouse": ident.get("mouse"),
                               "session": ident.get("session"),
-                              "start": ident.get("start")})
+                              "project": sessreg.guess_project(ident,
+                                                               [row["path"]]),
+                              "start": ident.get("start"),
+                              "can_register": can_register,
+                              "why": None if can_register else
+                              "the folder does not name a mouse and a session"})
             continue
         entry = {"gid": rec["gid"], "label": rec.get("label") or rec.get("key"),
                  "path": row["path"], "how": how}
@@ -11568,6 +13620,39 @@ def api_vacc_scan():
                 entry["error"] = str(exc)[:160]
         added.append(entry)
 
+    # A recording whose first exposure is the cluster.
+    #
+    # Only the ones whose folder names an animal and a session. Registering
+    # goes through `REG.ingest` -- the same call the local drive scanner
+    # makes -- so a recording met on the cluster is registered by exactly the
+    # rules a recording met on a drive is, and the gid it gets is the one a
+    # local scan would later resolve to rather than a second record for the
+    # same thing.
+    registered = []
+    to_register = [u for u in unmatched if u.get("can_register")]
+    if body.get("register") and to_register and not dry:
+        found_by_path = {r["path"]: r for r in found}
+        rows = []
+        for u in to_register:
+            row = found_by_path.get(u["path"]) or {}
+            rows.append({
+                "path": u["path"],
+                "identity": ids.identify(u["path"]),
+                "channels": row.get("n_channels"),
+            })
+        try:
+            new, seen = REG.ingest(rows, scan_id=None, root=root)
+            registered = [{"path": r["path"],
+                           "label": (r["identity"] or {}).get("label"),
+                           "n_channels": r.get("channels")} for r in rows]
+            unmatched = [u for u in unmatched if not u.get("can_register")]
+            STORE.record_activity([{
+                "action": "vacc.register",
+                "detail": {"root": root, "new": new, "seen": seen},
+            }])
+        except Exception as exc:                         # noqa: BLE001
+            return fail("vacc/register", exc, 400, {"root": root})
+
     if not dry and added:
         STORE.record_activity([{
             "action": "vacc.scan",
@@ -11577,7 +13662,9 @@ def api_vacc_scan():
     return jsonify({"ok": True, "dry": dry, "root": root or cfg.get("scratch_root"),
                     "n_found": len(found),
                     "added": added, "already": already,
-                    "unmatched": unmatched, "ambiguous": ambiguous})
+                    "unmatched": unmatched, "ambiguous": ambiguous,
+                    "registered": registered,
+                    "can_register": len(to_register)})
 
 
 @app.route("/api/vacc/inventory")
@@ -11601,31 +13688,226 @@ def api_vacc_knows():
     plus a `net use` on this machine, and it answers even when the cluster is
     unreachable. Worth having on its own -- "nine of these are blocked here,
     and VACC can read all nine" is the sentence the whole feature is for.
+
+    The arithmetic is cheap -- 0.05 s for 687 recordings. What is not cheap
+    is `REG.all()` underneath it, which is four to eight seconds the first
+    time a process asks, and this is one of the two calls the interface
+    makes before anybody has clicked anything. Hence the warm path.
     """
     try:
-        cfg = vaccmod.load_config(LOGS_DIR)
-        rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
-                for r in REG.all() if r.get("gid")]
-        # What the cluster physically holds, so a recording it already has a
-        # copy of is not reported as something to upload.
-        #
-        # `wait=False`: this renders on the Sessions view, and the walk that
-        # answers it takes about ten seconds. Waiting for it made a page load
-        # take thirteen and a half. The first call starts the walk and says
-        # "not established" for the staged ones; the next call, a few seconds
-        # later, has the answer. A slightly late chip is worth far more than
-        # a view that does not appear.
-        try:
-            staged, _unknown = _vacc_staged(wait=False)
-        except Exception:                                # noqa: BLE001
-            staged = {}
-        got = vaccmod.resolve_many(rows, cfg, staged=staged)
+        body, how = WARM.serve("vacc_knows", _vacc_knows_body,
+                               fresh=bool(request.args.get("fresh")))
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/knows", exc, 400)
-    return jsonify({"ok": True, "knows": got,
-                    "counts": vaccmod.histogram(got),
-                    "n_rules": len(cfg.get("path_map") or []),
-                    "drives": vaccmod.drive_map()})
+    body = dict(body)
+    body["warm"] = WARM.marker("vacc_knows", how)
+    return jsonify(body)
+
+
+def _vacc_knows_body():
+    """Raises rather than returning a response.
+
+    A warmed builder hands back a plain dict, because the prime thread runs
+    it outside any request and `jsonify` needs an application context. The
+    route above turns a failure into the 400 this used to return directly.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    rows = [{"gid": r.get("gid"), "paths": r.get("paths") or []}
+            for r in REG.all() if r.get("gid")]
+    # What the cluster physically holds, so a recording it already has a
+    # copy of is not reported as something to upload.
+    #
+    # `wait=False`: this renders on the Sessions view, and the walk that
+    # answers it takes about ten seconds. Waiting for it made a page load
+    # take thirteen and a half. The first call starts the walk and says
+    # "not established" for the staged ones; the next call, a few seconds
+    # later, has the answer. A slightly late chip is worth far more than
+    # a view that does not appear.
+    try:
+        staged, _unknown = _vacc_staged(wait=False)
+    except Exception:                                    # noqa: BLE001
+        staged = {}
+    got = vaccmod.resolve_many(rows, cfg, staged=staged)
+    return {"ok": True, "knows": got,
+            "counts": vaccmod.histogram(got),
+            "n_rules": len(cfg.get("path_map") or []),
+            "drives": vaccmod.drive_map()}
+
+
+@app.route("/api/vacc/signin/state")
+def api_vacc_signin_state():
+    """What the guided sign-in needs to know before it asks anything.
+
+    Read-only and offline: no connection is attempted, because this is what
+    decides whether to OFFER to connect. A probe here would put a ten-second
+    stall in front of a panel whose whole job is to explain why there is
+    nothing to stall on yet.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    keys = vaccmod.existing_keys()
+    return jsonify({
+        "ok": True,
+        "configured": bool(cfg.get("configured")),
+        "netid": cfg.get("netid") or "",
+        "host": cfg.get("host") or vaccmod.DEFAULT_HOST,
+        "have_ssh": vaccmod.have_ssh(),
+        "have_key": vaccmod.have_key(),
+        # The key actually in use, when there is one. This used to report
+        # `key_paths()[0]` unconditionally -- where Jarvis's OWN key would
+        # go -- so a machine signed in with somebody's existing
+        # `id_ed25519` was told it was using `id_ed25519_jarvis_vacc`,
+        # which is a file that may not even exist. Two different questions
+        # with two different answers.
+        "key_path": cfg.get("key_path") or "",
+        "jarvis_key_path": vaccmod.key_paths()[0],
+        # Somebody who already uses the cluster from a terminal has a key
+        # that works. Saying so lets setup offer to use it instead of
+        # asking for a password to install a second one.
+        "other_keys": [k for k in keys if not k["mine"]],
+        "public_key": vaccmod.read_pubkey(),
+    })
+
+
+@app.route("/api/vacc/signin", methods=["POST"])
+def api_vacc_signin():
+    """Get this machine onto the cluster, from a netid and one password.
+
+    The whole flow, in one request, because it is one thing from the
+    person's point of view and splitting it across three would mean holding
+    a password between them.
+
+      1. make a key if there is not one
+      2. log in with the password, answer Duo with a push, append the
+         public key to `authorized_keys`
+      3. throw the password away
+      4. prove the key works by connecting again with the key ALONE
+      5. only then write the config
+
+    Step 4 is the one that makes this honest. Writing the config after step
+    2 would record "signed in" on the strength of a password that is now
+    gone -- and if the key did not actually take, the next poll fails with
+    nothing left to retry with and no way to tell why.
+    """
+    body = request.get_json(force=True) or {}
+    netid = (body.get("netid") or "").strip()
+    password = body.get("password") or ""
+    use_existing = (body.get("use_key") or "").strip()
+
+    try:
+        if use_existing:
+            # An existing key the person nominated. Nothing to install and
+            # no password to ask for -- just prove it works and write it
+            # down. Refused if it is in the repository, same as `setup`.
+            repo = os.path.dirname(APP_DIR)
+            try:
+                inside = os.path.commonpath(
+                    [os.path.abspath(use_existing), repo]) == repo
+            except ValueError:
+                inside = False
+            if inside:
+                return jsonify({"ok": False,
+                                "error": "That key is inside the repository. "
+                                         "Move it to ~/.ssh first."}), 400
+            key_path = use_existing
+            made = {"created": False}
+            installed = {"already": True, "netid": netid}
+        else:
+            # A key this machine already has, that this account already
+            # accepts. Tried first, and it is the ordinary case on a rig
+            # where one person set the cluster up and the rest of the lab
+            # takes turns at the keyboard.
+            #
+            # Being asked for a password by software that does not need one
+            # is how people learn to type passwords into things that should
+            # not have them, so not asking is a small security feature and
+            # not only a convenience.
+            already = vaccmod.working_key(netid)
+            if already:
+                key_path = already
+                made = {"created": False}
+                installed = {"already": True, "netid": netid}
+            elif not password:
+                # No key works and none was offered, so there is nothing to
+                # try. Said as a fact rather than as a failure: it is the
+                # first sign-in on this machine and a password is genuinely
+                # needed once.
+                return jsonify({
+                    "ok": False, "kind": "need-password",
+                    "error": "No key on this computer works for %s yet, so "
+                             "a password is needed once to install one."
+                             % netid,
+                }), 400
+            else:
+                made = vaccmod.make_key()
+                key_path = vaccmod.key_paths()[0]
+                installed = vaccmod.install_key(netid, password,
+                                                duo=body.get("duo") or "1")
+                netid = installed.get("netid") or netid
+
+        # The proof. Key only, password auth off -- the ordinary `_ssh`
+        # options, which is exactly how every later call will connect.
+        check = dict(vaccmod.load_config(LOGS_DIR))
+        check["netid"] = netid
+        check["key_path"] = key_path
+        who = vaccmod._ssh(check, "whoami", timeout=30).strip()
+    except vaccmod.SSHError as exc:
+        # `kind` rather than the text, so the page can say something useful
+        # about a wrong password without parsing English.
+        return jsonify({"ok": False, "error": str(exc),
+                        "kind": getattr(exc, "kind", "failed")}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/signin", exc, 400, {"netid": netid})
+
+    if who and who != netid:
+        # The cluster says you are somebody else. Almost always a typo in
+        # the netid that happened to match another account's key, and not
+        # something to write into a config file.
+        return jsonify({
+            "ok": False, "kind": "mismatch",
+            "error": "The key works, but the cluster says that account is "
+                     "%r rather than %r. Check the netid." % (who, netid),
+        }), 400
+
+    vaccmod.save_config(LOGS_DIR, netid=netid, key_path=key_path,
+                        enabled=True)
+    vaccmod.refresh(force=True)
+    STORE.record_activity([{
+        "action": "vacc.signin",
+        "detail": {"netid": netid, "made_key": bool(made.get("created")),
+                   "key_was_there": bool(installed.get("already"))},
+    }])
+    return jsonify({
+        "ok": True,
+        "netid": netid,
+        "key_path": key_path,
+        "made_key": bool(made.get("created")),
+        "already_installed": bool(installed.get("already")),
+        "config": vaccmod.load_config(LOGS_DIR),
+    })
+
+
+@app.route("/api/vacc/signout", methods=["POST"])
+def api_vacc_signout():
+    """Stop being signed in on this machine.
+
+    Forgets the netid and the key path here. It does not delete the key and
+    it does not touch the cluster's `authorized_keys` -- see
+    `vacc.forget_account` for why both of those would be the wrong thing for
+    a Sign out button to do.
+
+    The practical consequence is the one that matters on a shared rig:
+    signing back in, as the same person or a different one, re-uses the key
+    that is already installed and asks for no password.
+    """
+    try:
+        was = vaccmod.forget_account(LOGS_DIR)
+        vaccmod.refresh(force=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/signout", exc, 400)
+    STORE.record_activity([{"action": "vacc.signout",
+                            "detail": {"netid": was}}])
+    return jsonify({"ok": True, "was": was,
+                    "config": vaccmod.load_config(LOGS_DIR)})
 
 
 @app.route("/api/vacc/setup", methods=["POST"])
@@ -11819,6 +14101,36 @@ _QUIET_PATHS = (
     "/api/video/clip", "/api/video/frame",
 )
 
+# The rest of the pollers -- but on GET only, which is the difference
+# between reading a thing and doing one.
+#
+# These cannot join the tuple above, because that one silences both verbs:
+# "/api/curation" there would take "POST /api/curation/decide" with it, and
+# a curation decision is exactly the kind of line worth keeping. Same for
+# "/api/registry", whose POSTs are somebody rescanning or forgetting a
+# recording.
+_QUIET_GETS = (
+    "/api/sync/status", "/api/sync/progress", "/api/warm/state",
+    "/api/presence", "/api/toolfeed", "/api/registry", "/api/curation",
+    "/api/video/convert/status", "/api/vacc/status",
+)
+
+# The interface itself: 34 files on a cold load, and the access line for
+# each one is noise by definition -- nobody debugs a 200 on app.css.
+#
+# They were not covered before because every rule above starts "/api/", and
+# these do not. A page load therefore printed 35+ lines, and Python's
+# logging holds one global handler lock, so request threads queue behind
+# each other to write them.
+#
+# That queueing has a sharp edge worth knowing about: if the Jarvis console
+# window is put into QuickEdit selection mode -- a stray click in it is
+# enough -- Windows blocks every write to it until the selection is
+# cleared, and the whole server stops with it. Fewer writes is a smaller
+# window for that, not a fix for it.
+_QUIET_SUFFIXES = (".js", ".css", ".map", ".svg", ".png", ".ico",
+                   ".woff", ".woff2", ".jpg", ".jpeg", ".gif", ".webp")
+
 
 class _QuietPolls(_logging.Filter):
     def filter(self, record):
@@ -11830,6 +14142,17 @@ class _QuietPolls(_logging.Filter):
             for p in _QUIET_PATHS:
                 if ('GET ' + p) in msg or ('POST ' + p) in msg:
                     return False
+            # Pulled apart rather than matched: this module has no `re`, and
+            # the one thing worse than a noisy log is a filter that throws
+            # into its own except and quietly stops filtering.
+            i = msg.find('"GET ')
+            if i >= 0:
+                path = msg[i + 5:].split(" ", 1)[0].split("?", 1)[0]
+                if path.lower().endswith(_QUIET_SUFFIXES):
+                    return False
+                for p in _QUIET_GETS:
+                    if path == p or path.startswith(p + "/"):
+                        return False
         except Exception:                        # noqa: BLE001
             return True
         return True

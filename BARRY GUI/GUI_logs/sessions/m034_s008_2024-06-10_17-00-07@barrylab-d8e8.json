@@ -25,8 +25,8 @@
     "schema": "2026-09-04T15:57:01.804684+00:00",
     "session": "2026-09-04T15:57:01.804684+00:00",
     "start": "2026-09-04T15:57:01.804684+00:00",
-    "updated": "2026-09-17T15:23:05.587044+00:00",
-    "view_state": "2026-09-17T14:11:11.631046+00:00"
+    "updated": "2026-09-22T19:17:18.996902+00:00",
+    "view_state": "2026-09-22T19:17:18.996902+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -84,11 +84,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-17T15:23:05.587044+00:00"
+        "2026-09-22T19:17:04.215534+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-17T14:11:03.062406+00:00"
+        "2026-09-21T17:25:07.575380+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -97,7 +97,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-17T15:23:05.587044+00:00",
+    "at": "2026-09-22T19:17:18.996902+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -219,7 +219,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-17T11:23:02-04:00",
+      "at": "2026-09-22T15:17:04-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -227,12 +227,12 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-17T10:11:03-04:00",
+      "at": "2026-09-21T13:25:07-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
-      "root": null,
-      "scan": null
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_97cbe5659e"
     },
     "lcom549913-e62b": {
       "at": "2026-09-14T10:10:04-04:00",
@@ -246,8 +246,8 @@
   "session": 8,
   "start": "2024-06-10T17:00:07",
   "updated": {
-    "app_version": "2026.09.17.2",
-    "at": "2026-09-17T11:23:05-04:00",
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T15:17:18-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -256,24 +256,55 @@
   },
   "view_state": {
     "channels": [
-      0
+      1,
+      3,
+      5,
+      6,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
     ],
     "clim": null,
-    "even_only": true,
+    "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 0,
+    "gain": 2.5,
+    "hp": 5,
     "invert": true,
-    "lp": 0,
+    "lp": 100,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
-    "probe": null,
+    "notch": 60,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 1400.881275,
+    "t0": 90.717682,
     "ylim": null
   }
 }

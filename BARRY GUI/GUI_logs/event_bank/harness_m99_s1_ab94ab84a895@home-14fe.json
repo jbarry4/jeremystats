@@ -1,0 +1,218 @@
+{
+  "_at": {
+    "added": "2026-09-22T20:48:10.555236+00:00",
+    "by_label": "2026-09-22T20:48:10.555236+00:00",
+    "curation_label": "2026-09-22T20:48:10.555236+00:00",
+    "duration_s": "2026-09-22T20:48:10.555236+00:00",
+    "events": "2026-09-22T20:48:10.555236+00:00",
+    "gid": "2026-09-22T20:48:10.555236+00:00",
+    "id": "2026-09-22T20:48:10.555236+00:00",
+    "label_names": "2026-09-22T20:48:10.555236+00:00",
+    "mouse": "2026-09-22T20:48:10.555236+00:00",
+    "n": "2026-09-22T20:48:10.555236+00:00",
+    "name": "2026-09-22T20:48:10.555236+00:00",
+    "note": "2026-09-22T20:48:10.555236+00:00",
+    "project": "2026-09-22T20:48:10.555236+00:00",
+    "recording_start": "2026-09-22T20:48:10.555236+00:00",
+    "schema": "2026-09-22T20:48:10.555236+00:00",
+    "session": "2026-09-22T20:48:10.555236+00:00",
+    "session_key": "2026-09-22T20:48:10.555236+00:00",
+    "session_label": "2026-09-22T20:48:10.555236+00:00",
+    "session_loose_key": "2026-09-22T20:48:10.555236+00:00",
+    "session_path": "2026-09-22T20:48:10.555236+00:00",
+    "source": "2026-09-22T20:48:10.555236+00:00",
+    "specified": "2026-09-22T20:48:10.555236+00:00",
+    "type": "2026-09-22T20:48:10.555236+00:00",
+    "type_name": "2026-09-22T20:48:10.555236+00:00",
+    "units": "2026-09-22T20:48:10.555236+00:00",
+    "version": "2026-09-22T20:48:10.907138+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "40776b345abb": [
+        "set",
+        "2026-09-22T20:48:10.555236+00:00"
+      ],
+      "v0-fab03979": [
+        "set",
+        "2026-09-22T20:48:10.555236+00:00"
+      ],
+      "{\"at\": \"2026-09-22T16:47:45-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 2, \"Flag\": 1, \"Garbage\": 2}, \"machine\": \"Home\", \"n\": 5, \"note\": \"Collapsed 3 time(s) that each held more than one record. 3 event(s) removed, 5 left; 1 of them disagreed about the call and the last copy was kept.\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-22T20:48:10.907138+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T20:48:10.907138+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-22T16:48:10-04:00",
+    "by": "harness@test",
+    "machine": "Home"
+  },
+  "by_label": {
+    "Dentate Spike": 2,
+    "Flag": 1,
+    "Garbage": 2
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 1.0
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2.0
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 3.0
+    },
+    {
+      "label": "Flag",
+      "label_id": "flag",
+      "start": 4.0
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 5.0
+    }
+  ],
+  "gid": null,
+  "id": "ab94ab84a895",
+  "label_names": {},
+  "mouse": 99,
+  "n": 5,
+  "name": "dupes seed",
+  "note": "",
+  "project": "HARNESS",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": null,
+  "session_label": "harness dupes",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "harness: duplicate times",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 2,
+  "versions": [
+    {
+      "at": "2026-09-22T16:48:10-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 5
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-fab03979",
+      "imported": true,
+      "lost": 0,
+      "machine": "Home",
+      "moves": {},
+      "n": 5,
+      "note": "Imported from harness: duplicate times. 5 candidates, none decided yet.",
+      "snap": [
+        [
+          1.0,
+          null
+        ],
+        [
+          2.0,
+          null
+        ],
+        [
+          3.0,
+          null
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          5.0,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-22T16:48:10-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "Dentate Spike": 2,
+        "Flag": 1,
+        "Garbage": 2
+      },
+      "changed": 5,
+      "from_v": 0,
+      "gained": 0,
+      "id": "40776b345abb",
+      "lost": 0,
+      "machine": "Home",
+      "moves": {
+        "undecided \u2192 flag": 1,
+        "undecided \u2192 garbage": 2,
+        "undecided \u2192 spike": 2
+      },
+      "n": 5,
+      "note": "",
+      "snap": [
+        [
+          1.0,
+          "spike"
+        ],
+        [
+          2.0,
+          "garbage"
+        ],
+        [
+          3.0,
+          "spike"
+        ],
+        [
+          4.0,
+          "flag"
+        ],
+        [
+          5.0,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "at": "2026-09-22T16:47:45-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Dentate Spike": 2,
+        "Flag": 1,
+        "Garbage": 2
+      },
+      "machine": "Home",
+      "n": 5,
+      "note": "Collapsed 3 time(s) that each held more than one record. 3 event(s) removed, 5 left; 1 of them disagreed about the call and the last copy was kept.",
+      "snap_elsewhere": true,
+      "v": 2
+    }
+  ]
+}

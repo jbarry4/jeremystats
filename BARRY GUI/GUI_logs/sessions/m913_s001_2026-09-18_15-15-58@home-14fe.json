@@ -1,0 +1,63 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:19:17.615086+00:00",
+    "gid": "2026-09-22T18:17:58.939448+00:00",
+    "key": "2026-09-18T19:25:02.159837+00:00",
+    "label": "2026-09-18T19:25:02.159837+00:00",
+    "loose_key": "2026-09-18T19:25:02.159837+00:00",
+    "mouse": "2026-09-18T19:25:02.159837+00:00",
+    "project": "2026-09-18T19:25:02.159837+00:00",
+    "project_source": "2026-09-18T19:25:02.159837+00:00",
+    "retired": "2026-09-18T19:25:02.159837+00:00",
+    "schema": "2026-09-18T19:25:02.159837+00:00",
+    "session": "2026-09-18T19:25:02.159837+00:00",
+    "start": "2026-09-18T19:25:02.159837+00:00",
+    "updated": "2026-09-22T18:17:58.939448+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549\\FAKEPROJ\\fake_m913\\m913s1_2026-09-18\\2026-09-18_15-15-58": [
+        "set",
+        "2026-09-18T19:25:07.143082+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T18:17:58.939448+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T15:19:17-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s16eea06206c3",
+  "key": "m913_s001_2026-09-18_15-15-58",
+  "label": "m913 s1 2026-09-18",
+  "loose_key": "m913_s001",
+  "mouse": 913,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549\\FAKEPROJ\\fake_m913\\m913s1_2026-09-18\\2026-09-18_15-15-58"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-18T19:15:58+00:00",
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T14:17:58-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

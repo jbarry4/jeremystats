@@ -1,16 +1,17 @@
 {
   "_at": {
     "assignee": "2026-09-09T02:02:26.474170+00:00",
-    "created": "2026-09-03T21:07:03.232108+00:00",
+    "created": "2026-09-23T14:08:50.386597+00:00",
     "gid": "2026-09-03T21:07:03.232108+00:00",
-    "imports": "2026-09-03T21:07:03.232108+00:00",
+    "imports": "2026-09-23T14:08:50.386597+00:00",
     "kind": "2026-09-03T21:07:03.232108+00:00",
-    "labels": "2026-09-03T21:07:03.232108+00:00",
+    "labels": "2026-09-23T13:49:32.230492+00:00",
     "name": "2026-09-03T21:07:03.232108+00:00",
+    "open": "2026-09-09T15:17:03.611723+00:00",
     "schema": "2026-09-03T21:07:03.232108+00:00",
     "session_label": "2026-09-03T21:07:03.232108+00:00",
-    "source": "2026-09-03T21:07:03.232108+00:00",
-    "updated": "2026-09-09T02:02:26.474170+00:00"
+    "source": "2026-09-23T14:08:50.386597+00:00",
+    "updated": "2026-09-23T14:08:50.265739+00:00"
   },
   "_keys": {
     "events": {
@@ -18,119 +19,173 @@
         "set",
         "2026-09-08T17:44:57.317289+00:00"
       ],
+      "e0d2d92100f": [
+        "gone",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "e108ace3851": [
+        "gone",
+        "2026-09-23T13:49:32.280610+00:00"
+      ],
+      "e1861a5106d": [
+        "gone",
+        "2026-09-23T13:49:32.230492+00:00"
+      ],
+      "e218abbb0b2": [
+        "set",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "e245563c7ac": [
+        "set",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "e42bb145637": [
+        "gone",
+        "2026-09-23T13:49:32.230492+00:00"
+      ],
+      "e56a685f197": [
+        "gone",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "e59ddb62cc7": [
+        "gone",
+        "2026-09-23T13:49:32.230492+00:00"
+      ],
+      "e5adecb5872": [
+        "gone",
+        "2026-09-23T14:08:50.265739+00:00"
+      ],
       "e6a619ff081": [
         "set",
         "2026-09-08T17:44:57.317289+00:00"
+      ],
+      "e6afb5e72d9": [
+        "gone",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "e79a6602a4e": [
+        "gone",
+        "2026-09-23T14:08:50.265739+00:00"
+      ],
+      "e7a50db2191": [
+        "gone",
+        "2026-09-23T13:49:32.280610+00:00"
       ],
       "e936531d557": [
         "set",
         "2026-09-08T17:44:57.317289+00:00"
       ],
+      "e954e093133": [
+        "gone",
+        "2026-09-23T13:49:32.280610+00:00"
+      ],
+      "ea616c829d3": [
+        "gone",
+        "2026-09-23T13:49:32.280610+00:00"
+      ],
+      "eaff2507f00": [
+        "gone",
+        "2026-09-23T13:49:32.280610+00:00"
+      ],
       "ec96c942195": [
         "set",
         "2026-09-08T17:44:57.317289+00:00"
       ],
+      "ed274a22c8a": [
+        "gone",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "edefffc21c1": [
+        "gone",
+        "2026-09-23T14:08:50.386597+00:00"
+      ],
+      "ee53f6c8159": [
+        "gone",
+        "2026-09-23T14:08:50.265739+00:00"
+      ],
       "ee73491fe72": [
         "set",
         "2026-09-08T17:44:57.317289+00:00"
+      ],
+      "ef917dc0f06": [
+        "set",
+        "2026-09-23T14:08:50.386597+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T02:02:26.474170+00:00",
+    "at": "2026-09-23T14:08:50.386597+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "assignee": "Shahriar Tafti",
   "created": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T10:08:50-04:00",
+    "commit": "0d525c3",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   },
   "events": [
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "ec96c942195",
-      "label": "garbage",
+      "at": "2026-09-23T10:08:50-0400",
+      "by": "Rain Younger",
+      "id": "e245563c7ac",
+      "label": "spike",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
-          "label": "garbage"
+          "at": "2026-09-23T10:08:50-0400",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
-      "start": 295.294
+      "start": 295.302215
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "e03f2120238",
-      "label": "garbage",
+      "at": "2026-09-23T10:08:50-0400",
+      "by": "Rain Younger",
+      "id": "e218abbb0b2",
+      "label": "spike",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
-          "label": "garbage"
+          "at": "2026-09-23T10:08:50-0400",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
-      "start": 393.768
+      "start": 1372.171632
     },
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "ee73491fe72",
-      "label": "garbage",
+      "at": "2026-09-23T10:08:50-0400",
+      "by": "Rain Younger",
+      "id": "ef917dc0f06",
+      "label": "spike",
       "reviews": [
         {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
-          "label": "garbage"
+          "at": "2026-09-23T10:08:50-0400",
+          "by": "Rain Younger",
+          "label": "spike"
         }
       ],
-      "start": 1372.155
-    },
-    {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "e6a619ff081",
-      "label": "garbage",
-      "reviews": [
-        {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
-          "label": "garbage"
-        }
-      ],
-      "start": 1456.064
-    },
-    {
-      "at": "2026-09-03T17:07:03-0400",
-      "by": "snapshot import",
-      "id": "e936531d557",
-      "label": "garbage",
-      "reviews": [
-        {
-          "at": "2026-09-03T17:07:03-0400",
-          "by": "snapshot import",
-          "label": "garbage"
-        }
-      ],
-      "start": 1527.027
+      "start": 1527.070265
     }
   ],
   "gid": "sba57286bdee3",
   "imports": [
     {
-      "at": "2026-09-03T17:07:03-0400",
-      "n": 5,
+      "at": "2026-09-23T10:08:50-0400",
+      "n": 3,
       "skipped": 0,
       "source": {
         "bank_entry": "7e31c748f710",
-        "by": "snapshot import",
-        "folder": "M8s2feb6",
-        "kind": "snapshot folders"
+        "by": "Rain Younger",
+        "entry_name": "M8s2feb6",
+        "kind": "bank version",
+        "pipeline": "ETS dentate-spike export",
+        "version": 3
       }
     }
   ],
@@ -157,6 +212,7 @@
     },
     {
       "color": "#E5A823",
+      "flagged": true,
       "id": "flag",
       "keys": [
         "3",
@@ -166,26 +222,72 @@
     },
     {
       "color": "#8b5cf6",
+      "flagged": true,
       "id": "review",
       "keys": [
         "4",
         "r"
       ],
       "name": "Flag for Deep Review"
+    },
+    {
+      "color": "#1a7f37",
+      "computed": true,
+      "good": true,
+      "id": "ds1",
+      "keys": [],
+      "name": "Dentate Spike (DS1)"
+    },
+    {
+      "color": "#7b3fa0",
+      "computed": true,
+      "good": true,
+      "id": "ds2",
+      "keys": [],
+      "name": "Dentate Spike (DS2)"
+    },
+    {
+      "color": "#b8620a",
+      "computed": true,
+      "good": true,
+      "id": "ds3",
+      "keys": [],
+      "name": "Dentate Spike (DS3)"
+    },
+    {
+      "color": "#1f6feb",
+      "computed": true,
+      "good": true,
+      "id": "ds4",
+      "keys": [],
+      "name": "Dentate Spike (DS4)"
+    },
+    {
+      "color": "#a3155f",
+      "computed": true,
+      "good": true,
+      "id": "ds5",
+      "keys": [],
+      "name": "Dentate Spike (DS5)"
     }
   ],
   "name": "M8s2feb6",
+  "open": false,
   "schema": 1,
   "session_label": "PTEN m8 s2 2024-02-06",
   "source": {
     "bank_entry": "7e31c748f710",
-    "by": "snapshot import",
-    "folder": "M8s2feb6",
-    "kind": "snapshot folders"
+    "by": "Rain Younger",
+    "entry_name": "M8s2feb6",
+    "kind": "bank version",
+    "pipeline": "ETS dentate-spike export",
+    "version": 3
   },
   "updated": {
-    "at": "2026-09-08T22:02:26-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T10:08:50-04:00",
+    "commit": "0d525c3",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",

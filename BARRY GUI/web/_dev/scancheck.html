@@ -78,16 +78,33 @@ async function until(fn, ms = 20000) {
         flagged >= 0, flagged + ' flagged');
   const empties = (audit.rows || []).filter(
     (r) => r.quality.verdict === 'empty');
-  if (flagged) check('and calls them empty rather than merely odd',
-        empties.length === (audit.rows || []).length,
-        (audit.rows || []).map((r) => r.quality.verdict).join(', '));
+  /* `empty` is not the only verdict, and assuming it was only held while
+     the only flagged things on this machine were fixture leftovers. The
+     128-channel KCNT1 recordings are flagged `suspect`: their channels are
+     split across `CSCn.ncs` and `CSCn_0001.ncs` because acquisition
+     restarted, and only the first part loads. That is a real recording
+     with a real problem, not an empty folder, and calling it `empty` would
+     be the audit lying. */
+  const VERDICTS = ['empty', 'suspect', 'ok'];
+  if (flagged) check('every verdict is one the audit actually defines',
+        (audit.rows || []).every(
+          (r) => VERDICTS.indexOf(r.quality.verdict) >= 0),
+        [...new Set((audit.rows || []).map((r) => r.quality.verdict))]
+          .join(', '));
+  if (flagged) check('and a flagged recording is never called ok',
+        (audit.rows || []).every((r) => r.quality.verdict !== 'ok'));
   if (flagged) check('each one says why, in words',
         (audit.rows || []).every((r) => (r.quality.reasons || []).length
                                         && r.quality.reasons[0].length > 20),
         JSON.stringify(((audit.rows || [])[0] || {}).quality));
-  if (flagged) check('and names the byte count that gave it away',
+  /* Whatever the verdict, the reason has to carry the evidence -- a number
+     or a filename -- because "suspect" on its own is not something anybody
+     can act on. `16384` is the header-only byte count; a split recording
+     names the channels and the files instead. */
+  if (flagged) check('and each reason carries the evidence, not just a word',
         (audit.rows || []).every(
-          (r) => /16384|header-only/.test(r.quality.reasons.join(' '))));
+          (r) => /\d/.test(r.quality.reasons.join(' '))),
+        ((audit.rows || [])[0] || {}).quality.reasons[0]);
   const real = audit.checked - (audit.rows || []).length;
   check('the real recordings are not flagged', real > 100,
         real + ' passed the check');

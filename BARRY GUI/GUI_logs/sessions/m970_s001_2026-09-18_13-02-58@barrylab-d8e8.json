@@ -1,0 +1,69 @@
+{
+  "_at": {
+    "created": "2026-09-18T17:08:07.627003+00:00",
+    "gid": "2026-09-18T17:08:07.627003+00:00",
+    "group": "2026-09-18T17:08:07.627003+00:00",
+    "key": "2026-09-18T17:08:07.627003+00:00",
+    "label": "2026-09-18T17:08:07.627003+00:00",
+    "loose_key": "2026-09-18T17:08:07.627003+00:00",
+    "mouse": "2026-09-18T17:08:07.627003+00:00",
+    "project": "2026-09-18T17:08:07.627003+00:00",
+    "project_source": "2026-09-18T17:08:07.627003+00:00",
+    "retired": "2026-09-18T17:08:07.627003+00:00",
+    "schema": "2026-09-18T17:08:07.627003+00:00",
+    "session": "2026-09-18T17:08:07.627003+00:00",
+    "start": "2026-09-18T17:08:07.627003+00:00",
+    "updated": "2026-09-18T19:46:07.247120+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_130250\\FAKEPROJ\\fake_m970\\m970s1_2026-09-18\\2026-09-18_13-02-58": [
+        "set",
+        "2026-09-18T17:08:49.476605+00:00"
+      ],
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_diffprobe_20260918_152755\\FAKEPROJ\\fake_m970\\m970s1_2026-09-18\\2026-09-18_15-27-58": [
+        "set",
+        "2026-09-18T19:46:07.247120+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:46:07.247120+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T13:08:07-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s5515d66e30e0",
+  "group": null,
+  "key": "m970_s001_2026-09-18_13-02-58",
+  "label": "m970 s1 2026-09-18",
+  "loose_key": "m970_s001",
+  "mouse": 970,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_130250\\FAKEPROJ\\fake_m970\\m970s1_2026-09-18\\2026-09-18_13-02-58",
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_diffprobe_20260918_152755\\FAKEPROJ\\fake_m970\\m970s1_2026-09-18\\2026-09-18_15-27-58"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-18T17:02:58+00:00",
+  "updated": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T15:46:07-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

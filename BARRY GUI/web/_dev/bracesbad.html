@@ -1,0 +1,179 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesbad: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The bad-channel column of the Braces bulk table, which is read out of a
+   cache somebody else fills.
+
+   WHAT WENT WRONG, AND WHY A HARNESS FOR IT
+   `registryRows` is a getter over ToolKit's sixty-second registry cache --
+   not a read. Curation, StrataScope and Braid each warm it on their way in,
+   so Braces worked whenever somebody had been through one of those first,
+   and only then. Reached the way the bundle reaches it -- ToolKit, step 3 --
+   nobody had, so the getter returned an empty list and the table said "none
+   bad" against forty-six recordings with channels marked, and "N can be read
+   here" about every set on the list.
+
+   Both are wrong in the same direction: they read as facts about the
+   recordings and were facts about the cache. A test that opens Braces after
+   any other tool cannot see it, so THE ROUTE IS THE TEST -- this goes
+   straight there, from a cold start, exactly once.
+
+   The counts are not hardcoded. What each recording has marked is a fact
+   about this machine's store, so the expectation is computed from the
+   registry and the bank and then compared against what the table drew. A
+   number written in here would pass on the machine it was written on. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  // BARRY is a const in the app's module scope, so it is reached through the
+  // frame's own eval. Any other way gets `undefined`, which is how a harness
+  // reports a clean run against a page it never touched.
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+
+  head('WHAT THE STORE ACTUALLY HOLDS');
+  /* Computed, not assumed. The registry is the same source the panel reads;
+     asking it here is what makes the comparison below meaningful rather than
+     circular -- the panel has to reach it through a cache, and this does
+     not. */
+  const reg = await get('/api/registry');
+  const rows = (reg.tree || []).flatMap(
+    (p) => (p.mice || []).flatMap((m) => m.sessions || []));
+  const byGid = new Map();
+  for (const r of rows) byGid.set(r.gid, r);
+  const marked = rows.filter((r) => (r.bad_channels || []).length);
+  say('       ' + rows.length + ' recordings, ' + marked.length
+      + ' with contacts marked', 'dim');
+  ok('the registry has bad channels marked on something',
+     marked.length > 0,
+     'nothing in this store has a bad channel, so this harness cannot tell '
+     + 'a working column from a broken one');
+
+  const cands = (await get('/api/braces/candidates')).sets || [];
+  const want = new Map();     // entry id -> how many contacts are marked
+  for (const c of cands) {
+    want.set(c.id, ((byGid.get(c.gid) || {}).bad_channels || []).length);
+  }
+  const nWithBad = [...want.values()].filter(Boolean).length;
+  say('       ' + cands.length + ' sets on offer, ' + nWithBad
+      + ' whose recording has contacts marked', 'dim');
+
+  head('STRAIGHT TO BRACES, FROM COLD');
+  /* The route matters. Every other tool in the rail warms the registry on
+     its way in, so entering Braces through one of them hides the bug this
+     is about. */
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 9000, 'the bundle card');
+  const steps = [...D().querySelectorAll('.tk-step')];
+  steps[2].click();
+  await until(() => D().querySelector('.br-wrap'), 9000, 'the Braces panel');
+  ok('step 3 opens Braces', !!D().querySelector('.br-wrap'));
+
+  /* The panel draws before the bank has answered -- "Reading the bank…" is
+     a card with no mode switch in it -- so the switch is waited for rather
+     than queried the moment the wrap appears. */
+  await until(() => D().querySelector('.br-mode .seg button'),
+              20000, 'the one/many switch');
+  const many = [...D().querySelectorAll('.br-mode .seg button')]
+    .find((b) => /many/i.test(b.textContent));
+  ok('there is a "many sets at once" mode', !!many);
+  if (many) many.click();
+  await until(() => D().querySelectorAll('.br-bulk-row').length > 0,
+              9000, 'the bulk table');
+
+  head('THE BAD-CHANNEL COLUMN');
+  /* Given time to fill in. The registry read is not awaited before the panel
+     draws -- on a network share it takes seconds and nothing on the first
+     paint needs it -- so the column is expected to arrive late, not at
+     once. */
+  await until(() => [...D().querySelectorAll('.br-bulk-bad')]
+                      .some((b) => /\d+ bad/.test(b.textContent)),
+              20000, 'the column to fill in');
+
+  const chips = [...D().querySelectorAll('.br-bulk-row')].map((row) => ({
+    id: row.getAttribute('data-id'),
+    text: (row.querySelector('.br-bulk-bad') || {}).textContent || '',
+  }));
+  eq('every row has a chip', chips.length, cands.length);
+
+  const saidNone = chips.filter((c) => /none bad/.test(c.text)).length;
+  ok('the column is not "none bad" all the way down',
+     saidNone < chips.length,
+     'all ' + chips.length + ' rows said "none bad" while ' + nWithBad
+     + ' of them have contacts marked -- the registry cache was never '
+     + 'filled');
+
+  /* Row by row, against what the store says for that row's own recording.
+     A count that is merely non-zero would pass on a table that had put the
+     right numbers against the wrong sets. */
+  const wrong = [];
+  for (const c of chips) {
+    const n = want.get(c.id) || 0;
+    const shown = /^(\d+) bad/.test(c.text) ? Number(RegExp.$1) : 0;
+    if (shown !== n) wrong.push(c.id + ': shows ' + shown + ', store says ' + n);
+  }
+  // `!wrong.length` is true of an empty table as readily as of a correct
+  // one, and an empty table is the failure this harness is about.
+  ok('and every chip matches its own recording',
+     chips.length > 0 && !wrong.length,
+     wrong.length ? wrong.slice(0, 6).join('\n       ')
+                  : 'there were no rows to check');
+
+  head('WHAT IT CLAIMS CAN BE READ');
+  /* The same cache answers this, and was wrong the same way: with no rows to
+     judge against, `reachable` says yes to everything. */
+  const reachable = cands.filter(
+    (c) => (byGid.get(c.gid) || {}).reachable).length;
+  const bar = (D().querySelector('.br-bulk-count') || {}).textContent || '';
+  const claimed = /·\s*(\d+)\s*can be read here/.test(bar)
+    ? Number(RegExp.$1) : null;
+  say('       bar says: ' + bar.trim(), 'dim');
+  eq('the bar counts the ones the registry can actually reach',
+     claimed, reachable);
+
+  say('');
+  say(fail ? (fail + ' FAILED, ' + pass + ' ok')
+           : ('all ' + pass + ' checks passed'), fail ? 'bad' : 'ok');
+  document.title = fail ? ('bracesbad: ' + fail + ' FAILED')
+                        : ('bracesbad: ' + pass + ' ok');
+})().catch((e) => {
+  say('the harness itself threw: ' + (e && e.message), 'bad');
+  document.title = 'bracesbad: harness threw';
+});
+</script></body></html>

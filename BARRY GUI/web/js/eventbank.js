@@ -388,7 +388,7 @@ BARRY.views.eventbank = (function () {
       const n = v.n != null ? v.n : Object.keys(v.snap || {}).length;
       box.appendChild(el('div', { class: 'ver-row' }, [
         el('div', { class: 'ver-top' }, [
-          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
           el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
             text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
@@ -454,7 +454,7 @@ BARRY.views.eventbank = (function () {
       class: 'ver-note-input', rows: '3',
       placeholder: 'e.g. checked against the CSD, moved the GCL up two',
     });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Snapshot this layer sheet' }),
       el('p', { class: 'sub', text: x.session_label || x.gid }),
     ]));
@@ -466,7 +466,7 @@ BARRY.views.eventbank = (function () {
           + 'changes.' }));
     wrap.appendChild(el('div', { class: 'section-label', text: 'What this pass was' }));
     wrap.appendChild(note);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
       el('button', {
@@ -597,9 +597,9 @@ BARRY.views.eventbank = (function () {
       strip.appendChild(el('button', {
         class: 'ver-pip' + (openVersion === v.v ? ' on' : '')
              + (v.v === vs.length ? ' last' : ''),
-        title: 'v' + v.v + '  ' + (v.by || '') + '  '
+        title: 'v' + (v.name != null ? v.name : v.v) + '  ' + (v.by || '') + '  '
              + (v.note || 'no note'),
-        text: 'v' + v.v,
+        text: 'v' + (v.name != null ? v.name : v.v),
         onclick: () => {
           openVersion = openVersion === v.v ? null : v.v;
           const host = box.parentNode;
@@ -644,7 +644,7 @@ BARRY.views.eventbank = (function () {
              + (v.archived ? ' archived' : ''),
       }, [
         el('div', { class: 'ver-top' }, [
-          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
           el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
                        text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
@@ -867,7 +867,7 @@ BARRY.views.eventbank = (function () {
     const undo = res.undo;
     if (undo) {
       healthChanged();
-      toast('v' + v.v + ' deleted and the correction undone. '
+      toast('v' + (v.name != null ? v.name : v.v) + ' deleted and the correction undone. '
             + undo.n + ' time(s) restored from v' + undo.restored_from
             + '; this recording is an unresolved segment issue again.',
             'ok', 11000);
@@ -878,7 +878,7 @@ BARRY.views.eventbank = (function () {
 
   function editVersion(e, v) {
     const wrap = el('div', { class: 'modal ver-edit' });
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Version ' + v.v }),
       el('p', { class: 'sub', title: BARRY.whenRaw(v.at),
                 text: BARRY.when(v.at, 'minute')
@@ -900,7 +900,7 @@ BARRY.views.eventbank = (function () {
     wrap.appendChild(el('p', { class: 'hint',
       text: 'The counts are not editable \u2014 they are what was banked. '
           + 'An edited note records that it was edited.' }));
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost', text: 'Cancel',
                      onclick: closeModal }),
@@ -1021,7 +1021,7 @@ BARRY.views.eventbank = (function () {
     };
 
     host.appendChild(el('div', { class: 'ver-open-bar' }, [
-      el('strong', { text: 'v' + v.v }),
+      el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
       /* A history you can read but not act on is half a history. */
       el('button', {
         class: 'btn ghost sm', text: 'Put this version back',
@@ -1039,7 +1039,7 @@ BARRY.views.eventbank = (function () {
         },
       }, others.map((o) => el('option', {
         value: String(o.v),
-        text: 'v' + o.v + '  ' + (o.by || '') + '  '
+        text: 'v' + (o.name != null ? o.name : o.v) + '  ' + (o.by || '') + '  '
             + BARRY.when(o.at, 'minute'),
         selected: o.v === against.v ? 'selected' : null,
       }))),
@@ -1111,7 +1111,7 @@ BARRY.views.eventbank = (function () {
        deleted the highest number and the count are different things and
        saying "of" makes one of them look wrong. */
     add('Version', e.version
-        ? ('v' + e.version + '  ·  ' + (e.versions || []).length
+        ? ('v' + (e.version_name != null ? e.version_name : e.version) + '  ·  ' + (e.versions || []).length
            + ' in the history')
         : null);
     add('Times are', e.units);
@@ -1776,7 +1776,7 @@ BARRY.views.eventbank = (function () {
               { dry_run: false, conflicts: policy, note: note });
             if (res.error) { toast(res.error, 'err', 9000); return; }
             closeModal();
-            toast('v' + res.version + ': ' + res.removed
+            toast('v' + (res.version_name != null ? res.version_name : res.version) + ': ' + res.removed
                   + ' duplicate row(s) removed, ' + res.now + ' events left'
                   + (res.conflicts
                       ? ' — ' + res.conflicts + ' contested time(s) '
