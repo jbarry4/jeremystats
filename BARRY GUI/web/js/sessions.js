@@ -121,6 +121,32 @@ BARRY.views.sessions = (function () {
 
   const RECENT_KEY = 'barry.roots';
   const LAST_KEY = 'barry.lastSessions';
+  /* How big the catalogue was last time. Only ever used to say so while the
+     real answer is being read -- see `catalogueScale`. */
+  const SIZE_KEY = 'barry.catalogueSize';
+
+  /* What the wait is for, in words, before the answer that would say it
+     exactly has arrived.
+
+     A first run on a new machine has nothing to go on and says so rather
+     than guessing a number; every run after that can state the scale, which
+     is the difference between "it is thinking" and "it is reading six
+     hundred and eighty-seven recordings". Approximate on purpose -- the
+     stored figure is one run old and the exact one lands with the answer. */
+  function catalogueScale() {
+    let n = 0;
+    try { n = parseInt(localStorage.getItem(SIZE_KEY), 10) || 0; }
+    catch (e) { n = 0; }            // private mode
+    return n
+      ? 'reading about ' + n + ' recordings Jarvis has met'
+      : 'reading every recording Jarvis has met';
+  }
+
+  function rememberScale(n) {
+    if (!n) return;
+    try { localStorage.setItem(SIZE_KEY, String(n)); }
+    catch (e) { /* private mode */ }
+  }
 
   /* Remember which recordings were last open, so a restart picks up where you
      left off rather than at an empty Xplorefinder. */
@@ -223,24 +249,66 @@ BARRY.views.sessions = (function () {
        accepted a held-back folder, or applied a time correction -- and five
        seconds of a tree that still shows the old state, with nothing to say
        so, is the same complaint in a slower view. Dim it for those. */
+    const host = $('#sessTree');
     const bones = quiet ? null
       : (sessions.length
-          ? (force ? BARRY.skeleton.stale($('#sessTree')) : null)
-          : BARRY.skeleton.into($('#sessTree'), 'card', 6));
+          ? (force ? BARRY.skeleton.stale(host) : null)
+          : BARRY.skeleton.into(host, 'card', 6));
     const sub = $('#sessSub');
     if (bones && sub) sub.textContent = 'Reading the catalogue\u2026';
+
+    /* The bones say what is COMING. They do not say what is HAPPENING, and
+       for six seconds that is the question -- the view looked identical
+       whether the registry was being merged, the answer was already warm, or
+       the server had stopped answering.
+
+       So a loader above them, on a cold open only. A refresh already has the
+       list on screen and does not need a wait announced over the top of it.
+
+       `loader` and not `stepLoader`, deliberately. There is one slow stage
+       here and it is the registry read; the merging and grouping after it
+       are a few milliseconds on the same data. Naming them as steps would
+       have shown two of the three dots for no measurable time, which is a
+       progress bar that lies about where the time goes.
+
+       What it says instead is the SIZE of the job, from the last time this
+       ran -- because the count is informative when the wait starts and is
+       the one thing not known until it ends. */
+    const wait = (bones && !sessions.length && host)
+      ? loader('The catalogue', catalogueScale()) : null;
+    if (wait) host.insertBefore(wait, host.firstChild);
+    /* Six seconds is normal and worth sitting through; fifteen is something
+       being wrong, and saying so beats letting somebody decide the
+       application has hung. */
+    const slow = wait ? setTimeout(() => {
+      const line = wait.querySelector('.loader-text span');
+      if (line) {
+        line.textContent = 'still reading — this usually takes about '
+                         + 'six seconds';
+      }
+    }, 15000) : null;
+    /* One remover for all of it, so no path can clear the bones and leave a
+       loader spinning above an empty tree. */
+    const done = () => {
+      if (slow) clearTimeout(slow);
+      if (wait && wait.parentNode) wait.parentNode.removeChild(wait);
+      if (bones) bones();
+    };
 
     let reg;
     try {
       reg = await api('/api/registry');
     } catch (e) {
       // An older server: the page still works, but the bones must not stay.
-      if (bones) bones();
+      done();
       if (sub) sub.textContent = '';
       renderTree();
       return;
     }
-    if (bones) bones();
+    done();
+    /* What was actually read, so the next cold open can state the size of
+       the job before it starts rather than after it finishes. */
+    rememberScale(reg.total);
     /* The lab's projects, whether or not any are on screen right now.
        Without this the project filter's options appear and disappear as
        the list is narrowed by something else, which makes it look broken

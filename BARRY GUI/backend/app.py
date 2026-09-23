@@ -4451,10 +4451,31 @@ def api_dspca_plan():
                     {"entry_id": body.get("entry_id")})
 
     src_v = body.get("from_version")
+    # A version this set does not have is answered, not refused.
+    #
+    # The picker in the panel is built from `versions` below, so failing
+    # here returned no versions -- and the only thing on screen was an
+    # empty "Read from" box and the sentence "This set has no version 5",
+    # with nothing to click that could put it right. You had to pick a
+    # different set and come back.
+    #
+    # It got there by asking for another set's version: the plan requests
+    # raced and the picker was briefly the previous set's. That race is
+    # fixed where it happened, in the panel. This is the other half -- the
+    # answer to an impossible version is the set's real versions and a line
+    # saying what was read instead, which is recoverable.
+    version_note = None
     try:
         stamps, n_all = _dspca_stamps(rec, src_v)
     except Exception as exc:                             # noqa: BLE001
-        return fail("dspca/plan", exc, 400, {"from_version": src_v})
+        if src_v is None:
+            return fail("dspca/plan", exc, 400, {"from_version": src_v})
+        version_note = str(exc)
+        src_v = None
+        try:
+            stamps, n_all = _dspca_stamps(rec, None)
+        except Exception as exc2:                        # noqa: BLE001
+            return fail("dspca/plan", exc2, 400, {"from_version": src_v})
 
     chans = _braces_channels(sess)
     state = probebook.state_of(dict(stored,
@@ -4516,6 +4537,11 @@ def api_dspca_plan():
                                    + 2 * p.pad, 3),
                  "refine": p.refine},
         "versions": versions,
+        # What was actually read from, so the panel stops asking for a
+        # version that is not here, and why -- shown as a warning rather
+        # than silently reading something else.
+        "read_version": src_v,
+        "version_note": version_note,
         "current_name": cur_name,
         "next_name": next_name,
         "params": p.as_dict(),
@@ -13659,7 +13685,14 @@ def api_vacc_signin_state():
         "host": cfg.get("host") or vaccmod.DEFAULT_HOST,
         "have_ssh": vaccmod.have_ssh(),
         "have_key": vaccmod.have_key(),
-        "key_path": vaccmod.key_paths()[0],
+        # The key actually in use, when there is one. This used to report
+        # `key_paths()[0]` unconditionally -- where Jarvis's OWN key would
+        # go -- so a machine signed in with somebody's existing
+        # `id_ed25519` was told it was using `id_ed25519_jarvis_vacc`,
+        # which is a file that may not even exist. Two different questions
+        # with two different answers.
+        "key_path": cfg.get("key_path") or "",
+        "jarvis_key_path": vaccmod.key_paths()[0],
         # Somebody who already uses the cluster from a terminal has a key
         # that works. Saying so lets setup offer to use it instead of
         # asking for a password to install a second one.
@@ -13712,11 +13745,37 @@ def api_vacc_signin():
             made = {"created": False}
             installed = {"already": True, "netid": netid}
         else:
-            made = vaccmod.make_key()
-            key_path = vaccmod.key_paths()[0]
-            installed = vaccmod.install_key(netid, password,
-                                            duo=body.get("duo") or "1")
-            netid = installed.get("netid") or netid
+            # A key this machine already has, that this account already
+            # accepts. Tried first, and it is the ordinary case on a rig
+            # where one person set the cluster up and the rest of the lab
+            # takes turns at the keyboard.
+            #
+            # Being asked for a password by software that does not need one
+            # is how people learn to type passwords into things that should
+            # not have them, so not asking is a small security feature and
+            # not only a convenience.
+            already = vaccmod.working_key(netid)
+            if already:
+                key_path = already
+                made = {"created": False}
+                installed = {"already": True, "netid": netid}
+            elif not password:
+                # No key works and none was offered, so there is nothing to
+                # try. Said as a fact rather than as a failure: it is the
+                # first sign-in on this machine and a password is genuinely
+                # needed once.
+                return jsonify({
+                    "ok": False, "kind": "need-password",
+                    "error": "No key on this computer works for %s yet, so "
+                             "a password is needed once to install one."
+                             % netid,
+                }), 400
+            else:
+                made = vaccmod.make_key()
+                key_path = vaccmod.key_paths()[0]
+                installed = vaccmod.install_key(netid, password,
+                                                duo=body.get("duo") or "1")
+                netid = installed.get("netid") or netid
 
         # The proof. Key only, password auth off -- the ordinary `_ssh`
         # options, which is exactly how every later call will connect.
@@ -13758,6 +13817,30 @@ def api_vacc_signin():
         "already_installed": bool(installed.get("already")),
         "config": vaccmod.load_config(LOGS_DIR),
     })
+
+
+@app.route("/api/vacc/signout", methods=["POST"])
+def api_vacc_signout():
+    """Stop being signed in on this machine.
+
+    Forgets the netid and the key path here. It does not delete the key and
+    it does not touch the cluster's `authorized_keys` -- see
+    `vacc.forget_account` for why both of those would be the wrong thing for
+    a Sign out button to do.
+
+    The practical consequence is the one that matters on a shared rig:
+    signing back in, as the same person or a different one, re-uses the key
+    that is already installed and asks for no password.
+    """
+    try:
+        was = vaccmod.forget_account(LOGS_DIR)
+        vaccmod.refresh(force=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/signout", exc, 400)
+    STORE.record_activity([{"action": "vacc.signout",
+                            "detail": {"netid": was}}])
+    return jsonify({"ok": True, "was": was,
+                    "config": vaccmod.load_config(LOGS_DIR)})
 
 
 @app.route("/api/vacc/setup", methods=["POST"])

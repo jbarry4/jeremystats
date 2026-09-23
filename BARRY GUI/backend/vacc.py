@@ -408,6 +408,43 @@ INSTALL_OPTS = [
 ]
 
 
+def forget_account(logs_dir):
+    """Stop being signed in on this machine.
+
+    Removes the netid and the key path from this machine's config and
+    nothing else. Deliberately NOT the key itself and deliberately not the
+    entry in the cluster's `authorized_keys`:
+
+      * the key may be one the person uses from their own terminal, and
+        deleting it because they pressed Sign out in an application would be
+        taking something that was not this application's to take;
+      * removing the entry on the far side needs a working connection, so a
+        sign-out would fail exactly when somebody is signing out BECAUSE the
+        connection is broken.
+
+    So this is "forget who I am here", which is what signing out of a
+    workstation means. Signing back in re-uses the same key and asks for no
+    password, which is the right behaviour for the shared rig: four
+    undergraduates take turns and none of them needs a password after the
+    first time any of them set it up.
+    """
+    p = config_path(logs_dir)
+    cur = _read(p)
+    was = cur.get("netid")
+    for k in ("netid", "key_path", "account"):
+        cur.pop(k, None)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(cur, fh, indent=2, sort_keys=True)
+    os.replace(tmp, p)
+    try:
+        os.chmod(p, 0o600)
+    except OSError:
+        pass
+    return was
+
+
 def ssh_dir():
     """`~/.ssh`, created if it is not there, with sane permissions."""
     home = os.path.expanduser("~")
@@ -464,6 +501,37 @@ def existing_keys():
             out.append({"name": n[:-4], "path": priv,
                         "mine": n[:-4] == KEY_NAME})
     return out
+
+
+def working_key(netid, host=None, keys=None, timeout=25):
+    """The first key on this machine that the cluster already accepts.
+
+    Tried BEFORE asking for a password, which is the whole point. On a
+    shared rig the key is installed once and then four people take turns:
+    without this, every one of them is asked for a password that is not
+    needed, and being asked for a password by software that does not need
+    one is how people learn to type it into things that should not have it.
+
+    Each attempt is a real connection with `BatchMode=yes`, so a key the
+    cluster does not accept fails immediately rather than prompting. Costs
+    about a second per key and there are rarely more than two.
+
+    Returns the path, or None. Never raises: this is an optimisation, and a
+    failure here just means falling through to the password.
+    """
+    netid = (netid or "").strip()
+    if not NETID_RE.match(netid) or not have_ssh():
+        return None
+    cfg = {"netid": netid, "host": host or DEFAULT_HOST}
+    for k in (keys if keys is not None else existing_keys()):
+        path = k["path"] if isinstance(k, dict) else k
+        try:
+            out = _ssh(dict(cfg, key_path=path), "whoami", timeout=timeout)
+        except Exception:                                # noqa: BLE001
+            continue
+        if (out or "").strip() == netid:
+            return path
+    return None
 
 
 def make_key(comment="jarvis-vacc"):

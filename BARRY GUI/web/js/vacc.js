@@ -284,6 +284,60 @@ BARRY.vacc = (function () {
   let signState = null;
   let signBusy = false;
 
+  /* Asked once, when somebody first says they want the cluster.
+
+     Not a nag. A person who signed out deliberately and is toggling the
+     mode for the look gets asked the first time and then left alone for
+     the rest of the session -- `asked` is per page load, so restarting
+     Jarvis offers again, which is right on a shared rig where the next
+     person at the keyboard is a different person. */
+  let asked = false;
+
+  async function offerSignIn() {
+    if (asked) return;
+    let st = last;
+    if (!st) { try { st = await status(); } catch (e) { st = null; } }
+    if (st && st.configured) return;      // somebody is already signed in
+    asked = true;
+    /* Profile, not a sign-in box of its own.
+
+       "Which VACC account is this computer" is the same question as "who
+       does this computer credit work to", and both belong in the same
+       place -- so the first time somebody turns the mode on they land on
+       the page that already answers the first question, with the second
+       one on it, rather than meeting a modal about SSH keys with no
+       context around it.
+
+       Falls back to the sign-in panel where there is no profile module,
+       which is every pop-out window: those carry `BARRY` but not every
+       view, and a pop-out that could not offer sign-in at all would be
+       worse than one that offers it plainly. */
+    if (BARRY.profile && BARRY.profile.open) {
+      BARRY.profile.open();
+      toast('Sign in to VACC to run anything on it — it is on your '
+            + 'profile, under VACC account.', null, 9000);
+      return;
+    }
+    showSignIn();
+  }
+
+  async function signOut() {
+    const who = (last || {}).netid || 'this machine';
+    try {
+      const res = await apiPost('/api/vacc/signout', {});
+      toast('Signed out of ' + (res.was || who) + '. The key is left where '
+            + 'it is, so signing back in — as anyone — asks for no '
+            + 'password.', 'ok', 8000);
+      signState = null;
+      await status(true);
+      /* Offer again straight away: signing out is almost always the first
+         half of signing in as somebody else. */
+      asked = false;
+      showSignIn();
+      BARRY.activity.log('vacc.signout', { was: res.was });
+    } catch (e) { toast(e.message, 'err', 8000); }
+  }
+
   async function showSignIn() {
     signState = null;
     showModal(signInBody());
@@ -366,30 +420,14 @@ BARRY.vacc = (function () {
       el('span', { text: 'NetID' }), netid,
     ]));
 
-    /* A key that already works is the best outcome: no password, nothing
-       installed, and it is the same key their terminal uses. Offered
-       first, because somebody who has been using the cluster by hand has
-       one and should not be asked for a password to make a second. */
-    if ((st.other_keys || []).length && !st.have_key) {
-      const pick = el('select', { id: 'vaccUseKey' },
-        [el('option', { value: '', text: 'Make a new key for Jarvis' })]
-          .concat(st.other_keys.map((k) => el('option', {
-            value: k.path, text: 'Use ' + k.name + ' (already on this machine)',
-          }))));
-      b.appendChild(el('label', { class: 'vacc-field' }, [
-        el('span', { text: 'Key' }), pick,
-      ]));
-      b.appendChild(el('p', { class: 'hint',
-        text: 'If one of those keys already works on the cluster, Jarvis '
-            + 'can use it and never needs your password. Otherwise it '
-            + 'makes its own key and installs it — which is the one '
-            + 'time a password is needed.' }));
-      pick.addEventListener('change', () => {
-        const wrap = document.getElementById('vaccPwWrap');
-        if (wrap) wrap.classList.toggle('hidden', !!pick.value);
-      });
-    }
+    /* No key picker.
 
+       There used to be a dropdown offering the keys already on this
+       machine, which asked a question nobody in this lab can answer: the
+       undergraduates who rotate through the rig do not know what an
+       `id_ed25519` is, and the right answer was always "whichever one
+       works". So the server tries them, and the only question left is the
+       one everybody can answer -- which account. */
     const pw = el('input', {
       type: 'password', id: 'vaccPassword',
       autocomplete: 'current-password', placeholder: 'UVM password',
@@ -399,13 +437,14 @@ BARRY.vacc = (function () {
         el('span', { text: 'Password' }), pw,
       ]),
       el('p', { class: 'hint', style: 'max-width:70ch',
-        text: 'Used once, to put an SSH key on the cluster, and then '
-            + 'dropped — it is not written to disk and not kept. From '
-            + 'then on the key signs in, which is also what stops Duo '
-            + 'asking every time.' }),
+        text: 'Only needed the first time this computer connects to your '
+            + 'account. Jarvis tries the keys it already has first, and '
+            + 'asks for this only when none of them work.' }),
       el('p', { class: 'hint', style: 'max-width:70ch',
-        text: 'Duo will send a push to your phone while this runs. Approve '
-            + 'it when it arrives; nothing here can approve it for you.' }),
+        text: 'It is used once, to install an SSH key, and then dropped — '
+            + 'not written to disk, not kept, and not sent anywhere except '
+            + 'to the cluster you are signing in to. After that the key '
+            + 'signs in and you are never asked again.' }),
     ]));
 
     const msg = el('p', { class: 'hint quiet', id: 'vaccSignMsg' });
@@ -435,11 +474,9 @@ BARRY.vacc = (function () {
     if (signBusy) return;
     const netidEl = document.getElementById('vaccNetid');
     const pwEl = document.getElementById('vaccPassword');
-    const keyEl = document.getElementById('vaccUseKey');
     const msg = document.getElementById('vaccSignMsg');
     const go = document.getElementById('vaccSignGo');
     const netid = (netidEl && netidEl.value || '').trim();
-    const useKey = (keyEl && keyEl.value) || '';
     const password = (pwEl && pwEl.value) || '';
 
     if (!netid) {
@@ -448,24 +485,20 @@ BARRY.vacc = (function () {
         + 'the @.'; }
       return;
     }
-    if (!useKey && !password) {
-      if (msg) { msg.className = 'warn-line'; msg.textContent =
-        'A password is needed once, to install the key.'; }
-      return;
-    }
+    /* No password is NOT an error. It is the ordinary case on a machine
+       where somebody has already set the cluster up: the server tries the
+       keys it has and only comes back asking if none of them work. */
 
     signBusy = true;
     if (go) { go.disabled = true; go.textContent = 'Signing in…'; }
     if (msg) {
       msg.className = 'hint quiet';
-      msg.textContent = useKey
-        ? 'Checking that key against the cluster…'
-        : 'Installing a key. Duo will push to your phone — approve it '
-          + 'when it arrives.';
+      msg.textContent = password
+        ? 'Installing a key on the cluster…'
+        : 'Trying the keys this computer already has…';
     }
     try {
-      const res = await apiPost('/api/vacc/signin',
-                                { netid, password, use_key: useKey });
+      const res = await apiPost('/api/vacc/signin', { netid, password });
       toast(res.already_installed && !res.made_key
         ? 'Signed in as ' + res.netid + '. That key was already on the '
           + 'cluster.'
@@ -479,6 +512,12 @@ BARRY.vacc = (function () {
       if (msg) {
         msg.className = 'warn-line';
         msg.textContent = e.message;
+      }
+      /* "No key works yet" is the server asking for the password, not a
+         failure to report and walk away from. Put the cursor where the
+         answer goes. */
+      if (/password is needed once/i.test(e.message || '') && pwEl) {
+        pwEl.focus();
       }
     } finally {
       /* Cleared here rather than on success, because a failed attempt is
@@ -513,12 +552,36 @@ BARRY.vacc = (function () {
                     ? 'Connected as ' + (d.netid || '?')
                     : (d.why || 'Not connected.') }),
 
-        !d.configured ? el('div', {}, [
-          el('p', { class: 'hint',
-            text: 'Nobody has set up a VACC account on this computer.' }),
-          el('button', { class: 'btn', text: 'Sign in to VACC…',
-                         onclick: () => showSignIn() }),
-        ]) : null,
+        /* Who is signed in, and how to stop being them.
+
+           On a shared rig this is the line people actually need: four
+           undergraduates take turns and the one thing that is never
+           obvious is whose account the last job went to. */
+        !d.configured
+          ? el('div', {}, [
+              el('p', { class: 'hint',
+                text: 'Nobody is signed in to VACC on this computer.' }),
+              el('button', { class: 'btn', text: 'Sign in to VACC…',
+                             onclick: () => showSignIn() }),
+            ])
+          : el('div', { class: 'vacc-who' }, [
+              el('span', { class: 'hint',
+                text: 'Signed in as ' + (d.netid || '?') + '.' }),
+              el('button', {
+                class: 'btn ghost sm', text: 'Switch account…',
+                title: 'Sign in as somebody else. The key on this machine is '
+                     + 'reused, so it asks for a password only if that '
+                     + 'account has never been set up from here.',
+                onclick: () => showSignIn(),
+              }),
+              el('button', {
+                class: 'btn ghost sm', text: 'Sign out',
+                title: 'Forget this account on this computer. The key is '
+                     + 'left alone, here and on the cluster — signing '
+                     + 'back in asks for no password.',
+                onclick: () => signOut(),
+              }),
+            ]),
 
         d.key_in_repo ? el('p', { class: 'warn-line',
           text: 'The SSH key is inside this repository. Move it to ~/.ssh — '
@@ -615,6 +678,7 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, watch,
+           offerSignIn, showSignIn, signOut,
            get last() { return last; },
            counts: {}, drives: {} };
 })();

@@ -1,0 +1,238 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — one interface, or several</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 60vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 40vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; white-space: pre; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Counts the shapes the interface actually paints, rather than the classes
+   it names.
+
+   "There are many buttons, search bars, UI features scattered all over the
+   place and all of them slightly vary" is a claim about pixels, so this
+   reads pixels: every interactive element in every view, bucketed by the
+   job it does, and grouped by its measured shape -- font size, padding,
+   radius, border, height. A family with one shape is one control. A family
+   with nine is nine controls wearing one name.
+
+   Class names are reported alongside each shape, because the fix is always
+   "these two classes should be one" or "this class has no rule and is
+   silently falling back". `.btn.small` is the second kind: eleven buttons
+   ask to be small and there is no rule making them small, so they measure
+   exactly like a full-size one, which is what this page was written to
+   catch.
+
+   Nothing is clicked and nothing is saved. Views are visited in the order
+   the rail lists them; a view that will not load is reported as skipped
+   rather than counted as agreeing with everything. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+const VIEWS = ['pipeline', 'sessions', 'explorer', 'xplore', 'toolkit',
+               'eventbank', 'results', 'storyboard', 'history', 'misc',
+               'errors'];
+
+/* The buckets. First match wins, so the specific ones come first: a
+   `.pill` is not a general button, and a search field is not a general
+   text field. */
+function bucket(n) {
+  const c = n.classList;
+  const tag = n.tagName.toLowerCase();
+  if (tag === 'input' && n.type === 'search') return 'search field';
+  if (n.closest('.search-wrap') && tag === 'input') return 'search field';
+  if (tag === 'input' && (n.type === 'checkbox' || n.type === 'radio')) return null;
+  if (tag === 'input' || tag === 'textarea') return 'text field';
+  if (tag === 'select') return 'select';
+  if (c.contains('close-x')) return 'close X';
+  if (c.contains('badbtn')) return 'mark-bad button';
+  if (c.contains('chip-btn')) return 'status chip';
+  if (c.contains('pill')) return 'pill';
+  if (c.contains('mini')) return 'mini button';
+  if (c.contains('toggle')) return 'toggle';
+  if (c.contains('linkish')) return 'link button';
+  if (n.closest('.seg, .track-switch, .ctl-seg')) return 'segmented item';
+  if (n.closest('.xf-tabs, .inc-tabs')) return 'tab';
+  if (c.contains('btn')) return 'button';
+  if (tag === 'button') return 'unclassed button';
+  return null;
+}
+
+/* The shape, to a tenth of a pixel. Colour is deliberately left out: it is
+   the one axis the theme system already governs, and including it would
+   split every family by state (on, active, danger) and drown the geometry
+   this page is about. */
+function shape(cs) {
+  const p = [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft]
+    .map((v) => Math.round(parseFloat(v) * 10) / 10).join('/');
+  const r = Math.round(parseFloat(cs.borderTopLeftRadius) * 10) / 10;
+  const b = Math.round(parseFloat(cs.borderTopWidth) * 10) / 10;
+  const fs = Math.round(parseFloat(cs.fontSize) * 10) / 10;
+  const fw = cs.fontWeight;
+  const mono = /mono|consol|courier/i.test(cs.fontFamily) ? 'mono' : 'sans';
+  return 'font ' + fs + 'px/' + fw + ' ' + mono
+       + '  pad ' + p + '  radius ' + r + '  border ' + b;
+}
+
+const seen = new Map();   /* bucket -> Map(shape -> {n, classes:Set, views:Set}) */
+/* A view that has been opened stays in the DOM, so the second walk sees the
+   first view's controls again and the third sees both. Counted naively this
+   reported 25,384 buttons in an application that has a few hundred: the
+   shapes were right and every number beside them was the running total.
+   Nodes are therefore remembered, and each one counted once, in the view
+   that first showed it. */
+const counted = new WeakSet();
+function record(view, node) {
+  if (counted.has(node)) return;
+  const b = bucket(node);
+  if (!b) return;
+  counted.add(node);
+  const cs = node.ownerDocument.defaultView.getComputedStyle(node);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return;
+  const s = shape(cs);
+  if (!seen.has(b)) seen.set(b, new Map());
+  const fam = seen.get(b);
+  if (!fam.has(s)) fam.set(s, { n: 0, classes: new Set(), views: new Set() });
+  const e = fam.get(s);
+  e.n += 1;
+  e.views.add(view);
+  const cls = (node.className.baseVal !== undefined
+               ? node.className.baseVal : node.className) || '(no class)';
+  e.classes.add(String(cls).trim().split(/\s+/).slice(0, 3).join('.') || '(none)');
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  /* `setView` is a function declaration and therefore on the frame's
+      window; `BARRY` is a const and is not. */
+  const ready = await untilN(() => typeof win().setView === 'function');
+  check('the application loads', ready >= 0, 'no setView after 25s');
+  if (ready < 0) { document.title = 'FAIL'; return; }
+  await sleep(600);
+
+  head('walking every view');
+  const visited = [];
+  for (const v of VIEWS) {
+    try {
+      win().setView(v);
+      await sleep(700);
+      const root = doc().getElementById('app') || doc().body;
+      const nodes = root.querySelectorAll(
+        'button, input, select, textarea, label.toggle, [role="button"]');
+      let n = 0;
+      nodes.forEach((el) => { record(v, el); n += 1; });
+      say(n > 0 ? 'ok' : 'bad', v + ' — ' + n + ' controls read');
+      if (n > 0) visited.push(v);
+    } catch (e) {
+      say('bad', v + ' — would not open: ' + e.message);
+    }
+  }
+
+  head('how many shapes each family paints');
+  const famNames = [...seen.keys()].sort();
+  for (const b of famNames) {
+    const fam = seen.get(b);
+    const total = [...fam.values()].reduce((a, e) => a + e.n, 0);
+    const shapes = fam.size;
+    say(shapes === 1 ? 'ok' : 'bad',
+        b + ' — ' + shapes + (shapes === 1 ? ' shape' : ' shapes')
+        + ' across ' + total + ' instances');
+    [...fam.entries()]
+      .sort((a, b2) => b2[1].n - a[1].n)
+      .forEach(([s, e]) => {
+        say('note', '        ' + String(e.n).padStart(3) + '  ' + s
+                  + '\n             ' + [...e.classes].sort().join('  ')
+                  + '\n             seen in: ' + [...e.views].join(' '));
+      });
+  }
+
+  head('the specific claims');
+
+  /* 1. A size modifier with no rule behind it. Build one of each in the
+        frame, off screen, and measure them: if `.btn.small` is not smaller
+        than `.btn`, the eleven buttons asking for it are not small. */
+  const d = doc();
+  const probe = d.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0';
+  const mk = (cls) => { const b2 = d.createElement('button');
+                        b2.className = cls; b2.textContent = 'Read a batch';
+                        probe.appendChild(b2); return b2; };
+  const plain = mk('btn'), sm = mk('btn sm'), small = mk('btn small');
+  d.body.appendChild(probe);
+  const px = (n) => parseFloat(win().getComputedStyle(n).fontSize);
+  const smWorks = px(sm) < px(plain);
+  const smallWorks = px(small) < px(plain);
+  check('.btn.sm is smaller than .btn', smWorks,
+        px(sm) + 'px vs ' + px(plain) + 'px');
+  check('.btn.small is smaller than .btn', smallWorks,
+        '.btn.small measures ' + px(small) + 'px, same as a full-size .btn ('
+        + px(plain) + 'px) — the class has no rule');
+  check('.btn.sm and .btn.small are the same size',
+        px(sm) === px(small),
+        px(sm) + 'px vs ' + px(small) + 'px — two spellings, one meaning');
+  probe.remove();
+
+  /* 2. Search fields. Every one of them is the same affordance, so every
+        one of them should measure the same. */
+  const sf = seen.get('search field');
+  check('every search field is one shape', sf && sf.size === 1,
+        sf ? sf.size + ' different shapes' : 'no search field was reached');
+
+  /* 3. The families that are named once and drawn several times. */
+  for (const b of ['button', 'mini button', 'pill', 'mark-bad button',
+                   'segmented item', 'close X']) {
+    const fam = seen.get(b);
+    if (!fam) { say('note', 'skipped: no ' + b + ' was on screen'); continue; }
+    check('every ' + b + ' is one shape', fam.size === 1,
+          fam.size + ' different shapes');
+  }
+
+  /* 4. The verb on the front of a search box. Three verbs for one gesture
+        is three gestures as far as a reader is concerned. */
+  const verbs = new Map();
+  for (const v of visited) {
+    win().setView(v);
+    await sleep(400);
+    doc().querySelectorAll('.search-wrap input[placeholder]').forEach((i) => {
+      const w = (i.placeholder.trim().split(/[\s,]/)[0] || '').replace(/[^A-Za-z]/g, '');
+      if (w) verbs.set(w, (verbs.get(w) || 0) + 1);
+    });
+  }
+  check('search fields open with one verb', verbs.size <= 1,
+        [...verbs.entries()].map(([w, n]) => w + '×' + n).join('  '));
+
+  head(bad === 0 ? 'one interface' : bad + ' places where it is several');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

@@ -655,6 +655,15 @@
   outline: none; border-color: var(--accent);
 }
 .vacc-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+/* Who is signed in, and how to stop being them. One line, because on a
+   shared rig the question is "whose account did that job go to" and the
+   answer should not need a click to find. */
+.vacc-who {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 2px 0 10px;
+}
+.vacc-who .hint { margin: 0; }
 /* ---- looking around the cluster ---- */
 .vacc-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
                margin: 6px 0; }
@@ -856,6 +865,259 @@
     opacity: 0.6;
   }
 }
+/* ==========================================================================
+   The power-up
+   ==========================================================================
+   Turning the cluster on should feel like turning something on. The steady
+   state above is a look; this is the moment of change, and it is three
+   beats: charge, burst, settle.
+
+   Everything here animates OPACITY and TRANSFORM and nothing else. That is
+   not stylistic. Xplorefinder redraws its canvases every pan frame, and an
+   animated `box-shadow`, `filter` or `width` forces a repaint of everything
+   behind it -- so a half-second of celebration would cost a half-second of
+   dropped frames in the one view somebody might be dragging at the time.
+   Opacity and transform are composited; they cost the GPU nothing the page
+   was not already paying.
+
+   It is also chrome only, over the top, `pointer-events: none`, and gone
+   when it ends. A trace must look identical at 2 am and 9 am or two
+   screenshots cannot be compared -- so this never touches content, and the
+   element removes itself rather than lingering as a transparent sheet over
+   the application.
+
+   Colour comes from `--accent`, so every theme powers up in its own
+   colours: gold on UVM Dark, green on Phosphor, pink on Jirai.
+   ========================================================================== */
+#vaccMorph {
+  position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+  contain: strict;
+}
+
+/* The gather. A wide, dim wash that pulls inward toward the button --
+   the held breath before the change. */
+#vaccMorph .vm-charge {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--vm-x) var(--vm-y),
+    color-mix(in srgb, var(--accent) 34%, transparent) 0%,
+    transparent 46%);
+  opacity: 0;
+  animation: vmCharge 340ms var(--ease-out) forwards;
+}
+
+/* The burst. A bloom from the button, bright and brief. */
+#vaccMorph .vm-bloom {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--vm-x) var(--vm-y),
+    color-mix(in srgb, var(--accent) 88%, white) 0%,
+    color-mix(in srgb, var(--accent) 60%, transparent) 18%,
+    transparent 52%);
+  opacity: 0;
+  animation: vmBloom 620ms var(--ease-out) 300ms forwards;
+}
+
+/* Two rings, thrown outward one after the other. Scaled, never resized:
+   `width` would relayout, `transform` does not. */
+#vaccMorph .vm-ring {
+  position: absolute; left: var(--vm-x); top: var(--vm-y);
+  width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 80%, transparent);
+  opacity: 0;
+  animation: vmRing 760ms var(--ease-out) 300ms forwards;
+}
+#vaccMorph .vm-ring.two { animation-delay: 420ms; animation-duration: 820ms; }
+
+/* The sweep. A band that crosses the screen once, the way a morph wipes
+   from one state to the other. */
+#vaccMorph .vm-sweep {
+  position: absolute; inset: -20% -60%;
+  background: linear-gradient(105deg,
+    transparent 40%,
+    color-mix(in srgb, var(--accent) 42%, transparent) 50%,
+    transparent 60%);
+  opacity: 0;
+  transform: translate3d(-60%, 0, 0);
+  animation: vmSweep 720ms var(--ease-out) 260ms forwards;
+}
+
+@keyframes vmCharge {
+  0%   { opacity: 0;    transform: scale(1.35); }
+  70%  { opacity: 0.85; transform: scale(1.02); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+@keyframes vmBloom {
+  0%   { opacity: 0;   transform: scale(0.35); }
+  16%  { opacity: 1;   transform: scale(1.04); }
+  100% { opacity: 0;   transform: scale(1.5); }
+}
+@keyframes vmRing {
+  0%   { opacity: 0;    transform: scale(0.2); }
+  12%  { opacity: 0.95; }
+  100% { opacity: 0;    transform: scale(58); }
+}
+@keyframes vmSweep {
+  0%   { opacity: 0;   transform: translate3d(-60%, 0, 0); }
+  22%  { opacity: 1; }
+  100% { opacity: 0;   transform: translate3d(60%, 0, 0); }
+}
+
+/* The rail takes the change last, so the chrome looks like it is coming
+   up rather than like it was already on. */
+:root[data-vacc="on"] #rail.vm-lit::after {
+  animation: vmRailLift 900ms var(--ease-out) 1;
+}
+@keyframes vmRailLift {
+  0%   { opacity: 0.15; }
+  30%  { opacity: 1; }
+  100% { opacity: var(--fire, 1); }
+}
+
+/* Windows that have opted out of the fired-up look opt out of arriving at
+   it, too. A pop-out pane exists to be looked at closely. */
+body.solo-window #vaccMorph,
+body.aid-window #vaccMorph { display: none; }
+
+/* Reduced motion gets the state, not the show.
+
+   Named and stopped rather than zero-duration -- a zero-length animation is
+   still an animation and some engines paint its first frame before deciding
+   that. The mode still turns on; it simply arrives instead of sweeping. */
+@media (prefers-reduced-motion: reduce) {
+  #vaccMorph { display: none; }
+  :root[data-vacc="on"] #rail.vm-lit::after { animation: none; }
+}
+
+/* ==========================================================================
+   The board
+   ==========================================================================
+   An earlier version of this was made of repeating gradients, and what
+   gradients make is a grid: two sets of evenly spaced parallel lines,
+   tiling forever. A circuit board looks nothing like that. Its traces RUN
+   -- they leave a pad, go somewhere, turn at 45 degrees rather than square,
+   and stop. They are different lengths, they bundle and fan out, and the
+   board is mostly empty between them. None of that is a repeating pattern,
+   so the artwork is drawn in `vaccfx.js` instead.
+
+   Inline SVG rather than a data URI, and that is what buys the theming: a
+   data URI cannot read a CSS variable, but an inline `<svg>` inherits
+   `currentColor` -- so `color: var(--accent)` here makes the traces gold on
+   UVM Dark, green on Phosphor and pink on Jirai with no second asset and no
+   redraw when the theme changes.
+
+   COST. Built once, on idle, and then never touched: no animation, no
+   repaint, no layout. The lit patch moves by `transform` and the artwork
+   inside it counter-moves by `transform`, both composited, so following the
+   pointer costs the compositor two matrix updates a frame and the page
+   underneath is never repainted. `will-change` and `contain` keep it on its
+   own layer so that stays true.
+   ========================================================================== */
+#vaccCircuit {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none;
+  color: var(--accent);
+  contain: strict;
+}
+:root:not([data-vacc="on"]) #vaccCircuit { display: none; }
+
+#vaccCircuit .vcx-svg { display: block; }
+
+/* The board, everywhere, almost invisible. The interface should look like
+   it is sitting ON something, not like somebody drew over it. */
+#vaccCircuit .vcx-traces {
+  position: absolute; inset: 0;
+  opacity: 0.07;
+}
+
+/* The lit patch. A fixed-size window onto the same artwork, moved by
+   transform -- see vaccfx.js for why not `left`/`top`. */
+#vaccCircuit .vcx-glow {
+  position: absolute; left: 0; top: 0;
+  width: 460px; height: 460px; overflow: hidden;
+  opacity: 0.85;
+  transform: translate3d(-9999px, -9999px, 0) translate(-50%, -50%);
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(circle,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,.5) 38%, rgba(0,0,0,0) 70%);
+  mask-image: radial-gradient(circle,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,.5) 38%, rgba(0,0,0,0) 70%);
+}
+/* Held still while the window over it moves, so the traces read as wiring
+   being lit rather than as a texture being dragged. */
+#vaccCircuit .vcx-glow-in {
+  position: absolute; left: 0; top: 0;
+  will-change: transform;
+}
+
+/* A ring where the pointer went down. Transient by construction: nothing
+   may be animating once the interface is at rest. */
+#vaccCircuit .vcx-ripple {
+  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 85%, transparent);
+  opacity: 0;
+  animation: vcxRipple 620ms var(--ease-out) forwards;
+}
+@keyframes vcxRipple {
+  0%   { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0;   transform: scale(11); }
+}
+
+/* ---- the surge, on the way on ---- */
+#vaccSurge {
+  position: fixed; inset: 0; z-index: 8999; pointer-events: none;
+  contain: strict;
+}
+
+/* One halo per part of the interface, delayed by its own distance from the
+   button. Drawn at the element's rectangle rather than on the element:
+   flashing a live button would animate its background, which is a repaint
+   per element per frame, and would fight whatever that component already
+   does with its own pseudo-elements. */
+#vaccSurge .vcx-node {
+  position: absolute;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent),
+              0 0 18px 2px color-mix(in srgb, var(--accent) 40%, transparent);
+  opacity: 0;
+  animation: vcxNode 620ms var(--ease-out) forwards;
+}
+/* The shadow is declared once and never animated -- only `opacity` and
+   `transform` move, so the halo costs one paint and then rides on the
+   compositor. */
+@keyframes vcxNode {
+  0%   { opacity: 0;    transform: scale(0.94); }
+  22%  { opacity: 0.95; transform: scale(1.03); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+
+/* The wave itself, so the halos light up as something passes rather than
+   to a timer that happens to look about right. */
+#vaccSurge .vcx-wave {
+  position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  opacity: 0;
+  animation: vcxWave 700ms linear forwards;
+}
+@keyframes vcxWave {
+  0%   { opacity: 0;   transform: scale(0.2); }
+  8%   { opacity: 0.8; }
+  85%  { opacity: 0.2; }
+  100% { opacity: 0;   transform: scale(var(--reach, 40)); }
+}
+
+/* Windows that opted out of the fired-up look opt out of the wiring too. */
+body.solo-window #vaccCircuit, body.aid-window #vaccCircuit,
+body.solo-window #vaccSurge, body.aid-window #vaccSurge { display: none; }
+
+/* Reduced motion keeps the traces and loses the movement. The faint grid
+   is contrast, not motion, so it stays; the glow, the ripple and the surge
+   all go. */
+@media (prefers-reduced-motion: reduce) {
+  #vaccCircuit .vcx-glow, #vaccSurge { display: none; }
+  #vaccCircuit .vcx-ripple { animation: none; opacity: 0; }
+}
+
 /* ---- the picker ---- */
 .theme-pop {
   position: absolute; bottom: 46px; left: 10px; width: 178px; z-index: 200;
@@ -5861,6 +6123,35 @@ body.aid-window .xf-tabs { display: none !important; }
 #app.rail-icons .who-chip .who-name { display: none; }
 .prof-form { display: flex; flex-direction: column; gap: 11px;
              max-width: 520px; }
+/* The cluster account, in the profile.
+
+   Two states told apart by two different means, because they are two
+   different questions: SIGNED IN is about whether this computer has an
+   account (the name, bold, or "Not signed in"), and LIVE is about whether
+   the cluster answered just now (the dot). A rig with no network is signed
+   in and not live, and collapsing those into one indicator would send
+   somebody to re-enter a password that was never the problem. */
+.prof-vacc {
+  border-top: 1px solid var(--line-soft); padding-top: 12px; margin-top: 4px;
+}
+.prof-vacc .section-label { margin-top: 0; }
+.prof-vacc-state {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 4px 0 6px; font-size: 12.5px;
+}
+.prof-vacc-state .hint { margin: 0; }
+.vacc-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--text-3);
+}
+.vacc-dot.live { background: var(--ok); }
+/* Signed in, cluster silent. Hollow rather than a third colour: it is the
+   same account, just not answering. */
+.vacc-dot.idle { background: transparent;
+                 box-shadow: inset 0 0 0 2px var(--warn); }
+.vacc-dot.off { background: transparent;
+                box-shadow: inset 0 0 0 2px var(--line); }
+
 .prof-form .field { display: flex; flex-direction: column; gap: 4px; }
 .prof-form .field > label { font-size: 11px; color: var(--text-2); }
 .prof-form .hint { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
@@ -8757,10 +9048,24 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
    were letterboxes and the controls had a column to themselves they did not
    need. The pictures get the top at full height; everything you set runs
    along the bottom with the PCA beside it. */
+/* STRETCHED, not `start`.
+
+   The two columns are never the same height -- the answer column carries
+   the profile, the class means, the decision and the repaired line, and
+   the panes column stops at its button row. With `align-items: start` the
+   difference came out as a band of empty page under "drag a box", which
+   on a tall monitor was most of a screen of nothing.
+
+   Both boxes now fill the row and the slack goes into the two pictures
+   that can use it -- the CSD you drag the box on, and the depth profile.
+   They are measured rather than told their height: see `sized` in
+   dspca.js. */
 .dp-top {
-  display: grid; gap: 12px; align-items: start; margin-bottom: 12px;
+  display: grid; gap: 12px; align-items: stretch; margin-bottom: 12px;
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
 }
+.dp-panes > .dp-shank { flex: 1 1 auto; min-height: 220px; }
+.dp-answer > .dp-profile { flex: 1 1 auto; min-height: 200px; }
 .dp-bottom {
   display: grid; gap: 12px; align-items: stretch;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
@@ -8802,6 +9107,23 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   transition: width .2s var(--ease-out, ease);
 }
 .dp-job { display: flex; flex-direction: column; gap: 6px; align-items: start; }
+
+/* What the panel is doing, and a box waiting to be recomputed.
+
+   Both are empty elements when there is nothing to say, so they can be
+   swapped in place without the panel around them being rebuilt -- which is
+   what used to take the ToolKit's activity feed with it. */
+.dp-busy, .dp-applybar { min-height: 0; }
+.dp-busy.on {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin-bottom: 8px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.dp-applybar.on {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 10px; border-color: var(--accent);
+}
 
 /* Every canvas in the panel sizes itself from its box and draws at device
    pixels, so the labels stay crisp when a pane is resized. */

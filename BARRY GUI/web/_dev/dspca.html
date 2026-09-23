@@ -521,6 +521,195 @@ async function until(fn, ms, what) {
      && (jr.result.read || []).length === 0,
      JSON.stringify(jr.result));
 
+  /* ================================================================== */
+  head('THE ACTIVITY FEED SURVIVES A READ');
+
+  /* Reported from a 348-window read: the Activity panel under the tool
+     going "Reading..." then rows then "Reading..." again, over and over,
+     for as long as the read took.
+
+     The feed is the ToolKit's and it is mounted INTO this tool's host. The
+     poll was calling `render()`, which empties that host -- so every 700 ms
+     the feed was destroyed, the ToolKit's watcher noticed `.tf` missing,
+     and a fresh feed mounted, said "Reading..." and fetched. The rows never
+     had time to land before the next tick took them away.
+
+     So: the same node, still there, after as many ticks as a real read
+     makes in ten seconds. Node identity rather than "a .tf exists" --
+     a remount also leaves a .tf behind, which is exactly why this was
+     invisible to every check that looked for one. */
+  ev('BARRY.dspca._fakeJob({ done: 1, of: 348 })');
+  await until(() => D().querySelector('#tkResult .dp-job'), 8000,
+              'the progress card');
+  ok('a running read draws the progress card',
+     !!D().querySelector('#tkResult .dp-job'));
+  const shown = (D().querySelector('#tkResult .dp-job .hint') || {}).textContent;
+  ok('and it says where it is up to', /1 of 348/.test(shown || ''), shown);
+
+  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+                              'the activity feed to mount');
+  ok('the activity feed is mounted under it', gotFeed);
+  if (gotFeed) {
+    const before = D().querySelector('#tkResult .tf');
+    /* Fourteen ticks at the real 700 ms is ten seconds of a read. */
+    for (let i = 2; i <= 15; i++) {
+      ev('BARRY.dspca._tick({ done: ' + i + ' })');
+      await sleep(90);                    // past the watcher's 60 ms coalesce
+    }
+    const after = D().querySelector('#tkResult .tf');
+    ok('fourteen ticks later it is the SAME feed, not a remount',
+       !!after && after === before,
+       after ? 'a different element -- it was torn down and rebuilt'
+             : 'the feed is gone entirely');
+    ok('and it is not sitting on "Reading..." forever',
+       !/^Reading/.test(((after || {}).textContent || '').trim()) ||
+       !!(after && after.querySelector('.tf-row')),
+       ((after || {}).textContent || '').slice(0, 60));
+    const now = (D().querySelector('#tkResult .dp-job .hint') || {}).textContent;
+    ok('while the progress card did keep counting', /15 of 348/.test(now || ''),
+       now);
+  }
+  ev('BARRY.dspca._endJob()');
+  await until(() => !ev('BARRY.dspca._state().job'), 5000, 'the job to clear');
+
+  /* ================================================================== */
+  head('A DRAGGED BOX WAITS TO BE RECOMPUTED');
+
+  /* A fit over seven hundred spikes is about a second -- the features, the
+     PCA, the k-means and the mean CSD of every class. Refitting on every
+     release meant a few adjustments to get a window right cost a few
+     seconds of the panel rebuilding under the pointer. The box now moves
+     at once and the answer follows when it is asked for. */
+  const was = st().fit.box;
+  ok('there is a fit to start from', !!(was && was.lo != null));
+  /* At least three contacts. A CSD is a second difference across depth,
+     so a thinner box is widened rather than refused -- and a check that
+     asks for two gets three back and reads as a fault. */
+  const newLo = was.lo + 1, newHi = was.lo + 5;
+  ev('BARRY.dspca._dragBox(' + newLo + ',' + newHi + ',-2,2)');
+  ok('a drag marks the box as moved', ev('BARRY.dspca._dirty()') === true);
+  ok('and says so, where the answer is', 
+     !!D().querySelector('.dp-applybar.on'));
+  ok('nothing was recomputed', st().fit.box.lo === was.lo
+     && st().fit.box.hi === was.hi,
+     JSON.stringify(st().fit.box));
+  const bar = (D().querySelector('.dp-applybar.on') || {}).textContent || '';
+  ok('the bar names the box that is waiting',
+     bar.indexOf('CSC' + newLo) >= 0, bar.slice(0, 90));
+
+  /* The feed, across a real fit. Same element or it was torn down. */
+  const feedWas = D().querySelector('#tkResult .tf');
+  ok('the activity feed is up before the recompute', !!feedWas);
+
+  const go = Array.from(D().querySelectorAll('.dp-applybar.on .btn'))
+    .find((x) => /Recompute/.test(x.textContent));
+  ok('there is a button to recompute with', !!go);
+  if (go) go.click();
+  await until(() => ev('BARRY.dspca._dirty()') === false, 20000,
+              'the recompute');
+  ok('pressing it clears the pending box', ev('BARRY.dspca._dirty()') === false);
+  eq('and the fit is of the box that was dragged',
+     [st().fit.box.lo, st().fit.box.hi], [newLo, newHi]);
+  ok('the bar has gone', !D().querySelector('.dp-applybar.on'));
+  ok('and the feed came through the rebuild intact',
+     D().querySelector('#tkResult .tf') === feedWas,
+     'render() replaced it, so the ToolKit will remount and refetch');
+
+  /* Back where we started, so anything added after this sees the box the
+     rest of the suite set up. */
+  ev('BARRY.dspca._box(' + was.lo + ',' + was.hi + ','
+     + was.t_lo_ms + ',' + was.t_hi_ms + ')');
+  await until(() => st().fit && st().fit.box.lo === was.lo, 20000, 'the box back');
+
+  /* ================================================================== */
+  head('EVERY PICTURE IS DRAWN AT THE SIZE IT IS SHOWN');
+
+  /* Reported as "the PCA chart is super blurry and low res".
+
+     It was, and the screenshot showed why: the dots were vertical
+     ellipses. The scatter is `flex: 1 1 auto` inside a column its row
+     stretches, so it was SHOWN at whatever height the row had and DRAWN
+     into a bitmap 268 css-pixels tall. The browser scaled the difference,
+     which is the blur -- and it grew with the monitor, so it was worst
+     exactly where there was most room for it.
+
+     Measured rather than eyeballed: the backing store, in css pixels,
+     against the box on screen. A canvas whose two heights agree cannot be
+     being stretched. */
+  const dpr = ev('window.devicePixelRatio || 1');
+  for (const id of ['dpTraces', 'dpShank', 'dpScatter', 'dpProfile',
+                    'dpClasses']) {
+    const cv = D().getElementById(id);
+    if (!cv) { ok(id + ' is on screen', false); continue; }
+    // The content box on both sides: `clientWidth/Height` is the area the
+    // bitmap is painted into, and the border is not part of it.
+    const shownH = cv.clientHeight, drawnH = cv.height / dpr;
+    const shownW = cv.clientWidth, drawnW = cv.width / dpr;
+    ok(id + ' is drawn at the size it is shown',
+       Math.abs(shownH - drawnH) <= 1 && Math.abs(shownW - drawnW) <= 1,
+       'shown ' + shownW.toFixed(1) + 'x' + shownH.toFixed(1)
+       + ', drawn ' + drawnW.toFixed(1) + 'x' + drawnH.toFixed(1));
+  }
+
+  /* And the band of empty page under "drag a box": the two columns of the
+     top row were `align-items: start`, so the shorter one stopped and the
+     difference was blank. Only meaningful while the row IS two columns --
+     under 1150px it is deliberately one, and the harness window may well
+     be narrower than that. */
+  const topEl = D().querySelector('.dp-top');
+  const tracks = topEl ? ev('getComputedStyle(document.querySelector('
+                            + '".dp-top")).gridTemplateColumns') : '';
+  if (String(tracks).trim().split(/\s+/).length > 1) {
+    const pan = D().querySelector('.dp-panes');
+    const ans = D().querySelector('.dp-answer');
+    const ph = pan ? pan.getBoundingClientRect().height : 0;
+    const ah = ans ? ans.getBoundingClientRect().height : 0;
+    ok('the two top columns fill the same row, so neither leaves a band '
+       + 'of empty page', Math.abs(ph - ah) <= 2,
+       'panes ' + ph.toFixed(0) + 'px, answer ' + ah.toFixed(0) + 'px');
+  } else {
+    say('       (one column at this width; widening to check it)', 'dim');
+    /* The fault reported was on a wide monitor, and the harness window is
+       not one: the log takes 820 of 1600 and the frame is left under the
+       1150px the two-column layout needs. Rather than skip the check that
+       matters most, the log is squeezed and the frame given the room --
+       which exercises the resize path on the way. */
+    L.style.width = '150px';
+    /* Waited for, not slept through. The redraw is a ResizeObserver
+       notification and a 120 ms coalesce behind the layout, and a fixed
+       sleep here passed on one run and failed the next with the panel
+       drawn at exactly its old size -- which reads as the fix not working
+       rather than as the check being early. */
+    const fitted = (cv) => cv && Math.abs(cv.clientHeight - cv.height / dpr) <= 1
+                        && Math.abs(cv.clientWidth - cv.width / dpr) <= 1;
+    await until(() => fitted(D().getElementById('dpScatter')), 10000,
+                'the panel to redraw at its new size');
+    const t2 = ev('getComputedStyle(document.querySelector('
+                  + '".dp-top")).gridTemplateColumns');
+    ok('the top row is two columns once there is room for it',
+       String(t2).trim().split(/\s+/).length > 1, String(t2));
+    const pan = D().querySelector('.dp-panes');
+    const ans = D().querySelector('.dp-answer');
+    const ph = pan ? pan.getBoundingClientRect().height : 0;
+    const ah = ans ? ans.getBoundingClientRect().height : 0;
+    ok('and the two columns fill it, so neither leaves a band of empty '
+       + 'page under "drag a box"', ph > 0 && Math.abs(ph - ah) <= 2,
+       'panes ' + ph.toFixed(0) + 'px, answer ' + ah.toFixed(0) + 'px');
+    /* And the canvases again at the new size: this is where the blur was
+       reported, because the taller the row the more there was to stretch. */
+    for (const id of ['dpShank', 'dpScatter', 'dpProfile']) {
+      const cv = D().getElementById(id);
+      if (!cv) { ok(id + ' is on screen', false); continue; }
+      ok(id + ' is still drawn at the size it is shown, stretched',
+         fitted(cv),
+         'shown ' + cv.clientWidth + 'x' + cv.clientHeight
+         + ', drawn ' + (cv.width / dpr) + 'x' + (cv.height / dpr));
+    }
+    L.style.width = '';
+    await until(() => fitted(D().getElementById('dpScatter')), 10000,
+                'the panel to redraw back');
+  }
+
   say('');
   say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
   document.title = 'dspca: ' + pass + ' ok, ' + fail + ' fail';

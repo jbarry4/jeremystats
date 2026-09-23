@@ -15,6 +15,377 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.23.6 - The catalogue opens in under two seconds, and the board is a board
+
+### Fixed
+
+- **`/api/registry` took 8.6 seconds, and almost all of it was waiting.**
+  Reported as "loading times surged" and "event banks taking forever", and
+  measured before anything was changed with a new `tools/load_cost.py`.
+
+  `_opens()` -- the check that asks whether a folder will actually open,
+  rather than merely exist -- costs **71 ms a path** on this lab's drives,
+  and there are **417** reachable ones. Done one after another that is
+  about thirty seconds of a cold read, spent entirely on `listdir`. The
+  cache was never the problem: warm, the same sixty paths take 0.003 s.
+
+  It is I/O, so it parallelises. Sixteen threads fill the cache before the
+  tree is built, and every `summary()` then hits it.
+
+  | | before | after |
+  |---|---|---|
+  | `/api/registry` | 8.63 s | **1.58 s** |
+  | whole boot, in series | 11.25 s | **1.90 s** |
+  | `tree()` cold | 13.9 s | 3.6 s |
+  | `tree()` hot | -- | 0.55 s |
+
+  Worth recording what it was NOT: the 1.3 MB payload. `probes.state_of`
+  over all 766 records is 0.001 s and `project_flags` is 0.004 s -- together
+  0.0% of `summary()`. The instinct on a slow large response is to blame its
+  size, and it would have been the wrong search.
+
+- **The board was a grid.** Repeating gradients can only tile, so two sets
+  of evenly spaced parallel lines is the most they can express. A circuit
+  board is the opposite: traces leave a pad, run, turn at 45 degrees rather
+  than square, and stop -- different lengths, bundling into buses and
+  fanning out, mostly empty in between.
+
+  It is drawn now, as an inline SVG. Inline rather than a data URI is what
+  keeps the theming: a data URI cannot read a CSS variable, but an inline
+  `<svg>` inherits `currentColor`, so the traces are still gold on UVM Dark,
+  green on Phosphor and pink on Jirai -- and switching theme costs no
+  redraw.
+
+- **Every corner came out square.** The chamfer -- the 45-degree cut that is
+  the strongest visual signature of a board -- was bounded by
+  `Math.min(...)` over both components of each segment, and on an
+  axis-aligned segment one component is always zero. So every cut computed
+  to exactly 0 and the traces met at right angles, which is the one thing
+  they must not do. 0 of 20 traces had a 45-degree corner; now 20 of 20.
+
+### Changed
+
+- **The board is built on idle and never on the way in.** The DOM goes up
+  empty and the artwork arrives on `requestIdleCallback`, so the single
+  paint cannot land during boot, when every view is rendering, or during the
+  power-up, when the compositor is already busy. Nobody sees the difference:
+  the traces sit at 7% opacity and the power-up is covering the screen.
+
+  Bounded at about 230 elements on a large monitor -- every path is painted
+  twice, once faint and once inside the lit patch, and the harness holds the
+  ceiling. After that it costs nothing: no animation, no repaint, no layout.
+  Following the pointer is two composited transform writes a frame, so the
+  page underneath is never repainted.
+
+## 2026.09.23.5 - X-ray stops fighting the panel it lives in
+
+### Fixed
+
+- **The activity feed cycled "Reading…" for the whole of a read.** From a
+  348-window read: the Activity panel under X-ray filling with rows, going
+  blank, saying "Reading…", filling again, over and over until the read
+  finished.
+
+  The feed is the ToolKit's and it is mounted INTO the tool's own host,
+  `#tkResult`. X-ray's panel is redrawn by `render()`, which begins
+  `box.innerHTML = ''` — so every redraw destroyed the feed, the ToolKit's
+  watcher saw `.tf` missing and mounted a fresh one, and a fresh feed says
+  "Reading…" and fetches. The read poll calls that every 700 ms, so the
+  rows never had time to land before the next tick took them away, and it
+  was a request each time round.
+
+  This is the fault Braces had in 2026.09.16, arriving again in a tool
+  written after it was fixed. The ToolKit side coalesces remounts and
+  cannot do more than that, because a wiped feed does have to come back.
+  So both halves are fixed here:
+
+    * the read poll swaps the progress card where it stands instead of
+      rebuilding the panel around it, and
+    * `render()` lifts the feed out and puts it back — the same element,
+      so its rows, its poller and its listener all survive, and the
+      ToolKit never sees it missing at all.
+
+- **"Read from" could not be used after switching sets.** The version
+  picker went empty and the panel said "This set has no version 5", with
+  nothing to click that would put it right; the only way out was to pick a
+  different set and come back.
+
+  Two faults, one on each side. The panel fires a plan request per set and
+  the answers are not guaranteed back in the order they went out, so
+  switching sets while one was in flight left the PREVIOUS set's plan on
+  screen — and the picker is built from it. Choosing from that list then
+  asked this set for a version another set has. The plan requests are
+  numbered now, and a late answer to an old question is dropped.
+
+  And the server refused the impossible version before it built the list
+  of real ones, which is what made it a dead end rather than a mistake.
+  It answers now: the set's actual versions, the events as they are, and
+  a line saying which version was asked for and is not here.
+
+  A third, quieter one behind both: the picker's options carry a version's
+  ref and it was comparing them against a version's NAME, so the moment
+  anybody used it nothing was marked selected — the box showed the first
+  version while the panel held the one they chose.
+
+- **The PCA was blurry, and it got blurrier the bigger the monitor.** The
+  dots were vertical ellipses, which says it exactly: the scatter is
+  `flex: 1 1 auto` in a column its row stretches, so it was SHOWN at
+  whatever height the row had and DRAWN into a bitmap 268 css-pixels tall.
+  The browser scaled the difference. Canvases their box stretches are
+  measured now instead of being told their height — and measured by the
+  content box, because a 1px border made every one of them two pixels too
+  big for the box it went in.
+
+  With it, the thing that made it come back: the canvases were redrawn
+  when the WINDOW changed size, which misses every other reason the panel
+  changes shape — the rail collapsing, the top row going from two columns
+  to one. Measured in the harness: squeezing the log from 820px to 150px
+  left the scatter shown at 539x704 and drawn at 453x227.
+
+  A `ResizeObserver` catches those, but on the HOST it was flaky — passing
+  one run and failing the next with the panel drawn at exactly its old
+  size. `#tkResult` is the ToolKit's element, not ours, and an observer
+  left holding it after the ToolKit replaces it is holding a detached node
+  that never reports anything again. It watches the canvases instead,
+  which every draw rebuilds and every draw re-observes; and what it
+  actually checks is whether any picture is being SHOWN at a size it was
+  not DRAWN at. Asking the condition rather than trusting the
+  notification means a missed one is corrected by the next thing that
+  asks, and the observation a watcher delivers when it starts costs a
+  measurement rather than a redraw — so watching the canvases cannot make
+  them redraw each other forever.
+
+- **A band of empty page under "drag a box".** The two columns of the top
+  row were `align-items: start`, so the shorter one stopped and the
+  difference was blank — on a tall monitor, most of a screen of nothing.
+  Both boxes fill the row now and the slack goes into the two pictures
+  that can use it: the CSD you drag the box on, and the depth profile.
+
+### Changed
+
+- **A dragged box waits to be recomputed.** A fit over seven hundred
+  spikes is about a second of server — the feature matrix, the PCA, the
+  k-means, and then the mean CSD of every class over every event in the
+  set. Refitting on every release meant that the few goes it takes to get
+  a window right cost a few seconds of the panel rebuilding under the
+  pointer, three requests each time.
+
+  The rectangle moves at once, as it always did, and a bar says the box
+  has moved and what the answer below is still computed from. `Recompute`,
+  or Enter, runs it. `Put it back` returns to the box the answer belongs
+  to.
+
+  Only the drag. `1 sample`, `auto depth`, the column, the rule, the class
+  count and the two checkboxes are single deliberate clicks that each mean
+  one fit, and making those wait for a second click would be ceremony.
+
+- **The panel says what it is computing.** A second with nothing on screen
+  reads as a hang, and what fixes that is not a spinner but naming the
+  stage: "Fitting 712 spikes — features, PCA, classes and the class
+  means", then "Averaging the CSD of each class". It is swapped in place
+  rather than rendered, because rebuilding the panel to announce that it
+  is busy would be the most expensive possible way to say so — and it
+  would take the activity feed with it.
+
+### Checked
+
+- `web/_dev/dspca.html` grew from 79 checks to 106. The new ones drive the
+  real panel: a progress card ticking fourteen times without the feed
+  being torn down (node identity, not "a feed exists" — a remount leaves
+  one of those behind too, which is why this was invisible), a drag that
+  defers and a button that applies it, and every canvas measured against
+  the box it is drawn in, at the harness width and again with the log
+  squeezed so the two-column layout is exercised.
+
+## 2026.09.23.4 - The interface gets wiring
+
+### Added
+
+- **A surge that crosses the interface on the way on.** A wave leaves the
+  button and lights each part as it reaches it -- rail items, the view
+  head, the pane strip, the cards, the buttons. The propagation is real
+  rather than staged: every target is delayed by its own distance from the
+  button divided by a speed, so the order is whatever the layout actually
+  is and stays right when the window is resized or the rail is collapsed.
+  Measured on a full window: 40 halos, 26 ms to 337 ms.
+
+  Drawn in an overlay at each element's rectangle rather than by styling
+  the elements. Flashing a live button would animate its background -- a
+  repaint, per element, per frame -- and would fight whatever that
+  component already does with its own pseudo-elements. Capped at forty,
+  because a long scrolled page holds hundreds of cards and a hundred halos
+  is a hundred layers for the compositor to hold for a second.
+
+- **Circuit traces that stay, and light up under the pointer.** Faint runs
+  across the chrome while the mode is on, brighter where the cursor is,
+  with a ring where it clicks.
+
+  Built from gradients rather than an SVG, for one reason that matters: a
+  data URI cannot read a CSS variable, so its colour would be written down
+  once and be wrong in nine themes out of ten. The traces take `--accent`,
+  so they are gold on UVM Dark, green on Phosphor and pink on Jirai.
+
+  The lit patch carries the same pattern with `background-attachment:
+  fixed`, so the pattern stays registered to the viewport while the sprite
+  moves across it. Without that the runs would slide with the cursor and
+  read as a texture being dragged rather than as wiring being lit.
+
+### The two rules this had to obey
+
+- **It moves by `transform` and nothing else.** Written with `left`/`top`
+  it would relayout the layer and repaint everything underneath at pointer
+  rate -- in an application whose main view redraws canvases on every pan
+  frame. Pointer events are coalesced to one write per frame, because a
+  pointer reports at up to 1000 Hz and the screen redraws at 60.
+
+- **Nothing animates at rest.** `vaccquiet.html` walks every element and
+  both pseudo-elements and asserts no animation is running while no job is
+  live, because a permanent luminance lift in peripheral vision is how a
+  feature gets switched off and never switched back on. So the circuit
+  layer has no `animation` at all: it moves because a pointer moved it,
+  which stops when the pointer does. The click ripple is an animation and
+  removes itself; so does the surge.
+
+  Reduced motion keeps the traces and loses the movement -- the faint grid
+  is contrast, not motion. Pop-out panes opt out of all of it, as they
+  already do of the fired-up look.
+
+## 2026.09.23.3 - VACC Mode powers up
+
+### Added
+
+- **Turning VACC Mode on plays a power-up.** The fired-up look was a state;
+  this is the moment of change, in three beats: a charge that gathers toward
+  the button, a burst of rings and a sweep across the screen, then the rail
+  coming up last so the chrome looks like it is switching on rather than
+  like it was already lit. About a second, and it takes its colour from
+  `--accent`, so every theme powers up in its own: gold on UVM Dark, green
+  on Phosphor, pink on Jirai.
+
+  **It animates `opacity` and `transform` and nothing else**, which is a
+  correctness constraint rather than a preference. Xplorefinder redraws its
+  canvases every pan frame, so an animated `box-shadow`, `filter`, `width`
+  or `left` forces a repaint of everything behind it -- half a second of
+  celebration costing half a second of dropped frames in the one view
+  somebody might be dragging at the time. `vaccmorph.html` reads the
+  keyframes out of the stylesheet and asserts it, rather than sampling a
+  frame mid-flight, because the keyframes are the contract.
+
+  **The toggle plays it, and nothing else does.** `applyVacc` also runs at
+  boot, on the cross-window sync and on the preferences reconcile -- a morph
+  inside it would flare the screen every time the app starts or a second
+  window changes its mind. Turning the mode OFF plays nothing: leaving is
+  not an event.
+
+  **It removes itself two ways.** `animationend` normally, and a timer
+  regardless, because `animationend` does not fire in a background tab and a
+  fixed full-screen element left behind is invisible and sits over the
+  application for the rest of the session. `pointer-events: none` means it
+  would not swallow clicks even then, but "would do no harm" is not the same
+  as "is not there".
+
+  Reduced motion gets the state and not the show, and the pop-out windows
+  that already opt out of the fired-up look opt out of arriving at it too --
+  a pane popped out on its own exists to be looked at closely.
+
+## 2026.09.23.2 - The cluster account belongs on the profile
+
+### Changed
+
+- **The VACC account now lives on the profile**, under the name, the email
+  and the role. It is the same kind of fact as all of them: who this
+  computer is. The name says who it credits work to; the netid says who it
+  runs work *as*. Somebody setting a machine up should meet both once, in
+  one place, rather than discovering the second later behind a chip they had
+  no reason to press.
+
+- **Turning VACC Mode on for the first time opens the profile**, rather than
+  a sign-in box with no context around it. The prompt is then sitting in the
+  page that already answers "who is this computer", which is the question it
+  belongs to. Pop-out windows carry `BARRY` but not every view, so those
+  fall back to the standalone panel rather than being unable to offer
+  sign-in at all.
+
+- **Signed in and live are drawn as two things, because they are two
+  questions.** The account name says whether this computer has an account;
+  the dot says whether the cluster answered just now -- green for live,
+  hollow amber for signed in and silent, grey for neither.
+
+  A rig with no network is signed in and not live, and collapsing those into
+  one indicator would send somebody to re-enter a password that was never
+  the problem.
+
+- **The section is hidden while the form is showing somebody else.** It
+  describes the computer rather than the person being edited, and leaving it
+  on screen while filling in a colleague's details would read as though
+  their cluster account were being changed. Same rule, and the same reason,
+  as the device name.
+
+## 2026.09.23.1 - Signing in to VACC without knowing what SSH is
+
+### Changed
+
+- **Turning VACC Mode on now asks which account, there and then.** Signing
+  in used to be four steps nobody would guess: press VACC, notice the chip,
+  open the panel, find the button. The people who use this rig are
+  undergraduates who rotate through, and the SSH part is the least
+  transferable thing in the building -- so the moment somebody says they
+  want the cluster is the moment to ask.
+
+  Asked once per page load, not every time. Somebody who signed out on
+  purpose and is toggling the mode for the look gets asked once and then
+  left alone; restarting Jarvis offers again, which is right when the next
+  person at the keyboard is a different person.
+
+- **A password is only asked for when one is genuinely needed.** Jarvis now
+  tries the keys already on the machine against the account first -- about a
+  second each, and there are rarely more than two. On a rig where one person
+  set the cluster up and the rest of the lab takes turns, nobody after the
+  first is ever asked for anything but their netid.
+
+  That is a small security feature and not only a convenience: being asked
+  for a password by software that does not need one is how people learn to
+  type passwords into things that should not have them.
+
+  When no key works, the answer is a statement about what happens next --
+  "No key on this computer works for jbarry4 yet, so a password is needed
+  once to install one" -- naming the account, rather than a failure to walk
+  away from.
+
+- **The key picker is gone.** It offered the keys already on the machine and
+  asked a question nobody in this lab can answer: the undergraduates do not
+  know what an `id_ed25519` is, and the right answer was always "whichever
+  one works". The server tries them; the only question left is the one
+  everybody can answer, which is which account.
+
+- **The Duo wording is gone**, since VACC does not ask for it on an SSH
+  password login. The handling stays in the askpass helper as insurance --
+  it costs nothing and answers a factor prompt with a push if one ever
+  appears -- but the form no longer promises a push that will not arrive.
+
+### Added
+
+- **Sign out, and switch account.** The panel says who is signed in, which
+  on a shared rig is the line people actually need: four undergraduates take
+  turns and the one thing that is never obvious is whose account the last
+  job went to.
+
+  Signing out forgets the netid and the key path on this machine and
+  **nothing else**. It does not delete the key and does not touch the
+  cluster's `authorized_keys`, for two reasons: the key may be the one that
+  person uses from their own terminal, and removing the far-side entry needs
+  a working connection -- so a sign-out would fail exactly when somebody is
+  signing out because the connection is broken. Signing back in, as anyone,
+  then costs no password.
+
+### Fixed
+
+- **The sign-in panel reported the wrong key.** It always showed
+  `id_ed25519_jarvis_vacc` -- where Jarvis's own key *would* go -- even when
+  the machine was signed in with somebody's existing `id_ed25519`. Two
+  different questions sharing one answer, and the file it named may not even
+  exist. It now reports the key in use, with the other available separately.
+
 ## 2026.09.22.5 - The pictures get the screen
 
 ### Changed

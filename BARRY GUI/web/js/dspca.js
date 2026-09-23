@@ -74,6 +74,21 @@ BARRY.dspca = (function () {
      land. Without this the slow answer to an old box arrives last and wins,
      which shows a raster of a selection nobody has any more. */
   let picGen = 0;
+  /* The same guard, for the plan.
+
+     Switching sets while a plan is in flight left the OLD set's plan on
+     screen: `pickSet` fires one request per set and the answers are not
+     guaranteed to come back in the order they went out. The version picker
+     is built from `plan.versions`, so the list then belonged to the
+     previous set -- and choosing from it asked for a version this set does
+     not have, which is the "This set has no version 5" dead end. */
+  let planGen = 0;
+
+  /* The box has been dragged and the answer on screen is the previous
+     box's. See `onUp`. */
+  let dirty = false;
+  let fitting = false;         // a fit is in flight
+  let drawingWhat = null;      // which picture is being fetched, if any
   let busy = false;
   let dragging = null;  // a rubber band in progress
 
@@ -261,12 +276,26 @@ BARRY.dspca = (function () {
 
   async function refreshPlan() {
     if (!q.entry) { plan = null; render(); return; }
+    const mine = ++planGen;
+    let got;
     try {
-      plan = await apiPost('/api/dspca/plan', {
+      got = await apiPost('/api/dspca/plan', {
         entry_id: q.entry, from_version: q.from_version, refine: q.refine,
       });
     } catch (e) {
-      plan = { ok: false, error: e.message };
+      got = { ok: false, error: e.message };
+    }
+    // A newer set has been picked since this went out; its plan is the one
+    // that belongs on screen, and this one would replace it.
+    if (mine !== planGen) return;
+    plan = got;
+    /* What the server actually read from.
+
+       It falls back when the version asked for is not in this set, and
+       says so in `version_note`. Keeping the asked-for one would send the
+       same impossible request on every refresh from here on. */
+    if (plan && plan.ok && plan.version_note) {
+      q.from_version = plan.read_version || null;
     }
     if (plan && plan.ok) {
       q.gid = plan.entry.gid;
@@ -311,7 +340,7 @@ BARRY.dspca = (function () {
         got = await api('/api/cfc/job/' + job.id);
       } catch (e) { return; }         // a poll that missed; the next one will
       job = got.job || job;
-      if (job.status === 'running') { render(); return; }
+      if (job.status === 'running') { swap('.dp-job', progress()); return; }
       clearInterval(poll);
       poll = null;
       busy = false;
@@ -332,6 +361,22 @@ BARRY.dspca = (function () {
   /* ==================================================================
      The answer, and the pictures
      ================================================================== */
+
+  /* The box the pictures are drawn with.
+
+     While a drag is waiting to be recomputed this is the one in `q`, not
+     the one the fit on screen was computed from. The rectangle has to
+     follow the pointer -- a box that sprang back to where it was while the
+     numbers under it stayed put would read as the drag having failed. Once
+     the fit lands the two are the same thing again. */
+  function shownBox() {
+    if (dirty && q.sel_lo != null && q.sel_hi != null) {
+      return { lo: q.sel_lo, hi: q.sel_hi,
+               t_lo_ms: q.t_lo_ms, t_hi_ms: q.t_hi_ms };
+    }
+    return (fit && fit.ok && fit.box) || null;
+  }
+
   function fitBody(extra) {
     return Object.assign({
       gid: q.gid, read: q.read,
@@ -350,6 +395,13 @@ BARRY.dspca = (function () {
      that letting go feels instant. */
   const refit = debounce(async function refit_() {
     if (!q.read) return;
+    fitting = true;
+    /* Just the two lines that changed. Rebuilding the whole panel to say
+       "working" would be the most expensive possible way to say it, and it
+       would take the ToolKit's activity feed with it. */
+    const hadBusy = swap('.dp-busy', busyLine());
+    const hadBar = swap('.dp-applybar', applyBar());
+    if (!hadBusy || !hadBar) render();
     let got;
     try {
       got = await apiPost('/api/dspca/fit', fitBody());
@@ -358,10 +410,15 @@ BARRY.dspca = (function () {
          worth keeping on screen rather than toasting: it is a statement
          about the box that is still selected. */
       fit = { ok: false, error: e.message };
+      fitting = false;
+      dirty = false;
       render();
       return;
     }
     fit = got;
+    fitting = false;
+    // The answer on screen is this box's now.
+    dirty = false;
     /* What the server settled on, back into the form. The first fit has no
        box at all and the server chooses one from the event-triggered
        template; leaving `q` empty after that would mean the next drag
@@ -390,7 +447,7 @@ BARRY.dspca = (function () {
      `which` is a list of kinds; omitted means all of them, which is what a
      fresh read wants. */
   async function pictures(which) {
-    if (!q.read) return;
+    if (!q.read) { drawingWhat = null; tickBusy(); return; }
     const paneKind = picked == null ? 'shank' : 'event';
     const all = {
       traces: { what: 'traces', index: picked, gain: q.gain },
@@ -402,6 +459,8 @@ BARRY.dspca = (function () {
     for (const key of want) {
       const extra = all[key];
       if (!extra) continue;
+      drawingWhat = key;
+      tickBusy();
       try {
         const got = await apiPost('/api/dspca/raster',
                                   fitBody(Object.assign({ cmap: q.cmap },
@@ -416,12 +475,38 @@ BARRY.dspca = (function () {
         pics[key] = { ok: false, error: e.message };
       }
     }
+    if (mine === picGen) { drawingWhat = null; tickBusy(); }
   }
 
   /* ==================================================================
      The page
      ================================================================== */
+  /* The panel, rebuilt -- around the one thing in this host that is not
+     ours.
+
+     The ToolKit mounts its activity feed into `#tkResult`, the same element
+     this panel draws into. `innerHTML = ''` therefore destroyed it, the
+     ToolKit's watcher saw `.tf` was gone and mounted a fresh one, and that
+     one said "Reading..." and fetched. Every fit did it once and a running
+     read did it twice a second.
+
+     The feed is lifted out and put back rather than left to be rebuilt:
+     the same element, so its rows, its poller and its listener all survive
+     and the ToolKit never sees it missing. */
   function render() {
+    const box = host();
+    if (!box) return;
+    watchSize();
+    const feed = box.querySelector('.tf');
+    if (feed) box.removeChild(feed);
+    try {
+      paint_();
+    } finally {
+      if (feed) box.appendChild(feed);
+    }
+  }
+
+  function paint_() {
     const box = host();
     if (!box) return;
     box.innerHTML = '';
@@ -434,6 +519,37 @@ BARRY.dspca = (function () {
     if (!q.read) { box.appendChild(readCard()); return; }
     box.appendChild(workbench());
     requestAnimationFrame(() => { drawAll(); });
+  }
+
+  /* A tick of a running read, without rebuilding the panel.
+
+     `render()` empties the host and appends a fresh tree. That is right
+     when the answer changes and wrong twice a second while a read is
+     running, because the host is not ours alone: the ToolKit mounts its
+     activity feed into the same element. Wiping it took the feed with it,
+     the ToolKit's watcher saw `.tf` gone and mounted a new one, and that
+     one said "Reading..." and fetched -- so for the whole of a long read
+     the feed cycled: Reading..., rows, gone, Reading..., rows, gone. On a
+     348-window read it never once finished arriving, and it was a request
+     every time round.
+
+     This is the same fault the Braces read had, arriving again in a tool
+     written after it was fixed. The ToolKit side coalesces remounts; it
+     cannot stop them, because a wiped feed does have to come back. The
+     half that has to live here is not wiping it: the progress card is
+     swapped for a fresh one where it stands, and everything else in the
+     host -- the feed included -- is left where it is.
+
+     A card that is not on screen is not redrawn. Either the tool has been
+     left or the batch card is deliberately shut, and rebuilding the host
+     to discover that is the thing being fixed. The next change of state
+     calls `render()` in full anyway. */
+  function swap(sel, node) {
+    const box = host();
+    const old = box && node ? box.querySelector(sel) : null;
+    if (!old) return false;
+    old.replaceWith(node);
+    return true;
   }
 
   /* ---------- the bulk queue ----------
@@ -570,7 +686,10 @@ BARRY.dspca = (function () {
       try { got = await api('/api/cfc/job/' + bulk.job.id); }
       catch (e) { return; }
       bulk.job = got.job || bulk.job;
-      if (bulk.job.status === 'running') { render(); return; }
+      if (bulk.job.status === 'running') {
+        swap('.dp-bulk-card', bulkCard());
+        return;
+      }
       clearInterval(bulk.poll);
       bulk.poll = null;
       const done = bulk.job;
@@ -628,7 +747,14 @@ BARRY.dspca = (function () {
       onchange: (e) => { q.from_version = e.target.value || null;
                          q.read = null; fit = null; refreshPlan(); },
     }, vers.map((v) => el('option', {
-      value: v.ref, selected: String(v.name) === String(q.from_version) || null,
+      /* Marked by EITHER name. `pickSet` starts from a version's number and
+         this select hands back its ref, so comparing against one of them
+         left nothing selected the moment somebody used the picker -- the
+         box then showed the first version while `q.from_version` held the
+         one they chose. */
+      value: v.ref,
+      selected: (String(v.ref) === String(q.from_version)
+                 || String(v.name) === String(q.from_version)) || null,
       disabled: !v.usable || null,
       text: 'v' + v.name + '  ·  ' + v.n + (v.aligned ? '  · aligned' : '')
             + (v.usable ? '' : '  · ' + (v.why_not || 'not readable here')),
@@ -639,6 +765,11 @@ BARRY.dspca = (function () {
         el('label', { class: 'dp-lab', text: 'Set' }), sel,
         el('label', { class: 'dp-lab', text: 'Read from' }), vsel,
       ]),
+      plan && plan.ok && plan.version_note
+        ? el('p', { class: 'hint dp-warn', text:
+            plan.version_note + ' Reading the events as they are now — pick '
+            + 'a version above if you wanted a different one.' })
+        : null,
       s && !s.newest_aligned_name ? el('p', { class: 'hint dp-warn', text:
         'Nothing in this set has been through Braces. Every feature here is '
         + 'read at one instant relative to the stamp, so stamps that are a '
@@ -740,6 +871,8 @@ BARRY.dspca = (function () {
      at after the box is right rather than while setting it. */
   function workbench() {
     return el('div', {}, [
+      busyLine(),
+      applyBar(),
       statusStrip(),
       el('div', { class: 'dp-top' }, [
         el('div', { class: 'dp-col dp-panes' }, panes()),
@@ -750,6 +883,83 @@ BARRY.dspca = (function () {
         el('div', { class: 'dp-col dp-pca' }, pcaPane()),
       ]),
     ]);
+  }
+
+  /* What the panel is doing, while it is doing it.
+
+     A fit over seven hundred spikes is about a second of server: the
+     feature matrix, the PCA, the k-means and then the mean CSD of every
+     class over every event in the set. A second of nothing reads as a
+     hang, and the thing that fixes that is not a spinner but naming the
+     stage -- "fitting 712 spikes" is a wait somebody understands.
+
+     It is in the tree even when there is nothing to say, so that it can be
+     swapped in place. Rebuilding the panel to show that it is busy would
+     be the most expensive way possible to say so, and it would take the
+     activity feed with it. */
+  const PIC_WORDS = {
+    traces: 'Drawing the voltage traces',
+    pane: 'Drawing the CSD',
+    classes: 'Averaging the CSD of each class',
+  };
+
+  function busyLine() {
+    const n = (plan && plan.ok && plan.stamps && plan.stamps.n) || null;
+    const what = fitting
+      ? ('Fitting' + (n ? ' ' + n + ' spikes' : '')
+         + ' — features, PCA, classes and the class means')
+      : (drawingWhat ? (PIC_WORDS[drawingWhat] || 'Drawing') : null);
+    if (!what) return el('div', { class: 'dp-busy' });
+    return el('div', { class: 'dp-busy on' }, [
+      el('div', { class: 'spinner' }),
+      el('span', { class: 'hint', text: what + '…' }),
+    ]);
+  }
+
+  function tickBusy() {
+    swap('.dp-busy', busyLine());
+  }
+
+  /* A box that has moved, and nothing recomputed yet.
+
+     Dragging used to refit on every release, and a fit is a second: a few
+     adjustments to get the window right meant a few seconds of the whole
+     panel being rebuilt under the pointer, three requests each time. The
+     drag now sets the box and says so; the answer is recomputed when it is
+     asked for.
+
+     Only the drag. `1 sample`, `auto depth`, the rule, the class count and
+     the two checkboxes are single deliberate clicks that each mean one
+     fit, and making those wait for a second click would be ceremony. */
+  function applyBar() {
+    if (!dirty) return el('div', { class: 'dp-applybar' });
+    const b = shownBox() || {};
+    return el('div', { class: 'card dp-applybar on' }, [
+      el('strong', { text: 'The box has moved' }),
+      el('span', { class: 'hint', text:
+        'CSC' + b.lo + '–' + b.hi + '  ·  ' + fmtMs(b.t_lo_ms)
+        + ' to ' + fmtMs(b.t_hi_ms)
+        + '  ·  the answer below is still the previous box’s' }),
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn small', text: 'Put it back',
+                     disabled: fitting || null, onclick: revertBox }),
+      el('button', { class: 'btn primary', text:
+                     fitting ? 'Recomputing…' : 'Recompute  ↵',
+                     disabled: fitting || null,
+                     title: 'Or press Enter.',
+                     onclick: () => refit() }),
+    ]);
+  }
+
+  /* Back to the box the answer on screen was computed from. */
+  function revertBox() {
+    const b = (fit && fit.ok && fit.box) || null;
+    if (b) {
+      q.sel_lo = b.lo; q.sel_hi = b.hi;
+      q.t_lo_ms = b.t_lo_ms; q.t_hi_ms = b.t_hi_ms;
+    }
+    dirty = false;
+    render();
   }
 
   /* The whole question, on one line, over the columns that set it.
@@ -793,7 +1003,7 @@ BARRY.dspca = (function () {
      column. What is on screen is the question; the reasons are one hover
      away. */
   function controls() {
-    const b = (fit && fit.ok && fit.box) || {};
+    const b = shownBox() || {};
     const out = [];
 
     // The box reads off the strip above the columns; here are only the two
@@ -1281,14 +1491,40 @@ BARRY.dspca = (function () {
     return cols[(c - 1) % cols.length];
   }
 
-  function sized(id, h) {
+  /* A canvas, with a backing store that matches the box it is drawn in.
+
+     `fill` is for the canvases their column STRETCHES. `.dp-pca .dp-canvas`
+     and the CSD pane are `flex: 1 1 auto`, so the spare height of the row
+     goes into them -- and a backing store built for the height we asked
+     for was then stretched by the browser to the height it actually got.
+     That is what made the PCA look low resolution: the dots were drawn as
+     circles into a 268px bitmap and shown 400px tall, so they arrived as
+     furry vertical ellipses, and every label with them.
+
+     So the height is MEASURED when the box decides it, and imposed only
+     when it does not. Measuring first and writing the same number back is
+     not a layout loop: the value written is the one already computed. */
+  function sized(id, h, fill) {
     const cv = document.getElementById(id);
     if (!cv) return null;
+    if (!fill) cv.style.height = h + 'px';
+    /* The CONTENT box, which is what `clientHeight` is and what
+       `getBoundingClientRect` is not.
+
+       Every one of these canvases has a 1px border. Measuring the outside
+       and then drawing that many pixels INSIDE makes a bitmap two pixels
+       too big for the box it is shown in, and the browser scales the
+       difference -- the same fault as the one above, two pixels instead of
+       a hundred and thirty. Measured: shown 455x235, drawn 453x233. */
+    const got = cv.clientHeight;
+    // Nothing laid out yet: draw the asked-for height rather than a
+    // zero-pixel canvas, and come back on the next draw.
+    if (got > 60) h = got;
+    else if (fill) { cv.style.height = h + 'px'; h = cv.clientHeight || h; }
     const w = cv.clientWidth || 320;
     const dpr = window.devicePixelRatio || 1;
     cv.width = Math.round(w * dpr);
     cv.height = Math.round(h * dpr);
-    cv.style.height = h + 'px';
     const g = cv.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
@@ -1301,6 +1537,7 @@ BARRY.dspca = (function () {
     drawScatter();
     drawProfile();
     drawClasses();
+    watchSize();
   }
 
   const PAD = { l: 34, r: 8, t: 6, b: 18 };
@@ -1320,15 +1557,16 @@ BARRY.dspca = (function () {
     const lo = ns[0] - d.gain, hi = ns[ns.length - 1] + d.gain;
     const X = (i) => PAD.l + (i / (d.t_ms.length - 1)) * (s.w - PAD.l - PAD.r);
     const Y = (v) => PAD.t + ((v - lo) / (hi - lo)) * (s.h - PAD.t - PAD.b);
-    const inBox = (n) => fit && fit.ok && n >= fit.box.lo && n <= fit.box.hi;
+    const bx = shownBox();
+    const inBox = (n) => !!bx && n >= bx.lo && n <= bx.hi;
 
     // The time window the features come from, shaded on the trace panel too:
     // the box is a fact about both pictures.
-    if (fit && fit.ok) {
+    if (bx) {
       s.g.fillStyle = k.accent;
       s.g.globalAlpha = 0.12;
-      const a = XofMs(fit.box.t_lo_ms, d.t_ms, s.w);
-      const b = XofMs(fit.box.t_hi_ms, d.t_ms, s.w);
+      const a = XofMs(bx.t_lo_ms, d.t_ms, s.w);
+      const b = XofMs(bx.t_hi_ms, d.t_ms, s.w);
       s.g.fillRect(a, PAD.t, Math.max(1.5, b - a), s.h - PAD.t - PAD.b);
       s.g.globalAlpha = 1;
     }
@@ -1367,7 +1605,7 @@ BARRY.dspca = (function () {
 
   /* The CSD raster, and the thing you drag on. */
   function drawShank() {
-    const s = sized('dpShank', 330);
+    const s = sized('dpShank', 330, true);
     const d = pics.pane;
     if (!s || !d || !d.ok) return;
     const k = ink();
@@ -1380,11 +1618,12 @@ BARRY.dspca = (function () {
     GEOM.shank = s.shankGeom;
 
     // The box, ruled on the picture rather than described under it.
-    if (fit && fit.ok) {
-      const bx0 = x0 + frac(fit.box.t_lo_ms, d.extent) * pw;
-      const bx1 = x0 + frac(fit.box.t_hi_ms, d.extent) * pw;
-      const by0 = y0 + ((fit.box.lo - 0.5 - d.lo) / (d.hi - d.lo + 1)) * ph;
-      const by1 = y0 + ((fit.box.hi + 0.5 - d.lo) / (d.hi - d.lo + 1)) * ph;
+    const bx = shownBox();
+    if (bx) {
+      const bx0 = x0 + frac(bx.t_lo_ms, d.extent) * pw;
+      const bx1 = x0 + frac(bx.t_hi_ms, d.extent) * pw;
+      const by0 = y0 + ((bx.lo - 0.5 - d.lo) / (d.hi - d.lo + 1)) * ph;
+      const by1 = y0 + ((bx.hi + 0.5 - d.lo) / (d.hi - d.lo + 1)) * ph;
       s.g.strokeStyle = '#ffffff';
       s.g.lineWidth = 1.6;
       s.g.strokeRect(bx0, by0, Math.max(2, bx1 - bx0), by1 - by0);
@@ -1634,7 +1873,7 @@ BARRY.dspca = (function () {
      show that event -- the check that separates a type from a line drawn
      through a cloud. */
   function drawScatter() {
-    const s = sized('dpScatter', 268);
+    const s = sized('dpScatter', 268, true);
     if (!s || !fit || !fit.ok) return;
     const k = ink();
     const evs = fit.events || [];
@@ -1688,7 +1927,7 @@ BARRY.dspca = (function () {
      loud and quiet, which is a badly placed box sorting events by
      amplitude. */
   function drawProfile() {
-    const s = sized('dpProfile', 322);
+    const s = sized('dpProfile', 322, true);
     if (!s || !fit || !fit.ok) return;
     const k = ink();
     const ps = (fit.profiles || []).filter((p) => p.n);
@@ -1904,7 +2143,12 @@ BARRY.dspca = (function () {
     if (hi - lo < 2) hi = lo + 2;
     q.sel_lo = Math.max(g.lo, lo);
     q.sel_hi = Math.min(g.hi, hi);
-    refit();
+    /* Set, and NOT recomputed. See `applyBar`: a fit is a second of server
+       and getting a window right takes several goes. The rectangle moves
+       now -- `shownBox` draws the pending one -- and the answer follows
+       when it is asked for. */
+    dirty = true;
+    render();
   }
 
   function onScatterClick(e) {
@@ -1968,7 +2212,8 @@ BARRY.dspca = (function () {
     if (!q.read || !fit || !fit.ok) return;
     const tag = (document.activeElement || {}).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    if (e.key === 'ArrowRight' || e.key === 'n') step(+1);
+    if (e.key === 'Enter' && dirty && !fitting) refit();
+    else if (e.key === 'ArrowRight' || e.key === 'n') step(+1);
     else if (e.key === 'ArrowLeft' || e.key === 'p') step(-1);
     else if (e.key === 'Escape') {
       picked = null; render(); pictures(['traces', 'pane']);
@@ -1987,9 +2232,84 @@ BARRY.dspca = (function () {
     if (e.target && e.target.id === 'dpScatter') onScatterClick(e);
   });
   document.addEventListener('keydown', onKey);
-  window.addEventListener('resize', debounce(() => {
-    if (q.read && fit) drawAll();
-  }, 120));
+  /* Redraw when the PANEL changes size, not only when the window does.
+
+     Every canvas here takes its bitmap from the box it is drawn in, so
+     anything that changes that box has to redraw it or the browser shows
+     one size stretched to another -- which is the whole of "the PCA is
+     blurry". A window listener catches a window being dragged and misses
+     every other cause: the rail collapsing, the top row going from two
+     columns to one, a panel opening beside it.
+
+     Measured in `web/_dev/dspca.html`: squeezing the harness log from
+     820px to 150px left the scatter shown at 539x704 and drawn at
+     453x227. The window never changed size, so nothing redrew.
+
+     The host outlives every render; the canvases inside it do not, so it
+     is the host that is watched. */
+  let sizeWatch = null;
+  let sizeWatched = null;
+  let redrawSoon = null;
+  let redrawing = false;
+
+  const CANVAS_IDS = ['dpTraces', 'dpShank', 'dpScatter', 'dpProfile',
+                      'dpClasses'];
+
+  /* Is any picture being shown at a size it was not drawn at?
+
+     The condition, asked directly, rather than "did something resize".
+     Two things fall out of that. A notification that changed nothing --
+     including the one a ResizeObserver delivers the moment it starts
+     watching -- costs a measurement and no redraw, so watching the
+     canvases cannot make them redraw forever. And a resize this code
+     never heard about still gets corrected the next time anything asks,
+     which is what stops one missed notification leaving the panel blurry
+     until it is reopened. */
+  function mismatched() {
+    const dpr = window.devicePixelRatio || 1;
+    for (const id of CANVAS_IDS) {
+      const cv = document.getElementById(id);
+      if (!cv || !cv.width || !cv.clientWidth) continue;
+      if (Math.abs(cv.clientWidth - cv.width / dpr) > 1
+          || Math.abs(cv.clientHeight - cv.height / dpr) > 1) return true;
+    }
+    return false;
+  }
+
+  function onBoxResize() {
+    if (redrawing || redrawSoon) return;
+    redrawSoon = setTimeout(() => {
+      redrawSoon = null;
+      if (!q.read || !fit || !mismatched()) return;
+      redrawing = true;
+      try { drawAll(); } finally { redrawing = false; }
+    }, 120);
+  }
+
+  /* The canvases, not the host.
+
+     Watching the host meant watching ONE element, and `#tkResult` is not
+     ours -- when the ToolKit replaces it the observer is left holding a
+     detached node, which never reports anything again. That is why the
+     redraw worked on one harness run and not the next. The canvases are
+     rebuilt by every render, so they are re-observed by every draw, and
+     `disconnect` drops the previous set rather than accumulating it. */
+  function watchSize() {
+    if (typeof ResizeObserver !== 'function') return;
+    if (!sizeWatch) sizeWatch = new ResizeObserver(onBoxResize);
+    sizeWatch.disconnect();
+    const h = host();
+    if (h) sizeWatch.observe(h);
+    for (const id of CANVAS_IDS) {
+      const cv = document.getElementById(id);
+      if (cv) sizeWatch.observe(cv);
+    }
+    sizeWatched = h;
+  }
+
+  // Still listened for, because a browser without ResizeObserver would
+  // otherwise never redraw at all. Both go through the same coalesce.
+  window.addEventListener('resize', onBoxResize);
 
   function fmtMs(v) {
     return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10) + ' ms';
@@ -2033,6 +2353,37 @@ BARRY.dspca = (function () {
       saveGuide(csc, undefined, id);
       return true;
     },
+    /* A read in progress, and a tick of it, without a read.
+
+       The flicker this pair checks only shows while a job is running, and
+       a real one is minutes of disk. These put the panel in exactly the
+       state the poll puts it in -- `job` set, the progress card drawn by
+       the same `render()` -- and then run the running branch of `watch`
+       itself, so what the harness drives is the path, not a copy of it. */
+    _fakeJob: (st) => {
+      job = { id: 'harness', status: 'running',
+              stages: [Object.assign({ done: 0, of: 348, unit: 'windows' },
+                                     st || {})] };
+      render();
+    },
+    _tick: (st) => {
+      if (!job) return false;
+      job.stages = [Object.assign({}, (job.stages || [])[0], st || {})];
+      return swap('.dp-job', progress());
+    },
+    _endJob: () => { job = null; render(); },
+    /* A box drag, without a pointer.
+
+       The tail of `onUp` rather than a reimplementation of it: the same
+       deferral, the same redraw. `_box` is the other half -- set a box AND
+       recompute, which is what a drag followed by the Recompute button
+       does. */
+    _dragBox: (lo, hi, a, b) => {
+      q.sel_lo = lo; q.sel_hi = hi; q.t_lo_ms = a; q.t_hi_ms = b;
+      dirty = true;
+      render();
+    },
+    _dirty: () => dirty,
     _reset: () => { cands = null; plan = null; fit = null; q.read = null;
                     q.entry = null; picked = null; pics = {}; },
   };

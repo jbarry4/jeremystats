@@ -1921,6 +1921,127 @@ BARRY.profile = (function () {
       ].filter(Boolean));
     };
 
+    /* ==================================================================
+       The cluster account
+       ==================================================================
+       Same kind of fact as the fields above: who this computer is. The
+       name and email say who it credits work to; the netid says who it
+       runs work AS. Somebody setting a machine up should meet both once,
+       in one place, rather than finding the second later behind a chip
+       they had no reason to press.
+
+       Deliberately outside `mineOnly`'s hide-when-editing rule in one
+       respect: it describes the COMPUTER, not the person in the form, so
+       editing somebody else's details must not make it look as though
+       their cluster account is being changed. It is hidden in those modes
+       for exactly that reason.
+
+       Live is drawn separately from signed in, because they are different
+       questions and only one of them is about the person. Signed in means
+       there is an account here; live means the cluster answered. A rig
+       with no network is signed in and not live, and saying "not signed
+       in" for that would send somebody to re-enter a password that was
+       never the problem. */
+    const vaccBox = el('div', { class: 'prof-vacc' });
+    mineOnly.push(vaccBox);
+
+    const paintVaccBox = (st) => {
+      vaccBox.innerHTML = '';
+      vaccBox.appendChild(el('div', { class: 'section-label',
+                                      text: 'VACC account' }));
+
+      if (!BARRY.vacc) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+          text: 'The cluster module is not loaded in this window.' }));
+        return;
+      }
+      if (st === undefined) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+                                      text: 'Asking\u2026' }));
+        return;
+      }
+      if (st && st.have_ssh === false) {
+        /* Nothing below can work, so nothing below is offered. The same
+           rule the sign-in panel follows: a missing capability is stated
+           once rather than discovered by every button failing. */
+        vaccBox.appendChild(el('p', { class: 'warn-line',
+          text: 'There is no ssh client on this computer, so it cannot '
+              + 'reach the cluster at all. On Windows it is "OpenSSH '
+              + 'Client" under Settings \u203a Optional features.' }));
+        return;
+      }
+
+      const d = (BARRY.vacc.last) || {};
+      const signedIn = !!(st && st.configured);
+      const live = !!d.available;
+
+      vaccBox.appendChild(el('p', { class: 'prof-vacc-state' }, [
+        el('span', { class: 'vacc-dot ' + (signedIn ? (live ? 'live' : 'idle')
+                                                    : 'off') }),
+        el('strong', { text: signedIn ? (st.netid || '?') : 'Not signed in' }),
+        el('span', { class: 'hint', text: signedIn
+          ? (live ? '\u00b7 the cluster answered just now'
+                  : '\u00b7 ' + (d.why || 'not reachable from here right now'))
+          : '\u00b7 this computer cannot run anything on VACC yet' }),
+      ]));
+
+      vaccBox.appendChild(el('p', { class: 'hint', style: 'max-width:62ch',
+        text: signedIn
+          ? 'Jobs from this computer run as ' + (st.netid || '?')
+            + ' and their output lands in that account\u2019s space. '
+            + 'Switching asks for a password only if this computer has '
+            + 'never connected to the other account.'
+          : 'All it needs is your UVM NetID \u2014 the part of your email '
+            + 'before the @. A password is asked for once, only if none of '
+            + 'the keys already on this computer work for that account.' }));
+
+      const acts = el('div', { class: 'vacc-actions' });
+      acts.appendChild(el('button', {
+        class: signedIn ? 'btn ghost sm' : 'btn',
+        text: signedIn ? 'Switch account\u2026' : 'Set up VACC\u2026',
+        onclick: () => {
+          /* Closes this first. The sign-in panel is a modal and
+             `showModal` stacks, so opening it over the profile would put
+             the profile back underneath afterwards -- which reads as the
+             form reopening itself. */
+          closeModal();
+          BARRY.vacc.showSignIn();
+        },
+      }));
+      if (signedIn) {
+        acts.appendChild(el('button', {
+          class: 'btn ghost sm', text: 'Sign out',
+          title: 'Forget this account on this computer. The key is left '
+               + 'alone, here and on the cluster \u2014 signing back in, as '
+               + 'anyone, asks for no password.',
+          onclick: async () => {
+            await BARRY.vacc.signOut();
+            loadVaccState();
+          },
+        }));
+      }
+      vaccBox.appendChild(acts);
+    };
+
+    const loadVaccState = () => {
+      paintVaccBox(undefined);
+      if (!BARRY.vacc) { paintVaccBox(null); return; }
+      api('/api/vacc/signin/state')
+        .then((st) => {
+          paintVaccBox(st);
+          /* The status is a separate question from the account, and it is
+             what makes the dot mean anything. Asked after, so the box is
+             on screen while the cluster is being reached. */
+          if (st && st.configured) {
+            BARRY.vacc.status().then(() => paintVaccBox(st)).catch(() => {});
+          }
+        })
+        .catch(() => paintVaccBox(null));
+    };
+    loadVaccState();
+
+    const vaccSection = () => vaccBox;
+
     const modeLine = el('p', { class: 'prof-mode' });
 
     const paintMode = () => {
@@ -2187,6 +2308,14 @@ BARRY.profile = (function () {
       roleField(),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
+      /* The cluster account, here rather than in a panel of its own.
+
+         It is the same kind of fact as everything above it: who this
+         computer is. The name and email say who it credits work to; the
+         netid says who it runs work as. Somebody setting up a machine
+         should meet both in one place and once, rather than discovering
+         the second one later behind a chip they had no reason to click. */
+      vaccSection(),
     ]);
 
     const save = el('button', {
@@ -2719,6 +2848,103 @@ function paintFavicon() {
    button for a job still running on a shared cluster. What the cluster can
    do is `/api/vacc/status`; this is only what it looks like while it does it.
    ========================================================================== */
+/* The power-up.
+
+   Played when somebody TURNS IT ON, and only then. Deliberately not inside
+   `applyVacc`: that is also called at boot, by the cross-window sync, and
+   by the preferences reconcile, and a morph on any of those means the
+   screen flares every time the app starts or a second window changes its
+   mind. The toggle knows a person pressed it; nothing else does.
+
+   Three beats -- charge, burst, settle -- over about a second. Everything
+   animates opacity and transform only; see the note in app.css for why
+   that is a correctness constraint here rather than a preference.
+
+   Cleans itself up two ways. `animationend` is the normal one, but it does
+   not fire in a background tab, so a timer removes the node regardless: a
+   fixed, full-screen element left behind would be invisible and would sit
+   over the application for the rest of the session. `pointer-events: none`
+   means it would not swallow clicks even then, but "would not do harm" is
+   not the same as "is not there".
+*/
+function vaccMorph(fromEl) {
+  try {
+    if (window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    if (document.body.classList.contains('solo-window')
+        || document.body.classList.contains('aid-window')) {
+      return;
+    }
+    // Only one at a time: a double click should not stack two of these.
+    const old = document.getElementById('vaccMorph');
+    if (old) old.remove();
+
+    /* Centred on whatever was pressed, so the burst comes out of the
+       control rather than out of the middle of the screen. Falls back to
+       the rail foot, which is where the toggle lives. */
+    const src = fromEl || document.getElementById('vaccToggle');
+    let x = 28, y = window.innerHeight - 60;
+    if (src && src.getBoundingClientRect) {
+      const r = src.getBoundingClientRect();
+      if (r.width || r.height) {
+        x = r.left + r.width / 2;
+        y = r.top + r.height / 2;
+      }
+    }
+
+    const node = el('div', { id: 'vaccMorph' }, [
+      el('div', { class: 'vm-charge' }),
+      el('div', { class: 'vm-sweep' }),
+      el('div', { class: 'vm-bloom' }),
+      el('div', { class: 'vm-ring' }),
+      el('div', { class: 'vm-ring two' }),
+    ]);
+    node.style.setProperty('--vm-x', x + 'px');
+    node.style.setProperty('--vm-y', y + 'px');
+    document.body.appendChild(node);
+
+    /* The rail comes up last, so the chrome looks like it is powering on
+       rather than like it was already lit. One class, removed with the
+       overlay. */
+    const rail = document.getElementById('rail');
+    if (rail) rail.classList.add('vm-lit');
+
+    /* And the surge across the interface, from the same origin. A separate
+       module because it is a different job -- the morph is the flash, this
+       is the wave that reaches each part in turn -- and because they fail
+       independently: a surge that throws must not stop the flash, and
+       neither must stop the mode coming on. */
+    if (BARRY.vaccfx && BARRY.vaccfx.surge) {
+      try { BARRY.vaccfx.surge({ x: x, y: y }); } catch (e2) { /* decoration */ }
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      node.remove();
+      if (rail) rail.classList.remove('vm-lit');
+    };
+    node.addEventListener('animationend', (e) => {
+      // The last beat, not the first to finish.
+      if (e.target && e.target.classList.contains('two')) finish();
+    });
+    setTimeout(finish, 1600);
+  } catch (e) {
+    /* A decoration must never be able to stop the mode from turning on.
+       If anything here throws, the cluster still comes on and the only
+       thing lost is the flourish. */
+    try {
+      const n = document.getElementById('vaccMorph');
+      if (n) n.remove();
+      const r = document.getElementById('rail');
+      if (r) r.classList.remove('vm-lit');
+    } catch (e2) { /* nothing left to do */ }
+  }
+}
+
 function applyVacc(on, remember) {
   on = !!on;
   BARRY.state.vacc = on;
@@ -2743,6 +2969,17 @@ function applyVacc(on, remember) {
       BARRY.prefs.set('vacc', all);
     }
   }
+  /* The wiring follows the mode, not the gesture.
+
+     Unlike the power-up, this one DOES belong on every path into
+     `applyVacc`: at boot, on the cross-window sync and on the preferences
+     reconcile, because it is part of what the mode looks like rather than
+     a celebration of arriving at it. A window that came up with the mode
+     already on should already be wired. */
+  if (BARRY.vaccfx && BARRY.vaccfx.circuit) {
+    try { BARRY.vaccfx.circuit(on); } catch (e) { /* decoration */ }
+  }
+
   // Same three surfaces as a theme change: the tokens moved, and anything
   // holding a color it read earlier is now holding the wrong one.
   repaintThemedSurfaces();
@@ -3209,8 +3446,25 @@ BARRY.init = async function init() {
   const vaccBtn = $('#vaccToggle');
   if (vaccBtn) {
     vaccBtn.addEventListener('click', () => {
-      applyVacc(!BARRY.state.vacc);
+      const on = !BARRY.state.vacc;
+      applyVacc(on);
       BARRY.activity.log('vacc.mode', { on: BARRY.state.vacc });
+      /* Turning it on with nobody signed in asks, there and then.
+
+         Signing in used to be four steps nobody would guess: press VACC,
+         notice the chip, open the panel, find the button. Undergraduates
+         rotate through this rig and the SSH part is the least transferable
+         thing in the building -- so the moment somebody says they want the
+         cluster is the moment to ask which account, rather than leaving
+         them to discover that the mode they just switched on does nothing.
+
+         Only on the way ON, and only when there is no account here. A
+         person who signed out on purpose and is toggling the look gets
+         asked once, not every time. */
+      if (on) vaccMorph(vaccBtn);
+      if (on && BARRY.vacc && BARRY.vacc.offerSignIn) {
+        BARRY.vacc.offerSignIn();
+      }
     });
   }
 
