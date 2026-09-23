@@ -9276,7 +9276,6 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-intro > p { max-width: 78ch; }
 .dp-load { display: flex; align-items: center; gap: var(--sp-10); }
 .dp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
-.dp-lab { font-size: var(--fs-11); color: var(--text-3); }
 .dp-choose select { min-width: 180px; }
 .dp-plan { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: 8px; }
 
@@ -9603,12 +9602,16 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 }
 /* A heading and the thing it names belong together, not evenly spaced
-   between the group above and the group below. */
-.dp-controls > .section-label { margin-top: var(--sp-8) !important;
-                                margin-bottom: 0; }
-.dp-controls > .section-label:first-child { margin-top: 0 !important; }
-.dp-controls > .section-label { grid-column: 1 / -1; margin-top: 8px; }
-.dp-controls > .section-label:first-child { margin-top: 0; }
+   between the group above and the group below. Eight groups in one strip,
+   so the house 22px between them would be most of the column.
+
+   ONE rule, not two. There were two of these -- the original, and a
+   second I added above it a few lines later instead of editing this one,
+   which is the exact fault this pass exists to remove and which I then
+   went and committed. `8px` is `--sp-8`, so the merge changes nothing. */
+.dp-controls > .section-label {
+  grid-column: 1 / -1; margin-top: var(--sp-8); margin-bottom: 0;
+}
 .dp-controls > .dp-rules { grid-column: 1 / -1; display: grid;
   gap: var(--sp-2) var(--sp-8);
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

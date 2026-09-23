@@ -29,10 +29,15 @@
     "schema": "2026-09-04T15:57:01.684883+00:00",
     "session": "2026-09-04T15:57:01.684883+00:00",
     "start": "2026-09-04T15:57:01.684883+00:00",
-    "updated": "2026-09-09T05:55:50.917627+00:00"
+    "updated": "2026-09-23T18:07:11.072390+00:00",
+    "view_state": "2026-09-22T14:36:15.735200+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\Control\\M21_s6\\2024-07-29_15-28-43": [
+        "set",
+        "2026-09-23T18:07:11.072390+00:00"
+      ],
       "D:\\PTEN\\CTL\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43": [
         "set",
         "2026-09-04T15:57:01.684883+00:00"
@@ -54,11 +59,15 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.684883+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-22T14:32:25.659060+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T05:55:50.917627+00:00",
+    "at": "2026-09-23T18:07:11.072390+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -95,7 +104,8 @@
   "paths": [
     "D:\\PTEN\\CTL\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43",
     "G:\\PTEN\\M21_s6",
-    "Y:\\ProcessedPtenData\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43"
+    "Y:\\ProcessedPtenData\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43",
+    "D:\\Data\\Archive\\PTEN Project\\Control\\M21_s6\\2024-07-29_15-28-43"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -117,16 +127,79 @@
       "path": "D:\\PTEN\\CTL\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43",
       "root": "D:/PTEN",
       "scan": "scan_765fa11e51"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-22T10:32:25-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\m21_ptenblind\\m21s6jul29\\2024-07-29_15-28-43",
+      "root": null,
+      "scan": null
     }
   },
   "session": 6,
   "start": "2024-07-29T15:28:43",
   "updated": {
-    "at": "2026-09-09T01:55:50-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-23T14:07:11-04:00",
+    "commit": "76c4933",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",
     "user": "Shahriar Tafti"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      6,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "even_only": false,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 0.8,
+    "stft_mode": null,
+    "t0": 738.317662,
+    "ylim": null
   }
 }

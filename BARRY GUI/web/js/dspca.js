@@ -909,7 +909,7 @@ BARRY.dspca = (function () {
       q.gid = (on && on.gid) || (rows[0] || {}).gid || null;
     }
 
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Recording' }));
     box.appendChild(BARRY.pickSession({
       rows,
@@ -1384,7 +1384,7 @@ BARRY.dspca = (function () {
 
     /* THE HEADLINE. Not the pictures -- two heatmaps that look slightly
        different is exactly the evidence this panel exists to replace. */
-    body.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    body.appendChild(el('div', { class: 'section-label',
                                  text: 'Which events changed identity' }));
     body.appendChild(el('p', { class: 'hint', text:
       ct.moved + ' of ' + ct.seen + ' events ('
@@ -1772,9 +1772,13 @@ BARRY.dspca = (function () {
     sources: 'source peaks', anatomy: 'anatomy',
   };
 
-  function label(text, first) {
-    return el('div', { class: 'section-label',
-                       style: first ? 'margin-top:0' : null, text });
+  /* `first` is no longer used for spacing: `.card > .section-label
+     :first-child` in app.css does that for every label that opens a card,
+     everywhere, rather than each call site undoing the house margin by
+     hand. Kept as an argument so the call sites still read as "this one
+     opens the group", and ignored. */
+  function label(text) {
+    return el('div', { class: 'section-label', text });
   }
 
   /* ---------- committing ----------
@@ -2013,7 +2017,7 @@ BARRY.dspca = (function () {
     }
     if (!fit) return [loading('Fitting')];
     const out = [];
-    out.push(el('div', { class: 'section-label', style: 'margin-top:0', text:
+    out.push(el('div', { class: 'section-label', text:
       'Class-average depth profile ± SEM' }));
     out.push(el('canvas', { class: 'dp-canvas dp-profile', id: 'dpProfile' }));
 

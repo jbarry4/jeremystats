@@ -562,6 +562,87 @@ BARRY.views.eventbank = (function () {
      the difference rather than only the totals, because "-6 flag, +6 spike"
      is the sentence somebody is looking for and two columns of totals make
      you do the subtraction yourself. */
+  /* WHICH VERSIONS HAVE REACHED THE SHARED TABLE.
+
+     A version history that does not say this is the same history on a
+     machine that has pushed and one that has not, and the difference is
+     whether a colleague can see any of it. `/api/bank/sync` already
+     answers it per version -- `in_cloud` for the metadata and
+     `snap_in_cloud` for the snapshot that makes it restorable.
+
+     Asked once per entry and held, not asked per render: `?verify=1` is
+     two round trips to Supabase, and egress there is counted in REQUESTS
+     rather than bytes. Without it the answer is the local push cursor,
+     which is instant and honest about being a cursor. */
+  const verKey = (v) => String(v.name != null ? v.name : v.v);
+
+  const syncOf = {};            // entry id -> { by_name, state, checked }
+  let syncBusy = null;
+
+  async function loadSync(entryId, verify) {
+    if (!entryId) return null;
+    const key = entryId + (verify ? '!v' : '');
+    if (syncOf[key]) return syncOf[key];
+    if (syncBusy === key) return null;
+    syncBusy = key;
+    try {
+      const got = await api('/api/bank/sync?id=' + encodeURIComponent(entryId)
+                            + (verify ? '&verify=1' : ''));
+      const row = ((got || {}).entries || [])[0] || null;
+      const byName = {};
+      for (const v of ((row || {}).versions || [])) {
+        byName[String(v.name != null ? v.name : v.v)] = v;
+      }
+      syncOf[key] = { row, byName, verified: !!verify };
+      return syncOf[key];
+    } catch (err) {
+      reportClientError('eventbank.sync', err.message, String(err && err.stack));
+      return null;
+    } finally {
+      syncBusy = null;
+    }
+  }
+
+  /* One version's standing, as a chip.
+
+     Three states and they are different things. `in_cloud` false means
+     nobody else can see this pass at all. A version that is up but whose
+     SNAPSHOT is not can be read about and not restored, which is the one
+     people get caught by. And unverified is unverified: it says so rather
+     than guessing, because "probably shared" is not a thing to tell
+     somebody about their only copy of a day's work. */
+  function syncChip(entryId, v) {
+    const name = String(v.name != null ? v.name : v.v);
+    const have = syncOf[entryId + '!v'] || syncOf[entryId];
+    const row = have && have.byName[name];
+    if (!have || !row || row.in_cloud == null) {
+      return el('span', {
+        class: 'pill sm ver-sync unknown', text: 'not checked',
+        title: 'Whether this version has reached the shared table has not '
+             + 'been looked up. Press “Check the database”.',
+      });
+    }
+    if (!row.in_cloud) {
+      return el('span', {
+        class: 'pill sm ver-sync local', text: 'this computer only',
+        title: 'This version is not in the shared table, so nobody else can '
+             + 'see it. It goes up on the next sync.',
+      });
+    }
+    if (row.snap_here && row.snap_in_cloud === false) {
+      return el('span', {
+        class: 'pill sm ver-sync partial', text: 'shared, no snapshot',
+        title: 'The record of this pass is shared, but the snapshot that '
+             + 'lets it be restored is not — a colleague can read what it '
+             + 'said and cannot put it back.',
+      });
+    }
+    return el('span', {
+      class: 'pill sm ver-sync shared', text: 'shared',
+      title: 'In the shared table, snapshot and all.',
+    });
+  }
+
   function versionHistory(box, e) {
     const vs = (e.versions || []).slice();
     if (!vs.length) return;
@@ -592,16 +673,57 @@ BARRY.views.eventbank = (function () {
 
     /* The lineage: every version at a glance, and a way into any of them.
        Reading a history means moving around in it. */
+    /* Asked for, not assumed. The cheap answer comes from the local push
+       cursor on open; the database is only asked when somebody presses,
+       because that is two round trips and egress here is counted in
+       requests. */
+    const haveSync = syncOf[e.id + '!v'] || syncOf[e.id];
+    const syncBar = el('div', { class: 'ver-syncbar' }, [
+      el('span', { class: 'hint', text: haveSync
+        ? (haveSync.verified
+           ? 'Checked against the shared table.'
+           : 'From this machine\u2019s push cursor, not the database itself.')
+        : 'Not checked against the shared table.' }),
+      el('span', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: haveSync && haveSync.verified ? 'Check again'
+                                            : 'Check the database',
+        title: 'Asks Supabase which of these versions it actually holds.',
+        onclick: async () => {
+          delete syncOf[e.id + '!v'];
+          await loadSync(e.id, true);
+          const host = box.parentNode;
+          const fresh = detail();
+          if (host) host.replaceChild(fresh, box);
+        },
+      }),
+    ]);
+    if (!haveSync) {
+      // The instant one, so the strip is never blank while nobody has
+      // pressed anything.
+      loadSync(e.id, false).then((got) => {
+        if (!got) return;
+        const host = box.parentNode;
+        if (!host || !host.contains(box)) return;
+        const fresh = detail();
+        host.replaceChild(fresh, box);
+      });
+    }
+
     const strip = el('div', { class: 'ver-strip' });
     shown.forEach((v) => {
       strip.appendChild(el('button', {
-        class: 'ver-pip' + (openVersion === v.v ? ' on' : '')
+        /* Keyed on the NAME, not the number. Two versions can share a
+           number -- that is the whole reason names exist -- and keyed on
+           the number, clicking the second one opened the first. */
+        class: 'ver-pip' + (openVersion === verKey(v) ? ' on' : '')
              + (v.v === vs.length ? ' last' : ''),
         title: 'v' + (v.name != null ? v.name : v.v) + '  ' + (v.by || '') + '  '
              + (v.note || 'no note'),
         text: 'v' + (v.name != null ? v.name : v.v),
         onclick: () => {
-          openVersion = openVersion === v.v ? null : v.v;
+          openVersion = openVersion === verKey(v) ? null : verKey(v);
           const host = box.parentNode;
           // Repaint just the entry, so the list on the left does not
           // scroll back to the top.
@@ -611,6 +733,7 @@ BARRY.views.eventbank = (function () {
       }));
     });
     box.appendChild(strip);
+    box.appendChild(syncBar);
 
     const list = el('div', { class: 'ver-list' });
     for (let i = shown.length - 1; i >= 0; i--) {
@@ -651,6 +774,7 @@ BARRY.views.eventbank = (function () {
           el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
           i === shown.length - 1 && !v.archived
             ? el('span', { class: 'pill sm', text: 'current' }) : null,
+          syncChip(e.id, v),
           v.archived ? el('span', { class: 'pill sm', text: 'archived' })
                      : null,
           el('span', { class: 'ver-ops' }, [

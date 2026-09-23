@@ -15,6 +15,119 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.23.9 - A version number is not a version name
+
+### Fixed
+
+- **The same history read differently in different panels.** X-ray’s picker
+  listed v0 to v4; the bank’s own history strip, for the same entry, listed
+  v0, v1, v2, v3, v3 — five versions, four names, one of them twice, and no
+  way to tell which was which. Another entry showed ten pills reading v0, v1,
+  v2, v3, v3, v4, v4, v5, v5, v6, with two different people’s v5 under it.
+
+  `v` is what a machine minted and it is NOT unique: two machines mint
+  independently and the union keeps both, which is the right outcome and
+  the reason `versions.label_rows` exists — it walks the lineage in
+  creation order and hands back a name that is. Half the application was
+  showing the number anyway.
+
+  There is one namer now. `named_versions` in `app.py` wraps `label_rows`,
+  every endpoint that serialises versions goes through it or builds the
+  name alongside the row, and the twelve places in the browser that wrote
+  `'v' + v.v` read `v.name` with the number as a fallback. The curation
+  list is sorted by the name’s key rather than the raw number too: two
+  versions numbered 3 sorted against each other arbitrarily, so the
+  history could list them in a different order on two machines.
+
+- **Clicking the second of two versions with the same number opened the
+  first.** The history strip keyed its selection on `v.v`. It keys on the
+  name, which is the thing that is unique.
+
+- **"This set does not say which recording it came from" — under the name
+  of the recording.** Three different failures shared one sentence, and
+  the one it described was the rarest. It now says which of them it is: no
+  registry id at all (a label is a name and not a locator), an id the
+  registry here has never heard of, or a recording the registry knows with
+  no folder recorded anywhere. Each names the set and the id it is talking
+  about.
+
+### Added
+
+- **Every version says whether it is shared.** A version history that does
+  not say this is the same history on a machine that has pushed and one
+  that has not, and the difference is whether a colleague can see any of
+  it. `/api/bank/sync` already answered it per version; the history strip
+  now shows it: **shared**, **shared, no snapshot** (the pass is readable
+  and cannot be restored, which is the one people get caught by), **this
+  computer only**, or **not checked**.
+
+  Unverified says so rather than guessing, because "probably shared" is
+  not a thing to tell somebody about their only copy of a day’s work. The
+  database is asked when somebody presses, not on every render: egress
+  there is counted in requests, and the instant answer from the local push
+  cursor is honest about being a cursor.
+
+- **A set that has finished reading can be opened while the rest run.**
+  The X-ray batch was a plain table, so the answer to "this one is done,
+  let me look at it" was to wait for the whole queue — on a cohort, the
+  difference between a coffee and an afternoon. Done rows are buttons now,
+  the batch keeps running when you take one, and the mode switch keeps
+  reporting it so nothing reads as having cancelled it. The sets already
+  read are listed the same way, which is how last week’s reading becomes
+  reachable at all.
+
+- **The feature matrix is drawn without interpolation.** It is one pixel
+  per event across and one per feature down — about 37 by 48 — shown
+  five hundred wide, and canvas smooths by default. Soft was the small
+  half of it: a column is ONE EVENT and a row is ONE FEATURE, so there is
+  nothing between two of them to interpolate, and smoothing is precisely
+  the operation that blends the single odd column this panel exists to
+  show into the ones beside it.
+
+### Changed
+
+- **The compare dialog is built the way `.modal.big` wants.** Reported as
+  "no scrolling, half of it cut off", and it was: the body was missing
+  `mb`, which is the element that scrolls, so `.modal.big > *` gave it
+  `overflow: hidden` and everything past the fold was unreachable. The
+  header stacked its title, subtitle and close button because
+  `.modal.big > *` also makes every child a flex column and `.mh` never
+  sets it back — scoped here rather than fixed in the shared rule, which
+  belongs to dialogs this work has nothing to do with. The crosstab is as
+  wide as its numbers again instead of stretching its two columns to the
+  far edge.
+
+- **`DSPCA-UI-HANDOFF.md`, most of it.** The dead `.dp-lab` rule is gone,
+  and the four inline `margin-top:0` undos beside `.section-label` in this
+  file with it. `.dp-intro` is left alone until `stepHeader` lands, as
+  asked.
+
+  **On the collision:** the other session and I both fixed the
+  `.section-label` margin at the same time. Their `* + .section-label`
+  landed and mine is removed — it is the better rule and they measured
+  why, first-in-parent labels still reading 22px under a scoped
+  `:first-child` in every container nobody had named. My `.dp-controls`
+  override stays, as they asked, merged into the one rule that was already
+  there instead of sitting above it as a second — which was the same
+  two-rules-for-one-thing fault, committed by me, in the pass that exists
+  to remove it.
+
+### Checked
+
+- `web/_dev/dspca.html` is 174 checks, and the bank suite (`bank`,
+  `bankdupes`, `bankimport`, `banklayers`, `bankscroll`, `bankback`) is
+  clean alongside it, which is what covers the version renaming.
+
+- **The harnesses really do delete real records.** The handoff warns about
+  it; measured here, a run of the bank suite removed 33 files from
+  `GUI_logs/event_bank/`, of which 30 were real KCNT1 entries and no
+  tombstone recorded any of them. Restored both times. Check
+  `git status` after a run — it is not an occasional thing.
+
+- **A stale Edge profile makes `ui_baseline.py` capture nothing**, which
+  it correctly refuses to call a clean baseline. Deleting
+  `%TEMP%\jarvis-uibaseline-profile` fixes it.
+
 ## 2026.09.23.8 - X-ray: comparing two answers, and the recording beside the panel
 
 ### Added
