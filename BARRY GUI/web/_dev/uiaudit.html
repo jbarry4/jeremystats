@@ -126,10 +126,18 @@ function shape(cs) {
 
 /* How a node is named in the dump. Its own classes, sorted and capped, so
    the line is stable whatever order they were written in. */
+/* Classes that reflect the machine this ran on rather than the styling.
+   `dirty` is on the sync chip when the working tree has uncommitted changes,
+   so the dump moved between a clean checkout and a dirty one -- a line of
+   diff with no cause in the stylesheet, which is exactly the noise this
+   file exists not to have. */
+const ENVIRONMENTAL = new Set(['dirty']);
+
 function idOf(n) {
   const raw = (n.className && n.className.baseVal !== undefined)
     ? n.className.baseVal : (n.className || '');
-  const cls = String(raw).trim().split(/\s+/).filter(Boolean).sort();
+  const cls = String(raw).trim().split(/\s+/)
+    .filter((c) => c && !ENVIRONMENTAL.has(c)).sort();
   return n.tagName.toLowerCase()
        + (cls.length ? '.' + cls.slice(0, 4).join('.') : '');
 }

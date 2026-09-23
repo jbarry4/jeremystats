@@ -154,6 +154,61 @@ async function untilN(fn, tries = 250, gap = 100) {
   check('a good call is not refused',
         !refuses(() => ui.button({ text: 'x', kind: 'ghost', size: 'sm' })));
 
+  head('.badbtn: one control, five places');
+
+  /* None of these render during a walk of the views -- they live in the
+     channel overlay, a storyboard thumbnail and a feedback screenshot --
+     so the measurement dump cannot see them and they have to be built.
+
+     The point of the base rule is that the five agree about what this
+     control IS and differ only in where it sits and, for two of them, what
+     it means. `.fb-shot .badbtn` is the one that proves it: it sets only a
+     position and a background, so before there was a base it had no font
+     size, no padding and no pointer cursor at all. */
+  const inCtx = (wrapCls, extra) => {
+    const w = D().createElement('div');
+    w.className = wrapCls;
+    const b = D().createElement('button');
+    b.className = 'badbtn' + (extra || '');
+    b.textContent = 'bad';
+    w.appendChild(b);
+    stage.appendChild(w);
+    return b;
+  };
+  const chRow   = inCtx('ch-row');
+  const lane    = (() => { const o = D().createElement('div');
+                           o.className = 'ch-overlay';
+                           const l = D().createElement('div');
+                           l.className = 'ch-lane';
+                           const b = D().createElement('button');
+                           b.className = 'badbtn'; b.textContent = 'bad';
+                           l.appendChild(b); o.appendChild(l);
+                           stage.appendChild(o); return b; })();
+  const thumb   = inCtx('sb-thumb');
+  const shot    = inCtx('fb-shot');
+  const ctlChan = inCtx('ctl-chan');
+
+  const cs = (n) => W().getComputedStyle(n);
+  for (const [name, n] of [['ch-row', chRow], ['ch-lane', lane],
+                           ['sb-thumb', thumb], ['fb-shot', shot],
+                           ['ctl-chan', ctlChan]]) {
+    check(name + ' badbtn has a pointer cursor',
+          cs(n).cursor === 'pointer', cs(n).cursor);
+    check(name + ' badbtn has a font size under 10px',
+          parseFloat(cs(n).fontSize) > 0 && parseFloat(cs(n).fontSize) < 10,
+          cs(n).fontSize);
+    check(name + ' badbtn is monospaced',
+          /mono|consol|courier/i.test(cs(n).fontFamily),
+          cs(n).fontFamily);
+  }
+  check('the feedback one now has padding, which it never had',
+        parseFloat(cs(shot).paddingLeft) > 0, cs(shot).paddingLeft);
+  check('the lane one is still the tightest, for a 12px lane',
+        parseFloat(cs(lane).fontSize) < parseFloat(cs(chRow).fontSize),
+        cs(lane).fontSize + ' vs ' + cs(chRow).fontSize);
+  check('the channel control is still a hit target',
+        parseFloat(cs(ctlChan).minWidth) >= 26, cs(ctlChan).minWidth);
+
   head('the rest');
   const acts = via(ui.actions([ui.button({ text: 'a' }), null, false,
                                ui.button({ text: 'b' })]));

@@ -2074,12 +2074,31 @@ body.strip-resizing canvas { pointer-events: none; }
 .pane-timebar canvas { flex: 1 1 auto; min-height: 0; }
 .pane-timebar canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
 .ch-row.marked-bad { color: var(--warn); }
-.ch-row .badbtn {
-  margin-left: auto; font-size: 9px; padding: 0 4px; border-radius: 4px;
-  border: 1px solid transparent; background: transparent; color: var(--text-3);
-  cursor: pointer; font-family: var(--mono);
+/* The small button that marks a channel bad, wherever it appears.
+
+   There was no base rule. Five places built one from scratch -- the channel
+   list, the overlay lane, a storyboard thumbnail, a feedback screenshot and
+   the channel control -- and between them they used three font sizes, two
+   radii and two backgrounds for what the reader is meant to understand as
+   one control.
+
+   The fifth is the reason this matters rather than merely being untidy.
+   `.fb-shot .badbtn` sets only a position and a background, because it was
+   written expecting a base to exist: with none, that button had no font
+   size, no padding and no pointer cursor at all.
+
+   So: everything shared, once, here. Each context below keeps only what is
+   genuinely different about it -- where it sits, and what colour it turns
+   when the answer is not "bad". */
+.badbtn {
+  padding: 0 var(--sp-4); font-size: var(--fs-9);
+  border: 1px solid transparent; border-radius: var(--r-4);
+  background: transparent; color: var(--text-3);
+  font-family: var(--mono); cursor: pointer;
 }
-.ch-row .badbtn:hover { border-color: var(--warn); color: var(--warn); }
+.badbtn:hover { border-color: var(--warn); color: var(--warn); }
+
+.ch-row .badbtn { margin-left: auto; }
 .ch-row.marked-bad .badbtn { background: var(--warn-soft); color: var(--warn); }
 .cursor-readout.pane-readout { top: 6px; right: 8px; font-size: 9.5px; }
 /* ---------- video pane ---------- */
@@ -2772,12 +2791,13 @@ body.dragging-session .pane { transition: outline .1s; }
   background: var(--bg-3); padding: 0 3px; border-radius: 3px;
 }
 .ch-overlay .ch-lane.compact input { width: 10px; height: 10px; }
+/* Tighter, because a lane is twelve pixels tall and `_dev/align.html`
+   measures those lanes against the traces beside them. Literal numbers, not
+   scale tokens: this is geometry fitted to a measurement, not spacing
+   chosen for looks. */
 .ch-overlay .ch-lane .badbtn {
-  font-size: 8.5px; padding: 0 3px; border-radius: 3px; flex: none;
-  border: 1px solid transparent; background: transparent;
-  color: var(--text-3); cursor: pointer; font-family: var(--mono);
+  font-size: 8.5px; padding: 0 3px; border-radius: 3px;
 }
-.ch-overlay .ch-lane .badbtn:hover { border-color: var(--warn); color: var(--warn); }
 .ch-overlay .ch-lane.marked-bad .badbtn { background: var(--warn-soft); color: var(--warn); }
 /* The control strip has a fixed height and scrolls horizontally instead of
    wrapping. Re-wrapping changed the pane's height after the canvas had already
@@ -3094,11 +3114,13 @@ select {
 }
 .sb-name { grid-column: 2; font-size: 10px; color: var(--text-2);
            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* On a thumbnail, so it hides until the thumbnail is hovered and needs a
+   ground of its own to sit on. Removing a slide is not marking a channel
+   bad, which is why this one turns red rather than amber. */
 .sb-thumb .badbtn {
   position: absolute; top: 3px; right: 3px; opacity: 0;
-  background: var(--bg-2); border: 1px solid var(--line);
-  border-radius: 4px; font-size: 8px; padding: 0 3px; cursor: pointer;
-  color: var(--text-3);
+  background: var(--bg-2); border-color: var(--line);
+  font-size: 8px; padding: 0 3px;
 }
 .sb-thumb:hover .badbtn { opacity: 1; }
 .sb-thumb .badbtn:hover { color: var(--err); border-color: var(--err); }
@@ -7465,11 +7487,11 @@ body.aid-window .xf-tabs { display: none !important; }
 /* The bad/ok toggle in the channel popover. Small, because the row is a
    checkbox, a number and this -- and it has to stay hittable, which is why
    there is a minimum size rather than padding alone. */
+/* A hit target rather than a mark: this one is pressed repeatedly while
+   going down a probe, so it gets a minimum size and a visible edge. */
 .ctl-chan .badbtn {
-  margin-left: auto; min-width: 26px; min-height: 16px;
-  padding: 0 4px; font-size: 9px; line-height: 15px;
-  border: 1px solid var(--line); border-radius: 4px;
-  background: var(--bg-2); color: var(--text-3); cursor: pointer;
+  margin-left: auto; min-width: 26px; min-height: 16px; line-height: 15px;
+  border-color: var(--line); background: var(--bg-2);
 }
 .ctl-chan .badbtn:hover { border-color: var(--accent); color: var(--text); }
 .ctl-chan .badbtn.on {
@@ -9369,6 +9391,18 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 /* A row whose read has finished, and is therefore a thing you can open. */
 .dp-bulk tr.ready td:first-child { font-weight: 600; }
 .dp-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+
+/* Whether a version has reached the shared table. Three states, and they
+   are different things: not up at all, up without the snapshot that makes
+   it restorable, and up. Unverified says so rather than guessing. */
+.ver-sync.shared { color: var(--ok); border-color: var(--ok); }
+.ver-sync.partial { color: var(--warn); border-color: var(--warn); }
+.ver-sync.local { color: var(--err); border-color: var(--err); }
+.ver-sync.unknown { color: var(--text-3); }
+.ver-syncbar {
+  display: flex; align-items: center; gap: var(--sp-8);
+  margin: var(--sp-4) 0 var(--sp-8);
+}
 .dp-bulk-note { color: var(--accent); }
 .dp-bulk td.dim { color: var(--text-3); }
 
