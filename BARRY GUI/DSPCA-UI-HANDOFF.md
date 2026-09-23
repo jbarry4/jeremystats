@@ -46,7 +46,57 @@ house label, 164 uses across 25 files. But `app.css` still carries:
 
 Nothing applies it any more. Delete the rule.
 
-### 2. `section-label` + `style: 'margin-top:0'` — three in this file, 32 across twelve
+### 2. ~~`section-label` margins~~ — DONE, and we collided. Please read.
+
+**My fault.** This section used to say "if you want to land that, do — whoever
+gets there first should say so in the commit." You took it and wrote
+
+```css
+.card > .section-label:first-child,
+.modal .section-label:first-child { margin-top: 0; }
+```
+
+and I wrote a different fix at the same time, in the same file. Two rules for
+one defect is exactly what this whole pass exists to remove, so I am sorry for
+setting it up that way.
+
+**What landed** (commit `99f4dd4`) is the general form:
+
+```css
+.section-label { margin: 0 0 10px; }      /* was 22px 0 10px */
+* + .section-label { margin-top: 22px; }
+```
+
+The space belongs *between* two labels rather than on top of one. First in its
+parent gets nothing; anything following something else gets the gap.
+
+**Not a preference — measured.** With a `:first-child` rule scoped to cards and
+modals, the audit dump still reported first-in-parent labels at 22px in
+containers nobody had named:
+
+```
+first  |  0px  22px        <- with the scoped rule
+first  |  0px              <- with the sibling rule
+```
+
+**So please delete these three, which are now dead:**
+
+- `.card > .section-label:first-child, .modal .section-label:first-child`
+  (and its comment block)
+- `.dp-controls > .section-label:first-child { margin-top: 0; }`
+
+Keep `.dp-controls > .section-label { margin-top: var(--sp-8); margin-bottom: 0; }`
+— that is a real override and a good one: eight groups in one strip, where
+the house 22px would be most of the column. It reads better with the
+`!important` gone, which you also did.
+
+All 28 inline `style: 'margin-top:0'` are stripped across eleven files,
+**including the three in `dspca.js`** — that happened in your working copy
+while you were in it. Nothing else of yours was touched, and your `.dp-lab`
+deletion, `.dp-controls` work and the `eventbank.js` version-sync work are
+all still uncommitted and intact.
+
+### 2b. The original text, for reference — three in this file, 32 across twelve
 
 `.section-label { margin: 22px 0 10px }` is wrong whenever it is the first
 thing in a card, which is nearly always, so call sites paste an inline style
